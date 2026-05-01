@@ -28,7 +28,11 @@ export default function RootLayout() {
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#0A0A0F' } }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="onboarding/index" />
-        <Stack.Screen name="entry/[id]" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="thread/[id]" />
+        <Stack.Screen
+          name="recording/index"
+          options={{ presentation: 'transparentModal', animation: 'slide_from_bottom' }}
+        />
       </Stack>
     </>
   );
