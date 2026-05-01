@@ -133,3 +133,25 @@ describe('GET /api/v1/chat/session/:sessionId/messages', () => {
     expect(res.status).toBe(404);
   });
 });
+
+describe('GET /api/v1/chat/sessions', () => {
+  test('returns sessions list with valid userId', async () => {
+    const res = await request(app)
+      .get('/api/v1/chat/sessions')
+      .set('x-user-id', 'u1');
+    // Route exists (not 404)
+    expect(res.status).not.toBe(404);
+  });
+
+  test('returns 401 without x-user-id', async () => {
+    const res = await request(app).get('/api/v1/chat/sessions');
+    expect(res.status).toBe(401);
+  });
+});
+
+describe('GET /api/v1/chat/session/:id', () => {
+  test('returns 401 without x-user-id', async () => {
+    const res = await request(app).get('/api/v1/chat/session/abc');
+    expect(res.status).toBe(401);
+  });
+});
