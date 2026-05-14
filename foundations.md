@@ -10,14 +10,14 @@ Tokens have three layers. You always use the **utility** layer — never primiti
 
 ```
 Primitive  →  Semantic alias  →  Utility class
---color-red-100  →  --semantic-danger-bg-subtle  →  bg-danger-subtle
+neutral.100  →  muted background  →  bg-muted
 ```
 
-**Primitives** (`@theme static` in globals.css) — raw palette values. Never reference these in components.
+**Primitives** (nested objects in `mobile/tailwind.config.js` under `theme.extend.colors`) — raw palette values like `neutral.100`, `lime.500`. Never reference these in components.
 
-**Semantic aliases** (`:root` in globals.css) — purpose-named mappings. E.g. `--semantic-danger-bg-subtle` maps to `--color-red-100`. Swap the palette here to retheme the whole system.
+**Semantic aliases** (flat entries in the same `colors` object) — purpose-named mappings. E.g. `muted: '#f3f3f3'` maps to `bg-muted`. Swap the value here to retheme the whole system.
 
-**Utilities** (`@theme inline` in globals.css) — the Tailwind class names components actually use. E.g. `bg-danger-subtle`, `text-foreground`, `border-border`.
+**Utilities** — the NativeWind class names components actually use. E.g. `bg-muted`, `text-foreground`, `border-border`. These are generated automatically from the `colors` entries.
 
 ---
 
@@ -26,7 +26,7 @@ Primitive  →  Semantic alias  →  Utility class
 When choosing a token, always go in this order:
 1. **Semantic utility first** — `text-foreground`, `bg-success-subtle`, `border-border`
 2. **Named palette as fallback** — `bg-neutral-100` (only if no semantic alias exists for this role)
-3. **Gap** — if neither exists, add a new alias to globals.css before using it
+3. **Gap** — if neither exists, add a new entry to `mobile/tailwind.config.js` under `theme.extend.colors` before using it
 4. **Never** — raw hex, raw oklch, arbitrary px, raw Tailwind color utilities like `text-green-700`
 
 ---
@@ -132,17 +132,11 @@ Uses Tailwind v4's default 4px multiplier. `p-1` = 4px, `p-2` = 8px, `p-3` = 12p
 
 ## Icons
 
-All icons come from `@central-icons-react/all`. Browse available icons in Storybook under `Foundations/Icons`.
+All icons will come from `@central-icons-react/all` (planned — not yet installed). Browse available icons at the Central Icons Storybook when available.
 
 Zero Lucide icons anywhere in the codebase.
 
-```tsx
-import { Icon } from '@/components/ui'
-
-<Icon name="IconCrossMedium" size={20} />
-```
-
-The `<Icon>` wrapper handles stroke weight automatically based on size. Never pass a stroke colour — the component inherits it from the text colour of its parent.
+The `<Icon>` wrapper will handle stroke weight automatically based on size. Never pass a stroke colour — the component inherits it from the text colour of its parent.
 
 ### Available sizes
 
@@ -158,7 +152,7 @@ The `<Icon>` wrapper handles stroke weight automatically based on size. Never pa
 
 Icons follow the pattern `Icon{Name}{Size}` where size is `Small`, `Medium`, or `Large`. Example: `IconCrossMedium`, `IconArrowRightSmall`, `IconCheckLarge`.
 
-Browse and search in Storybook: `http://localhost:6006` → `Foundations/Icons`.
+Browse and search in Storybook when available.
 
 ---
 
@@ -180,4 +174,4 @@ Tokens have a two-sided discipline — too few forces palette fallbacks, too man
 
 **The test:** Can you describe the token's role in one sentence that applies to at least two different components? If not, use the named palette fallback.
 
-**Always add as a pair:** semantic alias in `:root` + Tailwind utility in `@theme inline` — never one without the other.
+**Always add in `mobile/tailwind.config.js`** under `theme.extend.colors`. Use a flat semantic name (e.g., `'my-token': '#hex'`). The NativeWind class (e.g., `bg-my-token`) is generated automatically.
