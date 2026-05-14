@@ -1,46 +1,45 @@
 export const colors = {
-  // Primary palette — deep, premium feel
-  background: '#0A0A0F',
-  surface: '#13131A',
-  surfaceElevated: '#1C1C27',
-  border: '#2A2A38',
-  borderSubtle: '#1E1E2A',
+  background: '#ffffff',
+  surface: '#ffffff',
+  surfaceElevated: '#f9f9f9',
+  border: '#e6e6e6',
+  borderSubtle: 'rgba(6,7,7,0.08)',
 
-  // Accent
-  accent: '#7C6FFF',        // Purple — primary action
-  accentMuted: '#2D2B50',   // Muted accent for backgrounds
-  accentGlow: '#7C6FFF30',
+  // Primary (lime-500)
+  accent: '#cdec1a',
+  accentMuted: '#edfbca',
+  accentGlow: 'rgba(205,236,26,0.3)',
 
   // Semantic
-  positive: '#4ADE80',      // Green — wins, positive sentiment
-  positiveMuted: '#1A3D2B',
-  warning: '#FBBF24',       // Yellow — stalling, caution
-  warningMuted: '#3D3010',
-  error: '#F87171',         // Red — challenging, difficult
-  errorMuted: '#3D1515',
-  info: '#60A5FA',          // Blue — decisions, info
+  positive: '#04851a',
+  positiveMuted: '#e7f9e9',
+  warning: '#e46300',
+  warningMuted: '#fcf2e8',
+  error: '#c60000',
+  errorMuted: '#fff0ea',
+  info: '#0c79e6',
 
   // Text
-  textPrimary: '#F0F0F8',
-  textSecondary: '#8888A8',
-  textTertiary: '#55556A',
-  textAccent: '#A89FFF',
+  textPrimary: '#060707',
+  textSecondary: '#5f646a',
+  textTertiary: '#898989',
+  textAccent: '#778700',
 
   // Momentum signals
   momentum: {
-    accelerating: '#4ADE80',
-    steady: '#60A5FA',
-    stalling: '#FBBF24',
-    recovering: '#A78BFA',
+    accelerating: '#04851a',
+    steady: '#0c79e6',
+    stalling: '#e46300',
+    recovering: '#004148',
   },
 
   // Sentiment
   sentiment: {
-    very_positive: '#4ADE80',
-    positive: '#86EFAC',
-    neutral: '#60A5FA',
-    challenging: '#FBBF24',
-    difficult: '#F87171',
+    'very-positive': '#04851a',
+    positive: '#86e091',
+    neutral: '#0c79e6',
+    challenging: '#e46300',
+    difficult: '#c60000',
   },
 };
 
