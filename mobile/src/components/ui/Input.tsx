@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { TextInput, View, type TextInputProps, type ViewStyle } from 'react-native';
+import { colors } from '../../constants/theme';
 
 export type InputSize = 'default' | 'lg';
 
@@ -55,7 +56,7 @@ export function Input({
           'flex-1 text-foreground',
           SIZE_TEXT[size],
         ].join(' ')}
-        placeholderTextColor="#737373"
+        placeholderTextColor={colors.textTertiary}
         editable={!isDisabled}
         onFocus={(e) => {
           setFocused(true);

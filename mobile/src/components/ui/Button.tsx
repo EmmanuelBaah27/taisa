@@ -1,5 +1,6 @@
 import React from 'react';
 import { Pressable, Text, ActivityIndicator, View } from 'react-native';
+import { colors } from '../../constants/theme';
 
 export type ButtonVariant =
   | 'primary'
@@ -76,12 +77,12 @@ const SIZE_TEXT: Record<ButtonSize, string> = {
 
 // Spinner color is the same as the text color for each variant
 const SPINNER_COLOR: Record<ButtonVariant, string> = {
-  'primary':               '#FFFFFF',
-  'secondary':             '#0F0F0F',
-  'tertiary':              '#0F0F0F',
-  'destructive':           '#FFFFFF',
-  'secondary-destructive': '#EF4444',
-  'tertiary-destructive':  '#EF4444',
+  'primary':               colors.textPrimary,        // dark text — lime bg is light
+  'secondary':             colors.textPrimary,
+  'tertiary':              colors.textPrimary,
+  'destructive':           '#ffffff',
+  'secondary-destructive': colors.error,
+  'tertiary-destructive':  colors.error,
 };
 
 export function Button({
@@ -127,7 +128,7 @@ export function Button({
       {loading ? (
         <ActivityIndicator
           size="small"
-          color={isDisabled ? '#A3A3A3' : SPINNER_COLOR[variant]}
+          color={isDisabled ? colors.textTertiary : SPINNER_COLOR[variant]}
         />
       ) : (
         <>
