@@ -200,8 +200,8 @@ Confirm: "Found existing backlog issue — [title]. Scoping from there." or "Cre
 **Label IDs:**
 - Feature: `a57ef5fa-88a5-42ae-9262-e4f1ae7f828c`
 - Design System: `5ab8ecc1-169f-4d2d-b855-7ca874b6453e`
-- Platform: *(created in Task 6 — update this ID after creation)*
-- Product: *(created in Task 6 — update this ID after creation)*
+- Platform: `5781b10c-40e9-4354-92de-ba0e41f0055d`
+- Product: `88f604d4-de41-4b3e-a7ae-f512012e98d3`
 
 | Event | Linear action |
 |---|---|
