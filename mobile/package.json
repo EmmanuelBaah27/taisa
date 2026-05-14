@@ -6,9 +6,11 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "storybook": "EXPO_PUBLIC_STORYBOOK=true expo start"
   },
   "dependencies": {
+    "@react-native-async-storage/async-storage": "^3.0.2",
     "axios": "1.15.0",
     "date-fns": "^4.1.0",
     "expo": "~54.0.0",
@@ -33,6 +35,11 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
+    "@storybook/addon-ondevice-actions": "^10.4.3",
+    "@storybook/addon-ondevice-backgrounds": "^10.4.3",
+    "@storybook/addon-ondevice-controls": "^10.4.3",
+    "@storybook/addon-ondevice-notes": "^10.4.3",
+    "@storybook/react-native": "^10.4.3",
     "@types/react": "^19.2.14",
     "tailwindcss": "^3.4.19",
     "typescript": "~5.9.3"

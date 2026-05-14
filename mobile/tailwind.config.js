@@ -37,6 +37,62 @@ module.exports = {
         'text-tertiary': '#55556A',
         'text-accent': '#A89FFF',
 
+        // --- Light semantic tokens (Mande DS aligned) ---
+        // Surfaces
+        card: '#FFFFFF',
+        subtle: '#FAFAFA',
+        muted: '#F5F5F5',
+
+        // Text
+        foreground: '#0F0F0F',
+        'muted-foreground': '#737373',
+        'inverted-foreground': '#FFFFFF',
+
+        // Primary action — Taisa purple (maps to Mande DS primary/CTA role)
+        primary: '#7C6FFF',
+        'primary-hover': '#6B5EE8',
+        'primary-foreground': '#FFFFFF',
+
+        // Destructive (filled)
+        destructive: '#EF4444',
+        'destructive-hover': '#DC2626',
+        'destructive-foreground': '#FFFFFF',
+
+        // Danger (outlined / ghost destructive)
+        danger: '#EF4444',
+        'danger-subtle': '#FEF2F2',
+        'danger-border': '#FCA5A5',
+
+        // Disabled
+        disabled: '#E5E5E5',
+        'disabled-foreground': '#A3A3A3',
+
+        // Focus ring
+        ring: '#737373',
+
+        // Borders (light mode)
+        'border-light': '#E5E5E5',   // cards, inputs default
+        'border-strong': '#A3A3A3',  // focused, elevated
+
+        // Status tints (light mode — badges, alerts, toasts)
+        'success-subtle': '#F0FDF4',
+        'success-text': '#15803D',
+
+        'warning-subtle': '#FEFCE8',
+        'warning-text': '#854D0E',
+
+        'orange-subtle': '#FFF7ED',
+        'orange-text': '#C2410C',
+
+        'info-subtle': '#EFF6FF',
+        'info-text': '#1D4ED8',
+
+        'danger-text': '#B91C1C',
+
+        // Accent badge (Taisa purple)
+        'accent-bg-light': '#F0EDFF',
+        'accent-fg-light': '#5B21B6',
+
         // Momentum signals
         momentum: {
           accelerating: '#4ADE80',
