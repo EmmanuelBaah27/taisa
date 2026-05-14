@@ -61,7 +61,7 @@ export default function OnboardingScreen() {
         onPress={() => setStep(1)}
         disabled={!form.currentRole || !form.industry}
       >
-        <Text className="text-white font-semibold text-[15px]">Continue</Text>
+        <Text className="text-foreground font-semibold text-[15px]">Continue</Text>
       </TouchableOpacity>
     </ScrollView>,
 
@@ -84,7 +84,7 @@ export default function OnboardingScreen() {
           onPress={() => setStep(2)}
           disabled={!form.shortTermGoal}
         >
-          <Text className="text-white font-semibold text-[15px]">Continue</Text>
+          <Text className="text-foreground font-semibold text-[15px]">Continue</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>,
@@ -112,7 +112,7 @@ export default function OnboardingScreen() {
           <Text className="text-muted-foreground text-[15px]">Back</Text>
         </TouchableOpacity>
         <TouchableOpacity className="flex-1 py-4 rounded-full items-center bg-primary" onPress={handleSubmit} disabled={isLoading}>
-          {isLoading ? <ActivityIndicator color="#FFF" /> : <Text className="text-white font-semibold text-[15px]">Start journaling</Text>}
+          {isLoading ? <ActivityIndicator color={colors.textPrimary} /> : <Text className="text-foreground font-semibold text-[15px]">Start journaling</Text>}
         </TouchableOpacity>
       </View>
     </ScrollView>,
