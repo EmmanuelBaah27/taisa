@@ -12,17 +12,17 @@ SplashScreen.preventAutoHideAsync();
 export default function RootLayout() {
   const { fetchProfile } = useCareerStore();
 
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     'StrichpunktSans': require('../assets/fonts/StrichpunktSans-Regular.ttf'),
     'StrichpunktSans-Medium': require('../assets/fonts/StrichpunktSans-Medium.ttf'),
     'StrichpunktSans-Bold': require('../assets/fonts/StrichpunktSans-Bold.ttf'),
   });
 
   useEffect(() => {
-    if (fontsLoaded) {
+    if (fontsLoaded || fontError) {
       SplashScreen.hideAsync();
     }
-  }, [fontsLoaded]);
+  }, [fontsLoaded, fontError]);
 
   useEffect(() => {
     async function hydrateUser() {
@@ -38,7 +38,7 @@ export default function RootLayout() {
     hydrateUser();
   }, []);
 
-  if (!fontsLoaded) return null;
+  if (!fontsLoaded && !fontError) return null;
 
   return (
     <>
