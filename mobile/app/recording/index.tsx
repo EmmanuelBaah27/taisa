@@ -87,15 +87,15 @@ export default function RecordingModal() {
 
         {phase === 'error' ? (
           <View className="items-center py-8">
-            <Text className="text-error text-base mb-4">{error}</Text>
-            <TouchableOpacity onPress={() => setPhase('idle')} className="bg-surface rounded-full px-6 py-3">
-              <Text className="text-text-primary text-sm font-semibold">Try again</Text>
+            <Text className="text-danger text-base mb-4">{error}</Text>
+            <TouchableOpacity onPress={() => setPhase('idle')} className="bg-muted rounded-full px-6 py-3">
+              <Text className="text-foreground text-sm font-semibold">Try again</Text>
             </TouchableOpacity>
           </View>
         ) : phase === 'processing' ? (
           <View className="items-center py-8">
             <ActivityIndicator color={colors.accent} size="large" style={{ marginBottom: 16 }} />
-            <Text className="text-text-secondary text-sm">Taisa is reading your entry…</Text>
+            <Text className="text-muted-foreground text-sm">Taisa is reading your entry…</Text>
           </View>
         ) : (
           <View className="items-center">
@@ -104,14 +104,14 @@ export default function RecordingModal() {
             </Text>
 
             {isRecording && (
-              <Text className="text-accent text-lg tracking-widest mb-4">〜 〜 〜 〜 〜</Text>
+              <Text className="text-lime-700 text-lg tracking-widest mb-4">〜 〜 〜 〜 〜</Text>
             )}
 
             <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
               <TouchableOpacity
                 onPress={isRecording ? undefined : handleStartRecording}
-                className="w-16 h-16 rounded-full bg-accent items-center justify-center mb-4"
-                style={{ shadowColor: '#7C6FFF', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.5, shadowRadius: 12 }}
+                className="w-16 h-16 rounded-full bg-primary items-center justify-center mb-4"
+                style={{ shadowColor: '#cdec1a', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.5, shadowRadius: 12 }}
               >
                 <Text className="text-2xl">🎤</Text>
               </TouchableOpacity>
@@ -119,9 +119,9 @@ export default function RecordingModal() {
 
             {isRecording ? (
               <>
-                <Text className="text-text-primary text-xl font-bold mb-1">{formatDuration(duration)}</Text>
-                <TouchableOpacity onPress={handleDone} className="bg-surface rounded-full px-8 py-3 mt-4">
-                  <Text className="text-text-primary text-sm font-semibold">Done</Text>
+                <Text className="text-foreground text-xl font-bold mb-1">{formatDuration(duration)}</Text>
+                <TouchableOpacity onPress={handleDone} className="bg-muted rounded-full px-8 py-3 mt-4">
+                  <Text className="text-foreground text-sm font-semibold">Done</Text>
                 </TouchableOpacity>
               </>
             ) : (
