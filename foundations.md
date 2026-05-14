@@ -108,7 +108,7 @@ Headings are responsive (mobile → tablet → desktop sizes). Body and label si
 
 ## Spacing
 
-Uses Tailwind v4's default 4px multiplier. `p-1` = 4px, `p-2` = 8px, `p-3` = 12px, `p-4` = 16px, `p-5` = 20px, `p-6` = 24px. Same for `gap-*`, `m-*`, etc.
+Uses the standard 4px multiplier (Tailwind CSS v3 default). `p-1` = 4px, `p-2` = 8px, `p-3` = 12px, `p-4` = 16px, `p-5` = 20px, `p-6` = 24px. Same for `gap-*`, `m-*`, etc.
 
 ---
 
