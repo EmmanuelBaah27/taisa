@@ -14,12 +14,12 @@ export function TaisaCard({ eyebrow, body, cta, onPress }: TaisaCardProps) {
   return (
     <TouchableOpacity
       onPress={handlePress}
-      className="bg-surface rounded-xl px-4 py-4 mb-4"
-      style={{ borderLeftWidth: 2, borderLeftColor: '#7C6FFF' }}
+      className="bg-card rounded-xl px-4 py-4 mb-4 border border-border"
+      style={{ borderLeftWidth: 2, borderLeftColor: '#cdec1a' }}
     >
-      <Text className="text-accent text-xs font-bold uppercase tracking-wider mb-2">{eyebrow}</Text>
-      <Text className="text-text-primary text-sm leading-relaxed mb-3">{body}</Text>
-      <Text className="text-accent text-xs font-semibold">{cta}</Text>
+      <Text className="text-lime-700 text-xs font-bold uppercase tracking-wider mb-2">{eyebrow}</Text>
+      <Text className="text-foreground text-sm leading-relaxed mb-3">{body}</Text>
+      <Text className="text-lime-700 text-xs font-semibold">{cta}</Text>
     </TouchableOpacity>
   );
 }
