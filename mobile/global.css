@@ -1,3 +1,51 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ============================================================
+   TAISA DS — TYPOGRAPHY UTILITIES
+   Inlined values (no CSS variables — React Native doesn't resolve them).
+   Mobile sizes only — no responsive breakpoints in RN.
+   ============================================================ */
+
+@layer utilities {
+  /* Headings */
+  .text-H1 {
+    font-size: 20px;
+    line-height: 36px;
+    font-weight: 600;
+    letter-spacing: -0.4px;
+  }
+  .text-H2 {
+    font-size: 18px;
+    line-height: 32px;
+    font-weight: 600;
+    letter-spacing: -0.36px;
+  }
+  .text-H3 {
+    font-size: 18px;
+    line-height: 28px;
+    font-weight: 600;
+    letter-spacing: -0.36px;
+  }
+
+  /* XLarge body */
+  .text-xlg-regular  { font-size: 18px; line-height: 26px; font-weight: 400; letter-spacing: -0.36px; }
+  .text-xlg-medium   { font-size: 18px; line-height: 26px; font-weight: 500; letter-spacing: -0.36px; }
+  .text-xlg-semibold { font-size: 18px; line-height: 26px; font-weight: 600; letter-spacing: -0.36px; }
+
+  /* Large body */
+  .text-lg-regular  { font-size: 16px; line-height: 24px; font-weight: 400; letter-spacing: -0.12px; }
+  .text-lg-medium   { font-size: 16px; line-height: 24px; font-weight: 500; letter-spacing: -0.12px; }
+  .text-lg-semibold { font-size: 16px; line-height: 24px; font-weight: 600; letter-spacing: -0.12px; }
+
+  /* Base UI */
+  .text-base-regular  { font-size: 14px; line-height: 20px; font-weight: 400; letter-spacing: 0.02px; }
+  .text-base-medium   { font-size: 14px; line-height: 20px; font-weight: 500; letter-spacing: 0.02px; }
+  .text-base-semibold { font-size: 14px; line-height: 20px; font-weight: 600; letter-spacing: 0.02px; }
+
+  /* Small / captions */
+  .text-small-regular  { font-size: 12px; line-height: 18px; font-weight: 400; letter-spacing: 0; }
+  .text-small-medium   { font-size: 12px; line-height: 18px; font-weight: 500; letter-spacing: 0; }
+  .text-small-semibold { font-size: 12px; line-height: 18px; font-weight: 600; letter-spacing: 0; }
+}
