@@ -102,6 +102,7 @@ Never use raw `text-sm font-semibold` combinations — use the composite utiliti
 | `Badge` | `color`, `appearance`, `size`, `icon`, `onDismiss` | Eight colors; three appearances |
 | `Card` | `surface`, `className`, `style` | Two surfaces (default / elevated) |
 | `Input` | `size`, `error`, `...TextInputProps` | Two sizes; error state |
+| `Icon` | `name`, `size`, `color` | 1906 icons — `round-outlined-radius-2-stroke-1.5` style via `react-native-svg` |
 
 **Extraction rule:** pattern appears in 2+ places → extract to `ui/`. Do not extract speculatively.
 **DS compliance:** no `StyleSheet.create()`, no raw hex, import tokens from Tailwind classes only.

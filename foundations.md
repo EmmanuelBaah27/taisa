@@ -132,11 +132,17 @@ Uses the standard 4px multiplier (Tailwind CSS v3 default). `p-1` = 4px, `p-2` =
 
 ## Icons
 
-All icons will come from `@central-icons-react/all` (planned — not yet installed). Browse available icons at the Central Icons Storybook when available.
+All icons come from `@central-icons-react/all`, style `round-outlined-radius-2-stroke-1.5`. Browse available names in `mobile/src/components/ui/icon-paths.ts`.
 
 Zero Lucide icons anywhere in the codebase.
 
-The `<Icon>` wrapper will handle stroke weight automatically based on size. Never pass a stroke colour — the component inherits it from the text colour of its parent.
+```tsx
+import { Icon } from '@/components/ui'
+
+<Icon name="IconCrossMedium" size={20} color="#000" />
+```
+
+The `<Icon>` wrapper handles stroke weight automatically based on size. Never pass a stroke colour — the component inherits it from the text colour of its parent.
 
 ### Available sizes
 
@@ -152,7 +158,7 @@ The `<Icon>` wrapper will handle stroke weight automatically based on size. Neve
 
 Icons follow the pattern `Icon{Name}{Size}` where size is `Small`, `Medium`, or `Large`. Example: `IconCrossMedium`, `IconArrowRightSmall`, `IconCheckLarge`.
 
-Browse and search in Storybook when available.
+Browse and search in `mobile/src/components/ui/icon-paths.ts`.
 
 ---
 
