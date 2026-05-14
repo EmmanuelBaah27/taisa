@@ -62,7 +62,7 @@ export default function YouScreen() {
       {/* Avatar row */}
       <View className="flex-row items-center mb-6">
         <View className="w-10 h-10 rounded-full bg-accent-muted items-center justify-center mr-3"
-          style={{ borderWidth: 1.5, borderColor: '#7C6FFF55' }}>
+          style={{ borderWidth: 1.5, borderColor: 'rgba(205,236,26,0.3)' }}>
           <Text className="text-lime-700 text-lg font-bold">T</Text>
         </View>
         <View>
