@@ -47,7 +47,7 @@ export default function TodayScreen() {
       setShowDigest(digestRes.data.data.showDigest);
       setDigest(digestRes.data.data.digest ?? null);
     } catch (e) {
-      // Silent fail — Today gracefully degrades to just recent threads
+      // Silent fail
     } finally {
       setIsLoadingToday(false);
     }
@@ -62,15 +62,14 @@ export default function TodayScreen() {
         className="flex-1"
         contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 60, paddingBottom: 100 }}
       >
-        <Text className="text-text-primary text-2xl font-bold">Today</Text>
+        <Text className="text-foreground text-2xl font-bold">Today</Text>
         <Text className="text-text-tertiary text-xs mt-1 mb-5">{format(today, 'EEEE, d MMMM')}</Text>
 
-        {/* Coaching surface */}
         {isLoadingToday ? (
-          <View className="bg-surface rounded-xl px-4 py-4 mb-4 opacity-40">
-            <View className="h-2 bg-surface-elevated rounded mb-3 w-1/3" />
-            <View className="h-3 bg-surface-elevated rounded mb-2 w-full" />
-            <View className="h-3 bg-surface-elevated rounded w-3/4" />
+          <View className="bg-card rounded-xl px-4 py-4 mb-4 opacity-40 border border-border">
+            <View className="h-2 bg-muted rounded mb-3 w-1/3" />
+            <View className="h-3 bg-muted rounded mb-2 w-full" />
+            <View className="h-3 bg-muted rounded w-3/4" />
           </View>
         ) : showDigest && digest ? (
           <DigestCard headline={digest.headline} items={digest.items} />
@@ -78,7 +77,6 @@ export default function TodayScreen() {
           <TaisaCard eyebrow={card.eyebrow} body={card.body} cta={card.cta} />
         ) : null}
 
-        {/* Recent threads */}
         {recentThreads.length > 0 && (
           <>
             <Text className="text-text-tertiary text-xs font-bold uppercase tracking-wider mb-3">

@@ -53,9 +53,9 @@ export default function ThreadScreen() {
       {/* Header */}
       <View className="flex-row items-center px-4 pt-14 pb-3 border-b border-border-subtle">
         <TouchableOpacity onPress={() => router.back()} className="mr-3">
-          <Text className="text-accent text-base">‹ Back</Text>
+          <Text className="text-lime-700 text-base">‹ Back</Text>
         </TouchableOpacity>
-        <Text className="text-text-primary text-base font-semibold flex-1" numberOfLines={1}>
+        <Text className="text-foreground text-base font-semibold flex-1" numberOfLines={1}>
           {currentSession?.title ?? 'Thread'}
         </Text>
       </View>
@@ -68,11 +68,11 @@ export default function ThreadScreen() {
         {/* Voice entry section */}
         {isVoiceEntry && entryMessages.length >= 1 && (
           <View className="mb-4">
-            <View className="bg-surface rounded-lg px-3 py-2 mb-2">
-              <Text className="text-accent text-xs font-bold mb-1">
+            <View className="bg-card rounded-lg px-3 py-2 mb-2">
+              <Text className="text-lime-700 text-xs font-bold mb-1">
                 🎤 Voice{currentSession?.audioDurationSeconds ? ` · ${formatDuration(currentSession.audioDurationSeconds)}` : ''}
               </Text>
-              <Text className="text-text-secondary text-sm leading-relaxed">
+              <Text className="text-muted-foreground text-sm leading-relaxed">
                 {entryMessages[0]?.content ?? ''}
               </Text>
             </View>
@@ -85,9 +85,9 @@ export default function ThreadScreen() {
 
         {/* Loading shimmer for fresh voice entry */}
         {isVoiceEntry && isLoadingMessages && (
-          <View className="bg-surface rounded-lg px-3 py-4 mb-2 opacity-40">
-            <View className="h-3 bg-surface-elevated rounded mb-2 w-3/4" />
-            <View className="h-3 bg-surface-elevated rounded w-1/2" />
+          <View className="bg-card rounded-lg px-3 py-4 mb-2 opacity-40">
+            <View className="h-3 bg-muted rounded mb-2 w-3/4" />
+            <View className="h-3 bg-muted rounded w-1/2" />
           </View>
         )}
 
@@ -99,7 +99,7 @@ export default function ThreadScreen() {
         {/* Sending indicator */}
         {isSending && (
           <View className="items-start mb-2">
-            <View className="bg-surface rounded-lg px-3 py-2">
+            <View className="bg-card rounded-lg px-3 py-2">
               <Text className="text-text-tertiary text-xs">Taisa is thinking…</Text>
             </View>
           </View>
@@ -113,7 +113,7 @@ export default function ThreadScreen() {
           onChangeText={setInput}
           placeholder="Reply..."
           placeholderTextColor={colors.textTertiary}
-          className="flex-1 bg-surface rounded-full px-4 py-2 text-text-primary text-sm mr-3"
+          className="flex-1 bg-card rounded-full px-4 py-2 text-foreground text-sm mr-3"
           multiline
           maxLength={2000}
           onSubmitEditing={handleSend}
@@ -121,10 +121,10 @@ export default function ThreadScreen() {
         <TouchableOpacity
           onPress={handleSend}
           disabled={!input.trim() || isSending}
-          className="w-9 h-9 rounded-full bg-accent items-center justify-center"
+          className="w-9 h-9 rounded-full bg-primary items-center justify-center"
           style={{ opacity: !input.trim() || isSending ? 0.4 : 1 }}
         >
-          <Text className="text-white text-base">↑</Text>
+          <Text className="text-foreground text-base">↑</Text>
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
@@ -136,13 +136,13 @@ function MessageBubble({ message }: { message: ChatMessage }) {
   return (
     <View className={`mb-2 ${isUser ? 'items-end' : 'items-start'}`}>
       {!isUser && (
-        <Text className="text-accent text-xs font-bold mb-1 ml-1">Taisa</Text>
+        <Text className="text-lime-700 text-xs font-bold mb-1 ml-1">Taisa</Text>
       )}
       <View
-        className={`rounded-xl px-3 py-2 max-w-xs ${isUser ? 'bg-accent-muted rounded-tr-sm' : 'bg-surface rounded-tl-sm'}`}
-        style={!isUser ? { borderLeftWidth: 2, borderLeftColor: '#7C6FFF' } : undefined}
+        className={`rounded-xl px-3 py-2 max-w-xs ${isUser ? 'bg-lime-100 rounded-tr-sm' : 'bg-card rounded-tl-sm'}`}
+        style={!isUser ? { borderLeftWidth: 2, borderLeftColor: '#cdec1a' } : undefined}
       >
-        <Text className={`text-sm leading-relaxed ${isUser ? 'text-text-primary' : 'text-text-secondary'}`}>
+        <Text className={`text-sm leading-relaxed ${isUser ? 'text-foreground' : 'text-muted-foreground'}`}>
           {message.content}
         </Text>
       </View>

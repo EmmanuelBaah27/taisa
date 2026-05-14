@@ -28,7 +28,7 @@ export default function ThreadsScreen() {
   return (
     <View className="flex-1 bg-background">
       <ScrollView className="flex-1" contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 60, paddingBottom: 100 }}>
-        <Text className="text-text-primary text-2xl font-bold mb-4">Threads</Text>
+        <Text className="text-foreground text-2xl font-bold mb-4">Threads</Text>
 
         <SearchBar value={query} onChangeText={setQuery} />
 
