@@ -1,5 +1,13 @@
-import { Redirect } from 'expo-router';
+import { useEffect } from 'react';
+import { View } from 'react-native';
+import { useRouter } from 'expo-router';
 
 export default function Index() {
-  return <Redirect href="/today" />;
+  const router = useRouter();
+
+  useEffect(() => {
+    router.replace('/today');
+  }, []);
+
+  return <View />;
 }
