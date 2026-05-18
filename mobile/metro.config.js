@@ -21,7 +21,9 @@ const isStorybook = process.env.EXPO_PUBLIC_STORYBOOK === 'true';
 
 const nativewindConfig = withNativeWind(config, { input: './global.css' });
 
-module.exports = withStorybook(nativewindConfig, {
-  enabled: isStorybook,
-  configPath: path.resolve(__dirname, './.rnstorybook'),
-});
+module.exports = isStorybook
+  ? withStorybook(nativewindConfig, {
+      enabled: true,
+      configPath: path.resolve(__dirname, './.rnstorybook'),
+    })
+  : nativewindConfig;
