@@ -7,6 +7,7 @@ import Animated, {
   useAnimatedStyle,
   withTiming,
   withSpring,
+  LinearTransition,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Icon } from './Icon';
@@ -36,7 +37,7 @@ function TabButton({ tab, active }: { tab: NavTab; active: boolean }) {
   }));
 
   return (
-    <Animated.View style={pressStyle}>
+    <Animated.View layout={LinearTransition.duration(200)} style={pressStyle}>
       <Pressable
         onPress={() => router.navigate(tab.path as any)}
         onPressIn={() => { scale.value = withTiming(0.96, { duration: 80 }); }}
