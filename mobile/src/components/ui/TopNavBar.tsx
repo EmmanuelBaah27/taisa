@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { View, Pressable } from 'react-native';
+import { View, Text, Pressable } from 'react-native';
 import { router, usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
@@ -30,18 +30,9 @@ const TABS: NavTab[] = [
 
 function TabButton({ tab, active }: { tab: NavTab; active: boolean }) {
   const scale = useSharedValue(1);
-  const labelOpacity = useSharedValue(active ? 1 : 0);
-
-  useEffect(() => {
-    labelOpacity.value = active ? withTiming(1, { duration: 150 }) : 0;
-  }, [active]);
 
   const pressStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
-  }));
-
-  const labelStyle = useAnimatedStyle(() => ({
-    opacity: labelOpacity.value,
   }));
 
   return (
@@ -57,9 +48,7 @@ function TabButton({ tab, active }: { tab: NavTab; active: boolean }) {
       >
         <Icon name={tab.icon} color={active ? '#060707' : '#898989'} />
         {active && (
-          <Animated.Text style={labelStyle} className="text-foreground text-base-medium">
-            {tab.label}
-          </Animated.Text>
+          <Text className="text-foreground text-base-medium">{tab.label}</Text>
         )}
       </Pressable>
     </Animated.View>
