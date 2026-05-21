@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { router, usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -6,8 +6,9 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
-  withSpring,
-  LinearTransition,
+  withSequence,
+  Easing,
+
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Icon } from './Icon';
@@ -29,23 +30,42 @@ const TABS: NavTab[] = [
   { id: 'you',      label: 'You',      icon: 'IconPeopleCircle', path: '/you'      },
 ];
 
-function TabButton({ tab, active }: { tab: NavTab; active: boolean }) {
+function TabButton({ tab, active, tabIndex, activeIndex }: { tab: NavTab; active: boolean; tabIndex: number; activeIndex: number }) {
+  const nudgeX = useSharedValue(0);
   const scale = useSharedValue(1);
+  const prevActiveIndex = useRef(-1);
 
-  const pressStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: nudgeX.value }, { scale: scale.value }],
   }));
 
+  useEffect(() => {
+    const prev = prevActiveIndex.current;
+    prevActiveIndex.current = activeIndex;
+    if (prev < 0 || prev === activeIndex) return;
+
+    if (active) {
+      scale.value = withSequence(
+        withTiming(1.06, { duration: 100, easing: Easing.out(Easing.ease) }),
+        withTiming(1, { duration: 180, easing: Easing.out(Easing.ease) }),
+      );
+      return;
+    }
+
+    const isAdjacent = tabIndex === activeIndex - 1 || tabIndex === activeIndex + 1;
+    if (!isAdjacent) return;
+    const outward = tabIndex < activeIndex ? -3 : 3;
+    nudgeX.value = withSequence(
+      withTiming(outward, { duration: 100, easing: Easing.out(Easing.ease) }),
+      withTiming(0, { duration: 180, easing: Easing.out(Easing.ease) }),
+    );
+  }, [activeIndex]);
+
   return (
-    <Animated.View layout={LinearTransition.duration(200)} style={pressStyle}>
+    <Animated.View style={animStyle}>
       <Pressable
         onPress={() => router.navigate(tab.path as any)}
-        onPressIn={() => { scale.value = withTiming(0.96, { duration: 80 }); }}
-        onPressOut={() => { scale.value = withSpring(1, { damping: 20, stiffness: 300 }); }}
-        className={active
-          ? 'bg-muted flex-row items-center gap-2 px-4 py-2 rounded-full'
-          : 'p-2'
-        }
+        className={active ? 'bg-muted flex-row items-center gap-2 px-4 py-2 rounded-full' : 'p-2'}
       >
         <Icon name={tab.icon} color={active ? '#060707' : '#898989'} />
         {active && (
@@ -76,14 +96,16 @@ export function TopNavBar() {
     return pathname.startsWith(path);
   }
 
+  const activeIndex = TABS.findIndex((t) => isActive(t.path));
+
   return (
     <View className="bg-background">
       <View
         className="flex-row items-center justify-between px-5"
         style={{ paddingTop: insets.top + 12, paddingBottom: 12 }}
       >
-        {TABS.map((tab) => (
-          <TabButton key={tab.id} tab={tab} active={isActive(tab.path)} />
+        {TABS.map((tab, i) => (
+          <TabButton key={tab.id} tab={tab} active={isActive(tab.path)} tabIndex={i} activeIndex={activeIndex} />
         ))}
       </View>
       <Animated.View

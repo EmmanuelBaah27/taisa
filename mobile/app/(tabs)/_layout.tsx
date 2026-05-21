@@ -16,20 +16,16 @@ export default function TabLayout() {
   const pathname = usePathname();
 
   const opacity = useSharedValue(1);
-  const translateY = useSharedValue(0);
 
   useEffect(() => {
     if (!TAB_PATHS.has(pathname)) return;
     opacity.value = 0;
-    translateY.value = 6;
     opacity.value = withTiming(1, { duration: 180 });
-    translateY.value = withTiming(0, { duration: 180 });
   }, [pathname]);
 
   const contentStyle = useAnimatedStyle(() => ({
     flex: 1,
     opacity: opacity.value,
-    transform: [{ translateY: translateY.value }],
   }));
 
   return (
