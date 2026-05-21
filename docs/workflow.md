@@ -9,7 +9,7 @@ Claude maintains the Active Work table — Baah never needs to update it.
 
 | Feature | Track | Stage | Branch | Blocked on |
 |---|---|---|---|---|
-| Persistent input bar + Chat UI | Platform + Product | Plan | — | — |
+| Persistent input bar + Chat UI | Platform + Product | Build | feature/persistent-input-bar | — |
 
 ---
 

@@ -28,7 +28,14 @@
     },
     "plugins": [
       "expo-router",
-      "expo-font"
+      "expo-font",
+      [
+        "@react-native-voice/voice",
+        {
+          "microphonePermission": "Allow Taisa to access the microphone to record your voice.",
+          "speechRecognitionPermission": "Allow Taisa to use speech recognition to transcribe what you say."
+        }
+      ]
     ]
   }
 }
