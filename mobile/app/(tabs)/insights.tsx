@@ -1,7 +1,6 @@
 import { useCallback } from 'react';
 import { View, Text, ScrollView } from 'react-native';
 import { useFocusEffect } from 'expo-router';
-import { WorkspaceHeader } from '../../src/components/WorkspaceHeader';
 import { useScrollContext } from '../../src/contexts/ScrollContext';
 
 export default function InsightsScreen() {
@@ -13,7 +12,7 @@ export default function InsightsScreen() {
 
   return (
     <View className="flex-1 bg-background">
-      <WorkspaceHeader subtitle="Patterns and trends in your work" />
+      <Text className="text-foreground text-H1 px-5 pt-5 pb-3">Insights</Text>
       <ScrollView
         className="flex-1"
         onScroll={(e) => reportScroll(e.nativeEvent.contentOffset.y)}

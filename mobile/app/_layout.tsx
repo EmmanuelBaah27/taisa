@@ -3,17 +3,24 @@ import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
+import * as SplashScreen from 'expo-splash-screen';
 import * as SecureStore from 'expo-secure-store';
 import { useCareerStore } from '../src/stores/careerStore';
+
+SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const { fetchProfile } = useCareerStore();
 
-  useFonts({
+  const [fontsLoaded] = useFonts({
     'StrichpunktSans': require('../assets/fonts/StrichpunktSans-Regular.ttf'),
     'StrichpunktSans-Medium': require('../assets/fonts/StrichpunktSans-Medium.ttf'),
     'StrichpunktSans-Bold': require('../assets/fonts/StrichpunktSans-Bold.ttf'),
   });
+
+  useEffect(() => {
+    if (fontsLoaded) SplashScreen.hideAsync();
+  }, [fontsLoaded]);
 
   useEffect(() => {
     async function hydrateUser() {
@@ -28,6 +35,8 @@ export default function RootLayout() {
     }
     hydrateUser();
   }, []);
+
+  if (!fontsLoaded) return null;
 
   return (
     <>

@@ -3,7 +3,6 @@ import { View, Text, ScrollView, TouchableOpacity, TextInput, Modal } from 'reac
 import { useFocusEffect } from 'expo-router';
 import { useCareerStore } from '../../src/stores/careerStore';
 import { ThemeTag } from '../../src/components/ThemeTag';
-import { WorkspaceHeader } from '../../src/components/WorkspaceHeader';
 import { useScrollContext } from '../../src/contexts/ScrollContext';
 import { colors } from '../../src/constants/theme';
 import api from '../../src/services/api';
@@ -63,7 +62,7 @@ export default function YouScreen() {
 
   return (
     <View className="flex-1 bg-background">
-      <WorkspaceHeader subtitle="Your career profile and preferences" />
+      <Text className="text-foreground text-H1 px-5 pt-5 pb-3">You</Text>
     <ScrollView
       className="flex-1 bg-background"
       onScroll={(e) => reportScroll(e.nativeEvent.contentOffset.y)}

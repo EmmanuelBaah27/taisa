@@ -4,7 +4,6 @@ import { useFocusEffect } from 'expo-router';
 import { useThreadStore } from '../../src/stores/threadStore';
 import { ThreadRow } from '../../src/components/ThreadRow';
 import { SearchBar } from '../../src/components/SearchBar';
-import { WorkspaceHeader } from '../../src/components/WorkspaceHeader';
 import { useScrollContext } from '../../src/contexts/ScrollContext';
 import { colors } from '../../src/constants/theme';
 
@@ -30,7 +29,7 @@ export default function LogsScreen() {
 
   return (
     <View className="flex-1 bg-background">
-      <WorkspaceHeader subtitle="Your conversations and journal entries" />
+      <Text className="text-foreground text-H1 px-5 pt-5 pb-3">Logs</Text>
       <ScrollView
         className="flex-1"
         onScroll={(e) => reportScroll(e.nativeEvent.contentOffset.y)}
