@@ -12,3 +12,5 @@ export type { InputProps, InputSize } from './Input';
 
 export { Icon } from './Icon';
 export type { IconProps, IconName } from './Icon';
+
+export { TopNavBar } from './TopNavBar';
