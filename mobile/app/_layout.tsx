@@ -41,7 +41,7 @@ export default function RootLayout() {
   return (
     <>
       <StatusBar style="dark" />
-      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#ffffff' } }}>
+      <Stack screenOptions={{ headerShown: false, animation: 'none', contentStyle: { backgroundColor: '#ffffff' } }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="onboarding/index" />
         <Stack.Screen name="thread/[id]" />
