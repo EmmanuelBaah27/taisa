@@ -1,6 +1,13 @@
-import { TouchableOpacity, View } from 'react-native';
+import { Pressable } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withSpring,
+  Easing,
+} from 'react-native-reanimated';
 import { Icon } from './ui/Icon';
 import { colors } from '../constants/theme';
 
@@ -8,24 +15,36 @@ interface VoiceButtonProps {
   onPress?: () => void;
 }
 
+const easeOut = Easing.bezier(0.23, 1, 0.32, 1);
+
 export function VoiceButton({ onPress }: VoiceButtonProps) {
   const insets = useSafeAreaInsets();
   const handlePress = onPress ?? (() => router.push('/recording'));
 
+  const scale = useSharedValue(1);
+
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
   return (
-    <View
-      style={{
-        position: 'absolute',
-        bottom: insets.bottom + 16,
-        left: 0,
-        right: 0,
-        alignItems: 'center',
-        zIndex: 50,
-      }}
+    <Animated.View
+      style={[
+        {
+          position: 'absolute',
+          bottom: insets.bottom + 16,
+          left: 0,
+          right: 0,
+          alignItems: 'center',
+          zIndex: 50,
+        },
+        animStyle,
+      ]}
     >
-      <TouchableOpacity
+      <Pressable
         onPress={handlePress}
-        activeOpacity={0.85}
+        onPressIn={() => { scale.value = withTiming(0.93, { duration: 100, easing: easeOut }); }}
+        onPressOut={() => { scale.value = withSpring(1, { damping: 20, stiffness: 300 }); }}
         style={{
           backgroundColor: '#cdec1a',
           paddingVertical: 16,
@@ -39,7 +58,7 @@ export function VoiceButton({ onPress }: VoiceButtonProps) {
         }}
       >
         <Icon name="IconVoiceMid" size={24} color="#060707" />
-      </TouchableOpacity>
-    </View>
+      </Pressable>
+    </Animated.View>
   );
 }

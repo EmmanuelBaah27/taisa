@@ -4,6 +4,7 @@ import { useFocusEffect } from 'expo-router';
 import { useCareerStore } from '../../src/stores/careerStore';
 import { ThemeTag } from '../../src/components/ThemeTag';
 import { WorkspaceHeader } from '../../src/components/WorkspaceHeader';
+import { useScrollContext } from '../../src/contexts/ScrollContext';
 import { colors } from '../../src/constants/theme';
 import api from '../../src/services/api';
 
@@ -15,6 +16,7 @@ interface YouData {
 
 export default function YouScreen() {
   const { profile, fetchProfile, updateProfile } = useCareerStore();
+  const { reportScroll } = useScrollContext();
   const [youData, setYouData] = useState<YouData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [editingGoals, setEditingGoals] = useState(false);
@@ -26,6 +28,7 @@ export default function YouScreen() {
     useCallback(() => {
       fetchProfile();
       loadYouData();
+      return () => reportScroll(0);
     }, [])
   );
 
@@ -61,7 +64,12 @@ export default function YouScreen() {
   return (
     <View className="flex-1 bg-background">
       <WorkspaceHeader subtitle="Your career profile and preferences" />
-    <ScrollView className="flex-1 bg-background" contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 120 }}>
+    <ScrollView
+      className="flex-1 bg-background"
+      onScroll={(e) => reportScroll(e.nativeEvent.contentOffset.y)}
+      scrollEventThrottle={16}
+      contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 120 }}
+    >
       {/* Avatar row */}
       <View className="flex-row items-center mb-6">
         <View className="w-10 h-10 rounded-full bg-accent-muted items-center justify-center mr-3"

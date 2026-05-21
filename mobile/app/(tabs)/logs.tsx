@@ -5,15 +5,18 @@ import { useThreadStore } from '../../src/stores/threadStore';
 import { ThreadRow } from '../../src/components/ThreadRow';
 import { SearchBar } from '../../src/components/SearchBar';
 import { WorkspaceHeader } from '../../src/components/WorkspaceHeader';
+import { useScrollContext } from '../../src/contexts/ScrollContext';
 import { colors } from '../../src/constants/theme';
 
 export default function LogsScreen() {
   const { threads, isLoadingThreads, fetchThreads } = useThreadStore();
+  const { reportScroll } = useScrollContext();
   const [query, setQuery] = useState('');
 
   useFocusEffect(
     useCallback(() => {
       fetchThreads();
+      return () => reportScroll(0);
     }, [])
   );
 
@@ -30,6 +33,8 @@ export default function LogsScreen() {
       <WorkspaceHeader subtitle="Your conversations and journal entries" />
       <ScrollView
         className="flex-1"
+        onScroll={(e) => reportScroll(e.nativeEvent.contentOffset.y)}
+        scrollEventThrottle={16}
         contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 120 }}
       >
         <SearchBar value={query} onChangeText={setQuery} />

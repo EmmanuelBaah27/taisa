@@ -6,6 +6,7 @@ import { ThreadRow } from '../../src/components/ThreadRow';
 import { TaisaCard } from '../../src/components/TaisaCard';
 import { DigestCard } from '../../src/components/DigestCard';
 import { WorkspaceHeader } from '../../src/components/WorkspaceHeader';
+import { useScrollContext } from '../../src/contexts/ScrollContext';
 import { colors } from '../../src/constants/theme';
 import api from '../../src/services/api';
 
@@ -23,6 +24,7 @@ interface DigestData {
 
 export default function TodayScreen() {
   const { threads, isLoadingThreads, fetchThreads } = useThreadStore();
+  const { reportScroll } = useScrollContext();
   const [card, setCard] = useState<TodayCardData | null>(null);
   const [digest, setDigest] = useState<DigestData | null>(null);
   const [showDigest, setShowDigest] = useState(false);
@@ -32,6 +34,7 @@ export default function TodayScreen() {
     useCallback(() => {
       fetchThreads();
       loadTodayData();
+      return () => reportScroll(0);
     }, [])
   );
 
@@ -59,6 +62,8 @@ export default function TodayScreen() {
       <WorkspaceHeader subtitle="Progress against goals and work over time" />
       <ScrollView
         className="flex-1"
+        onScroll={(e) => reportScroll(e.nativeEvent.contentOffset.y)}
+        scrollEventThrottle={16}
         contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 120 }}
       >
         {isLoadingToday ? (
