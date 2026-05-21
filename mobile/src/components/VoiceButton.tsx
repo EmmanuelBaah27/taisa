@@ -29,7 +29,7 @@ export function VoiceButton({ onPress }: VoiceButtonProps) {
         style={{
           backgroundColor: '#cdec1a',
           paddingVertical: 16,
-          paddingHorizontal: 28,
+          paddingHorizontal: 44,
           borderRadius: 48,
           shadowColor: colors.accent,
           shadowOffset: { width: 0, height: 0 },
