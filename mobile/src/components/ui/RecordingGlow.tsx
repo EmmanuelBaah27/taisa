@@ -2,6 +2,10 @@ import { useEffect, useRef } from 'react';
 import { Animated, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
+// LinearGradient requires hex strings — these reference the `primary` (lime-500) token.
+const PRIMARY_HEX = '#cdec1a';
+const PRIMARY_HEX_60 = '#cdec1a99';
+
 export interface RecordingGlowProps {
   amplitude: number; // 0–10
 }
@@ -55,7 +59,7 @@ export function RecordingGlow({ amplitude }: RecordingGlowProps) {
         }}
       >
         <LinearGradient
-          colors={['#cdec1a', '#cdec1a99', 'transparent']}
+          colors={[PRIMARY_HEX, PRIMARY_HEX_60, 'transparent']}
           locations={[0, 0.45, 1]}
           start={{ x: 0.5, y: 1 }}
           end={{ x: 0.5, y: 0 }}
