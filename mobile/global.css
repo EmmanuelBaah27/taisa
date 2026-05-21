@@ -3,6 +3,18 @@
 @tailwind utilities;
 
 /* ============================================================
+   TAISA DS — BASE FONT
+   Sets Strichpunkt Sans as the default for all elements.
+   Individual utilities below override with the correct weight variant.
+   ============================================================ */
+
+@layer base {
+  * {
+    font-family: 'StrichpunktSans';
+  }
+}
+
+/* ============================================================
    TAISA DS — TYPOGRAPHY UTILITIES
    Inlined values (no CSS variables — React Native doesn't resolve them).
    Mobile sizes only — no responsive breakpoints in RN.
@@ -11,18 +23,21 @@
 @layer utilities {
   /* Headings */
   .text-H1 {
+    font-family: 'StrichpunktSans-Bold';
     font-size: 20px;
     line-height: 36px;
     font-weight: 600;
     letter-spacing: -0.4px;
   }
   .text-H2 {
+    font-family: 'StrichpunktSans-Bold';
     font-size: 18px;
     line-height: 32px;
     font-weight: 600;
     letter-spacing: -0.36px;
   }
   .text-H3 {
+    font-family: 'StrichpunktSans-Bold';
     font-size: 18px;
     line-height: 28px;
     font-weight: 600;
@@ -30,27 +45,27 @@
   }
 
   /* XLarge body */
-  .text-xlg-regular  { font-size: 18px; line-height: 26px; font-weight: 400; letter-spacing: -0.36px; }
-  .text-xlg-medium   { font-size: 18px; line-height: 26px; font-weight: 500; letter-spacing: -0.36px; }
-  .text-xlg-semibold { font-size: 18px; line-height: 26px; font-weight: 600; letter-spacing: -0.36px; }
+  .text-xlg-regular  { font-family: 'StrichpunktSans';        font-size: 18px; line-height: 26px; font-weight: 400; letter-spacing: -0.36px; }
+  .text-xlg-medium   { font-family: 'StrichpunktSans-Medium'; font-size: 18px; line-height: 26px; font-weight: 500; letter-spacing: -0.36px; }
+  .text-xlg-semibold { font-family: 'StrichpunktSans-Bold';   font-size: 18px; line-height: 26px; font-weight: 600; letter-spacing: -0.36px; }
 
   /* Large body */
-  .text-lg-regular  { font-size: 18px; line-height: 26px; font-weight: 400; letter-spacing: -0.12px; }
-  .text-lg-medium   { font-size: 18px; line-height: 26px; font-weight: 500; letter-spacing: -0.12px; }
-  .text-lg-semibold { font-size: 18px; line-height: 26px; font-weight: 600; letter-spacing: -0.12px; }
+  .text-lg-regular  { font-family: 'StrichpunktSans';        font-size: 18px; line-height: 26px; font-weight: 400; letter-spacing: -0.12px; }
+  .text-lg-medium   { font-family: 'StrichpunktSans-Medium'; font-size: 18px; line-height: 26px; font-weight: 500; letter-spacing: -0.12px; }
+  .text-lg-semibold { font-family: 'StrichpunktSans-Bold';   font-size: 18px; line-height: 26px; font-weight: 600; letter-spacing: -0.12px; }
 
   /* Base UI */
-  .text-base-regular  { font-size: 16px; line-height: 22px; font-weight: 400; letter-spacing: 0.02px; }
-  .text-base-medium   { font-size: 16px; line-height: 22px; font-weight: 500; letter-spacing: 0.02px; }
-  .text-base-semibold { font-size: 16px; line-height: 22px; font-weight: 600; letter-spacing: 0.02px; }
+  .text-base-regular  { font-family: 'StrichpunktSans';        font-size: 16px; line-height: 22px; font-weight: 400; letter-spacing: 0.02px; }
+  .text-base-medium   { font-family: 'StrichpunktSans-Medium'; font-size: 16px; line-height: 22px; font-weight: 500; letter-spacing: 0.02px; }
+  .text-base-semibold { font-family: 'StrichpunktSans-Bold';   font-size: 16px; line-height: 22px; font-weight: 600; letter-spacing: 0.02px; }
 
   /* Small */
-  .text-small-regular  { font-size: 14px; line-height: 20px; font-weight: 400; letter-spacing: 0; }
-  .text-small-medium   { font-size: 14px; line-height: 20px; font-weight: 500; letter-spacing: 0; }
-  .text-small-semibold { font-size: 14px; line-height: 20px; font-weight: 600; letter-spacing: 0; }
+  .text-small-regular  { font-family: 'StrichpunktSans';        font-size: 14px; line-height: 20px; font-weight: 400; letter-spacing: 0; }
+  .text-small-medium   { font-family: 'StrichpunktSans-Medium'; font-size: 14px; line-height: 20px; font-weight: 500; letter-spacing: 0; }
+  .text-small-semibold { font-family: 'StrichpunktSans-Bold';   font-size: 14px; line-height: 20px; font-weight: 600; letter-spacing: 0; }
 
   /* Caption */
-  .text-caption-regular  { font-size: 12px; line-height: 16px; font-weight: 400; letter-spacing: 0; }
-  .text-caption-medium   { font-size: 12px; line-height: 16px; font-weight: 500; letter-spacing: 0; }
-  .text-caption-semibold { font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0; }
+  .text-caption-regular  { font-family: 'StrichpunktSans';        font-size: 12px; line-height: 16px; font-weight: 400; letter-spacing: 0; }
+  .text-caption-medium   { font-family: 'StrichpunktSans-Medium'; font-size: 12px; line-height: 16px; font-weight: 500; letter-spacing: 0; }
+  .text-caption-semibold { font-family: 'StrichpunktSans-Bold';   font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0; }
 }
