@@ -16,7 +16,7 @@ interface VoiceButtonProps {
 
 export function VoiceButton({ onPress }: VoiceButtonProps) {
   const insets = useSafeAreaInsets();
-  const handlePress = onPress ?? (() => router.push('/recording'));
+  const handlePress = onPress ?? (() => router.push('/chat'));
 
   const scale = useSharedValue(1);
 
