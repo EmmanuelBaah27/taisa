@@ -2,11 +2,25 @@ import '../global.css';
 import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { useFonts } from 'expo-font';
+import * as SplashScreen from 'expo-splash-screen';
 import * as SecureStore from 'expo-secure-store';
 import { useCareerStore } from '../src/stores/careerStore';
 
+SplashScreen.preventAutoHideAsync();
+
 export default function RootLayout() {
   const { fetchProfile } = useCareerStore();
+
+  const [fontsLoaded] = useFonts({
+    'StrichpunktSans': require('../assets/fonts/StrichpunktSans-Regular.ttf'),
+    'StrichpunktSans-Medium': require('../assets/fonts/StrichpunktSans-Medium.ttf'),
+    'StrichpunktSans-Bold': require('../assets/fonts/StrichpunktSans-Bold.ttf'),
+  });
+
+  useEffect(() => {
+    if (fontsLoaded) SplashScreen.hideAsync();
+  }, [fontsLoaded]);
 
   useEffect(() => {
     async function hydrateUser() {
@@ -22,13 +36,19 @@ export default function RootLayout() {
     hydrateUser();
   }, []);
 
+  if (!fontsLoaded) return null;
+
   return (
     <>
-      <StatusBar style="light" />
-      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#0A0A0F' } }}>
+      <StatusBar style="dark" />
+      <Stack screenOptions={{ headerShown: false, animation: 'none', contentStyle: { backgroundColor: '#ffffff' } }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="onboarding/index" />
-        <Stack.Screen name="entry/[id]" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="thread/[id]" />
+        <Stack.Screen
+          name="recording/index"
+          options={{ presentation: 'transparentModal', animation: 'slide_from_bottom' }}
+        />
       </Stack>
     </>
   );

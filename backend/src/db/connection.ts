@@ -20,6 +20,17 @@ function initSchema(): void {
   const schemaPath = path.join(__dirname, 'schema.sql');
   const schema = fs.readFileSync(schemaPath, 'utf-8');
   db.exec(schema);
+  runMigrations();
+}
+
+function runMigrations(): void {
+  const cols = (db.prepare('PRAGMA table_info(chat_sessions)').all() as any[]).map(c => c.name);
+  if (!cols.includes('title')) {
+    db.exec('ALTER TABLE chat_sessions ADD COLUMN title TEXT');
+  }
+  if (!cols.includes('last_message_at')) {
+    db.exec('ALTER TABLE chat_sessions ADD COLUMN last_message_at TEXT');
+  }
 }
 
 export default getDb;

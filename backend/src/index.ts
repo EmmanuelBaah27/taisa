@@ -17,6 +17,7 @@ import actionItemsRouter from './routes/actionItems';
 import trajectoryRouter from './routes/trajectory';
 import notificationsRouter from './routes/notifications';
 import chatRouter from './routes/chat';
+import todayRouter from './routes/today';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -51,6 +52,7 @@ app.use('/api/v1/action-items', actionItemsRouter);
 app.use('/api/v1/trajectory', trajectoryRouter);
 app.use('/api/v1/notifications', notificationsRouter);
 app.use('/api/v1/chat', aiRateLimit, chatRouter);
+app.use('/api/v1/today', todayRouter);
 
 // Health check
 app.get('/health', (_req, res) => {

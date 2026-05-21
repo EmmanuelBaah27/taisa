@@ -18,6 +18,14 @@ Do not violate these without explicit instruction:
 
 ---
 
+## Session Continuity
+
+- Include a short **Last activity summary** only in the first response of a session.
+- Keep it to 1-3 bullets covering the most recent meaningful actions (what was checked, changed, or decided).
+- If no code was changed yet, explicitly say so.
+
+---
+
 ## The Critical Gap
 
 **Product docs describe a chat interface with four coaching modes (Mirror / Nudge / Challenge / Direct). What's built is a voice journaling loop with one-shot Claude analysis. Do not conflate them.**
@@ -37,6 +45,18 @@ The Senior Self persona is NOT yet implemented. The current `journalProcessor.ts
 | Work on Claude prompts or AI behaviour | `docs/agent-persona.md` |
 | Build or modify UI components | `docs/design-system.md` |
 | Understand the product vision | `docs/product/01-product/product-brief-001.docx` |
+| Follow the build workflow | `docs/workflow.md` + `taisa-workflow` skill |
+
+---
+
+## Workflow
+
+Invoke the `taisa-workflow` skill at the start of every scope, plan, build, or review
+task. This is not optional.
+
+The workflow in `docs/workflow.md` is the source of truth for how work moves.
+Baah approves at gates: scope doc, plan summary, ship. Claude handles everything else
+autonomously — Active Work table, Linear updates, DS classification, session orientation.
 
 ---
 
