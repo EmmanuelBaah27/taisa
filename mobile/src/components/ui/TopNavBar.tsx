@@ -30,27 +30,41 @@ const TABS: NavTab[] = [
 
 function TabButton({ tab, active }: { tab: NavTab; active: boolean }) {
   const scale = useSharedValue(1);
+  const pillScale = useSharedValue(1);
 
-  const animStyle = useAnimatedStyle(() => ({
+  useEffect(() => {
+    if (active) {
+      pillScale.value = 1.1;
+      pillScale.value = withTiming(1, { duration: 200 });
+    }
+  }, [active]);
+
+  const pressStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
   }));
 
+  const pillStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pillScale.value }],
+  }));
+
   return (
-    <Animated.View style={animStyle}>
-      <Pressable
-        onPress={() => router.navigate(tab.path as any)}
-        onPressIn={() => { scale.value = withTiming(0.96, { duration: 80 }); }}
-        onPressOut={() => { scale.value = withSpring(1, { damping: 20, stiffness: 300 }); }}
-        className={active
-          ? 'bg-muted flex-row items-center gap-2 px-4 py-2 rounded-full'
-          : 'p-2'
-        }
-      >
-        <Icon name={tab.icon} color={active ? '#060707' : '#898989'} />
-        {active && (
-          <Text className="text-foreground text-base-medium">{tab.label}</Text>
-        )}
-      </Pressable>
+    <Animated.View style={pressStyle}>
+      <Animated.View style={pillStyle}>
+        <Pressable
+          onPress={() => router.navigate(tab.path as any)}
+          onPressIn={() => { scale.value = withTiming(0.96, { duration: 80 }); }}
+          onPressOut={() => { scale.value = withSpring(1, { damping: 20, stiffness: 300 }); }}
+          className={active
+            ? 'bg-muted flex-row items-center gap-2 px-4 py-2 rounded-full'
+            : 'p-2'
+          }
+        >
+          <Icon name={tab.icon} color={active ? '#060707' : '#898989'} />
+          {active && (
+            <Text className="text-foreground text-base-medium">{tab.label}</Text>
+          )}
+        </Pressable>
+      </Animated.View>
     </Animated.View>
   );
 }
