@@ -1,9 +1,5 @@
-import { useEffect, useRef } from 'react';
-import { View, Text, Pressable, LayoutAnimation, Platform, UIManager } from 'react-native';
-
-if (Platform.OS === 'android') {
-  UIManager.setLayoutAnimationEnabledExperimental?.(true);
-}
+import { useEffect } from 'react';
+import { View, Text, Pressable } from 'react-native';
 import { router, usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
@@ -34,17 +30,6 @@ const TABS: NavTab[] = [
 
 function TabButton({ tab, active }: { tab: NavTab; active: boolean }) {
   const scale = useSharedValue(1);
-  const prevActive = useRef(active);
-
-  if (prevActive.current !== active) {
-    prevActive.current = active;
-    LayoutAnimation.configureNext({
-      duration: 180,
-      create: { type: 'easeOut', property: 'opacity' },
-      update: { type: 'easeOut' },
-      delete: { type: 'easeOut', property: 'opacity' },
-    });
-  }
 
   const animStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
