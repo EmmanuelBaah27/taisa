@@ -28,7 +28,7 @@ export function ThreadRow({ thread }: ThreadRowProps) {
       <Pressable
         onPress={() => router.push(`/thread/${thread.id}`)}
         onPressIn={() => { scale.value = withTiming(0.97, { duration: 80 }); }}
-        onPressOut={() => { scale.value = withSpring(1, { damping: 12, stiffness: 280, mass: 0.6 }); }}
+        onPressOut={() => { scale.value = withSpring(1, { damping: 20, stiffness: 300 }); }}
         className="bg-card rounded-xl px-3 py-3 mb-2 border border-border"
       >
         {thread.isLive && (

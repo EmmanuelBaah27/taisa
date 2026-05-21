@@ -40,8 +40,8 @@ export function VoiceButton({ onPress }: VoiceButtonProps) {
     >
       <Pressable
         onPress={handlePress}
-        onPressIn={() => { scale.value = withTiming(0.88, { duration: 80 }); }}
-        onPressOut={() => { scale.value = withSpring(1, { damping: 12, stiffness: 280, mass: 0.6 }); }}
+        onPressIn={() => { scale.value = withTiming(0.95, { duration: 80 }); }}
+        onPressOut={() => { scale.value = withSpring(1, { damping: 20, stiffness: 300 }); }}
         style={{
           backgroundColor: '#cdec1a',
           paddingVertical: 16,
