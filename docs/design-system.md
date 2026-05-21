@@ -103,6 +103,9 @@ Never use raw `text-sm font-semibold` combinations — use the composite utiliti
 | `Card` | `surface`, `className`, `style` | Two surfaces (default / elevated) |
 | `Input` | `size`, `error`, `...TextInputProps` | Two sizes; error state |
 | `Icon` | `name`, `size`, `color` | 1906 icons — `round-outlined-radius-2-stroke-1.5` style via `react-native-svg` |
+| `TopNavBar` | _(none)_ | Fixed app-level nav bar; 5 tabs; active tab shows icon + label pill in `bg-muted`; uses `usePathname` + safe area insets |
+| `VoiceButton` | _(none)_ | Fixed bottom CTA; lime pill with glow shadow; routes to `/recording` |
+| `WorkspaceHeader` | `subtitle: string` | Screen-level header; workspace name from `careerStore.profile.currentCompany`; contextual subtitle |
 
 **Extraction rule:** pattern appears in 2+ places → extract to `ui/`. Do not extract speculatively.
 **DS compliance:** no `StyleSheet.create()`, no raw hex, import tokens from Tailwind classes only.

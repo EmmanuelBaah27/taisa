@@ -1,8 +1,9 @@
 import { useCallback, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Modal, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Modal } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { useCareerStore } from '../../src/stores/careerStore';
 import { ThemeTag } from '../../src/components/ThemeTag';
+import { WorkspaceHeader } from '../../src/components/WorkspaceHeader';
 import { colors } from '../../src/constants/theme';
 import api from '../../src/services/api';
 
@@ -58,7 +59,9 @@ export default function YouScreen() {
   const sessionCount = profile?.totalEntryCount ?? 0;
 
   return (
-    <ScrollView className="flex-1 bg-background" contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 60, paddingBottom: 40 }}>
+    <View className="flex-1 bg-background">
+      <WorkspaceHeader subtitle="Your career profile and preferences" />
+    <ScrollView className="flex-1 bg-background" contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 120 }}>
       {/* Avatar row */}
       <View className="flex-row items-center mb-6">
         <View className="w-10 h-10 rounded-full bg-accent-muted items-center justify-center mr-3"
@@ -157,6 +160,7 @@ export default function YouScreen() {
         placeholder="e.g. Senior Designer, Acme Inc"
       />
     </ScrollView>
+    </View>
   );
 }
 
