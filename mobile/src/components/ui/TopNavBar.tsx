@@ -12,11 +12,11 @@ interface NavTab {
 }
 
 const TABS: NavTab[] = [
-  { id: 'index',    label: 'Activity', icon: 'IconFilter2',      path: '/'         },
-  { id: 'insights', label: 'Insights', icon: 'IconSun',          path: '/insights' },
-  { id: 'goals',    label: 'Goals',    icon: 'IconTarget',       path: '/goals'    },
-  { id: 'logs',     label: 'Logs',     icon: 'IconBubbleDots',   path: '/logs'     },
-  { id: 'you',      label: 'You',      icon: 'IconCirclePerson', path: '/you'      },
+  { id: 'index',    label: 'Activity', icon: 'IconMorningBrief', path: '/'         },
+  { id: 'insights', label: 'Insights', icon: 'IconAura',         path: '/insights' },
+  { id: 'goals',    label: 'Goals',    icon: 'IconTargetArrow',  path: '/goals'    },
+  { id: 'logs',     label: 'Logs',     icon: 'IconChatBubbles',  path: '/logs'     },
+  { id: 'you',      label: 'You',      icon: 'IconPeopleCircle', path: '/you'      },
 ];
 
 export function TopNavBar() {

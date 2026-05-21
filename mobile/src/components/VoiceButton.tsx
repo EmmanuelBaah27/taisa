@@ -38,7 +38,7 @@ export function VoiceButton({ onPress }: VoiceButtonProps) {
           elevation: 10,
         }}
       >
-        <Icon name="IconMicrophone" size={24} color="#060707" />
+        <Icon name="IconVoiceMid" size={24} color="#060707" />
       </TouchableOpacity>
     </View>
   );
