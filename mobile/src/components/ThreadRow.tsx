@@ -6,15 +6,12 @@ import Animated, {
   useAnimatedStyle,
   withTiming,
   withSpring,
-  Easing,
 } from 'react-native-reanimated';
 import type { Thread } from '../stores/threadStore';
 
 interface ThreadRowProps {
   thread: Thread;
 }
-
-const easeOut = Easing.bezier(0.23, 1, 0.32, 1);
 
 export function ThreadRow({ thread }: ThreadRowProps) {
   const relativeTime = formatDistanceToNow(new Date(thread.lastMessageAt), { addSuffix: false });
@@ -30,8 +27,8 @@ export function ThreadRow({ thread }: ThreadRowProps) {
     <Animated.View style={animStyle}>
       <Pressable
         onPress={() => router.push(`/thread/${thread.id}`)}
-        onPressIn={() => { scale.value = withTiming(0.97, { duration: 100, easing: easeOut }); }}
-        onPressOut={() => { scale.value = withSpring(1, { damping: 20, stiffness: 300 }); }}
+        onPressIn={() => { scale.value = withTiming(0.97, { duration: 80 }); }}
+        onPressOut={() => { scale.value = withSpring(1, { damping: 12, stiffness: 280, mass: 0.6 }); }}
         className="bg-card rounded-xl px-3 py-3 mb-2 border border-border"
       >
         {thread.isLive && (

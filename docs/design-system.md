@@ -70,15 +70,18 @@ Never use raw `text-sm font-semibold` combinations — use the composite utiliti
 | `text-H2` | 18px / 32px lh | 600 | Section headings |
 | `text-H3` | 18px / 28px lh | 600 | Sub-headings |
 | `text-xlg-regular` | 18px / 26px lh | 400 | Large body |
-| `text-lg-regular` | 16px / 24px lh | 400 | Default body |
-| `text-lg-medium` | 16px / 24px lh | 500 | Body emphasis |
-| `text-lg-semibold` | 16px / 24px lh | 600 | Body strong |
-| `text-base-regular` | 14px / 20px lh | 400 | UI labels |
-| `text-base-medium` | 14px / 20px lh | 500 | UI emphasis |
-| `text-base-semibold` | 14px / 20px lh | 600 | UI strong |
-| `text-small-regular` | 12px / 18px lh | 400 | Captions, meta |
-| `text-small-medium` | 12px / 18px lh | 500 | Caption emphasis |
-| `text-small-semibold` | 12px / 18px lh | 600 | Caption strong |
+| `text-lg-regular` | 18px / 26px lh | 400 | Body |
+| `text-lg-medium` | 18px / 26px lh | 500 | Body emphasis |
+| `text-lg-semibold` | 18px / 26px lh | 600 | Body strong |
+| `text-base-regular` | 16px / 22px lh | 400 | **Base UI — default text size** |
+| `text-base-medium` | 16px / 22px lh | 500 | UI emphasis |
+| `text-base-semibold` | 16px / 22px lh | 600 | UI strong |
+| `text-small-regular` | 14px / 20px lh | 400 | Small labels, metadata |
+| `text-small-medium` | 14px / 20px lh | 500 | Small emphasis |
+| `text-small-semibold` | 14px / 20px lh | 600 | Small strong |
+| `text-caption-regular` | 12px / 16px lh | 400 | Timestamps, micro labels |
+| `text-caption-medium` | 12px / 16px lh | 500 | Caption emphasis |
+| `text-caption-semibold` | 12px / 16px lh | 600 | Caption strong |
 
 ---
 

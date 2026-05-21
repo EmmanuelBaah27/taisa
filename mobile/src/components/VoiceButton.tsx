@@ -6,7 +6,6 @@ import Animated, {
   useAnimatedStyle,
   withTiming,
   withSpring,
-  Easing,
 } from 'react-native-reanimated';
 import { Icon } from './ui/Icon';
 import { colors } from '../constants/theme';
@@ -14,8 +13,6 @@ import { colors } from '../constants/theme';
 interface VoiceButtonProps {
   onPress?: () => void;
 }
-
-const easeOut = Easing.bezier(0.23, 1, 0.32, 1);
 
 export function VoiceButton({ onPress }: VoiceButtonProps) {
   const insets = useSafeAreaInsets();
@@ -43,8 +40,8 @@ export function VoiceButton({ onPress }: VoiceButtonProps) {
     >
       <Pressable
         onPress={handlePress}
-        onPressIn={() => { scale.value = withTiming(0.93, { duration: 100, easing: easeOut }); }}
-        onPressOut={() => { scale.value = withSpring(1, { damping: 20, stiffness: 300 }); }}
+        onPressIn={() => { scale.value = withTiming(0.88, { duration: 80 }); }}
+        onPressOut={() => { scale.value = withSpring(1, { damping: 12, stiffness: 280, mass: 0.6 }); }}
         style={{
           backgroundColor: '#cdec1a',
           paddingVertical: 16,

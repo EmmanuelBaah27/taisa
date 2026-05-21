@@ -13,7 +13,7 @@ export interface IconProps {
 
 type IconComponent = FC<{ size?: number | string } & SvgProps>;
 
-export function Icon({ name, size = 20, color = 'currentColor' }: IconProps) {
+export function Icon({ name, size = 24, color = 'currentColor' }: IconProps) {
   const IconComponent = CentralIcons[name] as IconComponent | undefined;
   if (!IconComponent) return null;
   return <IconComponent size={size} color={color} />;

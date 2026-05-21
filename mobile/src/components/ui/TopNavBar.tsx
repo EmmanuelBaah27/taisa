@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, Pressable } from 'react-native';
 import { router, usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
@@ -7,9 +7,7 @@ import Animated, {
   useAnimatedStyle,
   withTiming,
   withSpring,
-  Easing,
 } from 'react-native-reanimated';
-import { Pressable } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Icon } from './Icon';
 import type { IconName } from './Icon';
@@ -30,8 +28,6 @@ const TABS: NavTab[] = [
   { id: 'you',      label: 'You',      icon: 'IconPeopleCircle', path: '/you'      },
 ];
 
-const easeOut = Easing.bezier(0.23, 1, 0.32, 1);
-
 function TabButton({ tab, active }: { tab: NavTab; active: boolean }) {
   const scale = useSharedValue(1);
 
@@ -43,14 +39,14 @@ function TabButton({ tab, active }: { tab: NavTab; active: boolean }) {
     <Animated.View style={animStyle}>
       <Pressable
         onPress={() => router.navigate(tab.path as any)}
-        onPressIn={() => { scale.value = withTiming(0.9, { duration: 100, easing: easeOut }); }}
-        onPressOut={() => { scale.value = withSpring(1, { damping: 20, stiffness: 300 }); }}
+        onPressIn={() => { scale.value = withTiming(0.82, { duration: 80 }); }}
+        onPressOut={() => { scale.value = withSpring(1, { damping: 12, stiffness: 280, mass: 0.6 }); }}
         className={active
           ? 'bg-muted flex-row items-center gap-2 px-4 py-2 rounded-full'
           : 'p-2'
         }
       >
-        <Icon name={tab.icon} size={20} color={active ? '#060707' : '#898989'} />
+        <Icon name={tab.icon} color={active ? '#060707' : '#898989'} />
         {active && (
           <Text className="text-foreground text-base-medium">{tab.label}</Text>
         )}
@@ -67,10 +63,7 @@ export function TopNavBar() {
   const gradientOpacity = useSharedValue(0);
 
   useEffect(() => {
-    gradientOpacity.value = withTiming(isScrolled ? 1 : 0, {
-      duration: 150,
-      easing: easeOut,
-    });
+    gradientOpacity.value = withTiming(isScrolled ? 1 : 0, { duration: 150 });
   }, [isScrolled]);
 
   const gradientStyle = useAnimatedStyle(() => ({

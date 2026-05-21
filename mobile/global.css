@@ -35,17 +35,22 @@
   .text-xlg-semibold { font-size: 18px; line-height: 26px; font-weight: 600; letter-spacing: -0.36px; }
 
   /* Large body */
-  .text-lg-regular  { font-size: 16px; line-height: 24px; font-weight: 400; letter-spacing: -0.12px; }
-  .text-lg-medium   { font-size: 16px; line-height: 24px; font-weight: 500; letter-spacing: -0.12px; }
-  .text-lg-semibold { font-size: 16px; line-height: 24px; font-weight: 600; letter-spacing: -0.12px; }
+  .text-lg-regular  { font-size: 18px; line-height: 26px; font-weight: 400; letter-spacing: -0.12px; }
+  .text-lg-medium   { font-size: 18px; line-height: 26px; font-weight: 500; letter-spacing: -0.12px; }
+  .text-lg-semibold { font-size: 18px; line-height: 26px; font-weight: 600; letter-spacing: -0.12px; }
 
   /* Base UI */
-  .text-base-regular  { font-size: 14px; line-height: 20px; font-weight: 400; letter-spacing: 0.02px; }
-  .text-base-medium   { font-size: 14px; line-height: 20px; font-weight: 500; letter-spacing: 0.02px; }
-  .text-base-semibold { font-size: 14px; line-height: 20px; font-weight: 600; letter-spacing: 0.02px; }
+  .text-base-regular  { font-size: 16px; line-height: 22px; font-weight: 400; letter-spacing: 0.02px; }
+  .text-base-medium   { font-size: 16px; line-height: 22px; font-weight: 500; letter-spacing: 0.02px; }
+  .text-base-semibold { font-size: 16px; line-height: 22px; font-weight: 600; letter-spacing: 0.02px; }
 
-  /* Small / captions */
-  .text-small-regular  { font-size: 12px; line-height: 18px; font-weight: 400; letter-spacing: 0; }
-  .text-small-medium   { font-size: 12px; line-height: 18px; font-weight: 500; letter-spacing: 0; }
-  .text-small-semibold { font-size: 12px; line-height: 18px; font-weight: 600; letter-spacing: 0; }
+  /* Small */
+  .text-small-regular  { font-size: 14px; line-height: 20px; font-weight: 400; letter-spacing: 0; }
+  .text-small-medium   { font-size: 14px; line-height: 20px; font-weight: 500; letter-spacing: 0; }
+  .text-small-semibold { font-size: 14px; line-height: 20px; font-weight: 600; letter-spacing: 0; }
+
+  /* Caption */
+  .text-caption-regular  { font-size: 12px; line-height: 16px; font-weight: 400; letter-spacing: 0; }
+  .text-caption-medium   { font-size: 12px; line-height: 16px; font-weight: 500; letter-spacing: 0; }
+  .text-caption-semibold { font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0; }
 }
