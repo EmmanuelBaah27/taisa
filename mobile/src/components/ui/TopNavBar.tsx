@@ -7,6 +7,7 @@ import Animated, {
   useAnimatedStyle,
   withTiming,
   withSpring,
+  Easing,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Icon } from './Icon';
@@ -35,7 +36,7 @@ function TabButton({ tab, active }: { tab: NavTab; active: boolean }) {
   useEffect(() => {
     if (active) {
       pillScale.value = 1.1;
-      pillScale.value = withTiming(1, { duration: 200 });
+      pillScale.value = withTiming(1, { duration: 180, easing: Easing.out(Easing.quad) });
     }
   }, [active]);
 
