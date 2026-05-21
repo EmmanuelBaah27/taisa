@@ -1,57 +1,25 @@
+import { View } from 'react-native';
 import { Tabs } from 'expo-router';
-import { Text } from 'react-native';
+import { TopNavBar } from '../../src/components/ui/TopNavBar';
+import { VoiceButton } from '../../src/components/VoiceButton';
 
 export default function TabLayout() {
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarStyle: {
-          backgroundColor: '#ffffff',
-          borderTopColor: '#e6e6e6',
-          borderTopWidth: 1,
-          paddingTop: 8,
-          height: 80,
-        },
-        tabBarActiveTintColor: '#cdec1a',
-        tabBarInactiveTintColor: '#898989',
-        tabBarShowLabel: true,
-        tabBarLabelStyle: { fontSize: 10, fontWeight: '500', marginBottom: 4 },
-      }}
-    >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Today',
-          tabBarIcon: ({ color }) => (
-            <TabIcon symbol="◈" color={color} />
-          ),
+    <View style={{ flex: 1, backgroundColor: '#ffffff' }}>
+      <TopNavBar />
+      <Tabs
+        screenOptions={{
+          headerShown: false,
+          tabBarStyle: { display: 'none' },
         }}
-      />
-      <Tabs.Screen
-        name="threads"
-        options={{
-          title: 'Threads',
-          tabBarIcon: ({ color }) => (
-            <TabIcon symbol="◎" color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="you"
-        options={{
-          title: 'You',
-          tabBarIcon: ({ color }) => (
-            <TabIcon symbol="○" color={color} />
-          ),
-        }}
-      />
-    </Tabs>
-  );
-}
-
-function TabIcon({ symbol, color }: { symbol: string; color: string }) {
-  return (
-    <Text style={{ color, fontSize: 18, lineHeight: 22 }}>{symbol}</Text>
+      >
+        <Tabs.Screen name="index" />
+        <Tabs.Screen name="insights" />
+        <Tabs.Screen name="goals" />
+        <Tabs.Screen name="logs" />
+        <Tabs.Screen name="you" />
+      </Tabs>
+      <VoiceButton />
+    </View>
   );
 }
