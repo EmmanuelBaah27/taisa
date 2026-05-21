@@ -14,3 +14,14 @@ export { Icon } from './Icon';
 export type { IconProps, IconName } from './Icon';
 
 export { TopNavBar } from './TopNavBar';
+
+export { ChatNavBar } from './ChatNavBar';
+export type { ChatNavBarProps } from './ChatNavBar';
+
+export { RecordingGlow } from './RecordingGlow';
+export type { RecordingGlowProps } from './RecordingGlow';
+
+export { LiveTranscriptionText } from './LiveTranscriptionText';
+export type { LiveTranscriptionTextProps } from './LiveTranscriptionText';
+
+export { TaisaReplyCard } from './TaisaReplyCard';

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { View, Text, ScrollView, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useThreadStore } from '../../src/stores/threadStore';
-import { TaisaReplyCard } from '../../src/components/TaisaReplyCard';
+import { TaisaReplyCard } from '../../src/components/ui/TaisaReplyCard';
 import { colors } from '../../src/constants/theme';
 import type { ChatMessage } from '../../src/stores/threadStore';
 
