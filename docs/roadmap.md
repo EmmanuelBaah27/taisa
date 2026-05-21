@@ -1,6 +1,6 @@
 # Taisa Roadmap
 
-**Last updated:** 2026-05-12
+**Last updated:** 2026-05-14
 **Design direction:** Light theme first. Voice primary, text secondary.
 **Two tracks:** Platform (AI + backend) runs one step ahead of Product (UI).
 
@@ -10,7 +10,7 @@
 
 | Feature | Track | Stage | Branch | Blocked on |
 |---|---|---|---|---|
-| *(empty — Claude updates at every stage transition)* | | | | |
+| Light design system | Platform | In Plan | — | — |
 
 ---
 
@@ -29,7 +29,7 @@ Everything else is blocked on this phase.
 ### Platform
 | Work | Scope doc | Status |
 |---|---|---|
-| Light design system — update token values in `tailwind.config.js` | — | Waiting on Baah's design system |
+| Light design system — Taisa DS tokens, Strichpunkt Sans, migrate all screens | light-design-system.md | In plan |
 | `@react-native-voice/voice` + `useLiveTranscription` hook | persistent-input-bar.md | Ready to plan |
 
 ### Product
