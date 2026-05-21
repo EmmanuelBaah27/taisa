@@ -39,10 +39,10 @@ function TabButton({ tab, active }: { tab: NavTab; active: boolean }) {
   if (prevActive.current !== active) {
     prevActive.current = active;
     LayoutAnimation.configureNext({
-      duration: 220,
-      update: { type: 'spring', springDamping: 0.8 },
-      create: { type: 'easeInEaseOut', property: 'opacity', duration: 160 },
-      delete: { type: 'easeInEaseOut', property: 'opacity', duration: 100 },
+      duration: 300,
+      create: { type: 'easeInEaseOut', property: 'opacity' },
+      update: { type: 'easeInEaseOut' },
+      delete: { type: 'easeInEaseOut', property: 'opacity' },
     });
   }
 
