@@ -12,7 +12,7 @@ export default function InsightsScreen() {
 
   return (
     <View className="flex-1 bg-background">
-      <Text className="text-foreground text-H1 px-5 pt-5 pb-3">Insights</Text>
+      <Text className="text-foreground text-H1 px-5 pt-3 pb-3">Insights</Text>
       <ScrollView
         className="flex-1"
         onScroll={(e) => reportScroll(e.nativeEvent.contentOffset.y)}
