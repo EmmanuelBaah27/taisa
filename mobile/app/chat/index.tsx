@@ -21,6 +21,9 @@ import {
 import api from '../../src/services/api';
 import type { ChatMessage } from '../../src/stores/threadStore';
 
+// Matches `background` token (#ffffff) — LinearGradient requires hex strings.
+const BACKGROUND_HEX = '#ffffff';
+
 type ChatPhase = 'idle' | 'listening' | 'processing' | 'responded' | 'error';
 
 export default function ChatScreen() {
@@ -35,6 +38,7 @@ export default function ChatScreen() {
   const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView>(null);
   const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const restartTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const { transcript, amplitude, start, stop, reset } = useLiveTranscription();
 
@@ -54,6 +58,7 @@ export default function ChatScreen() {
     }
     return () => {
       clearTimeout(silenceTimerRef.current);
+      clearTimeout(restartTimerRef.current);
     };
   }, []);
 
@@ -75,7 +80,7 @@ export default function ChatScreen() {
     } catch {
       // Couldn't load history — proceed fresh.
     }
-    setTimeout(startListening, 2000);
+    restartTimerRef.current = setTimeout(startListening, 2000);
   }
 
   async function startListening() {
@@ -124,7 +129,8 @@ export default function ChatScreen() {
         const sessionRes = await api.get(`/chat/session/${sid}`);
         const sessionMessages: ChatMessage[] = sessionRes.data.data.messages ?? [];
         const assistantMsg = sessionMessages.find(m => m.role === 'assistant');
-        reply = assistantMsg?.content ?? '';
+        if (!assistantMsg?.content) throw new Error('No assistant reply in session');
+        reply = assistantMsg.content;
 
         sessionIdRef.current = sid;
         setActiveSessionId(sid);
@@ -141,7 +147,7 @@ export default function ChatScreen() {
       reset();
 
       // Auto-restart listening after Taisa responds.
-      setTimeout(startListening, 2000);
+      restartTimerRef.current = setTimeout(startListening, 2000);
     } catch (e: any) {
       setError(e.message ?? 'Something went wrong. Tap to retry.');
       setPhase('error');
@@ -164,6 +170,7 @@ export default function ChatScreen() {
 
   function handleClose() {
     clearTimeout(silenceTimerRef.current);
+    clearTimeout(restartTimerRef.current);
     stop().catch(() => {});
     router.back();
   }
@@ -188,29 +195,29 @@ export default function ChatScreen() {
             ) : (
               <View
                 key={msg.id}
-                className="self-end mb-3 bg-lime-100 rounded-3xl px-4 py-3 max-w-xs"
+                className="self-end mb-3 bg-lime-100 rounded-3 px-4 py-3 max-w-xs"
               >
-                <Text className="text-foreground text-base">{msg.content}</Text>
+                <Text className="text-foreground text-base-regular">{msg.content}</Text>
               </View>
             )
           )}
 
           {phase === 'processing' && (
             <View className="items-start mb-3">
-              <View className="bg-subtle rounded-3xl px-4 py-3">
-                <Text className="text-text-tertiary text-sm">Taisa is thinking…</Text>
+              <View className="bg-subtle rounded-3 px-4 py-3">
+                <Text className="text-text-tertiary text-small-regular">Taisa is thinking…</Text>
               </View>
             </View>
           )}
 
           {phase === 'error' && (
             <View className="items-center py-4">
-              <Text className="text-danger text-sm mb-3 text-center">{error}</Text>
+              <Text className="text-danger text-small-regular mb-3 text-center">{error}</Text>
               <TouchableOpacity
                 onPress={handleRetry}
                 className="bg-muted rounded-full px-6 py-3"
               >
-                <Text className="text-foreground text-sm font-semibold">Try again</Text>
+                <Text className="text-foreground text-small-semibold">Try again</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -218,7 +225,7 @@ export default function ChatScreen() {
 
         {/* Bottom fade mask — content fades out smoothly into the input zone */}
         <LinearGradient
-          colors={['transparent', '#ffffff']}
+          colors={['transparent', BACKGROUND_HEX]}
           style={{
             position: 'absolute',
             bottom: 0,
@@ -254,7 +261,7 @@ export default function ChatScreen() {
               style={{ opacity: transcript.trim() ? 1 : 0.4 }}
             >
               <Icon name="IconStopCircle" size={18} color="#060707" />
-              <Text className="text-foreground text-sm font-semibold">Stop</Text>
+              <Text className="text-foreground text-small-semibold">Stop</Text>
             </TouchableOpacity>
           </View>
         </View>
