@@ -1,5 +1,9 @@
-import { useEffect } from 'react';
-import { View, Text, Pressable } from 'react-native';
+import { useEffect, useRef } from 'react';
+import { View, Text, Pressable, LayoutAnimation, Platform, UIManager } from 'react-native';
+
+if (Platform.OS === 'android') {
+  UIManager.setLayoutAnimationEnabledExperimental?.(true);
+}
 import { router, usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
@@ -30,36 +34,34 @@ const TABS: NavTab[] = [
 
 function TabButton({ tab, active }: { tab: NavTab; active: boolean }) {
   const scale = useSharedValue(1);
-  const iconY = useSharedValue(0);
+  const prevActive = useRef(active);
+
+  if (prevActive.current !== active) {
+    prevActive.current = active;
+    LayoutAnimation.configureNext({
+      duration: 220,
+      update: { type: 'spring', springDamping: 0.8 },
+      create: { type: 'easeInEaseOut', property: 'opacity', duration: 160 },
+      delete: { type: 'easeInEaseOut', property: 'opacity', duration: 100 },
+    });
+  }
 
   const animStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
-  }));
-
-  const iconAnimStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: iconY.value }],
   }));
 
   return (
     <Animated.View style={animStyle}>
       <Pressable
         onPress={() => router.navigate(tab.path as any)}
-        onPressIn={() => {
-          scale.value = withTiming(0.96, { duration: 80 });
-          iconY.value = withTiming(2, { duration: 80 });
-        }}
-        onPressOut={() => {
-          scale.value = withSpring(1, { damping: 20, stiffness: 300 });
-          iconY.value = withSpring(0, { damping: 20, stiffness: 300 });
-        }}
+        onPressIn={() => { scale.value = withTiming(0.96, { duration: 80 }); }}
+        onPressOut={() => { scale.value = withSpring(1, { damping: 20, stiffness: 300 }); }}
         className={active
           ? 'bg-muted flex-row items-center gap-2 px-4 py-2 rounded-full'
           : 'p-2'
         }
       >
-        <Animated.View style={iconAnimStyle}>
-          <Icon name={tab.icon} color={active ? '#060707' : '#898989'} />
-        </Animated.View>
+        <Icon name={tab.icon} color={active ? '#060707' : '#898989'} />
         {active && (
           <Text className="text-foreground text-base-medium">{tab.label}</Text>
         )}
