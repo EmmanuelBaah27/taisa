@@ -1,12 +1,11 @@
 import { useCallback, useState } from 'react';
 import { View, Text, ScrollView, ActivityIndicator } from 'react-native';
 import { useFocusEffect } from 'expo-router';
-import { format } from 'date-fns';
 import { useThreadStore } from '../../src/stores/threadStore';
 import { ThreadRow } from '../../src/components/ThreadRow';
 import { TaisaCard } from '../../src/components/TaisaCard';
 import { DigestCard } from '../../src/components/DigestCard';
-import { FAB } from '../../src/components/FAB';
+import { WorkspaceHeader } from '../../src/components/WorkspaceHeader';
 import { colors } from '../../src/constants/theme';
 import api from '../../src/services/api';
 
@@ -53,18 +52,15 @@ export default function TodayScreen() {
     }
   };
 
-  const today = new Date();
   const recentThreads = threads.slice(0, 3);
 
   return (
     <View className="flex-1 bg-background">
+      <WorkspaceHeader subtitle="Progress against goals and work over time" />
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 60, paddingBottom: 100 }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 120 }}
       >
-        <Text className="text-foreground text-2xl font-bold">Today</Text>
-        <Text className="text-text-tertiary text-xs mt-1 mb-5">{format(today, 'EEEE, d MMMM')}</Text>
-
         {isLoadingToday ? (
           <View className="bg-card rounded-xl px-4 py-4 mb-4 opacity-40 border border-border">
             <View className="h-2 bg-muted rounded mb-3 w-1/3" />
@@ -90,8 +86,6 @@ export default function TodayScreen() {
           </>
         )}
       </ScrollView>
-
-      <FAB />
     </View>
   );
 }
