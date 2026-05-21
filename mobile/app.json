@@ -30,7 +30,7 @@
       "expo-router",
       "expo-font",
       [
-        "@react-native-voice/voice",
+        "expo-speech-recognition",
         {
           "microphonePermission": "Allow Taisa to access the microphone to record your voice.",
           "speechRecognitionPermission": "Allow Taisa to use speech recognition to transcribe what you say."
