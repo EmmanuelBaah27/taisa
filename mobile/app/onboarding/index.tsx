@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { View, Text, TextInput, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
-import * as Device from 'expo-device';
 import { v4 as uuidv4 } from 'uuid';
 import { useCareerStore } from '../../src/stores/careerStore';
 import { colors } from '../../src/constants/theme';
@@ -130,7 +129,7 @@ export default function OnboardingScreen() {
   );
 }
 
-function Field({ label, ...props }: { label: string; [key: string]: any }) {
+function Field({ label, onChange, ...props }: { label: string; onChange?: (value: string) => void; [key: string]: any }) {
   return (
     <View className="mb-6">
       <Text className="text-[13px] font-medium text-muted-foreground mb-2">{label}</Text>

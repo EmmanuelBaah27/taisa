@@ -9,7 +9,8 @@ Claude maintains the Active Work table — Baah never needs to update it.
 
 | Feature | Track | Stage | Branch | Blocked on |
 |---|---|---|---|---|
-| *(empty — Claude updates this at every stage transition)* | | | | |
+| Light design system | Platform + Product | Review (needs device QA) | feature/light-design-system | — |
+| Persistent input bar + Chat UI | Platform + Product | Plan | — | Light design system shipped |
 
 ---
 

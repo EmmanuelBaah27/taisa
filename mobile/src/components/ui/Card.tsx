@@ -98,11 +98,12 @@ export function CardContent({ children, className = '' }: CardContentProps) {
 export interface CardFooterProps {
   children: React.ReactNode;
   className?: string;
+  style?: import('react-native').ViewStyle;
 }
 
-export function CardFooter({ children, className = '' }: CardFooterProps) {
+export function CardFooter({ children, className = '', style }: CardFooterProps) {
   return (
-    <View className={['flex-row items-center px-6 pb-6', className].filter(Boolean).join(' ')}>
+    <View style={style} className={['flex-row items-center px-6 pb-6', className].filter(Boolean).join(' ')}>
       {children}
     </View>
   );

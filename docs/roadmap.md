@@ -10,7 +10,8 @@
 
 | Feature | Track | Stage | Branch | Blocked on |
 |---|---|---|---|---|
-| Light design system | Platform | In Plan | — | — |
+| Light design system | Platform + Product | Review (device QA) | feature/light-design-system | — |
+| Persistent input bar + Chat UI | Platform + Product | Plan | — | Light design system shipped |
 
 ---
 
@@ -29,13 +30,13 @@ Everything else is blocked on this phase.
 ### Platform
 | Work | Scope doc | Status |
 |---|---|---|
-| Light design system — Taisa DS tokens, Strichpunkt Sans, migrate all screens | light-design-system.md | In plan |
+| Light design system — Taisa DS tokens, Strichpunkt Sans, migrate all screens | light-design-system.md | Review (device QA) |
 | `@react-native-voice/voice` + `useLiveTranscription` hook | persistent-input-bar.md | Ready to plan |
 
 ### Product
 | Work | Scope doc | Status | Blocked on |
 |---|---|---|---|
-| Persistent input bar + chat UI (unified screen) | persistent-input-bar.md | Ready to plan | Light design system, useLiveTranscription |
+| Persistent input bar + chat UI (unified screen) | persistent-input-bar.md | In Plan | Light design system, useLiveTranscription |
 
 ---
 
