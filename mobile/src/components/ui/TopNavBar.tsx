@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { View, Text, Pressable } from 'react-native';
+import { View, Pressable } from 'react-native';
 import { router, usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
@@ -7,7 +7,6 @@ import Animated, {
   useAnimatedStyle,
   withTiming,
   withSpring,
-  Easing,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Icon } from './Icon';
@@ -31,41 +30,38 @@ const TABS: NavTab[] = [
 
 function TabButton({ tab, active }: { tab: NavTab; active: boolean }) {
   const scale = useSharedValue(1);
-  const pillScale = useSharedValue(1);
+  const labelOpacity = useSharedValue(active ? 1 : 0);
 
   useEffect(() => {
-    if (active) {
-      pillScale.value = 1.1;
-      pillScale.value = withTiming(1, { duration: 180, easing: Easing.out(Easing.quad) });
-    }
+    labelOpacity.value = active ? withTiming(1, { duration: 150 }) : 0;
   }, [active]);
 
   const pressStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
   }));
 
-  const pillStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: pillScale.value }],
+  const labelStyle = useAnimatedStyle(() => ({
+    opacity: labelOpacity.value,
   }));
 
   return (
     <Animated.View style={pressStyle}>
-      <Animated.View style={pillStyle}>
-        <Pressable
-          onPress={() => router.navigate(tab.path as any)}
-          onPressIn={() => { scale.value = withTiming(0.96, { duration: 80 }); }}
-          onPressOut={() => { scale.value = withSpring(1, { damping: 20, stiffness: 300 }); }}
-          className={active
-            ? 'bg-muted flex-row items-center gap-2 px-4 py-2 rounded-full'
-            : 'p-2'
-          }
-        >
-          <Icon name={tab.icon} color={active ? '#060707' : '#898989'} />
-          {active && (
-            <Text className="text-foreground text-base-medium">{tab.label}</Text>
-          )}
-        </Pressable>
-      </Animated.View>
+      <Pressable
+        onPress={() => router.navigate(tab.path as any)}
+        onPressIn={() => { scale.value = withTiming(0.96, { duration: 80 }); }}
+        onPressOut={() => { scale.value = withSpring(1, { damping: 20, stiffness: 300 }); }}
+        className={active
+          ? 'bg-muted flex-row items-center gap-2 px-4 py-2 rounded-full'
+          : 'p-2'
+        }
+      >
+        <Icon name={tab.icon} color={active ? '#060707' : '#898989'} />
+        {active && (
+          <Animated.Text style={labelStyle} className="text-foreground text-base-medium">
+            {tab.label}
+          </Animated.Text>
+        )}
+      </Pressable>
     </Animated.View>
   );
 }
