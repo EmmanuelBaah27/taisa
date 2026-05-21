@@ -10,10 +10,11 @@
     "storybook": "EXPO_PUBLIC_STORYBOOK=true expo start"
   },
   "dependencies": {
+    "@central-icons-react-native/round-outlined-radius-3-stroke-2": "1.1.243",
     "@gorhom/bottom-sheet": "^5.2.14",
     "@react-native-async-storage/async-storage": "^3.0.2",
     "@react-native-community/datetimepicker": "^9.1.0",
-    "axios": "1.15.0",
+    "axios": "1.16.1",
     "date-fns": "^4.1.0",
     "expo": "~54.0.0",
     "expo-av": "~16.0.8",
