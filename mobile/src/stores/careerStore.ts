@@ -5,6 +5,7 @@ import api from '../services/api';
 
 interface CareerStore {
   profile: CareerProfile | null;
+  userId: string | null;
   isOnboarded: boolean;
   isLoading: boolean;
 
@@ -16,6 +17,7 @@ interface CareerStore {
 
 export const useCareerStore = create<CareerStore>((set, get) => ({
   profile: null,
+  userId: null,
   isOnboarded: false,
   isLoading: false,
 
@@ -25,7 +27,7 @@ export const useCareerStore = create<CareerStore>((set, get) => ({
       const res = await api.post('/profile/init', { deviceId, ...profileData });
       const profile: CareerProfile = res.data.data;
       await SecureStore.setItemAsync('userId', deviceId);
-      set({ profile, isOnboarded: true, isLoading: false });
+      set({ profile, userId: deviceId, isOnboarded: true, isLoading: false });
     } catch (e) {
       set({ isLoading: false });
       throw e;
@@ -33,8 +35,11 @@ export const useCareerStore = create<CareerStore>((set, get) => ({
   },
 
   fetchProfile: async () => {
-    const res = await api.get('/profile');
-    set({ profile: res.data.data });
+    const [res, storedId] = await Promise.all([
+      api.get('/profile'),
+      SecureStore.getItemAsync('userId'),
+    ]);
+    set({ profile: res.data.data, userId: storedId });
   },
 
   updateProfile: async (data) => {
