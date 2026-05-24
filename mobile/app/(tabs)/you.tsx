@@ -6,6 +6,7 @@ import { ThemeTag } from '../../src/components/ThemeTag';
 import { useScrollContext } from '../../src/contexts/ScrollContext';
 import { colors } from '../../src/constants/theme';
 import api from '../../src/services/api';
+import { NaviiAvatar } from '../../src/components/ui/NaviiAvatar';
 
 interface YouData {
   currentFocus: string;
@@ -14,7 +15,7 @@ interface YouData {
 }
 
 export default function YouScreen() {
-  const { profile, fetchProfile, updateProfile } = useCareerStore();
+  const { profile, userId, fetchProfile, updateProfile } = useCareerStore();
   const { reportScroll } = useScrollContext();
   const [youData, setYouData] = useState<YouData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -70,15 +71,17 @@ export default function YouScreen() {
       contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 120 }}
     >
       {/* Avatar row */}
-      <View className="flex-row items-center mb-6">
-        <View className="w-10 h-10 rounded-full bg-accent-muted items-center justify-center mr-3"
-          style={{ borderWidth: 1.5, borderColor: 'rgba(205,236,26,0.3)' }}>
-          <Text className="text-lime-700 text-lg font-bold">T</Text>
-        </View>
-        <View>
-          <Text className="text-foreground text-sm font-bold">Taisa User</Text>
-          <Text className="text-text-tertiary text-xs">{profile?.currentRole ?? 'Your role'} · {sessionCount} session{sessionCount !== 1 ? 's' : ''}</Text>
-        </View>
+      <View className="items-center mb-6">
+        {userId ? (
+          <NaviiAvatar seed={userId} size={64} />
+        ) : (
+          <View className="w-16 h-16 rounded-full bg-accent-muted items-center justify-center"
+            style={{ borderWidth: 1.5, borderColor: 'rgba(205,236,26,0.3)' }}>
+            <Text className="text-lime-700 text-xl font-bold">T</Text>
+          </View>
+        )}
+        <Text className="text-foreground text-sm font-bold mt-2">Taisa User</Text>
+        <Text className="text-text-tertiary text-xs mt-0.5">{profile?.currentRole ?? 'Your role'} · {sessionCount} session{sessionCount !== 1 ? 's' : ''}</Text>
       </View>
 
       {/* Taisa's read on you */}
