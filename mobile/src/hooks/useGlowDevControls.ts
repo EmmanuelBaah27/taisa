@@ -1,5 +1,5 @@
 // mobile/src/hooks/useGlowDevControls.ts
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useSharedValue, useDerivedValue } from 'react-native-reanimated';
 import type { SharedValue } from 'react-native-reanimated';
 
@@ -30,23 +30,50 @@ export interface GlowDevSharedValues {
 
 export type GlowDevControls = GlowDevValues & GlowDevSetters & GlowDevSharedValues;
 
+const DEFAULT_CUBE_SIZE = 24;
+
 export function useGlowDevControls(audioAmplitude: SharedValue<number>): GlowDevControls {
   const [minAmplitude, setMinAmplitudeState] = useState(0.0);
   const [maxAmplitude, setMaxAmplitudeState] = useState(1.0);
   const [ditherIntensity, setDitherIntensityState] = useState(0.0);
   const [colorCount, setColorCountState] = useState<1 | 2 | 3>(2);
   const [cubeEnabled, setCubeEnabled] = useState(false);
-  const [cubeSize, setCubeSizeState] = useState(24);
+  const [cubeSize, setCubeSizeState] = useState(DEFAULT_CUBE_SIZE);
 
   const minSV = useSharedValue(0.0);
   const maxSV = useSharedValue(1.0);
   const ditherSV = useSharedValue(0.0);
   const colorCountSV = useSharedValue(2);
-  const cubeSizeSV = useSharedValue(24);
+  const cubeSizeSV = useSharedValue(DEFAULT_CUBE_SIZE);
 
   const effectiveAmplitude = useDerivedValue(() =>
     minSV.value + audioAmplitude.value * (maxSV.value - minSV.value)
   );
+
+  const setMinAmplitude = useCallback((v: number) => {
+    setMinAmplitudeState(v);
+    minSV.value = v;
+  }, []);
+
+  const setMaxAmplitude = useCallback((v: number) => {
+    setMaxAmplitudeState(v);
+    maxSV.value = v;
+  }, []);
+
+  const setDitherIntensity = useCallback((v: number) => {
+    setDitherIntensityState(v);
+    ditherSV.value = v;
+  }, []);
+
+  const setColorCount = useCallback((v: 1 | 2 | 3) => {
+    setColorCountState(v);
+    colorCountSV.value = v;
+  }, []);
+
+  const setCubeSize = useCallback((v: number) => {
+    setCubeSizeState(v);
+    cubeSizeSV.value = v;
+  }, []);
 
   return {
     minAmplitude,
@@ -55,12 +82,13 @@ export function useGlowDevControls(audioAmplitude: SharedValue<number>): GlowDev
     colorCount,
     cubeEnabled,
     cubeSize,
-    setMinAmplitude: (v) => { setMinAmplitudeState(v); minSV.value = v; },
-    setMaxAmplitude: (v) => { setMaxAmplitudeState(v); maxSV.value = v; },
-    setDitherIntensity: (v) => { setDitherIntensityState(v); ditherSV.value = v; },
-    setColorCount: (v) => { setColorCountState(v); colorCountSV.value = v; },
+    setMinAmplitude,
+    setMaxAmplitude,
+    setDitherIntensity,
+    setColorCount,
+    // setCubeEnabled is from useState with no SharedValue—cube overlay is conditionally mounted, not shader-driven
     setCubeEnabled,
-    setCubeSize: (v) => { setCubeSizeState(v); cubeSizeSV.value = v; },
+    setCubeSize,
     effectiveAmplitude,
     ditherSV,
     colorCountSV,
