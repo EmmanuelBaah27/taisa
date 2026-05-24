@@ -54,18 +54,18 @@ half4 main(float2 fragCoord) {
   float3 peachCol  = float3(0.980, 0.714, 0.573);
   float3 violetCol = float3(0.600, 0.400, 0.900);
 
-  float3 premul = lime * limeCol + peach * peachCol + violet * violetCol;
+  float3 col = lime * limeCol + peach * peachCol + violet * violetCol;
   float  alpha  = clamp(lime + peach + violet, 0.0, 1.0);
 
   float fade = smoothstep(0.0, 0.70, uv.y);
-  premul *= fade;
+  col *= fade;
   alpha  *= fade;
 
   // Dither: subtle hash noise layered over final color
-  float noise = hash(fragCoord) * iDither * 0.08;
-  premul = clamp(premul + float3(noise), float3(0.0), float3(1.0));
+  float noise = hash(fragCoord) * iDither * 0.08 * alpha;
+  col = clamp(col + float3(noise), float3(0.0), float3(1.0));
 
-  return half4(half3(premul), half(alpha));
+  return half4(half3(col), half(alpha));
 }
 `);
 
@@ -94,6 +94,7 @@ export function RecordingGlow({
       -1,
       false
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const uniforms = useDerivedValue(() => ({

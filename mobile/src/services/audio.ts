@@ -24,7 +24,10 @@ export async function startRecording(): Promise<void> {
   });
 
   const { recording: rec } = await Audio.Recording.createAsync(
-    Audio.RecordingOptionsPresets.HIGH_QUALITY
+    {
+      ...Audio.RecordingOptionsPresets.HIGH_QUALITY,
+      isMeteringEnabled: true,
+    }
   );
 
   recording = rec;
@@ -49,4 +52,16 @@ export async function stopRecording(): Promise<RecordingResult> {
 
 export function isRecording(): boolean {
   return recording !== null;
+}
+
+export function onMeteringUpdate(cb: (amplitude: number) => void): () => void {
+  if (!recording) return () => {};
+  recording.setOnRecordingStatusUpdate(status => {
+    if (!status.isRecording || status.metering == null) return;
+    // dBFS range: ~-60 (silence) to 0 (peak). Normalise to 0–1.
+    const amp = Math.max(0, Math.min(1, (status.metering + 60) / 55));
+    cb(amp);
+  });
+  recording.setProgressUpdateInterval(80);
+  return () => { recording?.setOnRecordingStatusUpdate(null); };
 }

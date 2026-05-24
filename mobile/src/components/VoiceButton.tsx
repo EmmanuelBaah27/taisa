@@ -1,5 +1,4 @@
 import { Pressable } from 'react-native';
-import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   useSharedValue,
@@ -19,10 +18,7 @@ export function VoiceButton({ onPress }: VoiceButtonProps) {
   const insets = useSafeAreaInsets();
   const { chatMorphing, setChatMorphing } = useUIStore();
 
-  const handlePress = onPress ?? (() => {
-    setChatMorphing(true);
-    router.push('/chat');
-  });
+  const handlePress = onPress ?? (() => setChatMorphing(true));
 
   const scale = useSharedValue(1);
 

@@ -2,6 +2,7 @@ import '../global.css';
 import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import * as SecureStore from 'expo-secure-store';
@@ -49,7 +50,7 @@ export default function RootLayout() {
   if (!fontsLoaded) return null;
 
   return (
-    <>
+    <GestureHandlerRootView style={{ flex: 1 }}>
       <StatusBar style="dark" />
       <Stack screenOptions={{ headerShown: false, animation: 'none', contentStyle: { backgroundColor: '#ffffff' } }}>
         <Stack.Screen name="(tabs)" />
@@ -59,11 +60,7 @@ export default function RootLayout() {
           name="recording/index"
           options={{ presentation: 'transparentModal', animation: 'slide_from_bottom' }}
         />
-        <Stack.Screen
-          name="chat/index"
-          options={{ presentation: 'transparentModal', animation: 'none' }}
-        />
       </Stack>
-    </>
+    </GestureHandlerRootView>
   );
 }

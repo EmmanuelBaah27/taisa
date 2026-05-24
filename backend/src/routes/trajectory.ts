@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { getDb } from '../db/connection';
-import { callClaudeJson } from '../services/claude/client';
+import { callClaudeJson, MOCK_AI, parseAnthropicError } from '../services/claude/client';
 import { buildTrajectorySystem, buildTrajectoryUser } from '../prompts/system/trajectoryAnalyst';
 
 const router = Router();
@@ -102,7 +102,18 @@ router.post('/generate', async (req, res) => {
   const recentCoachNotes = entries.slice(-5).map(e => e.coach_note).filter(Boolean);
 
   try {
-    const result = await callClaudeJson<any>({
+    const result = MOCK_AI
+      ? {
+          narrativeSummary: '[Mock] Trajectory analysis requires Anthropic API credits — top up at console.anthropic.com.',
+          keyThemes: [],
+          winCount: allWins.length,
+          challengeCount: allChallenges.length,
+          resolvedChallengeCount: 0,
+          growthObservations: [],
+          suggestedFocusAreas: [],
+          goalProgressSummaries: [],
+        }
+      : await callClaudeJson<any>({
       system: buildTrajectorySystem(profile as any),
       userMessage: buildTrajectoryUser({
         entryCount: entries.length, periodStart, periodEnd,
@@ -147,7 +158,8 @@ router.post('/generate', async (req, res) => {
     res.json({ success: true, data: { id: snapshotId, ...result, periodStart, periodEnd, momentumHistory } });
   } catch (error: any) {
     console.error('Trajectory error:', error);
-    res.status(500).json({ success: false, error: { code: 'TRAJECTORY_FAILED', message: error.message } });
+    const { code, message } = parseAnthropicError(error);
+    res.status(500).json({ success: false, error: { code, message } });
   }
 });
 

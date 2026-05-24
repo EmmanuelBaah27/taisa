@@ -1,4 +1,3 @@
-// mobile/app/chat/index.tsx
 import { useEffect, useRef, useState } from 'react';
 import {
   View,
@@ -6,10 +5,10 @@ import {
   Text,
   TouchableOpacity,
 } from 'react-native';
-import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming, runOnJS } from 'react-native-reanimated';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useLiveTranscription } from '../../src/hooks/useLiveTranscription';
 import { useMorphTransition } from '../../src/hooks/useMorphTransition';
 import { useChatStore } from '../../src/stores/chatStore';
@@ -25,26 +24,27 @@ import {
 import api from '../../src/services/api';
 import type { ChatMessage } from '../../src/stores/threadStore';
 
-// rgba(255,255,255,0) → #ffffff avoids the grey band that `transparent` causes on iOS
-// (transparent = rgba(0,0,0,0) which interpolates through grey to white).
 const BACKGROUND_HEX = '#ffffff';
 const BACKGROUND_TRANSPARENT = 'rgba(255,255,255,0)';
+
+// Drag-to-close thresholds
+const DISMISS_DISTANCE = 180;   // px of downward drag to fully dismiss
+const DISMISS_VELOCITY = 800;   // px/s flick velocity to dismiss regardless of distance
+const SPRING_BACK = { damping: 22, stiffness: 110 };
 
 type ChatPhase = 'idle' | 'listening' | 'processing' | 'responded' | 'error';
 
 export default function ChatScreen() {
   const insets = useSafeAreaInsets();
   const { activeSessionId, setActiveSessionId } = useChatStore();
-  const { setChatMorphing } = useUIStore();
+  const { setChatMorphing, pillBottomInset } = useUIStore();
   const { progress, contentOpacity, open, close } = useMorphTransition();
 
   const contentStyle = useAnimatedStyle(() => ({
     opacity: contentOpacity.value,
   }));
 
-  // Ref so handleSubmit always reads the latest sessionId without a stale closure.
   const sessionIdRef = useRef<string | null>(activeSessionId);
-
   const [phase, setPhase] = useState<ChatPhase>('idle');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -54,11 +54,9 @@ export default function ChatScreen() {
   const closingRef = useRef(false);
 
   const { transcript, amplitude, recognizerError, start, stop, reset } = useLiveTranscription();
-  // Bridge amplitude (React state number 0–10) to a SharedValue (0–1) for RecordingGlow
   const amplitudeSV = useSharedValue(0);
   useEffect(() => { amplitudeSV.value = amplitude / 10; }, [amplitude]);
 
-  // Surface recognizer errors (e.g. permission denied after the screen is already open)
   useEffect(() => {
     if (recognizerError) {
       setError(`Speech recognizer error: ${recognizerError}. Check microphone & speech permissions in Settings.`);
@@ -66,14 +64,12 @@ export default function ChatScreen() {
     }
   }, [recognizerError]);
 
-  // Auto-scroll when messages update.
   useEffect(() => {
     if (messages.length > 0) {
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
     }
   }, [messages.length]);
 
-  // Load existing messages + start listening on mount.
   useEffect(() => {
     open();
     if (activeSessionId) {
@@ -89,7 +85,6 @@ export default function ChatScreen() {
     };
   }, []);
 
-  // 5s silence detection: resets on every transcript change (streams from partial results).
   useEffect(() => {
     if (!transcript) return;
     clearTimeout(silenceTimerRef.current);
@@ -98,6 +93,52 @@ export default function ChatScreen() {
     }, 5000);
     return () => clearTimeout(silenceTimerRef.current);
   }, [transcript]);
+
+  // ─── Drag-to-close gesture ──────────────────────────────────────────────────
+
+  // Tracks whether the ScrollView is at the top so drag-down dismisses instead of scrolling.
+  const scrollAtTop = useSharedValue(true);
+  // Latched per-gesture — set once on begin so onUpdate/onEnd are consistent.
+  const isHandlingDrag = useSharedValue(false);
+
+  // Dismisses the overlay after `delay` ms (animation has already started by then).
+  function commitClose(delay: number) {
+    if (closingRef.current) return;
+    closingRef.current = true;
+    clearTimeout(silenceTimerRef.current);
+    clearTimeout(restartTimerRef.current);
+    stop().catch(() => {});
+    restartTimerRef.current = setTimeout(() => setChatMorphing(false), delay);
+  }
+
+  // Called by the worklet via runOnJS when the gesture commits a dismiss.
+  const gestureCommitClose = () => commitClose(260);
+
+  const dragGesture = Gesture.Pan()
+    .activeOffsetY([5, Infinity])   // only activates on downward movement
+    .onBegin(() => {
+      isHandlingDrag.value = scrollAtTop.value;
+    })
+    .onUpdate((e) => {
+      if (!isHandlingDrag.value || e.translationY <= 0) return;
+      const fraction = Math.min(1, e.translationY / DISMISS_DISTANCE);
+      progress.value = 1 - fraction;
+      contentOpacity.value = Math.max(0, 1 - fraction * 1.8);
+    })
+    .onEnd((e) => {
+      if (!isHandlingDrag.value) return;
+      const dismiss = e.translationY > DISMISS_DISTANCE * 0.4 || e.velocityY > DISMISS_VELOCITY;
+      if (dismiss) {
+        contentOpacity.value = withTiming(0, { duration: 80 });
+        progress.value = withTiming(0, { duration: 220 });
+        runOnJS(gestureCommitClose)();
+      } else {
+        progress.value = withSpring(1, SPRING_BACK);
+        contentOpacity.value = withTiming(1, { duration: 150 });
+      }
+    });
+
+  // ─── Data & voice logic ─────────────────────────────────────────────────────
 
   async function loadSession(sessionId: string) {
     try {
@@ -132,14 +173,12 @@ export default function ChatScreen() {
       let reply: string;
 
       if (sessionIdRef.current) {
-        // Continuation turn — send to existing session.
         const res = await api.post('/chat/message', {
           sessionId: sessionIdRef.current,
           message: trimmed,
         });
         reply = res.data.data.reply;
       } else {
-        // First turn — create journal entry then analyze.
         const entryRes = await api.post('/entries', {
           rawTranscript: trimmed,
           editedTranscript: trimmed,
@@ -149,7 +188,6 @@ export default function ChatScreen() {
         });
         const entryId: string = entryRes.data.data.id;
 
-        // /analyze returns only sessionId — fetch the session to get the assistant reply.
         const analyzeRes = await api.post(`/analyze/${entryId}`);
         const sid: string = analyzeRes.data.data.sessionId;
 
@@ -172,8 +210,6 @@ export default function ChatScreen() {
 
       setPhase('responded');
       reset();
-
-      // Auto-restart listening after Taisa responds.
       restartTimerRef.current = setTimeout(startListening, 2000);
     } catch (e: any) {
       setError(e.message ?? 'Something went wrong. Tap to retry.');
@@ -182,11 +218,8 @@ export default function ChatScreen() {
   }
 
   function handleStop() {
-    // Immediate submit — same path as silence detection.
     clearTimeout(silenceTimerRef.current);
-    if (transcript.trim()) {
-      handleSubmit(transcript);
-    }
+    if (transcript.trim()) handleSubmit(transcript);
   }
 
   function handleRetry() {
@@ -196,115 +229,105 @@ export default function ChatScreen() {
   }
 
   function handleClose() {
-    if (closingRef.current) return;
-    closingRef.current = true;
-    clearTimeout(silenceTimerRef.current);
-    clearTimeout(restartTimerRef.current);
-    stop().catch(() => {});
-    close(() => {
-      setChatMorphing(false);
-      router.back();
-    });
+    close(); // 280ms animation
+    commitClose(340);
   }
 
   const isInputActive = phase === 'idle' || phase === 'listening';
 
   return (
     <View style={{ flex: 1, backgroundColor: 'transparent' }}>
-      <MorphSurface progress={progress} />
+      <MorphSurface progress={progress} pillBottom={pillBottomInset} />
 
-      <Animated.View style={[{ flex: 1 }, contentStyle]}>
-        <ChatNavBar onClose={handleClose} />
+      <GestureDetector gesture={dragGesture}>
+        <Animated.View style={[{ flex: 1 }, contentStyle]}>
+          {/* Sheet grab handle */}
+          <View style={{ position: 'absolute', top: insets.top + 6, left: 0, right: 0, alignItems: 'center', zIndex: 1 }}>
+            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: '#d8d8d8' }} />
+          </View>
 
-        {/* Conversation scroll — grows to fill available space */}
-        <View className="flex-1">
-          <ScrollView
-            ref={scrollRef}
-            className="flex-1"
-            contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 24 }}
-            showsVerticalScrollIndicator={false}
-          >
-            {messages.map(msg =>
-              msg.role === 'assistant' ? (
-                <TaisaReplyCard key={msg.id} content={msg.content} />
-              ) : (
-                <View
-                  key={msg.id}
-                  className="self-end mb-3 bg-lime-100 rounded-3 px-4 py-3 max-w-xs"
-                >
-                  <Text className="text-foreground text-base-regular">{msg.content}</Text>
+          <ChatNavBar onClose={handleClose} />
+
+          <View className="flex-1">
+            <ScrollView
+              ref={scrollRef}
+              className="flex-1"
+              contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 24 }}
+              showsVerticalScrollIndicator={false}
+              onScroll={(e) => { scrollAtTop.value = e.nativeEvent.contentOffset.y <= 2; }}
+              scrollEventThrottle={16}
+            >
+              {messages.map(msg =>
+                msg.role === 'assistant' ? (
+                  <TaisaReplyCard key={msg.id} content={msg.content} />
+                ) : (
+                  <View
+                    key={msg.id}
+                    className="self-end mb-3 bg-lime-100 rounded-3 px-4 py-3 max-w-xs"
+                  >
+                    <Text className="text-foreground text-base-regular">{msg.content}</Text>
+                  </View>
+                )
+              )}
+
+              {phase === 'processing' && (
+                <View className="items-start mb-3">
+                  <View className="bg-subtle rounded-3 px-4 py-3">
+                    <Text className="text-text-tertiary text-small-regular">Taisa is thinking…</Text>
+                  </View>
                 </View>
-              )
-            )}
+              )}
 
-            {phase === 'processing' && (
-              <View className="items-start mb-3">
-                <View className="bg-subtle rounded-3 px-4 py-3">
-                  <Text className="text-text-tertiary text-small-regular">Taisa is thinking…</Text>
+              {phase === 'error' && (
+                <View className="items-center py-4">
+                  <Text className="text-danger text-small-regular mb-3 text-center">{error}</Text>
+                  <TouchableOpacity
+                    onPress={handleRetry}
+                    className="bg-muted rounded-full px-6 py-3"
+                  >
+                    <Text className="text-foreground text-small-semibold">Try again</Text>
+                  </TouchableOpacity>
                 </View>
-              </View>
-            )}
+              )}
+            </ScrollView>
 
-            {phase === 'error' && (
-              <View className="items-center py-4">
-                <Text className="text-danger text-small-regular mb-3 text-center">{error}</Text>
+            <LinearGradient
+              colors={[BACKGROUND_TRANSPARENT, BACKGROUND_HEX]}
+              style={{
+                position: 'absolute',
+                bottom: 0, left: 0, right: 0,
+                height: 48,
+                pointerEvents: 'none',
+              }}
+            />
+          </View>
+
+          <RecordingGlow amplitude={amplitudeSV} visible={phase === 'listening'} />
+
+          {isInputActive && (
+            <View style={{ height: 200 }}>
+              <LiveTranscriptionText transcript={transcript} />
+              <View
+                className="flex-row items-center justify-between px-5"
+                style={{ paddingBottom: insets.bottom + 12 }}
+              >
+                <View className="w-10 h-10 rounded-full border border-border items-center justify-center opacity-40">
+                  <Icon name="IconKeyboard" size={20} color="#898989" />
+                </View>
                 <TouchableOpacity
-                  onPress={handleRetry}
-                  className="bg-muted rounded-full px-6 py-3"
+                  onPress={handleStop}
+                  disabled={!transcript.trim()}
+                  className="flex-row items-center gap-2 bg-background border border-border rounded-full px-4 py-2"
+                  style={{ opacity: transcript.trim() ? 1 : 0.4 }}
                 >
-                  <Text className="text-foreground text-small-semibold">Try again</Text>
+                  <Icon name="IconStopCircle" size={18} color="#060707" />
+                  <Text className="text-foreground text-small-semibold">Stop</Text>
                 </TouchableOpacity>
               </View>
-            )}
-          </ScrollView>
-
-          {/* Bottom fade mask — content fades out smoothly into the input zone */}
-          <LinearGradient
-            colors={[BACKGROUND_TRANSPARENT, BACKGROUND_HEX]}
-            style={{
-              position: 'absolute',
-              bottom: 0,
-              left: 0,
-              right: 0,
-              height: 48,
-              pointerEvents: 'none',
-            }}
-          />
-        </View>
-
-        {/* Input zone — fixed height, always visible during voice mode */}
-        {isInputActive && (
-          <View style={{ height: 200 }}>
-            {/* Transcription / prompt text — streams live via partial results */}
-            <LiveTranscriptionText transcript={transcript} />
-
-            {/* Bottom control row */}
-            <View
-              className="flex-row items-center justify-between px-5"
-              style={{ paddingBottom: insets.bottom + 12 }}
-            >
-              {/* Keyboard toggle — inactive placeholder */}
-              <View className="w-10 h-10 rounded-full border border-border items-center justify-center opacity-40">
-                <Icon name="IconKeyboard" size={20} color="#898989" />
-              </View>
-
-              {/* Stop pill — immediate submit */}
-              <TouchableOpacity
-                onPress={handleStop}
-                disabled={!transcript.trim()}
-                className="flex-row items-center gap-2 bg-background border border-border rounded-full px-4 py-2"
-                style={{ opacity: transcript.trim() ? 1 : 0.4 }}
-              >
-                <Icon name="IconStopCircle" size={18} color="#060707" />
-                <Text className="text-foreground text-small-semibold">Stop</Text>
-              </TouchableOpacity>
             </View>
-          </View>
-        )}
-
-        {/* Glow anchored to the screen bottom */}
-        <RecordingGlow amplitude={amplitudeSV} visible={phase === 'listening'} />
-      </Animated.View>
+          )}
+        </Animated.View>
+      </GestureDetector>
     </View>
   );
 }

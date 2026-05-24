@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { getDb } from '../../db/connection';
-import { callClaudeJson } from './client';
+import { callClaudeJson, MOCK_AI } from './client';
 import { buildReviewAnalystSystem, buildReviewAnalystUser } from '../../prompts/system/performanceReviewAnalyst';
 import type { CareerProfile, ReviewFeedback, Goal } from '@taisa/shared';
 
@@ -56,18 +56,20 @@ export async function analyzePerformanceReview(params: {
   ).all(userId) as any[];
   const recentJournalSummary = recentNotes.map((n: any) => n.coach_note).filter(Boolean).join(' | ');
 
-  // Call Claude
-  const result = await callClaudeJson<ReviewAnalysisResult>({
-    system: buildReviewAnalystSystem(profile),
-    userMessage: buildReviewAnalystUser({
-      reviewText,
-      reviewerContext,
-      recentThemes: recentThemes.map(t => ({ label: t.label, count: t.count })),
-      recentJournalSummary,
-    }),
-    temperature: 0.4,
-    maxTokens: 4096,
-  });
+  // Call Claude (or return mock when MOCK_AI=true)
+  const result: ReviewAnalysisResult = MOCK_AI
+    ? { extractedFeedback: {} as any, suggestedGoals: [] }
+    : await callClaudeJson<ReviewAnalysisResult>({
+        system: buildReviewAnalystSystem(profile),
+        userMessage: buildReviewAnalystUser({
+          reviewText,
+          reviewerContext,
+          recentThemes: recentThemes.map(t => ({ label: t.label, count: t.count })),
+          recentJournalSummary,
+        }),
+        temperature: 0.4,
+        maxTokens: 4096,
+      });
 
   const now = new Date().toISOString();
 

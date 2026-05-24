@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { getDb } from '../../db/connection';
-import anthropicClient, { MODEL } from './client';
+import anthropicClient, { MODEL, MOCK_AI } from './client';
 import { buildChatProcessorSystem } from '../../prompts/system/chatProcessor';
 
 interface StartSessionOptions {
@@ -95,22 +95,26 @@ export async function sendMessage(
   // Capture user message timestamp BEFORE the API call
   const userMsgTime = new Date().toISOString();
 
-  const response = await anthropicClient.messages.create({
-    model: MODEL,
-    max_tokens: 1024,
-    system,
-    messages: [
-      ...priorMessages,
-      { role: 'user', content: userMessage },
-    ],
-  });
+  let assistantReply: string;
+  if (MOCK_AI) {
+    assistantReply = '[Mock mode] Real coaching is paused — add Anthropic API credits at console.anthropic.com to activate.';
+  } else {
+    const response = await anthropicClient.messages.create({
+      model: MODEL,
+      max_tokens: 1024,
+      system,
+      messages: [
+        ...priorMessages,
+        { role: 'user', content: userMessage },
+      ],
+    });
+    const content = response.content[0];
+    if (content.type !== 'text') throw new Error('Unexpected response type from Claude');
+    assistantReply = content.text;
+  }
 
-  // Capture assistant reply timestamp AFTER the API call returns (naturally later)
+  // Capture assistant reply timestamp AFTER the call returns (naturally later)
   const assistantMsgTime = new Date().toISOString();
-
-  const content = response.content[0];
-  if (content.type !== 'text') throw new Error('Unexpected response type from Claude');
-  const assistantReply = content.text;
 
   const insertMsg = db.prepare(`INSERT INTO chat_messages (id, session_id, role, content, created_at)
     VALUES (?, ?, ?, ?, ?)`);

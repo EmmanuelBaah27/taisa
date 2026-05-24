@@ -105,10 +105,11 @@ export const useThreadStore = create<ThreadStore>((set, get) => ({
         isSending: false,
       }));
     } catch (e: any) {
+      const serverMsg = (e as any)?.response?.data?.error?.message;
       set(state => ({
         currentMessages: state.currentMessages.filter(m => m.id !== optimisticMsg.id),
         isSending: false,
-        error: e.message,
+        error: serverMsg ?? e.message,
       }));
     }
   },

@@ -4,6 +4,7 @@ import { getDb } from '../db/connection';
 import { analyzeEntry } from '../services/claude/journalAgent';
 import { startSession } from '../services/claude/chatAgent';
 import { parseAnalysisRow } from './entries';
+import { parseAnthropicError } from '../services/claude/client';
 
 const router = Router();
 
@@ -52,7 +53,8 @@ router.post('/:entryId', async (req, res) => {
     db.prepare("UPDATE journal_entries SET status = 'error', updated_at = ? WHERE id = ?")
       .run(new Date().toISOString(), req.params.entryId);
     console.error('Analysis error:', error);
-    res.status(500).json({ success: false, error: { code: 'ANALYSIS_FAILED', message: error.message } });
+    const { code, message } = parseAnthropicError(error);
+    res.status(500).json({ success: false, error: { code, message } });
   }
 });
 

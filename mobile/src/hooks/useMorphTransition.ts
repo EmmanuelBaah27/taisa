@@ -3,18 +3,22 @@ import {
   withSpring,
   withTiming,
   withDelay,
-  runOnJS,
+  Easing,
   SharedValue,
 } from 'react-native-reanimated';
 
-const SPRING_OPEN = { damping: 28, stiffness: 260 };
-const SPRING_CLOSE = { damping: 32, stiffness: 300 };
+const SPRING_OPEN = { damping: 22, stiffness: 110 };
+
+// Close: 280ms ease-in — feels decisive, no bounce.
+// Easing.bezier(0.3, 0, 1, 1) accelerates throughout, like a sheet snapping away.
+const CLOSE_DURATION = 280;
+const CLOSE_EASING = Easing.bezier(0.3, 0, 1, 1);
 
 export interface MorphTransition {
   progress: SharedValue<number>;
   contentOpacity: SharedValue<number>;
   open: () => void;
-  close: (onDone: () => void) => void;
+  close: () => void;
 }
 
 export function useMorphTransition(): MorphTransition {
@@ -26,12 +30,9 @@ export function useMorphTransition(): MorphTransition {
     contentOpacity.value = withDelay(60, withTiming(1, { duration: 180 }));
   }
 
-  function close(onDone: () => void) {
-    contentOpacity.value = withTiming(0, { duration: 140 }, () => {
-      progress.value = withSpring(0, SPRING_CLOSE, () => {
-        runOnJS(onDone)();
-      });
-    });
+  function close() {
+    contentOpacity.value = withTiming(0, { duration: 100 });
+    progress.value = withTiming(0, { duration: CLOSE_DURATION, easing: CLOSE_EASING });
   }
 
   return { progress, contentOpacity, open, close };

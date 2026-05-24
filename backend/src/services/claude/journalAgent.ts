@@ -1,8 +1,25 @@
 import { v4 as uuidv4 } from 'uuid';
 import { getDb } from '../../db/connection';
-import { callClaudeJson, MODEL } from './client';
+import { callClaudeJson, MODEL, MOCK_AI } from './client';
 import { buildJournalProcessorSystem, buildJournalProcessorUser } from '../../prompts/system/journalProcessor';
 import type { EntryAnalysis, CareerProfile } from '@taisa/shared';
+
+const MOCK_RESULT = {
+  summary: '[Mock] Entry received. Add Anthropic credits at console.anthropic.com to enable real analysis.',
+  sentiment: 'neutral' as const,
+  energyLevel: 3 as const,
+  wins: [] as any[],
+  challenges: [] as any[],
+  decisions: [] as any[],
+  actionItems: [] as any[],
+  themes: [] as any[],
+  coachNote: 'Entry saved successfully. Top up Anthropic credits at console.anthropic.com to activate AI coaching.',
+  growthAreas: [] as string[],
+  momentumSignal: 'steady' as const,
+  patternFlags: [] as any[],
+  accountabilityCallouts: [] as string[],
+  goalAssessments: [] as any[],
+};
 
 export async function analyzeEntry(entryId: string, userId: string): Promise<EntryAnalysis> {
   const db = getDb();
@@ -66,7 +83,7 @@ export async function analyzeEntry(entryId: string, userId: string): Promise<Ent
     })),
   }));
 
-  // Call Claude
+  // Call Claude (or return mock data when MOCK_AI=true)
   const system = buildJournalProcessorSystem(profile);
   const userMessage = buildJournalProcessorUser({
     transcript,
@@ -78,12 +95,14 @@ export async function analyzeEntry(entryId: string, userId: string): Promise<Ent
     activeGoals,
   });
 
-  const result = await callClaudeJson<Omit<EntryAnalysis, 'id' | 'entryId' | 'createdAt' | 'modelVersion'>>({
-    system,
-    userMessage,
-    temperature: 0.3,
-    maxTokens: 4096,
-  });
+  const result = MOCK_AI
+    ? MOCK_RESULT
+    : await callClaudeJson<Omit<EntryAnalysis, 'id' | 'entryId' | 'createdAt' | 'modelVersion'>>({
+        system,
+        userMessage,
+        temperature: 0.3,
+        maxTokens: 4096,
+      });
 
   const analysisId = uuidv4();
   const now = new Date().toISOString();

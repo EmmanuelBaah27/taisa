@@ -5,6 +5,7 @@ interface UseLiveTranscription {
   transcript: string;
   isListening: boolean;
   amplitude: number; // 0–10
+  recognizerError: string | null;
   start: () => Promise<void>;
   stop: () => Promise<void>;
   reset: () => void;
@@ -24,6 +25,7 @@ export function useLiveTranscription(): UseLiveTranscription {
   const [transcript, setTranscript] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [amplitude, setAmplitude] = useState(0);
+  const [recognizerError, setRecognizerError] = useState<string | null>(null);
   const transcriptRef = useRef('');
   const shouldRestartRef = useRef(false);
 
@@ -59,7 +61,9 @@ export function useLiveTranscription(): UseLiveTranscription {
     // Restart on transient errors (not permission/abort errors)
     const errorSub = ExpoSpeechRecognitionModule.addListener('error', (event) => {
       const nonRestartableErrors = ['aborted', 'not-allowed', 'service-not-allowed', 'busy'];
-      if (shouldRestartRef.current && !nonRestartableErrors.includes(event.error)) {
+      if (nonRestartableErrors.includes(event.error)) {
+        setRecognizerError(event.error);
+      } else if (shouldRestartRef.current) {
         setTimeout(() => {
           if (shouldRestartRef.current) {
             ExpoSpeechRecognitionModule.start(RECOGNITION_OPTIONS);
@@ -83,6 +87,9 @@ export function useLiveTranscription(): UseLiveTranscription {
   }, []);
 
   const start = useCallback(async () => {
+    const { granted } = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+    if (!granted) throw new Error('not-allowed');
+    setRecognizerError(null);
     shouldRestartRef.current = true;
     ExpoSpeechRecognitionModule.start(RECOGNITION_OPTIONS);
   }, []);
@@ -101,5 +108,5 @@ export function useLiveTranscription(): UseLiveTranscription {
     setIsListening(false);
   }, []);
 
-  return { transcript, isListening, amplitude, start, stop, reset };
+  return { transcript, isListening, amplitude, recognizerError, start, stop, reset };
 }

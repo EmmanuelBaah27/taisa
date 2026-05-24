@@ -5,9 +5,10 @@ import { useVoiceRecorder } from '../../src/hooks/useVoiceRecorder';
 import { transcribeAudio } from '../../src/services/transcription';
 import api from '../../src/services/api';
 import { colors } from '../../src/constants/theme';
+import { RecordingGlow } from '../../src/components/ui/RecordingGlow';
 
 export default function RecordingModal() {
-  const { start, stop, isRecording, duration } = useVoiceRecorder();
+  const { start, stop, isRecording, duration, amplitude } = useVoiceRecorder();
   const [phase, setPhase] = useState<'idle' | 'recording' | 'processing' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -66,7 +67,8 @@ export default function RecordingModal() {
       // Navigate to the new thread
       router.replace(`/thread/${sessionId}`);
     } catch (e: any) {
-      setError(e.message ?? 'Something went wrong. Try again.');
+      const serverMsg = (e as any)?.response?.data?.error?.message;
+      setError(serverMsg ?? e.message ?? 'Something went wrong. Try again.');
       setPhase('error');
     }
   };
@@ -77,6 +79,7 @@ export default function RecordingModal() {
 
   return (
     <View className="flex-1" style={{ backgroundColor: 'rgba(6,6,11,0.95)' }}>
+      <RecordingGlow amplitude={amplitude} visible={isRecording} />
       {/* Dismiss area at top */}
       <TouchableOpacity className="flex-1" onPress={handleClose} />
 

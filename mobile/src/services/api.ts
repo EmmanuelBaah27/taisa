@@ -3,7 +3,7 @@ import * as SecureStore from 'expo-secure-store';
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 
-const api = axios.create({ baseURL: BASE_URL, timeout: 30000 });
+const api = axios.create({ baseURL: BASE_URL, timeout: 90000 });
 
 // Inject user ID header on every request
 api.interceptors.request.use(async (config) => {
