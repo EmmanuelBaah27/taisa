@@ -8,6 +8,6 @@ interface NaviiAvatarProps {
 
 export function NaviiAvatar({ seed, size }: NaviiAvatarProps) {
   const spec = selectAvatar(seed);
-  const svg = renderAvatar({ ...spec, body: 'pear' }, { size, background: 'none' });
+  const svg = renderAvatar({ ...spec, body: 'pear', background: 'none' }, { size, paletteId: 'sky' });
   return <SvgXml xml={svg} width={size} height={size} />;
 }
