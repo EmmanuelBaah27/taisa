@@ -9,6 +9,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Icon } from './ui/Icon';
 import { colors } from '../constants/theme';
+import { useUIStore } from '../stores/uiStore';
 
 interface VoiceButtonProps {
   onPress?: () => void;
@@ -16,7 +17,12 @@ interface VoiceButtonProps {
 
 export function VoiceButton({ onPress }: VoiceButtonProps) {
   const insets = useSafeAreaInsets();
-  const handlePress = onPress ?? (() => router.push('/chat'));
+  const { chatMorphing, setChatMorphing } = useUIStore();
+
+  const handlePress = onPress ?? (() => {
+    setChatMorphing(true);
+    router.push('/chat');
+  });
 
   const scale = useSharedValue(1);
 
@@ -34,6 +40,7 @@ export function VoiceButton({ onPress }: VoiceButtonProps) {
           right: 0,
           alignItems: 'center',
           zIndex: 50,
+          opacity: chatMorphing ? 0 : 1,
         },
         animStyle,
       ]}
