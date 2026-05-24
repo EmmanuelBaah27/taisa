@@ -1,4 +1,4 @@
-import { createAvatar } from '@usenavii/core';
+import { selectAvatar, renderAvatar } from '@usenavii/core';
 import { SvgXml } from 'react-native-svg';
 
 interface NaviiAvatarProps {
@@ -7,6 +7,7 @@ interface NaviiAvatarProps {
 }
 
 export function NaviiAvatar({ seed, size }: NaviiAvatarProps) {
-  const svg = createAvatar(seed, { size, background: 'none' });
+  const spec = selectAvatar(seed);
+  const svg = renderAvatar({ ...spec, body: 'pear' }, { size, background: 'none' });
   return <SvgXml xml={svg} width={size} height={size} />;
 }
