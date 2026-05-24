@@ -47,7 +47,7 @@ half4 main(float2 fragCoord) {
   float2 refractedUV = uv + offset * 0.14 * (1.0 - length(offset) * 1.8);
   refractedUV = clamp(refractedUV, float2(0.001), float2(0.999));
 
-  float3 color = glowAt(refractedUV * iResolution, iAmplitude, iTime);
+  float3 color = glowAt(refractedUV, iAmplitude, iTime);
 
   float fade  = smoothstep(0.0, 0.70, uv.y);
   float alpha = clamp((color.r + color.g + color.b) * 1.2, 0.0, 1.0) * fade;
