@@ -14,6 +14,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Icon } from './Icon';
 import type { IconName } from './Icon';
 import { useScrollContext } from '../../contexts/ScrollContext';
+import { NaviiAvatar } from './NaviiAvatar';
+import { useCareerStore } from '../../stores/careerStore';
 
 interface NavTab {
   id: string;
@@ -30,7 +32,13 @@ const TABS: NavTab[] = [
   { id: 'you',      label: 'You',      icon: 'IconPeopleCircle', path: '/you'      },
 ];
 
-function TabButton({ tab, active, tabIndex, activeIndex }: { tab: NavTab; active: boolean; tabIndex: number; activeIndex: number }) {
+function TabButton({ tab, active, tabIndex, activeIndex, userId }: {
+  tab: NavTab;
+  active: boolean;
+  tabIndex: number;
+  activeIndex: number;
+  userId: string | null;
+}) {
   const nudgeX = useSharedValue(0);
   const scale = useSharedValue(1);
   const prevActiveIndex = useRef(-1);
@@ -67,7 +75,11 @@ function TabButton({ tab, active, tabIndex, activeIndex }: { tab: NavTab; active
         onPress={() => router.navigate(tab.path as any)}
         className={active ? 'bg-muted flex-row items-center gap-2 px-4 py-2 rounded-full' : 'p-2'}
       >
-        <Icon name={tab.icon} color={active ? '#060707' : '#898989'} />
+        {tab.id === 'you' && userId ? (
+          <NaviiAvatar seed={userId} size={22} />
+        ) : (
+          <Icon name={tab.icon} color={active ? '#060707' : '#898989'} />
+        )}
         {active && (
           <Text className="text-foreground text-base-medium">{tab.label}</Text>
         )}
@@ -97,6 +109,7 @@ export function TopNavBar() {
   }
 
   const activeIndex = TABS.findIndex((t) => isActive(t.path));
+  const userId = useCareerStore((s) => s.userId);
 
   return (
     <View className="bg-background">
@@ -105,7 +118,7 @@ export function TopNavBar() {
         style={{ paddingTop: insets.top + 12, paddingBottom: 12 }}
       >
         {TABS.map((tab, i) => (
-          <TabButton key={tab.id} tab={tab} active={isActive(tab.path)} tabIndex={i} activeIndex={activeIndex} />
+          <TabButton key={tab.id} tab={tab} active={isActive(tab.path)} tabIndex={i} activeIndex={activeIndex} userId={userId} />
         ))}
       </View>
       <Animated.View
