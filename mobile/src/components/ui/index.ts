@@ -25,3 +25,5 @@ export { LiveTranscriptionText } from './LiveTranscriptionText';
 export type { LiveTranscriptionTextProps } from './LiveTranscriptionText';
 
 export { TaisaReplyCard } from './TaisaReplyCard';
+
+export { NaviiAvatar } from './NaviiAvatar';
