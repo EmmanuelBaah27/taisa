@@ -9,10 +9,14 @@ import {
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { useLiveTranscription } from '../../src/hooks/useLiveTranscription';
+import { useMorphTransition } from '../../src/hooks/useMorphTransition';
 import { useChatStore } from '../../src/stores/chatStore';
+import { useUIStore } from '../../src/stores/uiStore';
 import {
   ChatNavBar,
+  MorphSurface,
   RecordingGlow,
   LiveTranscriptionText,
   TaisaReplyCard,
@@ -21,14 +25,22 @@ import {
 import api from '../../src/services/api';
 import type { ChatMessage } from '../../src/stores/threadStore';
 
-// Matches `background` token (#ffffff) — LinearGradient requires hex strings.
+// rgba(255,255,255,0) → #ffffff avoids the grey band that `transparent` causes on iOS
+// (transparent = rgba(0,0,0,0) which interpolates through grey to white).
 const BACKGROUND_HEX = '#ffffff';
+const BACKGROUND_TRANSPARENT = 'rgba(255,255,255,0)';
 
 type ChatPhase = 'idle' | 'listening' | 'processing' | 'responded' | 'error';
 
 export default function ChatScreen() {
   const insets = useSafeAreaInsets();
   const { activeSessionId, setActiveSessionId } = useChatStore();
+  const { setChatMorphing } = useUIStore();
+  const { progress, contentOpacity, open, close } = useMorphTransition();
+
+  const contentStyle = useAnimatedStyle(() => ({
+    opacity: contentOpacity.value,
+  }));
 
   // Ref so handleSubmit always reads the latest sessionId without a stale closure.
   const sessionIdRef = useRef<string | null>(activeSessionId);
@@ -40,7 +52,18 @@ export default function ChatScreen() {
   const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const restartTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  const { transcript, amplitude, start, stop, reset } = useLiveTranscription();
+  const { transcript, amplitude, recognizerError, start, stop, reset } = useLiveTranscription();
+  // Bridge amplitude (React state number 0–10) to a SharedValue (0–1) for RecordingGlow
+  const amplitudeSV = useSharedValue(0);
+  useEffect(() => { amplitudeSV.value = amplitude / 10; }, [amplitude]);
+
+  // Surface recognizer errors (e.g. permission denied after the screen is already open)
+  useEffect(() => {
+    if (recognizerError) {
+      setError(`Speech recognizer error: ${recognizerError}. Check microphone & speech permissions in Settings.`);
+      setPhase('error');
+    }
+  }, [recognizerError]);
 
   // Auto-scroll when messages update.
   useEffect(() => {
@@ -51,6 +74,7 @@ export default function ChatScreen() {
 
   // Load existing messages + start listening on mount.
   useEffect(() => {
+    open();
     if (activeSessionId) {
       loadSession(activeSessionId);
     } else {
@@ -172,103 +196,110 @@ export default function ChatScreen() {
     clearTimeout(silenceTimerRef.current);
     clearTimeout(restartTimerRef.current);
     stop().catch(() => {});
-    router.back();
+    close(() => {
+      setChatMorphing(false);
+      router.back();
+    });
   }
 
   const isInputActive = phase === 'idle' || phase === 'listening';
 
   return (
-    <View className="flex-1 bg-background">
-      <ChatNavBar onClose={handleClose} />
+    <View style={{ flex: 1, backgroundColor: 'transparent' }}>
+      <MorphSurface progress={progress} />
 
-      {/* Conversation scroll — grows to fill available space */}
-      <View className="flex-1">
-        <ScrollView
-          ref={scrollRef}
-          className="flex-1"
-          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 24 }}
-          showsVerticalScrollIndicator={false}
-        >
-          {messages.map(msg =>
-            msg.role === 'assistant' ? (
-              <TaisaReplyCard key={msg.id} content={msg.content} />
-            ) : (
-              <View
-                key={msg.id}
-                className="self-end mb-3 bg-lime-100 rounded-3 px-4 py-3 max-w-xs"
-              >
-                <Text className="text-foreground text-base-regular">{msg.content}</Text>
+      <Animated.View style={[{ flex: 1 }, contentStyle]}>
+        <ChatNavBar onClose={handleClose} />
+
+        {/* Conversation scroll — grows to fill available space */}
+        <View className="flex-1">
+          <ScrollView
+            ref={scrollRef}
+            className="flex-1"
+            contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 24 }}
+            showsVerticalScrollIndicator={false}
+          >
+            {messages.map(msg =>
+              msg.role === 'assistant' ? (
+                <TaisaReplyCard key={msg.id} content={msg.content} />
+              ) : (
+                <View
+                  key={msg.id}
+                  className="self-end mb-3 bg-lime-100 rounded-3 px-4 py-3 max-w-xs"
+                >
+                  <Text className="text-foreground text-base-regular">{msg.content}</Text>
+                </View>
+              )
+            )}
+
+            {phase === 'processing' && (
+              <View className="items-start mb-3">
+                <View className="bg-subtle rounded-3 px-4 py-3">
+                  <Text className="text-text-tertiary text-small-regular">Taisa is thinking…</Text>
+                </View>
               </View>
-            )
-          )}
+            )}
 
-          {phase === 'processing' && (
-            <View className="items-start mb-3">
-              <View className="bg-subtle rounded-3 px-4 py-3">
-                <Text className="text-text-tertiary text-small-regular">Taisa is thinking…</Text>
+            {phase === 'error' && (
+              <View className="items-center py-4">
+                <Text className="text-danger text-small-regular mb-3 text-center">{error}</Text>
+                <TouchableOpacity
+                  onPress={handleRetry}
+                  className="bg-muted rounded-full px-6 py-3"
+                >
+                  <Text className="text-foreground text-small-semibold">Try again</Text>
+                </TouchableOpacity>
               </View>
-            </View>
-          )}
+            )}
+          </ScrollView>
 
-          {phase === 'error' && (
-            <View className="items-center py-4">
-              <Text className="text-danger text-small-regular mb-3 text-center">{error}</Text>
+          {/* Bottom fade mask — content fades out smoothly into the input zone */}
+          <LinearGradient
+            colors={[BACKGROUND_TRANSPARENT, BACKGROUND_HEX]}
+            style={{
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: 48,
+              pointerEvents: 'none',
+            }}
+          />
+        </View>
+
+        {/* Input zone — fixed height, always visible during voice mode */}
+        {isInputActive && (
+          <View style={{ height: 200 }}>
+            {/* Transcription / prompt text — streams live via partial results */}
+            <LiveTranscriptionText transcript={transcript} />
+
+            {/* Bottom control row */}
+            <View
+              className="flex-row items-center justify-between px-5"
+              style={{ paddingBottom: insets.bottom + 12 }}
+            >
+              {/* Keyboard toggle — inactive placeholder */}
+              <View className="w-10 h-10 rounded-full border border-border items-center justify-center opacity-40">
+                <Icon name="IconKeyboard" size={20} color="#898989" />
+              </View>
+
+              {/* Stop pill — immediate submit */}
               <TouchableOpacity
-                onPress={handleRetry}
-                className="bg-muted rounded-full px-6 py-3"
+                onPress={handleStop}
+                disabled={!transcript.trim()}
+                className="flex-row items-center gap-2 bg-background border border-border rounded-full px-4 py-2"
+                style={{ opacity: transcript.trim() ? 1 : 0.4 }}
               >
-                <Text className="text-foreground text-small-semibold">Try again</Text>
+                <Icon name="IconStopCircle" size={18} color="#060707" />
+                <Text className="text-foreground text-small-semibold">Stop</Text>
               </TouchableOpacity>
             </View>
-          )}
-        </ScrollView>
-
-        {/* Bottom fade mask — content fades out smoothly into the input zone */}
-        <LinearGradient
-          colors={['transparent', BACKGROUND_HEX]}
-          style={{
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            height: 48,
-            pointerEvents: 'none',
-          }}
-        />
-      </View>
-
-      {/* Input zone — fixed height, always visible during voice mode */}
-      {isInputActive && (
-        <View style={{ height: 200 }}>
-          {/* Transcription / prompt text — streams live via partial results */}
-          <LiveTranscriptionText transcript={transcript} />
-
-          {/* Bottom control row */}
-          <View
-            className="flex-row items-center justify-between px-5"
-            style={{ paddingBottom: insets.bottom + 12 }}
-          >
-            {/* Keyboard toggle — inactive placeholder (text mode is next design session) */}
-            <View className="w-10 h-10 rounded-full border border-border items-center justify-center opacity-40">
-              <Icon name="IconKeyboard" size={20} color="#898989" />
-            </View>
-
-            {/* Stop pill — immediate submit */}
-            <TouchableOpacity
-              onPress={handleStop}
-              disabled={!transcript.trim()}
-              className="flex-row items-center gap-2 bg-background border border-border rounded-full px-4 py-2"
-              style={{ opacity: transcript.trim() ? 1 : 0.4 }}
-            >
-              <Icon name="IconStopCircle" size={18} color="#060707" />
-              <Text className="text-foreground text-small-semibold">Stop</Text>
-            </TouchableOpacity>
           </View>
-        </View>
-      )}
+        )}
 
-      {/* Amplitude-reactive glow — absolute at screen bottom */}
-      <RecordingGlow amplitude={phase === 'listening' ? amplitude : 0} />
+        {/* Glow anchored to the screen bottom */}
+        <RecordingGlow amplitude={amplitudeSV} visible={phase === 'listening'} />
+      </Animated.View>
     </View>
   );
 }
