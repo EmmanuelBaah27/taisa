@@ -21,6 +21,9 @@ export type { ChatNavBarProps } from './ChatNavBar';
 export { RecordingGlow } from './RecordingGlow';
 export type { RecordingGlowProps } from './RecordingGlow';
 
+export { CubeRefractionOverlay } from './CubeRefractionOverlay';
+export type { CubeRefractionOverlayProps } from './CubeRefractionOverlay';
+
 export { LiveTranscriptionText } from './LiveTranscriptionText';
 export type { LiveTranscriptionTextProps } from './LiveTranscriptionText';
 
