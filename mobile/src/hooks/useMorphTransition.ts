@@ -1,39 +1,35 @@
 import {
   useSharedValue,
-  withSpring,
   withTiming,
-  withDelay,
   Easing,
   SharedValue,
 } from 'react-native-reanimated';
+import { useWindowDimensions } from 'react-native';
 
-const SPRING_OPEN = { damping: 22, stiffness: 110 };
-
-// Close: 280ms ease-in — feels decisive, no bounce.
-// Easing.bezier(0.3, 0, 1, 1) accelerates throughout, like a sheet snapping away.
-const CLOSE_DURATION = 280;
+// Ease-out expo: starts fast, decelerates smoothly — no bounce.
+const OPEN_EASING = Easing.bezier(0.22, 1, 0.36, 1);
+const OPEN_DURATION = 380;
 const CLOSE_EASING = Easing.bezier(0.3, 0, 1, 1);
+const CLOSE_DURATION = 300;
 
-export interface MorphTransition {
-  progress: SharedValue<number>;
-  contentOpacity: SharedValue<number>;
+export interface SlideTransition {
+  translateY: SharedValue<number>;
   open: () => void;
   close: () => void;
 }
 
-export function useMorphTransition(): MorphTransition {
-  const progress = useSharedValue(0);
-  const contentOpacity = useSharedValue(0);
+export function useMorphTransition(): SlideTransition {
+  const { height: screenH } = useWindowDimensions();
+  const translateY = useSharedValue(screenH);
 
   function open() {
-    progress.value = withSpring(1, SPRING_OPEN);
-    contentOpacity.value = withDelay(60, withTiming(1, { duration: 180 }));
+    translateY.value = screenH;
+    translateY.value = withTiming(0, { duration: OPEN_DURATION, easing: OPEN_EASING });
   }
 
   function close() {
-    contentOpacity.value = withTiming(0, { duration: 100 });
-    progress.value = withTiming(0, { duration: CLOSE_DURATION, easing: CLOSE_EASING });
+    translateY.value = withTiming(screenH, { duration: CLOSE_DURATION, easing: CLOSE_EASING });
   }
 
-  return { progress, contentOpacity, open, close };
+  return { translateY, open, close };
 }

@@ -34,4 +34,3 @@ export { TaisaReplyCard } from './TaisaReplyCard';
 
 export { NaviiAvatar } from './NaviiAvatar';
 
-export { MorphSurface } from './MorphSurface';

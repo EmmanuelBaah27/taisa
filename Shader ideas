@@ -1,0 +1,56 @@
+//[CONVERT] GLSL
+void main() {
+    // SPDX-License-Identifier: CC-BY-4.0
+    // Copyright (c) 2026 @Xor
+    //[LICENSE] https://creativecommons.org/licenses/by/4.0/
+    // I like this for the colour blend
+    
+    vec2 p= vec2((gl_FragCoord.xy*2.0-u_resolution)/u_resolution.y/.6);
+    float l = length(p)-1.0; float a = atan(p.y, p.x);
+    fragColor=tanh((cos(p.x+u_time/2.0+vec4(1.0, 2.0, 3.0, 0.0))+1.5)*max(.2/l, -.02-.02/l)/(2.0+cos(a*8.0+cos(a*5.0+u_time))*sin(a*4.0-u_time)));
+}
+
+void main()
+{
+    //I like this for how fast it feels. i feel like it should be this responsive to voice
+
+    fragColor = vec4(0.0);
+    for(float i, z, d, j; i++ < 5e1; fragColor += (sin(z / 3.0 + vec4(7, 2, 3, 0)) + 1.1) / d)
+    {
+        vec3 p = z * normalize(gl_FragCoord.rgb * 2.0 - vec3(u_resolution, 1.0).xyy);
+        p.z += 5.0 + cos(u_time);
+        p.xz *= mat2(cos(u_time+p.y * 0.5 + vec4(0, 33, 11, 0))) / max(p.y * 0.1 + 1.0, 0.1);
+        for(j = 2.0; j < 15.0; j /= 0.6)
+        {
+            p += cos((p.yzx - vec3(u_time, 0, 0) / 0.1) * j + u_time) / j;
+        }
+        z += d = 0.01 + abs(length(p.xz) + p.y * 0.3 - 0.5) / 7.0;
+    }
+    fragColor = tanh(fragColor / 1e3);
+}
+
+void main()
+{
+    // I like the smoke effect of the particles here. It's probably how I'd want the waves to look
+    fragColor = vec4(0.0);
+    for(float i, z, d; i++ < 1e2; fragColor += vec4(z / 7.0, 2, 3, 1) / d)
+    {
+        vec3 p = z * normalize(gl_FragCoord.rgb * 2.0 - vec3(u_resolution, 1.0).xyy);
+        p.z -= 5.0 * u_time;
+        p.xy *= mat2(cos(z * 0.1 + u_time * 0.1 + vec4(0, 33, 11, 0)));
+        for(d = 1.0; d < 9.0; d /= 0.7)
+        p += cos(p.yzx * d + u_time) / d;
+        z += d = 0.02 + abs(2.0 - dot(cos(p), sin(p.yzx * 0.6))) / 8.0;
+    }
+    fragColor = tanh(fragColor * fragColor / 1e7);
+}
+
+void main() {
+    // this is a really good visual of how the elements should look.
+    fragColor = vec4(0.0);
+    for(float i,z,d,s;i++<1e2;fragColor+=vec4(z,4,1,1)/d)
+    {vec3 p=z*normalize(gl_FragCoord.rgb*2.-vec3(u_resolution,1.).xyy),a;p.z+=9.;s=length(a=mix(dot(a+=.57,p)*a,p,cos(s-=u_time))-sin(s)*cross(a,p));
+    for(d=1.;d++<9.;a+=sin(a*d-u_time).yzx/d);
+    z+=d=length(sin(a-u_time)+.7)*length(p.xy-p.z)/4e1;}
+    fragColor=tanh(fragColor/2e4);
+}

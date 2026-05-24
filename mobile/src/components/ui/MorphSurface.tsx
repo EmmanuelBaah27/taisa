@@ -1,6 +1,7 @@
 import Animated, {
   useAnimatedStyle,
   interpolate,
+  interpolateColor,
   SharedValue,
 } from 'react-native-reanimated';
 import { useWindowDimensions } from 'react-native';
@@ -14,6 +15,11 @@ const PILL_W = 112;
 const PILL_H = 56;
 const PILL_RADIUS = 48;
 
+// Must match VoiceButton's backgroundColor exactly so the morph looks like
+// the button itself expanding.
+const BUTTON_COLOR = '#cdec1a';
+const SCREEN_COLOR = '#ffffff';
+
 interface MorphSurfaceProps {
   progress: SharedValue<number>;
   // Distance from screen bottom to the pill's bottom edge.
@@ -24,16 +30,13 @@ interface MorphSurfaceProps {
 export function MorphSurface({ progress, pillBottom }: MorphSurfaceProps) {
   const { width: screenW, height: screenH } = useWindowDimensions();
 
-  // Scale factors: shrink the full-screen element down to pill size at progress=0
   const scaleX0 = PILL_W / screenW;
   const scaleY0 = PILL_H / screenH;
 
-  // Pill center Y in screen coords (from top). Translate from screen center to pill center.
   const pillCenterY = screenH - pillBottom - PILL_H / 2;
   const translateY0 = pillCenterY - screenH / 2;
 
   // Border radius in element-space so visual radius ≈ PILL_RADIUS at progress=0.
-  // Visual radius = borderRadius * scale, so borderRadius = PILL_RADIUS / scaleX0.
   // At progress=1 use 1 (NOT 0) — animating layout values to 0 triggers a Fabric flicker bug.
   const borderRadius0 = PILL_RADIUS / scaleX0;
 
@@ -43,23 +46,21 @@ export function MorphSurface({ progress, pillBottom }: MorphSurfaceProps) {
     const ty = interpolate(progress.value, [0, 1], [translateY0, 0]);
     const br = interpolate(progress.value, [0, 1], [borderRadius0, 1]);
 
+    // Transition from button colour → screen colour in the first 30% of the open
+    // (and back in the last 30% of the close) so the morph looks like the button itself expanding.
+    const bg = interpolateColor(progress.value, [0, 0.3], [BUTTON_COLOR, SCREEN_COLOR]);
+
     return {
       transform: [{ translateY: ty }, { scaleX: sx }, { scaleY: sy }],
       borderRadius: br,
+      backgroundColor: bg,
     };
   });
 
   return (
     <Animated.View
       style={[
-        {
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: '#ffffff',
-        },
+        { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
         animatedStyle,
       ]}
       pointerEvents="none"

@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Taisa · Glow Shader Playground</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100%; background: #060707; overflow: hidden; }
+body { display: flex; font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace; }
+
+#canvas-wrap { flex: 1; position: relative; min-width: 0; overflow: hidden; }
+canvas { width: 100%; height: 100%; display: block; }
+
+/* On-screen error overlay */
+#error-overlay {
+  display: none;
+  position: absolute;
+  inset: 0;
+  background: rgba(6,7,7,0.95);
+  padding: 32px;
+  overflow: auto;
+  color: #ff4444;
+  font-size: 11px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+}
+#error-overlay.visible { display: block; }
+
+#panel {
+  width: 288px;
+  min-width: 288px;
+  height: 100vh;
+  background: rgba(6,7,7,0.97);
+  border-left: 1px solid rgba(205,236,26,0.1);
+  overflow-y: auto;
+  padding: 16px 14px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(205,236,26,0.15) transparent;
+}
+
+.panel-title {
+  font-size: 8.5px;
+  letter-spacing: 0.22em;
+  color: #cdec1a;
+  font-weight: 700;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(205,236,26,0.12);
+}
+
+.section-label {
+  font-size: 7.5px;
+  letter-spacing: 0.18em;
+  color: rgba(205,236,26,0.32);
+  text-transform: uppercase;
+  margin-bottom: 9px;
+}
+
+.ctrl { display: flex; flex-direction: column; gap: 4px; margin-bottom: 9px; }
+.ctrl:last-child { margin-bottom: 0; }
+.ctrl-row { display: flex; justify-content: space-between; align-items: baseline; }
+.ctrl-name { font-size: 9.5px; color: rgba(255,255,255,0.6); }
+.ctrl-val { font-size: 9.5px; color: #cdec1a; font-weight: 700; font-variant-numeric: tabular-nums; min-width: 40px; text-align: right; }
+.ctrl-desc { font-size: 7.5px; color: rgba(255,255,255,0.18); margin-top: 1px; }
+
+input[type=range] {
+  width: 100%; -webkit-appearance: none; appearance: none;
+  height: 1.5px; background: rgba(255,255,255,0.07); border-radius: 1px; outline: none; cursor: pointer;
+}
+input[type=range]:hover { background: rgba(205,236,26,0.15); }
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 9px; height: 9px; border-radius: 50%;
+  background: #cdec1a; cursor: pointer; box-shadow: 0 0 5px rgba(205,236,26,0.45);
+}
+
+.voice-wrap {
+  background: rgba(205,236,26,0.025);
+  border: 1px solid rgba(205,236,26,0.1);
+  border-radius: 7px; padding: 12px 11px 10px;
+}
+.voice-wrap input[type=range] { height: 2px; background: rgba(205,236,26,0.15); }
+.voice-wrap input[type=range]::-webkit-slider-thumb { width: 13px; height: 13px; box-shadow: 0 0 9px rgba(205,236,26,0.65); }
+.voice-hint { font-size: 7.5px; color: rgba(205,236,26,0.28); margin-top: 5px; }
+
+.divider { height: 1px; background: rgba(255,255,255,0.035); }
+
+#fps { font-size: 7.5px; color: rgba(255,255,255,0.12); text-align: right; }
+
+.export-btn {
+  width: 100%; padding: 10px; background: #cdec1a; color: #060707;
+  border: none; border-radius: 5px; font-size: 8.5px; font-weight: 800;
+  letter-spacing: 0.13em; text-transform: uppercase; cursor: pointer;
+  font-family: inherit; transition: opacity 0.12s;
+}
+.export-btn:hover { opacity: 0.85; }
+
+#modal {
+  display: none; position: fixed; inset: 0; background: rgba(6,7,7,0.97);
+  z-index: 100; flex-direction: column; gap: 12px; padding: 28px 32px;
+}
+#modal.open { display: flex; }
+.modal-bar { display: flex; justify-content: space-between; align-items: center; }
+.modal-tag { font-size: 8.5px; letter-spacing: 0.17em; color: #cdec1a; font-weight: 700; }
+.modal-actions { display: flex; gap: 8px; }
+.btn-copy, .btn-close {
+  font-size: 8.5px; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-family: inherit; font-weight: 600;
+}
+.btn-copy { background: rgba(205,236,26,0.08); border: 1px solid rgba(205,236,26,0.22); color: #cdec1a; }
+.btn-close { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.09); color: rgba(255,255,255,0.45); }
+pre#sksl-out {
+  flex: 1; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 7px; padding: 18px 20px; font-size: 10px; color: rgba(255,255,255,0.75);
+  line-height: 1.7; overflow: auto; white-space: pre;
+}
+</style>
+</head>
+<body>
+
+<div id="canvas-wrap">
+  <canvas id="c"></canvas>
+  <div id="error-overlay"></div>
+</div>
+
+<div id="panel">
+  <div class="panel-title">TAISA GLOW · SHADER PLAYGROUND</div>
+
+  <!-- VOICE -->
+  <div class="voice-wrap">
+    <div class="section-label">Voice Input</div>
+    <div class="ctrl">
+      <div class="ctrl-row"><span class="ctrl-name">Amplitude</span><span class="ctrl-val" id="v-amp">0.00</span></div>
+      <input type="range" id="s-amp" min="0" max="1" step="0.01" value="0">
+      <div class="voice-hint">Drag to simulate voice →</div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- MOTION -->
+  <div>
+    <div class="section-label">Motion</div>
+    <div class="ctrl">
+      <div class="ctrl-row"><span class="ctrl-name">Speed</span><span class="ctrl-val" id="v-speed">0.35</span></div>
+      <input type="range" id="s-speed" min="0.01" max="3" step="0.01" value="0.35">
+    </div>
+    <div class="ctrl">
+      <div class="ctrl-row"><span class="ctrl-name">Camera Depth</span><span class="ctrl-val" id="v-depth">9.00</span></div>
+      <input type="range" id="s-depth" min="2" max="25" step="0.5" value="9">
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- WAVE STRUCTURE -->
+  <div>
+    <div class="section-label">Wave Structure</div>
+    <div class="ctrl">
+      <div class="ctrl-row"><span class="ctrl-name">Iterations</span><span class="ctrl-val" id="v-iters">80</span></div>
+      <input type="range" id="s-iters" min="10" max="120" step="1" value="80">
+      <div class="ctrl-desc">More = richer, heavier</div>
+    </div>
+    <div class="ctrl">
+      <div class="ctrl-row"><span class="ctrl-name">Twist Seed</span><span class="ctrl-val" id="v-warpSeed">0.57</span></div>
+      <input type="range" id="s-warpSeed" min="0.05" max="2.5" step="0.01" value="0.57">
+      <div class="ctrl-desc">Initial wave geometry</div>
+    </div>
+    <div class="ctrl">
+      <div class="ctrl-row"><span class="ctrl-name">Wave Offset</span><span class="ctrl-val" id="v-waveOff">0.70</span></div>
+      <input type="range" id="s-waveOff" min="0.0" max="1.3" step="0.01" value="0.7">
+      <div class="ctrl-desc">Where lines form — lower = denser</div>
+    </div>
+    <div class="ctrl">
+      <div class="ctrl-row"><span class="ctrl-name">Wave Scale</span><span class="ctrl-val" id="v-waveScale">40.0</span></div>
+      <input type="range" id="s-waveScale" min="5" max="120" step="1" value="40">
+      <div class="ctrl-desc">Step size — lower = tighter lines</div>
+    </div>
+    <div class="ctrl">
+      <div class="ctrl-row"><span class="ctrl-name">Intertwine</span><span class="ctrl-val" id="v-intertwine">0.55</span></div>
+      <input type="range" id="s-intertwine" min="0" max="1" step="0.01" value="0.55">
+      <div class="ctrl-desc">Second wave family blend</div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- COLOUR -->
+  <div>
+    <div class="section-label">Colour</div>
+    <div class="ctrl">
+      <div class="ctrl-row"><span class="ctrl-name">Hue Shift</span><span class="ctrl-val" id="v-hueShift">0.00</span></div>
+      <input type="range" id="s-hueShift" min="0" max="6.28" step="0.01" value="0">
+    </div>
+    <div class="ctrl">
+      <div class="ctrl-row"><span class="ctrl-name">Lime Blend</span><span class="ctrl-val" id="v-limeBlend">0.55</span></div>
+      <input type="range" id="s-limeBlend" min="0" max="1" step="0.01" value="0.55">
+    </div>
+    <div class="ctrl">
+      <div class="ctrl-row"><span class="ctrl-name">Brightness</span><span class="ctrl-val" id="v-brightness">8.00</span></div>
+      <input type="range" id="s-brightness" min="0.5" max="50" step="0.5" value="8">
+      <div class="ctrl-desc">Scale colour per ray step</div>
+    </div>
+    <div class="ctrl">
+      <div class="ctrl-row"><span class="ctrl-name">Tonemap (10^x)</span><span class="ctrl-val" id="v-tonemap">4.30</span></div>
+      <input type="range" id="s-tonemap" min="2" max="7" step="0.05" value="4.3">
+      <div class="ctrl-desc">Linear divide — lower = brighter overall</div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- VOICE SENSITIVITY -->
+  <div>
+    <div class="section-label">Voice Sensitivity</div>
+    <div class="ctrl">
+      <div class="ctrl-row"><span class="ctrl-name">Amp → Brightness</span><span class="ctrl-val" id="v-ampBright">1.50</span></div>
+      <input type="range" id="s-ampBright" min="0" max="5" step="0.05" value="1.5">
+    </div>
+    <div class="ctrl">
+      <div class="ctrl-row"><span class="ctrl-name">Amp → Wave Pos</span><span class="ctrl-val" id="v-ampWave">0.15</span></div>
+      <input type="range" id="s-ampWave" min="0" max="0.6" step="0.01" value="0.15">
+      <div class="ctrl-desc">Voice shifts line position</div>
+    </div>
+    <div class="ctrl">
+      <div class="ctrl-row"><span class="ctrl-name">Amp → Speed</span><span class="ctrl-val" id="v-ampSpeed">0.40</span></div>
+      <input type="range" id="s-ampSpeed" min="0" max="2" step="0.01" value="0.4">
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div id="fps">-- fps</div>
+  <button class="export-btn" id="btn-export">Export SkSL for React Native Skia</button>
+</div>
+
+<div id="modal">
+  <div class="modal-bar">
+    <span class="modal-tag">SKSL · REACT NATIVE SKIA · RecordingGlow.tsx</span>
+    <div class="modal-actions">
+      <button class="btn-copy" id="btn-copy">Copy</button>
+      <button class="btn-close" id="btn-close">Close</button>
+    </div>
+  </div>
+  <pre id="sksl-out"></pre>
+</div>
+
+<script>
+// ─── Error display ────────────────────────────────────────────────────────────
+
+const errEl = document.getElementById('error-overlay');
+function showError(msg) {
+  errEl.textContent = 'SHADER ERROR\n\n' + msg;
+  errEl.classList.add('visible');
+}
+
+// ─── Vertex ──────────────────────────────────────────────────────────────────
+
+const VERT = `#version 300 es
+in vec2 a_pos;
+void main() { gl_Position = vec4(a_pos, 0.0, 1.0); }`;
+
+// ─── Fragment ────────────────────────────────────────────────────────────────
+// Direct translation of Shader 4 ("Shader ideas" Ref 4) with tuning uniforms:
+//
+//   Core mechanic: the wave line appears wherever sin(a−t) ≈ −waveOffset.
+//   `a` is warped through 8 integer-frequency sin octaves, creating
+//   non-planar, intertwining level sets — the lines you see.
+//
+//   `s` persists across march steps and accumulates a twist phase,
+//   breaking the uniformity of the wave geometry across depth.
+//
+//   Tonemap: linear tanh(col * brightness / 10^tonemap)
+//   matching Shader 4's original tanh(fragColor / 2e4).
+
+const FRAG = `#version 300 es
+precision highp float;
+
+uniform vec2  u_res;
+uniform float u_time;
+uniform float u_amp;
+uniform float u_speed;
+uniform float u_depth;
+uniform float u_iters;
+uniform float u_warpSeed;
+uniform float u_waveOff;
+uniform float u_waveScale;
+uniform float u_intertwine;
+uniform float u_hueShift;
+uniform float u_limeBlend;
+uniform float u_brightness;
+uniform float u_tonemap;
+uniform float u_ampBright;
+uniform float u_ampWave;
+uniform float u_ampSpeed;
+
+out vec4 fragColor;
+
+vec3 neonColor(float z, float amp) {
+  vec3 lime   = vec3(0.804, 0.925, 0.102);
+  vec3 violet = vec3(0.482, 0.102, 0.925);
+  vec3 cyan   = vec3(0.102, 0.925, 0.804);
+  float h = z * 0.13 + u_hueShift;
+  vec3 c = mix(lime, violet, clamp(sin(h) * 0.5 + 0.5, 0.0, 1.0));
+  c = mix(c, cyan,   clamp(sin(h * 1.7 + 2.1) * 0.5 + 0.5, 0.0, 1.0));
+  c = mix(c, lime, u_limeBlend * 0.6);
+  return c * (1.0 + amp * u_ampBright);
+}
+
+void main() {
+  fragColor = vec4(0.0);
+  float amp = u_amp;
+  float t   = u_time * u_speed * (1.0 + amp * u_ampSpeed);
+  float s   = 0.0;
+  float z   = 0.0;
+  int   N   = int(clamp(u_iters, 10.0, 120.0));
+
+  vec3 rd = normalize(vec3(gl_FragCoord.xy * 2.0 - u_res, u_res.y));
+
+  for (int i = 0; i < 120; i++) {
+    if (i >= N) break;
+
+    vec3 p = z * rd;
+    p.z += u_depth;
+
+    // Shader 4: persistent twist accumulator
+    vec3 a = vec3(u_warpSeed);
+    s -= t;
+    a = mix(dot(a, p) * a, p, cos(s)) - sin(s) * cross(a, p);
+    s = length(a);
+
+    // Shader 4: 8 integer-frequency warp octaves (k = 2..9, exact match)
+    for (float k = 2.0; k <= 9.0; k += 1.0) {
+      a += sin(a * k - t).yzx / k;
+    }
+
+    // Wave line distance — collapses where sin(a−t) ≈ −waveOffset
+    float wOff = u_waveOff + amp * u_ampWave;
+    float d1 = length(sin(a - t) + wOff)          * length(p.xy - vec2(p.z)) / u_waveScale;
+    float d2 = length(sin(a * 1.31 - t * 0.79) + wOff) * length(p.yz - vec2(p.x)) / u_waveScale;
+    float d  = mix(d1, min(d1, d2), u_intertwine);
+    d = max(d, 0.001);
+    z += d;
+
+    fragColor += vec4(neonColor(z, amp), 1.0) / d;
+  }
+
+  // Linear tonemap — matches Shader 4's tanh(fragColor / 2e4)
+  float divisor = pow(10.0, u_tonemap);
+  fragColor = tanh(fragColor * u_brightness / divisor);
+}`;
+
+// ─── WebGL setup ─────────────────────────────────────────────────────────────
+
+const canvas = document.getElementById('c');
+const gl = canvas.getContext('webgl2');
+
+if (!gl) {
+  showError('WebGL 2 not supported.\nOpen this file in Chrome or Firefox (not Safari).');
+  throw new Error('no webgl2');
+}
+
+function compileShader(src, type) {
+  const s = gl.createShader(type);
+  gl.shaderSource(s, src);
+  gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+    const log = gl.getShaderInfoLog(s);
+    showError(log);
+    throw new Error(log);
+  }
+  return s;
+}
+
+let prog;
+try {
+  prog = gl.createProgram();
+  gl.attachShader(prog, compileShader(VERT, gl.VERTEX_SHADER));
+  gl.attachShader(prog, compileShader(FRAG, gl.FRAGMENT_SHADER));
+  gl.linkProgram(prog);
+  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
+    const log = gl.getProgramInfoLog(prog);
+    showError(log);
+    throw new Error(log);
+  }
+} catch(e) { throw e; }
+
+const vao = gl.createVertexArray();
+gl.bindVertexArray(vao);
+const buf = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
+const posLoc = gl.getAttribLocation(prog, 'a_pos');
+gl.enableVertexAttribArray(posLoc);
+gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
+
+const U = {};
+[
+  'u_res','u_time','u_amp',
+  'u_speed','u_depth',
+  'u_iters','u_warpSeed','u_waveOff','u_waveScale','u_intertwine',
+  'u_hueShift','u_limeBlend','u_brightness','u_tonemap',
+  'u_ampBright','u_ampWave','u_ampSpeed',
+].forEach(n => { U[n] = gl.getUniformLocation(prog, n); });
+
+// ─── State ───────────────────────────────────────────────────────────────────
+
+const S = {
+  amp: 0,
+  speed: 0.35,
+  depth: 9.0,
+  iters: 80,
+  warpSeed: 0.57,
+  waveOff: 0.7,
+  waveScale: 40.0,
+  intertwine: 0.55,
+  hueShift: 0.0,
+  limeBlend: 0.55,
+  brightness: 8.0,
+  tonemap: 4.3,
+  ampBright: 1.5,
+  ampWave: 0.15,
+  ampSpeed: 0.4,
+};
+
+[
+  { k:'amp',         d:2 },
+  { k:'speed',       d:2 },
+  { k:'depth',       d:2 },
+  { k:'iters',       d:0 },
+  { k:'warpSeed',    d:2 },
+  { k:'waveOff',     d:2 },
+  { k:'waveScale',   d:1 },
+  { k:'intertwine',  d:2 },
+  { k:'hueShift',    d:2 },
+  { k:'limeBlend',   d:2 },
+  { k:'brightness',  d:2 },
+  { k:'tonemap',     d:2 },
+  { k:'ampBright',   d:2 },
+  { k:'ampWave',     d:2 },
+  { k:'ampSpeed',    d:2 },
+].forEach(({ k, d }) => {
+  const sl = document.getElementById(`s-${k}`);
+  const vl = document.getElementById(`v-${k}`);
+  sl.addEventListener('input', () => {
+    S[k] = parseFloat(sl.value);
+    vl.textContent = S[k].toFixed(d);
+  });
+});
+
+// ─── Render loop ─────────────────────────────────────────────────────────────
+
+const t0 = performance.now();
+let frames = 0, fpsAt = t0;
+
+function resize() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const w = Math.floor(canvas.clientWidth  * dpr);
+  const h = Math.floor(canvas.clientHeight * dpr);
+  if (canvas.width !== w || canvas.height !== h) {
+    canvas.width = w; canvas.height = h;
+    gl.viewport(0, 0, w, h);
+  }
+}
+
+function render() {
+  resize();
+  const now = performance.now();
+  const t = (now - t0) / 1000;
+
+  gl.useProgram(prog);
+  gl.bindVertexArray(vao);
+
+  gl.uniform2f(U.u_res,        canvas.width, canvas.height);
+  gl.uniform1f(U.u_time,       t);
+  gl.uniform1f(U.u_amp,        S.amp);
+  gl.uniform1f(U.u_speed,      S.speed);
+  gl.uniform1f(U.u_depth,      S.depth);
+  gl.uniform1f(U.u_iters,      S.iters);
+  gl.uniform1f(U.u_warpSeed,   S.warpSeed);
+  gl.uniform1f(U.u_waveOff,    S.waveOff);
+  gl.uniform1f(U.u_waveScale,  S.waveScale);
+  gl.uniform1f(U.u_intertwine, S.intertwine);
+  gl.uniform1f(U.u_hueShift,   S.hueShift);
+  gl.uniform1f(U.u_limeBlend,  S.limeBlend);
+  gl.uniform1f(U.u_brightness, S.brightness);
+  gl.uniform1f(U.u_tonemap,    S.tonemap);
+  gl.uniform1f(U.u_ampBright,  S.ampBright);
+  gl.uniform1f(U.u_ampWave,    S.ampWave);
+  gl.uniform1f(U.u_ampSpeed,   S.ampSpeed);
+
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+  frames++;
+  const elapsed = now - fpsAt;
+  if (elapsed >= 1000) {
+    document.getElementById('fps').textContent =
+      `${Math.round(frames * 1000 / elapsed)} fps · WebGL 2 · Metal on device`;
+    frames = 0; fpsAt = now;
+  }
+
+  requestAnimationFrame(render);
+}
+
+render();
+
+// ─── SkSL Export ─────────────────────────────────────────────────────────────
+
+function genSkSL() {
+  const s = S;
+  const N = Math.round(s.iters);
+  return `// RecordingGlow.sksl — from Taisa Glow Playground
+// Paste into Skia.RuntimeEffect.Make(\`...\`) in RecordingGlow.tsx
+//
+// Runtime uniforms (Reanimated useDerivedValue):
+//   iResolution — [width, height]
+//   iTime       — monotonic clock
+//   iAmplitude  — 0–1 from audio metering
+
+uniform float2 iResolution;
+uniform float  iTime;
+uniform float  iAmplitude;
+
+// ── Baked tuning ──────────────────────────────────────────────────────────────
+const float SPEED       = ${s.speed.toFixed(3)};
+const float DEPTH       = ${s.depth.toFixed(2)};
+const float WARP_SEED   = ${s.warpSeed.toFixed(3)};
+const float WAVE_OFF    = ${s.waveOff.toFixed(3)};
+const float WAVE_SCALE  = ${s.waveScale.toFixed(1)};
+const float INTERTWINE  = ${s.intertwine.toFixed(3)};
+const float HUE_SHIFT   = ${s.hueShift.toFixed(3)};
+const float LIME_BLEND  = ${(s.limeBlend * 0.6).toFixed(3)};
+const float BRIGHTNESS  = ${s.brightness.toFixed(2)};
+const float TONEMAP_EXP = ${s.tonemap.toFixed(2)};
+const float AMP_BRIGHT  = ${s.ampBright.toFixed(3)};
+const float AMP_WAVE    = ${s.ampWave.toFixed(3)};
+const float AMP_SPEED   = ${s.ampSpeed.toFixed(3)};
+
+float3 neonColor(float z, float amp) {
+  float3 lime   = float3(0.804, 0.925, 0.102);
+  float3 violet = float3(0.482, 0.102, 0.925);
+  float3 cyan   = float3(0.102, 0.925, 0.804);
+  float h = z * 0.13 + HUE_SHIFT;
+  float3 c = mix(lime, violet, clamp(sin(h) * 0.5 + 0.5, 0.0, 1.0));
+  c = mix(c, cyan, clamp(sin(h * 1.7 + 2.1) * 0.5 + 0.5, 0.0, 1.0));
+  c = mix(c, lime, LIME_BLEND);
+  return c * (1.0 + amp * AMP_BRIGHT);
+}
+
+half4 main(float2 fragCoord) {
+  float3 col = float3(0.0);
+  float amp = iAmplitude;
+  float t   = iTime * SPEED * (1.0 + amp * AMP_SPEED);
+  float s   = 0.0;
+  float z   = 0.0;
+
+  float3 rd = normalize(float3(fragCoord * 2.0 - iResolution, iResolution.y));
+
+  for (int i = 0; i < ${N}; i++) {
+    float3 p = z * rd;
+    p.z += DEPTH;
+
+    float3 a = float3(WARP_SEED);
+    s -= t;
+    a = mix(dot(a, p) * a, p, cos(s)) - sin(s) * cross(a, p);
+    s = length(a);
+
+    for (float k = 2.0; k <= 9.0; k += 1.0) {
+      a += sin(a * k - t).yzx / k;
+    }
+
+    float wOff = WAVE_OFF + amp * AMP_WAVE;
+    float d1 = length(sin(a - t) + wOff)               * length(p.xy - float2(p.z)) / WAVE_SCALE;
+    float d2 = length(sin(a * 1.31 - t * 0.79) + wOff) * length(p.yz - float2(p.x)) / WAVE_SCALE;
+    float d  = mix(d1, min(d1, d2), INTERTWINE);
+    d = max(d, 0.001);
+    z += d;
+
+    col += neonColor(z, amp) / d;
+  }
+
+  float divisor = pow(10.0, TONEMAP_EXP);
+  float3 lin = col * BRIGHTNESS / divisor;
+  half3  rgb = half3(tanh(lin));
+
+  float peak  = max(lin.r, max(lin.g, lin.b));
+  float alpha = smoothstep(0.0, 0.8, peak);
+
+  return half4(rgb * alpha, alpha);
+}`;
+}
+
+document.getElementById('btn-export').addEventListener('click', () => {
+  document.getElementById('sksl-out').textContent = genSkSL();
+  document.getElementById('modal').classList.add('open');
+});
+document.getElementById('btn-close').addEventListener('click', () => {
+  document.getElementById('modal').classList.remove('open');
+});
+document.getElementById('btn-copy').addEventListener('click', () => {
+  navigator.clipboard.writeText(document.getElementById('sksl-out').textContent).then(() => {
+    const b = document.getElementById('btn-copy');
+    b.textContent = 'Copied!';
+    setTimeout(() => { b.textContent = 'Copy'; }, 2000);
+  });
+});
+</script>
+</body>
+</html>

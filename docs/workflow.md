@@ -9,7 +9,9 @@ Claude maintains the Active Work table — Baah never needs to update it.
 
 | Feature | Track | Stage | Branch | Blocked on |
 |---|---|---|---|---|
-| Persistent input bar + Chat UI | Platform + Product | Build | feature/persistent-input-bar | — |
+| Voice Button Morph Transition | Product | Build | feature/persistent-input-bar | — |
+| Glow Dev Tool | Product | Build | feature/persistent-input-bar | — |
+| Navii Avatar | Product | Plan Approved | feature/persistent-input-bar | — |
 
 ---
 
