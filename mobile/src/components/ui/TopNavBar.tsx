@@ -76,7 +76,9 @@ function TabButton({ tab, active, tabIndex, activeIndex, userId }: {
         className={active ? 'bg-muted flex-row items-center gap-2 px-4 py-2 rounded-full' : 'p-2'}
       >
         {tab.id === 'you' && userId ? (
-          <NaviiAvatar seed={userId} size={32} />
+          <View style={{ width: 24, height: 24, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+            <NaviiAvatar seed={userId} size={32} />
+          </View>
         ) : (
           <Icon name={tab.icon} color={active ? '#060707' : '#898989'} />
         )}
