@@ -51,6 +51,7 @@ export default function ChatScreen() {
   const scrollRef = useRef<ScrollView>(null);
   const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const restartTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const closingRef = useRef(false);
 
   const { transcript, amplitude, recognizerError, start, stop, reset } = useLiveTranscription();
   // Bridge amplitude (React state number 0–10) to a SharedValue (0–1) for RecordingGlow
@@ -83,6 +84,8 @@ export default function ChatScreen() {
     return () => {
       clearTimeout(silenceTimerRef.current);
       clearTimeout(restartTimerRef.current);
+      stop().catch(() => {});
+      setChatMorphing(false);
     };
   }, []);
 
@@ -193,6 +196,8 @@ export default function ChatScreen() {
   }
 
   function handleClose() {
+    if (closingRef.current) return;
+    closingRef.current = true;
     clearTimeout(silenceTimerRef.current);
     clearTimeout(restartTimerRef.current);
     stop().catch(() => {});

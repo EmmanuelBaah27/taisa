@@ -33,5 +33,5 @@ export function MorphSurface({ progress }: MorphSurfaceProps) {
     left: interpolate(progress.value, [0, 1], [(screenW - PILL_W) / 2, 0]),
   }));
 
-  return <Animated.View style={style} />;
+  return <Animated.View style={style} pointerEvents="none" />;
 }
