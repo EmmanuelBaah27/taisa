@@ -9,8 +9,15 @@ import { useCareerStore } from '../src/stores/careerStore';
 
 SplashScreen.preventAutoHideAsync();
 
+function makeDeviceId(): string {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
+  });
+}
+
 export default function RootLayout() {
-  const { fetchProfile } = useCareerStore();
+  const { initUser, fetchProfile } = useCareerStore();
 
   const [fontsLoaded] = useFonts({
     'StrichpunktSans': require('../assets/fonts/StrichpunktSans-Regular.ttf'),
@@ -28,9 +35,12 @@ export default function RootLayout() {
       if (userId) {
         try {
           await fetchProfile();
-        } catch (e) {
-          // Profile fetch failed — user will see onboarding
+        } catch {
+          // Profile gone — re-init with same id
+          await initUser(userId, {});
         }
+      } else {
+        await initUser(makeDeviceId(), {});
       }
     }
     hydrateUser();
@@ -51,7 +61,7 @@ export default function RootLayout() {
         />
         <Stack.Screen
           name="chat/index"
-          options={{ presentation: 'modal', animation: 'fade' }}
+          options={{ presentation: 'transparentModal', animation: 'none' }}
         />
       </Stack>
     </>
