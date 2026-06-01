@@ -23,7 +23,17 @@ export default function RecordingModal() {
 
   const devControls = useGlowDevControls(amplitude);
 
+  const handleClose = () => {
+    router.back();
+  };
+
   const toggleDevSheet = () => setDevSheetVisible((prev) => !prev);
+
+  const tapDismiss = Gesture.Tap()
+    .onEnd(() => {
+      'worklet';
+      runOnJS(handleClose)();
+    });
 
   const longPress = Gesture.LongPress()
     .minDuration(600)
@@ -31,6 +41,9 @@ export default function RecordingModal() {
       'worklet';
       runOnJS(toggleDevSheet)();
     });
+
+  // Exclusive: long press wins if held 600ms, otherwise tap fires (dismiss)
+  const dismissOrDevSheet = Gesture.Exclusive(longPress, tapDismiss);
 
   const startPulse = () => {
     pulseLoop.current = Animated.loop(
@@ -88,13 +101,8 @@ export default function RecordingModal() {
     }
   };
 
-  const handleClose = () => {
-    router.back();
-  };
-
   return (
-    <GestureDetector gesture={longPress}>
-      <View className="flex-1" style={{ backgroundColor: 'rgba(6,6,11,0.95)' }}>
+    <View className="flex-1" style={{ backgroundColor: 'rgba(6,6,11,0.95)' }}>
         <RecordingGlow
           amplitude={devControls.effectiveAmplitude}
           ditherIntensity={devControls.ditherSV}
@@ -115,8 +123,10 @@ export default function RecordingModal() {
           onDismiss={() => setDevSheetVisible(false)}
         />
 
-        {/* Dismiss area at top */}
-        <TouchableOpacity className="flex-1" onPress={handleClose} />
+        {/* Dismiss area — tap to close, long-press to open dev sheet */}
+        <GestureDetector gesture={dismissOrDevSheet}>
+          <View style={{ flex: 1 }} />
+        </GestureDetector>
 
         {/* Bottom sheet */}
         <View className="bg-background rounded-t-3xl px-6 pt-4 pb-12">
@@ -167,8 +177,7 @@ export default function RecordingModal() {
             </View>
           )}
         </View>
-      </View>
-    </GestureDetector>
+    </View>
   );
 }
 

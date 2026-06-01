@@ -60,6 +60,7 @@ export default function RootLayout() {
           name="recording/index"
           options={{ presentation: 'transparentModal', animation: 'slide_from_bottom' }}
         />
+        <Stack.Screen name="chat/index" />
       </Stack>
     </GestureHandlerRootView>
   );
