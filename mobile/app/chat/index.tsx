@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming, run
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useVoiceRecorder } from '../../src/hooks/useVoiceRecorder';
 import { transcribeAudio } from '../../src/services/transcription';
+import type { RecordingResult } from '../../src/services/audio';
 import { useMorphTransition } from '../../src/hooks/useMorphTransition';
 import { useChatStore } from '../../src/stores/chatStore';
 import { useUIStore } from '../../src/stores/uiStore';
@@ -55,7 +56,7 @@ export default function ChatScreen() {
   const recorder = useVoiceRecorder();
 
   // Stop any in-flight recording without throwing when none is active.
-  const stopRecorderSafe = () => recorder.stop().catch(() => {});
+  const stopRecorderSafe = useCallback(() => recorder.stop().catch(() => {}), [recorder.stop]);
 
   useEffect(() => {
     if (messages.length > 0) {
@@ -138,10 +139,24 @@ export default function ChatScreen() {
 
   // Stop recording, transcribe with Whisper, then submit the text.
   async function handleStop() {
-    if (!recorder.isRecording) return;
+    if (!recorder.isRecording) {
+      // OS may have ended the recording (call / audio interruption); recover rather than get stuck.
+      startListening();
+      return;
+    }
     setPhase('transcribing');
+
+    let result: RecordingResult;
     try {
-      const result = await recorder.stop();
+      result = await recorder.stop();
+    } catch (e: any) {
+      // A stop failure (e.g. no active recording due to a race with close) is not a transcription error.
+      console.warn('[chat] recorder.stop failed:', e?.message);
+      startListening();
+      return;
+    }
+
+    try {
       const text = await transcribeAudio(result.uri, result.durationSeconds);
       if (text.trim()) {
         await handleSubmit(text);
