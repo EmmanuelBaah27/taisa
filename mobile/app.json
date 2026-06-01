@@ -14,7 +14,10 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.taisa.app"
+      "bundleIdentifier": "com.taisa.app",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Allow Taisa to access the microphone to record your voice."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -28,14 +31,7 @@
     },
     "plugins": [
       "expo-router",
-      "expo-font",
-      [
-        "expo-speech-recognition",
-        {
-          "microphonePermission": "Allow Taisa to access the microphone to record your voice.",
-          "speechRecognitionPermission": "Allow Taisa to use speech recognition to transcribe what you say."
-        }
-      ]
+      "expo-font"
     ]
   }
 }
