@@ -10,14 +10,14 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming, runOnJS } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import { useLiveTranscription } from '../../src/hooks/useLiveTranscription';
+import { useVoiceRecorder } from '../../src/hooks/useVoiceRecorder';
+import { transcribeAudio } from '../../src/services/transcription';
 import { useMorphTransition } from '../../src/hooks/useMorphTransition';
 import { useChatStore } from '../../src/stores/chatStore';
 import { useUIStore } from '../../src/stores/uiStore';
 import {
   ChatNavBar,
   RecordingGlow,
-  LiveTranscriptionText,
   TaisaReplyCard,
   Icon,
 } from '../../src/components/ui';
@@ -30,7 +30,7 @@ const BACKGROUND_TRANSPARENT = 'rgba(255,255,255,0)';
 const DISMISS_VELOCITY = 800;
 const SPRING_BACK = { damping: 26, stiffness: 200 };
 
-type ChatPhase = 'idle' | 'listening' | 'processing' | 'responded' | 'error';
+type ChatPhase = 'idle' | 'listening' | 'transcribing' | 'processing' | 'responded' | 'error';
 
 export default function ChatScreen() {
   const insets = useSafeAreaInsets();
@@ -49,20 +49,13 @@ export default function ChatScreen() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView>(null);
-  const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const restartTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const closingRef = useRef(false);
 
-  const { transcript, amplitude, recognizerError, start, stop, reset } = useLiveTranscription();
-  const amplitudeSV = useSharedValue(0);
-  useEffect(() => { amplitudeSV.value = amplitude / 10; }, [amplitude]);
+  const recorder = useVoiceRecorder();
 
-  useEffect(() => {
-    if (recognizerError) {
-      setError(`Speech recognizer error: ${recognizerError}. Check microphone & speech permissions in Settings.`);
-      setPhase('error');
-    }
-  }, [recognizerError]);
+  // Stop any in-flight recording without throwing when none is active.
+  const stopRecorderSafe = () => recorder.stop().catch(() => {});
 
   useEffect(() => {
     if (messages.length > 0) {
@@ -78,19 +71,11 @@ export default function ChatScreen() {
       startListening();
     }
     return () => {
-      clearTimeout(silenceTimerRef.current);
       clearTimeout(restartTimerRef.current);
-      stop().catch(() => {});
+      stopRecorderSafe();
       setChatMorphing(false);
     };
   }, []);
-
-  useEffect(() => {
-    if (!transcript) return;
-    clearTimeout(silenceTimerRef.current);
-    silenceTimerRef.current = setTimeout(() => handleSubmit(transcript), 5000);
-    return () => clearTimeout(silenceTimerRef.current);
-  }, [transcript]);
 
   // ─── Drag-to-dismiss ────────────────────────────────────────────────────────
 
@@ -100,9 +85,8 @@ export default function ChatScreen() {
   function commitClose(delay: number) {
     if (closingRef.current) return;
     closingRef.current = true;
-    clearTimeout(silenceTimerRef.current);
     clearTimeout(restartTimerRef.current);
-    stop().catch(() => {});
+    stopRecorderSafe();
     restartTimerRef.current = setTimeout(() => setChatMorphing(false), delay);
   }
 
@@ -142,21 +126,39 @@ export default function ChatScreen() {
   }
 
   async function startListening() {
+    setError(null);
     setPhase('listening');
     try {
-      await start();
+      await recorder.start();
     } catch {
       setError('Microphone permission denied. Please allow access in Settings.');
       setPhase('error');
     }
   }
 
+  // Stop recording, transcribe with Whisper, then submit the text.
+  async function handleStop() {
+    if (!recorder.isRecording) return;
+    setPhase('transcribing');
+    try {
+      const result = await recorder.stop();
+      const text = await transcribeAudio(result.uri, result.durationSeconds);
+      if (text.trim()) {
+        await handleSubmit(text);
+      } else {
+        startListening();
+      }
+    } catch (e: any) {
+      setError(e.message ?? 'Could not transcribe. Tap to retry.');
+      setPhase('error');
+    }
+  }
+
+  // Recording is already stopped by the time we get here.
   async function handleSubmit(text: string) {
     const trimmed = text.trim();
     if (!trimmed) return;
 
-    clearTimeout(silenceTimerRef.current);
-    await stop();
     setPhase('processing');
 
     try {
@@ -199,7 +201,6 @@ export default function ChatScreen() {
       ]);
 
       setPhase('responded');
-      reset();
       restartTimerRef.current = setTimeout(startListening, 2000);
     } catch (e: any) {
       setError(e.message ?? 'Something went wrong. Tap to retry.');
@@ -207,14 +208,8 @@ export default function ChatScreen() {
     }
   }
 
-  function handleStop() {
-    clearTimeout(silenceTimerRef.current);
-    if (transcript.trim()) handleSubmit(transcript);
-  }
-
   function handleRetry() {
     setError(null);
-    reset();
     startListening();
   }
 
@@ -223,8 +218,6 @@ export default function ChatScreen() {
     close();
     commitClose(340);
   }
-
-  const isInputActive = phase === 'idle' || phase === 'listening';
 
   return (
     <GestureDetector gesture={dragGesture}>
@@ -282,11 +275,13 @@ export default function ChatScreen() {
           />
         </View>
 
-        <RecordingGlow amplitude={amplitudeSV} visible={phase === 'listening'} />
+        <RecordingGlow amplitude={recorder.amplitude} visible={phase === 'listening'} />
 
-        {isInputActive && (
+        {phase === 'listening' && (
           <View style={{ height: 200 }}>
-            <LiveTranscriptionText transcript={transcript} />
+            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+              <Text className="text-text-tertiary text-small-regular">Listening…</Text>
+            </View>
             <View
               className="flex-row items-center justify-between px-5"
               style={{ paddingBottom: insets.bottom + 12 }}
@@ -296,14 +291,18 @@ export default function ChatScreen() {
               </View>
               <TouchableOpacity
                 onPress={handleStop}
-                disabled={!transcript.trim()}
                 className="flex-row items-center gap-2 bg-background border border-border rounded-full px-4 py-2"
-                style={{ opacity: transcript.trim() ? 1 : 0.4 }}
               >
                 <Icon name="IconStopCircle" size={18} color="#060707" />
                 <Text className="text-foreground text-small-semibold">Stop</Text>
               </TouchableOpacity>
             </View>
+          </View>
+        )}
+
+        {phase === 'transcribing' && (
+          <View style={{ height: 200, alignItems: 'center', justifyContent: 'center', paddingBottom: insets.bottom + 12 }}>
+            <Text className="text-text-tertiary text-small-regular">Transcribing…</Text>
           </View>
         )}
       </Animated.View>
