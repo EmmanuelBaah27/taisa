@@ -31,7 +31,13 @@
     },
     "plugins": [
       "expo-router",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-av",
+        {
+          "microphonePermission": "Allow Taisa to access the microphone to record your voice."
+        }
+      ]
     ]
   }
 }

@@ -56,7 +56,7 @@ export default function ChatScreen() {
   const recorder = useVoiceRecorder();
 
   // Stop any in-flight recording without throwing when none is active.
-  const stopRecorderSafe = useCallback(() => recorder.stop().catch(() => {}), [recorder.stop]);
+  const stopRecorderSafe = useCallback(() => recorder.stop().catch(() => {}), []);
 
   useEffect(() => {
     if (messages.length > 0) {
@@ -127,6 +127,7 @@ export default function ChatScreen() {
   }
 
   async function startListening() {
+    if (closingRef.current) return;
     setError(null);
     setPhase('listening');
     try {
