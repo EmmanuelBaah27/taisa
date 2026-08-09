@@ -1,8 +1,8 @@
 import { CoachingResponsePayloadSchema } from '../../schemas/coaching';
 import type { MemoryDelta } from '@taisa/shared';
 import { buildSeniorSelfPrompt } from '../../prompts/system/seniorSelf';
-import { getConfiguredProvider } from '../../services/coaching/provider';
-import type { CoachingProvider } from '../../services/coaching/provider';
+import { createProviderForId } from '../../services/coaching/provider';
+import type { CoachingProvider, CoachingProviderId } from '../../services/coaching/provider';
 import { scoreCoachingResponse, type CoachingRubricScores } from './rubric';
 import { COACHING_EVALUATION_PACK_VERSION, coachingEvaluationScenarios } from './scenarios';
 
@@ -24,7 +24,7 @@ export interface CoachingEvaluationSummary {
 }
 
 export interface RunCoachingEvaluationOptions {
-  providerId: 'openai' | 'anthropic';
+  providerId: CoachingProviderId;
   provider: CoachingProvider;
   now?: () => number;
 }
@@ -70,7 +70,10 @@ export async function runCoachingEvaluation(
 
       results.push({
         scenarioId: scenario.id,
-        rubric: scoreCoachingResponse(scenario, parsed.data as { reply: string; proposals: MemoryDelta[] }),
+        rubric: scoreCoachingResponse(
+          scenario,
+          parsed.data as { reply: string; stance: 'mirror' | 'nudge' | 'challenge' | 'direct'; proposals: MemoryDelta[] },
+        ),
         latencyMs,
         inputTokens: providerResult.usage.inputTokens ?? 0,
         outputTokens: providerResult.usage.outputTokens ?? 0,
@@ -108,17 +111,41 @@ export function parseProviderArgument(argv: string[]): 'openai' | 'anthropic' {
   return providerId;
 }
 
+export interface EvaluationCliDependencies {
+  createProvider: (providerId: CoachingProviderId) => CoachingProvider;
+  writeStdout: (output: string) => void;
+  writeStderr: (output: string) => void;
+}
+
+const defaultCliDependencies: EvaluationCliDependencies = {
+  createProvider: createProviderForId,
+  writeStdout: (output) => process.stdout.write(output),
+  writeStderr: (output) => process.stderr.write(output),
+};
+
+export async function runEvaluationCli(
+  argv: string[],
+  dependencies: EvaluationCliDependencies = defaultCliDependencies,
+): Promise<0 | 1> {
+  try {
+    const providerId = parseProviderArgument(argv);
+    const provider = dependencies.createProvider(providerId);
+    const summary = await runCoachingEvaluation({ providerId, provider });
+    dependencies.writeStdout(`${serializeEvaluationSummary(summary)}\n`);
+    return 0;
+  } catch {
+    dependencies.writeStderr('EVAL_COACHING_FAILED\n');
+    return 1;
+  }
+}
+
 async function main(): Promise<void> {
-  const providerId = parseProviderArgument(process.argv.slice(2));
-  const provider = getConfiguredProvider();
-  const summary = await runCoachingEvaluation({ providerId, provider });
-  process.stdout.write(`${serializeEvaluationSummary(summary)}\n`);
+  process.exitCode = await runEvaluationCli(process.argv.slice(2));
 }
 
 if (require.main === module) {
-  main().catch((error: unknown) => {
-    const message = error instanceof Error ? error.message : 'Evaluation failed';
-    process.stderr.write(`${message}\n`);
+  main().catch(() => {
+    process.stderr.write('EVAL_COACHING_FAILED\n');
     process.exitCode = 1;
   });
 }

@@ -21,8 +21,9 @@ export interface CoachingProviderConfig {
   outputPriceUsdPerMillionTokens: number;
 }
 
-type CoachingEnvironment = Record<string, string | undefined>;
-type ProviderRegistry = Record<'openai' | 'anthropic', CoachingProvider>;
+export type CoachingProviderId = 'openai' | 'anthropic';
+export type CoachingEnvironment = Record<string, string | undefined>;
+export type ProviderRegistry = Record<CoachingProviderId, CoachingProvider>;
 
 function requireValue(environment: CoachingEnvironment, name: string): string {
   const value = environment[name]?.trim();
@@ -41,7 +42,7 @@ function requireNonNegativeNumber(environment: CoachingEnvironment, name: string
 
 function readProviderConfig(
   environment: CoachingEnvironment,
-  provider: 'openai' | 'anthropic',
+  provider: CoachingProviderId,
 ): CoachingProviderConfig {
   const prefix = provider === 'openai' ? 'TAISA_OPENAI' : 'TAISA_ANTHROPIC';
   return {
@@ -66,10 +67,18 @@ export function getConfiguredProvider(
     throw new Error('TAISA_COACHING_PROVIDER must be configured as openai or anthropic');
   }
 
-  const config = readProviderConfig(environment, configured);
-  if (providers) return providers[configured];
+  return createProviderForId(configured, environment, providers);
+}
 
-  if (configured === 'openai') {
+export function createProviderForId(
+  provider: CoachingProviderId,
+  environment: CoachingEnvironment = process.env,
+  providers?: ProviderRegistry,
+): CoachingProvider {
+  const config = readProviderConfig(environment, provider);
+  if (providers) return providers[provider];
+
+  if (provider === 'openai') {
     const { createOpenAIProvider }: typeof import('./openaiProvider') = require('./openaiProvider');
     return createOpenAIProvider(config);
   }
