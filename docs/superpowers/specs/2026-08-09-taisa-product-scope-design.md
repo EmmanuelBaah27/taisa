@@ -1,7 +1,7 @@
 # Taisa Product Scope Design
 
 **Date:** 2026-08-09  
-**Status:** Approved in brainstorming; awaiting written-spec review  
+**Status:** Approved in brainstorming; local-first revision approved
 **Tier:** Full  
 **Track:** Platform first; Product UI follows separately  
 **Authors:** Baah + Codex
@@ -28,6 +28,7 @@ Composing, recording, browsing, searching, reopening, editing, and completing re
 4. Preserve evidence of progress without requiring a separate archive workflow.
 5. Validate the coaching habit with controlled and measurable AI and transcription cost.
 6. Keep the product engine portable so a future SwiftUI client can reuse it.
+7. Keep the user's readable career archive on the phone and disclose every operation that sends content to an external processor.
 
 ## Non-goals
 
@@ -41,6 +42,9 @@ Composing, recording, browsing, searching, reopening, editing, and completing re
 - Android client
 - SwiftUI rewrite during MVP validation
 - Autonomous changes to consequential career memory
+- Taisa-readable cloud backup or server-authoritative user data
+- Seamless multi-device synchronization
+- Fully on-device coaching or transcription
 
 ## User journeys
 
@@ -114,6 +118,38 @@ Supports browsing, local search, reopening conversations, and tracing saved outc
 
 These responsibilities may be combined into fewer navigation destinations during UI design. They do not mandate a four-tab interface.
 
+## Privacy and data ownership
+
+The iPhone is the authoritative store for readable user data. Conversations, transcripts, profile, goals, commitments, actions, evidence, durable memory, and cached coaching outputs live on-device.
+
+The product distinguishes two actions:
+
+- **Private save:** Preserve a draft, note, or recording locally without AI processing.
+- **Submit to Taisa:** Send a deliberately selected, minimal context package to external transcription and/or coaching processors.
+
+Local storage does not mean fully on-device processing. The UI must clearly disclose that submitted content leaves the phone for processing. Users should not submit employer-confidential content when their workplace policy prohibits external AI processing.
+
+### Privacy principles
+
+1. Only deliberate submission sends user content off-device.
+2. Send the minimum context required for useful coaching, never the full archive by default.
+3. Do not log request or response bodies in the Taisa gateway, infrastructure logs, analytics, or crash reporting.
+4. Keep provider identifiers and cost metadata without retaining user content.
+5. Cache transcripts and coaching outputs on-device so unchanged work is never resubmitted automatically.
+6. Make provider processing visible and allow the user to remove or redact identifiers before submission.
+7. Treat private local capture as a complete supported outcome, not a failed or incomplete coaching flow.
+
+### Device protection and recovery
+
+- Encrypt the local database using a key protected by the iOS Keychain.
+- Support an optional Face ID/app lock after the core local data path is stable.
+- Hide sensitive content in notification previews and the app switcher.
+- Provide manual encrypted export and restore in the MVP recovery slice.
+- Treat optional end-to-end encrypted backup as a later capability. Taisa must not possess the decryption key.
+- Explain during onboarding that data is not recoverable before the user creates an encrypted export.
+
+Device-local authority creates accepted constraints: loss risk before export, no seamless multi-device state, harder support diagnostics, on-device migrations, and weaker background intelligence. These are explicit tradeoffs, not accidental omissions.
+
 ## Durable career memory
 
 Chats preserve conversations. Durable memory preserves what those conversations mean for the user's career.
@@ -174,7 +210,7 @@ Relevant archive evidence is added only when needed. Retrieval ranks candidates 
 3. Recency
 4. Text relevance
 
-The assembler enforces a fixed context budget and includes only a few compact excerpts. The full archive is never injected by default. Each excerpt retains its source identifier and timestamp.
+The on-device assembler enforces a fixed context budget and includes only a few compact excerpts. The full archive is never injected by default. Each excerpt retains its source identifier and timestamp. The gateway validates the package shape and limits but does not retrieve or retain user history.
 
 ## Coaching engine
 
@@ -197,7 +233,7 @@ The four named coaching modes—Mirror, Nudge, Challenge, and Direct—may infor
 
 ## Architecture boundary
 
-The mobile app handles the experience. Taisa's backend handles coaching, memory, data, and AI providers.
+The mobile app handles the experience and owns durable user data. Taisa's gateway handles provider credentials, request validation, cost enforcement, and transient AI orchestration. External providers perform transcription and coaching.
 
 ### Mobile client
 
@@ -206,27 +242,37 @@ The mobile app handles the experience. Taisa's backend handles coaching, memory,
 - Goals, actions, evidence, and memory controls
 - History and search
 - Motion, gestures, and haptics
+- Encrypted local database and migrations
+- Durable-memory governance and evidence retrieval
+- Context assembly and redaction preview
+- Private save versus deliberate submission
+- Encrypted export and restore
 
-### Taisa API
+### Stateless Taisa gateway
 
-- Conversation service
-- Coaching orchestrator
-- Context assembler
-- Evidence retriever
-- Memory governance
-- Cost and usage guardrails
+- Provider credential protection
+- Request authentication and validation
+- Payload-size and context-budget enforcement
+- Transient coaching and transcription orchestration
+- Provider abstraction
+- Content-free usage and cost accounting
 - Stable contracts independent of mobile framework
+- No user-content database and no request/response body logging
 
-### Storage and external services
+### On-device storage and external services
 
-- SQLite conversation archive
-- Durable-memory records
-- Goals, actions, and evidence
+- Encrypted SQLite conversation archive
+- Durable-memory, goals, actions, and evidence
+- Cached transcripts and coaching outputs
+- Encrypted export files
 - AI coaching provider
 - Speech transcription provider
-- Cached immutable transcripts and coaching outputs
 
-The mobile client does not build vendor prompts, read database tables, or decide memory mutations. This boundary allows a later SwiftUI client or AI-provider change without rebuilding the product engine.
+The mobile client does not hold provider credentials or depend on provider-specific response formats. Shared contracts define the coaching input, structured response, memory deltas, and usage envelope. Memory governance is deterministic client-side product logic; the AI may propose deltas but cannot persist them directly.
+
+This target differs from the current implementation, where backend SQLite is authoritative and Express routes perform user-data CRUD. The migration reuses the existing schema concepts and prompt services while relocating durable storage, retrieval, and mutations to the phone. During transition, dual authority is prohibited: each migrated entity has one declared authoritative store.
+
+A future SwiftUI client can reuse the gateway contracts and product rules, but it will need to import or migrate the encrypted on-device archive.
 
 ## Cost model
 
@@ -239,6 +285,8 @@ The mobile client does not build vendor prompts, read database tables, or decide
 - View, edit, and complete goals or actions
 - Inspect and correct durable memory
 - Store conversations and cached outputs
+- Assemble memory context and retrieve evidence
+- Export and restore an encrypted archive
 
 ### Metered operations
 
@@ -255,6 +303,8 @@ The mobile client does not build vendor prompts, read database tables, or decide
 - Enforce configurable daily and per-request ceilings
 - Provide deterministic fixtures for development and automated testing
 - Do not run background AI jobs
+- Strip or hash content from gateway telemetry and error reporting
+- Offer a redaction preview for selected names, organizations, project names, and metrics
 
 The exact monetary ceiling is a configuration and validation decision, not hard-coded product scope.
 
@@ -271,24 +321,31 @@ The exact monetary ceiling is a configuration and validation decision, not hard-
 | Career evidence | Wins exist inside analysis JSON | First-class evidence linked to source and goals |
 | Cost controls | Provider calls exist without product guardrails | Metering, caps, caching, fixtures, visibility |
 | User control | Limited profile editing | Inspect, correct, reject, archive, and delete memory |
+| Data authority | Backend SQLite owns durable data | Migrate durable entities to encrypted on-device SQLite |
+| Gateway privacy | Express routes read and write user content | Stateless validated forwarding with content-free telemetry |
+| Recovery | JSON export from backend-oriented data | Manual encrypted device export and restore |
 
 ## Delivery slices
 
 ### Slice 1: Honest coaching loop
 
-Unify text and voice submission, transcript handling, one coaching response, follow-ups, structured deltas, and cost instrumentation. Use existing UI only as a validation client.
+Define portable contracts and make the gateway stateless for the new submission path. Establish encrypted on-device storage, private save, deliberate text/voice submission, transcript handling, one coaching response, structured deltas, and content-free cost instrumentation. Use existing UI only as a validation client.
 
 ### Slice 2: Remember what matters
 
-Add governed durable-memory storage, compact context assembly, and duplicate/conflict detection within the coaching request.
+Migrate goals, actions, conversations, and governed durable memory to the authoritative on-device store. Add local context assembly, local evidence retrieval, and duplicate/conflict detection within the coaching request.
 
 ### Slice 3: Follow through
 
 Add confirmation flows, action evolution, first-class evidence, traceability, and reliable long-term resume.
 
-### Slice 4: Validate quality and platform
+### Slice 4: Protect and recover
 
-Measure activation, habit, continuity, trust, cost, and physical-device interaction quality. Use the result as the checkpoint for continued React Native investment versus a SwiftUI client.
+Add database-key protection, privacy-safe app surfaces, redaction preview, manual encrypted export/restore, migration validation, and explicit recovery disclosures.
+
+### Slice 5: Validate quality and platform
+
+Measure activation, habit, continuity, trust, privacy comprehension, cost, and physical-device interaction quality. Evaluate missed historical connections and diagnostic limitations. Use the result as the checkpoint for continued React Native investment versus a SwiftUI client and for optional end-to-end encrypted backup.
 
 ## Error handling
 
@@ -299,6 +356,9 @@ Measure activation, habit, continuity, trust, cost, and physical-device interact
 - A failed durable-memory write does not hide a successful coaching response and is surfaced as a recoverable sync issue.
 - Cost-limit failures explain the limit without discarding the user's draft.
 - Missing or contradictory evidence triggers uncertainty, not confident invention.
+- Gateway failures retain no submitted payload and leave the local submission retryable.
+- Local migration failures preserve the pre-migration encrypted archive and prevent partial authority changes.
+- Export and restore verify archive integrity before replacing active local state.
 
 ## Validation and testing
 
@@ -309,6 +369,8 @@ Measure activation, habit, continuity, trust, cost, and physical-device interact
 - **Continuity:** Resume one prior conversation or evolve one existing goal/action.
 - **Trust:** Inspect or correct one proposed durable-memory change.
 - **Viability:** Measured AI and transcription cost remains within the agreed per-journey ceiling.
+- **Privacy comprehension:** The user can distinguish private save from external processing and identify what context will be sent.
+- **Recovery:** An encrypted export can restore conversations, memory, goals, actions, and evidence on a clean installation.
 
 ### Engineering validation
 
@@ -320,6 +382,11 @@ Measure activation, habit, continuity, trust, cost, and physical-device interact
 - Evidence ranking and context-budget tests
 - Idempotency and partial-failure tests
 - Usage metering and ceiling tests
+- Gateway no-content-retention and telemetry-redaction tests
+- Local database encryption and key-loss behavior tests
+- Entity-by-entity authority migration tests
+- Encrypted export/restore round-trip and corruption tests
+- Private-save versus submit disclosure tests
 - Existing backend, shared-type, and minimal mobile integration checks
 
 ## Approval boundary
