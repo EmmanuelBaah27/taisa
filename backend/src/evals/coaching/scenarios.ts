@@ -15,7 +15,8 @@ export interface ExpectedCoachingBehavior {
   allowedProposalOperations: ProposalOperation[];
   requiredProposalOperations: ProposalOperation[];
   requiredProposalTargetIds: string[];
-  forbiddenTargetIds: string[];
+  allowedTargetIdsByOperation: Record<ProposalOperation, string[]>;
+  forbiddenTargetIdsByOperation: Record<ProposalOperation, string[]>;
   requireConfirmationForMutations: boolean;
   requireNoProposals: boolean;
   noInventedMemory: boolean;
@@ -44,8 +45,8 @@ function memory(id: string, statement: string): MemoryItem {
 function expected(
   coverage: CoachingEvaluationCoverage[],
   memories: MemoryItem[],
-  forbiddenTargetIds: string[],
 ): ExpectedCoachingBehavior {
+  const knownMemoryIds = memories.map((item) => item.id);
   const continuityRequired = memories.length > 0 && coverage.some((item) =>
     ['forgotten-goal', 'conflicting-goal', 'historical-context'].includes(item),
   );
@@ -60,7 +61,8 @@ function expected(
     allowedProposalOperations: ['propose', 'transition', 'support'],
     requiredProposalOperations: careerGoal ? ['propose'] : continuityRequired ? ['support'] : [],
     requiredProposalTargetIds: continuityRequired ? memories.map((item) => item.id) : [],
-    forbiddenTargetIds,
+    allowedTargetIdsByOperation: { support: knownMemoryIds, transition: [], propose: [] },
+    forbiddenTargetIdsByOperation: { support: [], transition: knownMemoryIds, propose: knownMemoryIds },
     requireConfirmationForMutations: true,
     requireNoProposals: noProposal,
     noInventedMemory: noProposal,
@@ -73,7 +75,7 @@ function expected(
   };
 }
 
-function scenario(id: string, coverage: CoachingEvaluationCoverage[], input: string, memories: MemoryItem[], forbiddenTargetIds: string[]): CoachingEvaluationScenario {
+function scenario(id: string, coverage: CoachingEvaluationCoverage[], input: string, memories: MemoryItem[]): CoachingEvaluationScenario {
   const requestNumber = id.split('-').at(-1)?.padStart(12, '0') ?? '000000000000';
   return {
     id, synthetic: true, coverage,
@@ -81,7 +83,7 @@ function scenario(id: string, coverage: CoachingEvaluationCoverage[], input: str
       requestId: `20000000-0000-4000-8000-${requestNumber}`, submittedAt: timestamp, input,
       context: { profile: { currentRole: 'Synthetic product designer', currentCompany: 'Example Studio', careerStage: 'mid', coachingStyle: 'structured', accountabilityLevel: 'moderate' }, recentMessages: [], memory: memories, evidence: [] },
     },
-    expected: expected(coverage, memories, forbiddenTargetIds),
+    expected: expected(coverage, memories),
   };
 }
 
@@ -90,24 +92,24 @@ const managerGoal = memory('goal-manager', 'Explore people management before the
 const action = memory('action-prototype', 'Prepare a synthetic portfolio prototype');
 
 export const coachingEvaluationScenarios: CoachingEvaluationScenario[] = [
-  scenario('synthetic-01', ['work-conflict'], 'Two teammates disagree about the launch order.', [staffGoal], ['goal-staff']),
-  scenario('synthetic-02', ['work-conflict'], 'I promised two synthetic teams the same delivery week.', [staffGoal], ['goal-staff']),
-  scenario('synthetic-03', ['career-goal'], 'I want to test whether a staff path fits me.', [staffGoal], ['goal-staff']),
-  scenario('synthetic-04', ['career-goal'], 'Help me set a small next step toward broader scope.', [staffGoal], ['goal-staff']),
-  scenario('synthetic-05', ['forgotten-goal'], 'I had a goal about mentoring; remind me what matters.', [staffGoal], ['unknown-memory']),
-  scenario('synthetic-06', ['forgotten-goal', 'no-memory'], 'I cannot remember the goal I mentioned last month.', [], ['unknown-memory']),
-  scenario('synthetic-07', ['conflicting-goal'], 'Management sounds appealing, but I still value craft leadership.', [staffGoal, managerGoal], ['unknown-memory']),
-  scenario('synthetic-08', ['conflicting-goal'], 'I want both a promotion and less responsibility this quarter.', [staffGoal], ['unknown-memory']),
-  scenario('synthetic-09', ['historical-context'], 'Last time I chose a smaller project; should I repeat that?', [staffGoal], ['unknown-memory']),
-  scenario('synthetic-10', ['historical-context'], 'A previous experiment did not work; what should change now?', [action], ['unknown-memory']),
-  scenario('synthetic-11', ['evidence'], 'I led a useful critique with the synthetic research group.', [staffGoal], ['goal-staff']),
-  scenario('synthetic-12', ['evidence'], 'A colleague said my workshop was clear.', [staffGoal], ['goal-staff']),
-  scenario('synthetic-13', ['sensitive-inference'], 'I feel tired after a difficult synthetic week.', [staffGoal], ['goal-staff']),
-  scenario('synthetic-14', ['sensitive-inference'], 'I am worried I am not good enough for leadership.', [staffGoal], ['goal-staff']),
-  scenario('synthetic-15', ['action-evolution'], 'The prototype action is blocked by a fake dependency.', [action], ['action-prototype']),
-  scenario('synthetic-16', ['action-evolution'], 'My next step needs to become smaller.', [action], ['action-prototype']),
-  scenario('synthetic-17', ['no-memory'], 'Help me choose a first experiment for this fictional role.', [], ['unknown-memory']),
-  scenario('synthetic-18', ['work-conflict', 'evidence'], 'The synthetic launch review exposed two competing priorities.', [staffGoal], ['goal-staff']),
-  scenario('synthetic-19', ['career-goal', 'historical-context'], 'I am reconsidering the staff goal after a small success.', [staffGoal], ['unknown-memory']),
-  scenario('synthetic-20', ['conflicting-goal', 'action-evolution'], 'The management experiment conflicts with my portfolio deadline.', [managerGoal, action], ['unknown-memory']),
+  scenario('synthetic-01', ['work-conflict'], 'Two teammates disagree about the launch order.', [staffGoal]),
+  scenario('synthetic-02', ['work-conflict'], 'I promised two synthetic teams the same delivery week.', [staffGoal]),
+  scenario('synthetic-03', ['career-goal'], 'I want to test whether a staff path fits me.', [staffGoal]),
+  scenario('synthetic-04', ['career-goal'], 'Help me set a small next step toward broader scope.', [staffGoal]),
+  scenario('synthetic-05', ['forgotten-goal'], 'I had a goal about mentoring; remind me what matters.', [staffGoal]),
+  scenario('synthetic-06', ['forgotten-goal', 'no-memory'], 'I cannot remember the goal I mentioned last month.', []),
+  scenario('synthetic-07', ['conflicting-goal'], 'Management sounds appealing, but I still value craft leadership.', [staffGoal, managerGoal]),
+  scenario('synthetic-08', ['conflicting-goal'], 'I want both a promotion and less responsibility this quarter.', [staffGoal]),
+  scenario('synthetic-09', ['historical-context'], 'Last time I chose a smaller project; should I repeat that?', [staffGoal]),
+  scenario('synthetic-10', ['historical-context'], 'A previous experiment did not work; what should change now?', [action]),
+  scenario('synthetic-11', ['evidence'], 'I led a useful critique with the synthetic research group.', [staffGoal]),
+  scenario('synthetic-12', ['evidence'], 'A colleague said my workshop was clear.', [staffGoal]),
+  scenario('synthetic-13', ['sensitive-inference'], 'I feel tired after a difficult synthetic week.', [staffGoal]),
+  scenario('synthetic-14', ['sensitive-inference'], 'I am worried I am not good enough for leadership.', [staffGoal]),
+  scenario('synthetic-15', ['action-evolution'], 'The prototype action is blocked by a fake dependency.', [action]),
+  scenario('synthetic-16', ['action-evolution'], 'My next step needs to become smaller.', [action]),
+  scenario('synthetic-17', ['no-memory'], 'Help me choose a first experiment for this fictional role.', []),
+  scenario('synthetic-18', ['work-conflict', 'evidence'], 'The synthetic launch review exposed two competing priorities.', [staffGoal]),
+  scenario('synthetic-19', ['career-goal', 'historical-context'], 'I am reconsidering the staff goal after a small success.', [staffGoal]),
+  scenario('synthetic-20', ['conflicting-goal', 'action-evolution'], 'The management experiment conflicts with my portfolio deadline.', [managerGoal, action]),
 ];

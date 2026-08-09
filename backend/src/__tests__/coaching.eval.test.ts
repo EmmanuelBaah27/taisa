@@ -57,7 +57,9 @@ test('the versioned pack covers every required synthetic coaching situation with
   expect(
     coachingEvaluationScenarios.every(
       (scenario) =>
-        scenario.expected.allowedStances.length > 0 && scenario.expected.forbiddenTargetIds.length > 0,
+        scenario.expected.allowedStances.length > 0 &&
+        (scenario.request.context.memory.length === 0 ||
+          scenario.expected.forbiddenTargetIdsByOperation.transition.length > 0),
     ),
   ).toBe(true);
 });
@@ -148,6 +150,59 @@ test('the rubric enforces required proposed memory type and provenance', () => {
 
   expect(score.actionQuality).toBe(0);
   expect(score.memoryCorrectness).toBe(0);
+});
+
+const protectedMemoryCases = ['synthetic-05', 'synthetic-07', 'synthetic-08', 'synthetic-09', 'synthetic-10', 'synthetic-19'] as const;
+const targetBearingOperations = ['transition', 'support', 'propose'] as const;
+
+function proposalTargeting(
+  operation: (typeof targetBearingOperations)[number],
+  targetId: string,
+) {
+  if (operation === 'support') {
+    return {
+      operation, targetId, sourceMessageId: 'synthetic-source',
+      reason: 'Synthetic evaluation fixture.', requiresConfirmation: false as const,
+    };
+  }
+  if (operation === 'transition') {
+    return {
+      operation, targetId, to: 'paused' as const,
+      reason: 'Synthetic evaluation fixture.', requiresConfirmation: true,
+    };
+  }
+  return {
+    operation,
+    candidate: {
+      type: 'goal' as const, statement: 'Synthetic proposal', provenance: 'user-stated' as const,
+      lifecycle: 'proposed' as const, confidence: 'tentative' as const,
+      sourceMessageIds: ['synthetic-source'], supersedesId: targetId,
+    },
+    reason: 'Synthetic evaluation fixture.', requiresConfirmation: true,
+  };
+}
+
+test.each(
+  protectedMemoryCases.flatMap((scenarioId) =>
+    targetBearingOperations.map((operation) => [scenarioId, operation, operation === 'support' ? 1 : 0] as const),
+  ),
+)('scenario %s scores protected known-memory %s targets accurately', (scenarioId, operation, expectedScore) => {
+  const scenario = coachingEvaluationScenarios.find((candidate) => candidate.id === scenarioId)!;
+  const targetId = scenario.request.context.memory[0].id;
+  const score = scoreCoachingResponse({
+    ...scenario,
+    expected: {
+      ...scenario.expected,
+      requiredProposedMemoryTypes: [],
+      requiredProposedProvenance: [],
+    },
+  }, {
+    reply: 'Synthetic response.',
+    stance: scenario.expected.requiredStance ?? 'nudge',
+    proposals: [proposalTargeting(operation, targetId)],
+  });
+
+  expect(score.memoryCorrectness).toBe(expectedScore);
 });
 
 test('the runner records invalid schemas without exposing their payload', async () => {
