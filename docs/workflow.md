@@ -9,7 +9,7 @@ Claude maintains the Active Work table — Baah never needs to update it.
 
 | Feature | Track | Stage | Branch | Blocked on |
 |---|---|---|---|---|
-| Codex + Git workflow consolidation | Platform | Build | feature/transcription-unification | — |
+| — | — | — | — | — |
 
 ---
 

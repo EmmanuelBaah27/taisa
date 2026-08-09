@@ -8,6 +8,10 @@
 
 **Tech Stack:** Git, GitHub CLI, Codex `AGENTS.md`, Markdown workflow documentation, npm workspaces, Jest, TypeScript, Expo/React Native
 
+**Status:** Shipped
+
+**Canonical integration SHA:** `a4565e08c2b79d0eac9dc423fc18a52ea7cd6044`
+
 ## Global Constraints
 
 - `main` is the only permanent branch and the GitHub default.

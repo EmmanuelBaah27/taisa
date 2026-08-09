@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-09
 
-**Status:** Approved design; implementation pending spec review
+**Status:** Shipped
 
 **Scope:** Repository history repair, branch/merge governance, Codex orchestration, and one build/test/ship path
 
