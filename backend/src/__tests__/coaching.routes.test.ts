@@ -21,6 +21,20 @@ jest.mock('../services/coaching/coachingGateway', () => ({
   }),
 }));
 
+jest.mock('../services/usage/costLedger', () => {
+  const actual = jest.requireActual('../services/usage/costLedger');
+  return {
+    ...actual,
+    readCostCeilings: jest.fn().mockReturnValue({
+      perRequestUsd: 0.05,
+      dailyUsd: 1,
+      monthlyUsd: 10,
+    }),
+    reserveCost: jest.fn().mockReturnValue({ release: jest.fn() }),
+    recordUsage: jest.fn(),
+  };
+});
+
 import coachingRouter from '../routes/coaching';
 
 const app = express();
@@ -85,6 +99,34 @@ test('accepts supplied context without loading backend user data', async () => {
   expect(res.status).toBe(200);
   expect(res.body.data.reply).toBe('What changed?');
   expect(jest.requireMock('../services/coaching/coachingGateway').requestCoaching).toHaveBeenCalledWith(validRequest);
+  const usageLedger = jest.requireMock('../services/usage/costLedger');
+  expect(usageLedger.reserveCost).toHaveBeenCalledWith(0.05, {
+    perRequestUsd: 0.05,
+    dailyUsd: 1,
+    monthlyUsd: 10,
+  });
+  expect(usageLedger.reserveCost.mock.invocationCallOrder[0]).toBeLessThan(
+    jest.requireMock('../services/coaching/coachingGateway').requestCoaching.mock.invocationCallOrder[0],
+  );
+  expect(jest.requireMock('../services/usage/costLedger').recordUsage).toHaveBeenCalledWith(
+    res.body.data.usage,
+  );
+});
+
+test('rejects a coaching request at the shared cost ceiling before the provider', async () => {
+  const usageLedger = jest.requireMock('../services/usage/costLedger');
+  usageLedger.reserveCost.mockImplementationOnce(() => {
+    throw new usageLedger.CostLimitError();
+  });
+
+  const res = await request(app)
+    .post('/api/v1/coaching/respond')
+    .set('x-user-id', 'device-1')
+    .send(validRequest);
+
+  expect(res.status).toBe(429);
+  expect(res.body.error.code).toBe('COST_LIMIT_EXCEEDED');
+  expect(jest.requireMock('../services/coaching/coachingGateway').requestCoaching).not.toHaveBeenCalled();
 });
 
 test.each([

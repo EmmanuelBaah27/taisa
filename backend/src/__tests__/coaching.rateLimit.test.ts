@@ -11,6 +11,20 @@ jest.mock('../services/coaching/coachingGateway', () => ({
   }),
 }));
 
+jest.mock('../services/usage/costLedger', () => {
+  const actual = jest.requireActual('../services/usage/costLedger');
+  return {
+    ...actual,
+    readCostCeilings: jest.fn().mockReturnValue({
+      perRequestUsd: 0.05,
+      dailyUsd: 1,
+      monthlyUsd: 10,
+    }),
+    reserveCost: jest.fn().mockReturnValue({ release: jest.fn() }),
+    recordUsage: jest.fn(),
+  };
+});
+
 import { coachingRateLimit } from '../middleware/coachingRateLimit';
 import coachingRouter from '../routes/coaching';
 

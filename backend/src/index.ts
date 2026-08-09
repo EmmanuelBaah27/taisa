@@ -2,7 +2,6 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import morgan from 'morgan';
 import { getDb } from './db/connection';
 
 import rateLimit from 'express-rate-limit';
@@ -21,14 +20,15 @@ import todayRouter from './routes/today';
 import coachingRouter from './routes/coaching';
 import { getConfiguredProvider } from './services/coaching/provider';
 import { coachingRateLimit } from './middleware/coachingRateLimit';
+import { contentSafeErrorHandler, requestContext } from './middleware/requestContext';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
+app.use(requestContext);
 app.use(helmet());
 app.use(cors());
-app.use(morgan('dev'));
 app.use(express.json({ limit: '10mb' }));
 
 // Init DB on startup
@@ -66,10 +66,7 @@ app.get('/health', (_req, res) => {
 });
 
 // Error handler
-app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  console.error(err.stack);
-  res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: err.message } });
-});
+app.use(contentSafeErrorHandler);
 
 app.listen(PORT, () => {
   console.log(`Taisa backend running on http://localhost:${PORT}`);

@@ -11,10 +11,22 @@ jest.mock('../services/claude/chatAgent', () => ({
 }));
 
 import chatRouter from '../routes/chat';
+import { requestContext } from '../middleware/requestContext';
 
 const app = express();
+app.use(requestContext);
 app.use(express.json());
 app.use('/api/v1/chat', chatRouter);
+
+let requestLogSpy: jest.SpyInstance;
+
+beforeAll(() => {
+  requestLogSpy = jest.spyOn(console, 'info').mockImplementation(() => undefined);
+});
+
+afterAll(() => {
+  requestLogSpy.mockRestore();
+});
 
 describe('POST /api/v1/chat/session/start', () => {
   test('returns sessionId with valid userId', async () => {
@@ -104,6 +116,25 @@ describe('POST /api/v1/chat/message', () => {
       .set('x-user-id', 'u1')
       .send({ sessionId: 'bad-sess', message: 'Hello' });
     expect(res.status).toBe(404);
+  });
+
+  test('does not log submitted content or provider payloads when messaging fails', async () => {
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    const { sendMessage } = require('../services/claude/chatAgent');
+    (sendMessage as jest.Mock).mockRejectedValueOnce(
+      new Error('provider payload contains private coaching message'),
+    );
+
+    const res = await request(app)
+      .post('/api/v1/chat/message')
+      .set('x-user-id', 'u1')
+      .send({ sessionId: 'sess1', message: 'private coaching message' });
+
+    expect(res.status).toBe(500);
+    expect(requestLogSpy.mock.calls.flat().join(' ')).not.toContain('private coaching message');
+    expect(errorSpy.mock.calls.flat().join(' ')).not.toContain('private coaching message');
+
+    errorSpy.mockRestore();
   });
 });
 
