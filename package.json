@@ -8,6 +8,7 @@
   ],
   "scripts": {
     "backend": "npm run dev --workspace=backend",
-    "mobile": "cd mobile && npx expo start"
+    "mobile": "cd mobile && npx expo start",
+    "verify:workflow": "bash scripts/verify-workflow.sh"
   }
 }
