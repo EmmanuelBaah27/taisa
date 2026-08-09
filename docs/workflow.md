@@ -9,9 +9,7 @@ Claude maintains the Active Work table — Baah never needs to update it.
 
 | Feature | Track | Stage | Branch | Blocked on |
 |---|---|---|---|---|
-| Voice Button Morph Transition | Product | Build | feature/persistent-input-bar | — |
-| Glow Dev Tool | Product | Build | feature/persistent-input-bar | — |
-| Navii Avatar | Product | Plan Approved | feature/persistent-input-bar | — |
+| Codex + Git workflow consolidation | Platform | Build | feature/transcription-unification | — |
 
 ---
 
@@ -119,6 +117,19 @@ dependency stage. If not yet in BUILD:
 ### 5. Review + QA
 **Who:** Claude (`requesting-code-review` + `verification-before-completion`) + Baah (device QA)
 
+**Verification matrix:**
+
+| Change area | Required checks |
+|---|---|
+| Backend | Backend Jest suite + backend TypeScript build |
+| Shared types | Shared type-check/build + affected backend tests |
+| Mobile logic | Mobile TypeScript check + relevant available tests |
+| Mobile UI | Mobile TypeScript check + DS compliance + relevant Storybook checks + device QA |
+| Cross-stack | Backend tests/build + shared checks + mobile TypeScript check |
+| Docs/workflow | Path/link consistency + workflow verification + clean diff |
+
+Run the narrowest relevant check throughout BUILD, then run the complete applicable row before PR or Ship. Missing test infrastructure is a reported gap, not a passing test. Mobile-facing changes require Baah's device QA unless explicitly classified as non-visual and non-device-sensitive.
+
 **DS compliance check (blocks PR if any fail):**
 - [ ] All visual primitives in screens import from `mobile/src/components/ui/`
 - [ ] No `StyleSheet.create()` in new or changed files
@@ -214,13 +225,63 @@ Claude reads intent, not keywords. Ambiguous → one yes/no question.
 
 ---
 
-## Git conventions
+## Git and shipping
 
-- One branch per feature: `feature/<name>`
-- Commits: `feat:`, `feat(ds):`, `fix:`, `fix(ds):`, `test:`, `docs:`
-- PR created when build + local QA pass — not before
-- PR description links to scope doc and lists ACs met
-- Merge to `main` only after Review + QA sign-off
+### Canonical branch
+
+`main` is the only permanent branch. It is the GitHub default and the base for every pull request. Platform and Product are workflow tracks, not Git branches; there is no long-lived `develop` branch.
+
+### Branch naming
+
+Every work branch uses `<type>/<short-kebab-case-description>`.
+
+| Prefix | Use |
+|---|---|
+| `feature/` | New user-facing capability |
+| `fix/` | Defect correction |
+| `chore/` | Tooling, dependencies, configuration, and maintenance |
+| `docs/` | Documentation-only changes |
+| `refactor/` | Internal restructuring with no intended behavior change |
+| `test/` | Test-only work |
+| `spike/` | Disposable investigation; promote before merging or delete explicitly |
+
+Names are lowercase kebab case and describe one deliverable. Do not use agent/person namespaces, generic names, needless nesting, or combine unrelated scopes.
+
+### Branch creation and commits
+
+Codex owns branch setup: confirm a clean worktree, fetch and prune, fast-forward local `main`, create the typed branch from `main`, then update Active Work for Standard and Full work. Feature development never starts directly on `main`.
+
+Commits use `feat:`, `feat(ds):`, `fix:`, `fix(ds):`, `test:`, `docs:`, `refactor:`, or `chore:` and contain one coherent change. Work-in-progress commits may exist on the work branch because squash merge is standard.
+
+### Pull requests and merge
+
+- Create the PR after applicable local checks pass, not before.
+- Target `main`; link scope/spec/plan artifacts, list acceptance criteria, and include verification evidence.
+- Resolve blocking review findings and complete required device QA before Ship.
+- Squash merge by default with a conventional commit title. Merge commits and rebase merges require a stated reason.
+- Do not push feature development directly to `main`, force-push, or rewrite shared history without separate explicit approval.
+
+### Ship gate
+
+Clear Ship approval such as “ship it” or “merge it” authorizes Codex to perform this complete transaction without repeated prompts:
+
+1. Confirm the feature branch and worktree are clean.
+2. Fetch and confirm the branch is current with `origin/main`, or reconcile it safely.
+3. Run the complete applicable verification matrix.
+4. Run final code review and confirm there are no blocking findings.
+5. Confirm required device QA has passed.
+6. Push the work branch.
+7. Create or update its pull request.
+8. Squash-merge the PR into `main`.
+9. Fast-forward local `main` to `origin/main`.
+10. Verify local `main`, remote `main`, the PR, and the merge SHA agree.
+11. Delete the merged remote work branch.
+12. Delete the merged local work branch from another checked-out branch/worktree.
+13. Prune stale remote refs and remove disposable worktrees when safe.
+14. Update Active Work, roadmap/plan status, and Linear with the merge SHA.
+15. Report verification evidence and final branch state.
+
+Ship approval does not authorize force-pushes, history rewrites, deletion of unmerged work, or removal of unrelated worktrees. Stop cleanup and report the exact blocker if the tree is dirty, checks fail, conflicts exist, a branch contains unaccounted unique commits, another worktree owns it, the PR targets an unexpected base, or remote state cannot be verified. Never force-delete a branch merely because its name looks obsolete.
 
 ---
 
