@@ -59,7 +59,7 @@ jest.mock('../db/connection', () => ({
 }));
 
 jest.mock('../services/claude/journalAgent', () => ({
-  analyzeEntry: jest.fn().mockRejectedValue(new Error('provider payload: secret-analysis')), 
+  analyzeEntry: jest.fn().mockRejectedValue(new Error('provider payload: secret-analysis')),
 }));
 
 jest.mock('../services/claude/chatAgent', () => ({
