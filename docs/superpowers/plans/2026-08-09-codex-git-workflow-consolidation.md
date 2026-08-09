@@ -89,7 +89,7 @@ git worktree list --porcelain
 git branch -avv
 git log --oneline --decorate --graph --all -30
 git for-each-ref --format='%(refname:short) %(objectname)' refs/heads refs/remotes/origin
-gh repo view EmmanuelBaah27/taisa-os --json defaultBranchRef,nameWithOwner
+gh repo view EmmanuelBaah27/taisa --json defaultBranchRef,nameWithOwner
 ```
 
 Expected: clean `feature/transcription-unification`; a separate `design-system` worktree; GitHub default `claude/add-fluid-component-bRluX`.
@@ -393,8 +393,8 @@ Expected: fast-forward update; no `--force`.
 Run:
 
 ```bash
-gh repo edit EmmanuelBaah27/taisa-os --default-branch main
-gh repo view EmmanuelBaah27/taisa-os --json defaultBranchRef,nameWithOwner
+gh repo edit EmmanuelBaah27/taisa --default-branch main
+gh repo view EmmanuelBaah27/taisa --json defaultBranchRef,nameWithOwner
 ```
 
 Expected: `defaultBranchRef.name` equals `main`.
@@ -503,7 +503,7 @@ Expected: all commands pass and the working tree is clean.
 ```bash
 git fetch --prune origin
 test "$(git rev-parse main)" = "$(git rev-parse origin/main)"
-gh repo view EmmanuelBaah27/taisa-os --json defaultBranchRef,nameWithOwner
+gh repo view EmmanuelBaah27/taisa --json defaultBranchRef,nameWithOwner
 git remote show origin
 git branch -avv
 ```

@@ -34,7 +34,7 @@
 Run from the repo root (not `mobile/` — the CLAUDE.md alias runs `npm install` from root with `--workspace`):
 
 ```bash
-cd taisa-os/mobile && npm install @usenavii/core
+cd taisa/mobile && npm install @usenavii/core
 ```
 
 Expected: `added 1 package` (or similar), no errors.
@@ -42,7 +42,7 @@ Expected: `added 1 package` (or similar), no errors.
 - [ ] **Step 2: Verify the installed package has a dist**
 
 ```bash
-ls taisa-os/mobile/node_modules/@usenavii/core/dist/
+ls taisa/mobile/node_modules/@usenavii/core/dist/
 ```
 
 Expected output includes: `index.cjs`, `index.js`, `index.d.ts`
@@ -50,7 +50,7 @@ Expected output includes: `index.cjs`, `index.js`, `index.d.ts`
 - [ ] **Step 3: Commit**
 
 ```bash
-cd taisa-os && git add mobile/package.json mobile/package-lock.json
+cd taisa && git add mobile/package.json mobile/package-lock.json
 git commit -m "chore(mobile): install @usenavii/core"
 ```
 
@@ -122,7 +122,7 @@ export const useCareerStore = create<CareerStore>((set, get) => ({
 - [ ] **Step 2: Verify TypeScript is happy**
 
 ```bash
-cd taisa-os/mobile && npx tsc --noEmit 2>&1 | grep -i "careerStore\|userId" | head -10
+cd taisa/mobile && npx tsc --noEmit 2>&1 | grep -i "careerStore\|userId" | head -10
 ```
 
 Expected: no output (no errors related to these files).
@@ -130,7 +130,7 @@ Expected: no output (no errors related to these files).
 - [ ] **Step 3: Commit**
 
 ```bash
-cd taisa-os && git add mobile/src/stores/careerStore.ts
+cd taisa && git add mobile/src/stores/careerStore.ts
 git commit -m "feat(store): surface userId in careerStore state"
 ```
 
@@ -163,7 +163,7 @@ export function NaviiAvatar({ seed, size }: NaviiAvatarProps) {
 - [ ] **Step 2: Verify TypeScript is happy**
 
 ```bash
-cd taisa-os/mobile && npx tsc --noEmit 2>&1 | grep -i "NaviiAvatar" | head -10
+cd taisa/mobile && npx tsc --noEmit 2>&1 | grep -i "NaviiAvatar" | head -10
 ```
 
 Expected: no output.
@@ -171,7 +171,7 @@ Expected: no output.
 - [ ] **Step 3: Commit**
 
 ```bash
-cd taisa-os && git add mobile/src/components/ui/NaviiAvatar.tsx
+cd taisa && git add mobile/src/components/ui/NaviiAvatar.tsx
 git commit -m "feat(ui): add NaviiAvatar component"
 ```
 
@@ -253,7 +253,7 @@ export const SameSeedIsStable: Story = {
 - [ ] **Step 2: Commit**
 
 ```bash
-cd taisa-os && git add mobile/src/components/ui/NaviiAvatar.stories.tsx
+cd taisa && git add mobile/src/components/ui/NaviiAvatar.stories.tsx
 git commit -m "test(ui): add NaviiAvatar Storybook stories"
 ```
 
@@ -282,7 +282,7 @@ export { NaviiAvatar } from './NaviiAvatar';
 - [ ] **Step 2: Verify TypeScript**
 
 ```bash
-cd taisa-os/mobile && npx tsc --noEmit 2>&1 | head -20
+cd taisa/mobile && npx tsc --noEmit 2>&1 | head -20
 ```
 
 Expected: no output.
@@ -290,7 +290,7 @@ Expected: no output.
 - [ ] **Step 3: Commit**
 
 ```bash
-cd taisa-os && git add mobile/src/components/ui/index.ts
+cd taisa && git add mobile/src/components/ui/index.ts
 git commit -m "feat(ui): export NaviiAvatar from ui index"
 ```
 
@@ -354,7 +354,7 @@ Replace with:
 - [ ] **Step 2: Verify TypeScript**
 
 ```bash
-cd taisa-os/mobile && npx tsc --noEmit 2>&1 | grep "you.tsx" | head -10
+cd taisa/mobile && npx tsc --noEmit 2>&1 | grep "you.tsx" | head -10
 ```
 
 Expected: no output.
@@ -362,7 +362,7 @@ Expected: no output.
 - [ ] **Step 3: Commit**
 
 ```bash
-cd taisa-os && git add mobile/app/(tabs)/you.tsx
+cd taisa && git add mobile/app/(tabs)/you.tsx
 git commit -m "feat(you): replace T circle with 64px centered NaviiAvatar"
 ```
 
@@ -431,7 +431,7 @@ Then update every `<TabButton>` call in the return (currently a `.map()` at line
 - [ ] **Step 5: Verify TypeScript**
 
 ```bash
-cd taisa-os/mobile && npx tsc --noEmit 2>&1 | grep "TopNavBar\|TabButton" | head -10
+cd taisa/mobile && npx tsc --noEmit 2>&1 | grep "TopNavBar\|TabButton" | head -10
 ```
 
 Expected: no output.
@@ -439,7 +439,7 @@ Expected: no output.
 - [ ] **Step 6: Commit**
 
 ```bash
-cd taisa-os && git add mobile/src/components/ui/TopNavBar.tsx
+cd taisa && git add mobile/src/components/ui/TopNavBar.tsx
 git commit -m "feat(nav): replace IconPeopleCircle with 22px NaviiAvatar for You tab"
 ```
 
@@ -450,7 +450,7 @@ git commit -m "feat(nav): replace IconPeopleCircle with 22px NaviiAvatar for You
 - [ ] **Step 1: Full TypeScript check**
 
 ```bash
-cd taisa-os/mobile && npx tsc --noEmit
+cd taisa/mobile && npx tsc --noEmit
 ```
 
 Expected: no output (zero errors).
@@ -458,7 +458,7 @@ Expected: no output (zero errors).
 - [ ] **Step 2: Start the app and visually verify**
 
 ```bash
-cd taisa-os && npm run mobile
+cd taisa && npm run mobile
 ```
 
 Check:
@@ -471,7 +471,7 @@ Check:
 - [ ] **Step 3: Storybook verification (optional but recommended)**
 
 ```bash
-cd taisa-os/mobile && EXPO_PUBLIC_STORYBOOK=true npm run mobile
+cd taisa/mobile && EXPO_PUBLIC_STORYBOOK=true npm run mobile
 ```
 
 Navigate to `Components/NaviiAvatar`. Verify:

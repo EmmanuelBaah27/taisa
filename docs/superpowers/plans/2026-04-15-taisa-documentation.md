@@ -177,7 +177,7 @@ Read these. Note: the Claude client uses `claude-sonnet-4-6`. The agent loads pr
 ## System Layers
 
 ```
-taisa-os/
+taisa/
 ├── mobile/          React Native app (Expo managed workflow)
 │   ├── app/         Expo Router screens (file-based routing)
 │   └── src/         Components, hooks, services, stores, constants
@@ -1393,7 +1393,7 @@ ipconfig getifaddr en0
 ## Project Structure
 
 ```
-taisa-os/
+taisa/
 ├── mobile/       React Native app (Expo) — has its own node_modules
 ├── backend/      Node.js + Express API
 ├── shared/       TypeScript types shared between mobile and backend
