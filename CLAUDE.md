@@ -51,12 +51,13 @@ The Senior Self persona is NOT yet implemented. The current `journalProcessor.ts
 
 ## Workflow
 
-Invoke the `taisa-workflow` skill at the start of every scope, plan, build, or review
-task. This is not optional.
+Load these shared workflow files at the start of every scope, plan, build, review, or Ship task:
 
-The workflow in `docs/workflow.md` is the source of truth for how work moves.
-Baah approves at gates: scope doc, plan summary, ship. Claude handles everything else
-autonomously — Active Work table, Linear updates, DS classification, session orientation.
+1. `docs/workflow.md` — human-readable source of truth
+2. `.claude/skills/taisa-workflow/SKILL.md` — operational orchestrator
+3. `AGENTS.md` — Codex automatic entry point
+
+The orchestrator maps Taisa's stages to the required Superpowers process skills. Baah approves Scope, Plan, and Ship; agents handle routine Active Work, Git/GitHub, verification, documentation, and Linear housekeeping within those approvals.
 
 ---
 

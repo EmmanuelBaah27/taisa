@@ -17,14 +17,17 @@ what to invoke next, what to update in Linear, and where Baah must approve.
 ## 1. Session start — reconcile before doing anything
 
 ```bash
-git branch --list feature/*      # confirm active branches exist
+git status --short --branch      # confirm branch and user changes
+git worktree list --porcelain    # identify branch ownership
+git branch -avv                  # compare local and tracked refs
+git fetch --prune origin         # refresh remote state before decisions
 ls docs/features/                # confirm scope docs exist
 ls docs/superpowers/plans/       # confirm plan docs exist
 ```
 
-Cross-reference results against the Active Work table in `docs/workflow.md`.
-If stale (branch or doc missing), update the table before proceeding.
-Then read the table to orient for the session.
+Read `docs/workflow.md` completely and cross-reference these results against its Active Work table. If stale or contradictory, understand and reconcile the mismatch before modifying product code. Preserve dirty worktrees and user changes.
+
+State the tier, current stage, current branch, and next Baah approval gate before proceeding.
 
 ---
 
@@ -64,6 +67,23 @@ Baah initiates scoping
   → Linear status → Done, comment merge SHA
 ```
 
+### Superpowers process routing
+
+Taisa's stages and approval gates control **what** happens. Superpowers controls **how** the work is performed. Invoke the applicable process skill automatically:
+
+| Event | Required skill |
+|---|---|
+| New behavior or workflow design | `superpowers:brainstorming` |
+| Approved multi-step specification | `superpowers:writing-plans` |
+| Bug or unexpected behavior | `superpowers:systematic-debugging` before proposing fixes |
+| Feature or bug implementation | `superpowers:test-driven-development` where executable tests are practical |
+| Approved plan execution | `superpowers:executing-plans` |
+| Build complete | `superpowers:requesting-code-review` |
+| Any completion or Ship claim | `superpowers:verification-before-completion` |
+| Integration and cleanup | `superpowers:finishing-a-development-branch` |
+
+Use subagents only when Baah explicitly authorizes them and the tasks are independent. A skill never bypasses a Scope, Plan, or Ship gate and never expands approved scope.
+
 ---
 
 ## 4. Gate definitions
@@ -75,6 +95,8 @@ Baah initiates scoping
 | Ship | Code review + verification passed | Baah confirms device QA in chat |
 
 Read intent, not keywords. Ambiguous → one yes/no question, never assume.
+
+Clear Ship approval authorizes the complete verified merge and safe branch-cleanup transaction defined in `docs/workflow.md` § “Git and shipping.” Codex owns routine Git and GitHub execution within that approval. Stop rather than deleting if a branch is dirty, checked out elsewhere, unmerged, or contains unaccounted unique commits. Force-pushes and shared-history rewrites always require separate target-specific approval.
 
 ---
 
