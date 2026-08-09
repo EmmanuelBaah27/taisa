@@ -550,6 +550,66 @@ describe('content-free usage ledger', () => {
     fs.rmSync(databasePath, { force: true });
   });
 
+  test('keeps successful usage in its reserved UTC day across a day rollover', () => {
+    const databasePath = createLedgerPath();
+    const ledger = new CostLedger({ databasePath });
+    const reservedAt = new Date('2026-08-09T23:59:59Z');
+    const nextDay = new Date('2026-08-10T00:00:01Z');
+    jest.useFakeTimers().setSystemTime(nextDay);
+
+    try {
+      const crossing = ledger.reserveUsage(
+        { ...receipt, estimatedCostUsd: 0.04 },
+        { perRequestUsd: 0.05, dailyUsd: 0.05, monthlyUsd: 1 },
+        reservedAt,
+      );
+      crossing.beginProviderInvocation();
+      crossing.commit({ ...receipt, estimatedCostUsd: 0.04 });
+
+      expect(ledger.listUsage()[0].recordedAt).toBe(reservedAt.toISOString());
+      const next = ledger.reserveUsage(
+        { ...receipt, estimatedCostUsd: 0.04 },
+        { perRequestUsd: 0.05, dailyUsd: 0.05, monthlyUsd: 1 },
+        nextDay,
+      );
+      next.release();
+    } finally {
+      jest.useRealTimers();
+      ledger.close();
+      fs.rmSync(databasePath, { force: true });
+    }
+  });
+
+  test('keeps successful usage in its reserved UTC month across a month rollover', () => {
+    const databasePath = createLedgerPath();
+    const ledger = new CostLedger({ databasePath });
+    const reservedAt = new Date('2026-08-31T23:59:59Z');
+    const nextMonth = new Date('2026-09-01T00:00:01Z');
+    jest.useFakeTimers().setSystemTime(nextMonth);
+
+    try {
+      const crossing = ledger.reserveUsage(
+        { ...receipt, estimatedCostUsd: 0.04 },
+        { perRequestUsd: 0.05, dailyUsd: 1, monthlyUsd: 0.05 },
+        reservedAt,
+      );
+      crossing.beginProviderInvocation();
+      crossing.commit({ ...receipt, estimatedCostUsd: 0.04 });
+
+      expect(ledger.listUsage()[0].recordedAt).toBe(reservedAt.toISOString());
+      const next = ledger.reserveUsage(
+        { ...receipt, estimatedCostUsd: 0.04 },
+        { perRequestUsd: 0.05, dailyUsd: 1, monthlyUsd: 0.05 },
+        nextMonth,
+      );
+      next.release();
+    } finally {
+      jest.useRealTimers();
+      ledger.close();
+      fs.rmSync(databasePath, { force: true });
+    }
+  });
+
   test('persists content-free receipts and in-flight estimates across restart', () => {
     const databasePath = createLedgerPath();
     const first = new CostLedger({ databasePath });

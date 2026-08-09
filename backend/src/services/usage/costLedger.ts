@@ -306,7 +306,7 @@ export class CostLedger implements UsageLedger {
           if (!row) throw new Error('Cost reservation is unavailable');
           reservedUsd = row.estimated_cost_usd;
           this.database.prepare('DELETE FROM cost_reservations WHERE id = ?').run(id);
-          this.recordUsage(actual);
+          this.recordUsage(actual, new Date(row.recorded_at));
         }).immediate();
         active = false;
         if (actual.estimatedCostUsd > reservedUsd + Number.EPSILON) {
