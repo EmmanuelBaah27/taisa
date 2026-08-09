@@ -116,24 +116,27 @@ export function createAnthropicProvider(
   return {
     id: 'anthropic',
     async respond(input: ProviderCoachingInput) {
-      const message = await client.messages.create({
-        model: config.model,
-        max_tokens: 2048,
-        system: input.systemPrompt,
-        messages: [{ role: 'user', content: input.userPrompt }],
-        tools: [
-          {
+      const message = await client.messages.create(
+        {
+          model: config.model,
+          max_tokens: 2048,
+          system: input.systemPrompt,
+          messages: [{ role: 'user', content: input.userPrompt }],
+          tools: [
+            {
+              name: 'submit_coaching_response',
+              description: 'Return the structured coaching response for this submitted turn.',
+              input_schema: COACHING_RESPONSE_INPUT_SCHEMA,
+            },
+          ],
+          tool_choice: {
+            type: 'tool',
             name: 'submit_coaching_response',
-            description: 'Return the structured coaching response for this submitted turn.',
-            input_schema: COACHING_RESPONSE_INPUT_SCHEMA,
+            disable_parallel_tool_use: true,
           },
-        ],
-        tool_choice: {
-          type: 'tool',
-          name: 'submit_coaching_response',
-          disable_parallel_tool_use: true,
         },
-      });
+        { maxRetries: 0 },
+      );
 
       const toolUse = message.content.find(
         (block) => block.type === 'tool_use' && block.name === 'submit_coaching_response',

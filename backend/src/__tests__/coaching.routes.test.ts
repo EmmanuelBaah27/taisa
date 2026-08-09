@@ -52,12 +52,20 @@ const evidence = {
   actionIds: [],
 };
 
+const profile = {
+  currentRole: 'Senior Product Designer',
+  currentCompany: 'Taisa',
+  careerStage: 'senior',
+  coachingStyle: 'direct',
+  accountabilityLevel: 'moderate',
+};
+
 const validRequest = {
   requestId: '11111111-1111-4111-8111-111111111111',
   submittedAt: '2026-08-09T00:00:00Z',
   input: 'I may prefer management',
   context: {
-    profile: null,
+    profile,
     recentMessages: [message],
     memory: [memory],
     evidence: [evidence],
@@ -97,6 +105,95 @@ test.each([
     { ...validRequest, context: { ...validRequest.context, evidence: Array(9).fill(evidence) } },
   ],
 ])('rejects oversized %s', async (_name, body) => {
+  const res = await request(app)
+    .post('/api/v1/coaching/respond')
+    .set('x-user-id', 'device-1')
+    .send(body);
+
+  expect(res.status).toBe(400);
+  expect(jest.requireMock('../services/coaching/coachingGateway').requestCoaching).not.toHaveBeenCalled();
+});
+
+test.each([
+  [
+    'archive-shaped profile',
+    { ...validRequest, context: { ...validRequest.context, profile: { ...profile, id: 'profile-1' } } },
+  ],
+  [
+    'profile field',
+    {
+      ...validRequest,
+      context: { ...validRequest.context, profile: { ...profile, currentRole: 'x'.repeat(201) } },
+    },
+  ],
+  [
+    'memory statement',
+    {
+      ...validRequest,
+      context: {
+        ...validRequest.context,
+        memory: [{ ...memory, statement: 'x'.repeat(4001) }],
+      },
+    },
+  ],
+  [
+    'memory source IDs',
+    {
+      ...validRequest,
+      context: {
+        ...validRequest.context,
+        memory: [{ ...memory, sourceMessageIds: Array(51).fill('m1') }],
+      },
+    },
+  ],
+  [
+    'memory ID',
+    {
+      ...validRequest,
+      context: { ...validRequest.context, memory: [{ ...memory, id: 'x'.repeat(129) }] },
+    },
+  ],
+  [
+    'evidence statement',
+    {
+      ...validRequest,
+      context: {
+        ...validRequest.context,
+        evidence: [{ ...evidence, statement: 'x'.repeat(4001) }],
+      },
+    },
+  ],
+  [
+    'evidence source IDs',
+    {
+      ...validRequest,
+      context: {
+        ...validRequest.context,
+        evidence: [{ ...evidence, sourceMessageIds: Array(51).fill('m1') }],
+      },
+    },
+  ],
+  [
+    'evidence goal IDs',
+    {
+      ...validRequest,
+      context: {
+        ...validRequest.context,
+        evidence: [{ ...evidence, goalIds: Array(51).fill('goal-1') }],
+      },
+    },
+  ],
+  [
+    'evidence action IDs',
+    {
+      ...validRequest,
+      context: {
+        ...validRequest.context,
+        evidence: [{ ...evidence, actionIds: Array(51).fill('action-1') }],
+      },
+    },
+  ],
+])('rejects oversized nested %s', async (_name, body) => {
   const res = await request(app)
     .post('/api/v1/coaching/respond')
     .set('x-user-id', 'device-1')

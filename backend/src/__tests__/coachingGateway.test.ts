@@ -108,6 +108,7 @@ test('OpenAI and Anthropic adapters honor the same structured coaching contract 
   }
 
   expect(openAIParse.mock.calls[0][0].response_format.type).toBe('json_schema');
+  expect(openAIParse.mock.calls[0][1]).toEqual({ maxRetries: 0 });
   expect(anthropicCreate.mock.calls[0][0]).toMatchObject({
     tool_choice: {
       type: 'tool',
@@ -116,6 +117,7 @@ test('OpenAI and Anthropic adapters honor the same structured coaching contract 
     },
     tools: [{ name: 'submit_coaching_response', input_schema: { type: 'object' } }],
   });
+  expect(anthropicCreate.mock.calls[0][1]).toEqual({ maxRetries: 0 });
 });
 
 test.each(['openai', 'anthropic'] as const)(
@@ -188,6 +190,45 @@ test.each([undefined, '', 'other'])(
     ).toThrow('TAISA_COACHING_PROVIDER must be configured as openai or anthropic');
   },
 );
+
+test.each([
+  [
+    'missing selected model',
+    {
+      TAISA_COACHING_PROVIDER: 'openai',
+      TAISA_OPENAI_INPUT_PRICE_USD_PER_MILLION_TOKENS: '2',
+      TAISA_OPENAI_OUTPUT_PRICE_USD_PER_MILLION_TOKENS: '8',
+    },
+    'TAISA_OPENAI_MODEL must be configured',
+  ],
+  [
+    'non-numeric selected input price',
+    {
+      TAISA_COACHING_PROVIDER: 'anthropic',
+      TAISA_ANTHROPIC_MODEL: 'anthropic-mock',
+      TAISA_ANTHROPIC_INPUT_PRICE_USD_PER_MILLION_TOKENS: 'not-a-number',
+      TAISA_ANTHROPIC_OUTPUT_PRICE_USD_PER_MILLION_TOKENS: '15',
+    },
+    'TAISA_ANTHROPIC_INPUT_PRICE_USD_PER_MILLION_TOKENS must be a non-negative number',
+  ],
+  [
+    'negative selected output price',
+    {
+      TAISA_COACHING_PROVIDER: 'openai',
+      TAISA_OPENAI_MODEL: 'openai-mock',
+      TAISA_OPENAI_INPUT_PRICE_USD_PER_MILLION_TOKENS: '2',
+      TAISA_OPENAI_OUTPUT_PRICE_USD_PER_MILLION_TOKENS: '-1',
+    },
+    'TAISA_OPENAI_OUTPUT_PRICE_USD_PER_MILLION_TOKENS must be a non-negative number',
+  ],
+])('fails closed for %s', (_name, environment, expectedMessage) => {
+  expect(() =>
+    getConfiguredProvider(environment, {
+      openai: { id: 'openai', respond: jest.fn() },
+      anthropic: { id: 'anthropic', respond: jest.fn() },
+    }),
+  ).toThrow(expectedMessage);
+});
 
 test('invalid structured output is recoverable and never triggers a retry', async () => {
   const selected: CoachingProvider = {

@@ -1,5 +1,4 @@
 import { Router } from 'express';
-import type { CoachingRequest } from '@taisa/shared';
 import { CoachingRequestSchema } from '../schemas/coaching';
 import { requestCoaching } from '../services/coaching/coachingGateway';
 
@@ -15,7 +14,7 @@ router.post('/respond', async (req, res) => {
   }
 
   try {
-    const response = await requestCoaching(parsed.data as CoachingRequest);
+    const response = await requestCoaching(parsed.data);
     return res.json({ success: true, data: response });
   } catch (error: any) {
     if (error?.code === 'INVALID_COACHING_OUTPUT' && error?.recoverable === true) {

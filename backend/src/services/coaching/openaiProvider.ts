@@ -17,14 +17,17 @@ export function createOpenAIProvider(
   return {
     id: 'openai',
     async respond(input: ProviderCoachingInput) {
-      const completion = await client.beta.chat.completions.parse({
-        model: config.model,
-        messages: [
-          { role: 'system', content: input.systemPrompt },
-          { role: 'user', content: input.userPrompt },
-        ],
-        response_format: zodResponseFormat(CoachingResponsePayloadSchema, 'coaching_response'),
-      });
+      const completion = await client.beta.chat.completions.parse(
+        {
+          model: config.model,
+          messages: [
+            { role: 'system', content: input.systemPrompt },
+            { role: 'user', content: input.userPrompt },
+          ],
+          response_format: zodResponseFormat(CoachingResponsePayloadSchema, 'coaching_response'),
+        },
+        { maxRetries: 0 },
+      );
 
       const payload = CoachingResponsePayloadSchema.parse(completion.choices[0]?.message.parsed);
       const inputTokens = completion.usage?.prompt_tokens ?? 0;

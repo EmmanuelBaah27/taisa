@@ -20,6 +20,7 @@ import chatRouter from './routes/chat';
 import todayRouter from './routes/today';
 import coachingRouter from './routes/coaching';
 import { getConfiguredProvider } from './services/coaching/provider';
+import { coachingRateLimit } from './middleware/coachingRateLimit';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -36,8 +37,7 @@ getDb();
 // Validate provider, model, and pricing configuration before accepting traffic.
 getConfiguredProvider();
 
-// Rate limiter for AI-heavy routes
-// MVP: limited by IP. TODO: switch to per-userId keyGenerator once auth is added.
+// Legacy limiter for existing AI-heavy routes.
 const aiRateLimit = rateLimit({
   windowMs: 60 * 1000,
   max: 20,
@@ -58,7 +58,7 @@ app.use('/api/v1/trajectory', trajectoryRouter);
 app.use('/api/v1/notifications', notificationsRouter);
 app.use('/api/v1/chat', aiRateLimit, chatRouter);
 app.use('/api/v1/today', todayRouter);
-app.use('/api/v1/coaching', aiRateLimit, coachingRouter);
+app.use('/api/v1/coaching', coachingRateLimit, coachingRouter);
 
 // Health check
 app.get('/health', (_req, res) => {
