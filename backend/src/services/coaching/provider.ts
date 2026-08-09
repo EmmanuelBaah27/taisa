@@ -19,6 +19,7 @@ export interface CoachingProviderConfig {
   model: string;
   inputPriceUsdPerMillionTokens: number;
   outputPriceUsdPerMillionTokens: number;
+  maxOutputTokens: number;
 }
 
 export type CoachingProviderId = 'openai' | 'anthropic';
@@ -40,6 +41,14 @@ function requireNonNegativeNumber(environment: CoachingEnvironment, name: string
   return value;
 }
 
+function requirePositiveInteger(environment: CoachingEnvironment, name: string): number {
+  const value = requireNonNegativeNumber(environment, name);
+  if (!Number.isSafeInteger(value) || value === 0) {
+    throw new Error(`${name} must be a positive integer`);
+  }
+  return value;
+}
+
 function readProviderConfig(
   environment: CoachingEnvironment,
   provider: CoachingProviderId,
@@ -55,19 +64,26 @@ function readProviderConfig(
       environment,
       `${prefix}_OUTPUT_PRICE_USD_PER_MILLION_TOKENS`,
     ),
+    maxOutputTokens: requirePositiveInteger(environment, `${prefix}_MAX_OUTPUT_TOKENS`),
   };
+}
+
+export function getConfiguredProviderSettings(
+  environment: CoachingEnvironment = process.env,
+): { providerId: CoachingProviderId; config: CoachingProviderConfig } {
+  const configured = environment.TAISA_COACHING_PROVIDER?.trim();
+  if (configured !== 'openai' && configured !== 'anthropic') {
+    throw new Error('TAISA_COACHING_PROVIDER must be configured as openai or anthropic');
+  }
+  return { providerId: configured, config: readProviderConfig(environment, configured) };
 }
 
 export function getConfiguredProvider(
   environment: CoachingEnvironment = process.env,
   providers?: ProviderRegistry,
 ): CoachingProvider {
-  const configured = environment.TAISA_COACHING_PROVIDER?.trim();
-  if (configured !== 'openai' && configured !== 'anthropic') {
-    throw new Error('TAISA_COACHING_PROVIDER must be configured as openai or anthropic');
-  }
-
-  return createProviderForId(configured, environment, providers);
+  const { providerId } = getConfiguredProviderSettings(environment);
+  return createProviderForId(providerId, environment, providers);
 }
 
 export function createProviderForId(

@@ -5,6 +5,7 @@ import { analyzeEntry } from '../services/claude/journalAgent';
 import { startSession } from '../services/claude/chatAgent';
 import { parseAnalysisRow } from './entries';
 import { parseAnthropicError } from '../services/claude/client';
+import { logRequestError } from '../middleware/requestContext';
 
 const router = Router();
 
@@ -52,9 +53,12 @@ router.post('/:entryId', async (req, res) => {
   } catch (error: any) {
     db.prepare("UPDATE journal_entries SET status = 'error', updated_at = ? WHERE id = ?")
       .run(new Date().toISOString(), req.params.entryId);
-    console.error('Analysis error:', error);
-    const { code, message } = parseAnthropicError(error);
-    res.status(500).json({ success: false, error: { code, message } });
+    const { code } = parseAnthropicError(error);
+    logRequestError(req, code, error);
+    res.status(500).json({
+      success: false,
+      error: { code, message: 'Unable to analyze entry' },
+    });
   }
 });
 

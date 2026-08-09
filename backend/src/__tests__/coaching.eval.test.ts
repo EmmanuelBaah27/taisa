@@ -273,6 +273,7 @@ test.each(['openai', 'anthropic'] as const)(
         [`TAISA_${providerId.toUpperCase()}_MODEL`]: 'synthetic-model',
         [`TAISA_${providerId.toUpperCase()}_INPUT_PRICE_USD_PER_MILLION_TOKENS`]: '1',
         [`TAISA_${providerId.toUpperCase()}_OUTPUT_PRICE_USD_PER_MILLION_TOKENS`]: '2',
+        [`TAISA_${providerId.toUpperCase()}_MAX_OUTPUT_TOKENS`]: '1024',
       },
       {
         openai: createFakeProvider('openai'),

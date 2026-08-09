@@ -119,7 +119,7 @@ export function createAnthropicProvider(
       const message = await client.messages.create(
         {
           model: config.model,
-          max_tokens: 2048,
+          max_tokens: config.maxOutputTokens,
           system: input.systemPrompt,
           messages: [{ role: 'user', content: input.userPrompt }],
           tools: [

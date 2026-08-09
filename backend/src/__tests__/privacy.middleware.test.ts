@@ -4,12 +4,40 @@ import os from 'os';
 import path from 'path';
 import request from 'supertest';
 import type { UsageReceipt } from '@taisa/shared';
+
+jest.mock(
+  'music-metadata',
+  () => {
+    const fileSystem = jest.requireActual('fs');
+    return {
+      parseFile: jest.fn(async (filePath: string) => {
+      const wav = fileSystem.readFileSync(filePath);
+      const byteRate = wav.readUInt32LE(28);
+      const dataLength = wav.readUInt32LE(40);
+      return { format: { duration: dataLength / byteRate } };
+      }),
+    };
+  },
+  { virtual: true },
+);
+
 import { contentSafeErrorHandler, requestContext } from '../middleware/requestContext';
 import coachingRouter from '../routes/coaching';
 import { createTranscribeRouter } from '../routes/transcribe';
-import { CostLedger, CostLimitError } from '../services/usage/costLedger';
+import {
+  CostLedger,
+  CostLimitError,
+  UsageExceedsReservationError,
+} from '../services/usage/costLedger';
 
 jest.mock('../services/coaching/coachingGateway', () => ({
+  estimateConfiguredCoachingUsage: jest.fn().mockReturnValue({
+    provider: 'openai',
+    model: 'mock',
+    inputTokens: 1,
+    outputTokens: 1,
+    estimatedCostUsd: 0,
+  }),
   requestCoaching: jest.fn().mockResolvedValue({
     requestId: '11111111-1111-4111-8111-111111111111',
     reply: 'What changed?',
@@ -48,19 +76,53 @@ const validRequest = {
 const transcriptionEnvironment = {
   TAISA_TRANSCRIPTION_MODEL: 'whisper-mock',
   TAISA_TRANSCRIPTION_MAX_DURATION_SECONDS: '300',
+  TAISA_TRANSCRIPTION_MAX_UPLOAD_BYTES: '100000',
   TAISA_TRANSCRIPTION_PRICE_USD_PER_MINUTE: '0.006',
   TAISA_AI_COST_CEILING_PER_REQUEST_USD: '0.05',
   TAISA_AI_COST_CEILING_DAILY_USD: '1',
   TAISA_AI_COST_CEILING_MONTHLY_USD: '10',
 };
 
-function createAudioFixture(): string {
+function createAudioFixture(durationSeconds = 1): string {
   const fixturePath = path.join(
     os.tmpdir(),
-    `taisa-transcription-fixture-${process.pid}-${Math.random().toString(16).slice(2)}.m4a`,
+    `taisa-transcription-fixture-${process.pid}-${Math.random().toString(16).slice(2)}.wav`,
   );
-  fs.writeFileSync(fixturePath, Buffer.from('synthetic audio fixture'));
+  const sampleRate = 8000;
+  const channelCount = 1;
+  const bitsPerSample = 16;
+  const dataLength = sampleRate * channelCount * (bitsPerSample / 8) * durationSeconds;
+  const wav = Buffer.alloc(44 + dataLength);
+  wav.write('RIFF', 0);
+  wav.writeUInt32LE(36 + dataLength, 4);
+  wav.write('WAVE', 8);
+  wav.write('fmt ', 12);
+  wav.writeUInt32LE(16, 16);
+  wav.writeUInt16LE(1, 20);
+  wav.writeUInt16LE(channelCount, 22);
+  wav.writeUInt32LE(sampleRate, 24);
+  wav.writeUInt32LE(sampleRate * channelCount * (bitsPerSample / 8), 28);
+  wav.writeUInt16LE(channelCount * (bitsPerSample / 8), 32);
+  wav.writeUInt16LE(bitsPerSample, 34);
+  wav.write('data', 36);
+  wav.writeUInt32LE(dataLength, 40);
+  fs.writeFileSync(fixturePath, wav);
   return fixturePath;
+}
+
+function createLedgerPath(): string {
+  return path.join(
+    os.tmpdir(),
+    `taisa-usage-ledger-${process.pid}-${Math.random().toString(16).slice(2)}.sqlite`,
+  );
+}
+
+async function removeLedgerFiles(databasePath: string): Promise<void> {
+  await Promise.all(
+    [databasePath, `${databasePath}-wal`, `${databasePath}-shm`].map((filePath) =>
+      fs.promises.rm(filePath, { force: true }),
+    ),
+  );
 }
 
 function createTranscriptionApp(options: {
@@ -83,11 +145,26 @@ function createTranscriptionApp(options: {
 
 describe('content-free request telemetry', () => {
   let logSpy: jest.SpyInstance;
+  const requestLedgerPath = createLedgerPath();
   const originalCostEnvironment = {
     perRequest: process.env.TAISA_AI_COST_CEILING_PER_REQUEST_USD,
     daily: process.env.TAISA_AI_COST_CEILING_DAILY_USD,
     monthly: process.env.TAISA_AI_COST_CEILING_MONTHLY_USD,
+    ledgerPath: process.env.TAISA_USAGE_LEDGER_PATH,
   };
+
+  beforeAll(() => {
+    process.env.TAISA_USAGE_LEDGER_PATH = requestLedgerPath;
+  });
+
+  afterAll(async () => {
+    if (originalCostEnvironment.ledgerPath === undefined) {
+      delete process.env.TAISA_USAGE_LEDGER_PATH;
+    } else {
+      process.env.TAISA_USAGE_LEDGER_PATH = originalCostEnvironment.ledgerPath;
+    }
+    await removeLedgerFiles(requestLedgerPath);
+  });
 
   beforeEach(() => {
     process.env.TAISA_AI_COST_CEILING_PER_REQUEST_USD = '0.05';
@@ -156,7 +233,11 @@ describe('content-free request telemetry', () => {
     const app = express();
     app.use(requestContext);
     app.get('/failure', () => {
-      throw new Error('provider payload contains private response text');
+      const providerError = new Error('provider payload contains private response text');
+      providerError.stack =
+        'Error: provider payload contains private response text\n' +
+        '    at upstreamProvider (private response text:1:1)';
+      throw providerError;
     });
     app.use(contentSafeErrorHandler);
 
@@ -204,7 +285,7 @@ describe('transcription privacy and spend boundaries', () => {
 
     const response = await request(createTranscriptionApp({ create }))
       .post('/api/v1/transcribe')
-      .field('durationSeconds', '60')
+      .field('durationSeconds', '1')
       .attach('audio', fixturePath);
 
     expect(response.status).toBe(expectedStatus);
@@ -217,13 +298,13 @@ describe('transcription privacy and spend boundaries', () => {
   });
 
   test('returns transcript but records only content-free transcription usage', async () => {
-    const ledger = new CostLedger();
+    const databasePath = createLedgerPath();
+    const ledger = new CostLedger({ databasePath });
     const create = jest.fn().mockResolvedValue({ text: 'private transcript' });
     jest.spyOn(console, 'info').mockImplementation(() => undefined);
 
     const response = await request(createTranscriptionApp({ create, ledger }))
       .post('/api/v1/transcribe')
-      .field('durationSeconds', '60')
       .attach('audio', fixturePath);
 
     expect(response.status).toBe(200);
@@ -231,8 +312,8 @@ describe('transcription privacy and spend boundaries', () => {
     expect(response.body.data.usage).toEqual({
       provider: 'openai',
       model: 'whisper-mock',
-      audioSeconds: 60,
-      estimatedCostUsd: 0.006,
+      audioSeconds: 1,
+      estimatedCostUsd: 0.0001,
     });
     expect(ledger.listUsage()).toEqual([
       {
@@ -241,19 +322,64 @@ describe('transcription privacy and spend boundaries', () => {
       },
     ]);
     expect(JSON.stringify(ledger.listUsage())).not.toContain('private transcript');
+    ledger.close();
+    await removeLedgerFiles(databasePath);
   });
 
-  test('rejects audio above the configured duration ceiling before OpenAI', async () => {
+  test('measures uploaded audio and rejects duration above the configured ceiling before OpenAI', async () => {
+    const create = jest.fn().mockResolvedValue({ text: 'must not be called' });
+    jest.spyOn(console, 'info').mockImplementation(() => undefined);
+
+    const response = await request(
+      createTranscriptionApp({
+        create,
+        environment: {
+          ...transcriptionEnvironment,
+          TAISA_TRANSCRIPTION_MAX_DURATION_SECONDS: '0.5',
+        },
+      }),
+    )
+      .post('/api/v1/transcribe')
+      .field('durationSeconds', '0.5')
+      .attach('audio', fixturePath);
+
+    expect(response.status).toBe(413);
+    expect(response.body.error.code).toBe('AUDIO_DURATION_LIMIT_EXCEEDED');
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  test('rejects materially spoofed caller duration before OpenAI', async () => {
     const create = jest.fn().mockResolvedValue({ text: 'must not be called' });
     jest.spyOn(console, 'info').mockImplementation(() => undefined);
 
     const response = await request(createTranscriptionApp({ create }))
       .post('/api/v1/transcribe')
-      .field('durationSeconds', '301')
+      .field('durationSeconds', '60')
+      .attach('audio', fixturePath);
+
+    expect(response.status).toBe(422);
+    expect(response.body.error.code).toBe('AUDIO_DURATION_MISMATCH');
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  test('rejects an upload above the configured byte limit before OpenAI', async () => {
+    const create = jest.fn().mockResolvedValue({ text: 'must not be called' });
+    jest.spyOn(console, 'info').mockImplementation(() => undefined);
+
+    const response = await request(
+      createTranscriptionApp({
+        create,
+        environment: {
+          ...transcriptionEnvironment,
+          TAISA_TRANSCRIPTION_MAX_UPLOAD_BYTES: '100',
+        },
+      }),
+    )
+      .post('/api/v1/transcribe')
       .attach('audio', fixturePath);
 
     expect(response.status).toBe(413);
-    expect(response.body.error.code).toBe('AUDIO_DURATION_LIMIT_EXCEEDED');
+    expect(response.body.error.code).toBe('AUDIO_UPLOAD_LIMIT_EXCEEDED');
     expect(create).not.toHaveBeenCalled();
   });
 
@@ -266,13 +392,12 @@ describe('transcription privacy and spend boundaries', () => {
         create,
         environment: {
           ...transcriptionEnvironment,
-          TAISA_TRANSCRIPTION_PRICE_USD_PER_MINUTE: '1',
+          TAISA_TRANSCRIPTION_PRICE_USD_PER_MINUTE: '60',
           TAISA_AI_COST_CEILING_PER_REQUEST_USD: '0.50',
         },
       }),
     )
       .post('/api/v1/transcribe')
-      .field('durationSeconds', '60')
       .attach('audio', fixturePath);
 
     expect(response.status).toBe(429);
@@ -292,12 +417,80 @@ describe('transcription privacy and spend boundaries', () => {
       }),
     )
       .post('/api/v1/transcribe')
-      .field('durationSeconds', '60')
       .attach('audio', fixturePath);
 
     expect(response.status).toBe(503);
     expect(response.body.error.code).toBe('TRANSCRIPTION_CONFIG_ERROR');
     expect(create).not.toHaveBeenCalled();
+  });
+
+  test('consumes the reserved estimate when OpenAI fails after invocation begins', async () => {
+    const databasePath = createLedgerPath();
+    const ledger = new CostLedger({ databasePath });
+    const create = jest.fn().mockRejectedValue(new Error('ambiguous provider timeout'));
+    jest.spyOn(console, 'info').mockImplementation(() => undefined);
+    jest.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    const response = await request(createTranscriptionApp({ create, ledger }))
+      .post('/api/v1/transcribe')
+      .attach('audio', fixturePath);
+
+    expect(response.status).toBe(500);
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(ledger.listUsage()).toEqual([
+      {
+        recordedAt: expect.any(String),
+        receipt: {
+          provider: 'openai',
+          model: 'whisper-mock',
+          audioSeconds: 1,
+          estimatedCostUsd: 0.0001,
+        },
+      },
+    ]);
+    ledger.close();
+    await removeLedgerFiles(databasePath);
+  });
+
+  test('leaves no reservation or usage when validation fails before OpenAI', async () => {
+    const databasePath = createLedgerPath();
+    const ledger = new CostLedger({ databasePath });
+    const create = jest.fn().mockResolvedValue({ text: 'must not be called' });
+    jest.spyOn(console, 'info').mockImplementation(() => undefined);
+
+    const response = await request(createTranscriptionApp({ create, ledger }))
+      .post('/api/v1/transcribe')
+      .field('durationSeconds', '60')
+      .attach('audio', fixturePath);
+
+    expect(response.status).toBe(422);
+    expect(create).not.toHaveBeenCalled();
+    expect(ledger.listUsage()).toEqual([]);
+    const fullReservation = ledger.reserveUsage(
+      {
+        provider: 'openai',
+        model: 'whisper-mock',
+        audioSeconds: 1,
+        estimatedCostUsd: 1,
+      },
+      { perRequestUsd: 1, dailyUsd: 1, monthlyUsd: 1 },
+    );
+    fullReservation.release();
+    ledger.close();
+    await removeLedgerFiles(databasePath);
+  });
+
+  test('disables OpenAI SDK retries for each transcription request', async () => {
+    const create = jest.fn().mockResolvedValue({ text: 'private transcript' });
+    jest.spyOn(console, 'info').mockImplementation(() => undefined);
+
+    const response = await request(createTranscriptionApp({ create }))
+      .post('/api/v1/transcribe')
+      .attach('audio', fixturePath);
+
+    expect(response.status).toBe(200);
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(create.mock.calls[0][1]).toEqual({ maxRetries: 0 });
   });
 });
 
@@ -310,7 +503,8 @@ describe('content-free usage ledger', () => {
   };
 
   test('strips fields outside UsageReceipt before recording', () => {
-    const ledger = new CostLedger();
+    const databasePath = createLedgerPath();
+    const ledger = new CostLedger({ databasePath });
     ledger.recordUsage({ ...receipt, transcript: 'private transcript' } as UsageReceipt);
 
     const serialized = JSON.stringify(ledger.listUsage());
@@ -321,25 +515,101 @@ describe('content-free usage ledger', () => {
       'audioSeconds',
       'estimatedCostUsd',
     ]);
+    ledger.close();
+    fs.rmSync(databasePath, { force: true });
   });
 
   test('counts recorded and reserved spend against daily and monthly ceilings', () => {
-    const ledger = new CostLedger();
+    const databasePath = createLedgerPath();
+    const ledger = new CostLedger({ databasePath });
     const at = new Date('2026-08-09T12:00:00Z');
     ledger.recordUsage({ ...receipt, estimatedCostUsd: 0.4 }, at);
 
-    const first = ledger.reserveCost(
-      0.3,
+    const first = ledger.reserveUsage(
+      { ...receipt, estimatedCostUsd: 0.3 },
       { perRequestUsd: 0.5, dailyUsd: 1, monthlyUsd: 2 },
       at,
     );
 
     expect(() =>
-      ledger.reserveCost(0.4, { perRequestUsd: 0.5, dailyUsd: 1, monthlyUsd: 2 }, at),
+      ledger.reserveUsage(
+        { ...receipt, estimatedCostUsd: 0.4 },
+        { perRequestUsd: 0.5, dailyUsd: 1, monthlyUsd: 2 },
+        at,
+      ),
     ).toThrow(CostLimitError);
     first.release();
     expect(() =>
-      ledger.reserveCost(0.4, { perRequestUsd: 0.5, dailyUsd: 1, monthlyUsd: 2 }, at),
+      ledger.reserveUsage(
+        { ...receipt, estimatedCostUsd: 0.4 },
+        { perRequestUsd: 0.5, dailyUsd: 1, monthlyUsd: 2 },
+        at,
+      ),
     ).not.toThrow();
+    ledger.close();
+    fs.rmSync(databasePath, { force: true });
+  });
+
+  test('persists content-free receipts and in-flight estimates across restart', () => {
+    const databasePath = createLedgerPath();
+    const first = new CostLedger({ databasePath });
+    first.recordUsage(receipt, new Date('2026-08-09T12:00:00Z'));
+    const inFlight = first.reserveUsage(
+      { ...receipt, estimatedCostUsd: 0.01 },
+      { perRequestUsd: 1, dailyUsd: 1, monthlyUsd: 1 },
+      new Date('2026-08-09T12:01:00Z'),
+    );
+    inFlight.beginProviderInvocation();
+    first.close();
+
+    const restarted = new CostLedger({ databasePath });
+    expect(restarted.listUsage().map((entry) => entry.receipt.estimatedCostUsd)).toEqual([
+      0.006,
+      0.01,
+    ]);
+    restarted.close();
+    fs.rmSync(databasePath, { force: true });
+  });
+
+  test('enforces concurrent reservations atomically across ledger connections', () => {
+    const databasePath = createLedgerPath();
+    const first = new CostLedger({ databasePath });
+    const second = new CostLedger({ databasePath });
+    const at = new Date('2026-08-09T12:00:00Z');
+
+    const held = first.reserveUsage(
+      { ...receipt, estimatedCostUsd: 0.6 },
+      { perRequestUsd: 1, dailyUsd: 1, monthlyUsd: 1 },
+      at,
+    );
+    expect(() =>
+      second.reserveUsage(
+        { ...receipt, estimatedCostUsd: 0.5 },
+        { perRequestUsd: 1, dailyUsd: 1, monthlyUsd: 1 },
+        at,
+      ),
+    ).toThrow(CostLimitError);
+
+    held.release();
+    first.close();
+    second.close();
+    fs.rmSync(databasePath, { force: true });
+  });
+
+  test('records authoritative usage and surfaces an overrun above the reserved bound', () => {
+    const databasePath = createLedgerPath();
+    const ledger = new CostLedger({ databasePath });
+    const reservation = ledger.reserveUsage(
+      { ...receipt, estimatedCostUsd: 0.01 },
+      { perRequestUsd: 1, dailyUsd: 1, monthlyUsd: 1 },
+    );
+    reservation.beginProviderInvocation();
+
+    expect(() => reservation.commit({ ...receipt, estimatedCostUsd: 0.02 })).toThrow(
+      UsageExceedsReservationError,
+    );
+    expect(ledger.listUsage()[0].receipt.estimatedCostUsd).toBe(0.02);
+    ledger.close();
+    fs.rmSync(databasePath, { force: true });
   });
 });

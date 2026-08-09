@@ -2,7 +2,10 @@ import type { CoachingProvider, ProviderCoachingInput } from '../services/coachi
 import { getConfiguredProvider } from '../services/coaching/provider';
 import { createOpenAIProvider } from '../services/coaching/openaiProvider';
 import { createAnthropicProvider } from '../services/coaching/anthropicProvider';
-import { requestCoaching } from '../services/coaching/coachingGateway';
+import {
+  estimateConfiguredCoachingUsage,
+  requestCoaching,
+} from '../services/coaching/coachingGateway';
 import { buildSeniorSelfPrompt } from '../prompts/system/seniorSelf';
 
 jest.mock('../db/connection', () => {
@@ -58,12 +61,14 @@ const openAIConfig = {
   model: 'openai-mock',
   inputPriceUsdPerMillionTokens: 2,
   outputPriceUsdPerMillionTokens: 8,
+  maxOutputTokens: 2048,
 };
 
 const anthropicConfig = {
   model: 'anthropic-mock',
   inputPriceUsdPerMillionTokens: 3,
   outputPriceUsdPerMillionTokens: 15,
+  maxOutputTokens: 1024,
 };
 
 test('OpenAI and Anthropic adapters honor the same structured coaching contract with one SDK call', async () => {
@@ -108,8 +113,10 @@ test('OpenAI and Anthropic adapters honor the same structured coaching contract 
   }
 
   expect(openAIParse.mock.calls[0][0].response_format.type).toBe('json_schema');
+  expect(openAIParse.mock.calls[0][0].max_tokens).toBe(2048);
   expect(openAIParse.mock.calls[0][1]).toEqual({ maxRetries: 0 });
   expect(anthropicCreate.mock.calls[0][0]).toMatchObject({
+    max_tokens: 1024,
     tool_choice: {
       type: 'tool',
       name: 'submit_coaching_response',
@@ -157,9 +164,11 @@ test.each(['openai', 'anthropic'] as const)(
         TAISA_OPENAI_MODEL: 'openai-mock',
         TAISA_OPENAI_INPUT_PRICE_USD_PER_MILLION_TOKENS: '2',
         TAISA_OPENAI_OUTPUT_PRICE_USD_PER_MILLION_TOKENS: '8',
+        TAISA_OPENAI_MAX_OUTPUT_TOKENS: '2048',
         TAISA_ANTHROPIC_MODEL: 'anthropic-mock',
         TAISA_ANTHROPIC_INPUT_PRICE_USD_PER_MILLION_TOKENS: '3',
         TAISA_ANTHROPIC_OUTPUT_PRICE_USD_PER_MILLION_TOKENS: '15',
+        TAISA_ANTHROPIC_MAX_OUTPUT_TOKENS: '1024',
       },
       providers,
     );
@@ -198,6 +207,7 @@ test.each([
       TAISA_COACHING_PROVIDER: 'openai',
       TAISA_OPENAI_INPUT_PRICE_USD_PER_MILLION_TOKENS: '2',
       TAISA_OPENAI_OUTPUT_PRICE_USD_PER_MILLION_TOKENS: '8',
+      TAISA_OPENAI_MAX_OUTPUT_TOKENS: '2048',
     },
     'TAISA_OPENAI_MODEL must be configured',
   ],
@@ -208,6 +218,7 @@ test.each([
       TAISA_ANTHROPIC_MODEL: 'anthropic-mock',
       TAISA_ANTHROPIC_INPUT_PRICE_USD_PER_MILLION_TOKENS: 'not-a-number',
       TAISA_ANTHROPIC_OUTPUT_PRICE_USD_PER_MILLION_TOKENS: '15',
+      TAISA_ANTHROPIC_MAX_OUTPUT_TOKENS: '1024',
     },
     'TAISA_ANTHROPIC_INPUT_PRICE_USD_PER_MILLION_TOKENS must be a non-negative number',
   ],
@@ -218,6 +229,7 @@ test.each([
       TAISA_OPENAI_MODEL: 'openai-mock',
       TAISA_OPENAI_INPUT_PRICE_USD_PER_MILLION_TOKENS: '2',
       TAISA_OPENAI_OUTPUT_PRICE_USD_PER_MILLION_TOKENS: '-1',
+      TAISA_OPENAI_MAX_OUTPUT_TOKENS: '2048',
     },
     'TAISA_OPENAI_OUTPUT_PRICE_USD_PER_MILLION_TOKENS must be a non-negative number',
   ],
@@ -228,6 +240,28 @@ test.each([
       anthropic: { id: 'anthropic', respond: jest.fn() },
     }),
   ).toThrow(expectedMessage);
+});
+
+test('conservatively estimates configured coaching input bytes and capped output tokens', () => {
+  const environment = {
+    TAISA_COACHING_PROVIDER: 'openai',
+    TAISA_OPENAI_MODEL: 'openai-mock',
+    TAISA_OPENAI_INPUT_PRICE_USD_PER_MILLION_TOKENS: '2',
+    TAISA_OPENAI_OUTPUT_PRICE_USD_PER_MILLION_TOKENS: '8',
+    TAISA_OPENAI_MAX_OUTPUT_TOKENS: '2048',
+  };
+  const prompt = buildSeniorSelfPrompt(requestFixture);
+  const conservativeInputTokens =
+    Buffer.byteLength(prompt.systemPrompt, 'utf8') + Buffer.byteLength(prompt.userPrompt, 'utf8');
+
+  expect(estimateConfiguredCoachingUsage(requestFixture, environment)).toEqual({
+    provider: 'openai',
+    model: 'openai-mock',
+    inputTokens: conservativeInputTokens,
+    outputTokens: 2048,
+    estimatedCostUsd:
+      (conservativeInputTokens * 2 + 2048 * 8) / 1_000_000,
+  });
 });
 
 test('invalid structured output is recoverable and never triggers a retry', async () => {

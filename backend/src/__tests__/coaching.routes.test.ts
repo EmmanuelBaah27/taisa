@@ -6,6 +6,13 @@ jest.mock('../db/connection', () => {
 });
 
 jest.mock('../services/coaching/coachingGateway', () => ({
+  estimateConfiguredCoachingUsage: jest.fn().mockReturnValue({
+    provider: 'openai',
+    model: 'mock',
+    inputTokens: 100,
+    outputTokens: 100,
+    estimatedCostUsd: 0.04,
+  }),
   requestCoaching: jest.fn().mockResolvedValue({
     requestId: '11111111-1111-4111-8111-111111111111',
     reply: 'What changed?',
@@ -30,7 +37,12 @@ jest.mock('../services/usage/costLedger', () => {
       dailyUsd: 1,
       monthlyUsd: 10,
     }),
-    reserveCost: jest.fn().mockReturnValue({ release: jest.fn() }),
+    reserveUsage: jest.fn().mockReturnValue({
+      beginProviderInvocation: jest.fn(),
+      commit: jest.fn(),
+      consumeEstimate: jest.fn(),
+      release: jest.fn(),
+    }),
     recordUsage: jest.fn(),
   };
 });
@@ -100,22 +112,31 @@ test('accepts supplied context without loading backend user data', async () => {
   expect(res.body.data.reply).toBe('What changed?');
   expect(jest.requireMock('../services/coaching/coachingGateway').requestCoaching).toHaveBeenCalledWith(validRequest);
   const usageLedger = jest.requireMock('../services/usage/costLedger');
-  expect(usageLedger.reserveCost).toHaveBeenCalledWith(0.05, {
+  expect(usageLedger.reserveUsage).toHaveBeenCalledWith(
+    {
+      provider: 'openai',
+      model: 'mock',
+      inputTokens: 100,
+      outputTokens: 100,
+      estimatedCostUsd: 0.04,
+    },
+    {
     perRequestUsd: 0.05,
     dailyUsd: 1,
     monthlyUsd: 10,
-  });
-  expect(usageLedger.reserveCost.mock.invocationCallOrder[0]).toBeLessThan(
+    },
+  );
+  expect(usageLedger.reserveUsage.mock.invocationCallOrder[0]).toBeLessThan(
     jest.requireMock('../services/coaching/coachingGateway').requestCoaching.mock.invocationCallOrder[0],
   );
-  expect(jest.requireMock('../services/usage/costLedger').recordUsage).toHaveBeenCalledWith(
-    res.body.data.usage,
-  );
+  const reservation = usageLedger.reserveUsage.mock.results[0].value;
+  expect(reservation.beginProviderInvocation).toHaveBeenCalledTimes(1);
+  expect(reservation.commit).toHaveBeenCalledWith(res.body.data.usage);
 });
 
 test('rejects a coaching request at the shared cost ceiling before the provider', async () => {
   const usageLedger = jest.requireMock('../services/usage/costLedger');
-  usageLedger.reserveCost.mockImplementationOnce(() => {
+  usageLedger.reserveUsage.mockImplementationOnce(() => {
     throw new usageLedger.CostLimitError();
   });
 
@@ -127,6 +148,29 @@ test('rejects a coaching request at the shared cost ceiling before the provider'
   expect(res.status).toBe(429);
   expect(res.body.error.code).toBe('COST_LIMIT_EXCEEDED');
   expect(jest.requireMock('../services/coaching/coachingGateway').requestCoaching).not.toHaveBeenCalled();
+});
+
+test('rejects a conservative request estimate above the per-request ceiling before provider work', async () => {
+  const gateway = jest.requireMock('../services/coaching/coachingGateway');
+  const usageLedger = jest.requireMock('../services/usage/costLedger');
+  gateway.estimateConfiguredCoachingUsage.mockReturnValueOnce({
+    provider: 'openai',
+    model: 'mock',
+    inputTokens: 10000,
+    outputTokens: 4096,
+    estimatedCostUsd: 0.06,
+  });
+  usageLedger.reserveUsage.mockImplementationOnce((usage: any, ceilings: any) => {
+    if (usage.estimatedCostUsd > ceilings.perRequestUsd) throw new usageLedger.CostLimitError();
+  });
+
+  const res = await request(app)
+    .post('/api/v1/coaching/respond')
+    .set('x-user-id', 'device-1')
+    .send(validRequest);
+
+  expect(res.status).toBe(429);
+  expect(gateway.requestCoaching).not.toHaveBeenCalled();
 });
 
 test.each([

@@ -16,9 +16,10 @@ function resolveRequestId(request: Request): string {
   return supplied && SAFE_REQUEST_ID.test(supplied) ? supplied : randomUUID();
 }
 
-function stackFrames(error: unknown): string {
-  if (!(error instanceof Error) || !error.stack) return 'stack unavailable';
-  const frames = error.stack.split('\n').slice(1).join('\n').trim();
+function localStackFrames(): string {
+  const stack = new Error().stack;
+  if (!stack) return 'stack unavailable';
+  const frames = stack.split('\n').slice(2).join('\n').trim();
   return frames || 'stack unavailable';
 }
 
@@ -46,12 +47,12 @@ export const requestContext: RequestHandler = (
   next();
 };
 
-export function logRequestError(request: Request, errorCode: string, error: unknown): void {
+export function logRequestError(request: Request, errorCode: string, _error: unknown): void {
   console.error(
     JSON.stringify({
       requestId: request.requestId ?? 'missing-request-id',
       errorCode,
-      stack: stackFrames(error),
+      stack: localStackFrames(),
     }),
   );
 }

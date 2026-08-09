@@ -258,13 +258,13 @@ Update an entry's edited transcript or status.
 
 ### `POST /api/v1/transcribe`
 
-Transcribe an audio file using the configured OpenAI transcription model. Accepts `multipart/form-data`. The temporary file is deleted before the success or failure response completes. Duration and cost configuration are checked before OpenAI is invoked.
+Transcribe an audio file using the configured OpenAI transcription model. Accepts `multipart/form-data`. The temporary file is deleted before the success or failure response completes. The server measures the uploaded audio and uses that measured duration for duration and cost checks before OpenAI is invoked.
 
 **Request** — `multipart/form-data`
 | Field | Type | Notes |
 |---|---|---|
-| `audio` | file | Required. Any format Whisper accepts (m4a, mp3, webm, …) |
-| `durationSeconds` | string/number | Required, positive, and no greater than `TAISA_TRANSCRIPTION_MAX_DURATION_SECONDS` |
+| `audio` | file | Required. A parseable format accepted by the configured transcription provider, within `TAISA_TRANSCRIPTION_MAX_UPLOAD_BYTES` |
+| `durationSeconds` | string/number | Optional display metadata. A material mismatch with measured duration is rejected; it is never used for cost or ceiling decisions |
 
 **Response** `200`
 ```json
@@ -283,7 +283,9 @@ Transcribe an audio file using the configured OpenAI transcription model. Accept
 }
 ```
 
-Required runtime settings are `TAISA_TRANSCRIPTION_MODEL`, `TAISA_TRANSCRIPTION_MAX_DURATION_SECONDS`, `TAISA_TRANSCRIPTION_PRICE_USD_PER_MINUTE`, `TAISA_AI_COST_CEILING_PER_REQUEST_USD`, `TAISA_AI_COST_CEILING_DAILY_USD`, and `TAISA_AI_COST_CEILING_MONTHLY_USD`. Missing or invalid settings fail closed with `503 TRANSCRIPTION_CONFIG_ERROR`; duration overflow returns `413 AUDIO_DURATION_LIMIT_EXCEEDED`; a cost ceiling returns `429 COST_LIMIT_EXCEEDED`. Only the content-free `usage` receipt is recorded by the gateway ledger.
+Required runtime settings are `TAISA_TRANSCRIPTION_MODEL`, `TAISA_TRANSCRIPTION_MAX_DURATION_SECONDS`, `TAISA_TRANSCRIPTION_MAX_UPLOAD_BYTES`, `TAISA_TRANSCRIPTION_PRICE_USD_PER_MINUTE`, `TAISA_AI_COST_CEILING_PER_REQUEST_USD`, `TAISA_AI_COST_CEILING_DAILY_USD`, and `TAISA_AI_COST_CEILING_MONTHLY_USD`. Missing or invalid settings fail closed with `503 TRANSCRIPTION_CONFIG_ERROR`; upload or duration overflow returns `413`; a caller-duration mismatch returns `422 AUDIO_DURATION_MISMATCH`; a cost ceiling returns `429 COST_LIMIT_EXCEEDED`. Only content-free usage receipts, timestamps, and reservations are stored at `TAISA_USAGE_LEDGER_PATH`; transcripts, prompts, responses, and uploaded audio are never stored there.
+
+The SQLite usage ledger provides transactional reservations and restart recovery for the single-instance MVP. Horizontal replicas require a shared accounting store so reservations remain globally atomic. Coaching providers additionally require their `TAISA_<PROVIDER>_MODEL`, input/output price, and `MAX_OUTPUT_TOKENS` settings; the explicit output cap is included in the conservative pre-call reservation.
 
 ---
 

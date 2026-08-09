@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { getDb } from '../db/connection';
 import { callClaudeJson, MOCK_AI, parseAnthropicError } from '../services/claude/client';
 import { buildTrajectorySystem, buildTrajectoryUser } from '../prompts/system/trajectoryAnalyst';
+import { logRequestError } from '../middleware/requestContext';
 
 const router = Router();
 
@@ -157,9 +158,12 @@ router.post('/generate', async (req, res) => {
 
     res.json({ success: true, data: { id: snapshotId, ...result, periodStart, periodEnd, momentumHistory } });
   } catch (error: any) {
-    console.error('Trajectory error:', error);
-    const { code, message } = parseAnthropicError(error);
-    res.status(500).json({ success: false, error: { code, message } });
+    const { code } = parseAnthropicError(error);
+    logRequestError(req, code, error);
+    res.status(500).json({
+      success: false,
+      error: { code, message: 'Unable to generate trajectory' },
+    });
   }
 });
 

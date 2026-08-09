@@ -1,12 +1,14 @@
 import { Router } from 'express';
 import { CoachingRequestSchema } from '../schemas/coaching';
-import { requestCoaching } from '../services/coaching/coachingGateway';
+import {
+  estimateConfiguredCoachingUsage,
+  requestCoaching,
+} from '../services/coaching/coachingGateway';
 import {
   CostConfigurationError,
   CostLimitError,
   readCostCeilings,
-  recordUsage,
-  reserveCost,
+  reserveUsage,
 } from '../services/usage/costLedger';
 
 const router = Router();
@@ -20,13 +22,14 @@ router.post('/respond', async (req, res) => {
     });
   }
 
-  let reservation: ReturnType<typeof reserveCost> | undefined;
+  let reservation: ReturnType<typeof reserveUsage> | undefined;
   try {
     const ceilings = readCostCeilings();
-    reservation = reserveCost(ceilings.perRequestUsd, ceilings);
+    const estimatedUsage = estimateConfiguredCoachingUsage(parsed.data);
+    reservation = reserveUsage(estimatedUsage, ceilings);
+    reservation.beginProviderInvocation();
     const response = await requestCoaching(parsed.data);
-    reservation.release();
-    recordUsage(response.usage);
+    reservation.commit(response.usage);
     return res.json({ success: true, data: response });
   } catch (error: any) {
     if (error instanceof CostLimitError) {

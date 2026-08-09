@@ -25,6 +25,7 @@ export function createOpenAIProvider(
             { role: 'user', content: input.userPrompt },
           ],
           response_format: zodResponseFormat(CoachingResponsePayloadSchema, 'coaching_response'),
+          max_tokens: config.maxOutputTokens,
         },
         { maxRetries: 0 },
       );

@@ -2,6 +2,9 @@ import express from 'express';
 import request from 'supertest';
 
 jest.mock('../services/coaching/coachingGateway', () => ({
+  estimateConfiguredCoachingUsage: jest.fn().mockReturnValue({
+    provider: 'openai', model: 'mock', inputTokens: 1, outputTokens: 1, estimatedCostUsd: 0,
+  }),
   requestCoaching: jest.fn().mockResolvedValue({
     requestId: '11111111-1111-4111-8111-111111111111',
     reply: 'What changed?',
@@ -20,7 +23,9 @@ jest.mock('../services/usage/costLedger', () => {
       dailyUsd: 1,
       monthlyUsd: 10,
     }),
-    reserveCost: jest.fn().mockReturnValue({ release: jest.fn() }),
+    reserveUsage: jest.fn().mockReturnValue({
+      beginProviderInvocation: jest.fn(), commit: jest.fn(), consumeEstimate: jest.fn(), release: jest.fn(),
+    }),
     recordUsage: jest.fn(),
   };
 });

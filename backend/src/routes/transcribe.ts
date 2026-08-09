@@ -1,31 +1,32 @@
 import { Router } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 import multer from 'multer';
 import OpenAI from 'openai';
 import fs from 'fs';
 import type { UsageReceipt } from '@taisa/shared';
 import { logRequestError } from '../middleware/requestContext';
 import {
-  CostLedger,
   CostLimitError,
   costLedger,
   readCostCeilings,
   type CostCeilings,
   type CostReservation,
+  type UsageLedger,
 } from '../services/usage/costLedger';
-
-const upload = multer({ dest: '/tmp/beats-audio/' });
+import { measureAudioDurationSeconds } from '../services/transcription/audioDuration';
 
 type TranscriptionClient = Pick<OpenAI, 'audio'>;
 
 interface TranscribeRouterOptions {
   client?: TranscriptionClient;
-  ledger?: CostLedger;
+  ledger?: UsageLedger;
   environment?: Record<string, string | undefined>;
 }
 
 interface TranscriptionConfig {
   model: string;
   maxDurationSeconds: number;
+  maxUploadBytes: number;
   priceUsdPerMinute: number;
   ceilings: CostCeilings;
 }
@@ -79,6 +80,7 @@ function loadTranscriptionConfig(
   return {
     model: requiredString(environment, 'TAISA_TRANSCRIPTION_MODEL'),
     maxDurationSeconds,
+    maxUploadBytes: loadMaxUploadBytes(environment),
     priceUsdPerMinute: requiredNonNegativeNumber(
       environment,
       'TAISA_TRANSCRIPTION_PRICE_USD_PER_MINUTE',
@@ -87,10 +89,22 @@ function loadTranscriptionConfig(
   };
 }
 
+function loadMaxUploadBytes(environment: Record<string, string | undefined>): number {
+  const maxUploadBytes = requiredNonNegativeNumber(
+    environment,
+    'TAISA_TRANSCRIPTION_MAX_UPLOAD_BYTES',
+  );
+  if (!Number.isSafeInteger(maxUploadBytes) || maxUploadBytes === 0) {
+    throw new Error('TAISA_TRANSCRIPTION_MAX_UPLOAD_BYTES must be a positive safe integer');
+  }
+  return maxUploadBytes;
+}
+
 function parseDurationSeconds(value: unknown): number | null {
-  if (typeof value !== 'string' || value.trim() === '') return null;
+  if (value === undefined) return null;
+  if (typeof value !== 'string' || value.trim() === '') return Number.NaN;
   const duration = Number(value);
-  return Number.isFinite(duration) && duration > 0 ? duration : null;
+  return Number.isFinite(duration) && duration > 0 ? duration : Number.NaN;
 }
 
 function safeAudioExtension(originalName: string | undefined): string {
@@ -103,8 +117,44 @@ export function createTranscribeRouter(options: TranscribeRouterOptions = {}) {
   const ledger = options.ledger ?? costLedger;
   const environment = options.environment ?? process.env;
 
+  const uploadAudio = (request: Request, response: Response, next: NextFunction) => {
+    let maxUploadBytes: number;
+    try {
+      maxUploadBytes = loadMaxUploadBytes(environment);
+    } catch (error) {
+      logRequestError(request, 'TRANSCRIPTION_CONFIG_ERROR', error);
+      return response.status(503).json({
+        success: false,
+        error: { code: 'TRANSCRIPTION_CONFIG_ERROR', message: 'Transcription is not configured' },
+      });
+    }
+
+    return multer({
+      dest: '/tmp/beats-audio/',
+      limits: { fileSize: maxUploadBytes },
+    }).single('audio')(request, response, (error: any) => {
+      if (error?.code === 'LIMIT_FILE_SIZE') {
+        return response.status(413).json({
+          success: false,
+          error: {
+            code: 'AUDIO_UPLOAD_LIMIT_EXCEEDED',
+            message: 'Audio upload exceeds the configured byte limit',
+          },
+        });
+      }
+      if (error) {
+        logRequestError(request, 'AUDIO_UPLOAD_FAILED', error);
+        return response.status(400).json({
+          success: false,
+          error: { code: 'AUDIO_UPLOAD_FAILED', message: 'Unable to accept audio upload' },
+        });
+      }
+      return next();
+    });
+  };
+
   // POST /api/v1/transcribe
-  router.post('/', upload.single('audio'), async (req, res) => {
+  router.post('/', uploadAudio, async (req, res) => {
     if (!req.file) {
       return res.status(400).json({
         success: false,
@@ -128,15 +178,27 @@ export function createTranscribeRouter(options: TranscribeRouterOptions = {}) {
         );
       }
 
-      const durationSeconds = parseDurationSeconds(req.body.durationSeconds);
-      if (durationSeconds === null) {
+      const measuredDurationSeconds = await measureAudioDurationSeconds(req.file.path);
+      const callerDurationSeconds = parseDurationSeconds(req.body.durationSeconds);
+      if (Number.isNaN(callerDurationSeconds)) {
         throw new TranscriptionBoundaryError(
           400,
           'INVALID_AUDIO_DURATION',
-          'A valid audio duration is required',
+          'Audio duration metadata must be a positive number',
         );
       }
-      if (durationSeconds > config.maxDurationSeconds) {
+      if (
+        callerDurationSeconds !== null &&
+        Math.abs(callerDurationSeconds - measuredDurationSeconds) >
+          Math.max(2, measuredDurationSeconds * 0.1)
+      ) {
+        throw new TranscriptionBoundaryError(
+          422,
+          'AUDIO_DURATION_MISMATCH',
+          'Audio duration metadata does not match the uploaded audio',
+        );
+      }
+      if (measuredDurationSeconds > config.maxDurationSeconds) {
         throw new TranscriptionBoundaryError(
           413,
           'AUDIO_DURATION_LIMIT_EXCEEDED',
@@ -144,9 +206,15 @@ export function createTranscribeRouter(options: TranscribeRouterOptions = {}) {
         );
       }
 
-      const estimatedCostUsd = (durationSeconds / 60) * config.priceUsdPerMinute;
+      const estimatedCostUsd = (measuredDurationSeconds / 60) * config.priceUsdPerMinute;
+      const estimatedUsage: UsageReceipt = {
+        provider: 'openai',
+        model: config.model,
+        audioSeconds: measuredDurationSeconds,
+        estimatedCostUsd,
+      };
       try {
-        reservation = ledger.reserveCost(estimatedCostUsd, config.ceilings);
+        reservation = ledger.reserveUsage(estimatedUsage, config.ceilings);
       } catch (error) {
         if (error instanceof CostLimitError) {
           throw new TranscriptionBoundaryError(
@@ -160,24 +228,27 @@ export function createTranscribeRouter(options: TranscribeRouterOptions = {}) {
 
       const fileName = `audio.${safeAudioExtension(req.file.originalname)}`;
       const client = options.client ?? new OpenAI({ apiKey: environment.OPENAI_API_KEY });
-      const transcription = await client.audio.transcriptions.create({
-        file: new File([fs.readFileSync(req.file.path)], fileName, { type: req.file.mimetype }),
-        model: config.model,
-        language: 'en',
-      });
+      reservation.beginProviderInvocation();
+      const transcription = await client.audio.transcriptions.create(
+        {
+          file: new File([fs.readFileSync(req.file.path)], fileName, { type: req.file.mimetype }),
+          model: config.model,
+          language: 'en',
+        },
+        { maxRetries: 0 },
+      );
 
-      const usage: UsageReceipt = {
-        provider: 'openai',
-        model: config.model,
-        audioSeconds: durationSeconds,
-        estimatedCostUsd,
-      };
+      const usage = estimatedUsage;
       reservation.commit(usage);
       result = {
         status: 200,
         body: {
           success: true,
-          data: { transcript: transcription.text, durationSeconds, usage },
+          data: {
+            transcript: transcription.text,
+            durationSeconds: measuredDurationSeconds,
+            usage,
+          },
         },
       };
     } catch (error) {
