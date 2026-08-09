@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-09
 
-**Status:** Approved design; implementation pending spec review
+**Status:** Shipped
 
 ## Problem
 
