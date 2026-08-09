@@ -4,9 +4,9 @@
 
 **Goal:** Move Taisa's durable career data from backend SQLite to encrypted on-device storage while preserving high-quality, metered coaching through a stateless gateway.
 
-**Architecture:** The iPhone becomes authoritative for profile, conversations, goals, actions, evidence, and governed memory. The mobile client assembles a bounded `CoachingRequest`; Express validates and transiently forwards it to Anthropic, returning coaching text, structured proposed deltas, and content-free usage metadata without reading or writing user data. Existing backend data is imported once through a rollback-safe migration, after which legacy CRUD routes are retired.
+**Architecture:** The iPhone becomes authoritative for profile, conversations, goals, actions, evidence, and governed memory. The mobile client assembles a bounded `CoachingRequest`; Express validates it and selects one configured provider adapter, returning coaching text, structured proposed deltas, and content-free usage metadata without reading or writing user data. OpenAI is the low-cost primary candidate and existing Anthropic support is the quality benchmark; the production default is chosen from a synthetic evaluation pack. Existing backend data is imported once through a rollback-safe migration, after which legacy CRUD routes are retired.
 
-**Tech Stack:** Expo SDK 54, React Native 0.81, TypeScript 5.9, Expo SQLite with SQLCipher, Expo SecureStore, Expo Crypto, Zustand, Express 4, Zod 3, Anthropic SDK, OpenAI transcription API, Jest/Supertest.
+**Tech Stack:** Expo SDK 54, React Native 0.81, TypeScript 5.9, Expo SQLite with SQLCipher, Expo SecureStore, Expo Crypto, Zustand, Express 4, Zod 3, OpenAI SDK, Anthropic SDK, OpenAI transcription API, Jest/Supertest.
 
 ## Global Constraints
 
@@ -14,11 +14,15 @@
 - No request bodies, response bodies, transcripts, prompts, or coaching text may be written to gateway logs, analytics, crash reports, or backend SQLite.
 - Only deliberate Submit sends content off-device; Private Save is complete without AI.
 - One coaching provider request per submitted turn. Invalid structured output fails recoverably; it does not trigger an automatic second paid call.
+- Provider selection is gateway configuration; the mobile contract and local archive are provider-independent.
+- MVP coaching adapters are limited to OpenAI and Anthropic. DeepSeek receives synthetic fixtures only, and unpaid provider tiers never receive sensitive Taisa content.
+- The production default must pass the versioned 20-scenario evaluation pack; price alone does not determine the default.
+- Daily, monthly, and per-request spend ceilings fail closed before a provider call. There are no silent paid retries.
 - Full conversation archive is never sent by default; context is assembled on-device under a fixed budget.
 - The AI proposes memory deltas but cannot persist them.
 - Each migrated entity has exactly one authoritative store; there is no dual-write period.
 - Keep the existing no-auth MVP constraint: device ID remains the caller identifier. It is a rate-limit key, not a security identity.
-- Expo managed workflow remains. SQLCipher requires a managed development build and is not available in Expo Go; plan approval must explicitly authorize the `expo-sqlite` SQLCipher config and managed native build before Task 4 begins.
+- Expo managed workflow remains. SQLCipher requires a managed development build and is not available in Expo Go; this approved plan authorizes the `expo-sqlite` SQLCipher configuration. Running native prebuild or creating a managed development build remains a separate explicit execution gate before Task 5 device verification.
 - Detailed UI redesign is out of scope. Existing screens receive only minimal wiring needed to validate private save, submit, confirmation, history, and recovery.
 - Preserve the backend database until migration verification and Baah's explicit cutover approval.
 - Follow TDD for domain logic and gateway behavior; missing native test infrastructure is reported and covered by a physical-device checklist.
@@ -38,7 +42,11 @@
 
 - Create `backend/src/schemas/coaching.ts` — Zod validation and hard request limits.
 - Create `backend/src/prompts/system/seniorSelf.ts` — prompt from supplied context only.
-- Create `backend/src/services/claude/coachingGateway.ts` — exactly one provider call and structured response validation.
+- Create `backend/src/services/coaching/provider.ts` — provider-neutral adapter interface and configuration.
+- Create `backend/src/services/coaching/openaiProvider.ts` — OpenAI structured-output adapter.
+- Create `backend/src/services/coaching/anthropicProvider.ts` — Anthropic structured-output adapter around the existing client.
+- Create `backend/src/services/coaching/coachingGateway.ts` — exactly one configured provider call and shared response validation.
+- Create `backend/src/evals/coaching/` — versioned synthetic scenarios, runner, rubric, and content-free result summary.
 - Create `backend/src/routes/coaching.ts` — stateless `POST /api/v1/coaching/respond`.
 - Create `backend/src/middleware/requestContext.ts` — request ID and content-free telemetry.
 - Modify `backend/src/routes/transcribe.ts` — guaranteed temporary-file cleanup and usage metadata.
@@ -192,12 +200,15 @@ git commit -m "feat: define portable coaching contracts"
 
 ---
 
-### Task 2: Build the stateless coaching gateway
+### Task 2: Build the provider-neutral stateless coaching gateway
 
 **Files:**
 - Create: `backend/src/schemas/coaching.ts`
 - Create: `backend/src/prompts/system/seniorSelf.ts`
-- Create: `backend/src/services/claude/coachingGateway.ts`
+- Create: `backend/src/services/coaching/provider.ts`
+- Create: `backend/src/services/coaching/openaiProvider.ts`
+- Create: `backend/src/services/coaching/anthropicProvider.ts`
+- Create: `backend/src/services/coaching/coachingGateway.ts`
 - Create: `backend/src/routes/coaching.ts`
 - Create: `backend/src/__tests__/coaching.routes.test.ts`
 - Create: `backend/src/__tests__/coachingGateway.test.ts`
@@ -206,12 +217,12 @@ git commit -m "feat: define portable coaching contracts"
 
 **Interfaces:**
 - Consumes: `CoachingRequest`, `CoachingResponse`, `MemoryDelta` from Task 1.
-- Produces: `POST /api/v1/coaching/respond` and `requestCoaching(request): Promise<CoachingResponse>`.
+- Produces: `CoachingProvider`, `getConfiguredProvider()`, `POST /api/v1/coaching/respond`, and `requestCoaching(request): Promise<CoachingResponse>`.
 
 - [ ] **Step 1: Write route tests proving the route is bounded and database-independent**
 
 ```ts
-jest.mock('../services/claude/coachingGateway', () => ({
+jest.mock('../services/coaching/coachingGateway', () => ({
   requestCoaching: jest.fn().mockResolvedValue({
     requestId: 'req-1', reply: 'What changed?', stance: 'nudge', proposals: [],
     usage: { provider: 'anthropic', model: 'mock', inputTokens: 5, outputTokens: 3, estimatedCostUsd: 0 },
@@ -222,7 +233,7 @@ test('accepts supplied context without loading backend user data', async () => {
   const res = await request(app).post('/api/v1/coaching/respond').set('x-user-id', 'device-1').send(validRequest);
   expect(res.status).toBe(200);
   expect(res.body.data.reply).toBe('What changed?');
-  expect(jest.requireMock('../services/claude/coachingGateway').requestCoaching).toHaveBeenCalledWith(validRequest);
+  expect(jest.requireMock('../services/coaching/coachingGateway').requestCoaching).toHaveBeenCalledWith(validRequest);
 });
 
 test.each([
@@ -255,26 +266,20 @@ export const CoachingRequestSchema = z.object({
 });
 ```
 
-- [ ] **Step 4: Write a failing service test for one-call structured output**
+- [ ] **Step 4: Write failing adapter and service tests for provider independence and one-call structured output**
 
-Mock `anthropicClient.messages.create`, call `requestCoaching`, assert exactly one invocation, validate the returned proposals, and assert no import or call of `getDb`.
+Test both adapters against the same contract fixture. Configure each provider in turn, call `requestCoaching`, assert exactly one adapter invocation, validate the returned proposals, and assert no import or call of `getDb`. Add a test proving invalid structured output returns a recoverable error without calling either adapter again.
 
-- [ ] **Step 5: Add a one-call provider function**
+- [ ] **Step 5: Add the provider contract, selector, and two one-call adapters**
 
 ```ts
-export async function callClaudeJsonOnce<T>(options: ClaudeCallOptions): Promise<{ data: T; usage: AnthropicUsage }> {
-  const response = await client.messages.create({
-    model: MODEL, max_tokens: options.maxTokens ?? 1400, system: options.system,
-    messages: [{ role: 'user', content: options.userMessage }],
-  });
-  const block = response.content[0];
-  if (block.type !== 'text') throw new Error('Unexpected response type');
-  const cleaned = block.text.replace(/^```(?:json)?\s*/m, '').replace(/\s*```\s*$/m, '').trim();
-  return { data: JSON.parse(cleaned) as T, usage: response.usage };
+export interface CoachingProvider {
+  readonly id: 'openai' | 'anthropic';
+  respond(input: ProviderCoachingInput): Promise<ProviderCoachingResult>;
 }
 ```
 
-Parse the result through `CoachingResponsePayloadSchema`; do not retry invalid JSON. Compute `estimatedCostUsd` from environment-configured input/output prices so pricing changes do not require code changes.
+Use each provider's native schema-constrained output feature and parse the result through `CoachingResponsePayloadSchema`; do not retry invalid output. `TAISA_COACHING_PROVIDER` selects `openai` or `anthropic`, and absent/invalid configuration fails at startup rather than silently choosing a provider. Model IDs and input/output prices come from environment configuration so provider or pricing changes do not require code or a mobile release.
 
 - [ ] **Step 6: Build the Senior Self prompt exclusively from supplied context**
 
@@ -295,7 +300,47 @@ git commit -m "feat: add stateless coaching gateway"
 
 ---
 
-### Task 3: Make gateway telemetry and transcription content-safe
+### Task 3: Add the synthetic provider evaluation pack
+
+**Files:**
+- Create: `backend/src/evals/coaching/scenarios.ts`
+- Create: `backend/src/evals/coaching/rubric.ts`
+- Create: `backend/src/evals/coaching/run.ts`
+- Create: `backend/src/__tests__/coaching.eval.test.ts`
+- Modify: `backend/package.json`
+
+**Interfaces:**
+- Consumes: `CoachingProvider` from Task 2 and the shared `CoachingResponse` schema from Task 1.
+- Produces: `npm run eval:coaching -- --provider=openai|anthropic` and a content-free JSON summary.
+
+- [ ] **Step 1: Write failing tests for scenario completeness and redaction**
+
+Assert the pack contains at least 20 synthetic scenarios spanning work conflict, career goals, forgotten or conflicting goals, related historical context, evidence, sensitive inference, action evolution, and no-memory cases. Assert serialized summaries contain only scenario IDs, numeric rubric scores, latency, token usage, estimated cost, schema status, and error codes—not prompts or model responses.
+
+- [ ] **Step 2: Run the focused test and verify it fails**
+
+Run: `npm test --workspace=backend -- coaching.eval.test.ts --runInBand`
+
+Expected: FAIL because the evaluation modules do not exist.
+
+- [ ] **Step 3: Implement the scenarios, deterministic checks, and runner**
+
+Each scenario includes synthetic input/context, expected proposal constraints, forbidden mutations, and rubric dimensions: coaching usefulness, continuity/conflict detection, action quality, memory correctness, and schema compliance. The runner requires an explicit provider, performs one call per scenario, never retries, and writes no raw content to disk.
+
+- [ ] **Step 4: Add the command and verify without incurring provider cost**
+
+Run the unit test with fake adapters, then run `npm run build --workspace=backend`. Do not execute the live evaluation command during automated tests or without an explicit cost-approved invocation.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add backend/src/evals backend/src/__tests__/coaching.eval.test.ts backend/package.json
+git commit -m "test: add coaching provider evaluation pack"
+```
+
+---
+
+### Task 4: Make gateway telemetry and transcription content-safe
 
 **Files:**
 - Create: `backend/src/middleware/requestContext.ts`
@@ -367,9 +412,9 @@ git commit -m "feat: enforce content-safe AI telemetry"
 
 ---
 
-### Task 4: Establish encrypted on-device SQLite
+### Task 5: Establish encrypted on-device SQLite
 
-**Approval gate:** Before executing this task, confirm plan approval explicitly authorizes adding the SQLCipher config and producing a managed development build. Do not run `npx expo prebuild` or `npx expo run:ios`; use the project's approved managed-build path.
+**Execution gate:** Plan approval authorizes adding the SQLCipher configuration and testable JavaScript/TypeScript foundation. Do not run `npx expo prebuild`, `npx expo run:ios`, or a managed cloud build without a separate explicit approval when physical-device verification is reached.
 
 **Files:**
 - Modify: `mobile/package.json`
@@ -461,7 +506,7 @@ git commit -m "feat: add encrypted local data foundation"
 
 ---
 
-### Task 5: Add focused local repositories
+### Task 6: Add focused local repositories
 
 **Files:**
 - Create: `mobile/src/repositories/profileRepository.ts`
@@ -510,7 +555,7 @@ git commit -m "feat: add local career repositories"
 
 ---
 
-### Task 6: Import existing backend data with a single-authority cutover
+### Task 7: Import existing backend data with a single-authority cutover
 
 **Files:**
 - Create: `backend/src/routes/migration.ts`
@@ -521,7 +566,7 @@ git commit -m "feat: add local career repositories"
 - Modify: `backend/src/index.ts`
 
 **Interfaces:**
-- Consumes: `LegacyExportBundleV1` and Task 5 repositories.
+- Consumes: `LegacyExportBundleV1` and Task 6 repositories.
 - Produces: temporary `GET /api/v1/migration/export-v1`, `importLegacyBundle(bundle)`, and local `migration_state` cutover marker.
 
 - [ ] **Step 1: Write export tests**
@@ -549,7 +594,7 @@ Map legacy analyses into source-linked evidence and archived analysis payloads w
 
 - [ ] **Step 5: Perform dry-run migration and require cutover approval**
 
-Export and import on the target iPhone, compare counts, open representative conversations/goals/actions, restart the app, and retain the backend database unchanged. Baah explicitly approves the authority cutover before Task 9 retires legacy reads.
+Export and import on the target iPhone, compare counts, open representative conversations/goals/actions, restart the app, and retain the backend database unchanged. Baah explicitly approves the authority cutover before Task 10 retires legacy reads.
 
 - [ ] **Step 6: Run cross-stack checks and commit**
 
@@ -562,7 +607,7 @@ git commit -m "feat: migrate Taisa data to device authority"
 
 ---
 
-### Task 7: Implement governed memory and bounded context assembly
+### Task 8: Implement governed memory and bounded context assembly
 
 **Files:**
 - Create: `mobile/src/domain/memory/admission.ts`
@@ -574,7 +619,7 @@ git commit -m "feat: migrate Taisa data to device authority"
 
 **Interfaces:**
 - Produces: `requiresConfirmation(delta, state)`, `applyConfirmedDelta(tx, delta)`, `rankEvidence(query, candidates)`, and `assembleCoachingContext(input, repositories, limits)`.
-- Consumed by: submission orchestration in Task 8.
+- Consumed by: submission orchestration in Task 9.
 
 - [ ] **Step 1: Write memory-policy tests from the approved rules**
 
@@ -616,7 +661,7 @@ git commit -m "feat: add governed career memory engine"
 
 ---
 
-### Task 8: Cut the coaching flow over to private local capture and stateless submission
+### Task 9: Cut the coaching flow over to private local capture and stateless submission
 
 **Files:**
 - Create: `mobile/src/services/coaching.ts`
@@ -629,7 +674,7 @@ git commit -m "feat: add governed career memory engine"
 - Modify: `mobile/app/chat/index.tsx`
 
 **Interfaces:**
-- Consumes: Task 2 gateway, Task 5 repositories, and Task 7 context/memory functions.
+- Consumes: Task 2 gateway, Task 6 repositories, and Task 8 context/memory functions.
 - Produces: `savePrivateDraft`, `submitText`, `submitVoice`, `confirmProposal`, and local-first Zustand selectors.
 
 - [ ] **Step 1: Write orchestration tests**
@@ -681,7 +726,7 @@ git commit -m "feat: run coaching from local career context"
 
 ---
 
-### Task 9: Add encrypted recovery and retire backend authority
+### Task 10: Add encrypted recovery and retire backend authority
 
 **Files:**
 - Create: `mobile/src/services/exportArchive.ts`

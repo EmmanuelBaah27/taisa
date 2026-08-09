@@ -138,6 +138,8 @@ Local storage does not mean fully on-device processing. The UI must clearly disc
 5. Cache transcripts and coaching outputs on-device so unchanged work is never resubmitted automatically.
 6. Make provider processing visible and allow the user to remove or redact identifiers before submission.
 7. Treat private local capture as a complete supported outcome, not a failed or incomplete coaching flow.
+8. Use only paid/commercial API paths whose terms state that submitted content is not used to train or improve provider models by default.
+9. Keep provider selection server-side so changing a model never requires a mobile release or migration of the local archive.
 
 ### Device protection and recovery
 
@@ -270,6 +272,19 @@ The mobile app handles the experience and owns durable user data. Taisa's gatewa
 
 The mobile client does not hold provider credentials or depend on provider-specific response formats. Shared contracts define the coaching input, structured response, memory deltas, and usage envelope. Memory governance is deterministic client-side product logic; the AI may propose deltas but cannot persist them directly.
 
+### Provider strategy
+
+Taisa owns one provider-neutral coaching contract. Provider adapters translate that contract to external APIs and must return the same schema-validated response and content-free usage receipt.
+
+- **Primary MVP candidate:** the lowest-cost capable OpenAI model that passes Taisa's evaluation pack. OpenAI also supplies the initial speech-transcription path, keeping the first operational setup to one account and billing surface.
+- **Quality benchmark:** Anthropic Sonnet. The existing Anthropic implementation remains available behind configuration for comparison and controlled fallback, not automatic retry.
+- **Not an MVP production provider:** DeepSeek. It may be evaluated with synthetic, non-sensitive fixtures, but it must not receive real work or personal content until Taisa can verify API-specific training, retention, processing-location, and structured-output commitments appropriate to the product's privacy promise.
+- **Not permitted for sensitive production data:** unpaid Gemini services or any other provider tier that may use prompts or responses to improve products or expose them to human review.
+
+The MVP integrates at most two coaching providers: OpenAI and Anthropic. It does not build model routing, automatic quality escalation, or a provider marketplace. A model is selected through gateway configuration, and every submitted turn still makes at most one paid coaching call.
+
+Provider adoption is evidence-led. A versioned pack of at least 20 synthetic Taisa scenarios measures coaching usefulness, continuity and conflict detection, action quality, memory-proposal correctness, schema compliance, latency, and estimated cost. No production default is chosen solely from published benchmarks or token price.
+
 This target differs from the current implementation, where backend SQLite is authoritative and Express routes perform user-data CRUD. The migration reuses the existing schema concepts and prompt services while relocating durable storage, retrieval, and mutations to the phone. During transition, dual authority is prohibited: each migrated entity has one declared authoritative store.
 
 A future SwiftUI client can reuse the gateway contracts and product rules, but it will need to import or migrate the encrypted on-device archive.
@@ -301,12 +316,16 @@ A future SwiftUI client can reuse the gateway contracts and product rules, but i
 - Include compact memory rather than the full archive
 - Log provider, model, input/output tokens, transcription duration, estimated cost, latency, and outcome for each metered journey
 - Enforce configurable daily and per-request ceilings
+- Enforce a configurable monthly ceiling and fail closed before a request that would exceed it
+- Expose a development-only cost summary without storing prompt or response content
 - Provide deterministic fixtures for development and automated testing
 - Do not run background AI jobs
 - Strip or hash content from gateway telemetry and error reporting
 - Offer a redaction preview for selected names, organizations, project names, and metrics
 
 The exact monetary ceiling is a configuration and validation decision, not hard-coded product scope.
+
+Provider prices and model names are runtime configuration, not durable product rules. The gateway records the selected provider/model and actual usage returned by the provider; estimated cost is calculated from configuration so pricing changes do not require an app release.
 
 ## MVP feature inventory and current state
 
