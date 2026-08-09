@@ -1,5 +1,7 @@
 # Local-First Coaching Platform Implementation Plan
 
+**Status:** Approved — Build in progress
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Move Taisa's durable career data from backend SQLite to encrypted on-device storage while preserving high-quality, metered coaching through a stateless gateway.
