@@ -764,7 +764,7 @@ Call `mcp__claude_ai_Linear__save_project` with:
 ```json
 {
   "id": "31b0d99c-6f74-4c9c-af2a-12e6e25aabe0",
-  "description": "Taisa is a personal AI career companion. Issues here track features through the build workflow: Backlog → Todo (scoped) → In Progress (building) → Done (shipped). Workflow reference: docs/workflow.md in the taisa-os repo."
+  "description": "Taisa is a personal AI career companion. Issues here track features through the build workflow: Backlog → Todo (scoped) → In Progress (building) → Done (shipped). Workflow reference: docs/workflow.md in the taisa repo."
 }
 ```
 

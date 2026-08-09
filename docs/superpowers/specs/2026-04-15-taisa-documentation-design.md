@@ -313,7 +313,7 @@ The complete happy path: onboarding → voice recording → transcription → Cl
 ## Directory Layout After Implementation
 
 ```
-taisa-os/
+taisa/
 ├── README.md
 ├── CLAUDE.md
 ├── SETUP.md                    (existing — keep)

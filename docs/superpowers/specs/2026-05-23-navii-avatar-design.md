@@ -77,7 +77,7 @@ The `userId` is passed down from `TopNavBar` → `TabButton` as a prop.
 `@usenavii/core` must be installed inside `mobile/`:
 
 ```bash
-cd taisa-os/mobile && npm install @usenavii/core
+cd taisa/mobile && npm install @usenavii/core
 ```
 
 `react-native-svg` (already installed) provides `SvgXml`.

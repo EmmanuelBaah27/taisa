@@ -7,7 +7,7 @@
 ## System Layers
 
 ```
-taisa-os/
+taisa/
 ├── mobile/          React Native app (Expo managed workflow)
 │   ├── app/         Expo Router screens (file-based routing)
 │   └── src/         Components, hooks, services, stores, constants
