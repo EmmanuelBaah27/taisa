@@ -8,6 +8,10 @@
 
 **Tech Stack:** Git, GitHub CLI, Bash workflow verification, npm workspaces, Jest, TypeScript, Expo
 
+**Status:** Shipped
+
+**Merge SHA:** `cce7d200e2e02925d2a30ca70b4d337e7091b56d`
+
 ## Global Constraints
 
 - Final repository URL: `https://github.com/EmmanuelBaah27/taisa.git`.
