@@ -4,7 +4,7 @@ void main() {
     // Copyright (c) 2026 @Xor
     //[LICENSE] https://creativecommons.org/licenses/by/4.0/
     // I like this for the colour blend
-    
+
     vec2 p= vec2((gl_FragCoord.xy*2.0-u_resolution)/u_resolution.y/.6);
     float l = length(p)-1.0; float a = atan(p.y, p.x);
     fragColor=tanh((cos(p.x+u_time/2.0+vec4(1.0, 2.0, 3.0, 0.0))+1.5)*max(.2/l, -.02-.02/l)/(2.0+cos(a*8.0+cos(a*5.0+u_time))*sin(a*4.0-u_time)));

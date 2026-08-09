@@ -517,4 +517,3 @@ Report:
 - branches preserved and why;
 - whether the separate `design-system` worktree remains;
 - paths to `AGENTS.md`, `docs/workflow.md`, the orchestrator, spec, and plan.
-

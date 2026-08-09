@@ -1,7 +1,9 @@
 # Codex + Git Workflow Consolidation Design
 
-**Date:** 2026-08-09  
-**Status:** Approved design; implementation pending spec review  
+**Date:** 2026-08-09
+
+**Status:** Approved design; implementation pending spec review
+
 **Scope:** Repository history repair, branch/merge governance, Codex orchestration, and one build/test/ship path
 
 ## Problem
