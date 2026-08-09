@@ -18,6 +18,8 @@ import trajectoryRouter from './routes/trajectory';
 import notificationsRouter from './routes/notifications';
 import chatRouter from './routes/chat';
 import todayRouter from './routes/today';
+import coachingRouter from './routes/coaching';
+import { getConfiguredProvider } from './services/coaching/provider';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -30,6 +32,9 @@ app.use(express.json({ limit: '10mb' }));
 
 // Init DB on startup
 getDb();
+
+// Validate provider, model, and pricing configuration before accepting traffic.
+getConfiguredProvider();
 
 // Rate limiter for AI-heavy routes
 // MVP: limited by IP. TODO: switch to per-userId keyGenerator once auth is added.
@@ -53,6 +58,7 @@ app.use('/api/v1/trajectory', trajectoryRouter);
 app.use('/api/v1/notifications', notificationsRouter);
 app.use('/api/v1/chat', aiRateLimit, chatRouter);
 app.use('/api/v1/today', todayRouter);
+app.use('/api/v1/coaching', aiRateLimit, coachingRouter);
 
 // Health check
 app.get('/health', (_req, res) => {
