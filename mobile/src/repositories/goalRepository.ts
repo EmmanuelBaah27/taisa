@@ -7,6 +7,7 @@ import type {
 
 import type { RepositoryConnection, RepositoryTransaction } from '../db/types';
 import { lifecycleFilter } from './mapping';
+import { toDatabaseMutationPayload } from './mutationPayload';
 import { claimMutation, requireExactlyOneAffectedRow } from './mutationReceipt';
 
 interface GoalRow {
@@ -105,7 +106,14 @@ export async function insertGoal(
   goal: LocalGoal,
   idempotencyId: string,
 ): Promise<void> {
-  if (!(await claimMutation(transaction, idempotencyId, 'goal', goal.id, 'insert', goal))) {
+  if (!(await claimMutation(
+    transaction,
+    idempotencyId,
+    'goal',
+    goal.id,
+    'insert',
+    toDatabaseMutationPayload(goalParams(goal)),
+  ))) {
     return;
   }
   await insertGoalRow(transaction, goal, idempotencyId);
@@ -127,7 +135,14 @@ export async function updateGoal(
   goal: LocalGoal,
   idempotencyId: string,
 ): Promise<void> {
-  if (!(await claimMutation(transaction, idempotencyId, 'goal', goal.id, 'update', goal))) {
+  if (!(await claimMutation(
+    transaction,
+    idempotencyId,
+    'goal',
+    goal.id,
+    'update',
+    toDatabaseMutationPayload(goalParams(goal)),
+  ))) {
     return;
   }
   const result = await transaction.runAsync(
@@ -169,7 +184,10 @@ export async function supersedeGoal(
     'goal',
     successor.id,
     'supersede',
-    { previousGoalId, successor },
+    {
+      previousGoalId,
+      successor: toDatabaseMutationPayload(goalParams(successor)),
+    },
   ))) {
     return;
   }
@@ -217,7 +235,14 @@ export async function insertMilestone(
   milestone: LocalMilestone,
   idempotencyId: string,
 ): Promise<void> {
-  if (!(await claimMutation(transaction, idempotencyId, 'milestone', milestone.id, 'insert', milestone))) {
+  if (!(await claimMutation(
+    transaction,
+    idempotencyId,
+    'milestone',
+    milestone.id,
+    'insert',
+    toDatabaseMutationPayload(milestoneParams(milestone)),
+  ))) {
     return;
   }
   await transaction.runAsync(
@@ -244,7 +269,14 @@ export async function updateMilestone(
   milestone: LocalMilestone,
   idempotencyId: string,
 ): Promise<void> {
-  if (!(await claimMutation(transaction, idempotencyId, 'milestone', milestone.id, 'update', milestone))) {
+  if (!(await claimMutation(
+    transaction,
+    idempotencyId,
+    'milestone',
+    milestone.id,
+    'update',
+    toDatabaseMutationPayload(milestoneParams(milestone)),
+  ))) {
     return;
   }
   const result = await transaction.runAsync(

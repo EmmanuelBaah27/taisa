@@ -2,6 +2,7 @@ import type { LocalEvidenceItem } from '@taisa/shared';
 
 import type { RepositoryConnection, RepositoryTransaction } from '../db/types';
 import { parseStringArray } from './mapping';
+import { toDatabaseMutationPayload } from './mutationPayload';
 import { claimMutation, requireExactlyOneAffectedRow } from './mutationReceipt';
 
 interface EvidenceRow {
@@ -53,7 +54,14 @@ export async function insertEvidence(
   evidence: LocalEvidenceItem,
   idempotencyId: string,
 ): Promise<void> {
-  if (!(await claimMutation(transaction, idempotencyId, 'evidence', evidence.id, 'insert', evidence))) {
+  if (!(await claimMutation(
+    transaction,
+    idempotencyId,
+    'evidence',
+    evidence.id,
+    'insert',
+    toDatabaseMutationPayload(evidenceParams(evidence)),
+  ))) {
     return;
   }
   await transaction.runAsync(
@@ -82,7 +90,14 @@ export async function updateEvidence(
   evidence: LocalEvidenceItem,
   idempotencyId: string,
 ): Promise<void> {
-  if (!(await claimMutation(transaction, idempotencyId, 'evidence', evidence.id, 'update', evidence))) {
+  if (!(await claimMutation(
+    transaction,
+    idempotencyId,
+    'evidence',
+    evidence.id,
+    'update',
+    toDatabaseMutationPayload(evidenceParams(evidence)),
+  ))) {
     return;
   }
   const result = await transaction.runAsync(

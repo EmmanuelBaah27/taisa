@@ -138,4 +138,58 @@ describe('memoryRepository', () => {
       db.close();
     }
   });
+
+  test.each(['insert', 'update'] as const)(
+    '%s retry treats omitted and database-normalized null supersedesId as the same mutation',
+    async (operation) => {
+      const db = createTestDatabase();
+      const withoutSupersedesId: LocalMemoryItem = {
+        id: `memory-nullable-${operation}`,
+        type: 'goal',
+        statement: 'Become a Staff Designer',
+        provenance: 'user-confirmed',
+        lifecycle: operation === 'insert' ? 'active' : 'completed',
+        confidence: 'established',
+        createdAt: NOW,
+        confirmedAt: NOW,
+        lastSupportedAt: NOW,
+        statusChangedAt: operation === 'insert' ? NOW : LATER,
+        updatedAt: operation === 'insert' ? NOW : LATER,
+        sourceMessageIds: [],
+        sourceEvidenceIds: [],
+      };
+      const idempotencyId = `memory-nullable-${operation}-retry`;
+
+      try {
+        if (operation === 'update') {
+          await db.withTransaction((tx) =>
+            insertMemory(
+              tx,
+              { ...withoutSupersedesId, lifecycle: 'active', updatedAt: NOW, statusChangedAt: NOW },
+              'memory-nullable-update-create',
+            ),
+          );
+          await db.withTransaction((tx) =>
+            updateMemory(tx, withoutSupersedesId, idempotencyId),
+          );
+        } else {
+          await db.withTransaction((tx) =>
+            insertMemory(tx, withoutSupersedesId, idempotencyId),
+          );
+        }
+
+        const databaseNormalized = await getMemory(db, withoutSupersedesId.id);
+        expect(databaseNormalized?.supersedesId).toBeNull();
+
+        await db.withTransaction((tx) =>
+          operation === 'insert'
+            ? insertMemory(tx, databaseNormalized!, idempotencyId)
+            : updateMemory(tx, databaseNormalized!, idempotencyId),
+        );
+        expect(await getMemory(db, withoutSupersedesId.id)).toEqual(databaseNormalized);
+      } finally {
+        db.close();
+      }
+    },
+  );
 });

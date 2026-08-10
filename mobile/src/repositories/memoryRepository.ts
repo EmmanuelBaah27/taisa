@@ -6,6 +6,7 @@ import type {
 
 import type { RepositoryConnection, RepositoryTransaction } from '../db/types';
 import { lifecycleFilter } from './mapping';
+import { toDatabaseMutationPayload } from './mutationPayload';
 import { claimMutation, requireExactlyOneAffectedRow } from './mutationReceipt';
 
 interface MemoryRow {
@@ -86,12 +87,29 @@ function memoryParams(memory: LocalMemoryItem, idempotencyId?: string) {
   };
 }
 
+function memorySourceParams(source: LocalMemorySource) {
+  return {
+    $id: source.id,
+    $memoryItemId: source.memoryItemId,
+    $messageId: source.messageId,
+    $evidenceId: source.evidenceId,
+    $linkedAt: source.linkedAt,
+  };
+}
+
 export async function insertMemory(
   transaction: RepositoryTransaction,
   memory: LocalMemoryItem,
   idempotencyId: string,
 ): Promise<void> {
-  if (!(await claimMutation(transaction, idempotencyId, 'memory', memory.id, 'insert', memory))) {
+  if (!(await claimMutation(
+    transaction,
+    idempotencyId,
+    'memory',
+    memory.id,
+    'insert',
+    toDatabaseMutationPayload(memoryParams(memory)),
+  ))) {
     return;
   }
   await transaction.runAsync(
@@ -136,7 +154,14 @@ export async function updateMemory(
   memory: LocalMemoryItem,
   idempotencyId: string,
 ): Promise<void> {
-  if (!(await claimMutation(transaction, idempotencyId, 'memory', memory.id, 'update', memory))) {
+  if (!(await claimMutation(
+    transaction,
+    idempotencyId,
+    'memory',
+    memory.id,
+    'update',
+    toDatabaseMutationPayload(memoryParams(memory)),
+  ))) {
     return;
   }
   const result = await transaction.runAsync(
@@ -171,18 +196,19 @@ export async function linkMemorySource(
   source: LocalMemorySource,
   idempotencyId: string,
 ): Promise<void> {
-  if (!(await claimMutation(transaction, idempotencyId, 'memory-source', source.id, 'insert', source))) {
+  if (!(await claimMutation(
+    transaction,
+    idempotencyId,
+    'memory-source',
+    source.id,
+    'insert',
+    toDatabaseMutationPayload(memorySourceParams(source)),
+  ))) {
     return;
   }
   await transaction.runAsync(
     `INSERT INTO memory_sources (id, memory_item_id, message_id, evidence_id, linked_at)
      VALUES ($id, $memoryItemId, $messageId, $evidenceId, $linkedAt)`,
-    {
-      $id: source.id,
-      $memoryItemId: source.memoryItemId,
-      $messageId: source.messageId,
-      $evidenceId: source.evidenceId,
-      $linkedAt: source.linkedAt,
-    },
+    memorySourceParams(source),
   );
 }

@@ -7,6 +7,7 @@ import type {
 
 import type { RepositoryConnection, RepositoryTransaction } from '../db/types';
 import { lifecycleFilter } from './mapping';
+import { toDatabaseMutationPayload } from './mutationPayload';
 import { claimMutation, requireExactlyOneAffectedRow } from './mutationReceipt';
 
 interface ConversationRow {
@@ -59,27 +60,52 @@ function mapMessage(row: MessageRow): LocalMessage {
   };
 }
 
+function conversationParams(conversation: LocalConversation) {
+  return {
+    $id: conversation.id,
+    $title: conversation.title,
+    $lifecycle: conversation.lifecycle,
+    $createdAt: conversation.createdAt,
+    $updatedAt: conversation.updatedAt,
+    $archivedAt: conversation.archivedAt,
+  };
+}
+
+function messageParams(message: LocalMessage) {
+  return {
+    $id: message.id,
+    $conversationId: message.conversationId,
+    $parentMessageId: message.parentMessageId,
+    $role: message.role,
+    $content: message.content,
+    $lifecycle: message.lifecycle,
+    $requestId: message.requestId,
+    $createdAt: message.createdAt,
+    $updatedAt: message.updatedAt,
+  };
+}
+
 export async function insertConversation(
   transaction: RepositoryTransaction,
   conversation: LocalConversation,
   idempotencyId: string,
 ): Promise<void> {
-  if (!(await claimMutation(transaction, idempotencyId, 'conversation', conversation.id, 'insert', conversation))) {
+  const params = conversationParams(conversation);
+  if (!(await claimMutation(
+    transaction,
+    idempotencyId,
+    'conversation',
+    conversation.id,
+    'insert',
+    toDatabaseMutationPayload(params),
+  ))) {
     return;
   }
   await transaction.runAsync(
     `INSERT INTO conversations
        (id, title, lifecycle, created_at, updated_at, archived_at, idempotency_key)
      VALUES ($id, $title, $lifecycle, $createdAt, $updatedAt, $archivedAt, $idempotencyId)`,
-    {
-      $id: conversation.id,
-      $title: conversation.title,
-      $lifecycle: conversation.lifecycle,
-      $createdAt: conversation.createdAt,
-      $updatedAt: conversation.updatedAt,
-      $archivedAt: conversation.archivedAt,
-      $idempotencyId: idempotencyId,
-    },
+    { ...params, $idempotencyId: idempotencyId },
   );
 }
 
@@ -99,21 +125,22 @@ export async function updateConversation(
   conversation: LocalConversation,
   idempotencyId: string,
 ): Promise<void> {
-  if (!(await claimMutation(transaction, idempotencyId, 'conversation', conversation.id, 'update', conversation))) {
+  const params = conversationParams(conversation);
+  if (!(await claimMutation(
+    transaction,
+    idempotencyId,
+    'conversation',
+    conversation.id,
+    'update',
+    toDatabaseMutationPayload(params),
+  ))) {
     return;
   }
   const result = await transaction.runAsync(
     `UPDATE conversations SET title = $title, lifecycle = $lifecycle,
        created_at = $createdAt, updated_at = $updatedAt, archived_at = $archivedAt
      WHERE id = $id`,
-    {
-      $id: conversation.id,
-      $title: conversation.title,
-      $lifecycle: conversation.lifecycle,
-      $createdAt: conversation.createdAt,
-      $updatedAt: conversation.updatedAt,
-      $archivedAt: conversation.archivedAt,
-    },
+    params,
   );
   requireExactlyOneAffectedRow(result, 'Cannot update missing conversation');
 }
@@ -148,7 +175,15 @@ export async function insertMessage(
   message: LocalMessage,
   idempotencyId: string,
 ): Promise<void> {
-  if (!(await claimMutation(transaction, idempotencyId, 'message', message.id, 'insert', message))) {
+  const params = messageParams(message);
+  if (!(await claimMutation(
+    transaction,
+    idempotencyId,
+    'message',
+    message.id,
+    'insert',
+    toDatabaseMutationPayload(params),
+  ))) {
     return;
   }
   await transaction.runAsync(
@@ -156,17 +191,7 @@ export async function insertMessage(
        (id, conversation_id, parent_message_id, role, content, lifecycle, request_id, created_at, updated_at)
      VALUES ($id, $conversationId, $parentMessageId, $role, $content, $lifecycle,
        $requestId, $createdAt, $updatedAt)`,
-    {
-      $id: message.id,
-      $conversationId: message.conversationId,
-      $parentMessageId: message.parentMessageId,
-      $role: message.role,
-      $content: message.content,
-      $lifecycle: message.lifecycle,
-      $requestId: message.requestId,
-      $createdAt: message.createdAt,
-      $updatedAt: message.updatedAt,
-    },
+    params,
   );
 }
 
@@ -186,7 +211,15 @@ export async function updateMessage(
   message: LocalMessage,
   idempotencyId: string,
 ): Promise<void> {
-  if (!(await claimMutation(transaction, idempotencyId, 'message', message.id, 'update', message))) {
+  const params = messageParams(message);
+  if (!(await claimMutation(
+    transaction,
+    idempotencyId,
+    'message',
+    message.id,
+    'update',
+    toDatabaseMutationPayload(params),
+  ))) {
     return;
   }
   const result = await transaction.runAsync(
@@ -194,17 +227,7 @@ export async function updateMessage(
        role = $role, content = $content, lifecycle = $lifecycle, request_id = $requestId,
        created_at = $createdAt, updated_at = $updatedAt
      WHERE id = $id`,
-    {
-      $id: message.id,
-      $conversationId: message.conversationId,
-      $parentMessageId: message.parentMessageId,
-      $role: message.role,
-      $content: message.content,
-      $lifecycle: message.lifecycle,
-      $requestId: message.requestId,
-      $createdAt: message.createdAt,
-      $updatedAt: message.updatedAt,
-    },
+    params,
   );
   requireExactlyOneAffectedRow(result, 'Cannot update missing message');
 }

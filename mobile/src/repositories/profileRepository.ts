@@ -7,6 +7,7 @@ import {
   claimMutation,
   requireExactlyOneAffectedRow,
 } from './mutationReceipt';
+import { toDatabaseMutationPayload } from './mutationPayload';
 
 interface ProfileRow {
   id: string;
@@ -72,7 +73,14 @@ export async function insertProfile(
   profile: LocalCareerProfile,
   idempotencyId: string,
 ): Promise<void> {
-  if (!(await claimMutation(transaction, idempotencyId, 'profile', profile.id, 'insert', profile))) {
+  if (!(await claimMutation(
+    transaction,
+    idempotencyId,
+    'profile',
+    profile.id,
+    'insert',
+    toDatabaseMutationPayload(profileParams(profile)),
+  ))) {
     return;
   }
   await transaction.runAsync(
@@ -100,7 +108,14 @@ export async function updateProfile(
   profile: LocalCareerProfile,
   idempotencyId: string,
 ): Promise<void> {
-  if (!(await claimMutation(transaction, idempotencyId, 'profile', profile.id, 'update', profile))) {
+  if (!(await claimMutation(
+    transaction,
+    idempotencyId,
+    'profile',
+    profile.id,
+    'update',
+    toDatabaseMutationPayload(profileParams(profile)),
+  ))) {
     return;
   }
   const result = await transaction.runAsync(

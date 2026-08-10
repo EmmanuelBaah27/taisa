@@ -2,6 +2,7 @@ import type { LocalAction, LocalActionLifecycle } from '@taisa/shared';
 
 import type { RepositoryConnection, RepositoryTransaction } from '../db/types';
 import { lifecycleFilter } from './mapping';
+import { toDatabaseMutationPayload } from './mutationPayload';
 import { claimMutation, requireExactlyOneAffectedRow } from './mutationReceipt';
 
 interface ActionRow {
@@ -62,7 +63,14 @@ export async function insertAction(
   action: LocalAction,
   idempotencyId: string,
 ): Promise<void> {
-  if (!(await claimMutation(transaction, idempotencyId, 'action', action.id, 'insert', action))) {
+  if (!(await claimMutation(
+    transaction,
+    idempotencyId,
+    'action',
+    action.id,
+    'insert',
+    toDatabaseMutationPayload(actionParams(action)),
+  ))) {
     return;
   }
   await transaction.runAsync(
@@ -91,7 +99,14 @@ export async function updateAction(
   action: LocalAction,
   idempotencyId: string,
 ): Promise<void> {
-  if (!(await claimMutation(transaction, idempotencyId, 'action', action.id, 'update', action))) {
+  if (!(await claimMutation(
+    transaction,
+    idempotencyId,
+    'action',
+    action.id,
+    'update',
+    toDatabaseMutationPayload(actionParams(action)),
+  ))) {
     return;
   }
   const result = await transaction.runAsync(
