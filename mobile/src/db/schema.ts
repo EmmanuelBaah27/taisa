@@ -137,6 +137,13 @@ export const SCHEMA_V1_STATEMENTS: readonly string[] = [
     source_digest TEXT,
     updated_at TEXT NOT NULL
   )`,
+  `CREATE TABLE mutation_receipts (
+    idempotency_id TEXT PRIMARY KEY NOT NULL,
+    entity_type TEXT NOT NULL,
+    entity_id TEXT NOT NULL,
+    operation TEXT NOT NULL,
+    recorded_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  )`,
   `CREATE INDEX messages_conversation_created_idx ON messages(conversation_id, created_at)`,
   `CREATE INDEX goals_lifecycle_updated_idx ON goals(lifecycle, updated_at)`,
   `CREATE INDEX actions_lifecycle_updated_idx ON actions(lifecycle, updated_at)`,

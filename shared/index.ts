@@ -5,3 +5,4 @@ export * from './types/api';
 export * from './types/memory';
 export * from './types/coaching';
 export * from './types/migration';
+export * from './types/local';
