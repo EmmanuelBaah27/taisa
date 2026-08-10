@@ -14,7 +14,9 @@ export default function ThreadScreen() {
 
   useEffect(() => {
     if (id) fetchThread(id);
-    return () => clearThread();
+    return () => {
+      if (id) clearThread(id);
+    };
   }, [id]);
 
   useEffect(() => {

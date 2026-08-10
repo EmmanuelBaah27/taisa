@@ -55,6 +55,12 @@ interface ChatStore {
 
 type CaptureServiceProvider = () => Promise<PrivateCaptureService>;
 
+interface ConversationOwnership {
+  generation: number;
+  conversationId: string | null;
+  requestId?: string | null;
+}
+
 function safeError(error: unknown): string {
   return error instanceof Error &&
     (error.name === 'SubmissionFailedError' || error.name === 'SubmissionValidationError')
@@ -65,7 +71,7 @@ function safeError(error: unknown): string {
 export function createChatStore(
   getCaptureService: CaptureServiceProvider = getPrivateCaptureService,
 ) {
-  let inFlight: Promise<void> | null = null;
+  let inFlight: { ownership: ConversationOwnership; promise: Promise<void> } | null = null;
   let localIntentSequence = 0;
   function createLocalIntentId(): string {
     const generated = Crypto.randomUUID();
@@ -74,17 +80,65 @@ export function createChatStore(
       : `local-chat-intent-${localIntentSequence += 1}`;
   }
   return create<ChatStore>((set, get) => {
-    let hydrationGeneration = 0;
-    function guarded(operation: () => Promise<void>): Promise<void> {
-      if (inFlight !== null) return inFlight;
-      set({ isBusy: true });
+    let conversationGeneration = 0;
+
+    function isCurrent(ownership: ConversationOwnership): boolean {
+      const state = get();
+      return ownership.generation === conversationGeneration &&
+        ownership.conversationId === state.activeSessionId &&
+        (ownership.requestId === undefined || ownership.requestId === state.activeRequestId);
+    }
+
+    function captureOwnership(requestId?: string | null): ConversationOwnership {
+      return {
+        generation: conversationGeneration,
+        conversationId: get().activeSessionId,
+        ...(requestId === undefined ? {} : { requestId }),
+      };
+    }
+
+    function activateConversation(
+      conversationId: string,
+      options: { forceNewGeneration?: boolean; resetBusy?: boolean } = {},
+    ): ConversationOwnership {
+      const changed = get().activeSessionId !== conversationId;
+      if (changed || options.forceNewGeneration === true) conversationGeneration += 1;
+      if (changed || options.resetBusy === true) {
+        set({
+          activeSessionId: conversationId,
+          isBusy: false,
+        });
+      }
+      return captureOwnership();
+    }
+
+    function setIfCurrent(
+      ownership: ConversationOwnership,
+      update: Partial<ChatStore> | ((state: ChatStore) => Partial<ChatStore>),
+    ): boolean {
+      if (!isCurrent(ownership)) return false;
+      set(update);
+      return true;
+    }
+
+    function guarded(
+      ownership: ConversationOwnership,
+      operation: () => Promise<void>,
+    ): Promise<void> {
+      if (
+        inFlight !== null &&
+        inFlight.ownership.generation === ownership.generation &&
+        inFlight.ownership.conversationId === ownership.conversationId &&
+        inFlight.ownership.requestId === ownership.requestId
+      ) return inFlight.promise;
+      if (isCurrent(ownership)) set({ isBusy: true });
       const promise = operation().finally(() => {
-        if (inFlight === promise) {
+        if (inFlight?.promise === promise) {
           inFlight = null;
-          set({ isBusy: false });
         }
+        if (isCurrent(ownership)) set({ isBusy: false });
       });
-      inFlight = promise;
+      inFlight = { ownership, promise };
       return promise;
     }
 
@@ -98,17 +152,26 @@ export function createChatStore(
     phase: 'idle',
     isBusy: false,
     error: null,
-    setActiveSessionId: (id) => set({ activeSessionId: id }),
+    setActiveSessionId: (id) => {
+      activateConversation(id);
+    },
     setPhase: (phase) => set({ phase }),
 
     drainAudioCleanupQueue: async () => {
+      const ownership = captureOwnership();
       const service = await getCaptureService();
       await service.drainAudioCleanupQueue();
+      // Cleanup is durable service work. Capturing ownership prevents future UI
+      // callbacks from being added here without the same conversation boundary.
+      void isCurrent(ownership);
     },
 
     hydrateConversation: async (conversationId) => {
-      const generation = hydrationGeneration += 1;
-      set({
+      const ownership = activateConversation(conversationId, {
+        forceNewGeneration: true,
+        resetBusy: true,
+      });
+      setIfCurrent(ownership, {
         activeSessionId: conversationId,
         activeRequestId: null,
         activeMessageId: null,
@@ -116,6 +179,7 @@ export function createChatStore(
         pendingProposalIds: [],
         pendingProposals: [],
         phase: 'processing',
+        isBusy: false,
         error: null,
       });
       try {
@@ -128,8 +192,7 @@ export function createChatStore(
             : restored.requestStatus === null
               ? 'idle'
               : 'error';
-        if (generation !== hydrationGeneration) return;
-        set({
+        setIfCurrent(ownership, {
           activeSessionId: conversationId,
           activeRequestId: restored.requestId,
           activeMessageId: restored.messageId,
@@ -142,174 +205,218 @@ export function createChatStore(
             : null,
         });
       } catch (hydrateError) {
-        if (generation === hydrationGeneration) {
-          set({
-            activeSessionId: conversationId,
-            activeRequestId: null,
-            activeMessageId: null,
-            transcript: '',
-            pendingProposalIds: [],
-            pendingProposals: [],
-            phase: 'error',
-            error: 'The local conversation could not be restored.',
-          });
-        }
+        setIfCurrent(ownership, {
+          activeSessionId: conversationId,
+          activeRequestId: null,
+          activeMessageId: null,
+          transcript: '',
+          pendingProposalIds: [],
+          pendingProposals: [],
+          phase: 'error',
+          error: 'The local conversation could not be restored.',
+        });
         throw hydrateError;
       }
     },
 
     savePrivateDraft: async (conversationId, content) => {
+      const ownership = activateConversation(conversationId);
       try {
         const service = await getCaptureService();
         const result = await service.savePrivateDraft({ conversationId, content });
-        set({ activeSessionId: conversationId, activeMessageId: result.messageId, error: null });
+        setIfCurrent(ownership, {
+          activeSessionId: conversationId,
+          activeMessageId: result.messageId,
+          error: null,
+        });
       } catch (error) {
-        set({ phase: 'error', error: safeError(error) });
+        setIfCurrent(ownership, { phase: 'error', error: safeError(error) });
         throw error;
       }
     },
 
-    submitText: (conversationId, content) => guarded(async () => {
-      set({ phase: 'processing', error: null, activeSessionId: conversationId });
-      try {
-        const service = await getCaptureService();
-        const result = await service.submitText({
-          conversationId,
-          content,
-          intentId: createLocalIntentId(),
+    submitText: (conversationId, content) => {
+      const ownership = activateConversation(conversationId);
+      return guarded(ownership, async () => {
+        setIfCurrent(ownership, {
+          phase: 'processing',
+          error: null,
+          activeSessionId: conversationId,
         });
-        set({
-          activeRequestId: result.requestId,
-          activeMessageId: result.messageId,
-          pendingProposalIds: result.pendingProposalIds,
-          pendingProposals: result.pendingProposals,
-          phase: 'responded',
-        });
-      } catch (error) {
-        const requestId = typeof error === 'object' && error !== null && 'requestId' in error
-          ? String(error.requestId)
-          : null;
-        set({ activeRequestId: requestId, phase: 'error', error: safeError(error) });
-        throw error;
-      }
-    }),
-
-    submitVoice: (conversationId, audioUri, durationSeconds) => guarded(async () => {
-      set({ phase: 'transcribing', error: null, activeSessionId: conversationId });
-      try {
-        const service = await getCaptureService();
-        const result = await service.submitVoice({
-          conversationId,
-          audioUri,
-          durationSeconds,
-          intentId: createLocalIntentId(),
-        });
-        set({
-          activeRequestId: result.requestId,
-          activeMessageId: result.messageId,
-          transcript: result.transcript,
-          phase: 'transcript-review',
-        });
-      } catch (error) {
-        const requestId = typeof error === 'object' && error !== null && 'requestId' in error
-          ? String(error.requestId)
-          : null;
-        set({ activeRequestId: requestId, phase: 'error', error: safeError(error) });
-        throw error;
-      }
-    }),
-
-    updateTranscript: async (transcript) => {
-      const requestId = get().activeRequestId;
-      if (requestId === null) throw new Error('No transcript is active');
-      const service = await getCaptureService();
-      await service.updateTranscript({ requestId, transcript });
-      set({ transcript });
-    },
-
-    confirmTranscript: () => guarded(async () => {
-      const requestId = get().activeRequestId;
-      if (requestId === null) throw new Error('No transcript is active');
-      set({ phase: 'processing', error: null });
-      try {
-        const service = await getCaptureService();
-        const result = await service.confirmTranscript({ requestId });
-        set({
-          activeMessageId: result.messageId,
-          pendingProposalIds: result.pendingProposalIds,
-          pendingProposals: result.pendingProposals,
-          phase: 'responded',
-        });
-      } catch (error) {
-        set({
-          phase: error instanceof Error && error.name === 'SubmissionValidationError'
-            ? 'transcript-review'
-            : 'error',
-          error: safeError(error),
-        });
-        throw error;
-      }
-    }),
-
-    retrySubmission: () => guarded(async () => {
-      const requestId = get().activeRequestId;
-      if (requestId === null) throw new Error('No failed submission is active');
-      set({ phase: 'processing', error: null });
-      try {
-        const service = await getCaptureService();
-        const result = await service.retrySubmission(requestId);
-        if (result.status === 'transcript-confirmation-required') {
-          set({ transcript: result.transcript, phase: 'transcript-review' });
-        } else {
-          set({
+        try {
+          const service = await getCaptureService();
+          const result = await service.submitText({
+            conversationId,
+            content,
+            intentId: createLocalIntentId(),
+          });
+          setIfCurrent(ownership, {
+            activeRequestId: result.requestId,
             activeMessageId: result.messageId,
             pendingProposalIds: result.pendingProposalIds,
             pendingProposals: result.pendingProposals,
             phase: 'responded',
           });
+        } catch (error) {
+          const requestId = typeof error === 'object' && error !== null && 'requestId' in error
+            ? String(error.requestId)
+            : null;
+          setIfCurrent(ownership, {
+            activeRequestId: requestId,
+            phase: 'error',
+            error: safeError(error),
+          });
+          throw error;
         }
-      } catch (error) {
-        set({ phase: 'error', error: safeError(error) });
-        throw error;
-      }
-    }),
-
-    confirmProposal: (confirmationId) => guarded(async () => {
-      const service = await getCaptureService();
-      await service.confirmProposal({
-        confirmationId,
-        localUserActionId: createLocalIntentId(),
-        actedAt: new Date().toISOString(),
       });
-      set((state) => ({
-        pendingProposalIds: state.pendingProposalIds.filter((id) => id !== confirmationId),
-        pendingProposals: state.pendingProposals.filter((proposal) => proposal.id !== confirmationId),
-      }));
-    }),
+    },
 
-    resolveClarification: (confirmationId, choice) => guarded(async () => {
-      const service = await getCaptureService();
-      await service.resolveClarification({
-        confirmationId,
-        choice,
-        localUserActionId: createLocalIntentId(),
-        actedAt: new Date().toISOString(),
+    submitVoice: (conversationId, audioUri, durationSeconds) => {
+      const ownership = activateConversation(conversationId);
+      return guarded(ownership, async () => {
+        setIfCurrent(ownership, {
+          phase: 'transcribing',
+          error: null,
+          activeSessionId: conversationId,
+        });
+        try {
+          const service = await getCaptureService();
+          const result = await service.submitVoice({
+            conversationId,
+            audioUri,
+            durationSeconds,
+            intentId: createLocalIntentId(),
+          });
+          setIfCurrent(ownership, {
+            activeRequestId: result.requestId,
+            activeMessageId: result.messageId,
+            transcript: result.transcript,
+            phase: 'transcript-review',
+          });
+        } catch (error) {
+          const requestId = typeof error === 'object' && error !== null && 'requestId' in error
+            ? String(error.requestId)
+            : null;
+          setIfCurrent(ownership, {
+            activeRequestId: requestId,
+            phase: 'error',
+            error: safeError(error),
+          });
+          throw error;
+        }
       });
-      set((state) => ({
-        pendingProposalIds: state.pendingProposalIds.filter((id) => id !== confirmationId),
-        pendingProposals: state.pendingProposals.filter((proposal) => proposal.id !== confirmationId),
-      }));
-    }),
+    },
+
+    updateTranscript: async (transcript) => {
+      const requestId = get().activeRequestId;
+      if (requestId === null) throw new Error('No transcript is active');
+      const ownership = captureOwnership(requestId);
+      const service = await getCaptureService();
+      await service.updateTranscript({ requestId, transcript });
+      setIfCurrent(ownership, { transcript });
+    },
+
+    confirmTranscript: () => {
+      const requestId = get().activeRequestId;
+      if (requestId === null) throw new Error('No transcript is active');
+      const ownership = captureOwnership(requestId);
+      return guarded(ownership, async () => {
+        setIfCurrent(ownership, { phase: 'processing', error: null });
+        try {
+          const service = await getCaptureService();
+          const result = await service.confirmTranscript({ requestId });
+          setIfCurrent(ownership, {
+            activeMessageId: result.messageId,
+            pendingProposalIds: result.pendingProposalIds,
+            pendingProposals: result.pendingProposals,
+            phase: 'responded',
+          });
+        } catch (error) {
+          setIfCurrent(ownership, {
+            phase: error instanceof Error && error.name === 'SubmissionValidationError'
+              ? 'transcript-review'
+              : 'error',
+            error: safeError(error),
+          });
+          throw error;
+        }
+      });
+    },
+
+    retrySubmission: () => {
+      const requestId = get().activeRequestId;
+      if (requestId === null) throw new Error('No failed submission is active');
+      const ownership = captureOwnership(requestId);
+      return guarded(ownership, async () => {
+        setIfCurrent(ownership, { phase: 'processing', error: null });
+        try {
+          const service = await getCaptureService();
+          const result = await service.retrySubmission(requestId);
+          if (result.status === 'transcript-confirmation-required') {
+            setIfCurrent(ownership, {
+              transcript: result.transcript,
+              phase: 'transcript-review',
+            });
+          } else {
+            setIfCurrent(ownership, {
+              activeMessageId: result.messageId,
+              pendingProposalIds: result.pendingProposalIds,
+              pendingProposals: result.pendingProposals,
+              phase: 'responded',
+            });
+          }
+        } catch (error) {
+          setIfCurrent(ownership, { phase: 'error', error: safeError(error) });
+          throw error;
+        }
+      });
+    },
+
+    confirmProposal: (confirmationId) => {
+      const ownership = captureOwnership(get().activeRequestId);
+      return guarded(ownership, async () => {
+        const service = await getCaptureService();
+        await service.confirmProposal({
+          confirmationId,
+          localUserActionId: createLocalIntentId(),
+          actedAt: new Date().toISOString(),
+        });
+        setIfCurrent(ownership, (state) => ({
+          pendingProposalIds: state.pendingProposalIds.filter((id) => id !== confirmationId),
+          pendingProposals: state.pendingProposals.filter((proposal) => proposal.id !== confirmationId),
+        }));
+      });
+    },
+
+    resolveClarification: (confirmationId, choice) => {
+      const ownership = captureOwnership(get().activeRequestId);
+      return guarded(ownership, async () => {
+        const service = await getCaptureService();
+        await service.resolveClarification({
+          confirmationId,
+          choice,
+          localUserActionId: createLocalIntentId(),
+          actedAt: new Date().toISOString(),
+        });
+        setIfCurrent(ownership, (state) => ({
+          pendingProposalIds: state.pendingProposalIds.filter((id) => id !== confirmationId),
+          pendingProposals: state.pendingProposals.filter((proposal) => proposal.id !== confirmationId),
+        }));
+      });
+    },
 
     discardRecording: async (uri) => {
+      const ownership = captureOwnership(get().activeRequestId);
       const service = await getCaptureService();
       await service.discardRecording(uri);
+      void isCurrent(ownership);
     },
 
     abandonVoiceSubmission: async (requestId) => {
+      const ownership = captureOwnership(requestId);
       const service = await getCaptureService();
       await service.abandonVoiceSubmission(requestId);
-      set({
+      setIfCurrent(ownership, {
         activeRequestId: null,
         activeMessageId: null,
         transcript: '',
@@ -319,7 +426,7 @@ export function createChatStore(
     },
 
     clearActiveSession: () => {
-      hydrationGeneration += 1;
+      conversationGeneration += 1;
       set({
         activeSessionId: null,
         activeRequestId: null,

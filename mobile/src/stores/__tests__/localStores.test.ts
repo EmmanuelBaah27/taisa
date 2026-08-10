@@ -16,6 +16,173 @@ const IDS = [
   '00000000-0000-4000-8000-000000000005',
 ];
 
+interface Deferred<T> {
+  promise: Promise<T>;
+  resolve(value: T): void;
+  reject(error: Error): void;
+}
+
+function deferred<T>(): Deferred<T> {
+  let resolve!: (value: T) => void;
+  let reject!: (error: Error) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, resolve, reject };
+}
+
+type ChatStoreInstance = ReturnType<typeof createChatStore>;
+
+const HYDRATED_B = {
+  requestId: 'request-b',
+  messageId: 'message-b',
+  requestStatus: 'transcript-confirmation-required' as const,
+  transcript: 'Private transcript B',
+  pendingProposals: [{
+    id: 'proposal-b',
+    summary: 'Private proposal B',
+    kind: 'proposal' as const,
+    question: null,
+    status: 'pending' as const,
+  }],
+};
+
+const COMPLETED_A = {
+  status: 'completed' as const,
+  requestId: 'request-a-result',
+  messageId: 'message-a-result',
+  assistantMessageId: 'assistant-a-result',
+  pendingProposalIds: ['proposal-a-result'],
+  pendingProposals: [{
+    id: 'proposal-a-result',
+    summary: 'Private proposal A result',
+    kind: 'proposal' as const,
+    question: null,
+    status: 'pending' as const,
+  }],
+};
+
+const CHAT_OPERATION_CASES: Array<{
+  name: string;
+  serviceMethod: keyof PrivateCaptureService;
+  result: unknown;
+  start(store: ChatStoreInstance): Promise<void>;
+}> = [
+  {
+    name: 'hydration',
+    serviceMethod: 'hydrateConversation',
+    result: { ...HYDRATED_B, requestId: 'request-a-result', messageId: 'message-a-result' },
+    start: (store) => store.getState().hydrateConversation('conversation-a'),
+  },
+  {
+    name: 'private save',
+    serviceMethod: 'savePrivateDraft',
+    result: { status: 'private', conversationId: 'conversation-a', messageId: 'message-a-result' },
+    start: (store) => store.getState().savePrivateDraft('conversation-a', 'Private A'),
+  },
+  {
+    name: 'text submit',
+    serviceMethod: 'submitText',
+    result: COMPLETED_A,
+    start: (store) => store.getState().submitText('conversation-a', 'Submitted A'),
+  },
+  {
+    name: 'voice submit',
+    serviceMethod: 'submitVoice',
+    result: {
+      status: 'transcript-confirmation-required',
+      requestId: 'request-a-result',
+      messageId: 'message-a-result',
+      transcript: 'Private transcript A result',
+    },
+    start: (store) => store.getState().submitVoice('conversation-a', 'file:///a.m4a', 4),
+  },
+  {
+    name: 'transcript edit',
+    serviceMethod: 'updateTranscript',
+    result: undefined,
+    start: (store) => store.getState().updateTranscript('Edited private transcript A'),
+  },
+  {
+    name: 'transcript confirmation',
+    serviceMethod: 'confirmTranscript',
+    result: COMPLETED_A,
+    start: (store) => store.getState().confirmTranscript(),
+  },
+  {
+    name: 'submission retry',
+    serviceMethod: 'retrySubmission',
+    result: COMPLETED_A,
+    start: (store) => store.getState().retrySubmission(),
+  },
+  {
+    name: 'proposal confirmation',
+    serviceMethod: 'confirmProposal',
+    result: undefined,
+    start: (store) => store.getState().confirmProposal('proposal-a'),
+  },
+  {
+    name: 'clarification resolution',
+    serviceMethod: 'resolveClarification',
+    result: undefined,
+    start: (store) => store.getState().resolveClarification('proposal-a', 'coexist'),
+  },
+  {
+    name: 'recording discard cleanup',
+    serviceMethod: 'discardRecording',
+    result: undefined,
+    start: (store) => store.getState().discardRecording('file:///a.m4a'),
+  },
+  {
+    name: 'voice submission cleanup',
+    serviceMethod: 'abandonVoiceSubmission',
+    result: undefined,
+    start: (store) => store.getState().abandonVoiceSubmission('request-a'),
+  },
+  {
+    name: 'queued audio cleanup',
+    serviceMethod: 'drainAudioCleanupQueue',
+    result: undefined,
+    start: (store) => store.getState().drainAudioCleanupQueue(),
+  },
+];
+
+function seedConversationA(store: ChatStoreInstance): void {
+  store.setState({
+    activeSessionId: 'conversation-a',
+    activeRequestId: 'request-a',
+    activeMessageId: 'message-a',
+    transcript: 'Private transcript A',
+    pendingProposalIds: ['proposal-a'],
+    pendingProposals: [{
+      id: 'proposal-a',
+      summary: 'Private proposal A',
+      kind: 'clarification',
+      question: 'What should happen to the older direction?',
+      status: 'pending',
+    }],
+    phase: 'transcript-review',
+    isBusy: false,
+    error: null,
+  });
+}
+
+function visibleChatState(store: ChatStoreInstance) {
+  const state = store.getState();
+  return {
+    activeSessionId: state.activeSessionId,
+    activeRequestId: state.activeRequestId,
+    activeMessageId: state.activeMessageId,
+    transcript: state.transcript,
+    pendingProposalIds: state.pendingProposalIds,
+    pendingProposals: state.pendingProposals,
+    phase: state.phase,
+    isBusy: state.isBusy,
+    error: state.error,
+  };
+}
+
 function response(request: CoachingRequest): CoachingResponse {
   return {
     requestId: request.requestId,
@@ -389,6 +556,203 @@ describe('local-first stores', () => {
     }));
   });
 
+  describe.each(CHAT_OPERATION_CASES)('$name conversation ownership', (operation) => {
+    function createDeferredOperationService(operationResult: Deferred<unknown>) {
+      const service = {
+        savePrivateDraft: jest.fn(async () => ({
+          status: 'private' as const,
+          conversationId: 'unused',
+          messageId: 'unused',
+        })),
+        submitText: jest.fn(async () => COMPLETED_A),
+        submitVoice: jest.fn(async () => ({
+          status: 'transcript-confirmation-required' as const,
+          requestId: 'unused',
+          messageId: 'unused',
+          transcript: 'unused',
+        })),
+        updateTranscript: jest.fn(async () => undefined),
+        confirmTranscript: jest.fn(async () => COMPLETED_A),
+        retrySubmission: jest.fn(async () => COMPLETED_A),
+        confirmProposal: jest.fn(async () => undefined),
+        resolveClarification: jest.fn(async () => undefined),
+        hydrateConversation: jest.fn(async (_conversationId: string) => HYDRATED_B),
+        drainAudioCleanupQueue: jest.fn(async () => undefined),
+        discardRecording: jest.fn(async () => undefined),
+        abandonVoiceSubmission: jest.fn(async () => undefined),
+      };
+      const mutableService = service as unknown as Record<string, unknown>;
+      if (operation.serviceMethod === 'hydrateConversation') {
+        service.hydrateConversation.mockImplementation(async (conversationId: string) => (
+          conversationId === 'conversation-a'
+            ? operationResult.promise as Promise<typeof HYDRATED_B>
+            : HYDRATED_B
+        ));
+      } else {
+        mutableService[operation.serviceMethod] = jest.fn(() => operationResult.promise);
+      }
+      return service as unknown as PrivateCaptureService;
+    }
+
+    it.each(['completes', 'fails'] as const)(
+      'cannot change resumed B when A %s later',
+      async (outcome) => {
+        const operationResult = deferred<unknown>();
+        const store = createChatStore(async () => createDeferredOperationService(operationResult));
+        seedConversationA(store);
+
+        const aOperation = operation.start(store);
+        const observedAOperation = aOperation.then(
+          () => undefined,
+          () => undefined,
+        );
+        await Promise.resolve();
+        await store.getState().hydrateConversation('conversation-b');
+
+        if (outcome === 'completes') operationResult.resolve(operation.result);
+        else operationResult.reject(new Error('A finished after B opened'));
+        await observedAOperation;
+
+        expect(visibleChatState(store)).toEqual({
+          activeSessionId: 'conversation-b',
+          activeRequestId: 'request-b',
+          activeMessageId: 'message-b',
+          transcript: 'Private transcript B',
+          pendingProposalIds: ['proposal-b'],
+          pendingProposals: HYDRATED_B.pendingProposals,
+          phase: 'transcript-review',
+          isBusy: false,
+          error: null,
+        });
+      },
+    );
+
+    it.each(['completes', 'fails'] as const)(
+      'cannot repopulate cleared state when A %s later',
+      async (outcome) => {
+        const operationResult = deferred<unknown>();
+        const store = createChatStore(async () => createDeferredOperationService(operationResult));
+        seedConversationA(store);
+
+        const aOperation = operation.start(store);
+        const observedAOperation = aOperation.then(
+          () => undefined,
+          () => undefined,
+        );
+        await Promise.resolve();
+        store.getState().clearActiveSession();
+
+        if (outcome === 'completes') operationResult.resolve(operation.result);
+        else operationResult.reject(new Error('A finished after the chat closed'));
+        await observedAOperation;
+
+        expect(visibleChatState(store)).toEqual({
+          activeSessionId: null,
+          activeRequestId: null,
+          activeMessageId: null,
+          transcript: '',
+          pendingProposalIds: [],
+          pendingProposals: [],
+          phase: 'idle',
+          isBusy: false,
+          error: null,
+        });
+      },
+    );
+  });
+
+  test('an older in-flight action releases without deduplicating or clearing B busy state', async () => {
+    const submitA = deferred<typeof COMPLETED_A>();
+    const submitB = deferred<typeof COMPLETED_A>();
+    const submitText = jest.fn((input: { conversationId: string }) => (
+      input.conversationId === 'conversation-a' ? submitA.promise : submitB.promise
+    ));
+    const service = {
+      submitText,
+      hydrateConversation: jest.fn(async () => HYDRATED_B),
+    } as unknown as PrivateCaptureService;
+    const store = createChatStore(async () => service);
+    seedConversationA(store);
+
+    const operationA = store.getState().submitText('conversation-a', 'A thought');
+    await Promise.resolve();
+    await store.getState().hydrateConversation('conversation-b');
+    const operationB = store.getState().submitText('conversation-b', 'B thought');
+    await Promise.resolve();
+
+    expect(submitText).toHaveBeenCalledTimes(2);
+    expect(store.getState().isBusy).toBe(true);
+    submitA.resolve(COMPLETED_A);
+    await operationA;
+    expect(store.getState().isBusy).toBe(true);
+
+    submitB.resolve({
+      ...COMPLETED_A,
+      requestId: 'request-b-result',
+      messageId: 'message-b-result',
+    });
+    await operationB;
+    expect(store.getState()).toEqual(expect.objectContaining({
+      activeSessionId: 'conversation-b',
+      activeRequestId: 'request-b-result',
+      activeMessageId: 'message-b-result',
+      phase: 'responded',
+      isBusy: false,
+      error: null,
+    }));
+  });
+
+  test('an older request in the same conversation cannot own a replacement request or its lock', async () => {
+    const confirmA = deferred<typeof COMPLETED_A>();
+    const confirmReplacement = deferred<typeof COMPLETED_A>();
+    const confirmTranscript = jest.fn(({ requestId }: { requestId: string }) => (
+      requestId === 'request-a' ? confirmA.promise : confirmReplacement.promise
+    ));
+    const service = { confirmTranscript } as unknown as PrivateCaptureService;
+    const store = createChatStore(async () => service);
+    seedConversationA(store);
+
+    const operationA = store.getState().confirmTranscript();
+    await Promise.resolve();
+    store.setState({
+      activeRequestId: 'request-replacement',
+      activeMessageId: 'message-replacement',
+      transcript: 'Replacement transcript',
+      pendingProposalIds: [],
+      pendingProposals: [],
+      phase: 'transcript-review',
+      isBusy: false,
+      error: null,
+    });
+    const replacementOperation = store.getState().confirmTranscript();
+    await Promise.resolve();
+
+    expect(confirmTranscript).toHaveBeenCalledTimes(2);
+    confirmA.resolve(COMPLETED_A);
+    await operationA;
+    expect(store.getState()).toEqual(expect.objectContaining({
+      activeRequestId: 'request-replacement',
+      activeMessageId: 'message-replacement',
+      transcript: 'Replacement transcript',
+      phase: 'processing',
+      isBusy: true,
+    }));
+
+    confirmReplacement.resolve({
+      ...COMPLETED_A,
+      requestId: 'request-replacement',
+      messageId: 'message-replacement-result',
+    });
+    await replacementOperation;
+    expect(store.getState()).toEqual(expect.objectContaining({
+      activeRequestId: 'request-replacement',
+      activeMessageId: 'message-replacement-result',
+      phase: 'responded',
+      isBusy: false,
+      error: null,
+    }));
+  });
+
   test('a fresh thread history exposes durable pending work without loading the capture service', async () => {
     const transcribe = jest.fn(async () => ({
       transcript: 'Review me after restart',
@@ -508,6 +872,130 @@ describe('local-first stores', () => {
     expect(submitText).toHaveBeenCalledTimes(1);
     expect(submitText).toHaveBeenCalledWith(expect.objectContaining({
       intentId: expect.any(String),
+    }));
+  });
+
+  test('an older thread fetch success cannot overwrite a newer requested conversation', async () => {
+    await capture.savePrivateDraft({ conversationId: 'conversation-a', content: 'Private A' });
+    await capture.savePrivateDraft({ conversationId: 'conversation-b', content: 'Private B' });
+    const firstOpen = deferred<TestDatabase>();
+    let openCount = 0;
+    const store = createThreadStore({
+      openDatabase: () => {
+        openCount += 1;
+        return openCount === 1 ? firstOpen.promise : Promise.resolve(db);
+      },
+      getCaptureService: async () => capture,
+    });
+
+    const fetchA = store.getState().fetchThread('conversation-a');
+    await store.getState().fetchThread('conversation-b');
+    firstOpen.resolve(db);
+    await fetchA;
+
+    expect(store.getState()).toEqual(expect.objectContaining({
+      currentSession: expect.objectContaining({ id: 'conversation-b' }),
+      currentMessages: [expect.objectContaining({ content: 'Private B' })],
+      isLoadingMessages: false,
+      error: null,
+    }));
+  });
+
+  test('an older thread fetch failure cannot replace a newer conversation error state', async () => {
+    await capture.savePrivateDraft({ conversationId: 'conversation-b', content: 'Private B' });
+    const firstOpen = deferred<TestDatabase>();
+    let openCount = 0;
+    const store = createThreadStore({
+      openDatabase: () => {
+        openCount += 1;
+        return openCount === 1 ? firstOpen.promise : Promise.resolve(db);
+      },
+      getCaptureService: async () => capture,
+    });
+
+    const fetchA = store.getState().fetchThread('conversation-a');
+    await store.getState().fetchThread('conversation-b');
+    firstOpen.reject(new Error('A failed after B opened'));
+    await fetchA;
+
+    expect(store.getState()).toEqual(expect.objectContaining({
+      currentSession: expect.objectContaining({ id: 'conversation-b' }),
+      currentMessages: [expect.objectContaining({ content: 'Private B' })],
+      isLoadingMessages: false,
+      error: null,
+    }));
+  });
+
+  test('a cleared thread cannot be repopulated by an older fetch', async () => {
+    await capture.savePrivateDraft({ conversationId: 'conversation-a', content: 'Private A' });
+    const firstOpen = deferred<TestDatabase>();
+    const store = createThreadStore({
+      openDatabase: () => firstOpen.promise,
+      getCaptureService: async () => capture,
+    });
+
+    const fetchA = store.getState().fetchThread('conversation-a');
+    store.getState().clearThread('conversation-a');
+    firstOpen.resolve(db);
+    await fetchA;
+
+    expect(store.getState()).toEqual(expect.objectContaining({
+      currentSession: null,
+      currentMessages: [],
+      isLoadingMessages: false,
+      error: null,
+    }));
+  });
+
+  test('requesting B synchronously hides A and a B failure never exposes A again', async () => {
+    await capture.savePrivateDraft({ conversationId: 'conversation-a', content: 'Private A' });
+    await capture.savePrivateDraft({ conversationId: 'conversation-b', content: 'Private B' });
+    const bOpen = deferred<TestDatabase>();
+    let openCount = 0;
+    const store = createThreadStore({
+      openDatabase: () => {
+        openCount += 1;
+        return openCount === 1 ? Promise.resolve(db) : bOpen.promise;
+      },
+      getCaptureService: async () => capture,
+    });
+    await store.getState().fetchThread('conversation-a');
+
+    const fetchB = store.getState().fetchThread('conversation-b');
+    expect(store.getState()).toEqual(expect.objectContaining({
+      currentSession: null,
+      currentMessages: [],
+      isLoadingMessages: true,
+      error: null,
+    }));
+
+    bOpen.reject(new Error('B is unavailable'));
+    await fetchB;
+    expect(store.getState()).toEqual(expect.objectContaining({
+      currentSession: null,
+      currentMessages: [],
+      isLoadingMessages: false,
+      error: 'The local conversation is unavailable.',
+    }));
+  });
+
+  test('cleanup from an older A screen cannot erase the newer B detail view', async () => {
+    await capture.savePrivateDraft({ conversationId: 'conversation-a', content: 'Private A' });
+    await capture.savePrivateDraft({ conversationId: 'conversation-b', content: 'Private B' });
+    const store = createThreadStore({
+      openDatabase: async () => db,
+      getCaptureService: async () => capture,
+    });
+    await store.getState().fetchThread('conversation-a');
+    await store.getState().fetchThread('conversation-b');
+
+    store.getState().clearThread('conversation-a');
+
+    expect(store.getState()).toEqual(expect.objectContaining({
+      currentSession: expect.objectContaining({ id: 'conversation-b' }),
+      currentMessages: [expect.objectContaining({ content: 'Private B' })],
+      isLoadingMessages: false,
+      error: null,
     }));
   });
 });

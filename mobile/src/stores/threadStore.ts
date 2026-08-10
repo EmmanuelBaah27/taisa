@@ -69,7 +69,7 @@ interface ThreadStore {
   searchThreads: (query: string) => Promise<void>;
   fetchThread: (sessionId: string) => Promise<void>;
   sendMessage: (sessionId: string, content: string) => Promise<void>;
-  clearThread: () => void;
+  clearThread: (sessionId: string) => void;
   clearError: () => void;
 }
 
@@ -125,6 +125,8 @@ export function createThreadStore(
   },
 ) {
   let sendInFlight: Promise<void> | null = null;
+  let fetchGeneration = 0;
+  let requestedSessionId: string | null = null;
   let localIntentSequence = 0;
   function createLocalIntentId(): string {
     const generated = Crypto.randomUUID();
@@ -172,7 +174,14 @@ export function createThreadStore(
     },
 
     fetchThread: async (sessionId) => {
-      set({ isLoadingMessages: true, error: null });
+      const generation = fetchGeneration += 1;
+      const replacesVisibleSession = get().currentSession?.id !== sessionId;
+      requestedSessionId = sessionId;
+      set({
+        ...(replacesVisibleSession ? { currentSession: null, currentMessages: [] } : {}),
+        isLoadingMessages: true,
+        error: null,
+      });
       try {
         const database = await dependencies.openDatabase();
         const conversation = await getConversation(database, sessionId);
@@ -182,6 +191,7 @@ export function createThreadStore(
           latestVisibleRequest(database, sessionId),
           listMemoryConfirmationsByConversation(database, sessionId, ['pending', 'confirmed']),
         ]);
+        if (generation !== fetchGeneration || requestedSessionId !== sessionId) return;
         set({
           currentSession: {
             id: conversation.id,
@@ -203,7 +213,9 @@ export function createThreadStore(
           isLoadingMessages: false,
         });
       } catch {
-        set({ isLoadingMessages: false, error: 'The local conversation is unavailable.' });
+        if (generation === fetchGeneration && requestedSessionId === sessionId) {
+          set({ isLoadingMessages: false, error: 'The local conversation is unavailable.' });
+        }
       }
     },
 
@@ -218,10 +230,14 @@ export function createThreadStore(
             content,
             intentId: createLocalIntentId(),
           });
-          await get().fetchThread(sessionId);
+          if (requestedSessionId === null || requestedSessionId === sessionId) {
+            await get().fetchThread(sessionId);
+          }
           set({ isSending: false });
         } catch (error) {
-          await get().fetchThread(sessionId);
+          if (requestedSessionId === null || requestedSessionId === sessionId) {
+            await get().fetchThread(sessionId);
+          }
           set({ isSending: false, error: safeMessage(error) });
         }
       })().finally(() => {
@@ -231,7 +247,17 @@ export function createThreadStore(
       return promise;
     },
 
-    clearThread: () => set({ currentSession: null, currentMessages: [] }),
+    clearThread: (sessionId) => {
+      if (requestedSessionId !== sessionId) return;
+      fetchGeneration += 1;
+      requestedSessionId = null;
+      set({
+        currentSession: null,
+        currentMessages: [],
+        isLoadingMessages: false,
+        error: null,
+      });
+    },
     clearError: () => set({ error: null }),
   }));
 }
