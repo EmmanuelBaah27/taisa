@@ -37,6 +37,12 @@
         {
           "microphonePermission": "Allow Taisa to access the microphone to record your voice."
         }
+      ],
+      [
+        "expo-sqlite",
+        {
+          "useSQLCipher": true
+        }
       ]
     ]
   }

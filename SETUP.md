@@ -55,13 +55,15 @@ Scan the QR code with Expo Go on your phone.
 
 > **Note:** Your phone and Mac must be on the same WiFi network.
 
-## Building a Dev Build (required for audio recording)
-Expo Go doesn't support some native audio features. Build a development build:
+## Building a Dev Build (required for SQLCipher and audio recording)
+Expo Go does not include Taisa's SQLCipher-enabled SQLite module or some native audio features. A development build is therefore required before encrypted-database device QA:
 ```bash
 cd mobile
 npx expo install expo-dev-client
 npx expo run:ios
 ```
+
+This native command is an explicit execution gate: record it for setup, but do not run it, prebuild native projects, or start a simulator/device build until Baah approves the native verification step.
 
 ## Project Structure
 ```

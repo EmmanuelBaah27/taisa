@@ -1,0 +1,263 @@
+import {
+  DatabaseRecoveryRequiredError,
+  openDatabaseWithDependencies,
+} from '../openDatabase';
+import { runMigrations, UnsupportedDatabaseVersionError } from '../migrations';
+import type { DatabaseLike } from '../types';
+
+class FakeDatabase implements DatabaseLike {
+  readonly appliedStatements: string[] = [];
+  readonly calls: string[] = [];
+  userVersion: number;
+  failWhenStatementIncludes: string | null = null;
+  closed = false;
+
+  private transactionSnapshot: { statementCount: number; userVersion: number } | null = null;
+
+  constructor(userVersion: number) {
+    this.userVersion = userVersion;
+  }
+
+  async execAsync(source: string): Promise<void> {
+    this.calls.push(source);
+
+    if (source === 'BEGIN IMMEDIATE') {
+      this.transactionSnapshot = {
+        statementCount: this.appliedStatements.length,
+        userVersion: this.userVersion,
+      };
+      return;
+    }
+
+    if (source === 'COMMIT') {
+      this.transactionSnapshot = null;
+      return;
+    }
+
+    if (source === 'ROLLBACK') {
+      if (this.transactionSnapshot) {
+        this.appliedStatements.splice(this.transactionSnapshot.statementCount);
+        this.userVersion = this.transactionSnapshot.userVersion;
+      }
+      this.transactionSnapshot = null;
+      return;
+    }
+
+    if (this.failWhenStatementIncludes && source.includes(this.failWhenStatementIncludes)) {
+      throw new Error('injected migration failure');
+    }
+
+    if (source === 'PRAGMA user_version = 1') {
+      this.userVersion = 1;
+      return;
+    }
+
+    this.appliedStatements.push(source);
+  }
+
+  async getFirstAsync<T>(source: string): Promise<T | null> {
+    this.calls.push(source);
+    if (source === 'PRAGMA user_version') {
+      return { user_version: this.userVersion } as T;
+    }
+    if (source === 'SELECT count(*) AS count FROM sqlite_master') {
+      return { count: 0 } as T;
+    }
+    return null;
+  }
+
+  async closeAsync(): Promise<void> {
+    this.closed = true;
+  }
+}
+
+describe('local database migrations', () => {
+  test('runs schema version 1 once and advances user_version transactionally', async () => {
+    const db = new FakeDatabase(0);
+
+    await runMigrations(db);
+    await runMigrations(db);
+
+    expect(db.userVersion).toBe(1);
+    expect(db.calls.filter((statement) => statement === 'BEGIN IMMEDIATE')).toHaveLength(1);
+    expect(
+      db.appliedStatements.filter((statement) =>
+        statement.includes('CREATE TABLE conversations'),
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('creates every local entity and both FTS5 search indexes with foreign keys', async () => {
+    const db = new FakeDatabase(0);
+
+    await runMigrations(db);
+
+    for (const table of [
+      'profile',
+      'conversations',
+      'messages',
+      'goals',
+      'milestones',
+      'actions',
+      'evidence',
+      'memory_items',
+      'memory_sources',
+      'usage_receipts',
+      'migration_state',
+    ]) {
+      expect(
+        db.appliedStatements.some((statement) =>
+          statement.includes(`CREATE TABLE ${table}`),
+        ),
+      ).toBe(true);
+    }
+
+    expect(
+      db.appliedStatements.some((statement) =>
+        statement.includes('CREATE VIRTUAL TABLE message_search USING fts5'),
+      ),
+    ).toBe(true);
+    expect(
+      db.appliedStatements.some((statement) =>
+        statement.includes('CREATE VIRTUAL TABLE evidence_search USING fts5'),
+      ),
+    ).toBe(true);
+    expect(
+      db.appliedStatements.some((statement) => statement.includes('REFERENCES conversations(id)')),
+    ).toBe(true);
+  });
+
+  test('rolls back the schema and user_version when a migration statement fails', async () => {
+    const db = new FakeDatabase(0);
+    db.failWhenStatementIncludes = 'CREATE TABLE messages';
+
+    await expect(runMigrations(db)).rejects.toThrow('injected migration failure');
+
+    expect(db.userVersion).toBe(0);
+    expect(db.appliedStatements).toEqual([]);
+    expect(db.calls.at(-1)).toBe('ROLLBACK');
+  });
+
+  test('refuses to open a database created by a newer app schema', async () => {
+    const db = new FakeDatabase(2);
+
+    await expect(runMigrations(db)).rejects.toBeInstanceOf(UnsupportedDatabaseVersionError);
+    expect(db.calls).not.toContain('BEGIN IMMEDIATE');
+  });
+});
+
+describe('encrypted database opening', () => {
+  const validKey = 'ab'.repeat(32);
+
+  test('fails into typed recovery when the database exists but its key is missing', async () => {
+    const db = new FakeDatabase(0);
+    const openDatabaseAsync = jest.fn(async () => db);
+    const getRandomBytesAsync = jest.fn(async () => new Uint8Array(32));
+    const setItemAsync = jest.fn(async () => undefined);
+
+    const opening = openDatabaseWithDependencies({
+      databaseFile: { exists: async () => true },
+      secureStore: {
+        getItemAsync: async () => null,
+        setItemAsync,
+        whenUnlockedThisDeviceOnly: 42,
+      },
+      crypto: { getRandomBytesAsync },
+      sqlite: { openDatabaseAsync },
+    });
+
+    await expect(opening).rejects.toMatchObject({
+      code: 'DATABASE_RECOVERY_REQUIRED',
+      reason: 'missing-key',
+    });
+    await expect(opening).rejects.toBeInstanceOf(DatabaseRecoveryRequiredError);
+    expect(getRandomBytesAsync).not.toHaveBeenCalled();
+    expect(setItemAsync).not.toHaveBeenCalled();
+    expect(openDatabaseAsync).not.toHaveBeenCalled();
+  });
+
+  test('generates one 256-bit key for a new database and stores it as device-only', async () => {
+    const db = new FakeDatabase(0);
+    let storedKey: string | null = null;
+    let databaseExists = false;
+    const randomBytes = Uint8Array.from({ length: 32 }, (_, index) => index);
+    const getRandomBytesAsync = jest.fn(async () => randomBytes);
+    const setItemAsync = jest.fn(async (_name: string, key: string) => {
+      storedKey = key;
+    });
+    const openDatabaseAsync = jest.fn(async () => {
+      databaseExists = true;
+      return db;
+    });
+    const dependencies = {
+      databaseFile: { exists: async () => databaseExists },
+      secureStore: {
+        getItemAsync: async () => storedKey,
+        setItemAsync,
+        whenUnlockedThisDeviceOnly: 42,
+      },
+      crypto: { getRandomBytesAsync },
+      sqlite: { openDatabaseAsync },
+    };
+
+    await openDatabaseWithDependencies(dependencies);
+    await openDatabaseWithDependencies(dependencies);
+
+    expect(getRandomBytesAsync).toHaveBeenCalledTimes(1);
+    expect(storedKey).toBe(
+      '000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f',
+    );
+    expect(setItemAsync).toHaveBeenCalledWith('taisa.database-key.v1', storedKey, {
+      keychainAccessible: 42,
+    });
+    expect(db.calls[0]).toBe(`PRAGMA key = "x'${storedKey}'"`);
+    expect(db.calls).toContain('PRAGMA foreign_keys = ON');
+    expect(db.calls).toContain('PRAGMA journal_mode = WAL');
+  });
+
+  test('treats an invalid stored key for an existing database as recovery-required', async () => {
+    const db = new FakeDatabase(0);
+    const openDatabaseAsync = jest.fn(async () => db);
+
+    await expect(
+      openDatabaseWithDependencies({
+        databaseFile: { exists: async () => true },
+        secureStore: {
+          getItemAsync: async () => 'not-a-sqlcipher-key',
+          setItemAsync: async () => undefined,
+          whenUnlockedThisDeviceOnly: 42,
+        },
+        crypto: { getRandomBytesAsync: async () => new Uint8Array(32) },
+        sqlite: { openDatabaseAsync },
+      }),
+    ).rejects.toMatchObject({
+      code: 'DATABASE_RECOVERY_REQUIRED',
+      reason: 'invalid-key',
+    });
+    expect(openDatabaseAsync).not.toHaveBeenCalled();
+  });
+
+  test('closes an existing database and requires recovery when its key cannot decrypt it', async () => {
+    const db = new FakeDatabase(0);
+    db.getFirstAsync = async () => {
+      throw new Error('file is not a database');
+    };
+
+    await expect(
+      openDatabaseWithDependencies({
+        databaseFile: { exists: async () => true },
+        secureStore: {
+          getItemAsync: async () => validKey,
+          setItemAsync: async () => undefined,
+          whenUnlockedThisDeviceOnly: 42,
+        },
+        crypto: { getRandomBytesAsync: async () => new Uint8Array(32) },
+        sqlite: { openDatabaseAsync: async () => db },
+      }),
+    ).rejects.toMatchObject({
+      code: 'DATABASE_RECOVERY_REQUIRED',
+      reason: 'unreadable-database',
+    });
+    expect(db.closed).toBe(true);
+  });
+});
