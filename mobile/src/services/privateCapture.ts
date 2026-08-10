@@ -42,9 +42,17 @@ import {
   insertCoachingRequest,
   insertUsageReceipt,
   listCoachingRequestsByConversation,
+  retireAbandonedAudioReferences,
   type LocalCoachingRequest,
   updateCoachingRequest,
 } from '../repositories/coachingRequestRepository';
+import {
+  enqueueAudioCleanup,
+  isAudioUriReferencedByActiveCoachingRequest,
+  listDeletableAudioCleanupQueue,
+  markAudioCleanupAttempt,
+  removeAudioCleanup,
+} from '../repositories/audioCleanupRepository';
 import {
   getConversation,
   getMessage,
@@ -164,6 +172,7 @@ export interface PrivateCaptureService {
     actedAt: string;
   }): Promise<void>;
   hydrateConversation(conversationId: string): Promise<HydratedConversationState>;
+  drainAudioCleanupQueue(): Promise<void>;
   discardRecording(uri: string): Promise<void>;
   abandonVoiceSubmission(requestId: string): Promise<void>;
 }
@@ -303,6 +312,82 @@ export function createPrivateCaptureService(
   const limits = dependencies.contextLimits ?? DEFAULT_CONTEXT_LIMITS;
   const inFlightIntents = new Map<string, Promise<SubmissionResult>>();
   const inFlightRequests = new Map<string, Promise<SubmissionResult>>();
+  const inFlightAudioCleanups = new Map<string, Promise<void>>();
+  let inFlightAudioCleanupDrain: Promise<void> | null = null;
+
+  async function enqueueRecordingCleanup(audioUri: string): Promise<void> {
+    await withRepositoryTransaction(dependencies.database, (transaction) =>
+      enqueueAudioCleanup(transaction, {
+        audioUri,
+        enqueuedAt: dependencies.now(),
+      }));
+  }
+
+  async function finishRecordingCleanup(audioUri: string): Promise<void> {
+    await withRepositoryTransaction(dependencies.database, async (transaction) => {
+      await retireAbandonedAudioReferences(transaction, audioUri);
+      await removeAudioCleanup(transaction, audioUri);
+    });
+  }
+
+  async function recordRecordingCleanupFailure(audioUri: string): Promise<void> {
+    await withRepositoryTransaction(dependencies.database, async (transaction) => {
+      await markAudioCleanupAttempt(transaction, {
+        audioUri,
+        attemptedAt: dependencies.now(),
+        errorCode: 'AUDIO_DELETE_FAILED',
+      });
+      await retireAbandonedAudioReferences(transaction, audioUri);
+    });
+  }
+
+  async function attemptQueuedRecordingCleanup(audioUri: string): Promise<void> {
+    if (await isAudioUriReferencedByActiveCoachingRequest(dependencies.database, audioUri)) {
+      return;
+    }
+    try {
+      await dependencies.audioFiles.deleteRecording(audioUri);
+    } catch {
+      await recordRecordingCleanupFailure(audioUri);
+      return;
+    }
+    await finishRecordingCleanup(audioUri);
+  }
+
+  function joinRecordingCleanup(audioUri: string, enqueueFirst: boolean): Promise<void> {
+    const current = inFlightAudioCleanups.get(audioUri);
+    if (current !== undefined) return current;
+    const cleanup = (async () => {
+      if (enqueueFirst) await enqueueRecordingCleanup(audioUri);
+      await attemptQueuedRecordingCleanup(audioUri);
+    })();
+    inFlightAudioCleanups.set(audioUri, cleanup);
+    void cleanup.finally(() => {
+      if (inFlightAudioCleanups.get(audioUri) === cleanup) {
+        inFlightAudioCleanups.delete(audioUri);
+      }
+    }).catch(() => {});
+    return cleanup;
+  }
+
+  function queueAndAttemptRecordingCleanup(audioUri: string): Promise<void> {
+    return joinRecordingCleanup(audioUri, true);
+  }
+
+  function drainAudioCleanupQueue(): Promise<void> {
+    if (inFlightAudioCleanupDrain !== null) return inFlightAudioCleanupDrain;
+    const drain = (async () => {
+      const entries = await listDeletableAudioCleanupQueue(dependencies.database, 20);
+      for (const entry of entries) {
+        await joinRecordingCleanup(entry.audioUri, false);
+      }
+    })();
+    inFlightAudioCleanupDrain = drain;
+    void drain.finally(() => {
+      if (inFlightAudioCleanupDrain === drain) inFlightAudioCleanupDrain = null;
+    }).catch(() => {});
+    return drain;
+  }
 
   function withInFlightIntent<T extends SubmissionResult>(
     intentId: string,
@@ -565,13 +650,21 @@ export function createPrivateCaptureService(
       return markFailed(requestId, 'transcription');
     }
     const timestamp = dependencies.now();
+    let retiredAudioUri: string | null = null;
+    let confirmation: TranscriptConfirmationResult;
     try {
-      return await withRepositoryTransaction(dependencies.database, async (transaction) => {
+      confirmation = await withRepositoryTransaction(dependencies.database, async (transaction) => {
         const current = await getCoachingRequest(transaction, requestId);
         const message = current === null ? null : await getMessage(transaction, current.userMessageId);
-        if (current === null || message === null || current.transcriptionRequestId === null) {
+        if (
+          current === null ||
+          message === null ||
+          current.transcriptionRequestId === null ||
+          current.audioUri === null
+        ) {
           throw new LocalSubmissionStateError('Voice submission state changed');
         }
+        const audioUri = current.audioUri;
         const transcript = result.transcript.trim();
         await updateMessage(
           transaction,
@@ -588,17 +681,23 @@ export function createPrivateCaptureService(
           },
           `${current.transcriptionRequestId}:usage`,
         );
+        await enqueueAudioCleanup(transaction, {
+          audioUri,
+          enqueuedAt: timestamp,
+        });
         await updateCoachingRequest(
           transaction,
           {
             ...current,
             status: 'transcript-confirmation-required',
+            audioUri: null,
             audioDurationSeconds: result.durationSeconds,
             errorCode: null,
             updatedAt: timestamp,
           },
           `${current.id}:attempt:${current.attemptCount}:transcript-complete`,
         );
+        retiredAudioUri = audioUri;
         return {
           status: 'transcript-confirmation-required',
           requestId: current.id,
@@ -609,6 +708,12 @@ export function createPrivateCaptureService(
     } catch {
       return markFailed(requestId, 'transcription');
     }
+    if (retiredAudioUri !== null) {
+      // The queue and retired request pointer already committed atomically, so
+      // any cleanup-processing failure remains recoverable at next startup.
+      await joinRecordingCleanup(retiredAudioUri, false).catch(() => {});
+    }
+    return confirmation;
   }
 
   async function pendingProposalFromConfirmation(
@@ -760,11 +865,11 @@ export function createPrivateCaptureService(
             );
           });
         } catch (error) {
-          await dependencies.audioFiles.deleteRecording(durableAudioUri).catch(() => {});
+          await queueAndAttemptRecordingCleanup(durableAudioUri);
           throw error;
         }
         if (sourceUri !== durableAudioUri) {
-          await dependencies.audioFiles.deleteRecording(sourceUri).catch(() => {});
+          await queueAndAttemptRecordingCleanup(sourceUri);
         }
         return runTranscription(requestId);
       });
@@ -933,8 +1038,10 @@ export function createPrivateCaptureService(
       };
     },
 
+    drainAudioCleanupQueue,
+
     async discardRecording(uri) {
-      await dependencies.audioFiles.deleteRecording(requireContent(uri, 'Recording URI'));
+      await queueAndAttemptRecordingCleanup(requireContent(uri, 'Recording URI'));
     },
 
     async abandonVoiceSubmission(requestId) {
@@ -969,16 +1076,7 @@ export function createPrivateCaptureService(
         },
       );
       if (abandoned.audioUri === null) return;
-      await dependencies.audioFiles.deleteRecording(abandoned.audioUri);
-      await withRepositoryTransaction(dependencies.database, async (transaction) => {
-        const current = await getCoachingRequest(transaction, requestId);
-        if (current === null || current.status !== 'abandoned') return;
-        await updateCoachingRequest(
-          transaction,
-          { ...current, audioUri: null, updatedAt: timestamp },
-          `${current.id}:retire-audio`,
-        );
-      });
+      await queueAndAttemptRecordingCleanup(abandoned.audioUri);
     },
 
     async confirmProposal(input) {

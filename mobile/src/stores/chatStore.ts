@@ -30,6 +30,7 @@ interface ChatStore {
   error: string | null;
   setActiveSessionId: (id: string) => void;
   setPhase: (phase: ChatPhase) => void;
+  drainAudioCleanupQueue: () => Promise<void>;
   hydrateConversation: (conversationId: string) => Promise<void>;
   savePrivateDraft: (conversationId: string, content: string) => Promise<void>;
   submitText: (conversationId: string, content: string) => Promise<void>;
@@ -73,6 +74,7 @@ export function createChatStore(
       : `local-chat-intent-${localIntentSequence += 1}`;
   }
   return create<ChatStore>((set, get) => {
+    let hydrationGeneration = 0;
     function guarded(operation: () => Promise<void>): Promise<void> {
       if (inFlight !== null) return inFlight;
       set({ isBusy: true });
@@ -99,28 +101,61 @@ export function createChatStore(
     setActiveSessionId: (id) => set({ activeSessionId: id }),
     setPhase: (phase) => set({ phase }),
 
-    hydrateConversation: async (conversationId) => {
+    drainAudioCleanupQueue: async () => {
       const service = await getCaptureService();
-      const restored = await service.hydrateConversation(conversationId);
-      const phase: ChatPhase = restored.requestStatus === 'transcript-confirmation-required'
-        ? 'transcript-review'
-        : restored.requestStatus === 'completed'
-          ? 'responded'
-          : restored.requestStatus === null
-            ? 'idle'
-            : 'error';
+      await service.drainAudioCleanupQueue();
+    },
+
+    hydrateConversation: async (conversationId) => {
+      const generation = hydrationGeneration += 1;
       set({
         activeSessionId: conversationId,
-        activeRequestId: restored.requestId,
-        activeMessageId: restored.messageId,
-        transcript: restored.transcript,
-        pendingProposalIds: restored.pendingProposals.map((proposal) => proposal.id),
-        pendingProposals: restored.pendingProposals,
-        phase,
-        error: phase === 'error'
-          ? 'This submission was interrupted. Your content remains on this device and can be retried.'
-          : null,
+        activeRequestId: null,
+        activeMessageId: null,
+        transcript: '',
+        pendingProposalIds: [],
+        pendingProposals: [],
+        phase: 'processing',
+        error: null,
       });
+      try {
+        const service = await getCaptureService();
+        const restored = await service.hydrateConversation(conversationId);
+        const phase: ChatPhase = restored.requestStatus === 'transcript-confirmation-required'
+          ? 'transcript-review'
+          : restored.requestStatus === 'completed'
+            ? 'responded'
+            : restored.requestStatus === null
+              ? 'idle'
+              : 'error';
+        if (generation !== hydrationGeneration) return;
+        set({
+          activeSessionId: conversationId,
+          activeRequestId: restored.requestId,
+          activeMessageId: restored.messageId,
+          transcript: restored.transcript,
+          pendingProposalIds: restored.pendingProposals.map((proposal) => proposal.id),
+          pendingProposals: restored.pendingProposals,
+          phase,
+          error: phase === 'error'
+            ? 'This submission was interrupted. Your content remains on this device and can be retried.'
+            : null,
+        });
+      } catch (hydrateError) {
+        if (generation === hydrationGeneration) {
+          set({
+            activeSessionId: conversationId,
+            activeRequestId: null,
+            activeMessageId: null,
+            transcript: '',
+            pendingProposalIds: [],
+            pendingProposals: [],
+            phase: 'error',
+            error: 'The local conversation could not be restored.',
+          });
+        }
+        throw hydrateError;
+      }
     },
 
     savePrivateDraft: async (conversationId, content) => {
@@ -283,17 +318,20 @@ export function createChatStore(
       });
     },
 
-    clearActiveSession: () => set({
-      activeSessionId: null,
-      activeRequestId: null,
-      activeMessageId: null,
-      transcript: '',
-      pendingProposalIds: [],
-      pendingProposals: [],
-      phase: 'idle',
-      isBusy: false,
-      error: null,
-    }),
+    clearActiveSession: () => {
+      hydrationGeneration += 1;
+      set({
+        activeSessionId: null,
+        activeRequestId: null,
+        activeMessageId: null,
+        transcript: '',
+        pendingProposalIds: [],
+        pendingProposals: [],
+        phase: 'idle',
+        isBusy: false,
+        error: null,
+      });
+    },
     clearError: () => set({ error: null }),
     });
   });

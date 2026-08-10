@@ -159,9 +159,11 @@ describe('local-first stores', () => {
       transcript: 'Restored editable transcript',
       pendingProposals: [],
     }));
+    const drainAudioCleanupQueue = jest.fn(async () => undefined);
     const fake = {
       submitText,
       hydrateConversation,
+      drainAudioCleanupQueue,
     } as unknown as PrivateCaptureService;
     const store = createChatStore(async () => fake);
 
@@ -185,6 +187,305 @@ describe('local-first stores', () => {
       transcript: 'Restored editable transcript',
       phase: 'transcript-review',
     }));
+
+    await store.getState().drainAudioCleanupQueue();
+    expect(drainAudioCleanupQueue).toHaveBeenCalledTimes(1);
+  });
+
+  test('a fresh chat store restores the same durable voice request without provider calls', async () => {
+    const beforeRestartTranscribe = jest.fn(async () => ({
+      transcript: 'A transcript that survives process death',
+      durationSeconds: 21,
+      usage: {
+        provider: 'openai' as const,
+        model: 'fixture-transcription',
+        audioSeconds: 21,
+        estimatedCostUsd: 0.001,
+      },
+    }));
+    const beforeRestartCoach = jest.fn(async (request: CoachingRequest) => response(request));
+    const beforeRestartIds = [...IDS];
+    const beforeRestartService = createPrivateCaptureService({
+      database: db,
+      coach: beforeRestartCoach,
+      transcribe: beforeRestartTranscribe,
+      now: () => NOW,
+      createId: () => beforeRestartIds.shift()!,
+      getProfileId: async () => 'profile-1',
+      audioFiles: {
+        persistRecording: async () => 'file:///documents/taisa-audio/durable-request.m4a',
+        deleteRecording: async () => undefined,
+      },
+    });
+    const beforeRestartStore = createChatStore(async () => beforeRestartService);
+
+    await beforeRestartStore.getState().submitVoice(
+      'conversation-after-process-death',
+      'file:///cache/temporary-recording.m4a',
+      21,
+    );
+    const durableRequestId = beforeRestartStore.getState().activeRequestId;
+    const durableMessageId = beforeRestartStore.getState().activeMessageId;
+
+    const afterRestartCoach = jest.fn(async () => { throw new Error('must stay offline'); });
+    const afterRestartTranscribe = jest.fn(async () => { throw new Error('must stay offline'); });
+    const afterRestartService = createPrivateCaptureService({
+      database: db,
+      coach: afterRestartCoach,
+      transcribe: afterRestartTranscribe,
+      now: () => NOW,
+      createId: () => 'unused-after-restart-id',
+      getProfileId: async () => 'profile-1',
+      audioFiles: {
+        persistRecording: async () => { throw new Error('must stay offline'); },
+        deleteRecording: async () => undefined,
+      },
+    });
+    const afterRestartStore = createChatStore(async () => afterRestartService);
+
+    expect(afterRestartStore.getState().activeSessionId).toBeNull();
+    await afterRestartStore.getState().hydrateConversation('conversation-after-process-death');
+
+    expect(afterRestartStore.getState()).toEqual(expect.objectContaining({
+      activeSessionId: 'conversation-after-process-death',
+      activeRequestId: durableRequestId,
+      activeMessageId: durableMessageId,
+      transcript: 'A transcript that survives process death',
+      phase: 'transcript-review',
+    }));
+    expect(afterRestartCoach).not.toHaveBeenCalled();
+    expect(afterRestartTranscribe).not.toHaveBeenCalled();
+  });
+
+  test('route hydration synchronously hides stale conversation controls before SQLite resolves', async () => {
+    let releaseHydration!: () => void;
+    const hydrationGate = new Promise<void>((resolve) => {
+      releaseHydration = resolve;
+    });
+    const service = {
+      hydrateConversation: jest.fn(async () => {
+        await hydrationGate;
+        return {
+          requestId: 'request-b',
+          messageId: 'message-b',
+          requestStatus: 'completed' as const,
+          transcript: '',
+          pendingProposals: [],
+        };
+      }),
+    } as unknown as PrivateCaptureService;
+    const store = createChatStore(async () => service);
+    store.setState({
+      activeSessionId: 'conversation-a',
+      activeRequestId: 'request-a',
+      activeMessageId: 'message-a',
+      transcript: 'Private transcript from A',
+      pendingProposalIds: ['proposal-a'],
+      pendingProposals: [{
+        id: 'proposal-a',
+        summary: 'Private decision from A',
+        kind: 'proposal',
+        question: null,
+        status: 'pending',
+      }],
+      phase: 'responded',
+      error: null,
+    });
+
+    const hydration = store.getState().hydrateConversation('conversation-b');
+
+    expect(store.getState()).toEqual(expect.objectContaining({
+      activeSessionId: 'conversation-b',
+      activeRequestId: null,
+      activeMessageId: null,
+      transcript: '',
+      pendingProposalIds: [],
+      pendingProposals: [],
+      phase: 'processing',
+    }));
+    releaseHydration();
+    await hydration;
+  });
+
+  test('an older slow hydration cannot overwrite a newer resumed conversation', async () => {
+    let resolveA!: (value: Awaited<ReturnType<PrivateCaptureService['hydrateConversation']>>) => void;
+    let resolveB!: (value: Awaited<ReturnType<PrivateCaptureService['hydrateConversation']>>) => void;
+    const hydrateConversation = jest.fn((conversationId: string) =>
+      new Promise<Awaited<ReturnType<PrivateCaptureService['hydrateConversation']>>>((resolve) => {
+        if (conversationId === 'conversation-a') resolveA = resolve;
+        else resolveB = resolve;
+      }));
+    const service = { hydrateConversation } as unknown as PrivateCaptureService;
+    const store = createChatStore(async () => service);
+
+    const hydrationA = store.getState().hydrateConversation('conversation-a');
+    const hydrationB = store.getState().hydrateConversation('conversation-b');
+    await Promise.resolve();
+    await Promise.resolve();
+    resolveB({
+      requestId: 'request-b',
+      messageId: 'message-b',
+      requestStatus: 'transcript-confirmation-required',
+      transcript: 'Private transcript B',
+      pendingProposals: [],
+    });
+    await hydrationB;
+    resolveA({
+      requestId: 'request-a',
+      messageId: 'message-a',
+      requestStatus: 'completed',
+      transcript: 'Private transcript A',
+      pendingProposals: [{
+        id: 'proposal-a',
+        summary: 'Private proposal A',
+        kind: 'proposal',
+        question: null,
+        status: 'pending',
+      }],
+    });
+    await hydrationA;
+
+    expect(store.getState()).toEqual(expect.objectContaining({
+      activeSessionId: 'conversation-b',
+      activeRequestId: 'request-b',
+      activeMessageId: 'message-b',
+      transcript: 'Private transcript B',
+      pendingProposals: [],
+      phase: 'transcript-review',
+    }));
+  });
+
+  test('an older hydration failure cannot replace a newer resumed conversation with error state', async () => {
+    let rejectA!: (error: Error) => void;
+    const hydrateConversation = jest.fn((conversationId: string) =>
+      conversationId === 'conversation-a'
+        ? new Promise<Awaited<ReturnType<PrivateCaptureService['hydrateConversation']>>>(
+          (_resolve, reject) => { rejectA = reject; },
+        )
+        : Promise.resolve({
+          requestId: 'request-b',
+          messageId: 'message-b',
+          requestStatus: 'completed' as const,
+          transcript: '',
+          pendingProposals: [],
+        }));
+    const store = createChatStore(async () => ({
+      hydrateConversation,
+    } as unknown as PrivateCaptureService));
+
+    const hydrationA = store.getState().hydrateConversation('conversation-a');
+    const hydrationB = store.getState().hydrateConversation('conversation-b');
+    await Promise.resolve();
+    await hydrationB;
+    rejectA(new Error('A failed after B opened'));
+    await expect(hydrationA).rejects.toThrow('A failed after B opened');
+
+    expect(store.getState()).toEqual(expect.objectContaining({
+      activeSessionId: 'conversation-b',
+      activeRequestId: 'request-b',
+      activeMessageId: 'message-b',
+      phase: 'responded',
+      error: null,
+    }));
+  });
+
+  test('a fresh thread history exposes durable pending work without loading the capture service', async () => {
+    const transcribe = jest.fn(async () => ({
+      transcript: 'Review me after restart',
+      durationSeconds: 9,
+      usage: {
+        provider: 'openai' as const,
+        model: 'fixture-transcription',
+        audioSeconds: 9,
+        estimatedCostUsd: 0.001,
+      },
+    }));
+    const ids = [...IDS];
+    const service = createPrivateCaptureService({
+      database: db,
+      coach: async (request) => response(request),
+      transcribe,
+      now: () => NOW,
+      createId: () => ids.shift()!,
+      getProfileId: async () => 'profile-1',
+      audioFiles: {
+        persistRecording: async () => 'file:///documents/taisa-audio/history-request.m4a',
+        deleteRecording: async () => undefined,
+      },
+    });
+    await service.submitVoice({
+      conversationId: 'conversation-with-pending-work',
+      audioUri: 'file:///cache/history-recording.m4a',
+      durationSeconds: 9,
+    });
+    const getCaptureService = jest.fn(async () => service);
+    const freshHistoryStore = createThreadStore({
+      openDatabase: async () => db,
+      getCaptureService,
+    });
+
+    await freshHistoryStore.getState().fetchThreads();
+
+    expect(freshHistoryStore.getState().threads).toEqual([
+      expect.objectContaining({
+        id: 'conversation-with-pending-work',
+        pendingRequestStatus: 'transcript-confirmation-required',
+        pendingProposalCount: 0,
+      }),
+    ]);
+    expect(getCaptureService).not.toHaveBeenCalled();
+  });
+
+  test('fresh thread history counts durable decisions that still need the user', async () => {
+    const ids = [...IDS];
+    const service = createPrivateCaptureService({
+      database: db,
+      coach: async (request) => ({
+        ...response(request),
+        proposals: [{
+          operation: 'propose',
+          candidate: {
+            type: 'goal',
+            statement: 'Lead the next roadmap workshop',
+            provenance: 'user-confirmed',
+            lifecycle: 'active',
+            confidence: 'established',
+            sourceMessageIds: ['provider-source-is-replaced-locally'],
+            supersedesId: null,
+          },
+          reason: 'This is an explicit direction for future coaching.',
+          requiresConfirmation: false,
+        }],
+      }),
+      transcribe: async () => { throw new Error('not used'); },
+      now: () => NOW,
+      createId: () => ids.shift()!,
+      getProfileId: async () => 'profile-1',
+      audioFiles: {
+        persistRecording: async ({ sourceUri }) => sourceUri,
+        deleteRecording: async () => undefined,
+      },
+    });
+    await service.submitText({
+      conversationId: 'conversation-with-decision',
+      content: 'I want to lead the next roadmap workshop.',
+    });
+    const getCaptureService = jest.fn(async () => service);
+    const freshHistoryStore = createThreadStore({
+      openDatabase: async () => db,
+      getCaptureService,
+    });
+
+    await freshHistoryStore.getState().fetchThreads();
+
+    expect(freshHistoryStore.getState().threads).toEqual([
+      expect.objectContaining({
+        id: 'conversation-with-decision',
+        pendingRequestStatus: 'completed',
+        pendingProposalCount: 1,
+      }),
+    ]);
+    expect(getCaptureService).not.toHaveBeenCalled();
   });
 
   test('thread store synchronously ignores a rapid duplicate send', async () => {

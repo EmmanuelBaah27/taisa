@@ -210,7 +210,28 @@ export const SCHEMA_V1_STATEMENTS: readonly string[] = [
       OR
       (kind = 'voice' AND transcription_request_id IS NOT NULL
         AND audio_duration_seconds IS NOT NULL
-        AND (status = 'abandoned' OR audio_uri IS NOT NULL))
+        AND (
+          audio_uri IS NOT NULL
+          OR status NOT IN ('transcription-pending', 'transcription-failed')
+        ))
+    )
+  )`,
+  `CREATE TABLE audio_cleanup_queue (
+    audio_uri TEXT PRIMARY KEY NOT NULL CHECK (length(trim(audio_uri)) > 0),
+    enqueued_at TEXT NOT NULL,
+    attempt_count INTEGER NOT NULL DEFAULT 0 CHECK (attempt_count >= 0),
+    last_attempt_at TEXT,
+    last_error_code TEXT CHECK (
+      last_error_code IS NULL OR (
+        length(last_error_code) BETWEEN 1 AND 64
+        AND substr(last_error_code, 1, 1) GLOB '[A-Z]'
+        AND last_error_code NOT GLOB '*[^A-Z0-9_]*'
+      )
+    ),
+    CHECK (
+      (attempt_count = 0 AND last_attempt_at IS NULL AND last_error_code IS NULL)
+      OR
+      (attempt_count > 0 AND last_attempt_at IS NOT NULL AND last_error_code IS NOT NULL)
     )
   )`,
   `CREATE TABLE usage_receipts (
@@ -246,6 +267,11 @@ export const SCHEMA_V1_STATEMENTS: readonly string[] = [
   `CREATE INDEX messages_conversation_created_idx ON messages(conversation_id, created_at)`,
   `CREATE INDEX coaching_requests_conversation_status_updated_idx
     ON coaching_requests(conversation_id, status, updated_at DESC)`,
+  `CREATE INDEX coaching_requests_active_audio_uri_idx
+    ON coaching_requests(audio_uri)
+    WHERE audio_uri IS NOT NULL AND status NOT IN ('completed', 'abandoned')`,
+  `CREATE INDEX audio_cleanup_queue_enqueued_idx
+    ON audio_cleanup_queue(enqueued_at, audio_uri)`,
   `CREATE INDEX memory_confirmations_conversation_status_staged_idx
     ON memory_confirmations(conversation_id, status, staged_at DESC)`,
   `CREATE INDEX goals_lifecycle_updated_idx ON goals(lifecycle, updated_at)`,

@@ -194,6 +194,32 @@ export async function updateCoachingRequest(
   requireExactlyOneAffectedRow(result, 'Cannot update missing coaching request');
 }
 
+/**
+ * Clears stale filesystem pointers only after a voice request is abandoned.
+ * App-owned recording paths are unique per request; the bounded query protects
+ * the repository contract if corrupted legacy rows ever reuse a path.
+ */
+export async function retireAbandonedAudioReferences(
+  transaction: RepositoryTransaction,
+  audioUri: string,
+): Promise<void> {
+  const rows = await transaction.getAllAsync<CoachingRequestRow>(
+    `SELECT ${COLUMNS} FROM coaching_requests
+     WHERE audio_uri = $audioUri AND status = 'abandoned'
+     ORDER BY updated_at DESC, id DESC
+     LIMIT 20`,
+    { $audioUri: audioUri },
+  );
+  for (const row of rows) {
+    const request = mapRow(row);
+    await updateCoachingRequest(
+      transaction,
+      { ...request, audioUri: null },
+      `${request.id}:retire-audio`,
+    );
+  }
+}
+
 export async function insertUsageReceipt(
   transaction: RepositoryTransaction,
   input: {

@@ -112,6 +112,7 @@ describe('local database migrations', () => {
       'memory_items',
       'memory_sources',
       'memory_confirmations',
+      'audio_cleanup_queue',
       'usage_receipts',
       'migration_state',
     ]) {
@@ -159,6 +160,17 @@ describe('local database migrations', () => {
     expect(table).toContain("kind TEXT NOT NULL CHECK (kind = 'explicit-user-completion')");
     expect(table).toContain('from_lifecycle TEXT NOT NULL');
     expect(table).toContain('to_lifecycle TEXT NOT NULL');
+  });
+
+  test('audio cleanup queue stores only a local path and content-free retry metadata', () => {
+    const table = SCHEMA_V1_STATEMENTS.find((statement) =>
+      statement.includes('CREATE TABLE audio_cleanup_queue'),
+    );
+
+    expect(table).toContain('audio_uri TEXT PRIMARY KEY NOT NULL');
+    expect(table).toContain('attempt_count INTEGER NOT NULL DEFAULT 0');
+    expect(table).toContain('last_error_code TEXT');
+    expect(table).not.toMatch(/content|transcript|response|message|conversation/i);
   });
 
   test('rolls back the schema and user_version when a migration statement fails', async () => {

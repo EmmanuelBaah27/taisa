@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useSharedValue } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { startRecording, stopRecording, requestAudioPermissions, onMeteringUpdate, RecordingResult } from '../services/audio';
@@ -19,11 +19,21 @@ export function useVoiceRecorder(): UseVoiceRecorder {
   const [permissionGranted, setPermissionGranted] = useState<boolean | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const unsubMeteringRef = useRef<(() => void) | null>(null);
+  const mountedRef = useRef(true);
   const amplitude = useSharedValue(0);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      if (timerRef.current) clearInterval(timerRef.current);
+      unsubMeteringRef.current?.();
+    };
+  }, []);
 
   const requestPermission = useCallback(async () => {
     const granted = await requestAudioPermissions();
-    setPermissionGranted(granted);
+    if (mountedRef.current) setPermissionGranted(granted);
     return granted;
   }, []);
 
@@ -32,13 +42,16 @@ export function useVoiceRecorder(): UseVoiceRecorder {
     if (!granted) throw new Error('Audio permission denied');
 
     await startRecording();
-    setIsRecording(true);
-    setDuration(0);
+    if (mountedRef.current) {
+      setIsRecording(true);
+      setDuration(0);
+    }
     amplitude.value = 0;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (!mountedRef.current) return;
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     timerRef.current = setInterval(() => {
-      setDuration(d => d + 1);
+      if (mountedRef.current) setDuration(d => d + 1);
     }, 1000);
 
     unsubMeteringRef.current = onMeteringUpdate(amp => {
@@ -51,8 +64,10 @@ export function useVoiceRecorder(): UseVoiceRecorder {
     unsubMeteringRef.current?.();
     amplitude.value = 0;
     const result = await stopRecording();
-    setIsRecording(false);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    if (mountedRef.current) {
+      setIsRecording(false);
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    }
     return result;
   }, []);
 

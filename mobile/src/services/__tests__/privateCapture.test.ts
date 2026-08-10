@@ -1,6 +1,10 @@
 import type { CoachingRequest, CoachingResponse } from '@taisa/shared';
 
 import type { RepositoryTransaction } from '../../db/types';
+import {
+  enqueueAudioCleanup,
+  listAudioCleanupQueue,
+} from '../../repositories/audioCleanupRepository';
 import { listMessages } from '../../repositories/conversationRepository';
 import { getMemory, insertMemory, updateMemory } from '../../repositories/memoryRepository';
 import {
@@ -306,6 +310,14 @@ describe('private local capture and deliberate submission', () => {
       lifecycle: 'pending',
       content: 'The roadmap conversation left me uncertain.',
     }));
+    expect(await getRequest(db, voice.requestId)).toEqual(expect.objectContaining({
+      status: 'transcript-confirmation-required',
+      audio_uri: null,
+    }));
+    expect(audioFiles.deleteRecording).toHaveBeenCalledWith(
+      `file:///documents/taisa-audio/${UUIDS[0]}-recording.m4a`,
+    );
+    expect(await listAudioCleanupQueue(db)).toEqual([]);
 
     await service.updateTranscript({
       requestId: voice.requestId,
@@ -361,9 +373,7 @@ describe('private local capture and deliberate submission', () => {
     expect(transcribe).toHaveBeenCalledTimes(2);
     expect(transcribe.mock.calls[0][0]).toEqual(transcribe.mock.calls[1][0]);
     expect((await getRequest(db, failed!.requestId))?.user_message_id).toBe(before?.user_message_id);
-    expect((await getRequest(db, failed!.requestId))?.audio_uri).toBe(
-      `file:///documents/taisa-audio/${UUIDS[0]}-original.m4a`,
-    );
+    expect((await getRequest(db, failed!.requestId))?.audio_uri).toBeNull();
     expect(await listMessages(db, 'conversation-1')).toHaveLength(1);
     expect(coach).not.toHaveBeenCalled();
   });
@@ -829,21 +839,185 @@ describe('private local capture and deliberate submission', () => {
   test('discarding a recording retires its temporary or durable file', async () => {
     await service.discardRecording('file:///cache/abandoned.m4a');
     expect(audioFiles.deleteRecording).toHaveBeenCalledWith('file:///cache/abandoned.m4a');
+    expect(await listAudioCleanupQueue(db)).toEqual([]);
   });
 
-  test('recording again after transcription retires durable audio and abandons paid-request state', async () => {
+  test('concurrent discard paths share one filesystem attempt for the same recording', async () => {
+    const audioUri = 'file:///cache/close-replacement-race.m4a';
+    let releaseDelete!: () => void;
+    let reportDeleteStarted!: () => void;
+    const deleteStarted = new Promise<void>((resolve) => {
+      reportDeleteStarted = resolve;
+    });
+    audioFiles.deleteRecording.mockImplementation(() => new Promise<void>((resolve) => {
+      releaseDelete = resolve;
+      reportDeleteStarted();
+    }));
+
+    const replacement = service.discardRecording(audioUri);
+    const close = service.discardRecording(audioUri);
+    await deleteStarted;
+    releaseDelete();
+    await Promise.all([replacement, close]);
+
+    expect(audioFiles.deleteRecording).toHaveBeenCalledTimes(1);
+    expect(await listAudioCleanupQueue(db)).toEqual([]);
+  });
+
+  test('a failed recording deletion is durably queued and drains exactly once after restart', async () => {
+    const audioUri = 'file:///cache/restart-cleanup.m4a';
+    audioFiles.deleteRecording
+      .mockRejectedValueOnce(new Error('private filesystem detail'))
+      .mockResolvedValue(undefined);
+
+    await service.discardRecording(audioUri);
+
+    expect(await listAudioCleanupQueue(db)).toEqual([
+      expect.objectContaining({
+        audioUri,
+        attemptCount: 1,
+        lastErrorCode: 'AUDIO_DELETE_FAILED',
+      }),
+    ]);
+    const restarted = createPrivateCaptureService({
+      database: db,
+      coach,
+      transcribe,
+      now: () => NOW,
+      createId: () => ids.shift()!,
+      getProfileId: async () => 'profile-1',
+      audioFiles,
+    });
+
+    await restarted.drainAudioCleanupQueue();
+    await restarted.drainAudioCleanupQueue();
+
+    expect(audioFiles.deleteRecording).toHaveBeenCalledTimes(2);
+    expect(audioFiles.deleteRecording).toHaveBeenLastCalledWith(audioUri);
+    expect(await listAudioCleanupQueue(db)).toEqual([]);
+  });
+
+  test('cleanup drain never deletes audio referenced by an active coaching request', async () => {
+    transcribe.mockRejectedValueOnce(new Error('transcription unavailable'));
+    let failedRequestId = '';
+    try {
+      await service.submitVoice({
+        conversationId: 'active-audio-conversation',
+        audioUri: 'file:///cache/active-source.m4a',
+        durationSeconds: 18,
+        intentId: 'active-audio-intent',
+      });
+    } catch (error) {
+      failedRequestId = (error as SubmissionFailedError).requestId;
+    }
+    const durableUri = (await getRequest(db, failedRequestId))!.audio_uri!;
+    await db.withTransaction((transaction) => enqueueAudioCleanup(transaction, {
+      audioUri: durableUri,
+      enqueuedAt: NOW,
+    }));
+    audioFiles.deleteRecording.mockClear();
+
+    await service.drainAudioCleanupQueue();
+
+    expect(audioFiles.deleteRecording).not.toHaveBeenCalledWith(durableUri);
+    expect(await listAudioCleanupQueue(db)).toEqual([
+      expect.objectContaining({ audioUri: durableUri, attemptCount: 0 }),
+    ]);
+  });
+
+  test('concurrent cleanup drains share one filesystem attempt for the same queued URI', async () => {
+    const audioUri = 'file:///cache/concurrent-cleanup.m4a';
+    await db.withTransaction((transaction) => enqueueAudioCleanup(transaction, {
+      audioUri,
+      enqueuedAt: NOW,
+    }));
+    let releaseDelete!: () => void;
+    let reportDeleteStarted!: () => void;
+    const deleteStarted = new Promise<void>((resolve) => {
+      reportDeleteStarted = resolve;
+    });
+    audioFiles.deleteRecording.mockImplementationOnce(() => new Promise<void>((resolve) => {
+      releaseDelete = resolve;
+      reportDeleteStarted();
+    }));
+
+    const first = service.drainAudioCleanupQueue();
+    const second = service.drainAudioCleanupQueue();
+
+    expect(second).toBe(first);
+    await deleteStarted;
+    expect(audioFiles.deleteRecording).toHaveBeenCalledTimes(1);
+    releaseDelete();
+    await Promise.all([first, second]);
+    expect(await listAudioCleanupQueue(db)).toEqual([]);
+  });
+
+  test('temporary source cleanup after voice submit is recoverable without failing transcription', async () => {
+    const sourceUri = 'file:///cache/source-delete-fails.m4a';
+    audioFiles.deleteRecording.mockRejectedValueOnce(new Error('source delete detail'));
+
+    await expect(service.submitVoice({
+      conversationId: 'source-cleanup-conversation',
+      audioUri: sourceUri,
+      durationSeconds: 18,
+      intentId: 'source-cleanup-intent',
+    })).resolves.toEqual(expect.objectContaining({
+      status: 'transcript-confirmation-required',
+    }));
+
+    expect(await listAudioCleanupQueue(db)).toEqual([
+      expect.objectContaining({
+        audioUri: sourceUri,
+        attemptCount: 1,
+        lastErrorCode: 'AUDIO_DELETE_FAILED',
+      }),
+    ]);
+  });
+
+  test('durable copy cleanup after local request rollback keeps a recoverable pointer', async () => {
+    const durableUri = 'file:///documents/taisa-audio/rolled-back-request.m4a';
+    audioFiles.persistRecording.mockResolvedValueOnce(durableUri);
+    audioFiles.deleteRecording.mockRejectedValueOnce(new Error('durable delete detail'));
+    await db.execAsync(`CREATE TRIGGER force_voice_request_insert_failure
+      BEFORE INSERT ON coaching_requests
+      BEGIN SELECT RAISE(ABORT, 'forced voice request insert failure'); END`);
+
+    let requestInsertFailure: unknown;
+    try {
+      await service.submitVoice({
+        conversationId: 'rolled-back-voice-conversation',
+        audioUri: 'file:///cache/rolled-back-source.m4a',
+        durationSeconds: 18,
+        intentId: 'rolled-back-voice-intent',
+      });
+    } catch (error) {
+      requestInsertFailure = error;
+    }
+    expect(String((requestInsertFailure as { message?: string })?.message))
+      .toContain('forced voice request insert failure');
+
+    expect(await listAudioCleanupQueue(db)).toEqual([
+      expect.objectContaining({
+        audioUri: durableUri,
+        attemptCount: 1,
+        lastErrorCode: 'AUDIO_DELETE_FAILED',
+      }),
+    ]);
+  });
+
+  test('recording again after transcription abandons paid-request state after audio was retired', async () => {
     const voice = await service.submitVoice({
       conversationId: 'conversation-1',
       audioUri: 'file:///cache/abandon-durable.m4a',
       durationSeconds: 18,
       intentId: 'abandon-durable-intent',
     });
-    const durableUri = (await getRequest(db, voice.requestId))!.audio_uri!;
+    expect((await getRequest(db, voice.requestId))!.audio_uri).toBeNull();
     audioFiles.deleteRecording.mockClear();
 
     await service.abandonVoiceSubmission(voice.requestId);
 
-    expect(audioFiles.deleteRecording).toHaveBeenCalledWith(durableUri);
+    expect(audioFiles.deleteRecording).not.toHaveBeenCalled();
     expect(await getRequest(db, voice.requestId)).toEqual(expect.objectContaining({
       status: 'abandoned',
       audio_uri: null,
@@ -854,52 +1028,48 @@ describe('private local capture and deliberate submission', () => {
     );
   });
 
-  test('durable audio retirement resumes safely after a delete failure with a later timestamp', async () => {
+  test('durable audio retirement queues a failed delete and clears the request pointer safely', async () => {
+    const durableUri = `file:///documents/taisa-audio/${UUIDS[0]}-delete-retry.m4a`;
+    audioFiles.deleteRecording
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error('filesystem unavailable'));
+
     const voice = await service.submitVoice({
       conversationId: 'conversation-1',
       audioUri: 'file:///cache/delete-retry.m4a',
       durationSeconds: 18,
       intentId: 'delete-retry-intent',
     });
-    const durableUri = (await getRequest(db, voice.requestId))!.audio_uri!;
-    let currentTime = NOW;
-    const restarted = createPrivateCaptureService({
-      database: db,
-      coach,
-      transcribe,
-      now: () => currentTime,
-      createId: () => ids.shift()!,
-      getProfileId: async () => 'profile-1',
-      audioFiles,
-    });
-    audioFiles.deleteRecording.mockReset();
-    audioFiles.deleteRecording
-      .mockRejectedValueOnce(new Error('filesystem unavailable'))
-      .mockResolvedValue(undefined);
 
-    await expect(restarted.abandonVoiceSubmission(voice.requestId)).rejects.toThrow(
-      'filesystem unavailable',
-    );
     expect(await getRequest(db, voice.requestId)).toEqual(expect.objectContaining({
-      status: 'abandoned',
-      audio_uri: durableUri,
+      status: 'transcript-confirmation-required',
+      audio_uri: null,
     }));
+    expect(await listAudioCleanupQueue(db)).toEqual([
+      expect.objectContaining({ audioUri: durableUri, attemptCount: 1 }),
+    ]);
 
-    currentTime = '2026-08-10T10:00:00.000Z';
-    await restarted.abandonVoiceSubmission(voice.requestId);
-    expect((await getRequest(db, voice.requestId))?.audio_uri).toBeNull();
+    audioFiles.deleteRecording.mockResolvedValue(undefined);
+    await service.drainAudioCleanupQueue();
+    expect(await listAudioCleanupQueue(db)).toEqual([]);
   });
 
   test('durable audio retirement resumes after the post-delete database update rolls back', async () => {
-    const voice = await service.submitVoice({
-      conversationId: 'conversation-1',
-      audioUri: 'file:///cache/database-retry.m4a',
-      durationSeconds: 18,
-      intentId: 'database-retry-intent',
-    });
+    transcribe.mockRejectedValueOnce(new Error('transcription unavailable'));
+    let failedRequestId = '';
+    try {
+      await service.submitVoice({
+        conversationId: 'conversation-1',
+        audioUri: 'file:///cache/database-retry.m4a',
+        durationSeconds: 18,
+        intentId: 'database-retry-intent',
+      });
+    } catch (error) {
+      failedRequestId = (error as SubmissionFailedError).requestId;
+    }
     await db.execAsync(`CREATE TRIGGER force_audio_retirement_failure
       BEFORE UPDATE ON coaching_requests
-      WHEN OLD.id = '${voice.requestId}' AND NEW.audio_uri IS NULL
+      WHEN OLD.id = '${failedRequestId}' AND NEW.audio_uri IS NULL
       BEGIN SELECT RAISE(ABORT, 'forced audio retirement failure'); END`);
     let currentTime = NOW;
     const restarted = createPrivateCaptureService({
@@ -912,18 +1082,24 @@ describe('private local capture and deliberate submission', () => {
       audioFiles,
     });
 
-    await expect(restarted.abandonVoiceSubmission(voice.requestId)).rejects.toThrow(
-      'forced audio retirement failure',
-    );
-    expect(await getRequest(db, voice.requestId)).toEqual(expect.objectContaining({
+    let retirementFailure: unknown;
+    try {
+      await restarted.abandonVoiceSubmission(failedRequestId);
+    } catch (error) {
+      retirementFailure = error;
+    }
+    expect(String((retirementFailure as { message?: string })?.message))
+      .toContain('forced audio retirement failure');
+    expect(await getRequest(db, failedRequestId)).toEqual(expect.objectContaining({
       status: 'abandoned',
       audio_uri: expect.any(String),
     }));
 
     await db.execAsync('DROP TRIGGER force_audio_retirement_failure');
     currentTime = '2026-08-10T10:00:00.000Z';
-    await restarted.abandonVoiceSubmission(voice.requestId);
-    expect((await getRequest(db, voice.requestId))?.audio_uri).toBeNull();
+    await restarted.drainAudioCleanupQueue();
+    expect((await getRequest(db, failedRequestId))?.audio_uri).toBeNull();
+    expect(await listAudioCleanupQueue(db)).toEqual([]);
   });
 
   test('assistant response, usage, and governed proposals roll back together when local proposal staging fails', async () => {

@@ -51,7 +51,7 @@ export default function TabLayout() {
         {/* Chat sheet — rendered outside the scaled wrapper so it isn't affected. */}
         {chatMorphing && (
           <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100 }}>
-            <ChatScreen />
+            <ChatScreen presentation="overlay" />
           </View>
         )}
       </View>
