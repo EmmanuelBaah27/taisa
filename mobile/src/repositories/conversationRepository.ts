@@ -251,6 +251,24 @@ export async function listMessages(
   return rows.map(mapMessage);
 }
 
+export async function listRecentMessages(
+  database: RepositoryConnection,
+  conversationId: string,
+  limit: number,
+): Promise<LocalMessage[]> {
+  if (!Number.isInteger(limit) || limit <= 0) {
+    throw new TypeError('Message limit must be a positive integer');
+  }
+  const rows = await database.getAllAsync<MessageRow>(
+    `SELECT ${MESSAGE_COLUMNS} FROM messages
+     WHERE conversation_id = $conversationId
+     ORDER BY created_at DESC, id DESC
+     LIMIT $limit`,
+    { $conversationId: conversationId, $limit: limit },
+  );
+  return rows.map(mapMessage);
+}
+
 export async function searchMessages(
   database: RepositoryConnection,
   query: string,

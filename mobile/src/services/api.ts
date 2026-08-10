@@ -15,7 +15,8 @@ api.interceptors.request.use(async (config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    console.error('API error:', error.response?.data || error.message);
+    // Request/response bodies and provider messages may contain private work content.
+    // Transport callers convert this into content-free, user-facing errors.
     return Promise.reject(error);
   }
 );

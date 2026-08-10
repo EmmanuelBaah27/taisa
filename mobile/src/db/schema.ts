@@ -171,6 +171,38 @@ export const SCHEMA_V1_STATEMENTS: readonly string[] = [
         AND consumed_at IS NOT NULL AND consumed_by_idempotency_id IS NOT NULL)
     )
   )`,
+  `CREATE TABLE coaching_requests (
+    id TEXT PRIMARY KEY NOT NULL,
+    conversation_id TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+    user_message_id TEXT NOT NULL UNIQUE REFERENCES messages(id) ON DELETE CASCADE,
+    transcription_request_id TEXT UNIQUE,
+    kind TEXT NOT NULL CHECK (kind IN ('text', 'voice')),
+    status TEXT NOT NULL CHECK (status IN (
+      'transcription-pending', 'transcription-failed',
+      'transcript-confirmation-required', 'coaching-pending',
+      'coaching-failed', 'completed'
+    )),
+    audio_uri TEXT,
+    audio_duration_seconds REAL CHECK (
+      audio_duration_seconds IS NULL OR audio_duration_seconds >= 0
+    ),
+    transcript_confirmed_at TEXT,
+    assistant_message_id TEXT UNIQUE REFERENCES messages(id) ON DELETE SET NULL,
+    stance TEXT CHECK (stance IS NULL OR stance IN ('mirror', 'nudge', 'challenge', 'direct')),
+    context_manifest_json TEXT,
+    error_code TEXT,
+    attempt_count INTEGER NOT NULL CHECK (attempt_count >= 1),
+    submitted_at TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    CHECK (
+      (kind = 'text' AND transcription_request_id IS NULL AND audio_uri IS NULL
+        AND audio_duration_seconds IS NULL)
+      OR
+      (kind = 'voice' AND transcription_request_id IS NOT NULL AND audio_uri IS NOT NULL
+        AND audio_duration_seconds IS NOT NULL)
+    )
+  )`,
   `CREATE TABLE usage_receipts (
     id TEXT PRIMARY KEY NOT NULL,
     request_id TEXT NOT NULL UNIQUE,

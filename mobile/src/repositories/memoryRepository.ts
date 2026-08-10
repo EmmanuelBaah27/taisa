@@ -179,12 +179,20 @@ export async function updateMemory(
 export async function listMemories(
   database: RepositoryConnection,
   lifecycles?: readonly MemoryLifecycle[],
+  limit?: number,
 ): Promise<LocalMemoryItem[]> {
+  if (limit !== undefined && (!Number.isInteger(limit) || limit <= 0)) {
+    throw new TypeError('Memory limit must be a positive integer');
+  }
   const filter = lifecycleFilter('lifecycle', lifecycles);
+  const limitClause = limit === undefined ? '' : '\n     LIMIT $limit';
+  const params = Array.isArray(filter.params)
+    ? (limit === undefined ? filter.params : { $limit: limit })
+    : (limit === undefined ? filter.params : { ...filter.params, $limit: limit });
   const rows = await database.getAllAsync<MemoryRow>(
     `SELECT ${MEMORY_COLUMNS} FROM memory_items${filter.clause}
-     ORDER BY updated_at DESC, id`,
-    filter.params,
+     ORDER BY updated_at DESC, id${limitClause}`,
+    params,
   );
   return Promise.all(
     rows.map(async (row) => mapMemory(row, await listMemorySources(database, row.id))),

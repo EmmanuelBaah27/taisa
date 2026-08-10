@@ -192,4 +192,27 @@ describe('memoryRepository', () => {
       }
     },
   );
+
+  test('memory candidate lookup enforces the caller-supplied SQL limit', async () => {
+    const db = createTestDatabase();
+    try {
+      for (let index = 0; index < 3; index += 1) {
+        await db.withTransaction((tx) => insertMemory(tx, {
+          ...memory,
+          id: `bounded-memory-${index}`,
+          updatedAt: `2026-08-10T09:00:0${index}.000Z`,
+        }, `bounded-memory-insert-${index}`));
+      }
+
+      expect((await listMemories(db, ['active'], 2)).map((item) => item.id)).toEqual([
+        'bounded-memory-2',
+        'bounded-memory-1',
+      ]);
+      await expect(listMemories(db, ['active'], 0)).rejects.toThrow(
+        'Memory limit must be a positive integer',
+      );
+    } finally {
+      db.close();
+    }
+  });
 });

@@ -8,6 +8,7 @@ import {
   insertMessage,
   listConversations,
   listMessages,
+  listRecentMessages,
   searchMessages,
   updateConversation,
   updateMessage,
@@ -191,6 +192,32 @@ describe('conversationRepository', () => {
       await db.withTransaction((tx) => insertMessage(tx, message, 'message-create-1'));
       await db.withTransaction((tx) => updateMessage(tx, updated, 'message-update-retry'));
       expect(await getMessage(db, message.id)).toEqual(updated);
+    } finally {
+      db.close();
+    }
+  });
+
+  test('recent-message lookup enforces the caller-supplied SQL limit', async () => {
+    const db = createTestDatabase();
+    try {
+      await db.withTransaction((tx) => insertConversation(tx, conversation, 'conversation-create-1'));
+      for (let index = 0; index < 3; index += 1) {
+        await db.withTransaction((tx) => insertMessage(tx, {
+          ...message,
+          id: `bounded-message-${index}`,
+          requestId: `bounded-request-${index}`,
+          createdAt: `2026-08-10T09:00:0${index}.000Z`,
+          updatedAt: `2026-08-10T09:00:0${index}.000Z`,
+        }, `bounded-message-insert-${index}`));
+      }
+
+      expect((await listRecentMessages(db, conversation.id, 2)).map((item) => item.id)).toEqual([
+        'bounded-message-2',
+        'bounded-message-1',
+      ]);
+      await expect(listRecentMessages(db, conversation.id, 0)).rejects.toThrow(
+        'Message limit must be a positive integer',
+      );
     } finally {
       db.close();
     }
