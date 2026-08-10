@@ -46,6 +46,10 @@ describe('local-first stores', () => {
       now: () => NOW,
       createId: () => ids.shift()!,
       getProfileId: async () => secureUserId ?? 'profile-1',
+      audioFiles: {
+        persistRecording: async ({ sourceUri }) => sourceUri,
+        deleteRecording: async (_uri: string) => undefined,
+      },
     });
   });
 
@@ -113,6 +117,10 @@ describe('local-first stores', () => {
       'Help me plan the follow-up.',
       'What would a good next conversation accomplish?',
     ]);
+    expect(store.getState().currentSession).toEqual(expect.objectContaining({
+      pendingRequestStatus: 'completed',
+      pendingProposalCount: 0,
+    }));
     expect(store.getState().error).toBeNull();
   });
 
@@ -127,6 +135,78 @@ describe('local-first stores', () => {
       activeRequestId: IDS[1],
       phase: 'responded',
       error: null,
+    }));
+  });
+
+  test('chat store synchronously deduplicates a rapid submit intent and restores durable transcript review', async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    const submitText = jest.fn(async () => {
+      await gate;
+      return {
+        status: 'completed' as const,
+        requestId: 'request-1',
+        messageId: 'message-1',
+        assistantMessageId: 'assistant-1',
+        pendingProposalIds: [],
+        pendingProposals: [],
+      };
+    });
+    const hydrateConversation = jest.fn(async () => ({
+      requestId: 'voice-request',
+      messageId: 'voice-message',
+      requestStatus: 'transcript-confirmation-required' as const,
+      transcript: 'Restored editable transcript',
+      pendingProposals: [],
+    }));
+    const fake = {
+      submitText,
+      hydrateConversation,
+    } as unknown as PrivateCaptureService;
+    const store = createChatStore(async () => fake);
+
+    const first = store.getState().submitText('conversation-1', 'One intentional thought');
+    const second = store.getState().submitText('conversation-1', 'One intentional thought');
+    expect(second).toBe(first);
+    expect(store.getState().isBusy).toBe(true);
+    release();
+    await Promise.all([first, second]);
+    expect(submitText).toHaveBeenCalledTimes(1);
+    expect(submitText).toHaveBeenCalledWith(expect.objectContaining({
+      intentId: expect.any(String),
+    }));
+    expect(store.getState().isBusy).toBe(false);
+
+    await store.getState().hydrateConversation('conversation-1');
+    expect(hydrateConversation).toHaveBeenCalledWith('conversation-1');
+    expect(store.getState()).toEqual(expect.objectContaining({
+      activeRequestId: 'voice-request',
+      activeMessageId: 'voice-message',
+      transcript: 'Restored editable transcript',
+      phase: 'transcript-review',
+    }));
+  });
+
+  test('thread store synchronously ignores a rapid duplicate send', async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    const submitText = jest.fn(async () => {
+      await gate;
+      return {};
+    });
+    const store = createThreadStore({
+      openDatabase: async () => db,
+      getCaptureService: async () => ({ submitText } as unknown as PrivateCaptureService),
+    });
+
+    const first = store.getState().sendMessage('conversation-1', 'Same tap');
+    const second = store.getState().sendMessage('conversation-1', 'Same tap');
+    expect(second).toBe(first);
+    release();
+    await Promise.all([first, second]);
+    expect(submitText).toHaveBeenCalledTimes(1);
+    expect(submitText).toHaveBeenCalledWith(expect.objectContaining({
+      intentId: expect.any(String),
     }));
   });
 });

@@ -11,10 +11,12 @@ export type CoachingRequestStatus =
   | 'transcript-confirmation-required'
   | 'coaching-pending'
   | 'coaching-failed'
-  | 'completed';
+  | 'completed'
+  | 'abandoned';
 
 export interface LocalCoachingRequest {
   id: string;
+  intentId: string;
   conversationId: string;
   userMessageId: string;
   transcriptionRequestId: string | null;
@@ -35,6 +37,7 @@ export interface LocalCoachingRequest {
 
 interface CoachingRequestRow {
   id: string;
+  intent_id: string;
   conversation_id: string;
   user_message_id: string;
   transcription_request_id: string | null;
@@ -53,13 +56,14 @@ interface CoachingRequestRow {
   updated_at: string;
 }
 
-const COLUMNS = `id, conversation_id, user_message_id, transcription_request_id, kind, status,
+const COLUMNS = `id, intent_id, conversation_id, user_message_id, transcription_request_id, kind, status,
   audio_uri, audio_duration_seconds, transcript_confirmed_at, assistant_message_id, stance,
   context_manifest_json, error_code, attempt_count, submitted_at, created_at, updated_at`;
 
 function mapRow(row: CoachingRequestRow): LocalCoachingRequest {
   return {
     id: row.id,
+    intentId: row.intent_id,
     conversationId: row.conversation_id,
     userMessageId: row.user_message_id,
     transcriptionRequestId: row.transcription_request_id,
@@ -82,6 +86,7 @@ function mapRow(row: CoachingRequestRow): LocalCoachingRequest {
 function params(request: LocalCoachingRequest) {
   return {
     $id: request.id,
+    $intentId: request.intentId,
     $conversationId: request.conversationId,
     $userMessageId: request.userMessageId,
     $transcriptionRequestId: request.transcriptionRequestId,
@@ -117,7 +122,7 @@ export async function insertCoachingRequest(
   ))) return;
   await transaction.runAsync(
     `INSERT INTO coaching_requests (${COLUMNS})
-     VALUES ($id, $conversationId, $userMessageId, $transcriptionRequestId, $kind, $status,
+     VALUES ($id, $intentId, $conversationId, $userMessageId, $transcriptionRequestId, $kind, $status,
        $audioUri, $audioDurationSeconds, $transcriptConfirmedAt, $assistantMessageId, $stance,
        $contextManifestJson, $errorCode, $attemptCount, $submittedAt, $createdAt, $updatedAt)`,
     values,
@@ -135,6 +140,30 @@ export async function getCoachingRequest(
   return row === null ? null : mapRow(row);
 }
 
+export async function listCoachingRequestsByConversation(
+  database: RepositoryConnection,
+  conversationId: string,
+  statuses: readonly CoachingRequestStatus[],
+  limit = 20,
+): Promise<LocalCoachingRequest[]> {
+  if (statuses.length === 0) return [];
+  if (!Number.isInteger(limit) || limit <= 0 || limit > 20) {
+    throw new TypeError('Coaching request limit must be between 1 and 20');
+  }
+  const statusBindings = Object.fromEntries(
+    statuses.map((status, index) => [`$status${index}`, status]),
+  );
+  const rows = await database.getAllAsync<CoachingRequestRow>(
+    `SELECT ${COLUMNS} FROM coaching_requests
+     WHERE conversation_id = $conversationId
+       AND status IN (${statuses.map((_, index) => `$status${index}`).join(', ')})
+     ORDER BY updated_at DESC, id DESC
+     LIMIT $limit`,
+    { $conversationId: conversationId, $limit: limit, ...statusBindings },
+  );
+  return rows.map(mapRow);
+}
+
 export async function updateCoachingRequest(
   transaction: RepositoryTransaction,
   request: LocalCoachingRequest,
@@ -150,7 +179,7 @@ export async function updateCoachingRequest(
     toDatabaseMutationPayload(values),
   ))) return;
   const result = await transaction.runAsync(
-    `UPDATE coaching_requests SET conversation_id = $conversationId,
+    `UPDATE coaching_requests SET intent_id = $intentId, conversation_id = $conversationId,
        user_message_id = $userMessageId, transcription_request_id = $transcriptionRequestId,
        kind = $kind, status = $status, audio_uri = $audioUri,
        audio_duration_seconds = $audioDurationSeconds,

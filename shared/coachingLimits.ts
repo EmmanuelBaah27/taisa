@@ -1,6 +1,6 @@
 /**
- * Portable limits for the complete request accepted by the stateless coaching gateway.
- * Mobile compaction and backend runtime validation must share these exact values.
+ * Portable limits for requests and responses crossing the stateless coaching gateway.
+ * Mobile and backend runtime validation must share these exact values.
  */
 export const COACHING_GATEWAY_LIMITS = Object.freeze({
   maxIdLength: 128,
@@ -11,6 +11,7 @@ export const COACHING_GATEWAY_LIMITS = Object.freeze({
   maxRecentMessages: 20,
   maxMemoryItems: 50,
   maxEvidenceItems: 8,
+  maxProposals: 20,
 } as const);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -27,6 +28,13 @@ function isId(value: unknown): value is string {
     typeof value === 'string' &&
     value.trim().length > 0 &&
     value.length <= COACHING_GATEWAY_LIMITS.maxIdLength
+  );
+}
+
+function isUuid(value: unknown): value is string {
+  return (
+    typeof value === 'string' &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
   );
 }
 
@@ -157,10 +165,7 @@ export function firstCoachingRequestContractViolation(request: unknown): string 
     !hasOnlyKeys(request, ['requestId', 'submittedAt', 'input', 'context'])
   ) return 'request';
   if (
-    typeof request.requestId !== 'string' ||
-    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-      request.requestId,
-    )
+    !isUuid(request.requestId)
   ) return 'requestId';
   if (!isTimestamp(request.submittedAt)) return 'submittedAt';
   if (!isStatement(request.input)) return 'input';
@@ -201,4 +206,127 @@ export function firstCoachingRequestContractViolation(request: unknown): string 
     if (invalidEvidence !== null) return invalidEvidence;
   }
   return null;
+}
+
+function memoryCandidateViolation(value: unknown, root: string): string | null {
+  if (
+    !isRecord(value) ||
+    !hasOnlyKeys(value, [
+      'type',
+      'statement',
+      'provenance',
+      'lifecycle',
+      'confidence',
+      'sourceMessageIds',
+      'supersedesId',
+    ])
+  ) return root;
+  if (!isOneOf(value.type, ['goal', 'commitment', 'decision', 'preference', 'career_context', 'development_area', 'evidence', 'pattern'])) return `${root}.type`;
+  if (!isStatement(value.statement)) return `${root}.statement`;
+  if (!isOneOf(value.provenance, ['user-stated', 'user-confirmed', 'ai-inferred', 'system-observed'])) return `${root}.provenance`;
+  if (!isOneOf(value.lifecycle, ['proposed', 'active', 'paused', 'superseded', 'completed', 'rejected', 'archived'])) return `${root}.lifecycle`;
+  if (!isOneOf(value.confidence, ['tentative', 'supported', 'established'])) return `${root}.confidence`;
+  if (!isIdList(value.sourceMessageIds)) return `${root}.sourceMessageIds`;
+  if (value.supersedesId != null && !isId(value.supersedesId)) return `${root}.supersedesId`;
+  return null;
+}
+
+function memoryDeltaViolation(value: unknown, index: number): string | null {
+  const root = `proposals[${index}]`;
+  if (!isRecord(value)) return root;
+
+  if (value.operation === 'propose') {
+    if (!hasOnlyKeys(value, ['operation', 'candidate', 'reason', 'requiresConfirmation'])) {
+      return root;
+    }
+    const candidateViolation = memoryCandidateViolation(value.candidate, `${root}.candidate`);
+    if (candidateViolation !== null) return candidateViolation;
+    if (!isStatement(value.reason)) return `${root}.reason`;
+    if (typeof value.requiresConfirmation !== 'boolean') return `${root}.requiresConfirmation`;
+    return null;
+  }
+
+  if (value.operation === 'transition') {
+    if (!hasOnlyKeys(value, ['operation', 'targetId', 'to', 'reason', 'requiresConfirmation'])) {
+      return root;
+    }
+    if (!isId(value.targetId)) return `${root}.targetId`;
+    if (!isOneOf(value.to, ['proposed', 'active', 'paused', 'superseded', 'completed', 'rejected', 'archived'])) return `${root}.to`;
+    if (!isStatement(value.reason)) return `${root}.reason`;
+    if (typeof value.requiresConfirmation !== 'boolean') return `${root}.requiresConfirmation`;
+    return null;
+  }
+
+  if (value.operation === 'support') {
+    if (!hasOnlyKeys(value, ['operation', 'targetId', 'sourceMessageId', 'reason', 'requiresConfirmation'])) {
+      return root;
+    }
+    if (!isId(value.targetId)) return `${root}.targetId`;
+    if (!isId(value.sourceMessageId)) return `${root}.sourceMessageId`;
+    if (!isStatement(value.reason)) return `${root}.reason`;
+    if (value.requiresConfirmation !== false) return `${root}.requiresConfirmation`;
+    return null;
+  }
+
+  return `${root}.operation`;
+}
+
+function isNonNegativeFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0;
+}
+
+function isNonNegativeSafeInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
+}
+
+function usageViolation(value: unknown): string | null {
+  if (
+    !isRecord(value) ||
+    !hasOnlyKeys(value, [
+      'provider',
+      'model',
+      'inputTokens',
+      'outputTokens',
+      'audioSeconds',
+      'estimatedCostUsd',
+    ])
+  ) return 'usage';
+  if (!isOneOf(value.provider, ['anthropic', 'openai'])) return 'usage.provider';
+  if (!isId(value.model)) return 'usage.model';
+  if (value.inputTokens !== undefined && !isNonNegativeSafeInteger(value.inputTokens)) {
+    return 'usage.inputTokens';
+  }
+  if (value.outputTokens !== undefined && !isNonNegativeSafeInteger(value.outputTokens)) {
+    return 'usage.outputTokens';
+  }
+  if (value.audioSeconds !== undefined && !isNonNegativeFiniteNumber(value.audioSeconds)) {
+    return 'usage.audioSeconds';
+  }
+  if (!isNonNegativeFiniteNumber(value.estimatedCostUsd)) return 'usage.estimatedCostUsd';
+  return null;
+}
+
+/** Returns a content-free field path for the first strict portable response violation. */
+export function firstCoachingResponseContractViolation(
+  response: unknown,
+  expectedRequestId?: string,
+): string | null {
+  if (
+    !isRecord(response) ||
+    !hasOnlyKeys(response, ['requestId', 'reply', 'stance', 'proposals', 'usage'])
+  ) return 'response';
+  if (!isUuid(response.requestId) || (
+    expectedRequestId !== undefined && response.requestId !== expectedRequestId
+  )) return 'requestId';
+  if (!isStatement(response.reply)) return 'reply';
+  if (!isOneOf(response.stance, ['mirror', 'nudge', 'challenge', 'direct'])) return 'stance';
+  if (
+    !Array.isArray(response.proposals) ||
+    response.proposals.length > COACHING_GATEWAY_LIMITS.maxProposals
+  ) return 'proposals';
+  for (let index = 0; index < response.proposals.length; index += 1) {
+    const invalidProposal = memoryDeltaViolation(response.proposals[index], index);
+    if (invalidProposal !== null) return invalidProposal;
+  }
+  return usageViolation(response.usage);
 }

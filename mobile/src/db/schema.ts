@@ -138,6 +138,9 @@ export const SCHEMA_V1_STATEMENTS: readonly string[] = [
     proposal_digest TEXT NOT NULL CHECK (
       length(proposal_digest) = 64 AND proposal_digest NOT GLOB '*[^0-9a-f]*'
     ),
+    presentation_kind TEXT NOT NULL DEFAULT 'proposal'
+      CHECK (presentation_kind IN ('proposal', 'clarification')),
+    clarification_question TEXT,
     resolution_json TEXT,
     resolution_digest TEXT CHECK (
       resolution_digest IS NULL OR (
@@ -154,6 +157,11 @@ export const SCHEMA_V1_STATEMENTS: readonly string[] = [
     ),
     local_user_action_at TEXT,
     consumed_by_idempotency_id TEXT UNIQUE,
+    CHECK (
+      (presentation_kind = 'proposal' AND clarification_question IS NULL)
+      OR
+      (presentation_kind = 'clarification' AND length(trim(clarification_question)) > 0)
+    ),
     CHECK (
       (status = 'pending' AND resolution_json IS NULL AND resolution_digest IS NULL
         AND confirmed_at IS NULL AND local_user_action_id IS NULL
@@ -173,6 +181,7 @@ export const SCHEMA_V1_STATEMENTS: readonly string[] = [
   )`,
   `CREATE TABLE coaching_requests (
     id TEXT PRIMARY KEY NOT NULL,
+    intent_id TEXT NOT NULL UNIQUE,
     conversation_id TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
     user_message_id TEXT NOT NULL UNIQUE REFERENCES messages(id) ON DELETE CASCADE,
     transcription_request_id TEXT UNIQUE,
@@ -180,7 +189,7 @@ export const SCHEMA_V1_STATEMENTS: readonly string[] = [
     status TEXT NOT NULL CHECK (status IN (
       'transcription-pending', 'transcription-failed',
       'transcript-confirmation-required', 'coaching-pending',
-      'coaching-failed', 'completed'
+      'coaching-failed', 'completed', 'abandoned'
     )),
     audio_uri TEXT,
     audio_duration_seconds REAL CHECK (
@@ -199,8 +208,9 @@ export const SCHEMA_V1_STATEMENTS: readonly string[] = [
       (kind = 'text' AND transcription_request_id IS NULL AND audio_uri IS NULL
         AND audio_duration_seconds IS NULL)
       OR
-      (kind = 'voice' AND transcription_request_id IS NOT NULL AND audio_uri IS NOT NULL
-        AND audio_duration_seconds IS NOT NULL)
+      (kind = 'voice' AND transcription_request_id IS NOT NULL
+        AND audio_duration_seconds IS NOT NULL
+        AND (status = 'abandoned' OR audio_uri IS NOT NULL))
     )
   )`,
   `CREATE TABLE usage_receipts (
@@ -234,6 +244,10 @@ export const SCHEMA_V1_STATEMENTS: readonly string[] = [
     recorded_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
   )`,
   `CREATE INDEX messages_conversation_created_idx ON messages(conversation_id, created_at)`,
+  `CREATE INDEX coaching_requests_conversation_status_updated_idx
+    ON coaching_requests(conversation_id, status, updated_at DESC)`,
+  `CREATE INDEX memory_confirmations_conversation_status_staged_idx
+    ON memory_confirmations(conversation_id, status, staged_at DESC)`,
   `CREATE INDEX goals_lifecycle_updated_idx ON goals(lifecycle, updated_at)`,
   `CREATE INDEX actions_lifecycle_updated_idx ON actions(lifecycle, updated_at)`,
   `CREATE INDEX memory_items_lifecycle_type_idx ON memory_items(lifecycle, type)`,

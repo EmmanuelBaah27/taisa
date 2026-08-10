@@ -6,6 +6,7 @@ import type {
   LocalMessage,
   UsageReceipt,
 } from '@taisa/shared';
+import { COACHING_GATEWAY_LIMITS } from '@taisa/shared';
 
 import {
   assembleCoachingContext,
@@ -18,11 +19,11 @@ import {
   type MemoryGovernanceState,
 } from '../domain/memory/admission';
 import {
-  applyConfirmedConflictResolution,
+  applyConfirmedClarificationResolution,
   applyConfirmedDelta,
-  confirmedConflictResolutionPayload,
+  confirmedClarificationResolutionPayload,
   confirmedDeltaResolutionPayload,
-  type ConfirmedConflictResolutionApplication,
+  type ConfirmedClarificationResolutionApplication,
   type ConfirmedDeltaApplication,
 } from '../domain/memory/applyDelta';
 import {
@@ -40,6 +41,7 @@ import {
   getCoachingRequest,
   insertCoachingRequest,
   insertUsageReceipt,
+  listCoachingRequestsByConversation,
   type LocalCoachingRequest,
   updateCoachingRequest,
 } from '../repositories/coachingRequestRepository';
@@ -53,9 +55,14 @@ import {
   updateMessage,
 } from '../repositories/conversationRepository';
 import { listEvidence, searchEvidence } from '../repositories/evidenceRepository';
-import { getMemoryConfirmation } from '../repositories/memoryConfirmationRepository';
+import {
+  getMemoryConfirmation,
+  listMemoryConfirmationsByConversation,
+  type LocalMemoryConfirmation,
+} from '../repositories/memoryConfirmationRepository';
 import { listMemories } from '../repositories/memoryRepository';
 import { getProfile } from '../repositories/profileRepository';
+import type { AudioFileStore } from './audioFileStore';
 
 const DEFAULT_CONTEXT_LIMITS: ContextAssemblyLimits = {
   maxCharacters: 20_000,
@@ -83,6 +90,7 @@ export interface PrivateCaptureDependencies {
   now(): string;
   createId(): string;
   getProfileId(): Promise<string>;
+  audioFiles: AudioFileStore;
   contextLimits?: ContextAssemblyLimits;
 }
 
@@ -104,6 +112,19 @@ export interface CompletedSubmissionResult {
 export interface PendingProposal {
   id: string;
   summary: string;
+  kind: 'proposal' | 'clarification';
+  question: string | null;
+  status: 'pending' | 'confirmed';
+}
+
+export type ClarificationChoice = 'replace' | 'pause' | 'coexist';
+
+export interface HydratedConversationState {
+  requestId: string | null;
+  messageId: string | null;
+  requestStatus: LocalCoachingRequest['status'] | null;
+  transcript: string;
+  pendingProposals: PendingProposal[];
 }
 
 export interface TranscriptConfirmationResult {
@@ -117,11 +138,16 @@ export type SubmissionResult = CompletedSubmissionResult | TranscriptConfirmatio
 
 export interface PrivateCaptureService {
   savePrivateDraft(input: { conversationId: string; content: string }): Promise<PrivateSaveResult>;
-  submitText(input: { conversationId: string; content: string }): Promise<CompletedSubmissionResult>;
+  submitText(input: {
+    conversationId: string;
+    content: string;
+    intentId?: string;
+  }): Promise<CompletedSubmissionResult>;
   submitVoice(input: {
     conversationId: string;
     audioUri: string;
     durationSeconds: number;
+    intentId?: string;
   }): Promise<TranscriptConfirmationResult>;
   updateTranscript(input: { requestId: string; transcript: string }): Promise<void>;
   confirmTranscript(input: { requestId: string }): Promise<CompletedSubmissionResult>;
@@ -131,6 +157,15 @@ export interface PrivateCaptureService {
     localUserActionId: string;
     actedAt: string;
   }): Promise<void>;
+  resolveClarification(input: {
+    confirmationId: string;
+    choice: ClarificationChoice;
+    localUserActionId: string;
+    actedAt: string;
+  }): Promise<void>;
+  hydrateConversation(conversationId: string): Promise<HydratedConversationState>;
+  discardRecording(uri: string): Promise<void>;
+  abandonVoiceSubmission(requestId: string): Promise<void>;
 }
 
 export class SubmissionFailedError extends Error {
@@ -156,9 +191,26 @@ export class LocalSubmissionStateError extends Error {
   }
 }
 
+export class SubmissionValidationError extends Error {
+  readonly code = 'SUBMISSION_VALIDATION';
+
+  constructor() {
+    super('This submission is too long. Edit it on this device before submitting again.');
+    this.name = 'SubmissionValidationError';
+  }
+}
+
 function requireContent(value: string, label: string): string {
   const normalized = value.trim();
   if (normalized.length === 0) throw new TypeError(`${label} must not be empty`);
+  return normalized;
+}
+
+function validateCoachingContent(value: string, label: string): string {
+  const normalized = requireContent(value, label);
+  if (normalized.length > COACHING_GATEWAY_LIMITS.maxTextLength) {
+    throw new SubmissionValidationError();
+  }
   return normalized;
 }
 
@@ -249,6 +301,36 @@ export function createPrivateCaptureService(
   dependencies: PrivateCaptureDependencies,
 ): PrivateCaptureService {
   const limits = dependencies.contextLimits ?? DEFAULT_CONTEXT_LIMITS;
+  const inFlightIntents = new Map<string, Promise<SubmissionResult>>();
+  const inFlightRequests = new Map<string, Promise<SubmissionResult>>();
+
+  function withInFlightIntent<T extends SubmissionResult>(
+    intentId: string,
+    operation: () => Promise<T>,
+  ): Promise<T> {
+    const current = inFlightIntents.get(intentId);
+    if (current !== undefined) return current as Promise<T>;
+    const promise = operation();
+    inFlightIntents.set(intentId, promise);
+    void promise.finally(() => {
+      if (inFlightIntents.get(intentId) === promise) inFlightIntents.delete(intentId);
+    }).catch(() => {});
+    return promise;
+  }
+
+  function withInFlightRequest<T extends SubmissionResult>(
+    requestId: string,
+    operation: () => Promise<T>,
+  ): Promise<T> {
+    const current = inFlightRequests.get(requestId);
+    if (current !== undefined) return current as Promise<T>;
+    const promise = operation();
+    inFlightRequests.set(requestId, promise);
+    void promise.finally(() => {
+      if (inFlightRequests.get(requestId) === promise) inFlightRequests.delete(requestId);
+    }).catch(() => {});
+    return promise;
+  }
 
   async function markFailed(
     requestId: string,
@@ -307,10 +389,16 @@ export function createPrivateCaptureService(
           sourceMessageId: sourceMessage.id,
           stagedAt: effectiveAt,
           idempotencyId: `${proposalId}:stage`,
+          presentation: admission.status === 'clarification-required'
+            ? { kind: 'clarification', question: admission.question }
+            : { kind: 'proposal', question: null },
         });
         pendingProposals.push({
           id: proposalId,
           summary: delta.operation === 'propose' ? delta.candidate.statement : delta.reason,
+          kind: admission.status === 'clarification-required' ? 'clarification' : 'proposal',
+          question: admission.status === 'clarification-required' ? admission.question : null,
+          status: 'pending',
         });
         continue;
       }
@@ -338,7 +426,7 @@ export function createPrivateCaptureService(
     return pendingProposals;
   }
 
-  async function runCoaching(requestId: string): Promise<CompletedSubmissionResult> {
+  async function runCoachingOnce(requestId: string): Promise<CompletedSubmissionResult> {
     const storedRequest = await getCoachingRequest(dependencies.database, requestId);
     if (storedRequest === null) throw new LocalSubmissionStateError('Submission no longer exists');
     const storedMessage = await getMessage(dependencies.database, storedRequest.userMessageId);
@@ -454,7 +542,7 @@ export function createPrivateCaptureService(
     }
   }
 
-  async function runTranscription(requestId: string): Promise<TranscriptConfirmationResult> {
+  async function runTranscriptionOnce(requestId: string): Promise<TranscriptConfirmationResult> {
     const request = await getCoachingRequest(dependencies.database, requestId);
     if (
       request === null ||
@@ -523,6 +611,33 @@ export function createPrivateCaptureService(
     }
   }
 
+  async function pendingProposalFromConfirmation(
+    confirmation: LocalMemoryConfirmation,
+  ): Promise<PendingProposal | null> {
+    let delta: GovernedMemoryDelta;
+    try {
+      delta = JSON.parse(confirmation.proposalJson) as GovernedMemoryDelta;
+    } catch {
+      return null;
+    }
+    const summary = delta.operation === 'propose' ? delta.candidate.statement : delta.reason;
+    return {
+      id: confirmation.id,
+      summary,
+      kind: confirmation.presentationKind,
+      question: confirmation.clarificationQuestion,
+      status: confirmation.status === 'confirmed' ? 'confirmed' : 'pending',
+    };
+  }
+
+  function runCoaching(requestId: string): Promise<CompletedSubmissionResult> {
+    return withInFlightRequest(requestId, () => runCoachingOnce(requestId));
+  }
+
+  function runTranscription(requestId: string): Promise<TranscriptConfirmationResult> {
+    return withInFlightRequest(requestId, () => runTranscriptionOnce(requestId));
+  }
+
   return {
     async savePrivateDraft(input) {
       const content = requireContent(input.content, 'Private draft');
@@ -539,86 +654,120 @@ export function createPrivateCaptureService(
       return { status: 'private', conversationId: input.conversationId, messageId };
     },
 
-    async submitText(input) {
-      const content = requireContent(input.content, 'Submitted thought');
-      const timestamp = dependencies.now();
-      const requestId = dependencies.createId();
-      const messageId = dependencies.createId();
-      await withRepositoryTransaction(dependencies.database, async (transaction) => {
-        await ensureConversation(transaction, input.conversationId, timestamp, content);
-        await insertMessage(
-          transaction,
-          messageFor(messageId, input.conversationId, content, 'pending', requestId, timestamp),
-          `${requestId}:user-message`,
-        );
-        await insertCoachingRequest(
-          transaction,
-          {
-            id: requestId,
-            conversationId: input.conversationId,
-            userMessageId: messageId,
-            transcriptionRequestId: null,
-            kind: 'text',
-            status: 'coaching-pending',
-            audioUri: null,
-            audioDurationSeconds: null,
-            transcriptConfirmedAt: null,
-            assistantMessageId: null,
-            stance: null,
-            contextManifestJson: null,
-            errorCode: null,
-            attemptCount: 1,
-            submittedAt: timestamp,
-            createdAt: timestamp,
-            updatedAt: timestamp,
-          },
-          `${requestId}:request`,
-        );
+    submitText(input) {
+      let content: string;
+      let intentId: string;
+      try {
+        content = validateCoachingContent(input.content, 'Submitted thought');
+        intentId = input.intentId === undefined
+          ? `request-intent:${dependencies.createId()}`
+          : requireContent(input.intentId, 'Submission intent ID');
+      } catch (error) {
+        return Promise.reject(error);
+      }
+      return withInFlightIntent(intentId, async () => {
+        const timestamp = dependencies.now();
+        const requestId = input.intentId === undefined
+          ? intentId.slice('request-intent:'.length)
+          : dependencies.createId();
+        const messageId = dependencies.createId();
+        await withRepositoryTransaction(dependencies.database, async (transaction) => {
+          await ensureConversation(transaction, input.conversationId, timestamp, content);
+          await insertMessage(
+            transaction,
+            messageFor(messageId, input.conversationId, content, 'pending', requestId, timestamp),
+            `${requestId}:user-message`,
+          );
+          await insertCoachingRequest(
+            transaction,
+            {
+              id: requestId,
+              intentId,
+              conversationId: input.conversationId,
+              userMessageId: messageId,
+              transcriptionRequestId: null,
+              kind: 'text',
+              status: 'coaching-pending',
+              audioUri: null,
+              audioDurationSeconds: null,
+              transcriptConfirmedAt: null,
+              assistantMessageId: null,
+              stance: null,
+              contextManifestJson: null,
+              errorCode: null,
+              attemptCount: 1,
+              submittedAt: timestamp,
+              createdAt: timestamp,
+              updatedAt: timestamp,
+            },
+            `${requestId}:request`,
+          );
+        });
+        return runCoaching(requestId);
       });
-      return runCoaching(requestId);
     },
 
-    async submitVoice(input) {
+    submitVoice(input) {
       if (!Number.isFinite(input.durationSeconds) || input.durationSeconds <= 0) {
-        throw new TypeError('Recording duration must be a positive number');
+        return Promise.reject(new TypeError('Recording duration must be a positive number'));
       }
-      const audioUri = requireContent(input.audioUri, 'Audio URI');
-      const timestamp = dependencies.now();
-      const requestId = dependencies.createId();
-      const messageId = dependencies.createId();
-      const transcriptionRequestId = dependencies.createId();
-      await withRepositoryTransaction(dependencies.database, async (transaction) => {
-        await ensureConversation(transaction, input.conversationId, timestamp, 'Voice reflection');
-        await insertMessage(
-          transaction,
-          messageFor(messageId, input.conversationId, '', 'pending', requestId, timestamp),
-          `${requestId}:user-message`,
-        );
-        await insertCoachingRequest(
-          transaction,
-          {
-            id: requestId,
-            conversationId: input.conversationId,
-            userMessageId: messageId,
-            transcriptionRequestId,
-            kind: 'voice',
-            status: 'transcription-pending',
-            audioUri,
-            audioDurationSeconds: input.durationSeconds,
-            transcriptConfirmedAt: null,
-            assistantMessageId: null,
-            stance: null,
-            contextManifestJson: null,
-            errorCode: null,
-            attemptCount: 1,
-            submittedAt: timestamp,
-            createdAt: timestamp,
-            updatedAt: timestamp,
-          },
-          `${requestId}:request`,
-        );
+      const sourceUri = requireContent(input.audioUri, 'Audio URI');
+      const intentId = input.intentId === undefined
+        ? `request-intent:${dependencies.createId()}`
+        : requireContent(input.intentId, 'Submission intent ID');
+      return withInFlightIntent(intentId, async () => {
+        const timestamp = dependencies.now();
+        const requestId = input.intentId === undefined
+          ? intentId.slice('request-intent:'.length)
+          : dependencies.createId();
+        const messageId = dependencies.createId();
+        const transcriptionRequestId = dependencies.createId();
+        const durableAudioUri = await dependencies.audioFiles.persistRecording({
+          sourceUri,
+          requestId,
+        });
+        try {
+          await withRepositoryTransaction(dependencies.database, async (transaction) => {
+            await ensureConversation(transaction, input.conversationId, timestamp, 'Voice reflection');
+            await insertMessage(
+              transaction,
+              messageFor(messageId, input.conversationId, '', 'pending', requestId, timestamp),
+              `${requestId}:user-message`,
+            );
+            await insertCoachingRequest(
+              transaction,
+              {
+                id: requestId,
+                intentId,
+                conversationId: input.conversationId,
+                userMessageId: messageId,
+                transcriptionRequestId,
+                kind: 'voice',
+                status: 'transcription-pending',
+                audioUri: durableAudioUri,
+                audioDurationSeconds: input.durationSeconds,
+                transcriptConfirmedAt: null,
+                assistantMessageId: null,
+                stance: null,
+                contextManifestJson: null,
+                errorCode: null,
+                attemptCount: 1,
+                submittedAt: timestamp,
+                createdAt: timestamp,
+                updatedAt: timestamp,
+              },
+              `${requestId}:request`,
+            );
+          });
+        } catch (error) {
+          await dependencies.audioFiles.deleteRecording(durableAudioUri).catch(() => {});
+          throw error;
+        }
+        if (sourceUri !== durableAudioUri) {
+          await dependencies.audioFiles.deleteRecording(sourceUri).catch(() => {});
+        }
+        return runTranscription(requestId);
       });
-      return runTranscription(requestId);
     },
 
     async updateTranscript(input) {
@@ -626,7 +775,11 @@ export function createPrivateCaptureService(
       const timestamp = dependencies.now();
       await withRepositoryTransaction(dependencies.database, async (transaction) => {
         const request = await getCoachingRequest(transaction, input.requestId);
-        if (request === null || request.status !== 'transcript-confirmation-required') {
+        if (
+          request === null ||
+          (request.status !== 'transcript-confirmation-required' &&
+            !(request.kind === 'voice' && request.status === 'coaching-failed'))
+        ) {
           throw new LocalSubmissionStateError('Transcript is not available for editing');
         }
         const message = await getMessage(transaction, request.userMessageId);
@@ -636,72 +789,196 @@ export function createPrivateCaptureService(
           { ...message, content: transcript, updatedAt: timestamp },
           `${request.id}:transcript-edit:${dependencies.createId()}`,
         );
-      });
-    },
-
-    async confirmTranscript(input) {
-      const timestamp = dependencies.now();
-      await withRepositoryTransaction(dependencies.database, async (transaction) => {
-        const request = await getCoachingRequest(transaction, input.requestId);
-        if (request === null || request.status !== 'transcript-confirmation-required') {
-          throw new LocalSubmissionStateError('Transcript requires explicit confirmation');
+        if (request.status === 'coaching-failed') {
+          await updateCoachingRequest(
+            transaction,
+            {
+              ...request,
+              status: 'transcript-confirmation-required',
+              transcriptConfirmedAt: null,
+              errorCode: null,
+              attemptCount: request.attemptCount + 1,
+              updatedAt: timestamp,
+            },
+            `${request.id}:transcript-edit-reopen:${dependencies.createId()}`,
+          );
         }
-        await updateCoachingRequest(
-          transaction,
-          {
-            ...request,
-            status: 'coaching-pending',
-            transcriptConfirmedAt: timestamp,
-            errorCode: null,
-            updatedAt: timestamp,
-          },
-          `${request.id}:transcript-confirmed`,
-        );
       });
-      return runCoaching(input.requestId);
     },
 
-    async retrySubmission(requestId) {
+    confirmTranscript(input) {
+      return withInFlightIntent(`confirm-transcript:${input.requestId}`, async () => {
+        const timestamp = dependencies.now();
+        await withRepositoryTransaction(dependencies.database, async (transaction) => {
+          const request = await getCoachingRequest(transaction, input.requestId);
+          if (request === null || request.status !== 'transcript-confirmation-required') {
+            throw new LocalSubmissionStateError('Transcript requires explicit confirmation');
+          }
+          const message = await getMessage(transaction, request.userMessageId);
+          if (message === null) throw new LocalSubmissionStateError('Transcript message is missing');
+          validateCoachingContent(message.content, 'Transcript');
+          await updateCoachingRequest(
+            transaction,
+            {
+              ...request,
+              status: 'coaching-pending',
+              transcriptConfirmedAt: timestamp,
+              errorCode: null,
+              updatedAt: timestamp,
+            },
+            `${request.id}:attempt:${request.attemptCount}:transcript-confirmed`,
+          );
+        });
+        return runCoaching(input.requestId);
+      });
+    },
+
+    retrySubmission(requestId) {
+      const currentRequest = inFlightRequests.get(requestId);
+      if (currentRequest !== undefined) return currentRequest;
+      return withInFlightIntent(`retry:${requestId}`, async () => {
+        const timestamp = dependencies.now();
+        const request = await withRepositoryTransaction(
+          dependencies.database,
+          async (transaction) => {
+            const current = await getCoachingRequest(transaction, requestId);
+            if (
+              current === null ||
+              ![
+                'transcription-pending',
+                'transcription-failed',
+                'coaching-pending',
+                'coaching-failed',
+              ].includes(current.status)
+            ) {
+              throw new LocalSubmissionStateError(
+                'Only an interrupted or failed submission can be retried',
+              );
+            }
+            const message = await getMessage(transaction, current.userMessageId);
+            if (message === null) {
+              throw new LocalSubmissionStateError('Submission message is missing');
+            }
+            const attemptCount = current.attemptCount + 1;
+            const status = current.status === 'transcription-failed' ||
+              current.status === 'transcription-pending'
+              ? 'transcription-pending'
+              : 'coaching-pending';
+            await updateMessage(
+              transaction,
+              { ...message, lifecycle: 'pending', updatedAt: timestamp },
+              `${current.id}:attempt:${attemptCount}:message-pending`,
+            );
+            const updated: LocalCoachingRequest = {
+              ...current,
+              status,
+              attemptCount,
+              errorCode: null,
+              updatedAt: timestamp,
+            };
+            await updateCoachingRequest(
+              transaction,
+              updated,
+              `${current.id}:attempt:${attemptCount}:pending`,
+            );
+            return updated;
+          },
+        );
+        return request.status === 'transcription-pending'
+          ? runTranscription(request.id)
+          : runCoaching(request.id);
+      });
+    },
+
+    async hydrateConversation(conversationId) {
+      let requests = await listCoachingRequestsByConversation(
+        dependencies.database,
+        conversationId,
+        [
+          'transcription-pending',
+          'transcription-failed',
+          'transcript-confirmation-required',
+          'coaching-pending',
+          'coaching-failed',
+        ],
+        1,
+      );
+      if (requests.length === 0) {
+        requests = await listCoachingRequestsByConversation(
+          dependencies.database,
+          conversationId,
+          ['completed'],
+          1,
+        );
+      }
+      const request = requests[0] ?? null;
+      const message = request === null
+        ? null
+        : await getMessage(dependencies.database, request.userMessageId);
+      const confirmations = await listMemoryConfirmationsByConversation(
+        dependencies.database,
+        conversationId,
+        ['pending', 'confirmed'],
+        20,
+      );
+      const pendingProposals = (
+        await Promise.all(confirmations.map(pendingProposalFromConfirmation))
+      ).filter((proposal): proposal is PendingProposal => proposal !== null);
+      return {
+        requestId: request?.id ?? null,
+        messageId: request?.userMessageId ?? null,
+        requestStatus: request?.status ?? null,
+        transcript: request?.kind === 'voice' ? message?.content ?? '' : '',
+        pendingProposals,
+      };
+    },
+
+    async discardRecording(uri) {
+      await dependencies.audioFiles.deleteRecording(requireContent(uri, 'Recording URI'));
+    },
+
+    async abandonVoiceSubmission(requestId) {
       const timestamp = dependencies.now();
-      const request = await withRepositoryTransaction(
+      const abandoned = await withRepositoryTransaction(
         dependencies.database,
         async (transaction) => {
-          const current = await getCoachingRequest(transaction, requestId);
-          if (
-            current === null ||
-            (current.status !== 'transcription-failed' && current.status !== 'coaching-failed')
-          ) {
-            throw new LocalSubmissionStateError('Only a failed submission can be retried');
+          const request = await getCoachingRequest(transaction, requestId);
+          if (request === null || request.kind !== 'voice' || request.status === 'completed') {
+            throw new LocalSubmissionStateError('Voice submission cannot be abandoned');
           }
-          const message = await getMessage(transaction, current.userMessageId);
-          if (message === null) throw new LocalSubmissionStateError('Submission message is missing');
-          const attemptCount = current.attemptCount + 1;
-          const status = current.status === 'transcription-failed'
-            ? 'transcription-pending'
-            : 'coaching-pending';
+          if (request.status === 'abandoned') return request;
+          const message = await getMessage(transaction, request.userMessageId);
+          if (message === null) throw new LocalSubmissionStateError('Voice message is missing');
           await updateMessage(
             transaction,
-            { ...message, lifecycle: 'pending', updatedAt: timestamp },
-            `${current.id}:attempt:${attemptCount}:message-pending`,
+            { ...message, lifecycle: 'private', updatedAt: timestamp },
+            `${request.id}:abandon-message`,
           );
           const updated: LocalCoachingRequest = {
-            ...current,
-            status,
-            attemptCount,
+            ...request,
+            status: 'abandoned',
             errorCode: null,
             updatedAt: timestamp,
           };
           await updateCoachingRequest(
             transaction,
             updated,
-            `${current.id}:attempt:${attemptCount}:pending`,
+            `${request.id}:abandon-request`,
           );
           return updated;
         },
       );
-      return request.status === 'transcription-pending'
-        ? runTranscription(request.id)
-        : runCoaching(request.id);
+      if (abandoned.audioUri === null) return;
+      await dependencies.audioFiles.deleteRecording(abandoned.audioUri);
+      await withRepositoryTransaction(dependencies.database, async (transaction) => {
+        const current = await getCoachingRequest(transaction, requestId);
+        if (current === null || current.status !== 'abandoned') return;
+        await updateCoachingRequest(
+          transaction,
+          { ...current, audioUri: null, updatedAt: timestamp },
+          `${current.id}:retire-audio`,
+        );
+      });
     },
 
     async confirmProposal(input) {
@@ -717,36 +994,9 @@ export function createPrivateCaptureService(
           delta.operation === 'propose' &&
           (delta.changeKind === 'replace' || delta.conflictsWithIds.length > 0)
         ) {
-          const successorId = `${confirmation.id}:memory`;
-          const predecessorIds = [...delta.conflictsWithIds];
-          const sourceLinks = [successorId, ...predecessorIds].map((memoryId) => sourceLink(
-            `${confirmation.id}:source:${memoryId}`,
-            memoryId,
-            confirmation.sourceMessageId,
-            input.actedAt,
-          ));
-          const application: ConfirmedConflictResolutionApplication = {
-            confirmationId: confirmation.id,
-            idempotencyId: `${confirmation.id}:apply`,
-            effectiveAt: input.actedAt,
-            successorId,
-            candidate: delta,
-            predecessorIds,
-            sourceLinks,
-          };
-          const resolution = confirmedConflictResolutionPayload(application);
-          await confirmMemoryResolution(transaction, {
-            confirmationId: confirmation.id,
-            resolution,
-            localUserAction: {
-              id: input.localUserActionId,
-              kind: 'explicit-confirm',
-              actedAt: input.actedAt,
-            },
-            idempotencyId: `${confirmation.id}:confirm`,
-          });
-          await applyConfirmedConflictResolution(transaction, application);
-          return;
+          throw new LocalSubmissionStateError(
+            'This memory clarification requires a replace, pause, or coexist choice',
+          );
         }
 
         const memoryId = delta.operation === 'propose'
@@ -782,7 +1032,63 @@ export function createPrivateCaptureService(
         await applyConfirmedDelta(transaction, application);
       });
     },
+
+    async resolveClarification(input) {
+      requireContent(input.localUserActionId, 'Local user action ID');
+      if (!['replace', 'pause', 'coexist'].includes(input.choice)) {
+        throw new LocalSubmissionStateError('Unknown clarification choice');
+      }
+      await withRepositoryTransaction(dependencies.database, async (transaction) => {
+        const confirmation = await getMemoryConfirmation(transaction, input.confirmationId);
+        if (confirmation === null) {
+          throw new LocalSubmissionStateError('Memory clarification no longer exists');
+        }
+        if (confirmation.status === 'consumed') return;
+        const delta = JSON.parse(confirmation.proposalJson) as GovernedMemoryDelta;
+        if (
+          delta.operation !== 'propose' ||
+          delta.changeKind !== 'replace' ||
+          delta.conflictsWithIds.length === 0
+        ) {
+          throw new LocalSubmissionStateError('This proposal does not require clarification');
+        }
+        const successorId = `${confirmation.id}:memory`;
+        const predecessorIds = [...delta.conflictsWithIds];
+        const linkedMemoryIds = input.choice === 'coexist'
+          ? [successorId]
+          : [successorId, ...predecessorIds];
+        const sourceLinks = linkedMemoryIds.map((memoryId) => sourceLink(
+          `${confirmation.id}:${input.choice}:source:${memoryId}`,
+          memoryId,
+          confirmation.sourceMessageId,
+          input.actedAt,
+        ));
+        const application: ConfirmedClarificationResolutionApplication = {
+          confirmationId: confirmation.id,
+          idempotencyId: `${confirmation.id}:apply:${input.choice}`,
+          effectiveAt: input.actedAt,
+          successorId,
+          candidate: delta,
+          predecessorIds,
+          choice: input.choice,
+          sourceLinks,
+        };
+        const resolution = confirmedClarificationResolutionPayload(application);
+        await confirmMemoryResolution(transaction, {
+          confirmationId: confirmation.id,
+          resolution,
+          localUserAction: {
+            id: input.localUserActionId,
+            kind: 'explicit-confirm',
+            actedAt: input.actedAt,
+          },
+          idempotencyId: `${confirmation.id}:confirm:${input.choice}`,
+        });
+        await applyConfirmedClarificationResolution(transaction, application);
+      });
+    },
   };
 }
 
 export type { ContextManifest };
+export type { AudioFileStore } from './audioFileStore';

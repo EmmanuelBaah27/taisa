@@ -2,13 +2,16 @@ import type { CoachingRequest, CoachingResponse } from '@taisa/shared';
 
 import type { RepositoryTransaction } from '../../db/types';
 import { listMessages } from '../../repositories/conversationRepository';
+import { getMemory, insertMemory, updateMemory } from '../../repositories/memoryRepository';
 import {
   createTestDatabase,
   type TestDatabase,
 } from '../../repositories/__tests__/testDatabase';
 import {
   createPrivateCaptureService,
+  type AudioFileStore,
   type PrivateCaptureService,
+  SubmissionValidationError,
   SubmissionFailedError,
 } from '../privateCapture';
 
@@ -55,6 +58,35 @@ function coachingResponse(request: CoachingRequest): CoachingResponse {
   };
 }
 
+function conflictingResponse(request: CoachingRequest): CoachingResponse {
+  return {
+    ...coachingResponse(request),
+    proposals: [{
+      ...proposal,
+      candidate: { ...proposal.candidate, supersedesId: 'old-direction' },
+    }],
+  };
+}
+
+async function seedOldDirection(db: TestDatabase): Promise<void> {
+  await db.withTransaction((transaction) => insertMemory(transaction, {
+    id: 'old-direction',
+    type: 'goal',
+    statement: 'Move into design management',
+    provenance: 'user-confirmed',
+    lifecycle: 'active',
+    confidence: 'established',
+    supersedesId: null,
+    createdAt: NOW,
+    confirmedAt: NOW,
+    lastSupportedAt: NOW,
+    statusChangedAt: NOW,
+    updatedAt: NOW,
+    sourceMessageIds: [],
+    sourceEvidenceIds: [],
+  }, 'seed-old-direction'));
+}
+
 interface RequestRow {
   id: string;
   user_message_id: string;
@@ -65,12 +97,14 @@ interface RequestRow {
   assistant_message_id: string | null;
   context_manifest_json: string | null;
   error_code: string | null;
+  attempt_count: number;
 }
 
 async function getRequest(db: TestDatabase, id: string): Promise<RequestRow | null> {
   return db.getFirstAsync<RequestRow>(
     `SELECT id, user_message_id, transcription_request_id, status, audio_uri,
-            transcript_confirmed_at, assistant_message_id, context_manifest_json, error_code
+            transcript_confirmed_at, assistant_message_id, context_manifest_json, error_code,
+            attempt_count
        FROM coaching_requests WHERE id = $id`,
     { $id: id },
   );
@@ -82,6 +116,7 @@ describe('private local capture and deliberate submission', () => {
   let transcribe: jest.Mock;
   let service: PrivateCaptureService;
   let ids: string[];
+  let audioFiles: jest.Mocked<AudioFileStore>;
 
   beforeEach(() => {
     db = createTestDatabase();
@@ -97,6 +132,11 @@ describe('private local capture and deliberate submission', () => {
       },
     }));
     ids = [...UUIDS];
+    audioFiles = {
+      persistRecording: jest.fn(async ({ sourceUri, requestId }) =>
+        `file:///documents/taisa-audio/${requestId}-${sourceUri.split('/').at(-1)}`),
+      deleteRecording: jest.fn(async (_uri: string) => undefined),
+    };
     service = createPrivateCaptureService({
       database: db,
       coach,
@@ -104,6 +144,7 @@ describe('private local capture and deliberate submission', () => {
       now: () => NOW,
       createId: () => ids.shift()!,
       getProfileId: async () => 'profile-1',
+      audioFiles,
     });
   });
 
@@ -235,10 +276,10 @@ describe('private local capture and deliberate submission', () => {
       const request = await getRequest(db, UUIDS[0]);
       expect(request).toEqual(expect.objectContaining({
         status: 'transcription-pending',
-        audio_uri: 'file:///private/recording.m4a',
+        audio_uri: `file:///documents/taisa-audio/${UUIDS[0]}-recording.m4a`,
         transcription_request_id: input.requestId,
       }));
-      expect(input.audioUri).toBe('file:///private/recording.m4a');
+      expect(input.audioUri).toBe(`file:///documents/taisa-audio/${UUIDS[0]}-recording.m4a`);
       return {
         transcript: 'The roadmap conversation left me uncertain.',
         durationSeconds: 18,
@@ -320,7 +361,9 @@ describe('private local capture and deliberate submission', () => {
     expect(transcribe).toHaveBeenCalledTimes(2);
     expect(transcribe.mock.calls[0][0]).toEqual(transcribe.mock.calls[1][0]);
     expect((await getRequest(db, failed!.requestId))?.user_message_id).toBe(before?.user_message_id);
-    expect((await getRequest(db, failed!.requestId))?.audio_uri).toBe('file:///private/original.m4a');
+    expect((await getRequest(db, failed!.requestId))?.audio_uri).toBe(
+      `file:///documents/taisa-audio/${UUIDS[0]}-original.m4a`,
+    );
     expect(await listMessages(db, 'conversation-1')).toHaveLength(1);
     expect(coach).not.toHaveBeenCalled();
   });
@@ -359,27 +402,528 @@ describe('private local capture and deliberate submission', () => {
     expect(result.pendingProposalIds).toEqual([pending!.id]);
   });
 
-  test('a local context-contract failure leaves a retryable failed message instead of a stuck pending request', async () => {
-    let failure: SubmissionFailedError | null = null;
-    try {
-      await service.submitText({
+  test('a conflicting proposal remains a clarification and generic confirmation cannot supersede it', async () => {
+    await seedOldDirection(db);
+    coach.mockImplementationOnce(async (request) => conflictingResponse(request));
+    const result = await service.submitText({
+      conversationId: 'conversation-1',
+      content: 'I now want to remain a Staff IC.',
+      intentId: 'clarification-intent',
+    });
+    expect(result.pendingProposals).toEqual([
+      expect.objectContaining({
+        kind: 'clarification',
+        question: expect.stringContaining('replace that direction, pause it, or sit alongside it'),
+      }),
+    ]);
+    const restarted = createPrivateCaptureService({
+      database: db,
+      coach,
+      transcribe,
+      now: () => NOW,
+      createId: () => ids.shift()!,
+      getProfileId: async () => 'profile-1',
+      audioFiles,
+    });
+    expect((await restarted.hydrateConversation('conversation-1')).pendingProposals).toEqual([
+      expect.objectContaining({
+        kind: 'clarification',
+        question: result.pendingProposals[0].question,
+      }),
+    ]);
+
+    await expect(service.confirmProposal({
+      confirmationId: result.pendingProposalIds[0],
+      localUserActionId: 'generic-confirm-action',
+      actedAt: NOW,
+    })).rejects.toThrow('requires a replace, pause, or coexist choice');
+    expect((await getMemory(db, 'old-direction'))?.lifecycle).toBe('active');
+    expect(await db.getFirstAsync(
+      'SELECT status FROM memory_confirmations WHERE id = $id',
+      { $id: result.pendingProposalIds[0] },
+    )).toEqual({ status: 'pending' });
+  });
+
+  test.each([
+    ['replace', 'superseded', 'old-direction'],
+    ['pause', 'paused', null],
+    ['coexist', 'active', null],
+  ] as const)(
+    'clarification choice %s applies one complete governed resolution',
+    async (choice, expectedOldLifecycle, expectedSupersedesId) => {
+      await seedOldDirection(db);
+      coach.mockImplementationOnce(async (request) => conflictingResponse(request));
+      const result = await service.submitText({
         conversationId: 'conversation-1',
-        content: 'x'.repeat(4_001),
+        content: 'I now want to remain a Staff IC.',
+        intentId: `clarification-${choice}`,
+      });
+      const confirmationId = result.pendingProposalIds[0];
+
+      await service.resolveClarification({
+        confirmationId,
+        choice,
+        localUserActionId: `choice-${choice}`,
+        actedAt: NOW,
+      });
+
+      expect((await getMemory(db, 'old-direction'))?.lifecycle).toBe(expectedOldLifecycle);
+      const successor = await db.getFirstAsync<{
+        lifecycle: string;
+        supersedes_id: string | null;
+      }>('SELECT lifecycle, supersedes_id FROM memory_items WHERE id != $oldId', {
+        $oldId: 'old-direction',
+      });
+      expect(successor).toEqual({ lifecycle: 'active', supersedes_id: expectedSupersedesId });
+      const confirmation = await db.getFirstAsync<{
+        status: string;
+        resolution_json: string;
+      }>('SELECT status, resolution_json FROM memory_confirmations WHERE id = $id', {
+        $id: confirmationId,
+      });
+      expect(confirmation?.status).toBe('consumed');
+      expect(confirmation?.resolution_json).toContain(`"choice":"${choice}"`);
+    },
+  );
+
+  test('clarification presentation survives restart even if predecessor state changes', async () => {
+    await seedOldDirection(db);
+    coach.mockImplementationOnce(async (request) => conflictingResponse(request));
+    const result = await service.submitText({
+      conversationId: 'conversation-1',
+      content: 'I now want to remain a Staff IC.',
+      intentId: 'durable-clarification-presentation',
+    });
+    const oldDirection = (await getMemory(db, 'old-direction'))!;
+    await db.withTransaction((transaction) => updateMemory(
+      transaction,
+      {
+        ...oldDirection,
+        lifecycle: 'completed',
+        statusChangedAt: '2026-08-10T10:00:00.000Z',
+        updatedAt: '2026-08-10T10:00:00.000Z',
+      },
+      'change-old-direction-after-stage',
+    ));
+
+    expect((await service.hydrateConversation('conversation-1')).pendingProposals).toEqual([
+      expect.objectContaining({
+        id: result.pendingProposalIds[0],
+        kind: 'clarification',
+        question: result.pendingProposals[0].question,
+      }),
+    ]);
+  });
+
+  test('clarification resolution rolls confirmation, successor, and predecessor back atomically', async () => {
+    await seedOldDirection(db);
+    coach.mockImplementationOnce(async (request) => conflictingResponse(request));
+    const result = await service.submitText({
+      conversationId: 'conversation-1',
+      content: 'I now want to remain a Staff IC.',
+      intentId: 'clarification-rollback',
+    });
+    await db.execAsync(`CREATE TRIGGER force_clarification_failure
+      BEFORE UPDATE ON memory_items WHEN OLD.id = 'old-direction'
+      BEGIN SELECT RAISE(ABORT, 'forced clarification failure'); END`);
+
+    let failure: unknown = null;
+    try {
+      await service.resolveClarification({
+        confirmationId: result.pendingProposalIds[0],
+        choice: 'pause',
+        localUserActionId: 'choice-pause-rollback',
+        actedAt: NOW,
       });
     } catch (error) {
-      failure = error as SubmissionFailedError;
+      failure = error;
     }
+    expect(failure).not.toBeNull();
 
-    expect(failure).toBeInstanceOf(SubmissionFailedError);
+    expect((await getMemory(db, 'old-direction'))?.lifecycle).toBe('active');
+    expect(await db.getFirstAsync<{ count: number }>(
+      'SELECT count(*) AS count FROM memory_items',
+    )).toEqual({ count: 1 });
+    expect(await db.getFirstAsync(
+      'SELECT status FROM memory_confirmations WHERE id = $id',
+      { $id: result.pendingProposalIds[0] },
+    )).toEqual({ status: 'pending' });
+  });
+
+  test('oversize text is rejected before any request, message, or network state exists', async () => {
+    await expect(service.submitText({
+        conversationId: 'conversation-1',
+        content: 'x'.repeat(4_001),
+        intentId: 'oversize-text-intent',
+      })).rejects.toBeInstanceOf(SubmissionValidationError);
     expect(coach).not.toHaveBeenCalled();
-    expect(await getRequest(db, failure!.requestId)).toEqual(expect.objectContaining({
-      status: 'coaching-failed',
-      error_code: 'COACHING_FAILED',
+    expect(await db.getFirstAsync('SELECT id FROM coaching_requests')).toBeNull();
+    expect(await db.getFirstAsync('SELECT id FROM messages')).toBeNull();
+  });
+
+  test('the same concurrent text intent persists and charges exactly once', async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    coach.mockImplementationOnce(async (request) => {
+      await gate;
+      return coachingResponse(request);
+    });
+
+    const input = {
+      conversationId: 'conversation-1',
+      content: 'Help me prepare for the review.',
+      intentId: 'submit-button-intent-1',
+    };
+    const first = service.submitText(input);
+    const second = service.submitText(input);
+    expect(second).toBe(first);
+    release();
+    const [left, right] = await Promise.all([first, second]);
+
+    expect(left).toEqual(right);
+    expect(coach).toHaveBeenCalledTimes(1);
+    expect(await db.getFirstAsync<{ count: number }>(
+      'SELECT count(*) AS count FROM coaching_requests',
+    )).toEqual({ count: 1 });
+    expect((await listMessages(db, 'conversation-1'))).toHaveLength(2);
+  });
+
+  test('retrying a persisted pending request joins its original paid call', async () => {
+    let release!: () => void;
+    let markStarted!: () => void;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    const started = new Promise<void>((resolve) => { markStarted = resolve; });
+    coach.mockImplementationOnce(async (request) => {
+      markStarted();
+      await gate;
+      return coachingResponse(request);
+    });
+
+    const original = service.submitText({
+      conversationId: 'conversation-1',
+      content: 'Do not duplicate this pending paid call.',
+      intentId: 'pending-retry-intent',
+    });
+    await started;
+    const pending = await db.getFirstAsync<{ id: string; attempt_count: number }>(
+      'SELECT id, attempt_count FROM coaching_requests',
+    );
+    const retry = service.retrySubmission(pending!.id);
+    release();
+    const [left, right] = await Promise.all([original, retry]);
+
+    expect(left).toEqual(right);
+    expect(coach).toHaveBeenCalledTimes(1);
+    expect(await db.getFirstAsync(
+      'SELECT attempt_count FROM coaching_requests WHERE id = $id',
+      { $id: pending!.id },
+    )).toEqual({ attempt_count: 1 });
+  });
+
+  test('voice is copied into app-owned durable storage before request persistence and concurrent intent is deduplicated', async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    audioFiles.persistRecording.mockImplementationOnce(async ({ requestId }) => {
+      expect(await getRequest(db, requestId)).toBeNull();
+      return `file:///documents/taisa-audio/${requestId}.m4a`;
+    });
+    transcribe.mockImplementationOnce(async () => {
+      await gate;
+      return {
+        transcript: 'A durable recording transcript.',
+        durationSeconds: 10,
+        usage: {
+          provider: 'openai' as const,
+          model: 'fixture-transcription',
+          audioSeconds: 10,
+          estimatedCostUsd: 0.001,
+        },
+      };
+    });
+    const input = {
+      conversationId: 'conversation-1',
+      audioUri: 'file:///cache/temporary.m4a',
+      durationSeconds: 10,
+      intentId: 'voice-submit-intent-1',
+    };
+    const first = service.submitVoice(input);
+    const second = service.submitVoice(input);
+    expect(second).toBe(first);
+    release();
+    const [left, right] = await Promise.all([first, second]);
+
+    expect(left).toEqual(right);
+    expect(audioFiles.persistRecording).toHaveBeenCalledTimes(1);
+    expect(transcribe).toHaveBeenCalledTimes(1);
+    expect(transcribe.mock.calls[0][0].audioUri).toBe(
+      `file:///documents/taisa-audio/${left.requestId}.m4a`,
+    );
+    expect(await db.getFirstAsync<{ count: number }>(
+      'SELECT count(*) AS count FROM coaching_requests',
+    )).toEqual({ count: 1 });
+  });
+
+  test('rapid transcript confirmation returns one in-flight result and makes one coaching call', async () => {
+    const voice = await service.submitVoice({
+      conversationId: 'conversation-1',
+      audioUri: 'file:///cache/confirm-once.m4a',
+      durationSeconds: 10,
+      intentId: 'confirm-once-voice-intent',
+    });
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    coach.mockImplementationOnce(async (request) => {
+      await gate;
+      return coachingResponse(request);
+    });
+
+    const first = service.confirmTranscript({ requestId: voice.requestId });
+    const second = service.confirmTranscript({ requestId: voice.requestId });
+    expect(second).toBe(first);
+    release();
+    const [left, right] = await Promise.all([first, second]);
+
+    expect(left).toEqual(right);
+    expect(coach).toHaveBeenCalledTimes(1);
+    expect(transcribe).toHaveBeenCalledTimes(1);
+  });
+
+  test('oversize voice transcript stays editable on the same request until corrected and confirmed', async () => {
+    transcribe.mockResolvedValueOnce({
+      transcript: 'x'.repeat(4_001),
+      durationSeconds: 18,
+      usage: {
+        provider: 'openai' as const,
+        model: 'fixture-transcription',
+        audioSeconds: 18,
+        estimatedCostUsd: 0.0018,
+      },
+    });
+    const voice = await service.submitVoice({
+      conversationId: 'conversation-1',
+      audioUri: 'file:///cache/oversize.m4a',
+      durationSeconds: 18,
+      intentId: 'oversize-voice-intent',
+    });
+
+    await expect(service.confirmTranscript({ requestId: voice.requestId }))
+      .rejects.toBeInstanceOf(SubmissionValidationError);
+    expect((await getRequest(db, voice.requestId))?.status)
+      .toBe('transcript-confirmation-required');
+    expect(coach).not.toHaveBeenCalled();
+
+    await service.updateTranscript({
+      requestId: voice.requestId,
+      transcript: 'I corrected this transcript before submitting it.',
+    });
+    const completed = await service.confirmTranscript({ requestId: voice.requestId });
+    expect(completed.requestId).toBe(voice.requestId);
+    expect(coach).toHaveBeenCalledTimes(1);
+    expect(coach.mock.calls[0][0].input).toBe(
+      'I corrected this transcript before submitting it.',
+    );
+  });
+
+  test('restart hydration restores transcript review and pending proposals without a network call', async () => {
+    const voice = await service.submitVoice({
+      conversationId: 'voice-conversation',
+      audioUri: 'file:///cache/restart.m4a',
+      durationSeconds: 18,
+      intentId: 'restart-voice-intent',
+    });
+    coach.mockClear();
+    transcribe.mockClear();
+    const restarted = createPrivateCaptureService({
+      database: db,
+      coach,
+      transcribe,
+      now: () => NOW,
+      createId: () => ids.shift()!,
+      getProfileId: async () => 'profile-1',
+      audioFiles,
+    });
+
+    expect(await restarted.hydrateConversation('voice-conversation')).toEqual(
+      expect.objectContaining({
+        requestId: voice.requestId,
+        messageId: voice.messageId,
+        requestStatus: 'transcript-confirmation-required',
+        transcript: 'The roadmap conversation left me uncertain.',
+      }),
+    );
+    expect(coach).not.toHaveBeenCalled();
+    expect(transcribe).not.toHaveBeenCalled();
+
+    await service.submitText({
+      conversationId: 'proposal-conversation',
+      content: 'I may prefer Staff IC work.',
+      intentId: 'proposal-restart-intent',
+    });
+    coach.mockClear();
+    const restored = await restarted.hydrateConversation('proposal-conversation');
+    expect(restored.requestStatus).toBe('completed');
+    expect(restored.pendingProposals).toHaveLength(1);
+    expect(coach).not.toHaveBeenCalled();
+  });
+
+  test('restart hydration rediscovers a retryable failed request without making a network call', async () => {
+    coach.mockRejectedValueOnce(new Error('provider detail'));
+    let requestId = '';
+    try {
+      await service.submitText({
+        conversationId: 'failed-conversation',
+        content: 'Help me recover this interrupted thought.',
+        intentId: 'failed-restart-intent',
+      });
+    } catch (error) {
+      requestId = (error as SubmissionFailedError).requestId;
+    }
+    coach.mockClear();
+    const restarted = createPrivateCaptureService({
+      database: db,
+      coach,
+      transcribe,
+      now: () => NOW,
+      createId: () => ids.shift()!,
+      getProfileId: async () => 'profile-1',
+      audioFiles,
+    });
+
+    expect(await restarted.hydrateConversation('failed-conversation')).toEqual(
+      expect.objectContaining({
+        requestId,
+        requestStatus: 'coaching-failed',
+      }),
+    );
+    expect(coach).not.toHaveBeenCalled();
+  });
+
+  test('a newer completed turn cannot mask an older actionable request on restart', async () => {
+    coach.mockRejectedValueOnce(new Error('first turn failed'));
+    let failedRequestId = '';
+    try {
+      await service.submitText({
+        conversationId: 'multi-turn-conversation',
+        content: 'The first turn must remain retryable.',
+        intentId: 'older-failed-intent',
+      });
+    } catch (error) {
+      failedRequestId = (error as SubmissionFailedError).requestId;
+    }
+    await service.submitText({
+      conversationId: 'multi-turn-conversation',
+      content: 'A later turn completed successfully.',
+      intentId: 'newer-completed-intent',
+    });
+    coach.mockClear();
+
+    expect(await service.hydrateConversation('multi-turn-conversation')).toEqual(
+      expect.objectContaining({
+        requestId: failedRequestId,
+        requestStatus: 'coaching-failed',
+      }),
+    );
+    expect(coach).not.toHaveBeenCalled();
+  });
+
+  test('discarding a recording retires its temporary or durable file', async () => {
+    await service.discardRecording('file:///cache/abandoned.m4a');
+    expect(audioFiles.deleteRecording).toHaveBeenCalledWith('file:///cache/abandoned.m4a');
+  });
+
+  test('recording again after transcription retires durable audio and abandons paid-request state', async () => {
+    const voice = await service.submitVoice({
+      conversationId: 'conversation-1',
+      audioUri: 'file:///cache/abandon-durable.m4a',
+      durationSeconds: 18,
+      intentId: 'abandon-durable-intent',
+    });
+    const durableUri = (await getRequest(db, voice.requestId))!.audio_uri!;
+    audioFiles.deleteRecording.mockClear();
+
+    await service.abandonVoiceSubmission(voice.requestId);
+
+    expect(audioFiles.deleteRecording).toHaveBeenCalledWith(durableUri);
+    expect(await getRequest(db, voice.requestId)).toEqual(expect.objectContaining({
+      status: 'abandoned',
+      audio_uri: null,
     }));
-    expect((await listMessages(db, 'conversation-1'))[0]).toEqual(expect.objectContaining({
-      lifecycle: 'failed',
-      content: 'x'.repeat(4_001),
+    expect((await listMessages(db, 'conversation-1'))[0].lifecycle).toBe('private');
+    expect(await service.hydrateConversation('conversation-1')).toEqual(
+      expect.objectContaining({ requestId: null, requestStatus: null }),
+    );
+  });
+
+  test('durable audio retirement resumes safely after a delete failure with a later timestamp', async () => {
+    const voice = await service.submitVoice({
+      conversationId: 'conversation-1',
+      audioUri: 'file:///cache/delete-retry.m4a',
+      durationSeconds: 18,
+      intentId: 'delete-retry-intent',
+    });
+    const durableUri = (await getRequest(db, voice.requestId))!.audio_uri!;
+    let currentTime = NOW;
+    const restarted = createPrivateCaptureService({
+      database: db,
+      coach,
+      transcribe,
+      now: () => currentTime,
+      createId: () => ids.shift()!,
+      getProfileId: async () => 'profile-1',
+      audioFiles,
+    });
+    audioFiles.deleteRecording.mockReset();
+    audioFiles.deleteRecording
+      .mockRejectedValueOnce(new Error('filesystem unavailable'))
+      .mockResolvedValue(undefined);
+
+    await expect(restarted.abandonVoiceSubmission(voice.requestId)).rejects.toThrow(
+      'filesystem unavailable',
+    );
+    expect(await getRequest(db, voice.requestId)).toEqual(expect.objectContaining({
+      status: 'abandoned',
+      audio_uri: durableUri,
     }));
+
+    currentTime = '2026-08-10T10:00:00.000Z';
+    await restarted.abandonVoiceSubmission(voice.requestId);
+    expect((await getRequest(db, voice.requestId))?.audio_uri).toBeNull();
+  });
+
+  test('durable audio retirement resumes after the post-delete database update rolls back', async () => {
+    const voice = await service.submitVoice({
+      conversationId: 'conversation-1',
+      audioUri: 'file:///cache/database-retry.m4a',
+      durationSeconds: 18,
+      intentId: 'database-retry-intent',
+    });
+    await db.execAsync(`CREATE TRIGGER force_audio_retirement_failure
+      BEFORE UPDATE ON coaching_requests
+      WHEN OLD.id = '${voice.requestId}' AND NEW.audio_uri IS NULL
+      BEGIN SELECT RAISE(ABORT, 'forced audio retirement failure'); END`);
+    let currentTime = NOW;
+    const restarted = createPrivateCaptureService({
+      database: db,
+      coach,
+      transcribe,
+      now: () => currentTime,
+      createId: () => ids.shift()!,
+      getProfileId: async () => 'profile-1',
+      audioFiles,
+    });
+
+    await expect(restarted.abandonVoiceSubmission(voice.requestId)).rejects.toThrow(
+      'forced audio retirement failure',
+    );
+    expect(await getRequest(db, voice.requestId)).toEqual(expect.objectContaining({
+      status: 'abandoned',
+      audio_uri: expect.any(String),
+    }));
+
+    await db.execAsync('DROP TRIGGER force_audio_retirement_failure');
+    currentTime = '2026-08-10T10:00:00.000Z';
+    await restarted.abandonVoiceSubmission(voice.requestId);
+    expect((await getRequest(db, voice.requestId))?.audio_uri).toBeNull();
   });
 
   test('assistant response, usage, and governed proposals roll back together when local proposal staging fails', async () => {
@@ -426,5 +970,45 @@ describe('private local capture and deliberate submission', () => {
     expect(transcribe).toHaveBeenCalledTimes(1);
     expect(coach).toHaveBeenCalledTimes(2);
     expect(coach.mock.calls[0][0].requestId).toBe(coach.mock.calls[1][0].requestId);
+  });
+
+  test('a failed voice coaching request can be edited and reconfirmed on the same request and message', async () => {
+    let currentTime = NOW;
+    const mutableClockService = createPrivateCaptureService({
+      database: db,
+      coach,
+      transcribe,
+      now: () => currentTime,
+      createId: () => ids.shift()!,
+      getProfileId: async () => 'profile-1',
+      audioFiles,
+    });
+    coach
+      .mockRejectedValueOnce(new Error('first coaching failure'))
+      .mockImplementationOnce(async (request) => coachingResponse(request));
+    const voice = await mutableClockService.submitVoice({
+      conversationId: 'conversation-1',
+      audioUri: 'file:///cache/edit-after-failure.m4a',
+      durationSeconds: 18,
+      intentId: 'edit-after-failure-intent',
+    });
+    await expect(mutableClockService.confirmTranscript({ requestId: voice.requestId }))
+      .rejects.toBeInstanceOf(SubmissionFailedError);
+
+    currentTime = '2026-08-10T10:00:00.000Z';
+    await mutableClockService.updateTranscript({
+      requestId: voice.requestId,
+      transcript: 'A corrected thought after the failed coaching attempt.',
+    });
+    const completed = await mutableClockService.confirmTranscript({ requestId: voice.requestId });
+
+    expect(completed.requestId).toBe(voice.requestId);
+    expect(completed.messageId).toBe(voice.messageId);
+    expect(transcribe).toHaveBeenCalledTimes(1);
+    expect(coach).toHaveBeenCalledTimes(2);
+    expect((await getRequest(db, voice.requestId))?.attempt_count).toBe(2);
+    expect(coach.mock.calls[1][0].input).toBe(
+      'A corrected thought after the failed coaching attempt.',
+    );
   });
 });

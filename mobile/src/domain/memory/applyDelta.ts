@@ -55,6 +55,19 @@ export interface ConfirmedConflictResolutionApplication {
   sourceLinks: readonly LocalMemorySource[];
 }
 
+export type ClarificationResolutionChoice = 'replace' | 'pause' | 'coexist';
+
+export interface ConfirmedClarificationResolutionApplication {
+  confirmationId: string;
+  idempotencyId: string;
+  effectiveAt: string;
+  successorId: string;
+  candidate: Extract<GovernedMemoryDelta, { operation: 'propose' }>;
+  predecessorIds: readonly string[];
+  choice: ClarificationResolutionChoice;
+  sourceLinks: readonly LocalMemorySource[];
+}
+
 export class UnsafeAutomaticDeltaError extends Error {
   readonly code = 'UNSAFE_AUTOMATIC_DELTA';
 
@@ -202,6 +215,28 @@ export function confirmedConflictResolutionPayload(
   return {
     kind: 'resolve-conflict',
     proposal: application.candidate,
+    effectiveAt: application.effectiveAt,
+    successorId: application.successorId,
+    candidate: {
+      ...application.candidate,
+      candidate: {
+        ...application.candidate.candidate,
+        sourceMessageIds: sortedUnique(application.candidate.candidate.sourceMessageIds),
+      },
+      conflictsWithIds: sortedUnique(application.candidate.conflictsWithIds),
+    },
+    predecessorIds: sortedUnique(application.predecessorIds),
+    sourceLinks: normalizedSourceLinks(application.sourceLinks),
+  };
+}
+
+export function confirmedClarificationResolutionPayload(
+  application: ConfirmedClarificationResolutionApplication,
+): unknown {
+  return {
+    kind: 'resolve-clarification',
+    proposal: application.candidate,
+    choice: application.choice,
     effectiveAt: application.effectiveAt,
     successorId: application.successorId,
     candidate: {
@@ -566,6 +601,114 @@ export async function applyConfirmedConflictResolution(
       },
       `${application.idempotencyId}:predecessor:${predecessor.id}`,
     );
+  }
+  await applySourceLinks(transaction, sourceLinks, application.idempotencyId);
+}
+
+export async function applyConfirmedClarificationResolution(
+  transaction: RepositoryTransaction,
+  application: ConfirmedClarificationResolutionApplication,
+): Promise<void> {
+  requireNonEmpty(application.confirmationId, 'Confirmation ID');
+  requireNonEmpty(application.idempotencyId, 'Idempotency ID');
+  requireNonEmpty(application.successorId, 'Successor memory ID');
+  requireNonEmpty(application.effectiveAt, 'Effective timestamp');
+  const predecessorIds = sortedUnique(application.predecessorIds);
+  if (
+    predecessorIds.length === 0 ||
+    predecessorIds.length !== application.predecessorIds.length ||
+    application.candidate.changeKind !== 'replace' ||
+    application.candidate.candidate.supersedesId == null ||
+    !predecessorIds.includes(application.candidate.candidate.supersedesId) ||
+    sortedUnique(application.candidate.conflictsWithIds).join('\u0000') !==
+      predecessorIds.join('\u0000')
+  ) {
+    throw new InvalidDeltaApplicationError(
+      'Clarification must identify each conflicting direction exactly once',
+    );
+  }
+
+  const resolution = confirmedClarificationResolutionPayload(application);
+  if (!(await claimMutation(
+    transaction,
+    application.idempotencyId,
+    'governed-clarification-resolution',
+    application.successorId,
+    application.choice,
+    resolution,
+  ))) return;
+  await consumeConfirmedMemoryResolution(transaction, {
+    confirmationId: application.confirmationId,
+    resolution,
+    consumedAt: application.effectiveAt,
+    consumedByIdempotencyId: application.idempotencyId,
+  });
+
+  const predecessors = await Promise.all(
+    predecessorIds.map((id) => getMemory(transaction, id)),
+  );
+  if (predecessors.some((item) =>
+    item === null || (item.lifecycle !== 'active' && item.lifecycle !== 'paused'))) {
+    throw new InvalidDeltaApplicationError(
+      'Every clarified direction must still be active or paused',
+    );
+  }
+
+  const sourceLinks = [...application.sourceLinks];
+  const successorLinks = sourceLinks.filter(
+    (source) => source.memoryItemId === application.successorId,
+  );
+  validateSourceLinks(
+    application.successorId,
+    successorLinks,
+    application.candidate.candidate.sourceMessageIds,
+  );
+  if (application.choice === 'coexist') {
+    if (sourceLinks.length !== successorLinks.length) {
+      throw new InvalidDeltaApplicationError('Coexistence cannot transition an existing direction');
+    }
+  } else {
+    for (const predecessorId of predecessorIds) {
+      validateSourceLinks(
+        predecessorId,
+        sourceLinks.filter((source) => source.memoryItemId === predecessorId),
+        application.candidate.candidate.sourceMessageIds,
+      );
+    }
+  }
+
+  const successor: LocalMemoryItem = {
+    ...application.candidate.candidate,
+    id: application.successorId,
+    lifecycle: 'active',
+    supersedesId: application.choice === 'replace'
+      ? application.candidate.candidate.supersedesId
+      : null,
+    createdAt: application.effectiveAt,
+    confirmedAt: application.effectiveAt,
+    lastSupportedAt: application.effectiveAt,
+    statusChangedAt: application.effectiveAt,
+    updatedAt: application.effectiveAt,
+    sourceMessageIds: [...application.candidate.candidate.sourceMessageIds],
+    sourceEvidenceIds: successorLinks.flatMap((source) =>
+      source.evidenceId === null ? [] : [source.evidenceId],
+    ),
+  };
+  await insertMemory(transaction, successor, `${application.idempotencyId}:successor`);
+  if (application.choice !== 'coexist') {
+    const lifecycle = application.choice === 'replace' ? 'superseded' : 'paused';
+    for (const predecessor of predecessors as LocalMemoryItem[]) {
+      await updateMemory(
+        transaction,
+        {
+          ...predecessor,
+          lifecycle,
+          updatedAt: application.effectiveAt,
+          statusChangedAt: application.effectiveAt,
+        },
+        `${application.idempotencyId}:predecessor:${predecessor.id}`,
+      );
+    }
   }
   await applySourceLinks(transaction, sourceLinks, application.idempotencyId);
 }

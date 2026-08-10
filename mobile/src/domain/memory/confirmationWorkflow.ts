@@ -66,6 +66,10 @@ export async function stageMemoryConfirmation(
     sourceMessageId: string;
     stagedAt: string;
     idempotencyId: string;
+    presentation?: {
+      kind: 'proposal' | 'clarification';
+      question: string | null;
+    };
   },
 ): Promise<void> {
   requireNonEmpty(input.confirmationId, 'Confirmation ID');
@@ -92,6 +96,8 @@ export async function stageMemoryConfirmation(
       sourceMessageId: input.sourceMessageId,
       proposalJson: canonicalizeMutationPayload(input.proposal),
       proposalDigest: await fingerprintMutationPayload(input.proposal),
+      presentationKind: input.presentation?.kind ?? 'proposal',
+      clarificationQuestion: input.presentation?.question ?? null,
       stagedAt: input.stagedAt,
     },
     input.idempotencyId,

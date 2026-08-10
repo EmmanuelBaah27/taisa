@@ -8,6 +8,7 @@ import {
   insertMessage,
   listConversations,
   listMessages,
+  listRecentConversationMessages,
   listRecentMessages,
   searchMessages,
   updateConversation,
@@ -218,6 +219,42 @@ describe('conversationRepository', () => {
       await expect(listRecentMessages(db, conversation.id, 0)).rejects.toThrow(
         'Message limit must be a positive integer',
       );
+    } finally {
+      db.close();
+    }
+  });
+
+  test('recent coaching context filters private and pending rows before applying its SQL limit', async () => {
+    const db = createTestDatabase();
+    try {
+      await db.withTransaction((tx) => insertConversation(tx, conversation, 'context-conversation'));
+      for (let index = 0; index < 2; index += 1) {
+        await db.withTransaction((tx) => insertMessage(tx, {
+          ...message,
+          id: `eligible-${index}`,
+          requestId: `eligible-request-${index}`,
+          createdAt: `2026-08-10T08:00:0${index}.000Z`,
+          updatedAt: `2026-08-10T08:00:0${index}.000Z`,
+        }, `eligible-insert-${index}`));
+      }
+      for (let index = 0; index < 4; index += 1) {
+        await db.withTransaction((tx) => insertMessage(tx, {
+          ...message,
+          id: `ineligible-${index}`,
+          requestId: null,
+          lifecycle: index % 2 === 0 ? 'private' : 'pending',
+          createdAt: `2026-08-10T10:00:0${index}.000Z`,
+          updatedAt: `2026-08-10T10:00:0${index}.000Z`,
+        }, `ineligible-insert-${index}`));
+      }
+
+      expect((await listRecentMessages(db, conversation.id, 2)).map((item) => item.id)).toEqual([
+        'eligible-1',
+        'eligible-0',
+      ]);
+      expect((await listRecentConversationMessages(db, conversation.id, 2)).map(
+        (item) => item.id,
+      )).toEqual(['ineligible-3', 'ineligible-2']);
     } finally {
       db.close();
     }

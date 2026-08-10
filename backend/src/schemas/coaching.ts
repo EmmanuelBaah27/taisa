@@ -60,21 +60,21 @@ export const MemoryDeltaSchema = z.discriminatedUnion('operation', [
     candidate: MemoryCandidateSchema,
     reason: StatementSchema,
     requiresConfirmation: z.boolean(),
-  }),
+  }).strict(),
   z.object({
     operation: z.literal('transition'),
     targetId: IdSchema,
     to: z.enum(['proposed', 'active', 'paused', 'superseded', 'completed', 'rejected', 'archived']),
     reason: StatementSchema,
     requiresConfirmation: z.boolean(),
-  }),
+  }).strict(),
   z.object({
     operation: z.literal('support'),
     targetId: IdSchema,
     sourceMessageId: IdSchema,
     reason: StatementSchema,
     requiresConfirmation: z.literal(false),
-  }),
+  }).strict(),
 ]);
 
 const CoachingRequestRuntimeSchema = z.object({
@@ -121,9 +121,9 @@ const CoachingRequestRuntimeSchema = z.object({
 export const CoachingRequestSchema = CoachingRequestRuntimeSchema as z.ZodType<CoachingRequest>;
 
 export const CoachingResponsePayloadSchema = z.object({
-  reply: z.string().trim().min(1).max(4000),
+  reply: StatementSchema,
   stance: z.enum(['mirror', 'nudge', 'challenge', 'direct']),
-  proposals: z.array(MemoryDeltaSchema),
-});
+  proposals: z.array(MemoryDeltaSchema).max(COACHING_GATEWAY_LIMITS.maxProposals),
+}).strict();
 
 export type CoachingResponsePayload = z.infer<typeof CoachingResponsePayloadSchema>;

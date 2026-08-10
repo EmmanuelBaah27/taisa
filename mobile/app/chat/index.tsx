@@ -39,9 +39,11 @@ export default function ChatScreen() {
     transcript,
     pendingProposals,
     phase,
+    isBusy,
     error,
     setActiveSessionId,
     setPhase,
+    hydrateConversation,
     savePrivateDraft,
     submitText,
     submitVoice,
@@ -49,6 +51,9 @@ export default function ChatScreen() {
     confirmTranscript,
     retrySubmission,
     confirmProposal,
+    resolveClarification,
+    discardRecording,
+    abandonVoiceSubmission,
   } = useChatStore();
   const { currentMessages: messages, fetchThread } = useThreadStore();
   const { setChatMorphing } = useUIStore();
@@ -63,6 +68,7 @@ export default function ChatScreen() {
   const [draft, setDraft] = useState('');
   const [transcriptDraft, setTranscriptDraft] = useState('');
   const [pendingRecording, setPendingRecording] = useState<RecordingResult | null>(null);
+  const pendingRecordingRef = useRef<RecordingResult | null>(null);
   const scrollRef = useRef<ScrollView>(null);
   const restartTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const closingRef = useRef(false);
@@ -83,6 +89,10 @@ export default function ChatScreen() {
   }, [transcript]);
 
   useEffect(() => {
+    pendingRecordingRef.current = pendingRecording;
+  }, [pendingRecording]);
+
+  useEffect(() => {
     open();
     if (activeSessionId) {
       loadSession(activeSessionId);
@@ -92,6 +102,11 @@ export default function ChatScreen() {
     return () => {
       clearTimeout(restartTimerRef.current);
       stopRecorderSafe();
+      const abandoned = pendingRecordingRef.current;
+      if (abandoned !== null) {
+        pendingRecordingRef.current = null;
+        void discardRecording(abandoned.uri).catch(() => {});
+      }
       setChatMorphing(false);
     };
   }, []);
@@ -134,8 +149,11 @@ export default function ChatScreen() {
   // ─── Data & voice ───────────────────────────────────────────────────────────
 
   async function loadSession(sessionId: string) {
+    await hydrateConversation(sessionId);
     await fetchThread(sessionId);
-    restartTimerRef.current = setTimeout(startListening, 2000);
+    if (useChatStore.getState().phase === 'idle') {
+      restartTimerRef.current = setTimeout(startListening, 2000);
+    }
   }
 
   async function startListening() {
@@ -163,6 +181,7 @@ export default function ChatScreen() {
       startListening();
       return;
     }
+    pendingRecordingRef.current = result;
     setPendingRecording(result);
     setPhase('recording-ready');
   }
@@ -198,23 +217,46 @@ export default function ChatScreen() {
   }
 
   async function handleSubmitRecording() {
-    if (pendingRecording === null) return;
+    if (pendingRecording === null || isBusy) return;
+    pendingRecordingRef.current = null;
     const conversationId = sessionIdRef.current ?? `conversation-${Date.now()}`;
     sessionIdRef.current = conversationId;
     setActiveSessionId(conversationId);
     try {
       await submitVoice(conversationId, pendingRecording.uri, pendingRecording.durationSeconds);
       await refreshConversation();
-    } catch {}
+    } catch {
+      pendingRecordingRef.current = pendingRecording;
+    }
   }
 
   async function handleConfirmTranscript() {
     try {
       await updateTranscript(transcriptDraft);
       await confirmTranscript();
+      pendingRecordingRef.current = null;
       setPendingRecording(null);
       await refreshConversation();
     } catch {}
+  }
+
+  async function handleRecordAgain() {
+    try {
+      if (phase === 'transcript-review' && activeRequestId !== null) {
+        await abandonVoiceSubmission(activeRequestId);
+      }
+      if (pendingRecording !== null) {
+        await discardRecording(pendingRecording.uri);
+      }
+    } catch {
+      setPhase('error');
+      return;
+    }
+    if (pendingRecording !== null) {
+      pendingRecordingRef.current = null;
+      setPendingRecording(null);
+    }
+    await startListening();
   }
 
   async function handleRetry() {
@@ -279,7 +321,7 @@ export default function ChatScreen() {
                 <Text className="text-danger text-small-regular mb-3 text-center">
                   {error ?? 'Taisa could not complete this action. Your content remains on this device.'}
                 </Text>
-                <TouchableOpacity onPress={handleRetry} className="bg-muted rounded-full px-6 py-3">
+                <TouchableOpacity disabled={isBusy} onPress={handleRetry} className="bg-muted rounded-full px-6 py-3">
                   <Text className="text-foreground text-small-semibold">Try again</Text>
                 </TouchableOpacity>
               </View>
@@ -288,14 +330,43 @@ export default function ChatScreen() {
             {pendingProposals.map((proposal) => (
               <View key={proposal.id} className="bg-subtle rounded-3 px-4 py-3 mb-3">
                 <Text className="text-foreground text-small-regular mb-3">
-                  Taisa suggests remembering: {proposal.summary}
+                  {proposal.kind === 'clarification'
+                    ? proposal.question
+                    : `Taisa suggests remembering: ${proposal.summary}`}
                 </Text>
-                <TouchableOpacity
-                  onPress={() => confirmProposal(proposal.id)}
-                  className="self-start bg-muted rounded-full px-4 py-2"
-                >
-                  <Text className="text-foreground text-small-semibold">Confirm memory</Text>
-                </TouchableOpacity>
+                {proposal.kind === 'clarification' ? (
+                  <View className="gap-2">
+                    <TouchableOpacity
+                      disabled={isBusy}
+                      onPress={() => resolveClarification(proposal.id, 'replace')}
+                      className="self-start bg-muted rounded-full px-4 py-2"
+                    >
+                      <Text className="text-foreground text-small-semibold">Replace old direction</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      disabled={isBusy}
+                      onPress={() => resolveClarification(proposal.id, 'pause')}
+                      className="self-start border border-border rounded-full px-4 py-2"
+                    >
+                      <Text className="text-foreground text-small-semibold">Pause old direction</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      disabled={isBusy}
+                      onPress={() => resolveClarification(proposal.id, 'coexist')}
+                      className="self-start border border-border rounded-full px-4 py-2"
+                    >
+                      <Text className="text-foreground text-small-semibold">Keep both</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    disabled={isBusy}
+                    onPress={() => confirmProposal(proposal.id)}
+                    className="self-start bg-muted rounded-full px-4 py-2"
+                  >
+                    <Text className="text-foreground text-small-semibold">Confirm memory</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             ))}
           </ScrollView>
@@ -323,6 +394,7 @@ export default function ChatScreen() {
                 </TouchableOpacity>
               </View>
               <TouchableOpacity
+                disabled={isBusy}
                 onPress={handleStop}
                 className="flex-row items-center gap-2 bg-background border border-border rounded-full px-4 py-2"
               >
@@ -345,10 +417,10 @@ export default function ChatScreen() {
               This recording is still only on your phone.
             </Text>
             <View className="flex-row gap-3">
-              <TouchableOpacity onPress={startListening} className="flex-1 border border-border rounded-full px-4 py-3">
+              <TouchableOpacity disabled={isBusy} onPress={handleRecordAgain} className="flex-1 border border-border rounded-full px-4 py-3">
                 <Text className="text-foreground text-small-semibold text-center">Record again</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={handleSubmitRecording} className="flex-1 bg-muted rounded-full px-4 py-3">
+              <TouchableOpacity disabled={isBusy} onPress={handleSubmitRecording} className="flex-1 bg-muted rounded-full px-4 py-3">
                 <Text className="text-foreground text-small-semibold text-center">Submit to Taisa</Text>
               </TouchableOpacity>
             </View>
@@ -367,9 +439,17 @@ export default function ChatScreen() {
             <Text className="text-text-tertiary text-small-regular mb-3 text-center">
               Confirming sends this transcript and selected local context for external AI processing.
             </Text>
-            <TouchableOpacity onPress={handleConfirmTranscript} className="bg-muted rounded-full px-4 py-3">
-              <Text className="text-foreground text-small-semibold text-center">Confirm and submit</Text>
-            </TouchableOpacity>
+            {error !== null && (
+              <Text className="text-danger text-small-regular mb-3 text-center">{error}</Text>
+            )}
+            <View className="flex-row gap-3">
+              <TouchableOpacity disabled={isBusy} onPress={handleRecordAgain} className="flex-1 border border-border rounded-full px-4 py-3">
+                <Text className="text-foreground text-small-semibold text-center">Record again</Text>
+              </TouchableOpacity>
+              <TouchableOpacity disabled={isBusy} onPress={handleConfirmTranscript} className="flex-1 bg-muted rounded-full px-4 py-3">
+                <Text className="text-foreground text-small-semibold text-center">Confirm and submit</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         )}
 
@@ -386,10 +466,10 @@ export default function ChatScreen() {
               Private save stays on this phone. Submit sends this thought and selected local context for external AI processing.
             </Text>
             <View className="flex-row gap-3">
-              <TouchableOpacity onPress={handlePrivateSave} className="flex-1 border border-border rounded-full px-4 py-3">
+              <TouchableOpacity disabled={isBusy} onPress={handlePrivateSave} className="flex-1 border border-border rounded-full px-4 py-3">
                 <Text className="text-foreground text-small-semibold text-center">Private save</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={handleSubmitText} className="flex-1 bg-muted rounded-full px-4 py-3">
+              <TouchableOpacity disabled={isBusy} onPress={handleSubmitText} className="flex-1 bg-muted rounded-full px-4 py-3">
                 <Text className="text-foreground text-small-semibold text-center">Submit to Taisa</Text>
               </TouchableOpacity>
             </View>

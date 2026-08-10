@@ -432,9 +432,14 @@ describe('applyConfirmedDelta', () => {
         }),
       );
 
-      await expect(
-        db.withTransaction((tx) => applyConfirmedConflictResolution(tx, application)),
-      ).rejects.toThrow('UNIQUE constraint failed');
+      let failure: unknown = null;
+      try {
+        await db.withTransaction((tx) => applyConfirmedConflictResolution(tx, application));
+      } catch (error) {
+        failure = error;
+      }
+      expect(failure).not.toBeNull();
+      expect(String((failure as { message?: unknown }).message)).toContain('UNIQUE constraint failed');
       expect(await getMemory(db, application.successorId)).toBeNull();
       expect(await getMemory(db, staffGoal.id)).toMatchObject({ lifecycle: 'active' });
       expect(await getMemoryConfirmation(db, application.confirmationId)).toMatchObject({

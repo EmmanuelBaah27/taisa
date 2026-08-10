@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import * as Crypto from 'expo-crypto';
 
 import { openTaisaDatabase } from '../db/openDatabase';
 import type { RepositoryConnection } from '../db/types';
@@ -6,9 +7,14 @@ import {
   getConversation,
   listConversations,
   listMessages,
-  listRecentMessages,
+  listRecentConversationMessages,
   searchMessages,
 } from '../repositories/conversationRepository';
+import {
+  listCoachingRequestsByConversation,
+  type CoachingRequestStatus,
+} from '../repositories/coachingRequestRepository';
+import { listMemoryConfirmationsByConversation } from '../repositories/memoryConfirmationRepository';
 import { getPrivateCaptureService } from '../services/localPlatform';
 import type { PrivateCaptureService } from '../services/privateCapture';
 
@@ -23,6 +29,8 @@ export interface Thread {
   audioDurationSeconds: number | null;
   lastUserMessage: string | null;
   lastAssistantMessage: string | null;
+  pendingRequestStatus: CoachingRequestStatus | null;
+  pendingProposalCount: number;
 }
 
 export interface ChatMessage {
@@ -40,6 +48,8 @@ export interface ThreadSession {
   lastMessageAt: string;
   isVoice: boolean;
   audioDurationSeconds: number | null;
+  pendingRequestStatus: CoachingRequestStatus | null;
+  pendingProposalCount: number;
 }
 
 interface ThreadStoreDependencies {
@@ -72,7 +82,11 @@ function safeMessage(error: unknown): string {
 async function summary(database: RepositoryConnection, conversationId: string): Promise<Thread | null> {
   const conversation = await getConversation(database, conversationId);
   if (conversation === null) return null;
-  const recent = await listRecentMessages(database, conversation.id, 20);
+  const [recent, requests, confirmations] = await Promise.all([
+    listRecentConversationMessages(database, conversation.id, 20),
+    latestVisibleRequest(database, conversation.id),
+    listMemoryConfirmationsByConversation(database, conversation.id, ['pending', 'confirmed']),
+  ]);
   return {
     id: conversation.id,
     title: conversation.title ?? 'Untitled conversation',
@@ -84,7 +98,24 @@ async function summary(database: RepositoryConnection, conversationId: string): 
     audioDurationSeconds: null,
     lastUserMessage: recent.find((message) => message.role === 'user')?.content ?? null,
     lastAssistantMessage: recent.find((message) => message.role === 'assistant')?.content ?? null,
+    pendingRequestStatus: requests[0]?.status ?? null,
+    pendingProposalCount: confirmations.length,
   };
+}
+
+async function latestVisibleRequest(
+  database: RepositoryConnection,
+  conversationId: string,
+) {
+  const actionable = await listCoachingRequestsByConversation(database, conversationId, [
+    'transcription-pending',
+    'transcription-failed',
+    'transcript-confirmation-required',
+    'coaching-pending',
+    'coaching-failed',
+  ], 1);
+  if (actionable.length > 0) return actionable;
+  return listCoachingRequestsByConversation(database, conversationId, ['completed'], 1);
 }
 
 export function createThreadStore(
@@ -93,6 +124,14 @@ export function createThreadStore(
     getCaptureService: getPrivateCaptureService,
   },
 ) {
+  let sendInFlight: Promise<void> | null = null;
+  let localIntentSequence = 0;
+  function createLocalIntentId(): string {
+    const generated = Crypto.randomUUID();
+    return typeof generated === 'string' && generated.length > 0
+      ? generated
+      : `local-thread-intent-${localIntentSequence += 1}`;
+  }
   return create<ThreadStore>((set, get) => ({
     threads: [],
     currentSession: null,
@@ -138,7 +177,11 @@ export function createThreadStore(
         const database = await dependencies.openDatabase();
         const conversation = await getConversation(database, sessionId);
         if (conversation === null) throw new Error('missing');
-        const messages = await listMessages(database, sessionId);
+        const [messages, requests, confirmations] = await Promise.all([
+          listMessages(database, sessionId),
+          latestVisibleRequest(database, sessionId),
+          listMemoryConfirmationsByConversation(database, sessionId, ['pending', 'confirmed']),
+        ]);
         set({
           currentSession: {
             id: conversation.id,
@@ -148,6 +191,8 @@ export function createThreadStore(
             lastMessageAt: messages.at(-1)?.updatedAt ?? conversation.updatedAt,
             isVoice: false,
             audioDurationSeconds: null,
+            pendingRequestStatus: requests[0]?.status ?? null,
+            pendingProposalCount: confirmations.length,
           },
           currentMessages: messages.map((message) => ({
             id: message.id,
@@ -162,17 +207,28 @@ export function createThreadStore(
       }
     },
 
-    sendMessage: async (sessionId, content) => {
+    sendMessage: (sessionId, content) => {
+      if (sendInFlight !== null) return sendInFlight;
       set({ isSending: true, error: null });
-      try {
-        const service = await dependencies.getCaptureService();
-        await service.submitText({ conversationId: sessionId, content });
-        await get().fetchThread(sessionId);
-        set({ isSending: false });
-      } catch (error) {
-        await get().fetchThread(sessionId);
-        set({ isSending: false, error: safeMessage(error) });
-      }
+      const promise = (async () => {
+        try {
+          const service = await dependencies.getCaptureService();
+          await service.submitText({
+            conversationId: sessionId,
+            content,
+            intentId: createLocalIntentId(),
+          });
+          await get().fetchThread(sessionId);
+          set({ isSending: false });
+        } catch (error) {
+          await get().fetchThread(sessionId);
+          set({ isSending: false, error: safeMessage(error) });
+        }
+      })().finally(() => {
+        if (sendInFlight === promise) sendInFlight = null;
+      });
+      sendInFlight = promise;
+      return promise;
     },
 
     clearThread: () => set({ currentSession: null, currentMessages: [] }),

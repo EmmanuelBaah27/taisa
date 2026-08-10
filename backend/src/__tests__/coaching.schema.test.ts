@@ -4,7 +4,7 @@ import {
   type CoachingRequest,
 } from '@taisa/shared';
 
-import { CoachingRequestSchema } from '../schemas/coaching';
+import { CoachingRequestSchema, CoachingResponsePayloadSchema } from '../schemas/coaching';
 
 const NOW = '2026-08-10T09:00:00.000Z';
 
@@ -113,4 +113,67 @@ test.each([
   mutate(request);
   expect(firstCoachingRequestContractViolation(request)).not.toBeNull();
   expect(CoachingRequestSchema.safeParse(request).success).toBe(false);
+});
+
+const proposal = {
+  operation: 'propose' as const,
+  candidate: {
+    type: 'goal' as const,
+    statement: 'Become a staff designer.',
+    provenance: 'ai-inferred' as const,
+    lifecycle: 'proposed' as const,
+    confidence: 'tentative' as const,
+    sourceMessageIds: ['message-1'],
+    supersedesId: 'memory-1',
+  },
+  reason: 'This is a durable direction.',
+  requiresConfirmation: true,
+};
+
+test.each([
+  [
+    'an unknown payload field',
+    { reply: 'Consider the direction.', stance: 'nudge', proposals: [], unexpected: true },
+  ],
+  [
+    'an unknown proposal field',
+    {
+      reply: 'Consider the direction.',
+      stance: 'nudge',
+      proposals: [{ ...proposal, unexpected: true }],
+    },
+  ],
+  [
+    'more than the portable proposal limit',
+    {
+      reply: 'Consider the direction.',
+      stance: 'nudge',
+      proposals: Array.from(
+        { length: COACHING_GATEWAY_LIMITS.maxProposals + 1 },
+        () => proposal,
+      ),
+    },
+  ],
+])('the backend rejects structured coaching output with %s', (_name, payload) => {
+  expect(CoachingResponsePayloadSchema.safeParse(payload).success).toBe(false);
+});
+
+test('the backend accepts strict proposals at the portable output boundary', () => {
+  expect(CoachingResponsePayloadSchema.safeParse({
+    reply: 'r'.repeat(COACHING_GATEWAY_LIMITS.maxTextLength),
+    stance: 'direct',
+    proposals: Array.from({ length: COACHING_GATEWAY_LIMITS.maxProposals }, () => ({
+      ...proposal,
+      candidate: {
+        ...proposal.candidate,
+        statement: 's'.repeat(COACHING_GATEWAY_LIMITS.maxTextLength),
+        sourceMessageIds: Array.from(
+          { length: COACHING_GATEWAY_LIMITS.maxIdListLength },
+          (_, index) => `message-${index}`,
+        ),
+        supersedesId: 'i'.repeat(COACHING_GATEWAY_LIMITS.maxIdLength),
+      },
+      reason: 'r'.repeat(COACHING_GATEWAY_LIMITS.maxTextLength),
+    })),
+  }).success).toBe(true);
 });
