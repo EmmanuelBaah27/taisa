@@ -102,13 +102,22 @@ export const SCHEMA_V1_STATEMENTS: readonly string[] = [
     idempotency_key TEXT UNIQUE
   )`,
   `CREATE TABLE memory_sources (
+    id TEXT PRIMARY KEY NOT NULL,
     memory_item_id TEXT NOT NULL REFERENCES memory_items(id) ON DELETE CASCADE,
     message_id TEXT REFERENCES messages(id) ON DELETE CASCADE,
     evidence_id TEXT REFERENCES evidence(id) ON DELETE CASCADE,
     linked_at TEXT NOT NULL,
-    PRIMARY KEY (memory_item_id, message_id, evidence_id),
-    CHECK (message_id IS NOT NULL OR evidence_id IS NOT NULL)
+    CHECK (
+      (message_id IS NOT NULL AND evidence_id IS NULL) OR
+      (message_id IS NULL AND evidence_id IS NOT NULL)
+    )
   )`,
+  `CREATE UNIQUE INDEX memory_sources_message_unique
+    ON memory_sources(memory_item_id, message_id)
+    WHERE message_id IS NOT NULL`,
+  `CREATE UNIQUE INDEX memory_sources_evidence_unique
+    ON memory_sources(memory_item_id, evidence_id)
+    WHERE evidence_id IS NOT NULL`,
   `CREATE TABLE usage_receipts (
     id TEXT PRIMARY KEY NOT NULL,
     request_id TEXT NOT NULL UNIQUE,

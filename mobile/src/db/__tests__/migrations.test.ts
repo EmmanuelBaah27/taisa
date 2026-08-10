@@ -1,8 +1,10 @@
 import {
   DatabaseRecoveryRequiredError,
+  createDatabaseLifecycle,
   openDatabaseWithDependencies,
 } from '../openDatabase';
 import { runMigrations, UnsupportedDatabaseVersionError } from '../migrations';
+import { SCHEMA_V1_STATEMENTS } from '../schema';
 import type { DatabaseLike } from '../types';
 
 class FakeDatabase implements DatabaseLike {
@@ -10,6 +12,7 @@ class FakeDatabase implements DatabaseLike {
   readonly calls: string[] = [];
   userVersion: number;
   failWhenStatementIncludes: string | null = null;
+  cipherVersion: string | null = '4.6.1';
   closed = false;
 
   private transactionSnapshot: { statementCount: number; userVersion: number } | null = null;
@@ -62,6 +65,11 @@ class FakeDatabase implements DatabaseLike {
     }
     if (source === 'SELECT count(*) AS count FROM sqlite_master') {
       return { count: 0 } as T;
+    }
+    if (source === 'PRAGMA cipher_version') {
+      return this.cipherVersion === null
+        ? null
+        : ({ cipher_version: this.cipherVersion } as T);
     }
     return null;
   }
@@ -144,10 +152,86 @@ describe('local database migrations', () => {
     await expect(runMigrations(db)).rejects.toBeInstanceOf(UnsupportedDatabaseVersionError);
     expect(db.calls).not.toContain('BEGIN IMMEDIATE');
   });
+
+  test('memory sources require one source and reject duplicate links of either type', () => {
+    const table = SCHEMA_V1_STATEMENTS.find((statement) =>
+      statement.includes('CREATE TABLE memory_sources'),
+    );
+
+    expect(table).toContain('id TEXT PRIMARY KEY NOT NULL');
+    expect(table).toContain(
+      '(message_id IS NOT NULL AND evidence_id IS NULL) OR\n' +
+        '      (message_id IS NULL AND evidence_id IS NOT NULL)',
+    );
+    expect(SCHEMA_V1_STATEMENTS).toContain(
+      `CREATE UNIQUE INDEX memory_sources_message_unique
+    ON memory_sources(memory_item_id, message_id)
+    WHERE message_id IS NOT NULL`,
+    );
+    expect(SCHEMA_V1_STATEMENTS).toContain(
+      `CREATE UNIQUE INDEX memory_sources_evidence_unique
+    ON memory_sources(memory_item_id, evidence_id)
+    WHERE evidence_id IS NOT NULL`,
+    );
+  });
 });
 
 describe('encrypted database opening', () => {
   const validKey = 'ab'.repeat(32);
+
+  test.each([
+    ['absent', null],
+    ['empty', ''],
+  ])('fails closed when SQLCipher cipher_version is %s', async (_label, cipherVersion) => {
+    const db = new FakeDatabase(0);
+    db.cipherVersion = cipherVersion;
+
+    await expect(
+      openDatabaseWithDependencies({
+        databaseFile: { exists: async () => true },
+        secureStore: {
+          getItemAsync: async () => validKey,
+          setItemAsync: async () => undefined,
+          whenUnlockedThisDeviceOnly: 42,
+        },
+        crypto: { getRandomBytesAsync: async () => new Uint8Array(32) },
+        sqlite: { openDatabaseAsync: async () => db },
+      }),
+    ).rejects.toMatchObject({
+      code: 'DATABASE_CONFIGURATION_REQUIRED',
+      reason: 'sqlcipher-unavailable',
+    });
+
+    expect(db.closed).toBe(true);
+    expect(db.calls).toEqual([
+      `PRAGMA key = "x'${validKey}'"`,
+      'PRAGMA cipher_version',
+    ]);
+    expect(db.calls).not.toContain('BEGIN IMMEDIATE');
+    expect(db.appliedStatements).toEqual([`PRAGMA key = "x'${validKey}'"`]);
+  });
+
+  test('validates a non-empty SQLCipher version before reading sqlite_master', async () => {
+    const db = new FakeDatabase(1);
+
+    await expect(
+      openDatabaseWithDependencies({
+        databaseFile: { exists: async () => true },
+        secureStore: {
+          getItemAsync: async () => validKey,
+          setItemAsync: async () => undefined,
+          whenUnlockedThisDeviceOnly: 42,
+        },
+        crypto: { getRandomBytesAsync: async () => new Uint8Array(32) },
+        sqlite: { openDatabaseAsync: async () => db },
+      }),
+    ).resolves.toBe(db);
+
+    expect(db.calls.indexOf('PRAGMA cipher_version')).toBeLessThan(
+      db.calls.indexOf('SELECT count(*) AS count FROM sqlite_master'),
+    );
+    expect(db.calls).not.toContain('BEGIN IMMEDIATE');
+  });
 
   test('fails into typed recovery when the database exists but its key is missing', async () => {
     const db = new FakeDatabase(0);
@@ -171,6 +255,62 @@ describe('encrypted database opening', () => {
       reason: 'missing-key',
     });
     await expect(opening).rejects.toBeInstanceOf(DatabaseRecoveryRequiredError);
+    expect(getRandomBytesAsync).not.toHaveBeenCalled();
+    expect(setItemAsync).not.toHaveBeenCalled();
+    expect(openDatabaseAsync).not.toHaveBeenCalled();
+  });
+
+  test('preserves an existing archive when SecureStore cannot read its key', async () => {
+    const openDatabaseAsync = jest.fn(async () => new FakeDatabase(0));
+    const getRandomBytesAsync = jest.fn(async () => new Uint8Array(32));
+    const setItemAsync = jest.fn(async () => undefined);
+
+    await expect(
+      openDatabaseWithDependencies({
+        databaseFile: { exists: async () => true },
+        secureStore: {
+          getItemAsync: async () => {
+            throw new Error('keychain unavailable');
+          },
+          setItemAsync,
+          whenUnlockedThisDeviceOnly: 42,
+        },
+        crypto: { getRandomBytesAsync },
+        sqlite: { openDatabaseAsync },
+      }),
+    ).rejects.toMatchObject({
+      code: 'DATABASE_RECOVERY_REQUIRED',
+      reason: 'key-store-unavailable',
+    });
+
+    expect(getRandomBytesAsync).not.toHaveBeenCalled();
+    expect(setItemAsync).not.toHaveBeenCalled();
+    expect(openDatabaseAsync).not.toHaveBeenCalled();
+  });
+
+  test('does not generate a new key when SecureStore reads fail for a new database', async () => {
+    const openDatabaseAsync = jest.fn(async () => new FakeDatabase(0));
+    const getRandomBytesAsync = jest.fn(async () => new Uint8Array(32));
+    const setItemAsync = jest.fn(async () => undefined);
+
+    await expect(
+      openDatabaseWithDependencies({
+        databaseFile: { exists: async () => false },
+        secureStore: {
+          getItemAsync: async () => {
+            throw new Error('keychain unavailable');
+          },
+          setItemAsync,
+          whenUnlockedThisDeviceOnly: 42,
+        },
+        crypto: { getRandomBytesAsync },
+        sqlite: { openDatabaseAsync },
+      }),
+    ).rejects.toMatchObject({
+      code: 'DATABASE_CONFIGURATION_REQUIRED',
+      reason: 'secure-store-unavailable',
+    });
+
     expect(getRandomBytesAsync).not.toHaveBeenCalled();
     expect(setItemAsync).not.toHaveBeenCalled();
     expect(openDatabaseAsync).not.toHaveBeenCalled();
@@ -239,7 +379,10 @@ describe('encrypted database opening', () => {
 
   test('closes an existing database and requires recovery when its key cannot decrypt it', async () => {
     const db = new FakeDatabase(0);
-    db.getFirstAsync = async () => {
+    db.getFirstAsync = async <T>(source: string) => {
+      if (source === 'PRAGMA cipher_version') {
+        return { cipher_version: '4.6.1' } as T;
+      }
       throw new Error('file is not a database');
     };
 
@@ -259,5 +402,39 @@ describe('encrypted database opening', () => {
       reason: 'unreadable-database',
     });
     expect(db.closed).toBe(true);
+  });
+
+  test('shares a concurrent open, then close clears the cached handle for a fresh reopen', async () => {
+    const openedDatabases: FakeDatabase[] = [];
+    const lifecycle = createDatabaseLifecycle({
+      databaseFile: { exists: async () => true },
+      secureStore: {
+        getItemAsync: async () => validKey,
+        setItemAsync: async () => undefined,
+        whenUnlockedThisDeviceOnly: 42,
+      },
+      crypto: { getRandomBytesAsync: async () => new Uint8Array(32) },
+      sqlite: {
+        openDatabaseAsync: async () => {
+          const db = new FakeDatabase(1);
+          openedDatabases.push(db);
+          return db;
+        },
+      },
+    });
+
+    const firstOpening = lifecycle.open();
+    const concurrentOpening = lifecycle.open();
+
+    expect(concurrentOpening).toBe(firstOpening);
+    const firstDatabase = await firstOpening;
+    expect(openedDatabases).toHaveLength(1);
+
+    await lifecycle.close();
+    expect(firstDatabase.closed).toBe(true);
+
+    const secondDatabase = await lifecycle.open();
+    expect(secondDatabase).not.toBe(firstDatabase);
+    expect(openedDatabases).toHaveLength(2);
   });
 });
