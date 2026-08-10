@@ -9,6 +9,10 @@ import { requestTranscription } from './transcription';
 
 let activeService: Promise<PrivateCaptureService> | null = null;
 
+export function invalidateLocalCaptureService(): void {
+  activeService = null;
+}
+
 export async function initializeLocalCaptureService(
   service: PrivateCaptureService,
 ): Promise<PrivateCaptureService> {

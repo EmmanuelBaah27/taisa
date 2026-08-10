@@ -4,9 +4,41 @@
 > Auth: pass `x-user-id` header on every request. Set automatically by `mobile/src/services/api.ts` via Axios interceptor.
 > The only exception is `POST /api/v1/profile/init`, which accepts `deviceId` in the request body instead.
 
+## Current local-first boundary
+
+The mobile client is authoritative for readable user data. Only two content-processing endpoint
+families belong to the new path:
+
+| Route | Status | Persistence boundary |
+|---|---|---|
+| `POST /api/v1/coaching/respond` | Current stateless coaching path | Validates bounded supplied context, makes one configured provider call, returns structured coaching/proposals; stores no readable user content |
+| `POST /api/v1/transcribe` | Current deliberate voice path | Deletes temporary audio in `finally`; stores only content-free usage/cost metadata |
+| `GET /health` | Current operational health | No user data |
+
+The gateway still uses `x-user-id` as a device-keyed rate-limit identifier, not as authentication.
+No migration/export endpoint exists. Baah has no backend archive to migrate, and Task 7 was removed.
+
+Profile, entries, analyze, reviews, goals, action-items, trajectory, notifications, chat, and today
+routes remain mounted as legacy rollback compatibility during BUILD. They must not receive new
+local-first coaching writes. Removal is separately gated on verified encrypted device recovery and
+Baah's explicit cutover approval; `backend/src/index.ts` intentionally remains unchanged in this
+slice.
+
+### `POST /api/v1/coaching/respond`
+
+Accepts one `CoachingRequest` from `@taisa/shared`, with a 4,000-character input, at most 20 recent
+messages, 50 memory items, and 8 evidence excerpts. Runtime validation is strict. The response is a
+request-bound `CoachingResponse` containing concise coaching text, one stance, governed proposed
+deltas, and a content-free usage receipt. Invalid structured output is recoverable and never causes
+an automatic second paid call.
+
+The gateway does not fetch profile, history, goals, actions, evidence, or memory. It does not write
+the request, response, transcript, prompt, or coaching text. Daily/monthly/per-request cost ceilings
+fail closed before the configured OpenAI or Anthropic adapter is called.
+
 ---
 
-## Route Overview
+## Legacy route overview (mounted pending retirement)
 
 | Route group | Prefix | Claude agent |
 |---|---|---|
@@ -19,6 +51,11 @@
 | Action Items | `/api/v1/action-items` | none |
 | Trajectory | `/api/v1/trajectory` | `trajectoryAnalyst` (direct `callClaudeJson`) |
 | Notifications | `/api/v1/notifications` | `trajectoryAnalyst` check-in prompts (direct `callClaude`) |
+| Chat | `/api/v1/chat` | legacy backend-readable chat |
+| Today | `/api/v1/today` | legacy backend-readable summaries |
+
+Everything below, except the current transcription section, documents the legacy API while it
+remains mounted. It is retained so rollback behavior is explicit rather than silently stale.
 
 ---
 
@@ -678,6 +715,9 @@ No request body required.
 
 ## Notifications
 
+This is a legacy endpoint. The mobile scheduler no longer calls it; local notifications always use
+generic content-free copy (`You have an open Taisa action`) and content-free navigation metadata.
+
 ### `POST /api/v1/notifications/checkin-message`
 
 Generate a short, personalized push-notification message using Claude (`buildCheckInSystem` / `buildCheckInUser` from `trajectoryAnalyst` prompts). Max 100 tokens. Falls back to a static string if Claude fails.
@@ -720,7 +760,11 @@ Common codes:
 
 ---
 
-## How to Add a New AI Endpoint
+## How to add a new AI endpoint
+
+For new local-first coaching capabilities, extend the shared bounded contract and the stateless
+provider-neutral coaching service. Do not load readable user history from backend SQLite and do not
+persist provider content. The steps below describe the legacy agent pattern only.
 
 Follow these steps in order. Use `analyze` + `journalAgent` as your reference.
 

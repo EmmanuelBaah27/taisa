@@ -1,10 +1,56 @@
 # Data Model
 
-> Open this when touching anything data-related. Source of truth for what's stored and how it maps to the product spec.
+> Open this when touching anything data-related. The local schema below is authoritative for the
+> new coaching path. The backend schema remains mounted only during the gated BUILD transition.
+
+## Authoritative on-device database (schema version 1)
+
+`mobile/src/db/schema.ts` is the executable source. The file is encrypted by SQLCipher with a
+random 256-bit key stored as `WHEN_UNLOCKED_THIS_DEVICE_ONLY` in iOS Keychain. IDs and timestamps
+are supplied by the client. Foreign keys, lifecycle checks, unique idempotency receipts, and FTS5
+triggers are enforced locally.
+
+| Table | Responsibility |
+|---|---|
+| `profile` | Role, company, career stage, goals text, coaching/accountability preferences |
+| `conversations`, `messages` | Private/submitted/received conversation archive and lifecycle |
+| `goals`, `milestones` | Lifecycle-aware career goals and milestones |
+| `actions`, `action_transitions` | Open/completed actions plus source-bound explicit completion history |
+| `evidence` | First-class evidence linked by message, goal, and action IDs |
+| `memory_items`, `memory_sources` | Governed durable memory and exact message/evidence provenance |
+| `memory_confirmations` | Payload-bound pending/confirmed/consumed user decisions |
+| `coaching_requests` | Stable local text/voice request, retry, transcript, and response state |
+| `audio_cleanup_queue` | Content-free, recoverable local audio deletion work |
+| `usage_receipts` | Provider/model/token/audio/cost metadata without readable content |
+| `mutation_receipts` | Idempotency fingerprint for local mutations |
+| `migration_state` | Reserved schema-v1 authority metadata; no legacy import is shipped or required |
+| `message_search`, `evidence_search` | External-content FTS5 indexes maintained by triggers |
+
+Readable values in these tables are never replicated into the gateway database. Zustand is view
+state, not durable authority.
+
+### Manual encrypted recovery
+
+An exported SQLCipher database contains the complete local schema plus an encrypted
+`taisa_archive_manifest` with format/schema versions, per-table counts, and a SHA-256 content
+fingerprint. The manifest exists inside the encrypted backup only. Restore validates the selected
+archive and a device-key candidate before promotion. A rollback copy and marker preserve the prior
+active archive across recoverable failures or interruption.
+
+This is manual recovery, not sync. Losing the phone before moving an export outside the app,
+forgetting the separate passphrase, uninstalling without a backup, or losing both phone and backup
+can permanently lose the archive. Taisa has no recovery key and no readable cloud copy.
 
 ---
 
-## The 9 Tables
+## Legacy backend database (still mounted, pending retirement gate)
+
+The nine tables below describe the original server-authoritative journal product. No migration
+route exists because there is no backend data Baah needs to preserve. Do not add new local-first
+coaching writes here. Route unmounting is deferred until physical-device recovery evidence and
+explicit cutover approval.
+
+## The 9 legacy tables
 
 ### `users`
 Career profile. One row per device (v1 has no auth — `id` is the device UUID).
@@ -165,7 +211,7 @@ Periodic Claude-generated career narrative. Requires 3+ entries.
 
 ---
 
-## Memory Model Mapping
+## Legacy memory-model mapping
 
 The product spec (artifact #003) defines six memory entities. Here's how they map to the actual DB:
 
@@ -182,9 +228,10 @@ The product spec (artifact #003) defines six memory entities. Here's how they ma
 
 ---
 
-## How Context Gets Injected Into Claude
+## How legacy context gets injected into Claude
 
-Before every `callClaudeJson` call, `journalAgent.ts` loads:
+The legacy journal agent loads the following. The new coaching gateway never performs these reads;
+its context arrives as a bounded, validated mobile request.
 
 ```
 entry           → the journal_entries row being analysed

@@ -1,12 +1,17 @@
 import '../global.css';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { AppState, Text, TouchableOpacity, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import * as SecureStore from 'expo-secure-store';
 import { useCareerStore } from '../src/stores/careerStore';
+import {
+  getPrivacyGuard,
+  type GuardedAppState,
+} from '../src/services/privacyGuard';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -19,6 +24,8 @@ function makeDeviceId(): string {
 
 export default function RootLayout() {
   const { initUser, fetchProfile } = useCareerStore();
+  const privacyGuard = getPrivacyGuard();
+  const [privacyState, setPrivacyState] = useState(privacyGuard.getState());
 
   const [fontsLoaded] = useFonts({
     'StrichpunktSans': require('../assets/fonts/StrichpunktSans-Regular.ttf'),
@@ -47,6 +54,36 @@ export default function RootLayout() {
     hydrateUser();
   }, []);
 
+  useEffect(() => {
+    const unsubscribe = privacyGuard.subscribe(setPrivacyState);
+    let mounted = true;
+    const normalizeAppState = (value: string): GuardedAppState => (
+      value === 'active' || value === 'background' ? value : 'inactive'
+    );
+    const initialize = async () => {
+      const initialized = await privacyGuard.initialize();
+      if (!mounted) return;
+      const current = normalizeAppState(AppState.currentState);
+      privacyGuard.handleAppState(current);
+      if (current === 'active' && initialized.lockEnabled) {
+        await privacyGuard.unlock();
+      }
+    };
+    void initialize().catch(() => {
+      // The guard remains fail-closed and shielded when its SecureStore preference is unreadable.
+    });
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      const normalized = normalizeAppState(nextState);
+      const next = privacyGuard.handleAppState(normalized);
+      if (normalized === 'active' && next.lockEnabled) void privacyGuard.unlock();
+    });
+    return () => {
+      mounted = false;
+      subscription.remove();
+      unsubscribe();
+    };
+  }, [privacyGuard]);
+
   if (!fontsLoaded) return null;
 
   return (
@@ -62,6 +99,31 @@ export default function RootLayout() {
         />
         <Stack.Screen name="chat/index" />
       </Stack>
+      {privacyState.shielded ? (
+        <View
+          className="absolute inset-0 items-center justify-center bg-background px-8"
+          style={{ zIndex: 9999 }}
+          accessibilityViewIsModal
+        >
+          <Text className="text-foreground text-xl font-bold">Taisa is private</Text>
+          <Text className="text-text-tertiary text-sm text-center mt-2">
+            {privacyState.appState === 'active'
+              ? 'Unlock to view your career archive.'
+              : 'Your career archive is hidden.'}
+          </Text>
+          {privacyState.appState === 'active' && privacyState.lockEnabled ? (
+            <TouchableOpacity
+              className="bg-primary rounded-full px-6 py-3 mt-5"
+              disabled={privacyState.phase === 'unlocking'}
+              onPress={() => { void privacyGuard.unlock(); }}
+            >
+              <Text className="text-foreground text-sm font-semibold">
+                {privacyState.phase === 'unlocking' ? 'Unlocking…' : 'Unlock Taisa'}
+              </Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
+      ) : null}
     </GestureHandlerRootView>
   );
 }

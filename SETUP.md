@@ -3,7 +3,7 @@
 ## Prerequisites
 - Node.js v24+ (via nvm)
 - Xcode (for iOS simulator)
-- Expo Go app on your iPhone (or build a dev build)
+- An iPhone managed development build for SQLCipher/LocalAuthentication validation (Expo Go is insufficient)
 
 ## API Keys Required
 1. **Anthropic API key** — for Claude (career coach AI)
@@ -14,6 +14,7 @@
 ### 1. Install dependencies
 ```bash
 npm install --workspaces
+cd mobile && npm install
 ```
 
 ### 2. Configure backend environment
@@ -65,6 +66,42 @@ npx expo run:ios
 
 This native command is an explicit execution gate: record it for setup, but do not run it, prebuild native projects, or start a simulator/device build until Baah approves the native verification step.
 
+The managed configuration enables SQLCipher and LocalAuthentication. Do not claim encrypted-file,
+Face ID, app-switcher, sharing, or restore behavior from Expo Go or unit tests.
+
+## Manual encrypted backup and restore
+
+The You tab exposes **Export my data** and **Restore encrypted backup**. Export requires a separate
+passphrase with at least 12 non-whitespace characters and a matching confirmation. The device
+database Keychain key is never used as the backup passphrase or written into the backup.
+
+After creating an export, move the shared file somewhere outside Taisa's app container and keep the
+passphrase separately. Restore copies a selected file into a candidate, verifies its schema,
+integrity, entity counts, content hash, and search indexes, re-encrypts it with the device key, and
+only then attempts rollback-safe promotion.
+
+Limitations:
+
+- There is no automatic cloud backup or multi-device sync.
+- Taisa cannot recover a forgotten backup passphrase.
+- Deleting the app or losing the phone before saving an export elsewhere can permanently lose data.
+- AirDrop, Files, iCloud Drive, email, or another share target may create additional copies under
+  that service's privacy policy.
+- Native SQLCipher and filesystem behavior remains unverified until the gated device checklist is complete.
+
+## Verification commands (code-only)
+
+```bash
+npm test --workspace=backend -- --runInBand
+npm run build --workspace=backend
+cd mobile && npm test -- --runInBand && npm run typecheck
+cd .. && npm run verify:workflow
+git diff --check
+```
+
+These commands make no live provider call. Device and paid-provider evaluations are recorded and
+approved separately.
+
 ## Project Structure
 ```
 taisa/
@@ -83,5 +120,5 @@ taisa/
 ## Key Decisions to Revisit
 - Performance review file upload (PDF/Word) — currently paste-text only
 - Cloud deployment (Railway/Render) when ready to use away from home WiFi
-- iCloud backup for SQLite database
+- Optional end-to-end encrypted cloud backup (future separate platform scope; Taisa must not hold the key)
 - Gmail/Calendar integration (future)

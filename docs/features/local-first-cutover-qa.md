@@ -40,3 +40,28 @@ Status: pending. No prebuild, local native run, cloud/EAS build, simulator, or p
 - [ ] Inspect gateway/backend telemetry and confirm no request bodies, transcripts, coaching text, or response bodies were logged.
 
 Status: pending explicit Baah approval for a SQLCipher-capable managed development build and physical-device journey. Task 9 stopped before the plan's Step 6 device verification. No Expo prebuild, native iOS run, cloud/EAS build, simulator, physical-device journey, or live provider request was performed.
+
+## Encrypted recovery and device privacy gate
+
+- [ ] Create an export with a confirmed backup passphrase of at least 12 non-whitespace characters; move the file outside Taisa's app container and verify the file cannot be opened without that passphrase.
+- [ ] Verify export entity counts and content hash cover profile, conversations/messages, goals/milestones, actions/transitions, evidence, memory/items sources/confirmations, coaching requests, usage, and mutation receipts.
+- [ ] Attempt restore with a wrong passphrase, corrupted file, newer schema, and insufficient free space; confirm the active database and Keychain key remain usable and no partial candidate is visible.
+- [ ] Interrupt restore before promotion, during promotion, and after candidate move; relaunch and confirm the durable marker restores the preserved original until a verified promotion commits.
+- [ ] On a controlled test installation, export, remove local app data, restore, and verify representative conversations, goals, actions, evidence, memory sources, pending decisions, usage receipts, and message/evidence search.
+- [ ] Force-quit and reopen after successful restore; confirm the promoted database reopens with the same counts/hash and local stores do not retain a stale closed handle.
+- [ ] Enable device unlock, background/inactivate Taisa, and verify private UI is obscured in the app switcher before returning to an unlock prompt.
+- [ ] Cancel unlock and confirm the archive remains shielded; then authenticate successfully and confirm it becomes visible. Verify disabling stores only the boolean preference, never biometric material.
+- [ ] Schedule reminders and inspect lock-screen previews; confirm only `Taisa` and `You have an open Taisa action` appear, with no title, company, goal, transcript, or excerpt.
+- [ ] Select overlapping/invalid Unicode redaction ranges and confirm submission is blocked. Preview valid name, organization, project, and metric selections and confirm the exact displayed redacted text—not the replacement map—is sent only after explicit Submit.
+- [ ] Confirm the backup passphrase, replacement map, selected unredacted values, database key, request/response bodies, and SQL/database error details never appear in logs, analytics, crash output, notifications, or backend SQLite.
+
+Status: code-only recovery/privacy implementation and automated tests exist. Task 10 Step 4 physical-device recovery/privacy QA was not run and remains the next Baah approval gate.
+
+## Legacy route retirement gate
+
+- [ ] Complete every encrypted database/recovery check above and retain the pre-cutover backend database as a rollback artifact.
+- [ ] Baah explicitly approves authority cutover after reviewing device evidence.
+- [ ] In a later gated change, unmount legacy profile, entries, analyze, reviews, goals, action-items, trajectory, notifications, chat, and today routes; rerun the full backend/mobile/workflow matrix.
+
+No migration route exists or is needed. Task 10 Step 6 legacy-route retirement was not performed;
+`backend/src/index.ts` is intentionally unchanged until this gate passes.

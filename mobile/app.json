@@ -43,6 +43,12 @@
         {
           "useSQLCipher": true
         }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Allow Taisa to use Face ID to protect your private career archive."
+        }
       ]
     ]
   }

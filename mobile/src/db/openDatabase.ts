@@ -6,6 +6,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 
 import { runMigrations } from './migrations';
 import type { ClosableDatabaseLike } from './types';
+import { recoverInterruptedArchivePromotion } from '../services/archiveFileStore';
 
 const DATABASE_NAME = 'taisa-local.db';
 const KEY_NAME = 'taisa.database-key.v1';
@@ -210,6 +211,7 @@ export function createDatabaseLifecycle<TDatabase extends ClosableDatabaseLike>(
 const nativeDependencies: OpenDatabaseDependencies<SQLiteDatabase> = {
   databaseFile: {
     async exists(databaseName: string): Promise<boolean> {
+      await recoverInterruptedArchivePromotion();
       const directory = SQLite.defaultDatabaseDirectory;
       if (typeof directory !== 'string' || directory.length === 0) {
         throw new Error('SQLite database directory is unavailable on this platform');
