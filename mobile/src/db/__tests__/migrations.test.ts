@@ -107,9 +107,11 @@ describe('local database migrations', () => {
       'goals',
       'milestones',
       'actions',
+      'action_transitions',
       'evidence',
       'memory_items',
       'memory_sources',
+      'memory_confirmations',
       'usage_receipts',
       'migration_state',
     ]) {
@@ -133,6 +135,30 @@ describe('local database migrations', () => {
     expect(
       db.appliedStatements.some((statement) => statement.includes('REFERENCES conversations(id)')),
     ).toBe(true);
+  });
+
+  test('memory confirmations are durable, source-scoped, and lifecycle constrained', () => {
+    const table = SCHEMA_V1_STATEMENTS.find((statement) =>
+      statement.includes('CREATE TABLE memory_confirmations'),
+    );
+
+    expect(table).toContain("status TEXT NOT NULL CHECK (status IN ('pending', 'confirmed', 'consumed'))");
+    expect(table).toContain('proposal_digest TEXT NOT NULL');
+    expect(table).toContain('resolution_digest TEXT');
+    expect(table).toContain('local_user_action_id TEXT');
+    expect(table).toContain('source_message_id TEXT NOT NULL REFERENCES messages(id)');
+  });
+
+  test('action transitions preserve content-free completion provenance', () => {
+    const table = SCHEMA_V1_STATEMENTS.find((statement) =>
+      statement.includes('CREATE TABLE action_transitions'),
+    );
+
+    expect(table).toContain('action_id TEXT NOT NULL REFERENCES actions(id)');
+    expect(table).toContain('source_message_id TEXT NOT NULL REFERENCES messages(id)');
+    expect(table).toContain("kind TEXT NOT NULL CHECK (kind = 'explicit-user-completion')");
+    expect(table).toContain('from_lifecycle TEXT NOT NULL');
+    expect(table).toContain('to_lifecycle TEXT NOT NULL');
   });
 
   test('rolls back the schema and user_version when a migration statement fails', async () => {

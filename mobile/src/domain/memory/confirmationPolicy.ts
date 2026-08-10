@@ -15,8 +15,6 @@ export function requiresConfirmation(
     case 'propose':
       return true;
     case 'transition': {
-      const target = state.memory.find((candidate) => candidate.id === delta.targetId);
-      if (target === undefined) return true;
       return true;
     }
     case 'support':

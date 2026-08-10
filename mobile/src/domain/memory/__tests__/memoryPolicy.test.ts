@@ -2,10 +2,12 @@ import type {
   LocalAction,
   LocalConversation,
   LocalEvidenceItem,
+  MemoryDelta,
   MemoryItem,
 } from '@taisa/shared';
 
 import {
+  admitGatewayMemoryDelta,
   assessMemoryAdmission,
   type GovernedMemoryDelta,
   type MemoryGovernanceState,
@@ -233,6 +235,109 @@ describe('governed memory confirmation policy', () => {
 });
 
 describe('memory admission and temporal conflicts', () => {
+  test('enriches an actual gateway proposal locally and treats supersedesId as a conflict', () => {
+    const gatewayDelta: MemoryDelta = {
+      operation: 'propose',
+      candidate: {
+        type: 'goal',
+        statement: 'Move into product design management',
+        provenance: 'ai-inferred',
+        lifecycle: 'active',
+        confidence: 'tentative',
+        sourceMessageIds: ['provider-invented-source'],
+        supersedesId: staffGoal.id,
+      },
+      reason: 'This may be a new direction.',
+      requiresConfirmation: false,
+    };
+
+    expect(
+      admitGatewayMemoryDelta(gatewayDelta, state, {
+        conversationId: conversation.id,
+        sourceMessage: {
+          id: 'message-current',
+          conversationId: conversation.id,
+          role: 'user',
+          lifecycle: 'submitted',
+        },
+      }),
+    ).toMatchObject({
+      status: 'clarification-required',
+      candidate: {
+        changeKind: 'replace',
+        sensitivity: 'unclassified',
+        conflictsWithIds: [staffGoal.id],
+        candidate: {
+          sourceMessageIds: ['message-current'],
+          supersedesId: staffGoal.id,
+        },
+      },
+      preservedMemoryIds: [staffGoal.id],
+    });
+  });
+
+  test.each([
+    {
+      operation: 'propose' as const,
+      candidate: {
+        ...proposal().candidate,
+        supersedesId: 'memory-missing',
+      },
+      reason: 'Replace a missing record.',
+      requiresConfirmation: false,
+    },
+    {
+      operation: 'transition' as const,
+      targetId: 'memory-missing',
+      to: 'superseded' as const,
+      reason: 'Transition a missing record.',
+      requiresConfirmation: false,
+    },
+    {
+      operation: 'support' as const,
+      targetId: 'memory-missing',
+      sourceMessageId: 'provider-invented-source',
+      reason: 'Support a missing record.',
+      requiresConfirmation: false as const,
+    },
+  ])('rejects gateway deltas with unknown targets', (gatewayDelta) => {
+    expect(
+      admitGatewayMemoryDelta(gatewayDelta, state, {
+        conversationId: conversation.id,
+        sourceMessage: {
+          id: 'message-current',
+          conversationId: conversation.id,
+          role: 'user',
+          lifecycle: 'submitted',
+        },
+      }),
+    ).toEqual({ status: 'rejected', reason: 'unknown-target' });
+  });
+
+  test('rejects gateway admission without a current submitted local user message', () => {
+    expect(
+      admitGatewayMemoryDelta(
+        {
+          operation: 'support',
+          targetId: staffGoal.id,
+          sourceMessageId: 'provider-invented-source',
+          reason: 'Support the goal.',
+          requiresConfirmation: false,
+        },
+        state,
+        {
+          conversationId: conversation.id,
+          sourceMessage: {
+            id: 'message-private',
+            conversationId: conversation.id,
+            role: 'assistant',
+            lifecycle: 'private',
+          },
+        },
+      ),
+    ).toEqual({ status: 'rejected', reason: 'untrusted-source' });
+  });
+
   test('keeps ordinary detail in the conversation archive instead of durable memory', () => {
     expect(
       assessMemoryAdmission(proposal({ materialToFutureCoaching: false }), state),

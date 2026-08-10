@@ -75,6 +75,18 @@ export const SCHEMA_V1_STATEMENTS: readonly string[] = [
     status_changed_at TEXT NOT NULL,
     idempotency_key TEXT UNIQUE
   )`,
+  `CREATE TABLE action_transitions (
+    id TEXT PRIMARY KEY NOT NULL,
+    action_id TEXT NOT NULL REFERENCES actions(id) ON DELETE CASCADE,
+    from_lifecycle TEXT NOT NULL CHECK (from_lifecycle IN ('proposed', 'open', 'completed', 'dropped', 'archived')),
+    to_lifecycle TEXT NOT NULL CHECK (to_lifecycle IN ('proposed', 'open', 'completed', 'dropped', 'archived')),
+    source_message_id TEXT NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+    conversation_id TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+    request_id TEXT NOT NULL,
+    kind TEXT NOT NULL CHECK (kind = 'explicit-user-completion'),
+    occurred_at TEXT NOT NULL,
+    idempotency_key TEXT NOT NULL UNIQUE
+  )`,
   `CREATE TABLE evidence (
     id TEXT PRIMARY KEY NOT NULL,
     statement TEXT NOT NULL,
@@ -118,6 +130,47 @@ export const SCHEMA_V1_STATEMENTS: readonly string[] = [
   `CREATE UNIQUE INDEX memory_sources_evidence_unique
     ON memory_sources(memory_item_id, evidence_id)
     WHERE evidence_id IS NOT NULL`,
+  `CREATE TABLE memory_confirmations (
+    id TEXT PRIMARY KEY NOT NULL,
+    conversation_id TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+    source_message_id TEXT NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+    proposal_json TEXT NOT NULL,
+    proposal_digest TEXT NOT NULL CHECK (
+      length(proposal_digest) = 64 AND proposal_digest NOT GLOB '*[^0-9a-f]*'
+    ),
+    resolution_json TEXT,
+    resolution_digest TEXT CHECK (
+      resolution_digest IS NULL OR (
+        length(resolution_digest) = 64 AND resolution_digest NOT GLOB '*[^0-9a-f]*'
+      )
+    ),
+    status TEXT NOT NULL CHECK (status IN ('pending', 'confirmed', 'consumed')),
+    staged_at TEXT NOT NULL,
+    confirmed_at TEXT,
+    consumed_at TEXT,
+    local_user_action_id TEXT UNIQUE,
+    local_user_action_kind TEXT CHECK (
+      local_user_action_kind IS NULL OR local_user_action_kind = 'explicit-confirm'
+    ),
+    local_user_action_at TEXT,
+    consumed_by_idempotency_id TEXT UNIQUE,
+    CHECK (
+      (status = 'pending' AND resolution_json IS NULL AND resolution_digest IS NULL
+        AND confirmed_at IS NULL AND local_user_action_id IS NULL
+        AND local_user_action_kind IS NULL AND local_user_action_at IS NULL
+        AND consumed_at IS NULL AND consumed_by_idempotency_id IS NULL)
+      OR
+      (status = 'confirmed' AND resolution_json IS NOT NULL AND resolution_digest IS NOT NULL
+        AND confirmed_at IS NOT NULL AND local_user_action_id IS NOT NULL
+        AND local_user_action_kind = 'explicit-confirm' AND local_user_action_at IS NOT NULL
+        AND consumed_at IS NULL AND consumed_by_idempotency_id IS NULL)
+      OR
+      (status = 'consumed' AND resolution_json IS NOT NULL AND resolution_digest IS NOT NULL
+        AND confirmed_at IS NOT NULL AND local_user_action_id IS NOT NULL
+        AND local_user_action_kind = 'explicit-confirm' AND local_user_action_at IS NOT NULL
+        AND consumed_at IS NOT NULL AND consumed_by_idempotency_id IS NOT NULL)
+    )
+  )`,
   `CREATE TABLE usage_receipts (
     id TEXT PRIMARY KEY NOT NULL,
     request_id TEXT NOT NULL UNIQUE,

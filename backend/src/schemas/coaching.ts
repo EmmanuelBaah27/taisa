@@ -1,15 +1,17 @@
 import { z } from 'zod';
-import type { CoachingRequest } from '@taisa/shared';
+import { COACHING_GATEWAY_LIMITS, type CoachingRequest } from '@taisa/shared';
 
-const MAX_ID_LENGTH = 128;
-const MAX_TEXT_LENGTH = 4000;
-const MAX_PROFILE_FIELD_LENGTH = 200;
-const MAX_ID_LIST_LENGTH = 50;
-
-const IdSchema = z.string().trim().min(1).max(MAX_ID_LENGTH);
-const TimestampSchema = z.string().max(40).datetime();
-const StatementSchema = z.string().trim().min(1).max(MAX_TEXT_LENGTH);
-const IdListSchema = z.array(IdSchema).max(MAX_ID_LIST_LENGTH);
+const IdSchema = z.string().trim().min(1).max(COACHING_GATEWAY_LIMITS.maxIdLength);
+const TimestampSchema = z
+  .string()
+  .max(COACHING_GATEWAY_LIMITS.maxTimestampLength)
+  .datetime();
+const StatementSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(COACHING_GATEWAY_LIMITS.maxTextLength);
+const IdListSchema = z.array(IdSchema).max(COACHING_GATEWAY_LIMITS.maxIdListLength);
 
 export const MemoryItemSchema = z.object({
   id: IdSchema,
@@ -78,12 +80,21 @@ export const MemoryDeltaSchema = z.discriminatedUnion('operation', [
 const CoachingRequestRuntimeSchema = z.object({
   requestId: z.string().uuid(),
   submittedAt: TimestampSchema,
-  input: z.string().trim().min(1).max(MAX_TEXT_LENGTH),
+  input: z.string().trim().min(1).max(COACHING_GATEWAY_LIMITS.maxTextLength),
   context: z.object({
     profile: z
       .object({
-        currentRole: z.string().trim().min(1).max(MAX_PROFILE_FIELD_LENGTH),
-        currentCompany: z.string().trim().min(1).max(MAX_PROFILE_FIELD_LENGTH).nullable(),
+        currentRole: z
+          .string()
+          .trim()
+          .min(1)
+          .max(COACHING_GATEWAY_LIMITS.maxProfileFieldLength),
+        currentCompany: z
+          .string()
+          .trim()
+          .min(1)
+          .max(COACHING_GATEWAY_LIMITS.maxProfileFieldLength)
+          .nullable(),
         careerStage: z.enum(['early', 'mid', 'senior', 'executive', 'founder']),
         coachingStyle: z.enum(['direct', 'supportive', 'socratic', 'structured']),
         accountabilityLevel: z.enum(['gentle', 'moderate', 'intense']),
@@ -95,13 +106,13 @@ const CoachingRequestRuntimeSchema = z.object({
         z
           .object({
             role: z.enum(['user', 'assistant']),
-            content: z.string().max(MAX_TEXT_LENGTH),
+            content: z.string().max(COACHING_GATEWAY_LIMITS.maxTextLength),
           })
           .strict(),
       )
-      .max(20),
-    memory: z.array(MemoryItemSchema).max(50),
-    evidence: z.array(EvidenceItemSchema).max(8),
+      .max(COACHING_GATEWAY_LIMITS.maxRecentMessages),
+    memory: z.array(MemoryItemSchema).max(COACHING_GATEWAY_LIMITS.maxMemoryItems),
+    evidence: z.array(EvidenceItemSchema).max(COACHING_GATEWAY_LIMITS.maxEvidenceItems),
   }).strict(),
 }).strict();
 

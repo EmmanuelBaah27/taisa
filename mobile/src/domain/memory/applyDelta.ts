@@ -8,8 +8,10 @@ import type {
 import type { RepositoryTransaction } from '../../db/types';
 
 import { getAction, updateAction } from '../../repositories/actionRepository';
+import { insertActionTransition } from '../../repositories/actionTransitionRepository';
 import {
   getConversation,
+  getMessage,
   updateConversation,
 } from '../../repositories/conversationRepository';
 import { getEvidence } from '../../repositories/evidenceRepository';
@@ -21,10 +23,11 @@ import {
 } from '../../repositories/memoryRepository';
 import { claimMutation } from '../../repositories/mutationReceipt';
 import type { GovernedMemoryDelta, MemoryGovernanceState } from './admission';
+import { consumeConfirmedMemoryResolution } from './confirmationWorkflow';
 import { requiresConfirmation } from './confirmationPolicy';
 
 export type DeltaAuthorization =
-  | { kind: 'user-confirmation'; confirmationId: string }
+  | { kind: 'confirmed-record'; confirmationId: string }
   | { kind: 'safe-automatic' };
 
 export interface ConfirmedDeltaApplication {
@@ -33,6 +36,22 @@ export interface ConfirmedDeltaApplication {
   idempotencyId: string;
   effectiveAt: string;
   newMemoryId?: string;
+  transitionId?: string;
+  trustedContext?: {
+    conversationId: string;
+    sourceMessageId: string;
+    requestId: string;
+  };
+  sourceLinks: readonly LocalMemorySource[];
+}
+
+export interface ConfirmedConflictResolutionApplication {
+  confirmationId: string;
+  idempotencyId: string;
+  effectiveAt: string;
+  successorId: string;
+  candidate: Extract<GovernedMemoryDelta, { operation: 'propose' }>;
+  predecessorIds: readonly string[];
   sourceLinks: readonly LocalMemorySource[];
 }
 
@@ -148,6 +167,56 @@ function incrementConfidence(confidence: LocalMemoryItem['confidence']): LocalMe
   return 'established';
 }
 
+function stableCompare(left: string, right: string): number {
+  if (left < right) return -1;
+  if (left > right) return 1;
+  return 0;
+}
+
+function sortedUnique(values: readonly string[]): string[] {
+  return [...new Set(values)].sort(stableCompare);
+}
+
+function normalizedSourceLinks(sourceLinks: readonly LocalMemorySource[]): LocalMemorySource[] {
+  return [...sourceLinks]
+    .map((source) => ({ ...source }))
+    .sort((left, right) => stableCompare(left.id, right.id));
+}
+
+export function confirmedDeltaResolutionPayload(application: ConfirmedDeltaApplication): unknown {
+  return {
+    kind: 'apply-delta',
+    proposal: application.delta,
+    delta: application.delta,
+    effectiveAt: application.effectiveAt,
+    newMemoryId: application.newMemoryId ?? null,
+    transitionId: application.transitionId ?? null,
+    trustedContext: application.trustedContext ?? null,
+    sourceLinks: normalizedSourceLinks(application.sourceLinks),
+  };
+}
+
+export function confirmedConflictResolutionPayload(
+  application: ConfirmedConflictResolutionApplication,
+): unknown {
+  return {
+    kind: 'resolve-conflict',
+    proposal: application.candidate,
+    effectiveAt: application.effectiveAt,
+    successorId: application.successorId,
+    candidate: {
+      ...application.candidate,
+      candidate: {
+        ...application.candidate.candidate,
+        sourceMessageIds: sortedUnique(application.candidate.candidate.sourceMessageIds),
+      },
+      conflictsWithIds: sortedUnique(application.candidate.conflictsWithIds),
+    },
+    predecessorIds: sortedUnique(application.predecessorIds),
+    sourceLinks: normalizedSourceLinks(application.sourceLinks),
+  };
+}
+
 function applicationTargetId(application: ConfirmedDeltaApplication): string {
   const { delta } = application;
   switch (delta.operation) {
@@ -176,13 +245,47 @@ async function applySourceLinks(
   }
 }
 
+async function validateActionCompletionSource(
+  transaction: RepositoryTransaction,
+  application: ConfirmedDeltaApplication,
+  delta: Extract<GovernedMemoryDelta, { operation: 'complete-action' }>,
+): Promise<{
+  transitionId: string;
+  conversationId: string;
+  sourceMessageId: string;
+  requestId: string;
+}> {
+  const context = application.trustedContext;
+  const transitionId = requireNonEmpty(application.transitionId, 'Action transition ID');
+  if (context === undefined || delta.sourceMessageId !== context.sourceMessageId) {
+    throw new UnsafeAutomaticDeltaError();
+  }
+  const message = await getMessage(transaction, context.sourceMessageId);
+  if (
+    message === null ||
+    message.role !== 'user' ||
+    message.lifecycle !== 'submitted' ||
+    message.conversationId !== context.conversationId ||
+    message.requestId === null ||
+    message.requestId !== context.requestId
+  ) {
+    throw new UnsafeAutomaticDeltaError();
+  }
+  return {
+    transitionId,
+    conversationId: context.conversationId,
+    sourceMessageId: context.sourceMessageId,
+    requestId: context.requestId,
+  };
+}
+
 export async function applyConfirmedDelta(
   transaction: RepositoryTransaction,
   application: ConfirmedDeltaApplication,
 ): Promise<void> {
   requireNonEmpty(application.idempotencyId, 'Idempotency ID');
   requireNonEmpty(application.effectiveAt, 'Effective timestamp');
-  if (application.authorization.kind === 'user-confirmation') {
+  if (application.authorization.kind === 'confirmed-record') {
     requireNonEmpty(application.authorization.confirmationId, 'Confirmation ID');
   }
 
@@ -202,16 +305,34 @@ export async function applyConfirmedDelta(
     if (requiresConfirmation(application.delta, state)) {
       throw new UnsafeAutomaticDeltaError();
     }
+  } else {
+    await consumeConfirmedMemoryResolution(transaction, {
+      confirmationId: application.authorization.confirmationId,
+      resolution: confirmedDeltaResolutionPayload(application),
+      consumedAt: application.effectiveAt,
+      consumedByIdempotencyId: application.idempotencyId,
+    });
   }
 
   const { delta, effectiveAt, idempotencyId, sourceLinks } = application;
   switch (delta.operation) {
     case 'propose': {
+      if (
+        delta.candidate.supersedesId != null ||
+        delta.conflictsWithIds.length > 0 ||
+        delta.changeKind === 'replace' ||
+        delta.changeKind === 'merge'
+      ) {
+        throw new InvalidDeltaApplicationError(
+          'Replacement memory must use the bundled conflict-resolution operation',
+        );
+      }
       const memoryId = requireNonEmpty(application.newMemoryId, 'New memory ID');
       validateSourceLinks(memoryId, sourceLinks, delta.candidate.sourceMessageIds);
       const memory: LocalMemoryItem = {
         ...delta.candidate,
         id: memoryId,
+        lifecycle: 'active',
         createdAt: effectiveAt,
         confirmedAt: effectiveAt,
         lastSupportedAt: effectiveAt,
@@ -227,6 +348,11 @@ export async function applyConfirmedDelta(
       return;
     }
     case 'transition': {
+      if (delta.to === 'superseded') {
+        throw new InvalidDeltaApplicationError(
+          'Supersession must use the bundled conflict-resolution operation',
+        );
+      }
       const current = await getMemory(transaction, delta.targetId);
       if (current === null) {
         throw new InvalidDeltaApplicationError('Cannot transition missing memory');
@@ -279,6 +405,7 @@ export async function applyConfirmedDelta(
       if (current === null || !delta.explicitlyCompleted) {
         throw new InvalidDeltaApplicationError('Cannot complete an unverified action');
       }
+      const provenance = await validateActionCompletionSource(transaction, application, delta);
       await updateAction(
         transaction,
         {
@@ -288,6 +415,21 @@ export async function applyConfirmedDelta(
           statusChangedAt: effectiveAt,
         },
         `${idempotencyId}:action`,
+      );
+      await insertActionTransition(
+        transaction,
+        {
+          id: provenance.transitionId,
+          actionId: current.id,
+          fromLifecycle: current.lifecycle,
+          toLifecycle: 'completed',
+          sourceMessageId: provenance.sourceMessageId,
+          conversationId: provenance.conversationId,
+          requestId: provenance.requestId,
+          kind: 'explicit-user-completion',
+          occurredAt: effectiveAt,
+        },
+        `${idempotencyId}:action-transition`,
       );
       return;
     }
@@ -314,4 +456,116 @@ export async function applyConfirmedDelta(
         'History-destructive memory operations require a dedicated confirmed workflow',
       );
   }
+}
+
+export async function applyConfirmedConflictResolution(
+  transaction: RepositoryTransaction,
+  application: ConfirmedConflictResolutionApplication,
+): Promise<void> {
+  requireNonEmpty(application.confirmationId, 'Confirmation ID');
+  requireNonEmpty(application.idempotencyId, 'Idempotency ID');
+  requireNonEmpty(application.successorId, 'Successor memory ID');
+  requireNonEmpty(application.effectiveAt, 'Effective timestamp');
+  const predecessorIds = sortedUnique(application.predecessorIds);
+  if (
+    predecessorIds.length === 0 ||
+    predecessorIds.length !== application.predecessorIds.length ||
+    application.candidate.changeKind !== 'replace' ||
+    application.candidate.candidate.supersedesId == null ||
+    !predecessorIds.includes(application.candidate.candidate.supersedesId) ||
+    sortedUnique(application.candidate.conflictsWithIds).join('\u0000') !==
+      predecessorIds.join('\u0000')
+  ) {
+    throw new InvalidDeltaApplicationError(
+      'Conflict resolution must identify each confirmed predecessor exactly once',
+    );
+  }
+
+  const resolution = confirmedConflictResolutionPayload(application);
+  if (!(await claimMutation(
+    transaction,
+    application.idempotencyId,
+    'governed-conflict-resolution',
+    application.successorId,
+    'resolve',
+    resolution,
+  ))) {
+    return;
+  }
+  await consumeConfirmedMemoryResolution(transaction, {
+    confirmationId: application.confirmationId,
+    resolution,
+    consumedAt: application.effectiveAt,
+    consumedByIdempotencyId: application.idempotencyId,
+  });
+
+  const predecessors = await Promise.all(
+    predecessorIds.map((id) => getMemory(transaction, id)),
+  );
+  if (
+    predecessors.some(
+      (item) =>
+        item === null ||
+        (item.lifecycle !== 'active' && item.lifecycle !== 'paused'),
+    )
+  ) {
+    throw new InvalidDeltaApplicationError(
+      'Every confirmed predecessor must still be active or paused',
+    );
+  }
+
+  const sourceLinks = [...application.sourceLinks];
+  const successorLinks = sourceLinks.filter(
+    (source) => source.memoryItemId === application.successorId,
+  );
+  validateSourceLinks(
+    application.successorId,
+    successorLinks,
+    application.candidate.candidate.sourceMessageIds,
+  );
+  for (const predecessorId of predecessorIds) {
+    validateSourceLinks(
+      predecessorId,
+      sourceLinks.filter((source) => source.memoryItemId === predecessorId),
+      application.candidate.candidate.sourceMessageIds,
+    );
+  }
+  if (
+    sourceLinks.some(
+      (source) =>
+        source.memoryItemId !== application.successorId &&
+        !predecessorIds.includes(source.memoryItemId),
+    )
+  ) {
+    throw new InvalidDeltaApplicationError('Conflict resolution contains an unrelated source link');
+  }
+
+  const successor: LocalMemoryItem = {
+    ...application.candidate.candidate,
+    id: application.successorId,
+    lifecycle: 'active',
+    createdAt: application.effectiveAt,
+    confirmedAt: application.effectiveAt,
+    lastSupportedAt: application.effectiveAt,
+    statusChangedAt: application.effectiveAt,
+    updatedAt: application.effectiveAt,
+    sourceMessageIds: [...application.candidate.candidate.sourceMessageIds],
+    sourceEvidenceIds: successorLinks.flatMap((source) =>
+      source.evidenceId === null ? [] : [source.evidenceId],
+    ),
+  };
+  await insertMemory(transaction, successor, `${application.idempotencyId}:successor`);
+  for (const predecessor of predecessors as LocalMemoryItem[]) {
+    await updateMemory(
+      transaction,
+      {
+        ...predecessor,
+        lifecycle: 'superseded',
+        updatedAt: application.effectiveAt,
+        statusChangedAt: application.effectiveAt,
+      },
+      `${application.idempotencyId}:predecessor:${predecessor.id}`,
+    );
+  }
+  await applySourceLinks(transaction, sourceLinks, application.idempotencyId);
 }

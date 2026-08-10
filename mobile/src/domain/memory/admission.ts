@@ -2,6 +2,7 @@ import type {
   LocalAction,
   LocalConversation,
   LocalEvidenceItem,
+  LocalMessage,
   MemoryDelta,
   MemoryItem,
 } from '@taisa/shared';
@@ -9,7 +10,7 @@ import type {
 import { requiresConfirmation } from './confirmationPolicy';
 
 export type MemoryChangeKind = 'create' | 'replace' | 'merge' | 'promote-fact';
-export type MemorySensitivity = 'none' | 'sensitive' | 'identity';
+export type MemorySensitivity = 'none' | 'sensitive' | 'identity' | 'unclassified';
 
 export type GovernedProposeDelta = Extract<MemoryDelta, { operation: 'propose' }> & {
   changeKind: MemoryChangeKind;
@@ -74,6 +75,18 @@ export type MemoryAdmissionResult =
       proposedTransitions: Array<Extract<MemoryDelta, { operation: 'transition' }>>;
     };
 
+export type GatewayMemoryAdmissionResult =
+  | MemoryAdmissionResult
+  | { status: 'rejected'; reason: 'unknown-target' | 'non-live-target' | 'untrusted-source' };
+
+export interface TrustedMemoryAdmissionContext {
+  conversationId: string;
+  sourceMessage: Pick<
+    LocalMessage,
+    'id' | 'conversationId' | 'role' | 'lifecycle'
+  >;
+}
+
 function compareStable(left: string, right: string): number {
   if (left < right) return -1;
   if (left > right) return 1;
@@ -132,4 +145,86 @@ export function assessMemoryAdmission(
   }
 
   return { status: 'automatic', delta };
+}
+
+function liveTarget(state: MemoryGovernanceState, id: string): MemoryItem | null {
+  const target = state.memory.find((item) => item.id === id);
+  if (target === undefined) return null;
+  return target.lifecycle === 'active' ||
+    target.lifecycle === 'paused' ||
+    target.lifecycle === 'proposed'
+    ? target
+    : null;
+}
+
+export function admitGatewayMemoryDelta(
+  delta: MemoryDelta,
+  state: MemoryGovernanceState,
+  context: TrustedMemoryAdmissionContext,
+): GatewayMemoryAdmissionResult {
+  const { sourceMessage } = context;
+  if (
+    sourceMessage.conversationId !== context.conversationId ||
+    sourceMessage.role !== 'user' ||
+    sourceMessage.lifecycle !== 'submitted'
+  ) {
+    return { status: 'rejected', reason: 'untrusted-source' };
+  }
+
+  switch (delta.operation) {
+    case 'propose': {
+      const supersedesId = delta.candidate.supersedesId ?? null;
+      if (supersedesId !== null) {
+        const target = state.memory.find((item) => item.id === supersedesId);
+        if (target === undefined) return { status: 'rejected', reason: 'unknown-target' };
+        if (liveTarget(state, supersedesId) === null) {
+          return { status: 'rejected', reason: 'non-live-target' };
+        }
+      }
+      const governed: GovernedProposeDelta = {
+        operation: 'propose',
+        candidate: {
+          ...delta.candidate,
+          provenance: 'ai-inferred',
+          lifecycle: 'proposed',
+          confidence: 'tentative',
+          sourceMessageIds: [sourceMessage.id],
+          supersedesId,
+        },
+        reason: delta.reason,
+        requiresConfirmation: true,
+        changeKind: supersedesId === null ? 'create' : 'replace',
+        sensitivity: 'unclassified',
+        materialToFutureCoaching: true,
+        conflictsWithIds: supersedesId === null ? [] : [supersedesId],
+      };
+      return assessMemoryAdmission(governed, state);
+    }
+    case 'transition': {
+      const target = state.memory.find((item) => item.id === delta.targetId);
+      if (target === undefined) return { status: 'rejected', reason: 'unknown-target' };
+      if (liveTarget(state, delta.targetId) === null) {
+        return { status: 'rejected', reason: 'non-live-target' };
+      }
+      return assessMemoryAdmission(
+        { ...delta, requiresConfirmation: true },
+        state,
+      );
+    }
+    case 'support': {
+      const target = state.memory.find((item) => item.id === delta.targetId);
+      if (target === undefined) return { status: 'rejected', reason: 'unknown-target' };
+      if (liveTarget(state, delta.targetId) === null) {
+        return { status: 'rejected', reason: 'non-live-target' };
+      }
+      return assessMemoryAdmission(
+        {
+          ...delta,
+          sourceMessageId: sourceMessage.id,
+          requiresConfirmation: false,
+        },
+        state,
+      );
+    }
+  }
 }

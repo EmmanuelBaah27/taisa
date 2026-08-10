@@ -1,17 +1,19 @@
 import type {
   CoachingContext,
+  CoachingRequest,
   LocalCareerProfile,
   LocalEvidenceItem,
   LocalMemoryItem,
   LocalMessage,
   MemoryLifecycle,
 } from '@taisa/shared';
+import {
+  COACHING_GATEWAY_LIMITS,
+  firstCoachingRequestContractViolation,
+} from '@taisa/shared';
 
 import { rankEvidence } from './rankEvidence';
 
-const HARD_MAX_MESSAGES = 20;
-const HARD_MAX_MEMORY = 50;
-const HARD_MAX_EVIDENCE = 8;
 const HARD_MAX_CANDIDATES = 200;
 
 export interface ContextAssemblyInput {
@@ -56,7 +58,11 @@ export type ContextExclusionReason =
   | 'scope-mismatch'
   | 'not-submitted'
   | 'duplicate-id'
-  | 'incomplete-profile';
+  | 'incomplete-profile'
+  | 'invalid-field'
+  | 'text-truncated'
+  | 'relationship-limit'
+  | 'relationship-duplicate';
 
 export interface ContextManifest {
   included: {
@@ -66,9 +72,11 @@ export interface ContextManifest {
     evidenceIds: string[];
   };
   excluded: Array<{
-    entityType: 'profile' | 'message' | 'memory' | 'evidence';
+    entityType: 'profile' | 'message' | 'memory' | 'evidence' | 'query';
     id: string;
     reason: ContextExclusionReason;
+    field?: string;
+    relatedId?: string;
   }>;
   queryLimits: { messages: number; memory: number; evidence: number };
   serializedCharacters: number;
@@ -76,8 +84,18 @@ export interface ContextManifest {
 }
 
 export interface AssembledCoachingContext {
+  request: CoachingRequest;
   context: CoachingContext;
   manifest: ContextManifest;
+}
+
+export class ContextContractViolationError extends Error {
+  readonly code = 'CONTEXT_CONTRACT_VIOLATION';
+
+  constructor(readonly field: string) {
+    super('A coaching request field does not satisfy the portable gateway contract');
+    this.name = 'ContextContractViolationError';
+  }
 }
 
 export class ContextBudgetExceededError extends Error {
@@ -109,8 +127,51 @@ function stableCompare(left: string, right: string): number {
   return 0;
 }
 
+function isGatewayId(value: unknown): value is string {
+  return (
+    typeof value === 'string' &&
+    value.length > 0 &&
+    value.length <= COACHING_GATEWAY_LIMITS.maxIdLength &&
+    value.trim() === value
+  );
+}
+
+function isGatewayTimestamp(value: unknown): value is string {
+  if (
+    typeof value !== 'string' ||
+    value.length > COACHING_GATEWAY_LIMITS.maxTimestampLength ||
+    !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/.test(value)
+  ) {
+    return false;
+  }
+  return Number.isFinite(Date.parse(value));
+}
+
+function isGatewayRequestId(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value,
+  );
+}
+
+function normalizedSubmittedInput(input: ContextAssemblyInput): string {
+  if (!isGatewayRequestId(input.requestId)) {
+    throw new ContextContractViolationError('requestId');
+  }
+  if (!isGatewayTimestamp(input.submittedAt)) {
+    throw new ContextContractViolationError('submittedAt');
+  }
+  const submittedThought = input.submittedThought.trim();
+  if (
+    submittedThought.length === 0 ||
+    submittedThought.length > COACHING_GATEWAY_LIMITS.maxTextLength
+  ) {
+    throw new ContextContractViolationError('submittedThought');
+  }
+  return submittedThought;
+}
+
 function timestampValue(value: string): number {
-  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/.test(value)) {
+  if (!isGatewayTimestamp(value)) {
     return Number.NEGATIVE_INFINITY;
   }
   const parsed = Date.parse(value);
@@ -145,20 +206,103 @@ function compactProfile(profile: LocalCareerProfile | null): CoachingContext['pr
   ) {
     return null;
   }
+  const currentRole = profile.currentRole.trim();
+  const currentCompany = profile.currentCompany?.trim() ?? null;
+  if (
+    currentRole.length === 0 ||
+    currentRole.length > COACHING_GATEWAY_LIMITS.maxProfileFieldLength
+  ) {
+    throw new ContextContractViolationError('profile.currentRole');
+  }
+  if (
+    currentCompany !== null &&
+    (currentCompany.length === 0 ||
+      currentCompany.length > COACHING_GATEWAY_LIMITS.maxProfileFieldLength)
+  ) {
+    throw new ContextContractViolationError('profile.currentCompany');
+  }
   return {
-    currentRole: profile.currentRole,
-    currentCompany: profile.currentCompany,
+    currentRole,
+    currentCompany,
     careerStage: profile.careerStage,
     coachingStyle: profile.coachingStyle,
     accountabilityLevel: profile.accountabilityLevel,
   };
 }
 
-function compactMemory(item: LocalMemoryItem): CoachingContext['memory'][number] {
+function compactText(
+  value: string,
+  entityType: 'message' | 'memory' | 'evidence',
+  id: string,
+  field: string,
+  excluded: ContextManifest['excluded'],
+  trim: boolean,
+): string | null {
+  const normalized = trim ? value.trim() : value;
+  if (trim && normalized.length === 0) {
+    excluded.push({ entityType, id, field, reason: 'invalid-field' });
+    return null;
+  }
+  if (normalized.length <= COACHING_GATEWAY_LIMITS.maxTextLength) return normalized;
+  excluded.push({ entityType, id, field, reason: 'text-truncated' });
+  return normalized.slice(0, COACHING_GATEWAY_LIMITS.maxTextLength);
+}
+
+function compactIdList(
+  values: readonly string[],
+  entityType: 'memory' | 'evidence' | 'query',
+  id: string,
+  field: string,
+  excluded: ContextManifest['excluded'],
+): string[] {
+  const valid: string[] = [];
+  const seen = new Set<string>();
+  for (const value of values) {
+    if (!isGatewayId(value)) {
+      excluded.push({
+        entityType,
+        id,
+        field,
+        reason: 'invalid-field',
+      });
+      continue;
+    }
+    if (seen.has(value)) {
+      excluded.push({
+        entityType,
+        id,
+        field,
+        relatedId: value,
+        reason: 'relationship-duplicate',
+      });
+      continue;
+    }
+    seen.add(value);
+    valid.push(value);
+  }
+  valid.sort(stableCompare);
+  for (const value of valid.slice(COACHING_GATEWAY_LIMITS.maxIdListLength)) {
+    excluded.push({
+      entityType,
+      id,
+      field,
+      relatedId: value,
+      reason: 'relationship-limit',
+    });
+  }
+  return valid.slice(0, COACHING_GATEWAY_LIMITS.maxIdListLength);
+}
+
+function compactMemory(
+  item: LocalMemoryItem,
+  excluded: ContextManifest['excluded'],
+): CoachingContext['memory'][number] | null {
+  const statement = compactText(item.statement, 'memory', item.id, 'statement', excluded, true);
+  if (statement === null) return null;
   return {
     id: item.id,
     type: item.type,
-    statement: item.statement,
+    statement,
     provenance: item.provenance,
     lifecycle: item.lifecycle,
     confidence: item.confidence,
@@ -166,19 +310,36 @@ function compactMemory(item: LocalMemoryItem): CoachingContext['memory'][number]
     confirmedAt: item.confirmedAt,
     lastSupportedAt: item.lastSupportedAt,
     statusChangedAt: item.statusChangedAt,
-    sourceMessageIds: [...item.sourceMessageIds],
+    sourceMessageIds: compactIdList(
+      item.sourceMessageIds,
+      'memory',
+      item.id,
+      'sourceMessageIds',
+      excluded,
+    ),
     supersedesId: item.supersedesId ?? null,
   };
 }
 
-function compactEvidence(item: LocalEvidenceItem): CoachingContext['evidence'][number] {
+function compactEvidence(
+  item: LocalEvidenceItem,
+  excluded: ContextManifest['excluded'],
+): CoachingContext['evidence'][number] | null {
+  const statement = compactText(item.statement, 'evidence', item.id, 'statement', excluded, true);
+  if (statement === null) return null;
   return {
     id: item.id,
-    statement: item.statement,
+    statement,
     occurredAt: item.occurredAt,
-    sourceMessageIds: [...item.sourceMessageIds],
-    goalIds: [...item.goalIds],
-    actionIds: [...item.actionIds],
+    sourceMessageIds: compactIdList(
+      item.sourceMessageIds,
+      'evidence',
+      item.id,
+      'sourceMessageIds',
+      excluded,
+    ),
+    goalIds: compactIdList(item.goalIds, 'evidence', item.id, 'goalIds', excluded),
+    actionIds: compactIdList(item.actionIds, 'evidence', item.id, 'actionIds', excluded),
   };
 }
 
@@ -194,16 +355,8 @@ function utf8ByteLength(value: string): number {
   return bytes;
 }
 
-function serializedStats(
-  input: ContextAssemblyInput,
-  context: CoachingContext,
-): { characters: number; tokens: number } {
-  const serialized = JSON.stringify({
-    requestId: input.requestId,
-    submittedAt: input.submittedAt,
-    input: input.submittedThought,
-    context,
-  });
+function serializedStats(request: CoachingRequest): { characters: number; tokens: number } {
+  const serialized = JSON.stringify(request);
   return {
     characters: serialized.length,
     tokens: utf8ByteLength(serialized),
@@ -222,26 +375,75 @@ function budgetReason(
   return null;
 }
 
+function invalidMemoryField(item: LocalMemoryItem): string | null {
+  if (!isGatewayId(item.id)) return 'id';
+  if (!isGatewayTimestamp(item.createdAt)) return 'createdAt';
+  if (item.confirmedAt !== null && !isGatewayTimestamp(item.confirmedAt)) return 'confirmedAt';
+  if (!isGatewayTimestamp(item.lastSupportedAt)) return 'lastSupportedAt';
+  if (!isGatewayTimestamp(item.statusChangedAt)) return 'statusChangedAt';
+  if (item.supersedesId != null && !isGatewayId(item.supersedesId)) return 'supersedesId';
+  if (
+    ![
+      'goal',
+      'commitment',
+      'decision',
+      'preference',
+      'career_context',
+      'development_area',
+      'evidence',
+      'pattern',
+    ].includes(item.type)
+  ) return 'type';
+  if (!['user-stated', 'user-confirmed', 'ai-inferred', 'system-observed'].includes(item.provenance)) {
+    return 'provenance';
+  }
+  if (!['proposed', 'active', 'paused', 'superseded', 'completed', 'rejected', 'archived'].includes(item.lifecycle)) {
+    return 'lifecycle';
+  }
+  if (!['tentative', 'supported', 'established'].includes(item.confidence)) return 'confidence';
+  return null;
+}
+
+function invalidEvidenceField(item: LocalEvidenceItem): string | null {
+  if (!isGatewayId(item.id)) return 'id';
+  if (!isGatewayTimestamp(item.occurredAt)) return 'occurredAt';
+  return null;
+}
+
+function validateProfileEnums(profile: CoachingContext['profile']): void {
+  if (profile === null) return;
+  if (!['early', 'mid', 'senior', 'executive', 'founder'].includes(profile.careerStage)) {
+    throw new ContextContractViolationError('profile.careerStage');
+  }
+  if (!['direct', 'supportive', 'socratic', 'structured'].includes(profile.coachingStyle)) {
+    throw new ContextContractViolationError('profile.coachingStyle');
+  }
+  if (!['gentle', 'moderate', 'intense'].includes(profile.accountabilityLevel)) {
+    throw new ContextContractViolationError('profile.accountabilityLevel');
+  }
+}
+
 export async function assembleCoachingContext(
   input: ContextAssemblyInput,
   repositories: ContextRepositories,
   limits: ContextAssemblyLimits,
 ): Promise<AssembledCoachingContext> {
+  const submittedInput = normalizedSubmittedInput(input);
   positiveInteger(limits.maxCharacters, 'Character budget');
   positiveInteger(limits.maxEstimatedTokens, 'Token budget');
   const maxMessages = boundedLimit(
-    limits.maxMessages ?? HARD_MAX_MESSAGES,
-    HARD_MAX_MESSAGES,
+    limits.maxMessages ?? COACHING_GATEWAY_LIMITS.maxRecentMessages,
+    COACHING_GATEWAY_LIMITS.maxRecentMessages,
     'Message limit',
   );
   const maxMemory = boundedLimit(
-    limits.maxMemory ?? HARD_MAX_MEMORY,
-    HARD_MAX_MEMORY,
+    limits.maxMemory ?? COACHING_GATEWAY_LIMITS.maxMemoryItems,
+    COACHING_GATEWAY_LIMITS.maxMemoryItems,
     'Memory limit',
   );
   const maxEvidence = boundedLimit(
-    limits.maxEvidence ?? HARD_MAX_EVIDENCE,
-    HARD_MAX_EVIDENCE,
+    limits.maxEvidence ?? COACHING_GATEWAY_LIMITS.maxEvidenceItems,
+    COACHING_GATEWAY_LIMITS.maxEvidenceItems,
     'Evidence limit',
   );
   const memoryQueryLimit = boundedLimit(
@@ -255,21 +457,74 @@ export async function assembleCoachingContext(
     'Evidence candidate limit',
   );
   const excluded: ContextManifest['excluded'] = [];
+  const directEvidenceIds = compactIdList(
+    input.directEvidenceIds,
+    'query',
+    input.requestId,
+    'directEvidenceIds',
+    excluded,
+  );
+  const directSourceMessageIds = compactIdList(
+    input.directSourceMessageIds,
+    'query',
+    input.requestId,
+    'directSourceMessageIds',
+    excluded,
+  );
+  const relatedGoalIds = compactIdList(
+    input.relatedGoalIds,
+    'query',
+    input.requestId,
+    'relatedGoalIds',
+    excluded,
+  );
+  const relatedActionIds = compactIdList(
+    input.relatedActionIds,
+    'query',
+    input.requestId,
+    'relatedActionIds',
+    excluded,
+  );
 
   const [storedProfile, returnedMessages, returnedMemory, returnedEvidence] = await Promise.all([
     repositories.getProfile(input.profileId),
     repositories.listRecentMessages(input.conversationId, maxMessages),
     repositories.listMemoryCandidates(['active', 'paused'], memoryQueryLimit),
-    repositories.listEvidenceCandidates(input.submittedThought, evidenceQueryLimit),
+    repositories.listEvidenceCandidates(submittedInput, evidenceQueryLimit),
   ]);
 
   const scopedMessages = uniqueById(returnedMessages, 'message', excluded).filter((message) => {
+    if (!isGatewayId(message.id)) {
+      excluded.push({ entityType: 'message', id: message.id, field: 'id', reason: 'invalid-field' });
+      return false;
+    }
     if (message.conversationId !== input.conversationId) {
       excluded.push({ entityType: 'message', id: message.id, reason: 'scope-mismatch' });
       return false;
     }
     if (message.lifecycle !== 'submitted' && message.lifecycle !== 'received') {
       excluded.push({ entityType: 'message', id: message.id, reason: 'not-submitted' });
+      return false;
+    }
+    if (!isGatewayTimestamp(message.createdAt)) {
+      excluded.push({
+        entityType: 'message',
+        id: message.id,
+        field: 'createdAt',
+        reason: 'invalid-field',
+      });
+      return false;
+    }
+    if (
+      (message.role !== 'user' && message.role !== 'assistant') ||
+      typeof message.content !== 'string'
+    ) {
+      excluded.push({
+        entityType: 'message',
+        id: message.id,
+        field: message.role !== 'user' && message.role !== 'assistant' ? 'role' : 'content',
+        reason: 'invalid-field',
+      });
       return false;
     }
     return true;
@@ -279,12 +534,25 @@ export async function assembleCoachingContext(
       timestampValue(left.createdAt) - timestampValue(right.createdAt) ||
       stableCompare(left.id, right.id),
   );
-  const selectedMessages = orderedMessages.slice(-maxMessages);
+  const selectedMessages = orderedMessages.slice(-maxMessages).map((message) => ({
+    ...message,
+    content: compactText(message.content, 'message', message.id, 'content', excluded, false)!,
+  }));
   for (const item of orderedMessages.slice(0, Math.max(0, orderedMessages.length - maxMessages))) {
     excluded.push({ entityType: 'message', id: item.id, reason: 'count-limit' });
   }
 
   const liveMemory = uniqueById(returnedMemory, 'memory', excluded).filter((item) => {
+    const invalidField = invalidMemoryField(item);
+    if (invalidField !== null) {
+      excluded.push({
+        entityType: 'memory',
+        id: item.id,
+        field: invalidField,
+        reason: 'invalid-field',
+      });
+      return false;
+    }
     if (item.lifecycle !== 'active' && item.lifecycle !== 'paused') {
       excluded.push({ entityType: 'memory', id: item.id, reason: 'lifecycle-filtered' });
       return false;
@@ -297,19 +565,35 @@ export async function assembleCoachingContext(
       timestampValue(right.lastSupportedAt) - timestampValue(left.lastSupportedAt) ||
       stableCompare(left.id, right.id),
   );
-  const selectedMemory = liveMemory.slice(0, maxMemory);
+  const selectedMemory = liveMemory
+    .slice(0, maxMemory)
+    .map((item) => compactMemory(item, excluded))
+    .filter((item): item is CoachingContext['memory'][number] => item !== null);
   for (const item of liveMemory.slice(maxMemory)) {
     excluded.push({ entityType: 'memory', id: item.id, reason: 'count-limit' });
   }
 
-  const uniqueEvidence = uniqueById(returnedEvidence, 'evidence', excluded);
+  const uniqueEvidence = uniqueById(returnedEvidence, 'evidence', excluded)
+    .filter((item) => {
+      const invalidField = invalidEvidenceField(item);
+      if (invalidField === null) return true;
+      excluded.push({
+        entityType: 'evidence',
+        id: item.id,
+        field: invalidField,
+        reason: 'invalid-field',
+      });
+      return false;
+    })
+    .map((item) => compactEvidence(item, excluded))
+    .filter((item): item is CoachingContext['evidence'][number] => item !== null);
   const rankedEvidence = rankEvidence(
     {
-      text: input.submittedThought,
-      directEvidenceIds: input.directEvidenceIds,
-      directSourceMessageIds: input.directSourceMessageIds,
-      goalIds: input.relatedGoalIds,
-      actionIds: input.relatedActionIds,
+      text: submittedInput,
+      directEvidenceIds,
+      directSourceMessageIds,
+      goalIds: relatedGoalIds,
+      actionIds: relatedActionIds,
     },
     uniqueEvidence,
   );
@@ -324,25 +608,40 @@ export async function assembleCoachingContext(
     excluded.push({ entityType: 'evidence', id: item.id, reason: 'count-limit' });
   }
 
-  let profile = compactProfile(storedProfile);
+  let profile: CoachingContext['profile'] = null;
   if (storedProfile !== null && storedProfile.id !== input.profileId) {
-    profile = null;
     excluded.push({ entityType: 'profile', id: storedProfile.id, reason: 'scope-mismatch' });
-  } else if (storedProfile !== null && profile === null) {
-    excluded.push({ entityType: 'profile', id: storedProfile.id, reason: 'incomplete-profile' });
+  } else if (storedProfile !== null) {
+    profile = compactProfile(storedProfile);
+    if (profile === null) {
+      excluded.push({ entityType: 'profile', id: storedProfile.id, reason: 'incomplete-profile' });
+    }
   }
+  validateProfileEnums(profile);
   const messages = [...selectedMessages];
   const memory = [...selectedMemory];
   const evidence = [...selectedEvidence];
   const buildContext = (): CoachingContext => ({
     profile,
     recentMessages: messages.map((message) => ({ role: message.role, content: message.content })),
-    memory: memory.map(compactMemory),
-    evidence: evidence.map(compactEvidence),
+    memory: memory.map((item) => ({ ...item, sourceMessageIds: [...item.sourceMessageIds] })),
+    evidence: evidence.map((item) => ({
+      ...item,
+      sourceMessageIds: [...item.sourceMessageIds],
+      goalIds: [...item.goalIds],
+      actionIds: [...item.actionIds],
+    })),
+  });
+  const buildRequest = (context: CoachingContext): CoachingRequest => ({
+    requestId: input.requestId,
+    submittedAt: input.submittedAt,
+    input: submittedInput,
+    context,
   });
 
   let context = buildContext();
-  let stats = serializedStats(input, context);
+  let request = buildRequest(context);
+  let stats = serializedStats(request);
   let reason = budgetReason(stats, limits);
   while (reason !== null) {
     if (evidence.length > 0) {
@@ -361,11 +660,17 @@ export async function assembleCoachingContext(
       throw new ContextBudgetExceededError(stats.characters, stats.tokens);
     }
     context = buildContext();
-    stats = serializedStats(input, context);
+    request = buildRequest(context);
+    stats = serializedStats(request);
     reason = budgetReason(stats, limits);
+  }
+  const contractViolation = firstCoachingRequestContractViolation(request);
+  if (contractViolation !== null) {
+    throw new ContextContractViolationError(contractViolation);
   }
 
   return {
+    request,
     context,
     manifest: {
       included: {

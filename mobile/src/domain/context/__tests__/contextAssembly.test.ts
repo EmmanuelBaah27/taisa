@@ -4,10 +4,12 @@ import type {
   LocalMemoryItem,
   LocalMessage,
 } from '@taisa/shared';
+import { COACHING_GATEWAY_LIMITS } from '@taisa/shared';
 
 import {
   assembleCoachingContext,
   ContextBudgetExceededError,
+  ContextContractViolationError,
   type ContextRepositories,
 } from '../assembleContext';
 import { rankEvidence } from '../rankEvidence';
@@ -69,7 +71,7 @@ const profile: LocalCareerProfile = {
 };
 
 const baseInput = {
-  requestId: 'request-context-1',
+  requestId: '11111111-1111-4111-8111-111111111111',
   submittedAt: NOW,
   submittedThought: 'I led the café launch 🚀',
   conversationId: 'conversation-1',
@@ -239,12 +241,7 @@ describe('assembleCoachingContext', () => {
         evidenceCandidateLimit: 16,
       },
     );
-    const serialized = JSON.stringify({
-      requestId: baseInput.requestId,
-      submittedAt: baseInput.submittedAt,
-      input: baseInput.submittedThought,
-      context: result.context,
-    });
+    const serialized = JSON.stringify(result.request);
 
     expect(result.manifest.serializedCharacters).toBe(serialized.length);
     expect(result.manifest.estimatedTokens).toBeLessThanOrEqual(750);
@@ -351,5 +348,234 @@ describe('assembleCoachingContext', () => {
     expect(error).toBeInstanceOf(ContextBudgetExceededError);
     expect(error).toMatchObject({ code: 'CONTEXT_BUDGET_EXCEEDED' });
     expect(String(error)).not.toContain(sensitiveThought.trim());
+  });
+
+  test.each([
+    ['requestId', { requestId: 'not-a-uuid' }],
+    ['submittedAt', { submittedAt: 'not-a-timestamp' }],
+    [
+      'submittedThought',
+      { submittedThought: 'x'.repeat(COACHING_GATEWAY_LIMITS.maxTextLength + 1) },
+    ],
+  ])('rejects an invalid gateway identity field without exposing content (%s)', async (field, patch) => {
+    const repositories: ContextRepositories = {
+      getProfile: async () => null,
+      listRecentMessages: async () => [],
+      listMemoryCandidates: async () => [],
+      listEvidenceCandidates: async () => [],
+    };
+
+    let error: unknown;
+    try {
+      await assembleCoachingContext({ ...baseInput, ...patch }, repositories, {
+        maxCharacters: 20_000,
+        maxEstimatedTokens: 20_000,
+        memoryCandidateLimit: 50,
+        evidenceCandidateLimit: 16,
+      });
+    } catch (caught) {
+      error = caught;
+    }
+
+    expect(error).toBeInstanceOf(ContextContractViolationError);
+    expect(error).toMatchObject({ code: 'CONTEXT_CONTRACT_VIOLATION', field });
+    expect(String(error)).not.toContain(baseInput.submittedThought);
+  });
+
+  test('compacts nested text and relationship lists to portable gateway limits with a content-free manifest', async () => {
+    const sourceMessageIds = Array.from(
+      { length: COACHING_GATEWAY_LIMITS.maxIdListLength + 5 },
+      (_, index) => `source-${String(index).padStart(2, '0')}`,
+    ).reverse();
+    const goalIds = Array.from(
+      { length: COACHING_GATEWAY_LIMITS.maxIdListLength + 3 },
+      (_, index) => `goal-${String(index).padStart(2, '0')}`,
+    ).reverse();
+    const longMessage: LocalMessage = {
+      id: 'message-long',
+      conversationId: baseInput.conversationId,
+      parentMessageId: null,
+      role: 'user',
+      content: 'm'.repeat(COACHING_GATEWAY_LIMITS.maxTextLength + 7),
+      lifecycle: 'submitted',
+      requestId: null,
+      createdAt: NOW,
+      updatedAt: NOW,
+    };
+    const longMemory = {
+      ...memory('memory-long', ` ${'s'.repeat(COACHING_GATEWAY_LIMITS.maxTextLength + 9)} `),
+      sourceMessageIds,
+    };
+    const longEvidence = evidence(
+      'evidence-long',
+      ` ${'e'.repeat(COACHING_GATEWAY_LIMITS.maxTextLength + 11)} `,
+      NOW,
+      { sourceMessageIds, goalIds },
+    );
+    const repositories: ContextRepositories = {
+      getProfile: async () => profile,
+      listRecentMessages: async () => [longMessage],
+      listMemoryCandidates: async () => [longMemory],
+      listEvidenceCandidates: async () => [longEvidence],
+    };
+
+    const result = await assembleCoachingContext(
+      { ...baseInput, directEvidenceIds: [longEvidence.id] },
+      repositories,
+      {
+        maxCharacters: 100_000,
+        maxEstimatedTokens: 100_000,
+        memoryCandidateLimit: 50,
+        evidenceCandidateLimit: 16,
+      },
+    );
+
+    expect(result.request.context).toEqual(result.context);
+    expect(result.request.context.recentMessages[0].content).toHaveLength(
+      COACHING_GATEWAY_LIMITS.maxTextLength,
+    );
+    expect(result.request.context.memory[0].statement).toHaveLength(
+      COACHING_GATEWAY_LIMITS.maxTextLength,
+    );
+    expect(result.request.context.memory[0].sourceMessageIds).toHaveLength(
+      COACHING_GATEWAY_LIMITS.maxIdListLength,
+    );
+    expect(result.request.context.memory[0].sourceMessageIds).toEqual(
+      [...sourceMessageIds].sort().slice(0, COACHING_GATEWAY_LIMITS.maxIdListLength),
+    );
+    expect(result.request.context.evidence[0].goalIds).toHaveLength(
+      COACHING_GATEWAY_LIMITS.maxIdListLength,
+    );
+    expect(result.manifest.excluded).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          entityType: 'message',
+          id: longMessage.id,
+          field: 'content',
+          reason: 'text-truncated',
+        }),
+        expect.objectContaining({
+          entityType: 'memory',
+          id: longMemory.id,
+          field: 'statement',
+          reason: 'text-truncated',
+        }),
+        expect.objectContaining({
+          entityType: 'memory',
+          id: longMemory.id,
+          field: 'sourceMessageIds',
+          relatedId: sourceMessageIds.sort()[COACHING_GATEWAY_LIMITS.maxIdListLength],
+          reason: 'relationship-limit',
+        }),
+        expect.objectContaining({
+          entityType: 'evidence',
+          id: longEvidence.id,
+          field: 'goalIds',
+          reason: 'relationship-limit',
+        }),
+      ]),
+    );
+    expect(JSON.stringify(result.manifest)).not.toContain('m'.repeat(50));
+    expect(JSON.stringify(result.manifest)).not.toContain('s'.repeat(50));
+  });
+
+  test('excludes invalid nested identities and timestamps before request serialization', async () => {
+    const malformedRelationship = 'not-an-id confidential relationship detail '.repeat(4);
+    const invalidMemory = {
+      ...memory('memory-invalid-time'),
+      lastSupportedAt: 'yesterday',
+    };
+    const invalidEvidence = evidence('', 'Relevant launch result', NOW, {
+      sourceMessageIds: [malformedRelationship],
+    });
+    const repositories: ContextRepositories = {
+      getProfile: async () => profile,
+      listRecentMessages: async () => [],
+      listMemoryCandidates: async () => [invalidMemory],
+      listEvidenceCandidates: async () => [invalidEvidence],
+    };
+
+    const result = await assembleCoachingContext(
+      { ...baseInput, submittedThought: 'Relevant launch result', directEvidenceIds: [''] },
+      repositories,
+      {
+        maxCharacters: 20_000,
+        maxEstimatedTokens: 20_000,
+        memoryCandidateLimit: 50,
+        evidenceCandidateLimit: 16,
+      },
+    );
+
+    expect(result.request.context.memory).toEqual([]);
+    expect(result.request.context.evidence).toEqual([]);
+    expect(result.manifest.excluded).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          entityType: 'memory',
+          id: invalidMemory.id,
+          field: 'lastSupportedAt',
+          reason: 'invalid-field',
+        }),
+        expect.objectContaining({
+          entityType: 'evidence',
+          id: invalidEvidence.id,
+          field: 'id',
+          reason: 'invalid-field',
+        }),
+      ]),
+    );
+    expect(JSON.stringify(result.manifest)).not.toContain(malformedRelationship.trim());
+  });
+
+  test('never copies a malformed relationship value into the local manifest', async () => {
+    const malformedRelationship = 'private relationship-shaped content '.repeat(5);
+    const item = memory('memory-invalid-relationship');
+    item.sourceMessageIds = [malformedRelationship];
+    const repositories: ContextRepositories = {
+      getProfile: async () => null,
+      listRecentMessages: async () => [],
+      listMemoryCandidates: async () => [item],
+      listEvidenceCandidates: async () => [],
+    };
+
+    const result = await assembleCoachingContext(baseInput, repositories, {
+      maxCharacters: 20_000,
+      maxEstimatedTokens: 20_000,
+      memoryCandidateLimit: 50,
+      evidenceCandidateLimit: 16,
+    });
+
+    expect(result.context.memory[0].sourceMessageIds).toEqual([]);
+    expect(result.manifest.excluded).toContainEqual({
+      entityType: 'memory',
+      id: item.id,
+      field: 'sourceMessageIds',
+      reason: 'invalid-field',
+    });
+    expect(JSON.stringify(result.manifest)).not.toContain(malformedRelationship.trim());
+  });
+
+  test('rejects rather than truncating an oversize profile identity field', async () => {
+    const repositories: ContextRepositories = {
+      getProfile: async () => ({
+        ...profile,
+        currentRole: 'r'.repeat(COACHING_GATEWAY_LIMITS.maxProfileFieldLength + 1),
+      }),
+      listRecentMessages: async () => [],
+      listMemoryCandidates: async () => [],
+      listEvidenceCandidates: async () => [],
+    };
+
+    await expect(
+      assembleCoachingContext(baseInput, repositories, {
+        maxCharacters: 20_000,
+        maxEstimatedTokens: 20_000,
+        memoryCandidateLimit: 50,
+        evidenceCandidateLimit: 16,
+      }),
+    ).rejects.toMatchObject({
+      code: 'CONTEXT_CONTRACT_VIOLATION',
+      field: 'profile.currentRole',
+    });
   });
 });

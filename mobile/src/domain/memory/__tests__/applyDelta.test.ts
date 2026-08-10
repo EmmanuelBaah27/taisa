@@ -7,6 +7,7 @@ import type {
 } from '@taisa/shared';
 
 import { getAction, insertAction } from '../../../repositories/actionRepository';
+import { listActionTransitions } from '../../../repositories/actionTransitionRepository';
 import {
   getConversation,
   insertConversation,
@@ -19,11 +20,21 @@ import {
   linkMemorySource,
   listMemorySources,
 } from '../../../repositories/memoryRepository';
+import { getMemoryConfirmation } from '../../../repositories/memoryConfirmationRepository';
 import { createTestDatabase } from '../../../repositories/__tests__/testDatabase';
 import {
   applyConfirmedDelta,
+  applyConfirmedConflictResolution,
+  confirmedDeltaResolutionPayload,
+  confirmedConflictResolutionPayload,
   UnsafeAutomaticDeltaError,
 } from '../applyDelta';
+import {
+  ConfirmationPayloadMismatchError,
+  MemoryConfirmationStateError,
+  confirmMemoryResolution,
+  stageMemoryConfirmation,
+} from '../confirmationWorkflow';
 
 const NOW = '2026-08-10T09:00:00.000Z';
 const LATER = '2026-08-10T10:00:00.000Z';
@@ -149,7 +160,99 @@ describe('applyConfirmedDelta', () => {
     }
   });
 
-  test('applies a confirmed replacement without erasing history and is idempotent', async () => {
+  test('requires the exact durable confirmed payload and consumes it once', async () => {
+    const db = createTestDatabase();
+    const proposal = {
+      operation: 'propose' as const,
+      candidate: {
+        type: 'preference' as const,
+        statement: 'Prefer roles with strategic ownership',
+        provenance: 'ai-inferred' as const,
+        lifecycle: 'proposed' as const,
+        confidence: 'tentative' as const,
+        sourceMessageIds: [currentMessage.id],
+        supersedesId: null,
+      },
+      reason: 'The submitted thought may indicate a durable preference.',
+      requiresConfirmation: true,
+      changeKind: 'create' as const,
+      sensitivity: 'unclassified' as const,
+      materialToFutureCoaching: true,
+      conflictsWithIds: [],
+    };
+    const application = {
+      delta: proposal,
+      authorization: {
+        kind: 'confirmed-record' as const,
+        confirmationId: 'confirmation-strategic-ownership',
+      },
+      idempotencyId: 'apply-strategic-ownership',
+      effectiveAt: LATER,
+      newMemoryId: 'memory-strategic-ownership',
+      sourceLinks: [
+        {
+          id: 'source-strategic-ownership',
+          memoryItemId: 'memory-strategic-ownership',
+          messageId: currentMessage.id,
+          evidenceId: null,
+          linkedAt: LATER,
+        },
+      ],
+    };
+
+    try {
+      await seedConversationAndStaffGoal(db);
+      await db.withTransaction((tx) =>
+        stageMemoryConfirmation(tx, {
+          confirmationId: application.authorization.confirmationId,
+          proposal,
+          conversationId: conversation.id,
+          sourceMessageId: currentMessage.id,
+          stagedAt: NOW,
+          idempotencyId: 'stage-strategic-ownership',
+        }),
+      );
+
+      await expect(
+        db.withTransaction((tx) => applyConfirmedDelta(tx, application)),
+      ).rejects.toBeInstanceOf(MemoryConfirmationStateError);
+      await db.withTransaction((tx) =>
+        confirmMemoryResolution(tx, {
+          confirmationId: application.authorization.confirmationId,
+          resolution: confirmedDeltaResolutionPayload(application),
+          localUserAction: {
+            id: 'user-action-strategic-ownership',
+            kind: 'explicit-confirm',
+            actedAt: LATER,
+          },
+          idempotencyId: 'confirm-strategic-ownership',
+        }),
+      );
+      await expect(
+        db.withTransaction((tx) =>
+          applyConfirmedDelta(tx, { ...application, effectiveAt: NOW }),
+        ),
+      ).rejects.toBeInstanceOf(ConfirmationPayloadMismatchError);
+      await db.withTransaction((tx) => applyConfirmedDelta(tx, application));
+      await db.withTransaction((tx) => applyConfirmedDelta(tx, application));
+
+      expect(await getMemory(db, application.newMemoryId)).toMatchObject({
+        id: application.newMemoryId,
+        statement: proposal.candidate.statement,
+        lifecycle: 'active',
+      });
+      expect(
+        await getMemoryConfirmation(db, application.authorization.confirmationId),
+      ).toMatchObject({
+        status: 'consumed',
+        consumedByIdempotencyId: application.idempotencyId,
+      });
+    } finally {
+      db.close();
+    }
+  });
+
+  test('applies one confirmed replacement bundle without erasing history and is idempotent', async () => {
     const db = createTestDatabase();
     const proposal = {
       operation: 'propose' as const,
@@ -157,7 +260,7 @@ describe('applyConfirmedDelta', () => {
         type: 'goal' as const,
         statement: 'Move into product design management',
         provenance: 'ai-inferred' as const,
-        lifecycle: 'active' as const,
+        lifecycle: 'proposed' as const,
         confidence: 'tentative' as const,
         sourceMessageIds: [currentMessage.id],
         supersedesId: staffGoal.id,
@@ -165,59 +268,63 @@ describe('applyConfirmedDelta', () => {
       reason: 'The user confirmed a change in direction.',
       requiresConfirmation: true,
       changeKind: 'replace' as const,
-      sensitivity: 'none' as const,
+      sensitivity: 'unclassified' as const,
       materialToFutureCoaching: true,
       conflictsWithIds: [staffGoal.id],
     };
-    const sourceLink = {
-      id: 'source-management',
-      memoryItemId: 'memory-management',
-      messageId: currentMessage.id,
-      evidenceId: null,
-      linkedAt: LATER,
-    };
     const application = {
-      delta: proposal,
-      authorization: {
-        kind: 'user-confirmation' as const,
-        confirmationId: 'confirmation-management',
-      },
-      idempotencyId: 'management-proposal',
+      confirmationId: 'confirmation-management',
+      idempotencyId: 'management-conflict-resolution',
       effectiveAt: LATER,
-      newMemoryId: 'memory-management',
-      sourceLinks: [sourceLink],
+      successorId: 'memory-management',
+      candidate: proposal,
+      predecessorIds: [staffGoal.id],
+      sourceLinks: [
+        {
+          id: 'source-management',
+          memoryItemId: 'memory-management',
+          messageId: currentMessage.id,
+          evidenceId: null,
+          linkedAt: LATER,
+        },
+        {
+          id: 'source-management-transition',
+          memoryItemId: staffGoal.id,
+          messageId: currentMessage.id,
+          evidenceId: null,
+          linkedAt: LATER,
+        },
+      ],
     };
 
     try {
       await seedConversationAndStaffGoal(db);
-      await db.withTransaction((tx) => applyConfirmedDelta(tx, application));
       await db.withTransaction((tx) =>
-        applyConfirmedDelta(tx, {
-          delta: {
-            operation: 'transition',
-            targetId: staffGoal.id,
-            to: 'superseded',
-            reason: 'The user confirmed management replaces the Staff direction.',
-            requiresConfirmation: true,
+        stageMemoryConfirmation(tx, {
+          confirmationId: application.confirmationId,
+          proposal: {
+            ...proposal,
           },
-          authorization: {
-            kind: 'user-confirmation',
-            confirmationId: 'confirmation-management',
-          },
-          idempotencyId: 'management-transition',
-          effectiveAt: LATER,
-          sourceLinks: [
-            {
-              id: 'source-management-transition',
-              memoryItemId: staffGoal.id,
-              messageId: currentMessage.id,
-              evidenceId: null,
-              linkedAt: LATER,
-            },
-          ],
+          conversationId: conversation.id,
+          sourceMessageId: currentMessage.id,
+          stagedAt: NOW,
+          idempotencyId: 'stage-management-conflict',
         }),
       );
-      await db.withTransaction((tx) => applyConfirmedDelta(tx, application));
+      await db.withTransaction((tx) =>
+        confirmMemoryResolution(tx, {
+          confirmationId: application.confirmationId,
+          resolution: confirmedConflictResolutionPayload(application),
+          localUserAction: {
+            id: 'user-action-management-conflict',
+            kind: 'explicit-confirm',
+            actedAt: LATER,
+          },
+          idempotencyId: 'confirm-management-conflict',
+        }),
+      );
+      await db.withTransaction((tx) => applyConfirmedConflictResolution(tx, application));
+      await db.withTransaction((tx) => applyConfirmedConflictResolution(tx, application));
 
       expect(await getMemory(db, 'memory-management')).toEqual({
         id: 'memory-management',
@@ -241,7 +348,99 @@ describe('applyConfirmedDelta', () => {
         lifecycle: 'superseded',
         sourceMessageIds: [originalMessage.id, currentMessage.id],
       });
-      expect(await listMemorySources(db, 'memory-management')).toEqual([sourceLink]);
+      expect(await listMemorySources(db, 'memory-management')).toEqual([
+        application.sourceLinks[0],
+      ]);
+      expect(await getMemoryConfirmation(db, application.confirmationId)).toMatchObject({
+        status: 'consumed',
+        consumedByIdempotencyId: application.idempotencyId,
+      });
+    } finally {
+      db.close();
+    }
+  });
+
+  test('rolls back the entire confirmed replacement when a source write fails midway', async () => {
+    const db = createTestDatabase();
+    const candidate = {
+      operation: 'propose' as const,
+      candidate: {
+        type: 'goal' as const,
+        statement: 'Move into product design management',
+        provenance: 'ai-inferred' as const,
+        lifecycle: 'proposed' as const,
+        confidence: 'tentative' as const,
+        sourceMessageIds: [currentMessage.id],
+        supersedesId: staffGoal.id,
+      },
+      reason: 'Replace the Staff direction.',
+      requiresConfirmation: true,
+      changeKind: 'replace' as const,
+      sensitivity: 'unclassified' as const,
+      materialToFutureCoaching: true,
+      conflictsWithIds: [staffGoal.id],
+    };
+    const application = {
+      confirmationId: 'confirmation-rollback',
+      idempotencyId: 'conflict-resolution-rollback',
+      effectiveAt: LATER,
+      successorId: 'memory-management-rollback',
+      candidate,
+      predecessorIds: [staffGoal.id],
+      sourceLinks: [
+        {
+          id: 'source-management-rollback',
+          memoryItemId: 'memory-management-rollback',
+          messageId: currentMessage.id,
+          evidenceId: null,
+          linkedAt: LATER,
+        },
+        {
+          id: 'source-original-goal',
+          memoryItemId: staffGoal.id,
+          messageId: currentMessage.id,
+          evidenceId: null,
+          linkedAt: LATER,
+        },
+      ],
+    };
+
+    try {
+      await seedConversationAndStaffGoal(db);
+      await db.withTransaction((tx) =>
+        stageMemoryConfirmation(tx, {
+          confirmationId: application.confirmationId,
+          proposal: {
+            ...candidate,
+          },
+          conversationId: conversation.id,
+          sourceMessageId: currentMessage.id,
+          stagedAt: NOW,
+          idempotencyId: 'stage-conflict-rollback',
+        }),
+      );
+      await db.withTransaction((tx) =>
+        confirmMemoryResolution(tx, {
+          confirmationId: application.confirmationId,
+          resolution: confirmedConflictResolutionPayload(application),
+          localUserAction: {
+            id: 'user-action-conflict-rollback',
+            kind: 'explicit-confirm',
+            actedAt: LATER,
+          },
+          idempotencyId: 'confirm-conflict-rollback',
+        }),
+      );
+
+      await expect(
+        db.withTransaction((tx) => applyConfirmedConflictResolution(tx, application)),
+      ).rejects.toThrow('UNIQUE constraint failed');
+      expect(await getMemory(db, application.successorId)).toBeNull();
+      expect(await getMemory(db, staffGoal.id)).toMatchObject({ lifecycle: 'active' });
+      expect(await getMemoryConfirmation(db, application.confirmationId)).toMatchObject({
+        status: 'confirmed',
+        consumedAt: null,
+      });
     } finally {
       db.close();
     }
@@ -271,7 +470,7 @@ describe('applyConfirmedDelta', () => {
     const action: LocalAction = {
       id: 'action-roadmap',
       goalId: null,
-      sourceMessageId: currentMessage.id,
+      sourceMessageId: originalMessage.id,
       title: 'Lead the roadmap workshop',
       description: null,
       lifecycle: 'open',
@@ -294,6 +493,12 @@ describe('applyConfirmedDelta', () => {
       authorization: { kind: 'safe-automatic' as const },
       idempotencyId: 'complete-roadmap-action',
       effectiveAt: LATER,
+      transitionId: 'transition-roadmap-completion',
+      trustedContext: {
+        conversationId: conversation.id,
+        sourceMessageId: currentMessage.id,
+        requestId: currentMessage.requestId!,
+      },
       sourceLinks: [],
     };
     const conversationArchival = {
@@ -374,14 +579,117 @@ describe('applyConfirmedDelta', () => {
       });
       expect(await getAction(db, action.id)).toMatchObject({
         lifecycle: 'completed',
+        sourceMessageId: originalMessage.id,
         updatedAt: LATER,
         statusChangedAt: LATER,
       });
+      expect(await listActionTransitions(db, action.id)).toEqual([
+        {
+          id: 'transition-roadmap-completion',
+          actionId: action.id,
+          fromLifecycle: 'open',
+          toLifecycle: 'completed',
+          sourceMessageId: currentMessage.id,
+          conversationId: conversation.id,
+          requestId: currentMessage.requestId,
+          kind: 'explicit-user-completion',
+          occurredAt: LATER,
+        },
+      ]);
       expect(await getConversation(db, conversation.id)).toMatchObject({
         lifecycle: 'archived',
         archivedAt: LATER,
         updatedAt: LATER,
       });
+    } finally {
+      db.close();
+    }
+  });
+
+  test.each([
+    [
+      'private user message',
+      { role: 'user' as const, lifecycle: 'private' as const, conversationId: conversation.id },
+      { conversationId: conversation.id, requestId: 'request-spoof' },
+    ],
+    [
+      'assistant message',
+      { role: 'assistant' as const, lifecycle: 'received' as const, conversationId: conversation.id },
+      { conversationId: conversation.id, requestId: 'request-spoof' },
+    ],
+    [
+      'message from another conversation',
+      { role: 'user' as const, lifecycle: 'submitted' as const, conversationId: 'conversation-other' },
+      { conversationId: conversation.id, requestId: 'request-spoof' },
+    ],
+    [
+      'stale request context',
+      { role: 'user' as const, lifecycle: 'submitted' as const, conversationId: conversation.id },
+      { conversationId: conversation.id, requestId: 'request-current-different' },
+    ],
+  ])('rejects automatic completion from a %s', async (_label, messageOverrides, contextOverrides) => {
+    const db = createTestDatabase();
+    const otherConversation: LocalConversation = {
+      ...conversation,
+      id: 'conversation-other',
+    };
+    const spoofMessage: LocalMessage = {
+      ...currentMessage,
+      id: 'message-spoof',
+      requestId: 'request-spoof',
+      ...messageOverrides,
+    };
+    const openAction: LocalAction = {
+      id: 'action-spoof-check',
+      goalId: null,
+      sourceMessageId: originalMessage.id,
+      title: 'Complete only from trusted evidence',
+      description: null,
+      lifecycle: 'open',
+      priority: null,
+      dueAt: null,
+      supersedesId: null,
+      createdAt: NOW,
+      updatedAt: NOW,
+      statusChangedAt: NOW,
+    };
+
+    try {
+      await seedConversationAndStaffGoal(db);
+      await db.withTransaction((tx) =>
+        insertConversation(tx, otherConversation, 'seed-other-conversation'),
+      );
+      await db.withTransaction((tx) =>
+        insertMessage(tx, spoofMessage, `seed-${spoofMessage.id}`),
+      );
+      await db.withTransaction((tx) => insertAction(tx, openAction, 'seed-spoof-action'));
+
+      await expect(
+        db.withTransaction((tx) =>
+          applyConfirmedDelta(tx, {
+            delta: {
+              operation: 'complete-action',
+              targetId: openAction.id,
+              explicitlyCompleted: true,
+              sourceMessageId: spoofMessage.id,
+              reason: 'Untrusted completion attempt.',
+              requiresConfirmation: false,
+            },
+            authorization: { kind: 'safe-automatic' },
+            idempotencyId: `complete-spoof-${_label}`,
+            effectiveAt: LATER,
+            transitionId: `transition-spoof-${_label}`,
+            trustedContext: {
+              conversationId: contextOverrides.conversationId,
+              sourceMessageId: spoofMessage.id,
+              requestId: contextOverrides.requestId,
+            },
+            sourceLinks: [],
+          }),
+        ),
+      ).rejects.toBeInstanceOf(UnsafeAutomaticDeltaError);
+      expect(await getAction(db, openAction.id)).toMatchObject({ lifecycle: 'open' });
+      expect(await listActionTransitions(db, openAction.id)).toEqual([]);
     } finally {
       db.close();
     }
