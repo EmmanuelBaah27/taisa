@@ -43,4 +43,24 @@ describe('evidenceRepository', () => {
       db.close();
     }
   });
+
+  test('a missing evidence update rolls back its receipt so the same mutation can be retried', async () => {
+    const db = createTestDatabase();
+    const updated: LocalEvidenceItem = {
+      ...evidence,
+      statement: 'Updated evidence statement.',
+      updatedAt: LATER,
+    };
+
+    try {
+      await expect(
+        db.withTransaction((tx) => updateEvidence(tx, updated, 'evidence-update-retry')),
+      ).rejects.toThrow('Cannot update missing evidence');
+      await db.withTransaction((tx) => insertEvidence(tx, evidence, 'evidence-create-1'));
+      await db.withTransaction((tx) => updateEvidence(tx, updated, 'evidence-update-retry'));
+      expect(await getEvidence(db, evidence.id)).toEqual(updated);
+    } finally {
+      db.close();
+    }
+  });
 });

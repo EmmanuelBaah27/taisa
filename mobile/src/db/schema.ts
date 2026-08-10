@@ -142,6 +142,10 @@ export const SCHEMA_V1_STATEMENTS: readonly string[] = [
     entity_type TEXT NOT NULL,
     entity_id TEXT NOT NULL,
     operation TEXT NOT NULL,
+    fingerprint_version INTEGER NOT NULL CHECK (fingerprint_version = 1),
+    payload_digest TEXT NOT NULL CHECK (
+      length(payload_digest) = 64 AND payload_digest NOT GLOB '*[^0-9a-f]*'
+    ),
     recorded_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
   )`,
   `CREATE INDEX messages_conversation_created_idx ON messages(conversation_id, created_at)`,

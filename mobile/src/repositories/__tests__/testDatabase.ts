@@ -2,10 +2,12 @@ import Database from 'better-sqlite3';
 
 import { SCHEMA_V1_STATEMENTS } from '../../db/schema';
 import type {
+  ExclusiveTransactionConnection,
   RepositoryConnection,
   RepositoryTransaction,
   SQLiteBindParams,
 } from '../../db/types';
+import { withRepositoryTransaction } from '../../db/types';
 
 function normalizeParams(params: SQLiteBindParams): SQLiteBindParams {
   if (Array.isArray(params)) {
@@ -17,7 +19,7 @@ function normalizeParams(params: SQLiteBindParams): SQLiteBindParams {
   );
 }
 
-export interface TestDatabase extends RepositoryConnection {
+export interface TestDatabase extends ExclusiveTransactionConnection {
   close(): void;
   withTransaction<T>(work: (transaction: RepositoryTransaction) => Promise<T>): Promise<T>;
 }
@@ -49,16 +51,20 @@ export function createTestDatabase(): TestDatabase {
     close(): void {
       database.close();
     },
-    async withTransaction<T>(work: (transaction: RepositoryTransaction) => Promise<T>): Promise<T> {
+    async withExclusiveTransactionAsync(
+      work: (transaction: RepositoryConnection) => Promise<void>,
+    ): Promise<void> {
       database.exec('BEGIN IMMEDIATE');
       try {
-        const result = await work(connection);
+        await work(connection);
         database.exec('COMMIT');
-        return result;
       } catch (error) {
         database.exec('ROLLBACK');
         throw error;
       }
+    },
+    withTransaction<T>(work: (transaction: RepositoryTransaction) => Promise<T>): Promise<T> {
+      return withRepositoryTransaction(connection, work);
     },
   };
 

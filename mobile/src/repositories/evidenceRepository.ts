@@ -2,7 +2,7 @@ import type { LocalEvidenceItem } from '@taisa/shared';
 
 import type { RepositoryConnection, RepositoryTransaction } from '../db/types';
 import { parseStringArray } from './mapping';
-import { claimMutation } from './mutationReceipt';
+import { claimMutation, requireExactlyOneAffectedRow } from './mutationReceipt';
 
 interface EvidenceRow {
   id: string;
@@ -53,7 +53,7 @@ export async function insertEvidence(
   evidence: LocalEvidenceItem,
   idempotencyId: string,
 ): Promise<void> {
-  if (!(await claimMutation(transaction, idempotencyId, 'evidence', evidence.id, 'insert'))) {
+  if (!(await claimMutation(transaction, idempotencyId, 'evidence', evidence.id, 'insert', evidence))) {
     return;
   }
   await transaction.runAsync(
@@ -82,16 +82,17 @@ export async function updateEvidence(
   evidence: LocalEvidenceItem,
   idempotencyId: string,
 ): Promise<void> {
-  if (!(await claimMutation(transaction, idempotencyId, 'evidence', evidence.id, 'update'))) {
+  if (!(await claimMutation(transaction, idempotencyId, 'evidence', evidence.id, 'update', evidence))) {
     return;
   }
-  await transaction.runAsync(
+  const result = await transaction.runAsync(
     `UPDATE evidence SET statement = $statement, occurred_at = $occurredAt,
        source_message_ids_json = $sourceMessageIdsJson, goal_ids_json = $goalIdsJson,
        action_ids_json = $actionIdsJson, created_at = $createdAt, updated_at = $updatedAt
      WHERE id = $id`,
     evidenceParams(evidence),
   );
+  requireExactlyOneAffectedRow(result, 'Cannot update missing evidence');
 }
 
 export async function listEvidence(database: RepositoryConnection): Promise<LocalEvidenceItem[]> {

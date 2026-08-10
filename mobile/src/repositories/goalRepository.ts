@@ -7,7 +7,7 @@ import type {
 
 import type { RepositoryConnection, RepositoryTransaction } from '../db/types';
 import { lifecycleFilter } from './mapping';
-import { claimMutation } from './mutationReceipt';
+import { claimMutation, requireExactlyOneAffectedRow } from './mutationReceipt';
 
 interface GoalRow {
   id: string;
@@ -105,7 +105,7 @@ export async function insertGoal(
   goal: LocalGoal,
   idempotencyId: string,
 ): Promise<void> {
-  if (!(await claimMutation(transaction, idempotencyId, 'goal', goal.id, 'insert'))) {
+  if (!(await claimMutation(transaction, idempotencyId, 'goal', goal.id, 'insert', goal))) {
     return;
   }
   await insertGoalRow(transaction, goal, idempotencyId);
@@ -127,10 +127,10 @@ export async function updateGoal(
   goal: LocalGoal,
   idempotencyId: string,
 ): Promise<void> {
-  if (!(await claimMutation(transaction, idempotencyId, 'goal', goal.id, 'update'))) {
+  if (!(await claimMutation(transaction, idempotencyId, 'goal', goal.id, 'update', goal))) {
     return;
   }
-  await transaction.runAsync(
+  const result = await transaction.runAsync(
     `UPDATE goals SET title = $title, description = $description, lifecycle = $lifecycle,
        priority = $priority, progress_percent = $progressPercent, target_date = $targetDate,
        source_message_id = $sourceMessageId, supersedes_id = $supersedesId,
@@ -138,6 +138,7 @@ export async function updateGoal(
      WHERE id = $id`,
     goalParams(goal),
   );
+  requireExactlyOneAffectedRow(result, 'Cannot update missing goal');
 }
 
 export async function listGoals(
@@ -159,7 +160,17 @@ export async function supersedeGoal(
   successor: LocalGoal,
   idempotencyId: string,
 ): Promise<void> {
-  if (!(await claimMutation(transaction, idempotencyId, 'goal', successor.id, 'supersede'))) {
+  if (successor.supersedesId !== previousGoalId) {
+    throw new TypeError('Successor must reference the superseded goal');
+  }
+  if (!(await claimMutation(
+    transaction,
+    idempotencyId,
+    'goal',
+    successor.id,
+    'supersede',
+    { previousGoalId, successor },
+  ))) {
     return;
   }
   const result = await transaction.runAsync(
@@ -172,9 +183,7 @@ export async function supersedeGoal(
       $statusChangedAt: successor.statusChangedAt,
     },
   );
-  if (result.changes !== 1) {
-    throw new Error('Cannot supersede a missing goal');
-  }
+  requireExactlyOneAffectedRow(result, 'Cannot supersede a missing goal');
   await insertGoalRow(transaction, successor, idempotencyId);
 }
 
@@ -183,10 +192,11 @@ export async function deleteGoal(
   id: string,
   idempotencyId: string,
 ): Promise<void> {
-  if (!(await claimMutation(transaction, idempotencyId, 'goal', id, 'delete'))) {
+  if (!(await claimMutation(transaction, idempotencyId, 'goal', id, 'delete', { id }))) {
     return;
   }
-  await transaction.runAsync('DELETE FROM goals WHERE id = $id', { $id: id });
+  const result = await transaction.runAsync('DELETE FROM goals WHERE id = $id', { $id: id });
+  requireExactlyOneAffectedRow(result, 'Cannot delete missing goal');
 }
 
 function milestoneParams(milestone: LocalMilestone, idempotencyId?: string) {
@@ -207,7 +217,7 @@ export async function insertMilestone(
   milestone: LocalMilestone,
   idempotencyId: string,
 ): Promise<void> {
-  if (!(await claimMutation(transaction, idempotencyId, 'milestone', milestone.id, 'insert'))) {
+  if (!(await claimMutation(transaction, idempotencyId, 'milestone', milestone.id, 'insert', milestone))) {
     return;
   }
   await transaction.runAsync(
@@ -234,15 +244,16 @@ export async function updateMilestone(
   milestone: LocalMilestone,
   idempotencyId: string,
 ): Promise<void> {
-  if (!(await claimMutation(transaction, idempotencyId, 'milestone', milestone.id, 'update'))) {
+  if (!(await claimMutation(transaction, idempotencyId, 'milestone', milestone.id, 'update', milestone))) {
     return;
   }
-  await transaction.runAsync(
+  const result = await transaction.runAsync(
     `UPDATE milestones SET goal_id = $goalId, title = $title, lifecycle = $lifecycle,
        created_at = $createdAt, updated_at = $updatedAt, completed_at = $completedAt
      WHERE id = $id`,
     milestoneParams(milestone),
   );
+  requireExactlyOneAffectedRow(result, 'Cannot update missing milestone');
 }
 
 export async function listMilestones(

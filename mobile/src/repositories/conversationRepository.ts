@@ -7,7 +7,7 @@ import type {
 
 import type { RepositoryConnection, RepositoryTransaction } from '../db/types';
 import { lifecycleFilter } from './mapping';
-import { claimMutation } from './mutationReceipt';
+import { claimMutation, requireExactlyOneAffectedRow } from './mutationReceipt';
 
 interface ConversationRow {
   id: string;
@@ -64,7 +64,7 @@ export async function insertConversation(
   conversation: LocalConversation,
   idempotencyId: string,
 ): Promise<void> {
-  if (!(await claimMutation(transaction, idempotencyId, 'conversation', conversation.id, 'insert'))) {
+  if (!(await claimMutation(transaction, idempotencyId, 'conversation', conversation.id, 'insert', conversation))) {
     return;
   }
   await transaction.runAsync(
@@ -99,10 +99,10 @@ export async function updateConversation(
   conversation: LocalConversation,
   idempotencyId: string,
 ): Promise<void> {
-  if (!(await claimMutation(transaction, idempotencyId, 'conversation', conversation.id, 'update'))) {
+  if (!(await claimMutation(transaction, idempotencyId, 'conversation', conversation.id, 'update', conversation))) {
     return;
   }
-  await transaction.runAsync(
+  const result = await transaction.runAsync(
     `UPDATE conversations SET title = $title, lifecycle = $lifecycle,
        created_at = $createdAt, updated_at = $updatedAt, archived_at = $archivedAt
      WHERE id = $id`,
@@ -115,6 +115,7 @@ export async function updateConversation(
       $archivedAt: conversation.archivedAt,
     },
   );
+  requireExactlyOneAffectedRow(result, 'Cannot update missing conversation');
 }
 
 export async function listConversations(
@@ -135,10 +136,11 @@ export async function deleteConversation(
   id: string,
   idempotencyId: string,
 ): Promise<void> {
-  if (!(await claimMutation(transaction, idempotencyId, 'conversation', id, 'delete'))) {
+  if (!(await claimMutation(transaction, idempotencyId, 'conversation', id, 'delete', { id }))) {
     return;
   }
-  await transaction.runAsync('DELETE FROM conversations WHERE id = $id', { $id: id });
+  const result = await transaction.runAsync('DELETE FROM conversations WHERE id = $id', { $id: id });
+  requireExactlyOneAffectedRow(result, 'Cannot delete missing conversation');
 }
 
 export async function insertMessage(
@@ -146,7 +148,7 @@ export async function insertMessage(
   message: LocalMessage,
   idempotencyId: string,
 ): Promise<void> {
-  if (!(await claimMutation(transaction, idempotencyId, 'message', message.id, 'insert'))) {
+  if (!(await claimMutation(transaction, idempotencyId, 'message', message.id, 'insert', message))) {
     return;
   }
   await transaction.runAsync(
@@ -184,10 +186,10 @@ export async function updateMessage(
   message: LocalMessage,
   idempotencyId: string,
 ): Promise<void> {
-  if (!(await claimMutation(transaction, idempotencyId, 'message', message.id, 'update'))) {
+  if (!(await claimMutation(transaction, idempotencyId, 'message', message.id, 'update', message))) {
     return;
   }
-  await transaction.runAsync(
+  const result = await transaction.runAsync(
     `UPDATE messages SET conversation_id = $conversationId, parent_message_id = $parentMessageId,
        role = $role, content = $content, lifecycle = $lifecycle, request_id = $requestId,
        created_at = $createdAt, updated_at = $updatedAt
@@ -204,6 +206,7 @@ export async function updateMessage(
       $updatedAt: message.updatedAt,
     },
   );
+  requireExactlyOneAffectedRow(result, 'Cannot update missing message');
 }
 
 export async function listMessages(

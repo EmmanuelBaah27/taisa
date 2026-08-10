@@ -117,4 +117,25 @@ describe('memoryRepository', () => {
       db.close();
     }
   });
+
+  test('a missing memory update rolls back its receipt so the same mutation can be retried', async () => {
+    const db = createTestDatabase();
+    const completed: LocalMemoryItem = {
+      ...memory,
+      lifecycle: 'completed',
+      updatedAt: LATER,
+      statusChangedAt: LATER,
+    };
+
+    try {
+      await expect(
+        db.withTransaction((tx) => updateMemory(tx, completed, 'memory-update-retry')),
+      ).rejects.toThrow('Cannot update missing memory');
+      await db.withTransaction((tx) => insertMemory(tx, memory, 'memory-create-1'));
+      await db.withTransaction((tx) => updateMemory(tx, completed, 'memory-update-retry'));
+      expect(await getMemory(db, memory.id)).toEqual(completed);
+    } finally {
+      db.close();
+    }
+  });
 });

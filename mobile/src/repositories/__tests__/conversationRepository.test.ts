@@ -105,7 +105,12 @@ describe('conversationRepository', () => {
         orphanError = error;
       }
       expect({
-        error: orphanError instanceof Error ? orphanError.message : orphanError,
+        error:
+          typeof orphanError === 'object' &&
+          orphanError !== null &&
+          'message' in orphanError
+            ? String(orphanError.message)
+            : orphanError,
         stored: await getMessage(db, orphan.id),
         violations: await db.getAllAsync('PRAGMA foreign_key_check'),
       }).toEqual({
@@ -132,6 +137,60 @@ describe('conversationRepository', () => {
 
       expect(await getConversation(db, conversation.id)).toBeNull();
       expect(await getMessage(db, message.id)).toBeNull();
+    } finally {
+      db.close();
+    }
+  });
+
+  test('missing conversation update and delete receipts roll back for later retries', async () => {
+    const db = createTestDatabase();
+    const archived: LocalConversation = {
+      ...conversation,
+      lifecycle: 'archived',
+      archivedAt: LATER,
+      updatedAt: LATER,
+    };
+
+    try {
+      await expect(
+        db.withTransaction((tx) =>
+          updateConversation(tx, archived, 'conversation-update-retry'),
+        ),
+      ).rejects.toThrow('Cannot update missing conversation');
+      await db.withTransaction((tx) => insertConversation(tx, conversation, 'conversation-create-1'));
+      await db.withTransaction((tx) =>
+        updateConversation(tx, archived, 'conversation-update-retry'),
+      );
+      expect(await getConversation(db, conversation.id)).toEqual(archived);
+
+      await expect(
+        db.withTransaction((tx) =>
+          deleteConversation(tx, 'conversation-missing', 'conversation-delete-retry'),
+        ),
+      ).rejects.toThrow('Cannot delete missing conversation');
+      const second = { ...conversation, id: 'conversation-missing' };
+      await db.withTransaction((tx) => insertConversation(tx, second, 'conversation-create-2'));
+      await db.withTransaction((tx) =>
+        deleteConversation(tx, second.id, 'conversation-delete-retry'),
+      );
+      expect(await getConversation(db, second.id)).toBeNull();
+    } finally {
+      db.close();
+    }
+  });
+
+  test('a missing message update rolls back its receipt so it can be retried', async () => {
+    const db = createTestDatabase();
+    const updated = { ...message, content: 'Updated thought', updatedAt: LATER };
+
+    try {
+      await db.withTransaction((tx) => insertConversation(tx, conversation, 'conversation-create-1'));
+      await expect(
+        db.withTransaction((tx) => updateMessage(tx, updated, 'message-update-retry')),
+      ).rejects.toThrow('Cannot update missing message');
+      await db.withTransaction((tx) => insertMessage(tx, message, 'message-create-1'));
+      await db.withTransaction((tx) => updateMessage(tx, updated, 'message-update-retry'));
+      expect(await getMessage(db, message.id)).toEqual(updated);
     } finally {
       db.close();
     }

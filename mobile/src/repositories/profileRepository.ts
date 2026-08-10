@@ -2,7 +2,11 @@ import type { LocalCareerProfile } from '@taisa/shared';
 
 import type { RepositoryConnection, RepositoryTransaction } from '../db/types';
 import { parseStringArray } from './mapping';
-import { claimMutation, IdempotencyConflictError } from './mutationReceipt';
+import {
+  IdempotencyConflictError,
+  claimMutation,
+  requireExactlyOneAffectedRow,
+} from './mutationReceipt';
 
 interface ProfileRow {
   id: string;
@@ -68,7 +72,7 @@ export async function insertProfile(
   profile: LocalCareerProfile,
   idempotencyId: string,
 ): Promise<void> {
-  if (!(await claimMutation(transaction, idempotencyId, 'profile', profile.id, 'insert'))) {
+  if (!(await claimMutation(transaction, idempotencyId, 'profile', profile.id, 'insert', profile))) {
     return;
   }
   await transaction.runAsync(
@@ -96,10 +100,10 @@ export async function updateProfile(
   profile: LocalCareerProfile,
   idempotencyId: string,
 ): Promise<void> {
-  if (!(await claimMutation(transaction, idempotencyId, 'profile', profile.id, 'update'))) {
+  if (!(await claimMutation(transaction, idempotencyId, 'profile', profile.id, 'update', profile))) {
     return;
   }
-  await transaction.runAsync(
+  const result = await transaction.runAsync(
     `UPDATE profile SET
        current_role = $currentRole,
        current_company = $currentCompany,
@@ -117,6 +121,7 @@ export async function updateProfile(
      WHERE id = $id`,
     profileParams(profile),
   );
+  requireExactlyOneAffectedRow(result, 'Cannot update missing profile');
 }
 
 export async function listProfiles(database: RepositoryConnection): Promise<LocalCareerProfile[]> {

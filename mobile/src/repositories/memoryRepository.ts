@@ -6,7 +6,7 @@ import type {
 
 import type { RepositoryConnection, RepositoryTransaction } from '../db/types';
 import { lifecycleFilter } from './mapping';
-import { claimMutation } from './mutationReceipt';
+import { claimMutation, requireExactlyOneAffectedRow } from './mutationReceipt';
 
 interface MemoryRow {
   id: string;
@@ -91,7 +91,7 @@ export async function insertMemory(
   memory: LocalMemoryItem,
   idempotencyId: string,
 ): Promise<void> {
-  if (!(await claimMutation(transaction, idempotencyId, 'memory', memory.id, 'insert'))) {
+  if (!(await claimMutation(transaction, idempotencyId, 'memory', memory.id, 'insert', memory))) {
     return;
   }
   await transaction.runAsync(
@@ -136,10 +136,10 @@ export async function updateMemory(
   memory: LocalMemoryItem,
   idempotencyId: string,
 ): Promise<void> {
-  if (!(await claimMutation(transaction, idempotencyId, 'memory', memory.id, 'update'))) {
+  if (!(await claimMutation(transaction, idempotencyId, 'memory', memory.id, 'update', memory))) {
     return;
   }
-  await transaction.runAsync(
+  const result = await transaction.runAsync(
     `UPDATE memory_items SET type = $type, statement = $statement, provenance = $provenance,
        lifecycle = $lifecycle, confidence = $confidence, supersedes_id = $supersedesId,
        created_at = $createdAt, confirmed_at = $confirmedAt,
@@ -148,6 +148,7 @@ export async function updateMemory(
      WHERE id = $id`,
     memoryParams(memory),
   );
+  requireExactlyOneAffectedRow(result, 'Cannot update missing memory');
 }
 
 export async function listMemories(
@@ -170,7 +171,7 @@ export async function linkMemorySource(
   source: LocalMemorySource,
   idempotencyId: string,
 ): Promise<void> {
-  if (!(await claimMutation(transaction, idempotencyId, 'memory-source', source.id, 'insert'))) {
+  if (!(await claimMutation(transaction, idempotencyId, 'memory-source', source.id, 'insert', source))) {
     return;
   }
   await transaction.runAsync(

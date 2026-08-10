@@ -126,4 +126,101 @@ describe('goalRepository', () => {
       db.close();
     }
   });
+
+  test('missing goal update and delete receipts roll back for later retries', async () => {
+    const db = createTestDatabase();
+    const updated = { ...managementGoal, progressPercent: 60, updatedAt: LATER };
+
+    try {
+      await expect(
+        db.withTransaction((tx) => updateGoal(tx, updated, 'goal-update-retry')),
+      ).rejects.toThrow('Cannot update missing goal');
+      await db.withTransaction((tx) => insertGoal(tx, managementGoal, 'goal-create-1'));
+      await db.withTransaction((tx) => updateGoal(tx, updated, 'goal-update-retry'));
+      expect(await getGoal(db, managementGoal.id)).toEqual(updated);
+
+      await expect(
+        db.withTransaction((tx) => deleteGoal(tx, 'goal-missing', 'goal-delete-retry')),
+      ).rejects.toThrow('Cannot delete missing goal');
+      const second = { ...managementGoal, id: 'goal-missing' };
+      await db.withTransaction((tx) => insertGoal(tx, second, 'goal-create-2'));
+      await db.withTransaction((tx) => deleteGoal(tx, second.id, 'goal-delete-retry'));
+      expect(await getGoal(db, second.id)).toBeNull();
+    } finally {
+      db.close();
+    }
+  });
+
+  test('a missing milestone update rolls back its receipt so it can be retried', async () => {
+    const db = createTestDatabase();
+    const milestone: LocalMilestone = {
+      id: 'milestone-retry',
+      goalId: managementGoal.id,
+      title: 'Lead a roadmap workshop',
+      lifecycle: 'pending',
+      createdAt: NOW,
+      updatedAt: NOW,
+      completedAt: null,
+    };
+    const completed: LocalMilestone = {
+      ...milestone,
+      lifecycle: 'completed',
+      updatedAt: LATER,
+      completedAt: LATER,
+    };
+
+    try {
+      await db.withTransaction((tx) => insertGoal(tx, managementGoal, 'goal-create-1'));
+      await expect(
+        db.withTransaction((tx) =>
+          updateMilestone(tx, completed, 'milestone-update-retry'),
+        ),
+      ).rejects.toThrow('Cannot update missing milestone');
+      await db.withTransaction((tx) => insertMilestone(tx, milestone, 'milestone-create-1'));
+      await db.withTransaction((tx) =>
+        updateMilestone(tx, completed, 'milestone-update-retry'),
+      );
+      expect(await getMilestone(db, milestone.id)).toEqual(completed);
+    } finally {
+      db.close();
+    }
+  });
+
+  test('rejects a mismatched supersession link before claiming a receipt or changing history', async () => {
+    const db = createTestDatabase();
+    const otherGoal = { ...managementGoal, id: 'goal-other' };
+    const mismatchedSuccessor: LocalGoal = {
+      ...managementGoal,
+      id: 'goal-staff',
+      title: 'Grow toward Staff Designer',
+      supersedesId: otherGoal.id,
+    };
+
+    try {
+      await db.withTransaction((tx) => insertGoal(tx, managementGoal, 'goal-create-1'));
+      await db.withTransaction((tx) => insertGoal(tx, otherGoal, 'goal-create-2'));
+
+      await expect(
+        db.withTransaction((tx) =>
+          supersedeGoal(
+            tx,
+            managementGoal.id,
+            mismatchedSuccessor,
+            'goal-supersede-mismatch',
+          ),
+        ),
+      ).rejects.toThrow('Successor must reference the superseded goal');
+      expect(await getGoal(db, managementGoal.id)).toEqual(managementGoal);
+      expect(await getGoal(db, mismatchedSuccessor.id)).toBeNull();
+      expect(
+        await db.getFirstAsync(
+          `SELECT idempotency_id FROM mutation_receipts
+           WHERE idempotency_id = $id`,
+          { $id: 'goal-supersede-mismatch' },
+        ),
+      ).toBeNull();
+    } finally {
+      db.close();
+    }
+  });
 });

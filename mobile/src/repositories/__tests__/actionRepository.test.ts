@@ -45,4 +45,25 @@ describe('actionRepository', () => {
       db.close();
     }
   });
+
+  test('a missing action update rolls back its receipt so the same mutation can be retried', async () => {
+    const db = createTestDatabase();
+    const completed: LocalAction = {
+      ...action,
+      lifecycle: 'completed',
+      updatedAt: LATER,
+      statusChangedAt: LATER,
+    };
+
+    try {
+      await expect(
+        db.withTransaction((tx) => updateAction(tx, completed, 'action-update-retry')),
+      ).rejects.toThrow('Cannot update missing action');
+      await db.withTransaction((tx) => insertAction(tx, action, 'action-create-1'));
+      await db.withTransaction((tx) => updateAction(tx, completed, 'action-update-retry'));
+      expect(await getAction(db, action.id)).toEqual(completed);
+    } finally {
+      db.close();
+    }
+  });
 });

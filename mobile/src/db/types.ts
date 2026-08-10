@@ -20,6 +20,30 @@ export interface RepositoryConnection extends DatabaseLike {
   getAllAsync<T>(source: string, params?: SQLiteBindParams): Promise<T[]>;
 }
 
-// Expo SQLite's exclusive transaction object exposes the same bound-query methods as its
-// database connection. Naming the narrower contract makes mutation boundaries explicit.
-export type RepositoryTransaction = RepositoryConnection;
+declare const repositoryTransactionBrand: unique symbol;
+
+export interface RepositoryTransaction extends RepositoryConnection {
+  readonly [repositoryTransactionBrand]: true;
+}
+
+export interface ExclusiveTransactionConnection extends RepositoryConnection {
+  withExclusiveTransactionAsync(
+    work: (transaction: RepositoryConnection) => Promise<void>,
+  ): Promise<void>;
+}
+
+export async function withRepositoryTransaction<T>(
+  database: ExclusiveTransactionConnection,
+  work: (transaction: RepositoryTransaction) => Promise<T>,
+): Promise<T> {
+  let completed = false;
+  let result!: T;
+  await database.withExclusiveTransactionAsync(async (transaction) => {
+    result = await work(transaction as RepositoryTransaction);
+    completed = true;
+  });
+  if (!completed) {
+    throw new Error('Exclusive repository transaction did not execute');
+  }
+  return result;
+}

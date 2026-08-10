@@ -2,7 +2,7 @@ import type { LocalAction, LocalActionLifecycle } from '@taisa/shared';
 
 import type { RepositoryConnection, RepositoryTransaction } from '../db/types';
 import { lifecycleFilter } from './mapping';
-import { claimMutation } from './mutationReceipt';
+import { claimMutation, requireExactlyOneAffectedRow } from './mutationReceipt';
 
 interface ActionRow {
   id: string;
@@ -62,7 +62,7 @@ export async function insertAction(
   action: LocalAction,
   idempotencyId: string,
 ): Promise<void> {
-  if (!(await claimMutation(transaction, idempotencyId, 'action', action.id, 'insert'))) {
+  if (!(await claimMutation(transaction, idempotencyId, 'action', action.id, 'insert', action))) {
     return;
   }
   await transaction.runAsync(
@@ -91,10 +91,10 @@ export async function updateAction(
   action: LocalAction,
   idempotencyId: string,
 ): Promise<void> {
-  if (!(await claimMutation(transaction, idempotencyId, 'action', action.id, 'update'))) {
+  if (!(await claimMutation(transaction, idempotencyId, 'action', action.id, 'update', action))) {
     return;
   }
-  await transaction.runAsync(
+  const result = await transaction.runAsync(
     `UPDATE actions SET goal_id = $goalId, source_message_id = $sourceMessageId,
        title = $title, description = $description, lifecycle = $lifecycle,
        priority = $priority, due_at = $dueAt, supersedes_id = $supersedesId,
@@ -102,6 +102,7 @@ export async function updateAction(
      WHERE id = $id`,
     actionParams(action),
   );
+  requireExactlyOneAffectedRow(result, 'Cannot update missing action');
 }
 
 export async function listActions(
