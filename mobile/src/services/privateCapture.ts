@@ -1,6 +1,7 @@
 import type {
   CoachingRequest,
   CoachingResponse,
+  OutcomeDelta,
   LocalConversation,
   LocalMemorySource,
   LocalMessage,
@@ -28,6 +29,7 @@ import {
 } from '../domain/memory/applyDelta';
 import {
   confirmMemoryResolution,
+  consumeConfirmedMemoryResolution,
   stageMemoryConfirmation,
 } from '../domain/memory/confirmationWorkflow';
 import type {
@@ -36,7 +38,8 @@ import type {
   RepositoryTransaction,
 } from '../db/types';
 import { withRepositoryTransaction } from '../db/types';
-import { listActions } from '../repositories/actionRepository';
+import { insertAction, listActions } from '../repositories/actionRepository';
+import { insertGoal } from '../repositories/goalRepository';
 import {
   getCoachingRequest,
   insertCoachingRequest,
@@ -62,7 +65,7 @@ import {
   listRecentMessages,
   updateMessage,
 } from '../repositories/conversationRepository';
-import { listEvidence, searchEvidence } from '../repositories/evidenceRepository';
+import { insertEvidence, listEvidence, searchEvidence } from '../repositories/evidenceRepository';
 import {
   getMemoryConfirmation,
   listMemoryConfirmationsByConversation,
@@ -453,6 +456,26 @@ export function createPrivateCaptureService(
     const pendingProposals: PendingProposal[] = [];
     for (let index = 0; index < response.proposals.length; index += 1) {
       const providerProposal = response.proposals[index];
+      const proposalId = `${request.id}:proposal:${index}`;
+      if (providerProposal.operation === 'propose-outcome') {
+        await stageMemoryConfirmation(transaction, {
+          confirmationId: proposalId,
+          proposal: providerProposal as unknown as GovernedMemoryDelta,
+          conversationId: request.conversationId,
+          sourceMessageId: sourceMessage.id,
+          stagedAt: effectiveAt,
+          idempotencyId: `${proposalId}:stage`,
+          presentation: { kind: 'proposal', question: null },
+        });
+        pendingProposals.push({
+          id: proposalId,
+          summary: providerProposal.candidate.kind === 'evidence'
+            ? providerProposal.candidate.statement
+            : providerProposal.candidate.title,
+          kind: 'proposal', question: null, status: 'pending',
+        });
+        continue;
+      }
       const admission = admitGatewayMemoryDelta(
         providerProposal,
         await governanceState(transaction),
@@ -462,7 +485,6 @@ export function createPrivateCaptureService(
       const delta = admission.status === 'clarification-required'
         ? admission.candidate
         : admission.delta;
-      const proposalId = `${request.id}:proposal:${index}`;
       if (
         admission.status === 'confirmation-required' ||
         admission.status === 'clarification-required'
@@ -725,7 +747,10 @@ export function createPrivateCaptureService(
     } catch {
       return null;
     }
-    const summary = delta.operation === 'propose' ? delta.candidate.statement : delta.reason;
+    const outcome = delta as unknown as OutcomeDelta;
+    const summary = outcome.operation === 'propose-outcome'
+      ? outcome.candidate.kind === 'evidence' ? outcome.candidate.statement : outcome.candidate.title
+      : delta.operation === 'propose' ? delta.candidate.statement : delta.reason;
     return {
       id: confirmation.id,
       summary,
@@ -1087,7 +1112,45 @@ export function createPrivateCaptureService(
           throw new LocalSubmissionStateError('Memory proposal no longer exists');
         }
         if (confirmation.status === 'consumed') return;
-        const delta = JSON.parse(confirmation.proposalJson) as GovernedMemoryDelta;
+        const parsed = JSON.parse(confirmation.proposalJson) as GovernedMemoryDelta | OutcomeDelta;
+        if (parsed.operation === 'propose-outcome') {
+          const outcomeId = `${confirmation.id}:outcome`;
+          const resolution = { kind: 'apply-outcome', proposal: parsed, outcomeId, effectiveAt: input.actedAt };
+          await confirmMemoryResolution(transaction, {
+            confirmationId: confirmation.id, resolution,
+            localUserAction: { id: input.localUserActionId, kind: 'explicit-confirm', actedAt: input.actedAt },
+            idempotencyId: `${confirmation.id}:confirm`,
+          });
+          await consumeConfirmedMemoryResolution(transaction, {
+            confirmationId: confirmation.id, resolution, consumedAt: input.actedAt,
+            consumedByIdempotencyId: `${confirmation.id}:apply`,
+          });
+          const candidate = parsed.candidate;
+          if (candidate.kind === 'goal') {
+            await insertGoal(transaction, {
+              id: outcomeId, title: candidate.title, description: candidate.description,
+              lifecycle: 'active', priority: candidate.priority, progressPercent: 0,
+              targetDate: candidate.targetDate, sourceMessageId: confirmation.sourceMessageId,
+              supersedesId: candidate.supersedesId, createdAt: input.actedAt,
+              updatedAt: input.actedAt, statusChangedAt: input.actedAt,
+            }, `${confirmation.id}:outcome`);
+          } else if (candidate.kind === 'action') {
+            await insertAction(transaction, {
+              id: outcomeId, goalId: candidate.goalId, sourceMessageId: confirmation.sourceMessageId,
+              title: candidate.title, description: candidate.description, lifecycle: 'open',
+              priority: candidate.priority, dueAt: candidate.dueAt, supersedesId: candidate.supersedesId,
+              createdAt: input.actedAt, updatedAt: input.actedAt, statusChangedAt: input.actedAt,
+            }, `${confirmation.id}:outcome`);
+          } else {
+            await insertEvidence(transaction, {
+              id: outcomeId, statement: candidate.statement, occurredAt: candidate.occurredAt,
+              sourceMessageIds: [confirmation.sourceMessageId], goalIds: candidate.goalIds,
+              actionIds: candidate.actionIds, createdAt: input.actedAt, updatedAt: input.actedAt,
+            }, `${confirmation.id}:outcome`);
+          }
+          return;
+        }
+        const delta = parsed;
         if (
           delta.operation === 'propose' &&
           (delta.changeKind === 'replace' || delta.conflictsWithIds.length > 0)

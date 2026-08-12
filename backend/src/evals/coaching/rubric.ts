@@ -3,12 +3,12 @@ import type { CoachingEvaluationScenario } from './scenarios';
 
 export interface CoachingRubricScores { coachingUsefulness: number; continuityConflictDetection: number; actionQuality: number; memoryCorrectness: number; schemaCompliance: number; }
 
-function proposalTargets(proposals: MemoryDelta[]): Array<{ operation: MemoryDelta['operation']; targetId: string }> {
+function proposalTargets(proposals: CoachingResponse['proposals']): Array<{ operation: MemoryDelta['operation']; targetId: string }> {
   const targets: Array<{ operation: MemoryDelta['operation']; targetId: string }> = [];
   for (const proposal of proposals) {
     if (proposal.operation === 'propose' && proposal.candidate.supersedesId) {
       targets.push({ operation: proposal.operation, targetId: proposal.candidate.supersedesId });
-    } else if (proposal.operation !== 'propose') {
+    } else if (proposal.operation === 'transition' || proposal.operation === 'support') {
       targets.push({ operation: proposal.operation, targetId: proposal.targetId });
     }
   }
@@ -25,7 +25,8 @@ export function scoreCoachingResponse(
   const targetIds = targets.map((target) => target.targetId);
   const allowedStance = expected.allowedStances.includes(payload.stance);
   const requiredStance = !expected.requiredStance || payload.stance === expected.requiredStance;
-  const allowedOperations = operations.every((operation) => expected.allowedProposalOperations.includes(operation));
+  const allowedOperations = operations.every((operation) =>
+    operation === 'propose-outcome' || expected.allowedProposalOperations.includes(operation));
   const requiredOperations = expected.requiredProposalOperations.every((operation) => operations.includes(operation));
   const requiredTargets = expected.requiredProposalTargetIds.every((targetId) => targetIds.includes(targetId));
   const invalidTarget = targets.some((target) =>

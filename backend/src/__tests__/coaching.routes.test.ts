@@ -84,6 +84,9 @@ const profile = {
   careerStage: 'senior',
   coachingStyle: 'direct',
   accountabilityLevel: 'moderate',
+  currentFocusArea: '',
+  shortTermGoal: 'Grow into staff scope',
+  longTermGoal: '',
 };
 
 const validRequest = {

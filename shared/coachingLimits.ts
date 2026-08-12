@@ -77,6 +77,9 @@ function profileViolation(value: unknown): string | null {
       'careerStage',
       'coachingStyle',
       'accountabilityLevel',
+      'currentFocusArea',
+      'shortTermGoal',
+      'longTermGoal',
     ])
   ) return 'context.profile';
   if (
@@ -98,6 +101,11 @@ function profileViolation(value: unknown): string | null {
   }
   if (!isOneOf(value.accountabilityLevel, ['gentle', 'moderate', 'intense'])) {
     return 'context.profile.accountabilityLevel';
+  }
+  for (const field of ['currentFocusArea', 'shortTermGoal', 'longTermGoal'] as const) {
+    if (typeof value[field] !== 'string' || value[field].trim().length > COACHING_GATEWAY_LIMITS.maxProfileFieldLength) {
+      return `context.profile.${field}`;
+    }
   }
   return null;
 }
@@ -234,6 +242,36 @@ function memoryCandidateViolation(value: unknown, root: string): string | null {
 function memoryDeltaViolation(value: unknown, index: number): string | null {
   const root = `proposals[${index}]`;
   if (!isRecord(value)) return root;
+
+  if (value.operation === 'propose-outcome') {
+    if (!hasOnlyKeys(value, ['operation', 'candidate', 'reason', 'requiresConfirmation']) ||
+      !isRecord(value.candidate) || value.requiresConfirmation !== true || !isStatement(value.reason)) return root;
+    const candidate = value.candidate;
+    if (candidate.kind === 'goal') {
+      if (!hasOnlyKeys(candidate, ['kind', 'title', 'description', 'priority', 'targetDate', 'supersedesId']) ||
+        !isStatement(candidate.title) || (candidate.description !== null && !isStatement(candidate.description)) ||
+        (candidate.priority !== null && !isOneOf(candidate.priority, ['low', 'medium', 'high'])) ||
+        (candidate.targetDate !== null && !isTimestamp(candidate.targetDate)) ||
+        (candidate.supersedesId !== null && !isId(candidate.supersedesId))) return `${root}.candidate`;
+      return null;
+    }
+    if (candidate.kind === 'action') {
+      if (!hasOnlyKeys(candidate, ['kind', 'title', 'description', 'priority', 'dueAt', 'goalId', 'supersedesId']) ||
+        !isStatement(candidate.title) || (candidate.description !== null && !isStatement(candidate.description)) ||
+        (candidate.priority !== null && !isOneOf(candidate.priority, ['low', 'medium', 'high'])) ||
+        (candidate.dueAt !== null && !isTimestamp(candidate.dueAt)) ||
+        (candidate.goalId !== null && !isId(candidate.goalId)) ||
+        (candidate.supersedesId !== null && !isId(candidate.supersedesId))) return `${root}.candidate`;
+      return null;
+    }
+    if (candidate.kind === 'evidence') {
+      if (!hasOnlyKeys(candidate, ['kind', 'statement', 'occurredAt', 'goalIds', 'actionIds']) ||
+        !isStatement(candidate.statement) || !isTimestamp(candidate.occurredAt) ||
+        !isIdList(candidate.goalIds) || !isIdList(candidate.actionIds)) return `${root}.candidate`;
+      return null;
+    }
+    return `${root}.candidate.kind`;
+  }
 
   if (value.operation === 'propose') {
     if (!hasOnlyKeys(value, ['operation', 'candidate', 'reason', 'requiresConfirmation'])) {

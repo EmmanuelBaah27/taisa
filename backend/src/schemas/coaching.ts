@@ -77,6 +77,23 @@ export const MemoryDeltaSchema = z.discriminatedUnion('operation', [
   }).strict(),
 ]);
 
+const NullableTextSchema = StatementSchema.nullable();
+const PrioritySchema = z.enum(['low', 'medium', 'high']).nullable();
+const OutcomeDeltaSchema = z.object({
+  operation: z.literal('propose-outcome'),
+  candidate: z.discriminatedUnion('kind', [
+    z.object({ kind: z.literal('goal'), title: StatementSchema, description: NullableTextSchema,
+      priority: PrioritySchema, targetDate: TimestampSchema.nullable(), supersedesId: IdSchema.nullable() }).strict(),
+    z.object({ kind: z.literal('action'), title: StatementSchema, description: NullableTextSchema,
+      priority: PrioritySchema, dueAt: TimestampSchema.nullable(), goalId: IdSchema.nullable(),
+      supersedesId: IdSchema.nullable() }).strict(),
+    z.object({ kind: z.literal('evidence'), statement: StatementSchema, occurredAt: TimestampSchema,
+      goalIds: IdListSchema, actionIds: IdListSchema }).strict(),
+  ]),
+  reason: StatementSchema,
+  requiresConfirmation: z.literal(true),
+}).strict();
+
 const CoachingRequestRuntimeSchema = z.object({
   requestId: z.string().uuid(),
   submittedAt: TimestampSchema,
@@ -98,6 +115,9 @@ const CoachingRequestRuntimeSchema = z.object({
         careerStage: z.enum(['early', 'mid', 'senior', 'executive', 'founder']),
         coachingStyle: z.enum(['direct', 'supportive', 'socratic', 'structured']),
         accountabilityLevel: z.enum(['gentle', 'moderate', 'intense']),
+        currentFocusArea: z.string().trim().max(COACHING_GATEWAY_LIMITS.maxProfileFieldLength),
+        shortTermGoal: z.string().trim().max(COACHING_GATEWAY_LIMITS.maxProfileFieldLength),
+        longTermGoal: z.string().trim().max(COACHING_GATEWAY_LIMITS.maxProfileFieldLength),
       })
       .strict()
       .nullable(),
@@ -123,7 +143,7 @@ export const CoachingRequestSchema = CoachingRequestRuntimeSchema as z.ZodType<C
 export const CoachingResponsePayloadSchema = z.object({
   reply: StatementSchema,
   stance: z.enum(['mirror', 'nudge', 'challenge', 'direct']),
-  proposals: z.array(MemoryDeltaSchema).max(COACHING_GATEWAY_LIMITS.maxProposals),
+  proposals: z.array(z.union([MemoryDeltaSchema, OutcomeDeltaSchema])).max(COACHING_GATEWAY_LIMITS.maxProposals),
 }).strict();
 
 export type CoachingResponsePayload = z.infer<typeof CoachingResponsePayloadSchema>;

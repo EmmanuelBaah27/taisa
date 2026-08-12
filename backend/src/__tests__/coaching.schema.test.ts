@@ -24,6 +24,9 @@ function requestAtPortableLimits(): CoachingRequest {
         careerStage: 'senior',
         coachingStyle: 'supportive',
         accountabilityLevel: 'moderate',
+        currentFocusArea: '',
+        shortTermGoal: 'Grow into staff scope',
+        longTermGoal: '',
       },
       recentMessages: Array.from(
         { length: COACHING_GATEWAY_LIMITS.maxRecentMessages },

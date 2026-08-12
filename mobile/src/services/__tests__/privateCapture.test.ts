@@ -7,6 +7,9 @@ import {
 } from '../../repositories/audioCleanupRepository';
 import { listMessages } from '../../repositories/conversationRepository';
 import { getMemory, insertMemory, updateMemory } from '../../repositories/memoryRepository';
+import { getGoal } from '../../repositories/goalRepository';
+import { getAction } from '../../repositories/actionRepository';
+import { getEvidence } from '../../repositories/evidenceRepository';
 import {
   createTestDatabase,
   type TestDatabase,
@@ -238,6 +241,75 @@ describe('private local capture and deliberate submission', () => {
     }));
     expect(staged?.proposal_json).toContain('"provenance":"ai-inferred"');
     expect(staged?.proposal_json).not.toContain('provider-supplied-source');
+  });
+
+  test.each([
+    ['goal', {
+      kind: 'goal' as const,
+      title: 'Lead product strategy',
+      description: 'Own the next roadmap decision.',
+      priority: 'high' as const,
+      targetDate: null,
+      supersedesId: null,
+    }],
+    ['action', {
+      kind: 'action' as const,
+      title: 'Document the roadmap decision',
+      description: null,
+      priority: 'medium' as const,
+      dueAt: null,
+      goalId: null,
+      supersedesId: null,
+    }],
+    ['evidence', {
+      kind: 'evidence' as const,
+      statement: 'Facilitated roadmap alignment.',
+      occurredAt: NOW,
+      goalIds: [],
+      actionIds: [],
+    }],
+  ])('stages and applies a confirmed first-class %s outcome with local provenance', async (kind, outcome) => {
+    coach.mockImplementationOnce(async (request) => ({
+      ...coachingResponse(request),
+      proposals: [{
+        operation: 'propose-outcome' as const,
+        candidate: outcome,
+        reason: 'Keep this as a durable career outcome.',
+        requiresConfirmation: true as const,
+      }],
+    }));
+
+    const result = await service.submitText({
+      conversationId: `outcome-${kind}`,
+      content: 'This should become a durable outcome.',
+    });
+    expect(result.pendingProposals).toHaveLength(1);
+    const outcomeId = `${result.pendingProposals[0].id}:outcome`;
+    expect(await getGoal(db, outcomeId)).toBeNull();
+
+    await service.confirmProposal({
+      confirmationId: result.pendingProposals[0].id,
+      localUserActionId: `confirm-${kind}`,
+      actedAt: NOW,
+    });
+
+    const created = kind === 'goal'
+      ? await getGoal(db, outcomeId)
+      : kind === 'action'
+        ? await getAction(db, outcomeId)
+        : await getEvidence(db, outcomeId);
+    expect(created).toEqual(expect.objectContaining({
+      id: outcomeId,
+      ...(kind === 'evidence'
+        ? { sourceMessageIds: [result.messageId] }
+        : { sourceMessageId: result.messageId }),
+    }));
+
+    await service.confirmProposal({
+      confirmationId: result.pendingProposals[0].id,
+      localUserActionId: `confirm-${kind}`,
+      actedAt: NOW,
+    });
   });
 
   test('failed coaching remains retryable with the same request and message IDs without duplicate rows', async () => {

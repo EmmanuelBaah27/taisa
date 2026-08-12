@@ -81,7 +81,7 @@ function scenario(id: string, coverage: CoachingEvaluationCoverage[], input: str
     id, synthetic: true, coverage,
     request: {
       requestId: `20000000-0000-4000-8000-${requestNumber}`, submittedAt: timestamp, input,
-      context: { profile: { currentRole: 'Synthetic product designer', currentCompany: 'Example Studio', careerStage: 'mid', coachingStyle: 'structured', accountabilityLevel: 'moderate' }, recentMessages: [], memory: memories, evidence: [] },
+      context: { profile: { currentRole: 'Synthetic product designer', currentCompany: 'Example Studio', careerStage: 'mid', coachingStyle: 'structured', accountabilityLevel: 'moderate', currentFocusArea: '', shortTermGoal: 'Grow scope', longTermGoal: '' }, recentMessages: [], memory: memories, evidence: [] },
     },
     expected: expected(coverage, memories),
   };
