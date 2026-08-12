@@ -126,6 +126,18 @@ git diff --check
 These commands make no live provider call. Device and paid-provider evaluations are recorded and
 approved separately.
 
+After explicit paid-provider approval, run an evaluation with a provider, hard total budget, and
+new local review-artifact path:
+
+```bash
+npm run eval:coaching --workspace=backend -- --provider=openai --max-cost-usd=1 --review-output=coaching-eval-review.json
+```
+
+Every attempted scenario is reserved and recorded in the durable usage ledger. Stdout remains
+content-free. The review artifact is marked synthetic-only and contains synthetic replies,
+automated thresholds, and blank manual-usefulness scores. A provider passes only when
+`automatedPassed` is true and at least 80% of replies pass manual usefulness.
+
 ## Project Structure
 ```
 taisa/

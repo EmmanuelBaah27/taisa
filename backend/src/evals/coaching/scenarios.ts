@@ -1,4 +1,4 @@
-import type { CoachingRequest, CoachingResponse, MemoryDelta, MemoryItem } from '@taisa/shared';
+import type { CoachingRequest, CoachingResponse, EvidenceItem, MemoryDelta, MemoryItem } from '@taisa/shared';
 
 export const COACHING_EVALUATION_PACK_VERSION = '2026-08-09.v2';
 
@@ -81,11 +81,17 @@ function scenario(id: string, coverage: CoachingEvaluationCoverage[], input: str
     id, synthetic: true, coverage,
     request: {
       requestId: `20000000-0000-4000-8000-${requestNumber}`, submittedAt: timestamp, input,
-      context: { profile: { currentRole: 'Synthetic product designer', currentCompany: 'Example Studio', careerStage: 'mid', coachingStyle: 'structured', accountabilityLevel: 'moderate', currentFocusArea: '', shortTermGoal: 'Grow scope', longTermGoal: '' }, recentMessages: [], memory: memories, evidence: [] },
+      context: { profile: { currentRole: 'Synthetic product designer', currentCompany: 'Example Studio', careerStage: 'mid', coachingStyle: 'structured', accountabilityLevel: 'moderate', currentFocusArea: '', shortTermGoal: 'Grow scope', longTermGoal: '' }, recentMessages: [], memory: memories, evidence: coverage.includes('evidence') ? [syntheticEvidence] : [] },
     },
     expected: expected(coverage, memories),
   };
 }
+
+const syntheticEvidence: EvidenceItem = {
+  id: 'evidence-synthetic-workshop', statement: 'Facilitated a fictional cross-team workshop.',
+  occurredAt: timestamp, sourceMessageIds: ['source-synthetic-workshop'],
+  goalIds: ['goal-staff'], actionIds: [],
+};
 
 const staffGoal = memory('goal-staff', 'Move toward a staff-level design role');
 const managerGoal = memory('goal-manager', 'Explore people management before the next review');

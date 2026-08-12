@@ -13,7 +13,12 @@ import {
   runCoachingEvaluation,
   runEvaluationCli,
   serializeEvaluationSummary,
+  buildManualReviewArtifact,
 } from '../evals/coaching/run';
+import { CostLedger } from '../services/usage/costLedger';
+import { mkdtempSync, readFileSync } from 'fs';
+import os from 'os';
+import path from 'path';
 
 const successfulPayload = {
   reply: 'Name the trade-off, confirm the next action, and revisit it next week.',
@@ -55,6 +60,8 @@ test('the versioned pack covers every required synthetic coaching situation with
     ].every((topic) => coveredTopics.has(topic as CoachingEvaluationCoverage)),
   ).toBe(true);
   expect(coachingEvaluationScenarios.every((scenario) => scenario.synthetic)).toBe(true);
+  expect(coachingEvaluationScenarios.filter((scenario) => scenario.coverage.includes('evidence'))
+    .every((scenario) => scenario.request.context.evidence.length > 0)).toBe(true);
   expect(
     coachingEvaluationScenarios.every(
       (scenario) =>
@@ -63,6 +70,36 @@ test('the versioned pack covers every required synthetic coaching situation with
           scenario.expected.forbiddenTargetIdsByOperation.transition.length > 0),
     ),
   ).toBe(true);
+});
+
+test('manual review artifact contains synthetic outputs, thresholds, and remains explicitly synthetic-only', async () => {
+  const summary = await runCoachingEvaluation({ provider: createFakeProvider(), providerId: 'openai' });
+  const artifact = buildManualReviewArtifact(summary);
+  expect(artifact.syntheticOnly).toBe(true);
+  expect(artifact.thresholds).toEqual(expect.objectContaining({ manualUsefulnessMinimum: 0.8 }));
+  expect(artifact.automatedPassed).toBe(false);
+  expect(artifact.manualReviewStatus).toBe('required');
+  expect(artifact.reviews[0]).toEqual(expect.objectContaining({
+    scenarioId: 'synthetic-01', syntheticInput: coachingEvaluationScenarios[0].request.input,
+    response: successfulPayload.reply, manualUsefulness: null,
+  }));
+});
+
+test('CLI durably reserves and records every evaluation call under the explicit budget and emits review artifact', async () => {
+  const directory = mkdtempSync(path.join(os.tmpdir(), 'taisa-eval-'));
+  const ledger = new CostLedger({ databasePath: path.join(directory, 'usage.sqlite') });
+  const artifactPath = path.join(directory, 'review.json');
+  const exitCode = await runEvaluationCli([
+    '--provider=openai', '--max-cost-usd=1', `--review-output=${artifactPath}`,
+  ], {
+    createProvider: () => createFakeProvider(), writeStdout: jest.fn(), writeStderr: jest.fn(),
+    usageLedger: ledger,
+    writeArtifact: (target, value) => require('fs').writeFileSync(target, value, { flag: 'wx' }),
+  });
+  expect(exitCode).toBe(0);
+  expect(ledger.listUsage()).toHaveLength(coachingEvaluationScenarios.length);
+  expect(JSON.parse(readFileSync(artifactPath, 'utf8')).syntheticOnly).toBe(true);
+  ledger.close();
 });
 
 test('the runner makes one fake-provider call per scenario and emits only allowlisted summary keys', async () => {
