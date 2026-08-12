@@ -2,13 +2,15 @@
 
 ## Encrypted database development-build gate
 
-- [ ] Baah approves running the managed iPhone development-build verification step.
-- [ ] Install and launch a development build containing the SQLCipher-enabled `expo-sqlite` module (unavailable in Expo Go).
+- [x] Baah approved running the managed iPhone development-build verification step on 2026-08-12.
+- [x] Installed and launched the SQLCipher-enabled managed development build on Baah's iPhone on 2026-08-12.
 - [ ] Create a local record and confirm it persists after force-quit and restart.
 - [ ] Remove the SecureStore database key in a controlled test and confirm Taisa enters the recovery-required state instead of generating a replacement key.
 - [ ] Confirm the SQLite file is unreadable without its SQLCipher key.
 
-Status: pending. No prebuild, local native run, cloud/EAS build, simulator, or physical-device verification was performed during Task 5.
+Status: physical-device QA in progress. Onboarding, encrypted writes, reload persistence, and
+Face ID unlock were confirmed on 2026-08-12. Destructive key-loss and raw-file encryption checks
+remain intentionally unchecked.
 
 ## Private capture and deliberate submission gate
 

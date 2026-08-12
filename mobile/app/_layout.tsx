@@ -38,12 +38,15 @@ export default function RootLayout() {
   useEffect(() => {
     void hydrateStartupProfile({
       fetchProfile,
-      route: () => router.replace('/onboarding'),
     }).then(setStartup).catch(() => {
       // Unknown failures remain fail-closed instead of exposing readable screens.
       setStartup(null);
     });
   }, []);
+
+  useEffect(() => {
+    if (startup?.status === 'onboarding') router.replace('/onboarding');
+  }, [startup]);
 
   useEffect(() => {
     const unsubscribe = privacyGuard.subscribe(setPrivacyState);
@@ -66,7 +69,9 @@ export default function RootLayout() {
     const subscription = AppState.addEventListener('change', (nextState) => {
       const normalized = normalizeAppState(nextState);
       const next = privacyGuard.handleAppState(normalized);
-      if (normalized === 'active' && next.lockEnabled) void privacyGuard.unlock();
+      if (normalized === 'active' && next.lockEnabled && next.phase === 'locked') {
+        void privacyGuard.unlock();
+      }
     });
     return () => {
       mounted = false;
@@ -89,7 +94,6 @@ export default function RootLayout() {
             setStartup(null);
             void hydrateStartupProfile({
               fetchProfile,
-              route: () => router.replace('/onboarding'),
             }).then(setStartup).catch(() => { setStartup(null); });
           }}
         >

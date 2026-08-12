@@ -27,15 +27,49 @@ export interface RepositoryTransaction extends RepositoryConnection {
 }
 
 export interface ExclusiveTransactionConnection extends RepositoryConnection {
+  withTransactionAsync?(
+    work: () => Promise<void>,
+  ): Promise<void>;
   withExclusiveTransactionAsync(
     work: (transaction: RepositoryConnection) => Promise<void>,
   ): Promise<void>;
 }
 
+const repositoryTransactionTails = new WeakMap<object, Promise<void>>();
+
 export async function withRepositoryTransaction<T>(
   database: ExclusiveTransactionConnection,
   work: (transaction: RepositoryTransaction) => Promise<T>,
 ): Promise<T> {
+  if (database.withTransactionAsync) {
+    const previous = repositoryTransactionTails.get(database) ?? Promise.resolve();
+    let completed = false;
+    let result!: T;
+    const operation = previous.then(() =>
+      database.withTransactionAsync!(async () => {
+        result = await work(database as unknown as RepositoryTransaction);
+        completed = true;
+      }),
+    );
+    const settled = operation.then(
+      () => undefined,
+      () => undefined,
+    );
+    repositoryTransactionTails.set(database, settled);
+
+    try {
+      await operation;
+    } finally {
+      if (repositoryTransactionTails.get(database) === settled) {
+        repositoryTransactionTails.delete(database);
+      }
+    }
+    if (!completed) {
+      throw new Error('Repository transaction did not execute');
+    }
+    return result;
+  }
+
   let completed = false;
   let result!: T;
   await database.withExclusiveTransactionAsync(async (transaction) => {

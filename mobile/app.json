@@ -49,7 +49,9 @@
         {
           "faceIDPermission": "Allow Taisa to use Face ID to protect your private career archive."
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker",
+      "./plugins/withLocalNotificationsOnly"
     ]
   }
 }

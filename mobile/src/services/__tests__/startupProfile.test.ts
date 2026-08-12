@@ -6,16 +6,13 @@ import { LocalProfileArchiveError } from '../../stores/careerStore';
 import { hydrateStartupProfile } from '../startupProfile';
 
 describe('startup profile routing', () => {
-  test('routes an empty archive to onboarding without creating a profile', async () => {
+  test('reports an empty archive for routing only after the root navigator mounts', async () => {
     const fetchProfile = jest.fn(async () => {
       throw new LocalProfileArchiveError('missing');
     });
-    const route = jest.fn();
-
-    await expect(hydrateStartupProfile({ fetchProfile, route })).resolves.toEqual({
+    await expect(hydrateStartupProfile({ fetchProfile })).resolves.toEqual({
       status: 'onboarding',
     });
-    expect(route).toHaveBeenCalledWith('/onboarding');
   });
 
   test.each([
@@ -26,12 +23,8 @@ describe('startup profile routing', () => {
     new DatabaseConfigurationRequiredError('secure-store-unavailable'),
     new DatabaseConfigurationRequiredError('sqlcipher-unavailable'),
   ])('surfaces encrypted archive failures without routing into readable screens', async (failure) => {
-    const route = jest.fn();
-
     await expect(hydrateStartupProfile({
       fetchProfile: async () => { throw failure; },
-      route,
     })).resolves.toEqual({ status: 'recovery-required', error: failure });
-    expect(route).not.toHaveBeenCalled();
   });
 });

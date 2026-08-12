@@ -47,7 +47,9 @@ export function transitionPrivacyGuard(
       return {
         ...state,
         appState: event.value,
-        phase: !isActive && state.lockEnabled ? 'locked' : state.phase,
+        phase: !isActive && state.lockEnabled && state.phase !== 'unlocking'
+          ? 'locked'
+          : state.phase,
         shielded: !isActive || state.lockEnabled && state.phase !== 'unlocked',
       };
     }
@@ -55,8 +57,12 @@ export function transitionPrivacyGuard(
       if (!state.lockEnabled || state.appState !== 'active') return state;
       return { ...state, phase: 'unlocking', shielded: true };
     case 'unlock-succeeded':
-      if (!state.lockEnabled || state.appState !== 'active') return state;
-      return { ...state, phase: 'unlocked', shielded: false };
+      if (!state.lockEnabled) return state;
+      return {
+        ...state,
+        phase: 'unlocked',
+        shielded: state.appState !== 'active',
+      };
     case 'unlock-failed':
       return state.lockEnabled
         ? { ...state, phase: 'locked', shielded: true }

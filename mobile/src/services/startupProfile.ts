@@ -14,14 +14,12 @@ export type StartupProfileResult =
 
 export async function hydrateStartupProfile(dependencies: {
   fetchProfile(): Promise<void>;
-  route(path: '/onboarding'): void;
 }): Promise<StartupProfileResult> {
   try {
     await dependencies.fetchProfile();
     return { status: 'ready' };
   } catch (error) {
     if (error instanceof LocalProfileArchiveError && error.reason === 'missing') {
-      dependencies.route('/onboarding');
       return { status: 'onboarding' };
     }
     if (

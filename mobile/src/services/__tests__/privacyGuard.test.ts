@@ -39,6 +39,40 @@ describe('privacy guard state machine', () => {
     expect(guard.getState()).toMatchObject({ phase: 'locked', shielded: true });
   });
 
+  test('does not turn the Face ID system prompt into a new unlock attempt', () => {
+    const unlocking = {
+      ...initialPrivacyGuardState,
+      initialized: true,
+      lockEnabled: true,
+      phase: 'unlocking' as const,
+      appState: 'active' as const,
+      shielded: true,
+    };
+
+    const inactive = transitionPrivacyGuard(unlocking, { type: 'app-state', value: 'inactive' });
+    expect(inactive).toMatchObject({ phase: 'unlocking', shielded: true });
+
+    const active = transitionPrivacyGuard(inactive, { type: 'app-state', value: 'active' });
+    expect(active).toMatchObject({ phase: 'unlocking', shielded: true });
+  });
+
+  test('remembers Face ID success reported before iOS returns the app to active', () => {
+    const promptInactive = {
+      ...initialPrivacyGuardState,
+      initialized: true,
+      lockEnabled: true,
+      phase: 'unlocking' as const,
+      appState: 'inactive' as const,
+      shielded: true,
+    };
+
+    const authenticated = transitionPrivacyGuard(promptInactive, { type: 'unlock-succeeded' });
+    expect(authenticated).toMatchObject({ phase: 'unlocked', shielded: true });
+
+    const active = transitionPrivacyGuard(authenticated, { type: 'app-state', value: 'active' });
+    expect(active).toMatchObject({ phase: 'unlocked', shielded: false });
+  });
+
   test('unshields only after successful authentication while active', async () => {
     const guard = createPrivacyGuard({
       preference: {
