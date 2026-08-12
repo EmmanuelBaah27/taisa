@@ -16,6 +16,7 @@ import {
 import { measureAudioDurationSeconds } from '../services/transcription/audioDuration';
 
 type TranscriptionClient = Pick<OpenAI, 'audio'>;
+const UPLOAD_DIRECTORY = '/tmp/beats-audio/';
 
 interface TranscribeRouterOptions {
   client?: TranscriptionClient;
@@ -112,10 +113,25 @@ function safeAudioExtension(originalName: string | undefined): string {
   return extension?.slice(0, 10) || 'm4a';
 }
 
+/** Removes files left by an interrupted earlier process before accepting fresh audio. */
+export async function cleanupStaleTranscriptionUploads(directory = UPLOAD_DIRECTORY): Promise<void> {
+  let entries: string[];
+  try {
+    entries = await fs.promises.readdir(directory);
+  } catch (error: any) {
+    if (error?.code === 'ENOENT') return;
+    throw error;
+  }
+  await Promise.all(entries.map((entry) =>
+    fs.promises.rm(`${directory.replace(/\/$/, '')}/${entry}`, { recursive: true, force: true }),
+  ));
+}
+
 export function createTranscribeRouter(options: TranscribeRouterOptions = {}) {
   const router = Router();
   const ledger = options.ledger ?? costLedger;
   const environment = options.environment ?? process.env;
+  const staleUploadCleanup = cleanupStaleTranscriptionUploads();
 
   const uploadAudio = (request: Request, response: Response, next: NextFunction) => {
     let maxUploadBytes: number;
@@ -129,8 +145,8 @@ export function createTranscribeRouter(options: TranscribeRouterOptions = {}) {
       });
     }
 
-    return multer({
-      dest: '/tmp/beats-audio/',
+    return staleUploadCleanup.then(() => multer({
+      dest: UPLOAD_DIRECTORY,
       limits: { fileSize: maxUploadBytes },
     }).single('audio')(request, response, (error: any) => {
       if (error?.code === 'LIMIT_FILE_SIZE') {
@@ -150,6 +166,12 @@ export function createTranscribeRouter(options: TranscribeRouterOptions = {}) {
         });
       }
       return next();
+    })).catch((error) => {
+      logRequestError(request, 'TRANSCRIPTION_UPLOAD_CLEANUP_FAILED', error);
+      return response.status(503).json({
+        success: false,
+        error: { code: 'TRANSCRIPTION_UPLOAD_CLEANUP_FAILED', message: 'Transcription is temporarily unavailable' },
+      });
     });
   };
 
@@ -273,7 +295,21 @@ export function createTranscribeRouter(options: TranscribeRouterOptions = {}) {
       }
     } finally {
       reservation?.release();
-      await fs.promises.rm(req.file.path, { force: true });
+      try {
+        await fs.promises.rm(req.file.path, { force: true });
+      } catch (error) {
+        logRequestError(req, 'TRANSCRIPTION_AUDIO_CLEANUP_FAILED', error);
+        result = {
+          status: 500,
+          body: {
+            success: false,
+            error: {
+              code: 'TRANSCRIPTION_AUDIO_CLEANUP_FAILED',
+              message: 'Temporary audio cleanup failed',
+            },
+          },
+        };
+      }
     }
 
     return res.status(result.status).json(result.body);

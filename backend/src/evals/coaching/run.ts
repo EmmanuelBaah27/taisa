@@ -111,6 +111,18 @@ export function parseProviderArgument(argv: string[]): 'openai' | 'anthropic' {
   return providerId;
 }
 
+export function parseEvaluationBudgetArgument(argv: string[]): number {
+  const budgetArgument = argv.find((argument) => argument.startsWith('--max-cost-usd='));
+  if (!budgetArgument) {
+    throw new Error('An explicit --max-cost-usd=<positive number> argument is required');
+  }
+  const budget = Number(budgetArgument.slice('--max-cost-usd='.length));
+  if (!Number.isFinite(budget) || budget <= 0) {
+    throw new Error('--max-cost-usd must be a positive finite number');
+  }
+  return budget;
+}
+
 export interface EvaluationCliDependencies {
   createProvider: (providerId: CoachingProviderId) => CoachingProvider;
   writeStdout: (output: string) => void;
@@ -129,6 +141,7 @@ export async function runEvaluationCli(
 ): Promise<0 | 1> {
   try {
     const providerId = parseProviderArgument(argv);
+    parseEvaluationBudgetArgument(argv);
     const provider = dependencies.createProvider(providerId);
     const summary = await runCoachingEvaluation({ providerId, provider });
     dependencies.writeStdout(`${serializeEvaluationSummary(summary)}\n`);

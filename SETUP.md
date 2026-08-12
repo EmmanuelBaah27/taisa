@@ -28,7 +28,22 @@ PORT=3000
 ANTHROPIC_API_KEY=sk-ant-...your key...
 OPENAI_API_KEY=sk-...your key...
 DB_PATH=./taisa.db
+TAISA_COACHING_PROVIDER=openai
+TAISA_OPENAI_MODEL=your-approved-model
+TAISA_OPENAI_INPUT_PRICE_USD_PER_MILLION_TOKENS=your-current-price
+TAISA_OPENAI_OUTPUT_PRICE_USD_PER_MILLION_TOKENS=your-current-price
+TAISA_OPENAI_MAX_OUTPUT_TOKENS=your-output-cap
+TAISA_OPENAI_STRUCTURED_OUTPUT_INPUT_TOKEN_OVERHEAD=your-conservative-schema-token-bound
+TAISA_AI_COST_CEILING_PER_REQUEST_USD=your-limit
+TAISA_AI_COST_CEILING_DAILY_USD=your-limit
+TAISA_AI_COST_CEILING_MONTHLY_USD=your-limit
+TAISA_TRANSCRIPTION_MODEL=whisper-1
+TAISA_TRANSCRIPTION_MAX_DURATION_SECONDS=300
+TAISA_TRANSCRIPTION_MAX_UPLOAD_BYTES=26214400
+TAISA_TRANSCRIPTION_PRICE_USD_PER_MINUTE=your-current-price
 ```
+
+The selected provider's model, current input/output prices, output cap, and positive structured-output/tool-schema token overhead are all required. The gateway adds the overhead before reserving spend, so set it to a conservative bound from the selected provider's current token accounting. Blank, zero, or invalid required values fail closed at startup or before a provider call. Configure the unselected provider only when switching to it.
 
 ### 3. Configure mobile environment
 ```bash

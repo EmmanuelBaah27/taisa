@@ -28,7 +28,9 @@ export function estimateConfiguredCoachingUsage(
   const prompt = buildSeniorSelfPrompt(request);
   // One token per UTF-8 byte is a deliberately conservative upper bound.
   const inputTokens =
-    Buffer.byteLength(prompt.systemPrompt, 'utf8') + Buffer.byteLength(prompt.userPrompt, 'utf8');
+    Buffer.byteLength(prompt.systemPrompt, 'utf8') +
+    Buffer.byteLength(prompt.userPrompt, 'utf8') +
+    config.structuredOutputInputTokenOverhead;
   const outputTokens = config.maxOutputTokens;
   return {
     provider: providerId,

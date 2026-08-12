@@ -23,7 +23,7 @@ jest.mock(
 
 import { contentSafeErrorHandler, requestContext } from '../middleware/requestContext';
 import coachingRouter from '../routes/coaching';
-import { createTranscribeRouter } from '../routes/transcribe';
+import { cleanupStaleTranscriptionUploads, createTranscribeRouter } from '../routes/transcribe';
 import {
   CostLedger,
   CostLimitError,
@@ -194,16 +194,16 @@ describe('content-free request telemetry', () => {
     const response = await request(app)
       .post('/api/v1/coaching/respond?debug=private-query')
       .set('x-user-id', 'device-1')
-      .set('x-request-id', 'safe-request-1')
+      .set('x-request-id', '11111111-1111-4111-8111-111111111111')
       .send(validRequest);
 
     expect(response.status).toBe(200);
-    expect(response.headers['x-request-id']).toBe('safe-request-1');
+    expect(response.headers['x-request-id']).toBe('11111111-1111-4111-8111-111111111111');
 
     const output = logSpy.mock.calls.flat().join(' ');
     const event = JSON.parse(String(logSpy.mock.calls[0][0]));
     expect(event).toEqual({
-      requestId: 'safe-request-1',
+      requestId: '11111111-1111-4111-8111-111111111111',
       method: 'POST',
       route: '/api/v1/coaching/respond',
       status: 200,
@@ -228,6 +228,22 @@ describe('content-free request telemetry', () => {
     expect(logSpy.mock.calls.flat().join(' ')).not.toContain('private content with spaces');
   });
 
+  test('replaces a non-UUID telemetry request ID before logging it', async () => {
+    const app = express();
+    app.use(requestContext);
+    app.get('/health', (_req, res) => res.sendStatus(204));
+
+    const response = await request(app)
+      .get('/health')
+      .set('x-request-id', 'safe-request-1');
+
+    expect(response.headers['x-request-id']).not.toBe('safe-request-1');
+    expect(response.headers['x-request-id']).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+    );
+    expect(logSpy.mock.calls.flat().join(' ')).not.toContain('safe-request-1');
+  });
+
   test('logs only safe error metadata and returns a fixed public message', async () => {
     const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
     const app = express();
@@ -243,7 +259,7 @@ describe('content-free request telemetry', () => {
 
     const response = await request(app)
       .get('/failure')
-      .set('x-request-id', 'safe-error-request');
+      .set('x-request-id', '22222222-2222-4222-8222-222222222222');
 
     expect(response.status).toBe(500);
     expect(response.body).toEqual({
@@ -251,7 +267,7 @@ describe('content-free request telemetry', () => {
       error: { code: 'INTERNAL_ERROR', message: 'An internal error occurred' },
     });
     const serialized = errorSpy.mock.calls.flat().join(' ');
-    expect(serialized).toContain('safe-error-request');
+    expect(serialized).toContain('22222222-2222-4222-8222-222222222222');
     expect(serialized).toContain('INTERNAL_ERROR');
     expect(serialized).not.toContain('private response text');
     errorSpy.mockRestore();
@@ -268,6 +284,17 @@ describe('transcription privacy and spend boundaries', () => {
   afterEach(async () => {
     await fs.promises.rm(fixturePath, { force: true });
     jest.restoreAllMocks();
+  });
+
+  test('removes stale uploaded audio before a restarted server accepts new work', async () => {
+    const uploadDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'taisa-stale-audio-'));
+    const stalePath = path.join(uploadDirectory, 'stale-upload');
+    fs.writeFileSync(stalePath, 'private stale audio');
+
+    await cleanupStaleTranscriptionUploads(uploadDirectory);
+
+    expect(fs.existsSync(stalePath)).toBe(false);
+    fs.rmSync(uploadDirectory, { recursive: true, force: true });
   });
 
   test.each([
@@ -295,6 +322,37 @@ describe('transcription privacy and spend boundaries', () => {
       expect(errorSpy.mock.calls.flat().join(' ')).not.toContain('private transcript');
       expect(JSON.stringify(response.body)).not.toContain('private transcript');
     }
+  });
+
+  test('returns a content-free failure when temporary audio cleanup fails', async () => {
+    const actualRm = fs.promises.rm.bind(fs.promises);
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    jest.spyOn(fs.promises, 'rm').mockImplementation(async (filePath, options) => {
+      if (String(filePath) !== fixturePath) {
+        const error = new Error('private temporary path could not be removed');
+        Object.assign(error, { code: 'EACCES' });
+        throw error;
+      }
+      return actualRm(filePath, options);
+    });
+
+    const response = await request(createTranscriptionApp({
+      create: jest.fn().mockResolvedValue({ text: 'private transcript' }),
+    }))
+      .post('/api/v1/transcribe')
+      .attach('audio', fixturePath)
+      .timeout({ response: 1000 });
+
+    expect(response.status).toBe(500);
+    expect(response.body).toEqual({
+      success: false,
+      error: {
+        code: 'TRANSCRIPTION_AUDIO_CLEANUP_FAILED',
+        message: 'Temporary audio cleanup failed',
+      },
+    });
+    expect(errorSpy.mock.calls.flat().join(' ')).not.toContain('private temporary path');
+    errorSpy.mockRestore();
   });
 
   test('returns transcript but records only content-free transcription usage', async () => {

@@ -62,6 +62,7 @@ const openAIConfig = {
   inputPriceUsdPerMillionTokens: 2,
   outputPriceUsdPerMillionTokens: 8,
   maxOutputTokens: 2048,
+  structuredOutputInputTokenOverhead: 512,
 };
 
 const anthropicConfig = {
@@ -69,6 +70,7 @@ const anthropicConfig = {
   inputPriceUsdPerMillionTokens: 3,
   outputPriceUsdPerMillionTokens: 15,
   maxOutputTokens: 1024,
+  structuredOutputInputTokenOverhead: 512,
 };
 
 test('OpenAI and Anthropic adapters honor the same structured coaching contract with one SDK call', async () => {
@@ -165,10 +167,12 @@ test.each(['openai', 'anthropic'] as const)(
         TAISA_OPENAI_INPUT_PRICE_USD_PER_MILLION_TOKENS: '2',
         TAISA_OPENAI_OUTPUT_PRICE_USD_PER_MILLION_TOKENS: '8',
         TAISA_OPENAI_MAX_OUTPUT_TOKENS: '2048',
+        TAISA_OPENAI_STRUCTURED_OUTPUT_INPUT_TOKEN_OVERHEAD: '512',
         TAISA_ANTHROPIC_MODEL: 'anthropic-mock',
         TAISA_ANTHROPIC_INPUT_PRICE_USD_PER_MILLION_TOKENS: '3',
         TAISA_ANTHROPIC_OUTPUT_PRICE_USD_PER_MILLION_TOKENS: '15',
         TAISA_ANTHROPIC_MAX_OUTPUT_TOKENS: '1024',
+        TAISA_ANTHROPIC_STRUCTURED_OUTPUT_INPUT_TOKEN_OVERHEAD: '512',
       },
       providers,
     );
@@ -249,6 +253,7 @@ test('conservatively estimates configured coaching input bytes and capped output
     TAISA_OPENAI_INPUT_PRICE_USD_PER_MILLION_TOKENS: '2',
     TAISA_OPENAI_OUTPUT_PRICE_USD_PER_MILLION_TOKENS: '8',
     TAISA_OPENAI_MAX_OUTPUT_TOKENS: '2048',
+    TAISA_OPENAI_STRUCTURED_OUTPUT_INPUT_TOKEN_OVERHEAD: '512',
   };
   const prompt = buildSeniorSelfPrompt(requestFixture);
   const conservativeInputTokens =
@@ -257,11 +262,24 @@ test('conservatively estimates configured coaching input bytes and capped output
   expect(estimateConfiguredCoachingUsage(requestFixture, environment)).toEqual({
     provider: 'openai',
     model: 'openai-mock',
-    inputTokens: conservativeInputTokens,
+    inputTokens: conservativeInputTokens + 512,
     outputTokens: 2048,
     estimatedCostUsd:
-      (conservativeInputTokens * 2 + 2048 * 8) / 1_000_000,
+      ((conservativeInputTokens + 512) * 2 + 2048 * 8) / 1_000_000,
   });
+});
+
+test('fails closed when selected provider structured-output overhead is not configured', () => {
+  expect(() => getConfiguredProvider({
+    TAISA_COACHING_PROVIDER: 'openai',
+    TAISA_OPENAI_MODEL: 'openai-mock',
+    TAISA_OPENAI_INPUT_PRICE_USD_PER_MILLION_TOKENS: '2',
+    TAISA_OPENAI_OUTPUT_PRICE_USD_PER_MILLION_TOKENS: '8',
+    TAISA_OPENAI_MAX_OUTPUT_TOKENS: '2048',
+  }, {
+    openai: { id: 'openai', respond: jest.fn() },
+    anthropic: { id: 'anthropic', respond: jest.fn() },
+  })).toThrow('TAISA_OPENAI_STRUCTURED_OUTPUT_INPUT_TOKEN_OVERHEAD must be configured');
 });
 
 test('invalid structured output is recoverable and never triggers a retry', async () => {

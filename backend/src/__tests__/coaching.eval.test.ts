@@ -9,6 +9,7 @@ import {
 import { scoreCoachingResponse } from '../evals/coaching/rubric';
 import {
   parseProviderArgument,
+  parseEvaluationBudgetArgument,
   runCoachingEvaluation,
   runEvaluationCli,
   serializeEvaluationSummary,
@@ -250,7 +251,7 @@ test.each(['openai', 'anthropic'] as const)(
     const writeStdout = jest.fn();
     const writeStderr = jest.fn();
 
-    const exitCode = await runEvaluationCli([`--provider=${providerId}`], {
+    const exitCode = await runEvaluationCli([`--provider=${providerId}`, '--max-cost-usd=1'], {
       createProvider,
       writeStdout,
       writeStderr,
@@ -274,6 +275,7 @@ test.each(['openai', 'anthropic'] as const)(
         [`TAISA_${providerId.toUpperCase()}_INPUT_PRICE_USD_PER_MILLION_TOKENS`]: '1',
         [`TAISA_${providerId.toUpperCase()}_OUTPUT_PRICE_USD_PER_MILLION_TOKENS`]: '2',
         [`TAISA_${providerId.toUpperCase()}_MAX_OUTPUT_TOKENS`]: '1024',
+        [`TAISA_${providerId.toUpperCase()}_STRUCTURED_OUTPUT_INPUT_TOKEN_OVERHEAD`]: '512',
       },
       {
         openai: createFakeProvider('openai'),
@@ -289,7 +291,7 @@ test('the CLI prints only a fixed error code when factory creation throws sensit
   const writeStdout = jest.fn();
   const writeStderr = jest.fn();
 
-  const exitCode = await runEvaluationCli(['--provider=openai'], {
+  const exitCode = await runEvaluationCli(['--provider=openai', '--max-cost-usd=1'], {
     createProvider: () => {
       throw new Error('secret-key=do-not-print');
     },
@@ -309,4 +311,10 @@ test('the command-line parser rejects an omitted or unsupported provider choice'
   expect(() => parseProviderArgument(['--provider=other'])).toThrow(
     'explicit --provider=openai or --provider=anthropic',
   );
+});
+
+test('the command-line parser requires a finite positive evaluation budget', () => {
+  expect(parseEvaluationBudgetArgument(['--max-cost-usd=0.25'])).toBe(0.25);
+  expect(() => parseEvaluationBudgetArgument(['--provider=openai'])).toThrow('explicit --max-cost-usd');
+  expect(() => parseEvaluationBudgetArgument(['--max-cost-usd=0'])).toThrow('positive finite number');
 });

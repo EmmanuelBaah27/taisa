@@ -209,15 +209,11 @@ New coaching features must use the provider-neutral stateless path:
 5. Return structured proposals; deterministic mobile governance owns persistence.
 
 The route → database-loading agent → prompt → backend-write pattern below is legacy-only and must
-not be copied for new readable-user-data features.
+not be copied for new readable-user-data features. It remains solely as historical documentation
+for still-mounted rollback routes.
 
-Follow this pattern exactly. Use `journalAgent.ts` as your reference implementation.
-
-1. **Add a route** in `backend/src/routes/yourFeature.ts` — receive request, call agent, return response
-2. **Mount the route** in `backend/src/index.ts` — `app.use('/api/v1/yourFeature', yourFeatureRouter)`
-3. **Write the agent** in `backend/src/services/claude/yourFeatureAgent.ts` — load context from DB, call prompt builder, call `callClaudeJson`, persist result
-4. **Write the prompt builder** in `backend/src/prompts/system/yourFeaturePrompt.ts` — pure function, takes data, returns system + user prompt strings
-5. **Add DB writes** in the agent — define what gets stored and where
+Legacy-only reference: those pre-cutover routes call backend-data agents and persist their result.
+New readable-user-data features must follow the five stateless coaching steps above instead.
 
 See `docs/api.md` for the request/response patterns. See `docs/agent-persona.md` for the Senior Self prompt engineering guide.
 

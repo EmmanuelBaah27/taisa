@@ -9,7 +9,7 @@ declare global {
   }
 }
 
-const SAFE_REQUEST_ID = /^[A-Za-z0-9._:-]{1,128}$/;
+const SAFE_REQUEST_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function resolveRequestId(request: Request): string {
   const supplied = request.header('x-request-id')?.trim();

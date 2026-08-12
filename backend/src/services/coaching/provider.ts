@@ -20,6 +20,7 @@ export interface CoachingProviderConfig {
   inputPriceUsdPerMillionTokens: number;
   outputPriceUsdPerMillionTokens: number;
   maxOutputTokens: number;
+  structuredOutputInputTokenOverhead: number;
 }
 
 export type CoachingProviderId = 'openai' | 'anthropic';
@@ -65,6 +66,10 @@ function readProviderConfig(
       `${prefix}_OUTPUT_PRICE_USD_PER_MILLION_TOKENS`,
     ),
     maxOutputTokens: requirePositiveInteger(environment, `${prefix}_MAX_OUTPUT_TOKENS`),
+    structuredOutputInputTokenOverhead: requirePositiveInteger(
+      environment,
+      `${prefix}_STRUCTURED_OUTPUT_INPUT_TOKEN_OVERHEAD`,
+    ),
   };
 }
 
