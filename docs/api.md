@@ -21,7 +21,7 @@ No migration/export endpoint exists. Baah has no backend archive to migrate, and
 Profile, entries, analyze, reviews, goals, action-items, trajectory, notifications, chat, and today
 routes remain mounted as legacy rollback compatibility during BUILD. They must not receive new
 local-first coaching writes. Removal is separately gated on verified encrypted device recovery and
-Baah's explicit cutover approval; `backend/src/index.ts` intentionally remains unchanged in this
+Baah's explicit route-retirement approval; `backend/src/index.ts` intentionally remains unchanged in this
 slice.
 
 ### `POST /api/v1/coaching/respond`

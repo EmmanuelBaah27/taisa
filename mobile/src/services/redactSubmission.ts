@@ -27,44 +27,36 @@ export interface ConfirmedRedactedSubmission {
 
 export type RedactionPreviewAction = 'explicit-submit' | 'dismiss';
 
-function isHighSurrogate(codeUnit: number): boolean {
-  return codeUnit >= 0xd800 && codeUnit <= 0xdbff;
+interface GraphemeSegment {
+  readonly index: number;
 }
 
-function isLowSurrogate(codeUnit: number): boolean {
-  return codeUnit >= 0xdc00 && codeUnit <= 0xdfff;
+interface GraphemeSegmenter {
+  segment(input: string): Iterable<GraphemeSegment>;
 }
 
-function splitsSurrogatePair(input: string, index: number): boolean {
-  if (index <= 0 || index >= input.length) return false;
-  return isHighSurrogate(input.charCodeAt(index - 1)) && isLowSurrogate(input.charCodeAt(index));
+function graphemeBoundaries(input: string): ReadonlySet<number> {
+  const Segmenter = (Intl as unknown as {
+    Segmenter?: new (
+      locale?: string,
+      options?: { granularity: 'grapheme' },
+    ) => GraphemeSegmenter;
+  }).Segmenter;
+  if (typeof Segmenter !== 'function') {
+    throw new Error('Unicode grapheme validation is unavailable');
+  }
+  const boundaries = new Set<number>([input.length]);
+  for (const segment of new Segmenter('und', { granularity: 'grapheme' }).segment(input)) {
+    boundaries.add(segment.index);
+  }
+  return boundaries;
 }
 
-function isVariationSelector(codePoint: number): boolean {
-  return (codePoint >= 0xfe00 && codePoint <= 0xfe0f)
-    || (codePoint >= 0xe0100 && codePoint <= 0xe01ef);
-}
-
-function isEmojiModifier(codePoint: number): boolean {
-  return codePoint >= 0x1f3fb && codePoint <= 0x1f3ff;
-}
-
-function splitsUnicodeCluster(input: string, index: number): boolean {
-  if (splitsSurrogatePair(input, index)) return true;
-  if (index <= 0 || index >= input.length) return false;
-
-  const nextCodePoint = input.codePointAt(index);
-  const previousCodePoint = input.codePointAt(index - 1);
-  const nextCharacter = String.fromCodePoint(nextCodePoint ?? 0);
-
-  return /^\p{Mark}$/u.test(nextCharacter)
-    || (nextCodePoint !== undefined && isVariationSelector(nextCodePoint))
-    || (nextCodePoint !== undefined && isEmojiModifier(nextCodePoint))
-    || nextCodePoint === 0x200d
-    || previousCodePoint === 0x200d;
-}
-
-function validateSelection(input: string, selection: RedactionSelection): void {
+function validateSelection(
+  input: string,
+  selection: RedactionSelection,
+  boundaries: ReadonlySet<number>,
+): void {
   if (!Number.isInteger(selection.start) || !Number.isInteger(selection.end)) {
     throw new Error('Redaction range boundaries must be integer offsets');
   }
@@ -74,7 +66,7 @@ function validateSelection(input: string, selection: RedactionSelection): void {
   if (selection.start >= selection.end) {
     throw new Error('Redaction range must select non-empty text');
   }
-  if (splitsUnicodeCluster(input, selection.start) || splitsUnicodeCluster(input, selection.end)) {
+  if (!boundaries.has(selection.start) || !boundaries.has(selection.end)) {
     throw new Error('Redaction range must end on a Unicode boundary');
   }
   const original = input.slice(selection.start, selection.end);
@@ -93,7 +85,8 @@ export function redactSubmission(
   const ordered = selections.map((selection) => ({ ...selection }))
     .sort((left, right) => left.start - right.start || left.end - right.end);
 
-  for (const selection of ordered) validateSelection(input, selection);
+  const boundaries = ordered.length === 0 ? new Set([0, input.length]) : graphemeBoundaries(input);
+  for (const selection of ordered) validateSelection(input, selection, boundaries);
   for (let index = 1; index < ordered.length; index += 1) {
     if (ordered[index - 1].end > ordered[index].start) {
       throw new Error('Redaction selections overlap');

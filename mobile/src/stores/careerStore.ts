@@ -1,24 +1,36 @@
 import * as Crypto from 'expo-crypto';
-import * as SecureStore from 'expo-secure-store';
 import type { CareerProfile, LocalCareerProfile } from '@taisa/shared';
 import { create } from 'zustand';
 
-import { openTaisaDatabase } from '../db/openDatabase';
+import { withTaisaDatabase } from '../db/openDatabase';
 import type { ExclusiveTransactionConnection } from '../db/types';
 import { withRepositoryTransaction } from '../db/types';
 import { listActions } from '../repositories/actionRepository';
 import { listConversations } from '../repositories/conversationRepository';
 import {
-  getProfile,
   insertProfile,
+  listProfiles,
   updateProfile as updateLocalProfile,
 } from '../repositories/profileRepository';
 
 interface CareerStoreDependencies {
-  openDatabase(): Promise<ExclusiveTransactionConnection>;
-  secureStore: Pick<typeof SecureStore, 'getItemAsync' | 'setItemAsync'>;
+  openDatabase?: () => Promise<ExclusiveTransactionConnection>;
+  withDatabase?: <T>(work: (database: ExclusiveTransactionConnection) => Promise<T>) => Promise<T>;
+  // Accepted for compatibility with injected store tests; profile identity is never read from it.
+  secureStore?: unknown;
   now(): string;
   createId(): string;
+}
+
+export class LocalProfileArchiveError extends Error {
+  readonly code = 'LOCAL_PROFILE_ARCHIVE';
+
+  constructor(readonly reason: 'missing' | 'ambiguous') {
+    super(reason === 'missing'
+      ? 'The local profile archive is empty.'
+      : 'The local profile archive contains more than one profile.');
+    this.name = 'LocalProfileArchiveError';
+  }
 }
 
 interface CareerStore {
@@ -26,7 +38,7 @@ interface CareerStore {
   userId: string | null;
   isOnboarded: boolean;
   isLoading: boolean;
-  initUser: (deviceId: string, profileData: Partial<CareerProfile>) => Promise<void>;
+  initUser: (profileId: string, profileData: Partial<CareerProfile>) => Promise<void>;
   fetchProfile: () => Promise<void>;
   updateProfile: (data: Partial<CareerProfile>) => Promise<void>;
   setProfile: (profile: CareerProfile) => void;
@@ -91,8 +103,7 @@ async function viewProfile(
 }
 
 const nativeDependencies: CareerStoreDependencies = {
-  openDatabase: openTaisaDatabase,
-  secureStore: SecureStore,
+  withDatabase: withTaisaDatabase,
   now: () => new Date().toISOString(),
   createId: () => Crypto.randomUUID(),
 };
@@ -104,31 +115,42 @@ export function createCareerStore(
     ...supplied,
     createId: supplied.createId ?? (() => Crypto.randomUUID()),
   };
-  return create<CareerStore>((set, get) => ({
+  function withDatabase<T>(
+    work: (database: ExclusiveTransactionConnection) => Promise<T>,
+  ): Promise<T> {
+    if (dependencies.withDatabase !== undefined) return dependencies.withDatabase(work);
+    if (dependencies.openDatabase !== undefined) {
+      return dependencies.openDatabase().then(work);
+    }
+    throw new Error('Career store database boundary is unavailable');
+  }
+  return create<CareerStore>((set) => ({
     profile: null,
     userId: null,
     isOnboarded: false,
     isLoading: false,
 
-    initUser: async (deviceId, profileData) => {
+    initUser: async (profileId, profileData) => {
       set({ isLoading: true });
       try {
-        const database = await dependencies.openDatabase();
-        const timestamp = dependencies.now();
-        const saved = await withRepositoryTransaction(database, async (transaction) => {
-          const existing = await getProfile(transaction, deviceId);
-          const next = localProfile(deviceId, profileData, timestamp, existing ?? undefined);
-          if (existing === null) {
-            await insertProfile(transaction, next, `profile:${dependencies.createId()}:insert`);
-          } else {
-            await updateLocalProfile(transaction, next, `profile:${dependencies.createId()}:update`);
-          }
-          return next;
+        const state = await withDatabase(async (database) => {
+          const timestamp = dependencies.now();
+          const saved = await withRepositoryTransaction(database, async (transaction) => {
+            const profiles = await listProfiles(transaction);
+            if (profiles.length > 1) throw new LocalProfileArchiveError('ambiguous');
+            const existing = profiles[0] ?? null;
+            const next = localProfile(existing?.id ?? profileId, profileData, timestamp, existing ?? undefined);
+            if (existing === null) {
+              await insertProfile(transaction, next, `profile:${dependencies.createId()}:insert`);
+            } else {
+              await updateLocalProfile(transaction, next, `profile:${dependencies.createId()}:update`);
+            }
+            return next;
+          });
+          return { profile: await viewProfile(database, saved), userId: saved.id };
         });
-        await dependencies.secureStore.setItemAsync('userId', deviceId);
         set({
-          profile: await viewProfile(database, saved),
-          userId: deviceId,
+          ...state,
           isOnboarded: true,
           isLoading: false,
         });
@@ -139,31 +161,34 @@ export function createCareerStore(
     },
 
     fetchProfile: async () => {
-      const userId = await dependencies.secureStore.getItemAsync('userId');
-      if (userId === null) throw new Error('Local profile is not initialized');
-      const database = await dependencies.openDatabase();
-      const stored = await getProfile(database, userId);
-      if (stored === null) throw new Error('Local profile is not initialized');
+      const state = await withDatabase(async (database) => {
+        const profiles = await listProfiles(database);
+        if (profiles.length === 0) throw new LocalProfileArchiveError('missing');
+        if (profiles.length > 1) throw new LocalProfileArchiveError('ambiguous');
+        const stored = profiles[0];
+        return { profile: await viewProfile(database, stored), userId: stored.id };
+      });
       set({
-        profile: await viewProfile(database, stored),
-        userId,
+        ...state,
         isOnboarded: true,
       });
     },
 
     updateProfile: async (data) => {
-      const userId = get().userId ?? await dependencies.secureStore.getItemAsync('userId');
-      if (userId === null) throw new Error('Local profile is not initialized');
-      const database = await dependencies.openDatabase();
-      const timestamp = dependencies.now();
-      const saved = await withRepositoryTransaction(database, async (transaction) => {
-        const existing = await getProfile(transaction, userId);
-        if (existing === null) throw new Error('Local profile is not initialized');
-        const next = localProfile(userId, data, timestamp, existing);
-        await updateLocalProfile(transaction, next, `profile:${dependencies.createId()}:update`);
-        return next;
+      const state = await withDatabase(async (database) => {
+        const timestamp = dependencies.now();
+        const saved = await withRepositoryTransaction(database, async (transaction) => {
+          const profiles = await listProfiles(transaction);
+          if (profiles.length === 0) throw new LocalProfileArchiveError('missing');
+          if (profiles.length > 1) throw new LocalProfileArchiveError('ambiguous');
+          const existing = profiles[0];
+          const next = localProfile(existing.id, data, timestamp, existing);
+          await updateLocalProfile(transaction, next, `profile:${dependencies.createId()}:update`);
+          return next;
+        });
+        return { profile: await viewProfile(database, saved), userId: saved.id };
       });
-      set({ profile: await viewProfile(database, saved), userId });
+      set(state);
     },
 
     setProfile: (profile) => set({ profile }),

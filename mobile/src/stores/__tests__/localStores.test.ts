@@ -1,6 +1,6 @@
 import type { CoachingRequest, CoachingResponse } from '@taisa/shared';
 
-import { getProfile } from '../../repositories/profileRepository';
+import { getProfile, listProfiles } from '../../repositories/profileRepository';
 import { createTestDatabase, type TestDatabase } from '../../repositories/__tests__/testDatabase';
 import { createPrivateCaptureService, type PrivateCaptureService } from '../../services/privateCapture';
 import { createCareerStore } from '../careerStore';
@@ -228,7 +228,7 @@ describe('local-first stores', () => {
       openDatabase: async () => db,
       secureStore: {
         getItemAsync: async () => secureUserId,
-        setItemAsync: async (_key, value) => { secureUserId = value; },
+        setItemAsync: async (_key: string, value: string) => { secureUserId = value; },
       },
       now: () => NOW,
       createId: () => `profile-mutation-${mutation += 1}`,
@@ -248,7 +248,7 @@ describe('local-first stores', () => {
     store.setState({ profile: null });
     await store.getState().fetchProfile();
 
-    expect(secureUserId).toBe('profile-1');
+    expect(secureUserId).toBeNull();
     expect(store.getState().profile).toEqual(expect.objectContaining({
       currentRole: 'Product Designer',
       longTermGoal: 'Become a Staff Designer',
@@ -259,6 +259,31 @@ describe('local-first stores', () => {
       longTermGoal: 'Become a Staff Designer',
       currentCompany: null,
     }));
+  });
+
+  test('discovers the sole restored profile instead of using a new installation identity', async () => {
+    let mutation = 0;
+    const dependencies = {
+      openDatabase: async () => db,
+      secureStore: {
+        getItemAsync: async () => secureUserId,
+        setItemAsync: async (_key: string, value: string) => { secureUserId = value; },
+      },
+      now: () => NOW,
+      createId: () => `restored-profile-mutation-${mutation += 1}`,
+    };
+    const original = createCareerStore(dependencies);
+    await original.getState().initUser('restored-profile', { currentRole: 'Restored role' });
+
+    secureUserId = 'new-installation-rate-limit-id';
+    const afterRestore = createCareerStore(dependencies);
+    await expect(afterRestore.getState().fetchProfile()).resolves.toBeUndefined();
+
+    expect(afterRestore.getState()).toEqual(expect.objectContaining({
+      userId: 'restored-profile',
+      profile: expect.objectContaining({ id: 'restored-profile', currentRole: 'Restored role' }),
+    }));
+    expect(await listProfiles(db)).toHaveLength(1);
   });
 
   test('thread reads and sends use local conversations and the stateless capture service', async () => {

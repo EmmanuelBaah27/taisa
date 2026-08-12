@@ -6,6 +6,12 @@
 **Track:** Platform first; Product UI follows separately  
 **Authors:** Baah + Codex
 
+> **Approved scope reconciliation — 2026-08-10:** Baah confirmed there is no backend data to
+> preserve. The local-first build does not include a backend migration/export endpoint, mobile
+> importer, migration token, or physical-device data-migration journey. Managed-device
+> recovery/privacy QA is the next gate. Retirement of still-mounted legacy routes is a later,
+> separately approved change after recovery evidence.
+
 ## Product thesis
 
 Taisa is a senior-self career coach, not a journal with AI attached. A user brings a real work moment, receives a useful interpretation or next move, preserves what matters, and can return later without rebuilding the context.
@@ -147,10 +153,12 @@ Local storage does not mean fully on-device processing. The UI must clearly disc
 - Support an optional Face ID/app lock after the core local data path is stable.
 - Hide sensitive content in notification previews and the app switcher.
 - Provide manual encrypted export and restore in the MVP recovery slice.
+- Export encrypted database state only, not recorded audio files. Fail closed while pending voice
+  work still references audio so a clean-install restore cannot contain a missing recording path.
 - Treat optional end-to-end encrypted backup as a later capability. Taisa must not possess the decryption key.
 - Explain during onboarding that data is not recoverable before the user creates an encrypted export.
 
-Device-local authority creates accepted constraints: loss risk before export, no seamless multi-device state, harder support diagnostics, on-device migrations, and weaker background intelligence. These are explicit tradeoffs, not accidental omissions.
+Device-local authority creates accepted constraints: loss risk before export, no seamless multi-device state, harder support diagnostics, on-device schema migrations, and weaker background intelligence. These are explicit tradeoffs, not accidental omissions.
 
 ## Durable career memory
 
@@ -285,7 +293,12 @@ The MVP integrates at most two coaching providers: OpenAI and Anthropic. It does
 
 Provider adoption is evidence-led. A versioned pack of at least 20 synthetic Taisa scenarios measures coaching usefulness, continuity and conflict detection, action quality, memory-proposal correctness, schema compliance, latency, and estimated cost. No production default is chosen solely from published benchmarks or token price.
 
-This target differs from the current implementation, where backend SQLite is authoritative and Express routes perform user-data CRUD. The migration reuses the existing schema concepts and prompt services while relocating durable storage, retrieval, and mutations to the phone. During transition, dual authority is prohibited: each migrated entity has one declared authoritative store.
+This target differs from the legacy implementation, where backend SQLite is authoritative and
+Express routes perform user-data CRUD. New local-first data begins with the phone as its readable
+authority and reuses relevant schema concepts and prompt behavior without importing backend data.
+Legacy routes stay mounted during BUILD as rollback compatibility; their retirement requires
+recovery evidence and separate approval. Dual writes into legacy and local-first stores are
+prohibited.
 
 A future SwiftUI client can reuse the gateway contracts and product rules, but it will need to import or migrate the encrypted on-device archive.
 
@@ -340,7 +353,7 @@ Provider prices and model names are runtime configuration, not durable product r
 | Career evidence | Wins exist inside analysis JSON | First-class evidence linked to source and goals |
 | Cost controls | Provider calls exist without product guardrails | Metering, caps, caching, fixtures, visibility |
 | User control | Limited profile editing | Inspect, correct, reject, archive, and delete memory |
-| Data authority | Backend SQLite owns durable data | Migrate durable entities to encrypted on-device SQLite |
+| Data authority | Backend SQLite owns legacy durable data | Make encrypted on-device SQLite authoritative for the local-first path; no backend import |
 | Gateway privacy | Express routes read and write user content | Stateless validated forwarding with content-free telemetry |
 | Recovery | JSON export from backend-oriented data | Manual encrypted device export and restore |
 
@@ -352,7 +365,9 @@ Define portable contracts and make the gateway stateless for the new submission 
 
 ### Slice 2: Remember what matters
 
-Migrate goals, actions, conversations, and governed durable memory to the authoritative on-device store. Add local context assembly, local evidence retrieval, and duplicate/conflict detection within the coaching request.
+Store goals, actions, conversations, and governed durable memory in the authoritative on-device
+store. Add local context assembly, local evidence retrieval, and duplicate/conflict detection
+within the coaching request.
 
 ### Slice 3: Follow through
 
@@ -360,7 +375,8 @@ Add confirmation flows, action evolution, first-class evidence, traceability, an
 
 ### Slice 4: Protect and recover
 
-Add database-key protection, privacy-safe app surfaces, redaction preview, manual encrypted export/restore, migration validation, and explicit recovery disclosures.
+Add database-key protection, privacy-safe app surfaces, redaction preview, manual encrypted
+export/restore, archive validation, and explicit recovery disclosures.
 
 ### Slice 5: Validate quality and platform
 
@@ -376,7 +392,7 @@ Measure activation, habit, continuity, trust, privacy comprehension, cost, and p
 - Cost-limit failures explain the limit without discarding the user's draft.
 - Missing or contradictory evidence triggers uncertainty, not confident invention.
 - Gateway failures retain no submitted payload and leave the local submission retryable.
-- Local migration failures preserve the pre-migration encrypted archive and prevent partial authority changes.
+- Local schema-migration failures preserve the prior encrypted archive and prevent partial schema changes.
 - Export and restore verify archive integrity before replacing active local state.
 
 ## Validation and testing
@@ -403,7 +419,7 @@ Measure activation, habit, continuity, trust, privacy comprehension, cost, and p
 - Usage metering and ceiling tests
 - Gateway no-content-retention and telemetry-redaction tests
 - Local database encryption and key-loss behavior tests
-- Entity-by-entity authority migration tests
+- Entity-by-entity local-authority repository and flow tests
 - Encrypted export/restore round-trip and corruption tests
 - Private-save versus submit disclosure tests
 - Existing backend, shared-type, and minimal mobile integration checks

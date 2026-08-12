@@ -1,14 +1,20 @@
 import * as Crypto from 'expo-crypto';
+import { File } from 'expo-file-system';
 import * as SecureStore from 'expo-secure-store';
 import * as SQLite from 'expo-sqlite';
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-import { SCHEMA_VERSION } from '../db/migrations';
-import { closeTaisaDatabase, openTaisaDatabase } from '../db/openDatabase';
+import { runMigrations, SCHEMA_VERSION } from '../db/migrations';
+import {
+  closeTaisaDatabase,
+  openTaisaDatabase,
+  withTaisaMaintenance,
+} from '../db/openDatabase';
 import { invalidateLocalCaptureService } from './localPlatform';
 import {
   ACTIVE_DATABASE_NAME,
   createExpoArchiveFileBoundary,
+  RESTORE_CANDIDATE_NAME,
   type ArchiveFileBoundary,
 } from './archiveFileStore';
 
@@ -76,6 +82,7 @@ export type ArchiveOperationCode =
   | 'PASSPHRASE_TOO_SHORT'
   | 'PASSPHRASE_CONFIRMATION_MISMATCH'
   | 'ARCHIVE_OPERATION_BUSY'
+  | 'PENDING_VOICE_NOT_BACKED_UP'
   | 'INSUFFICIENT_FREE_SPACE'
   | 'INVALID_ARCHIVE_OR_PASSPHRASE'
   | 'UNSUPPORTED_ARCHIVE_VERSION'
@@ -87,6 +94,7 @@ const ARCHIVE_ERROR_MESSAGES: Record<ArchiveOperationCode, string> = {
   PASSPHRASE_TOO_SHORT: 'Archive passphrase must contain at least 12 characters.',
   PASSPHRASE_CONFIRMATION_MISMATCH: 'Archive passphrase confirmation must match.',
   ARCHIVE_OPERATION_BUSY: 'Another archive operation is already running.',
+  PENDING_VOICE_NOT_BACKED_UP: 'Finish or abandon the pending voice submission before creating a backup.',
   INSUFFICIENT_FREE_SPACE: 'There is not enough free space to complete this archive operation.',
   INVALID_ARCHIVE_OR_PASSPHRASE: 'The encrypted archive could not be opened.',
   UNSUPPORTED_ARCHIVE_VERSION: 'This archive was created by a newer version of Taisa.',
@@ -121,6 +129,7 @@ function validatePassphrase(passphrase: string): void {
 }
 
 export interface SqlCipherArchiveBoundary {
+  assertExportable(): Promise<void>;
   exportPassphraseArchive(input: {
     destinationUri: string;
     passphrase: string;
@@ -139,6 +148,7 @@ export interface SqlCipherArchiveBoundary {
 }
 
 export interface ArchiveDatabaseLifecycleBoundary {
+  withMaintenance<T>(work: () => Promise<T>): Promise<T>;
   invalidateClients(): Promise<void>;
   close(): Promise<void>;
   reopen(): Promise<void>;
@@ -200,11 +210,12 @@ export function createEncryptedArchiveService(
 
   return {
     async exportEncryptedArchive(confirmedPassphrase) {
-      return exclusively(async () => {
+      return exclusively(() => dependencies.lifecycle.withMaintenance(async () => {
         if (confirmedPassphrase.confirmed !== true) {
           throw new ArchiveOperationError('PASSPHRASE_CONFIRMATION_MISMATCH');
         }
         validatePassphrase(confirmedPassphrase.value);
+        await dependencies.sqlCipher.assertExportable();
         const activeSize = await dependencies.files.size(ACTIVE_DATABASE_NAME);
         await requireFreeSpace(
           dependencies.files,
@@ -219,15 +230,19 @@ export function createEncryptedArchiveService(
           requireSupportedSnapshot(snapshot);
           return { uri: destinationUri, snapshot };
         } catch (cause) {
-          await dependencies.files.discardExport?.(destinationUri);
+          try {
+            await dependencies.files.discardExport?.(destinationUri);
+          } catch {
+            // Never replace the authoritative content-safe failure with a filesystem path/error.
+          }
           if (cause instanceof ArchiveOperationError) throw cause;
           throw new ArchiveOperationError('ARCHIVE_VERIFICATION_FAILED');
         }
-      });
+      }));
     },
 
     async restoreEncryptedArchive(uri, passphrase) {
-      return exclusively(async () => {
+      return exclusively(() => dependencies.lifecycle.withMaintenance(async () => {
         validatePassphrase(passphrase);
         const [activeSize, selectedSize] = await Promise.all([
           dependencies.files.size(ACTIVE_DATABASE_NAME),
@@ -287,26 +302,46 @@ export function createEncryptedArchiveService(
           return { snapshot: promotedSnapshot };
         } catch (cause) {
           if (preparedPromotion) {
-            if (promotedDatabaseOpen) {
-              await dependencies.lifecycle.close();
-              promotedDatabaseOpen = false;
+            try {
+              if (promotedDatabaseOpen) {
+                await dependencies.lifecycle.close();
+                promotedDatabaseOpen = false;
+              }
+              await dependencies.files.rollbackPromotion();
+            } catch {
+              // The marker and preserved rollback remain authoritative. Never reopen a database
+              // path whose rollback did not complete and verify.
+              throw new ArchiveOperationError('RESTORE_FAILED');
             }
-            await dependencies.files.rollbackPromotion();
-            await dependencies.lifecycle.reopen();
+            try {
+              await dependencies.lifecycle.reopen();
+            } catch {
+              throw new ArchiveOperationError('RESTORE_FAILED');
+            }
             activeClosed = false;
           } else if (activeClosed) {
-            await dependencies.lifecycle.reopen();
+            try {
+              await dependencies.lifecycle.reopen();
+            } catch {
+              throw new ArchiveOperationError('RESTORE_FAILED');
+            }
             activeClosed = false;
           }
 
           if (cause instanceof ArchiveOperationError) throw cause;
           throw new ArchiveOperationError('RESTORE_FAILED');
         } finally {
-          await dependencies.files.cleanupTemporaryFiles();
+          try {
+            await dependencies.files.cleanupTemporaryFiles();
+          } catch {
+            // Restore cleanup is idempotent and startup recovery retries it. Once the marker has
+            // been removed, a cleanup interruption must not turn a committed restore into a
+            // reported failure; before commit it must not replace the authoritative safe error.
+          }
           void stagedUri;
           void candidateUri;
         }
-      });
+      }));
     },
   };
 }
@@ -319,6 +354,10 @@ type ArchiveSqlDatabase = Pick<
 interface SqlCipherEngineDependencies {
   openActive(): Promise<ArchiveSqlDatabase>;
   openMaintenance(): Promise<ArchiveSqlDatabase>;
+  openDeviceCandidate(input: {
+    destinationUri: string;
+    deviceKey: string;
+  }): Promise<ArchiveSqlDatabase>;
   deleteMaintenance(): Promise<void>;
   readDeviceKey(): Promise<string>;
   sha256(input: string): Promise<string>;
@@ -347,6 +386,13 @@ async function fingerprintSchema(
     throw new Error('Archive integrity check failed');
   }
 
+  const foreignKeyFailures = await database.getAllAsync<Record<string, unknown>>(
+    `PRAGMA ${schema}.foreign_key_check`,
+  );
+  if (foreignKeyFailures.length !== 0) {
+    throw new Error('Archive foreign key verification failed');
+  }
+
   const counts = {} as ArchiveEntityCounts;
   const canonicalTables: unknown[] = [];
   for (const table of ARCHIVE_TABLES) {
@@ -356,18 +402,20 @@ async function fingerprintSchema(
     counts[table] = rows.length;
     canonicalTables.push([table, rows]);
   }
+  if (counts.profile > 1) {
+    throw new Error('Archive must contain at most one authoritative local profile');
+  }
 
-  const missingMessageIndex = await database.getFirstAsync<{ id: string }>(
-    `SELECT messages.id AS id FROM ${qualified(schema, 'messages')} AS messages
-     LEFT JOIN ${qualified(schema, 'message_search')} AS search ON search.rowid = messages.rowid
-     WHERE search.rowid IS NULL OR search.content != messages.content LIMIT 1`,
-  );
-  const missingEvidenceIndex = await database.getFirstAsync<{ id: string }>(
-    `SELECT evidence.id AS id FROM ${qualified(schema, 'evidence')} AS evidence
-     LEFT JOIN ${qualified(schema, 'evidence_search')} AS search ON search.rowid = evidence.rowid
-     WHERE search.rowid IS NULL OR search.statement != evidence.statement LIMIT 1`,
-  );
-  if (missingMessageIndex !== null || missingEvidenceIndex !== null) {
+  try {
+    // For external-content FTS5 tables, rank=1 makes integrity-check compare the real index
+    // against its content table. Reading the virtual table without MATCH only reads content.
+    for (const table of ['message_search', 'evidence_search'] as const) {
+      await database.runAsync(
+        `INSERT INTO ${qualified(schema, table)} (${quoteTrustedIdentifier(table)}, rank)
+         VALUES ('integrity-check', 1)`,
+      );
+    }
+  } catch {
     throw new Error('Archive search index verification failed');
   }
 
@@ -478,10 +526,169 @@ async function detachQuietly(
   }
 }
 
+interface TableInfoRow {
+  readonly cid: number;
+  readonly name: string;
+  readonly type: string;
+  readonly notnull: number;
+  readonly dflt_value: string | null;
+  readonly pk: number;
+}
+
+interface SchemaObjectRow {
+  readonly type: string;
+  readonly name: string;
+  readonly tbl_name: string;
+  readonly sql: string | null;
+}
+
+export function schemaSqlMatchesExactly(left: string | null, right: string | null): boolean {
+  return left === right;
+}
+
+async function schemaObjects(
+  database: ArchiveSqlDatabase,
+  schema: 'main' | 'source_archive',
+): Promise<SchemaObjectRow[]> {
+  return database.getAllAsync<SchemaObjectRow>(
+    `SELECT type, name, tbl_name, sql FROM "${schema}".sqlite_schema
+     WHERE name NOT LIKE 'sqlite_%' ORDER BY type, name`,
+  );
+}
+
+async function requireOrdinaryArchiveTables(database: ArchiveSqlDatabase): Promise<void> {
+  const objects = await schemaObjects(database, 'source_archive');
+  const byName = new Map(objects.map((object) => [object.name, object]));
+  for (const table of [...ARCHIVE_TABLES, 'taisa_archive_manifest'] as const) {
+    const object = byName.get(table);
+    if (object?.type !== 'table'
+      || object.tbl_name !== table
+      || object.sql?.trimStart().toUpperCase().startsWith('CREATE VIRTUAL TABLE')) {
+      throw new Error('Archive object does not match the trusted schema');
+    }
+  }
+}
+
+async function requireTrustedSchemaIdentity(
+  source: ArchiveSqlDatabase,
+  candidate: ArchiveSqlDatabase,
+): Promise<void> {
+  const [sourceObjects, trustedObjects] = await Promise.all([
+    schemaObjects(source, 'source_archive'),
+    schemaObjects(candidate, 'main'),
+  ]);
+  const sourceComparable = sourceObjects.filter((object) => object.name !== 'taisa_archive_manifest');
+  if (sourceComparable.length !== trustedObjects.length) {
+    throw new Error('Archive object set does not match the trusted schema');
+  }
+  for (let index = 0; index < trustedObjects.length; index += 1) {
+    const sourceObject = sourceComparable[index];
+    const trustedObject = trustedObjects[index];
+    if (sourceObject.type !== trustedObject.type
+      || sourceObject.name !== trustedObject.name
+      || sourceObject.tbl_name !== trustedObject.tbl_name
+      || !schemaSqlMatchesExactly(sourceObject.sql, trustedObject.sql)) {
+      throw new Error('Archive object identity does not match the trusted schema');
+    }
+  }
+}
+
+function quoteTrustedIdentifier(identifier: string): string {
+  if (!/^[a-z_][a-z0-9_]*$/.test(identifier)) {
+    throw new Error('Trusted schema contains an unsupported identifier');
+  }
+  return `"${identifier}"`;
+}
+
+async function tableInfo(
+  database: ArchiveSqlDatabase,
+  schema: 'main' | 'source_archive',
+  table: ArchiveTable,
+): Promise<TableInfoRow[]> {
+  return database.getAllAsync<TableInfoRow>(
+    `PRAGMA ${schema}.table_info(${quoteTrustedIdentifier(table)})`,
+  );
+}
+
+function sameMappedColumns(source: readonly TableInfoRow[], trusted: readonly TableInfoRow[]): boolean {
+  if (source.length === 0 || source.length !== trusted.length) return false;
+  return source.every((column, index) => {
+    const expected = trusted[index];
+    return column.cid === expected.cid
+      && column.name === expected.name
+      && column.type.toUpperCase() === expected.type.toUpperCase()
+      && column.notnull === expected.notnull
+      && column.dflt_value === expected.dflt_value
+      && column.pk === expected.pk;
+  });
+}
+
+function bindableRowValue(value: unknown): string | number | null | Uint8Array {
+  if (value === null || typeof value === 'string' || typeof value === 'number'
+    || value instanceof Uint8Array) return value;
+  throw new Error('Archive row contains an unsupported value');
+}
+
+async function importAllowlistedTables(
+  source: ArchiveSqlDatabase,
+  candidate: ArchiveSqlDatabase,
+): Promise<void> {
+  await candidate.execAsync('BEGIN IMMEDIATE');
+  try {
+    await candidate.execAsync('PRAGMA defer_foreign_keys = ON');
+    await requireTrustedSchemaIdentity(source, candidate);
+    for (const table of ARCHIVE_TABLES) {
+      const [sourceColumns, trustedColumns] = await Promise.all([
+        tableInfo(source, 'source_archive', table),
+        tableInfo(candidate, 'main', table),
+      ]);
+      if (!sameMappedColumns(sourceColumns, trustedColumns)) {
+        throw new Error('Archive table mapping does not match the trusted schema');
+      }
+      const columnSql = trustedColumns
+        .map((column) => quoteTrustedIdentifier(column.name))
+        .join(', ');
+      const rows = await source.getAllAsync<Record<string, unknown>>(
+        `SELECT ${columnSql} FROM ${qualified('source_archive', table)}
+         ORDER BY ${quoteTrustedIdentifier(TABLE_ORDER_COLUMNS[table])}`,
+      );
+      const placeholders = trustedColumns.map(() => '?').join(', ');
+      for (const row of rows) {
+        await candidate.runAsync(
+          `INSERT INTO ${quoteTrustedIdentifier(table)} (${columnSql}) VALUES (${placeholders})`,
+          trustedColumns.map((column) => bindableRowValue(row[column.name])),
+        );
+      }
+    }
+    const foreignKeyFailures = await candidate.getAllAsync<Record<string, unknown>>(
+      'PRAGMA foreign_key_check',
+    );
+    if (foreignKeyFailures.length !== 0) {
+      throw new Error('Trusted candidate foreign key verification failed');
+    }
+    await candidate.execAsync('COMMIT');
+  } catch (error) {
+    await candidate.execAsync('ROLLBACK');
+    throw error;
+  }
+}
+
 export function createSqlCipherArchiveBoundary(
   dependencies: SqlCipherEngineDependencies,
 ): SqlCipherArchiveBoundary {
   return {
+    async assertExportable() {
+      const database = await dependencies.openActive();
+      const pendingVoice = await database.getFirstAsync<{ id: string }>(
+        `SELECT id FROM coaching_requests
+         WHERE audio_uri IS NOT NULL
+           AND status NOT IN ('completed', 'abandoned')
+         LIMIT 1`,
+      );
+      if (pendingVoice !== null) {
+        throw new ArchiveOperationError('PENDING_VOICE_NOT_BACKED_UP');
+      }
+    },
     async exportPassphraseArchive({ destinationUri, passphrase }) {
       const database = await dependencies.openActive();
       await database.execAsync('PRAGMA temp_store = MEMORY');
@@ -492,6 +699,9 @@ export function createSqlCipherArchiveBoundary(
         attached = true;
         await database.getFirstAsync(
           `SELECT sqlcipher_export('passphrase_export') AS exported`,
+        );
+        await database.execAsync(
+          `PRAGMA passphrase_export.user_version = ${SCHEMA_VERSION}`,
         );
         await database.execAsync(
           `CREATE TABLE ${qualified('passphrase_export', 'taisa_archive_manifest')} (
@@ -533,8 +743,10 @@ export function createSqlCipherArchiveBoundary(
       return withMaintenanceDatabase(dependencies, async (database) => {
         let attached = false;
         try {
+          await database.execAsync('PRAGMA trusted_schema = OFF');
           await attachWithPassphrase(database, sourceUri, 'source_archive', passphrase);
           attached = true;
+          await requireOrdinaryArchiveTables(database);
           return await inspectAttachedArchive(database, 'source_archive', dependencies.sha256);
         } finally {
           if (attached) await detachQuietly(database, 'source_archive');
@@ -545,10 +757,12 @@ export function createSqlCipherArchiveBoundary(
     async createDeviceEncryptedCandidate({ sourceUri, destinationUri, passphrase }) {
       return withMaintenanceDatabase(dependencies, async (database) => {
         let sourceAttached = false;
-        let candidateAttached = false;
+        let candidate: ArchiveSqlDatabase | null = null;
         try {
+          await database.execAsync('PRAGMA trusted_schema = OFF');
           await attachWithPassphrase(database, sourceUri, 'source_archive', passphrase);
           sourceAttached = true;
+          await requireOrdinaryArchiveTables(database);
           const sourceSnapshot = await inspectAttachedArchive(
             database,
             'source_archive',
@@ -556,41 +770,25 @@ export function createSqlCipherArchiveBoundary(
           );
           const deviceKey = (await dependencies.readDeviceKey()).toLowerCase();
           if (!DEVICE_KEY_PATTERN.test(deviceKey)) throw new Error('Device key is unavailable');
-          // The key is a validated fixed-size hexadecimal value. It encrypts only the local
-          // candidate and is never used for, written to, or returned with the backup archive.
-          await database.runAsync(
-            `ATTACH DATABASE ? AS device_candidate KEY "x'${deviceKey}'"`,
-            [destinationUri],
-          );
-          candidateAttached = true;
-          await database.getFirstAsync(
-            `SELECT sqlcipher_export('device_candidate', 'source_archive') AS exported`,
-          );
-          const archivedCandidateSnapshot = await inspectAttachedArchive(
-            database,
-            'device_candidate',
-            dependencies.sha256,
-          );
-          if (!snapshotsMatch(sourceSnapshot, archivedCandidateSnapshot)) {
-            throw new Error('Device candidate verification failed');
-          }
-
-          // The manifest belongs only to the passphrase-encrypted backup. Keeping it in the
-          // promoted application database would make a later export collide with the old manifest.
-          await database.execAsync(
-            `DROP TABLE ${qualified('device_candidate', 'taisa_archive_manifest')}`,
-          );
+          // The device key is used only to initialize a fresh trusted current-schema database.
+          // No sqlite_master SQL, trigger, index, constraint, or other schema object is copied
+          // from the selected archive.
+          candidate = await dependencies.openDeviceCandidate({ destinationUri, deviceKey });
+          // After FTS integrity and schema identity checks, the maintenance connection becomes
+          // strictly source-only for the bound-value copy.
+          await database.execAsync('PRAGMA query_only = ON');
+          await importAllowlistedTables(database, candidate);
           const candidateSnapshot = await fingerprintSchema(
-            database,
-            'device_candidate',
+            candidate,
+            'main',
             dependencies.sha256,
           );
           if (!snapshotsMatch(sourceSnapshot, candidateSnapshot)) {
-            throw new Error('Device candidate changed while removing its backup manifest');
+            throw new Error('Trusted device candidate verification failed');
           }
           return candidateSnapshot;
         } finally {
-          if (candidateAttached) await detachQuietly(database, 'device_candidate');
+          if (candidate !== null) await candidate.closeAsync();
           if (sourceAttached) await detachQuietly(database, 'source_archive');
         }
       });
@@ -612,6 +810,26 @@ export function createSqlCipherArchiveBoundary(
 const nativeSqlCipherBoundary = createSqlCipherArchiveBoundary({
   openActive: openTaisaDatabase,
   openMaintenance: () => SQLite.openDatabaseAsync(MAINTENANCE_DATABASE_NAME),
+  async openDeviceCandidate({ destinationUri, deviceKey }) {
+    const directory = SQLite.defaultDatabaseDirectory;
+    if (typeof directory !== 'string' || directory.length === 0) {
+      throw new Error('SQLite database directory is unavailable on this platform');
+    }
+    const expectedUri = new File(directory, RESTORE_CANDIDATE_NAME).uri;
+    if (destinationUri !== expectedUri) throw new Error('Candidate archive path is invalid');
+    const database = await SQLite.openDatabaseAsync(RESTORE_CANDIDATE_NAME);
+    try {
+      await database.execAsync(`PRAGMA key = "x'${deviceKey}'"`);
+      await requireSqlCipher(database);
+      await database.execAsync('PRAGMA foreign_keys = ON');
+      await database.execAsync('PRAGMA journal_mode = DELETE');
+      await runMigrations(database);
+      return database;
+    } catch (error) {
+      await database.closeAsync();
+      throw error;
+    }
+  },
   async deleteMaintenance() {
     await SQLite.deleteDatabaseAsync(MAINTENANCE_DATABASE_NAME);
   },
@@ -629,6 +847,7 @@ const defaultArchiveService = createEncryptedArchiveService({
   files: createExpoArchiveFileBoundary(),
   sqlCipher: nativeSqlCipherBoundary,
   lifecycle: {
+    withMaintenance: withTaisaMaintenance,
     async invalidateClients() {
       invalidateLocalCaptureService();
     },

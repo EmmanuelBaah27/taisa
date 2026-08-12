@@ -2,11 +2,19 @@
 
 **Status:** Approved — Build in progress
 
+> **Approved scope reconciliation — 2026-08-10:** Baah confirmed there is no backend data to
+> preserve. Task 7 is removed: Taisa will not add a backend migration/export endpoint, migration
+> token, mobile importer, or physical-device data-migration journey. Local SQLite schema migrations
+> remain part of Task 5 and are unrelated to legacy-data import. The next approval gate is managed
+> iPhone recovery/privacy QA. Legacy-route retirement remains a separate Task 10 gate after that
+> evidence and Baah's explicit approval; the routes stay mounted until then.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Move Taisa's durable career data from backend SQLite to encrypted on-device storage while preserving high-quality, metered coaching through a stateless gateway.
+**Goal:** Make encrypted on-device storage authoritative for Taisa's durable career data while
+preserving high-quality, metered coaching through a stateless gateway.
 
-**Architecture:** The iPhone becomes authoritative for profile, conversations, goals, actions, evidence, and governed memory. The mobile client assembles a bounded `CoachingRequest`; Express validates it and selects one configured provider adapter, returning coaching text, structured proposed deltas, and content-free usage metadata without reading or writing user data. OpenAI is the low-cost primary candidate and existing Anthropic support is the quality benchmark; the production default is chosen from a synthetic evaluation pack. Existing backend data is imported once through a rollback-safe migration, after which legacy CRUD routes are retired.
+**Architecture:** The iPhone becomes authoritative for profile, conversations, goals, actions, evidence, and governed memory. The mobile client assembles a bounded `CoachingRequest`; Express validates it and selects one configured provider adapter, returning coaching text, structured proposed deltas, and content-free usage metadata without reading or writing user data. OpenAI is the low-cost primary candidate and existing Anthropic support is the quality benchmark; the production default is chosen from a synthetic evaluation pack. No backend-data migration is required. Legacy CRUD routes remain mounted during BUILD and are retired only after recovery/privacy device evidence and Baah's separate explicit approval.
 
 **Tech Stack:** Expo SDK 54, React Native 0.81, TypeScript 5.9, Expo SQLite with SQLCipher, Expo SecureStore, Expo Crypto, Zustand, Express 4, Zod 3, OpenAI SDK, Anthropic SDK, OpenAI transcription API, Jest/Supertest.
 
@@ -22,11 +30,14 @@
 - Daily, monthly, and per-request spend ceilings fail closed before a provider call. There are no silent paid retries.
 - Full conversation archive is never sent by default; context is assembled on-device under a fixed budget.
 - The AI proposes memory deltas but cannot persist them.
-- Each migrated entity has exactly one authoritative store; there is no dual-write period.
+- Each local-first entity has exactly one authoritative store; there is no dual-write period.
 - Keep the existing no-auth MVP constraint: device ID remains the caller identifier. It is a rate-limit key, not a security identity.
 - Expo managed workflow remains. SQLCipher requires a managed development build and is not available in Expo Go; this approved plan authorizes the `expo-sqlite` SQLCipher configuration. Running native prebuild or creating a managed development build remains a separate explicit execution gate before Task 5 device verification.
 - Detailed UI redesign is out of scope. Existing screens receive only minimal wiring needed to validate private save, submit, confirmation, history, and recovery.
-- Preserve the backend database until migration verification and Baah's explicit cutover approval.
+- Keep the legacy backend routes/database unchanged as BUILD rollback compatibility until recovery
+  evidence and Baah's explicit route-retirement approval. They are not a migration source.
+- Manual encrypted export contains database state only, never recorded audio files. It must fail
+  closed before artifact creation while nonterminal voice work still references audio.
 - Follow TDD for domain logic and gateway behavior; missing native test infrastructure is reported and covered by a physical-device checklist.
 
 ---
@@ -37,7 +48,8 @@
 
 - Create `shared/types/coaching.ts` — portable request, response, usage, and proposed-delta contracts.
 - Create `shared/types/memory.ts` — governed memory, evidence, goal, and action lifecycle contracts.
-- Create `shared/types/migration.ts` — versioned legacy export bundle contract.
+- Retain `shared/types/migration.ts` only as an unused pre-reconciliation contract; it does not
+  authorize or imply a migration endpoint/importer.
 - Modify `shared/index.ts` — export all new contracts.
 
 ### Stateless gateway
@@ -53,7 +65,6 @@
 - Create `backend/src/middleware/requestContext.ts` — request ID and content-free telemetry.
 - Modify `backend/src/routes/transcribe.ts` — guaranteed temporary-file cleanup and usage metadata.
 - Modify `backend/src/index.ts` — mount new routes and replace body-unsafe error logging.
-- Create `backend/src/routes/migration.ts` — temporary, versioned legacy export endpoint.
 
 ### Mobile local platform
 
@@ -63,7 +74,8 @@
 - Create `mobile/src/db/migrations.ts` — numbered, transactional local migrations.
 - Create `mobile/src/db/schema.ts` — local schema statements.
 - Create `mobile/src/db/types.ts` — narrow database adapter used by repositories and tests.
-- Create `mobile/src/repositories/` — focused repositories for profile, conversations, goals, actions, evidence, memory, and migration state.
+- Create `mobile/src/repositories/` — focused repositories for profile, conversations, goals,
+  actions, evidence, and memory.
 - Create `mobile/src/domain/memory/` — admission, confirmation, lifecycle, and conflict rules.
 - Create `mobile/src/domain/context/` — deterministic bounded context assembly and evidence ranking.
 - Create `mobile/src/services/coaching.ts` — gateway client with idempotency and no content logging.
@@ -74,7 +86,7 @@
 
 ### Documentation
 
-- Modify `docs/architecture.md`, `docs/data-model.md`, `docs/api.md`, `docs/v1-status.md`, and `SETUP.md` after the cutover.
+- Modify `docs/architecture.md`, `docs/data-model.md`, `docs/api.md`, `docs/v1-status.md`, and `SETUP.md` through BUILD and at the later route-retirement gate.
 - Create `docs/features/local-first-cutover-qa.md` — physical-device and recovery checklist.
 
 ---
@@ -84,13 +96,13 @@
 **Files:**
 - Create: `shared/types/memory.ts`
 - Create: `shared/types/coaching.ts`
-- Create: `shared/types/migration.ts`
+- Historical only: `shared/types/migration.ts` was created before the approved no-migration reconciliation and has no runtime migration consumer.
 - Modify: `shared/index.ts`
 - Test: `backend/src/__tests__/coaching.contract.test.ts`
 
 **Interfaces:**
-- Produces: `CoachingRequest`, `CoachingResponse`, `CoachingContext`, `MemoryItem`, `MemoryDelta`, `EvidenceItem`, `UsageReceipt`, and `LegacyExportBundleV1`.
-- Consumed by: all later gateway, database, context, and migration tasks.
+- Produces: `CoachingRequest`, `CoachingResponse`, `CoachingContext`, `MemoryItem`, `MemoryDelta`, `EvidenceItem`, and `UsageReceipt`. `LegacyExportBundleV1` is historical/unused after reconciliation.
+- Consumed by: later gateway, database, context, and recovery tasks. No legacy-data migration task remains.
 
 - [ ] **Step 1: Write the failing contract test**
 
@@ -175,6 +187,8 @@ export interface CoachingResponse {
   proposals: MemoryDelta[]; usage: UsageReceipt;
 }
 
+// Superseded runtime-migration concept retained only as a historical contract.
+// No endpoint or importer consumes this type.
 export interface LegacyExportBundleV1 {
   schemaVersion: 1; exportedAt: string; userId: string;
   profile: CareerProfile; entries: JournalEntry[]; analyses: EntryAnalysis[];
@@ -214,7 +228,7 @@ git commit -m "feat: define portable coaching contracts"
 - Create: `backend/src/routes/coaching.ts`
 - Create: `backend/src/__tests__/coaching.routes.test.ts`
 - Create: `backend/src/__tests__/coachingGateway.test.ts`
-- Modify: `backend/src/index.ts`
+- Inspect only in this ungated slice: `backend/src/index.ts` (legacy mounts remain unchanged)
 - Modify: `backend/src/services/claude/client.ts`
 
 **Interfaces:**
@@ -466,7 +480,7 @@ test('runs each migration once and advances user_version transactionally', async
 
 - [ ] **Step 4: Define the schema**
 
-Schema version 1 contains `profile`, `conversations`, `messages`, `goals`, `milestones`, `actions`, `evidence`, `memory_items`, `memory_sources`, `usage_receipts`, `migration_state`, and FTS5 tables for message/evidence search. Foreign keys are enabled; all IDs and timestamps are supplied by the client.
+Schema version 1 contains `profile`, `conversations`, `messages`, `goals`, `milestones`, `actions`, `evidence`, `memory_items`, `memory_sources`, `usage_receipts`, reserved `migration_state`, and FTS5 tables for message/evidence search. Foreign keys are enabled; all IDs and timestamps are supplied by the client.
 
 - [ ] **Step 5: Implement key creation and encrypted open**
 
@@ -521,7 +535,7 @@ git commit -m "feat: add encrypted local data foundation"
 
 **Interfaces:**
 - Produces: repository functions returning shared domain types; each mutation accepts a database transaction and an idempotency ID.
-- Consumed by: migration, context assembly, stores, and export/restore.
+- Consumed by: context assembly, stores, and export/restore.
 
 - [ ] **Step 1: Write repository contract tests**
 
@@ -557,55 +571,19 @@ git commit -m "feat: add local career repositories"
 
 ---
 
-### Task 7: Import existing backend data with a single-authority cutover
+### Task 7: Removed — no backend-data migration
 
-**Files:**
-- Create: `backend/src/routes/migration.ts`
-- Create: `backend/src/services/migration/exportLegacyBundle.ts`
-- Create: `backend/src/__tests__/migration.routes.test.ts`
-- Create: `mobile/src/services/importLegacyBundle.ts`
-- Create: `mobile/src/services/__tests__/importLegacyBundle.test.ts`
-- Modify: `backend/src/index.ts`
+**Approved reconciliation — 2026-08-10:** Baah confirmed there is no backend data to preserve.
+This task was removed from product scope before implementation.
 
-**Interfaces:**
-- Consumes: `LegacyExportBundleV1` and Task 6 repositories.
-- Produces: temporary `GET /api/v1/migration/export-v1`, `importLegacyBundle(bundle)`, and local `migration_state` cutover marker.
-
-- [ ] **Step 1: Write export tests**
-
-Seed the current backend schema and assert the bundle includes profile, entries/analyses, sessions/messages, goals/milestones, actions, themes, reviews, and trajectory snapshots with `schemaVersion: 1`. Require both `x-user-id` and `x-migration-token`; reject missing or wrong tokens.
-
-- [ ] **Step 2: Implement a read-only export transaction**
-
-The export route reads a consistent snapshot and never marks or deletes backend rows. It sets `Cache-Control: no-store`; middleware must not log the response body. The migration token comes from `MIGRATION_TOKEN` and is disabled when the variable is absent.
-
-- [ ] **Step 3: Write failing import and rollback tests**
-
-```ts
-test('rolls back every imported entity when one row is invalid', async () => {
-  const broken = { ...bundle, goals: [{ ...bundle.goals[0], status: 'invalid' }] };
-  await expect(importLegacyBundle(db, broken)).rejects.toThrow();
-  expect(await conversations.count()).toBe(0);
-  expect(await migrationState.get()).toBeNull();
-});
-```
-
-- [ ] **Step 4: Implement transactional import and verification**
-
-Map legacy analyses into source-linked evidence and archived analysis payloads without inventing durable memories. Compare per-entity counts and a deterministic SHA-256 digest before committing `migration_state(authority='device', importedAt, sourceDigest)`.
-
-- [ ] **Step 5: Perform dry-run migration and require cutover approval**
-
-Export and import on the target iPhone, compare counts, open representative conversations/goals/actions, restart the app, and retain the backend database unchanged. Baah explicitly approves the authority cutover before Task 10 retires legacy reads.
-
-- [ ] **Step 6: Run cross-stack checks and commit**
-
-Run: `npm test --workspace=backend -- migration.routes.test.ts --runInBand && npm run build --workspace=backend && cd mobile && npm test -- importLegacyBundle --runInBand && npm run typecheck`
-
-```bash
-git add backend/src mobile/src shared docs/features/local-first-cutover-qa.md
-git commit -m "feat: migrate Taisa data to device authority"
-```
+- [x] Do not create a backend export route, migration token, mobile importer, legacy archive, or
+  device authority-migration marker.
+- [x] Do not run a physical-device data-migration journey. The next device gate is Task 10
+  recovery/privacy QA against the local-first archive.
+- [x] Leave local SQLite schema migrations from Task 5 intact; they version the on-device schema
+  and are not a legacy-data import mechanism.
+- [x] Treat the existing `LegacyExportBundleV1` type and reserved `migration_state` table as unused
+  pre-reconciliation artifacts. Neither is permission to add migration behavior.
 
 ---
 
@@ -707,7 +685,7 @@ Recording remains local until Submit. On Submit: upload once, store returned tra
 
 - [ ] **Step 4: Replace store CRUD with repositories**
 
-`fetchThreads`, `fetchThread`, profile reads/writes, goal/action operations, and search read from local repositories. Remove network calls to legacy CRUD routes from migrated stores. Keep Zustand as view state, not durable state.
+`fetchThreads`, `fetchThread`, profile reads/writes, goal/action operations, and search read from local repositories. Remove network calls to legacy CRUD routes from local-first stores. Keep Zustand as view state, not durable state.
 
 - [ ] **Step 5: Add minimal validation UI wiring**
 
@@ -728,7 +706,7 @@ git commit -m "feat: run coaching from local career context"
 
 ---
 
-### Task 10: Add encrypted recovery and retire backend authority
+### Task 10: Add encrypted recovery and prepare gated backend-route retirement
 
 **Files:**
 - Create: `mobile/src/services/exportArchive.ts`
@@ -750,25 +728,32 @@ git commit -m "feat: run coaching from local career context"
 
 **Interfaces:**
 - Produces: `exportEncryptedArchive(passphrase)` and `restoreEncryptedArchive(uri, passphrase)`.
-- Completes: device authority cutover and legacy backend CRUD retirement.
+- Produces the recovery/privacy evidence required before a separately approved legacy-route
+  retirement change; this ungated slice does not itself retire routes.
 
-- [ ] **Step 1: Write export/restore tests**
+- [x] **Step 1: Write export/restore tests**
 
-Test round-trip counts and hashes, wrong passphrase, corrupted archive, unsupported schema version, insufficient free space, interrupted restore, and preservation of the active database on every failure.
+Test round-trip counts and hashes, wrong passphrase, corrupted archive, unsupported schema version,
+insufficient free space, interrupted restore, preservation of the active database on every failure,
+and rejection before artifact creation when nonterminal voice work still references audio.
 
-- [ ] **Step 2: Implement SQLCipher export with a separate passphrase**
+- [x] **Step 2: Implement SQLCipher export with a separate passphrase**
 
 Use SQLCipher `ATTACH DATABASE ... KEY`, `sqlcipher_export`, and `DETACH DATABASE` to create an encrypted export database in the document directory. Never reuse or expose the device database key. Require a passphrase of at least 12 characters and confirmation before export.
 
-- [ ] **Step 3: Implement candidate restore and atomic promotion**
+The export contains database state, including completed transcripts, but never bundles recorded
+audio files. Before allocating an export URI, fail closed if any nonterminal coaching request still
+has an `audio_uri`; the user must finish or abandon that voice work first.
+
+- [x] **Step 3: Implement candidate restore and atomic promotion**
 
 Open the selected archive as a candidate, validate its schema version, run integrity checks, compare required entity counts, close the active database, atomically promote the candidate, and reopen. Preserve the active database and SecureStore key until all checks pass.
 
-- [ ] **Step 4: Complete physical-device recovery QA**
+- [ ] **Step 4: Complete managed-device recovery/privacy QA**
 
 Export, remove the app's local data in a controlled test installation, restore, and verify conversations, goals, actions, evidence, memory sources, and search. Verify app-switcher shielding and content-free notification previews.
 
-- [ ] **Step 5: Add submission redaction and device privacy guards**
+- [x] **Step 5: Add submission redaction and device privacy guards**
 
 Implement a deterministic redaction preview that never calls AI. It detects user-selected names, organizations, project labels, and numeric metrics and returns both the redacted text and replacement map kept only in memory:
 
@@ -785,15 +770,22 @@ export function redactSubmission(input: string, selections: RedactionSelection[]
 
 Add optional LocalAuthentication unlock, obscure the root view while AppState is inactive/backgrounded, and ensure notifications contain generic copy such as “You have an open Taisa action” rather than titles or excerpts. Tests cover overlapping redactions, background transitions, lock cancellation, and notification payloads.
 
-- [ ] **Step 6: Retire legacy user-data routes after explicit cutover approval**
+- [ ] **Step 6: Retire legacy user-data routes after recovery evidence and separate explicit approval**
 
-Unmount profile, entries, analyze, reviews, goals, action-items, trajectory, chat history, and today routes from `backend/src/index.ts`. Keep only health, stateless coaching, transcription, and the temporary migration route. After a verified recovery export exists, disable the migration route by removing `MIGRATION_TOKEN`; preserve the original backend database as a rollback artifact until Ship.
+After Step 4 passes and Baah explicitly approves this separate change, unmount profile, entries,
+analyze, reviews, goals, action-items, trajectory, notifications, chat history, and today routes
+from `backend/src/index.ts`. Keep only health, stateless coaching, and transcription. There is no
+migration route or migration token to disable. Keep the unchanged legacy database as a BUILD/Ship
+rollback artifact, not as a migration source.
 
-- [ ] **Step 7: Update canonical documentation**
+- [x] **Step 7: Update canonical documentation**
 
-Document the phone-authoritative data flow, stateless endpoints, local schema, migration ownership, privacy limitations, backup limitations, development-build requirement, and exact verification commands. Mark server-authoritative diagrams and endpoints as retired rather than silently leaving stale docs.
+Document the phone-authoritative data flow, stateless endpoints, local schema, the approved
+no-migration decision, route-retirement gate, privacy limitations, backup limitations,
+development-build requirement, and exact verification commands. Mark server-authoritative
+diagrams/endpoints as legacy while mounted and retired only after Step 6 actually runs.
 
-- [ ] **Step 8: Run the complete verification matrix**
+- [x] **Step 8: Run the complete verification matrix**
 
 Run:
 
@@ -805,13 +797,15 @@ cd .. && npm run verify:workflow
 git diff --check
 ```
 
-Expected: all available automated checks pass. Record SQLCipher, migration, privacy, private-save, submission, and restore device evidence separately; missing device evidence blocks Ship.
+Expected: all available automated checks pass. Record SQLCipher, privacy, private-save, submission,
+and restore device evidence separately; missing device evidence blocks Ship. No device migration
+evidence is required because Task 7 was removed.
 
 - [ ] **Step 9: Commit**
 
 ```bash
 git add mobile backend docs SETUP.md
-git commit -m "feat: complete local-first data cutover"
+git commit -m "feat: add local recovery and privacy controls"
 ```
 
 ---

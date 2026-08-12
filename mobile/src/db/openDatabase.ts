@@ -74,6 +74,20 @@ export interface DatabaseLifecycle<TDatabase extends ClosableDatabaseLike> {
   close(): Promise<void>;
 }
 
+export class DatabaseMaintenanceInProgressError extends Error {
+  readonly code = 'DATABASE_MAINTENANCE_IN_PROGRESS';
+
+  constructor() {
+    super('The local archive is temporarily unavailable while recovery is running.');
+    this.name = 'DatabaseMaintenanceInProgressError';
+  }
+}
+
+export interface DatabaseAccessCoordinator<TDatabase extends ClosableDatabaseLike> {
+  withDatabase<T>(work: (database: TDatabase) => Promise<T>): Promise<T>;
+  withMaintenance<T>(work: () => Promise<T>): Promise<T>;
+}
+
 function bytesToHex(bytes: Uint8Array): string {
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
@@ -208,6 +222,49 @@ export function createDatabaseLifecycle<TDatabase extends ClosableDatabaseLike>(
   };
 }
 
+export function createDatabaseAccessCoordinator<TDatabase extends ClosableDatabaseLike>(
+  lifecycle: DatabaseLifecycle<TDatabase>,
+): DatabaseAccessCoordinator<TDatabase> {
+  let maintenanceRequested = false;
+  let activeOperations = 0;
+  const idleWaiters = new Set<() => void>();
+
+  function notifyIdle(): void {
+    if (activeOperations !== 0) return;
+    for (const resolve of idleWaiters) resolve();
+    idleWaiters.clear();
+  }
+
+  async function waitUntilIdle(): Promise<void> {
+    if (activeOperations === 0) return;
+    await new Promise<void>((resolve) => { idleWaiters.add(resolve); });
+  }
+
+  return {
+    async withDatabase(work) {
+      if (maintenanceRequested) throw new DatabaseMaintenanceInProgressError();
+      activeOperations += 1;
+      try {
+        const database = await lifecycle.open();
+        return await work(database);
+      } finally {
+        activeOperations -= 1;
+        notifyIdle();
+      }
+    },
+    async withMaintenance(work) {
+      if (maintenanceRequested) throw new DatabaseMaintenanceInProgressError();
+      maintenanceRequested = true;
+      try {
+        await waitUntilIdle();
+        return await work();
+      } finally {
+        maintenanceRequested = false;
+      }
+    },
+  };
+}
+
 const nativeDependencies: OpenDatabaseDependencies<SQLiteDatabase> = {
   databaseFile: {
     async exists(databaseName: string): Promise<boolean> {
@@ -233,6 +290,7 @@ const nativeDependencies: OpenDatabaseDependencies<SQLiteDatabase> = {
 };
 
 const databaseLifecycle = createDatabaseLifecycle(nativeDependencies);
+const databaseAccess = createDatabaseAccessCoordinator(databaseLifecycle);
 
 export function openTaisaDatabase(): Promise<SQLiteDatabase> {
   return databaseLifecycle.open();
@@ -240,4 +298,14 @@ export function openTaisaDatabase(): Promise<SQLiteDatabase> {
 
 export function closeTaisaDatabase(): Promise<void> {
   return databaseLifecycle.close();
+}
+
+export function withTaisaDatabase<T>(
+  work: (database: SQLiteDatabase) => Promise<T>,
+): Promise<T> {
+  return databaseAccess.withDatabase(work);
+}
+
+export function withTaisaMaintenance<T>(work: () => Promise<T>): Promise<T> {
+  return databaseAccess.withMaintenance(work);
 }

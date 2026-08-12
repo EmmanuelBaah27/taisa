@@ -30,17 +30,23 @@ backend SQLite. The mobile app has no provider credentials.
 There is no migration/export endpoint. Baah confirmed that no legacy backend data needs to be
 migrated, so Task 7 was removed. Legacy backend CRUD and AI routes are still mounted as rollback
 compatibility during BUILD; they are not part of the local coaching flow and cannot be retired
-until encrypted recovery passes on device and Baah explicitly approves cutover.
+until encrypted recovery passes on device and Baah explicitly approves route retirement.
 
 ### Recovery and privacy engine
 
 - Manual backup uses a separate, confirmed passphrase (minimum 12 non-whitespace characters),
   SQLCipher `ATTACH ... KEY`, and `sqlcipher_export`.
-- Restore copies the selected file to a candidate, verifies format/schema, SQLite integrity,
-  required entity counts, a deterministic content hash, and message/evidence search indexes.
-- The passphrase-encrypted archive is re-encrypted into a device-key candidate. The active database
-  and Keychain key remain recoverable through a rollback copy and durable promotion marker until
-  the promoted candidate reopens and matches the verified fingerprint.
+- The archive contains encrypted database state, not recorded audio files. Export fails closed
+  before creating an artifact if a nonterminal coaching request still references audio; the user
+  must finish or abandon that voice work first.
+- Restore stages the selected file and reads it through a query-only maintenance connection. It
+  verifies format/version, SQLite and foreign-key integrity, exact allowlisted table mappings,
+  required entity counts, a deterministic content hash, and two-way message/evidence search-index
+  alignment.
+- Restore builds a fresh device-key candidate from trusted current migrations and copies only
+  allowlisted rows with bound values; archive-owned schema is never promoted. The active database
+  and Keychain key remain recoverable through a digest-verified rollback copy and durable promotion
+  marker until the promoted candidate reopens and matches the verified fingerprint.
 - Optional LocalAuthentication stores only an enabled/disabled preference. The operating system
   owns biometric material. Inactive/background UI is covered by a root privacy shield.
 - Notifications use generic content-free copy. Redaction is deterministic and local; its

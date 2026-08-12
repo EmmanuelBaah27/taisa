@@ -59,6 +59,30 @@ describe('submission redaction', () => {
     ])).toThrow('Unicode boundary');
   });
 
+  test.each([
+    ['regional-indicator flag', '🇬🇭 launch', 0, 2],
+    ['Hangul jamo syllable', '가 launch', 0, 1],
+    ['Indic conjunct', 'क्ष launch', 0, 1],
+    ['emoji ZWJ sequence', '👩‍💻 launch', 0, 2],
+    ['CRLF pair', 'private\r\nlaunch', 0, 8],
+  ])('rejects a range that splits a %s grapheme cluster', (_name, input, start, end) => {
+    expect(() => redactSubmission(input, [
+      { kind: 'project', start, end },
+    ])).toThrow('Unicode boundary');
+  });
+
+  test('fails closed when the runtime has no Unicode grapheme segmenter', () => {
+    const descriptor = Object.getOwnPropertyDescriptor(Intl, 'Segmenter');
+    Object.defineProperty(Intl, 'Segmenter', { configurable: true, value: undefined });
+    try {
+      expect(() => redactSubmission('Atlas', [
+        { kind: 'project', start: 0, end: 5 },
+      ])).toThrow('Unicode grapheme validation is unavailable');
+    } finally {
+      if (descriptor) Object.defineProperty(Intl, 'Segmenter', descriptor);
+    }
+  });
+
   test('requires a selected metric to contain a numeric value', () => {
     expect(() => redactSubmission('high growth', [
       { kind: 'metric', start: 0, end: 4 },

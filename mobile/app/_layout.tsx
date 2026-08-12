@@ -4,23 +4,16 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { AppState, Text, TouchableOpacity, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import * as Crypto from 'expo-crypto';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
-import * as SecureStore from 'expo-secure-store';
-import { useCareerStore } from '../src/stores/careerStore';
+import { LocalProfileArchiveError, useCareerStore } from '../src/stores/careerStore';
 import {
   getPrivacyGuard,
   type GuardedAppState,
 } from '../src/services/privacyGuard';
 
 SplashScreen.preventAutoHideAsync();
-
-function makeDeviceId(): string {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
-  });
-}
 
 export default function RootLayout() {
   const { initUser, fetchProfile } = useCareerStore();
@@ -39,19 +32,17 @@ export default function RootLayout() {
 
   useEffect(() => {
     async function hydrateUser() {
-      const userId = await SecureStore.getItemAsync('userId');
-      if (userId) {
-        try {
-          await fetchProfile();
-        } catch {
-          // Profile gone — re-init with same id
-          await initUser(userId, {});
-        }
-      } else {
-        await initUser(makeDeviceId(), {});
+      try {
+        await fetchProfile();
+      } catch (error) {
+        if (!(error instanceof LocalProfileArchiveError) || error.reason !== 'missing') throw error;
+        await initUser(Crypto.randomUUID(), {});
       }
     }
-    hydrateUser();
+    void hydrateUser().catch(() => {
+      // Fail closed: do not invent or select a profile when the local archive is ambiguous or
+      // temporarily unavailable. The recovery controls remain the explicit repair path.
+    });
   }, []);
 
   useEffect(() => {

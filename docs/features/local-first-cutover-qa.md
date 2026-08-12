@@ -43,11 +43,14 @@ Status: pending explicit Baah approval for a SQLCipher-capable managed developme
 
 ## Encrypted recovery and device privacy gate
 
+- [ ] Start a voice submission that still references its app-owned recording and attempt export;
+  confirm export is rejected before an artifact is created. Finish or abandon that work, retry,
+  and confirm export can proceed. The backup must never claim to bundle the audio file.
 - [ ] Create an export with a confirmed backup passphrase of at least 12 non-whitespace characters; move the file outside Taisa's app container and verify the file cannot be opened without that passphrase.
 - [ ] Verify export entity counts and content hash cover profile, conversations/messages, goals/milestones, actions/transitions, evidence, memory/items sources/confirmations, coaching requests, usage, and mutation receipts.
 - [ ] Attempt restore with a wrong passphrase, corrupted file, newer schema, and insufficient free space; confirm the active database and Keychain key remain usable and no partial candidate is visible.
 - [ ] Interrupt restore before promotion, during promotion, and after candidate move; relaunch and confirm the durable marker restores the preserved original until a verified promotion commits.
-- [ ] On a controlled test installation, export, remove local app data, restore, and verify representative conversations, goals, actions, evidence, memory sources, pending decisions, usage receipts, and message/evidence search.
+- [ ] On a controlled test installation, export, remove local app data, restore, and verify representative conversations, completed voice transcripts, goals, actions, evidence, memory sources, pending decisions, usage receipts, and message/evidence search. Confirm no recorded audio file is expected from the database-only archive.
 - [ ] Force-quit and reopen after successful restore; confirm the promoted database reopens with the same counts/hash and local stores do not retain a stale closed handle.
 - [ ] Enable device unlock, background/inactivate Taisa, and verify private UI is obscured in the app switcher before returning to an unlock prompt.
 - [ ] Cancel unlock and confirm the archive remains shielded; then authenticate successfully and confirm it becomes visible. Verify disabling stores only the boolean preference, never biometric material.
@@ -60,7 +63,7 @@ Status: code-only recovery/privacy implementation and automated tests exist. Tas
 ## Legacy route retirement gate
 
 - [ ] Complete every encrypted database/recovery check above and retain the pre-cutover backend database as a rollback artifact.
-- [ ] Baah explicitly approves authority cutover after reviewing device evidence.
+- [ ] Baah explicitly approves legacy-route retirement after reviewing device evidence.
 - [ ] In a later gated change, unmount legacy profile, entries, analyze, reviews, goals, action-items, trajectory, notifications, chat, and today routes; rerun the full backend/mobile/workflow matrix.
 
 No migration route exists or is needed. Task 10 Step 6 legacy-route retirement was not performed;

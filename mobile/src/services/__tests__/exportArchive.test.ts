@@ -39,12 +39,28 @@ const EMPTY_SNAPSHOT: ArchiveSnapshot = {
   ) as ArchiveSnapshot['counts'],
 };
 
+const TRUSTED_SCHEMA_OBJECTS = Object.keys(SNAPSHOT.counts).map((name) => ({
+  type: 'table', name, tbl_name: name, sql: `CREATE TABLE ${name} (id TEXT)`,
+}));
+const SOURCE_SCHEMA_OBJECTS = [
+  ...TRUSTED_SCHEMA_OBJECTS,
+  {
+    type: 'table',
+    name: 'taisa_archive_manifest',
+    tbl_name: 'taisa_archive_manifest',
+    sql: 'CREATE TABLE taisa_archive_manifest (id TEXT)',
+  },
+].sort((left, right) => left.type.localeCompare(right.type) || left.name.localeCompare(right.name));
+const SORTED_TRUSTED_SCHEMA_OBJECTS = [...TRUSTED_SCHEMA_OBJECTS]
+  .sort((left, right) => left.type.localeCompare(right.type) || left.name.localeCompare(right.name));
+
 function makeHarness(overrides: Partial<ArchiveDependencies> = {}) {
   let activeSnapshot = SNAPSHOT;
   const files = {
     availableDiskSpace: jest.fn(async () => 100_000_000),
     size: jest.fn(async (uri: string) => uri.includes('selected') ? 2_000_000 : 1_000_000),
     createExportUri: jest.fn(() => 'file:///documents/taisa-backup.sqlite3'),
+    discardExport: jest.fn(async () => undefined),
     stageSelectedArchive: jest.fn(async () => 'file:///sqlite/taisa-restore-input.db'),
     createCandidateUri: jest.fn(() => 'file:///sqlite/taisa-restore-candidate.db'),
     preparePromotion: jest.fn(async () => undefined),
@@ -54,6 +70,7 @@ function makeHarness(overrides: Partial<ArchiveDependencies> = {}) {
     cleanupTemporaryFiles: jest.fn(async () => undefined),
   };
   const sqlCipher = {
+    assertExportable: jest.fn(async () => undefined),
     exportPassphraseArchive: jest.fn(async () => SNAPSHOT),
     inspectPassphraseArchive: jest.fn(async () => SNAPSHOT),
     createDeviceEncryptedCandidate: jest.fn(async () => SNAPSHOT),
@@ -61,6 +78,7 @@ function makeHarness(overrides: Partial<ArchiveDependencies> = {}) {
     fingerprintActive: jest.fn(async () => activeSnapshot),
   };
   const lifecycle = {
+    withMaintenance: async <T>(work: () => Promise<T>) => work(),
     invalidateClients: jest.fn(async () => undefined),
     close: jest.fn(async () => undefined),
     reopen: jest.fn(async () => undefined),
@@ -122,6 +140,19 @@ describe('encrypted archive recovery', () => {
     expect(files.cleanupTemporaryFiles).toHaveBeenCalledTimes(1);
   });
 
+  test('does not report a committed restore as failed when post-commit artifact cleanup is interrupted', async () => {
+    const { service, files } = makeHarness();
+    files.cleanupTemporaryFiles.mockRejectedValueOnce(new Error('interrupted cleanup'));
+
+    await expect(service.restoreEncryptedArchive(
+      'file:///selected/backup.sqlite3',
+      'correct horse battery',
+    )).resolves.toEqual({ snapshot: SNAPSHOT });
+
+    expect(files.commitPromotion).toHaveBeenCalledTimes(1);
+    expect(files.rollbackPromotion).not.toHaveBeenCalled();
+  });
+
   test.each(['wrong passphrase', 'corrupted archive'])(
     'preserves the active database for a %s failure',
     async (message) => {
@@ -174,6 +205,30 @@ describe('encrypted archive recovery', () => {
     expect(sqlCipher.exportPassphraseArchive).not.toHaveBeenCalled();
   });
 
+  test('keeps the export error content-safe if partial-artifact cleanup is interrupted', async () => {
+    const { service, files, sqlCipher } = makeHarness();
+    sqlCipher.exportPassphraseArchive.mockRejectedValueOnce(new Error('secret SQL and path'));
+    files.discardExport.mockRejectedValueOnce(new Error('private cleanup path'));
+
+    await expect(service.exportEncryptedArchive(
+      confirmArchivePassphrase('correct horse battery', 'correct horse battery'),
+    )).rejects.toMatchObject({ code: 'ARCHIVE_VERIFICATION_FAILED' });
+  });
+
+  test('creates no backup artifact while a nonterminal voice request references local audio', async () => {
+    const { service, files, sqlCipher } = makeHarness();
+    sqlCipher.assertExportable.mockRejectedValueOnce(
+      new ArchiveOperationError('PENDING_VOICE_NOT_BACKED_UP'),
+    );
+
+    await expect(service.exportEncryptedArchive(
+      confirmArchivePassphrase('correct horse battery', 'correct horse battery'),
+    )).rejects.toMatchObject({ code: 'PENDING_VOICE_NOT_BACKED_UP' });
+
+    expect(files.createExportUri).not.toHaveBeenCalled();
+    expect(sqlCipher.exportPassphraseArchive).not.toHaveBeenCalled();
+  });
+
   test('fails before staging restore when free space cannot hold input, candidate, and rollback', async () => {
     const { service, files, sqlCipher } = makeHarness();
     files.availableDiskSpace.mockResolvedValueOnce(3_000_000);
@@ -199,6 +254,50 @@ describe('encrypted archive recovery', () => {
     expect(lifecycle.reopen).toHaveBeenCalledTimes(1);
     expect(files.commitPromotion).not.toHaveBeenCalled();
     expect(files.cleanupTemporaryFiles).toHaveBeenCalledTimes(1);
+  });
+
+  test('never reopens an unverified active database when rollback itself fails', async () => {
+    const { service, files, lifecycle } = makeHarness();
+    files.promoteCandidate.mockRejectedValueOnce(new Error('private promotion detail'));
+    files.rollbackPromotion.mockRejectedValueOnce(new Error('private rollback detail'));
+
+    let failure: unknown;
+    try {
+      await service.restoreEncryptedArchive(
+        'file:///selected/private-backup.sqlite3',
+        'correct horse battery',
+      );
+    } catch (error) {
+      failure = error;
+    }
+
+    expect(failure).toBeInstanceOf(ArchiveOperationError);
+    expect(failure).toMatchObject({ code: 'RESTORE_FAILED' });
+    expect((failure as Error).cause).toBeUndefined();
+    expect(lifecycle.reopen).not.toHaveBeenCalled();
+    expect(files.commitPromotion).not.toHaveBeenCalled();
+  });
+
+  test('normalizes reopen failure after rollback without exposing its cause', async () => {
+    const { service, files, lifecycle } = makeHarness();
+    files.promoteCandidate.mockRejectedValueOnce(new Error('private promotion detail'));
+    lifecycle.reopen.mockRejectedValueOnce(new Error('private reopen detail'));
+
+    let failure: unknown;
+    try {
+      await service.restoreEncryptedArchive(
+        'file:///selected/private-backup.sqlite3',
+        'correct horse battery',
+      );
+    } catch (error) {
+      failure = error;
+    }
+
+    expect(files.rollbackPromotion).toHaveBeenCalledTimes(1);
+    expect(failure).toBeInstanceOf(ArchiveOperationError);
+    expect(failure).toMatchObject({ code: 'RESTORE_FAILED' });
+    expect((failure as Error).cause).toBeUndefined();
+    expect(files.commitPromotion).not.toHaveBeenCalled();
   });
 
   test('rolls back when the promoted database count or hash does not match the candidate', async () => {
@@ -237,50 +336,285 @@ describe('encrypted archive recovery', () => {
     expect((failure as Error).cause).toBeUndefined();
   });
 
-  test('removes the backup-only manifest before the device candidate can become active', async () => {
-    const execAsync = jest.fn(async () => undefined);
-    const runAsync = jest.fn(async () => ({ changes: 0, lastInsertRowId: 0 }));
-    const getFirstAsync = jest.fn(async (sql: string) => {
-      if (sql === 'PRAGMA cipher_version') return { cipher_version: '4.6.1' };
-      if (sql.includes('taisa_archive_manifest')) {
-        return {
-          archive_format_version: 1,
-          schema_version: EMPTY_SNAPSHOT.schemaVersion,
-          counts_json: JSON.stringify(EMPTY_SNAPSHOT.counts),
-          content_hash: EMPTY_SNAPSHOT.contentHash,
-        };
-      }
-      if (sql.includes('user_version')) return { user_version: EMPTY_SNAPSHOT.schemaVersion };
-      if (sql.includes('LEFT JOIN')) return null;
-      return { exported: 1 };
+  test('sets the passphrase export user_version when sqlcipher_export starts it at zero', async () => {
+    let passphraseExportVersion = 0;
+    const execAsync = jest.fn(async (sql: string) => {
+      if (sql === 'PRAGMA passphrase_export.user_version = 1') passphraseExportVersion = 1;
     });
-    const getAllAsync = jest.fn(async (sql: string) => (
-      sql.includes('integrity_check') ? [{ integrity_check: 'ok' }] : []
-    ));
-    const closeAsync = jest.fn(async () => undefined);
-    const database = { execAsync, runAsync, getFirstAsync, getAllAsync, closeAsync };
-    const readDeviceKey = jest.fn(async () => 'b'.repeat(64));
+    const database = {
+      execAsync,
+      runAsync: jest.fn(async () => ({ changes: 0, lastInsertRowId: 0 })),
+      getFirstAsync: jest.fn(async (sql: string) => {
+        if (sql.includes('passphrase_export.user_version')) {
+          return { user_version: passphraseExportVersion };
+        }
+        if (sql.includes('main.user_version')) return { user_version: 1 };
+        if (sql.includes('taisa_archive_manifest')) {
+          return {
+            archive_format_version: 1,
+            schema_version: 1,
+            counts_json: JSON.stringify(EMPTY_SNAPSHOT.counts),
+            content_hash: EMPTY_SNAPSHOT.contentHash,
+          };
+        }
+        if (sql.includes('LEFT JOIN')) return null;
+        return { exported: 1 };
+      }),
+      getAllAsync: jest.fn(async (sql: string) => (
+        sql.includes('integrity_check') ? [{ integrity_check: 'ok' }] : []
+      )),
+      closeAsync: jest.fn(async () => undefined),
+    };
     const boundary = createSqlCipherArchiveBoundary({
       openActive: jest.fn(async () => database),
       openMaintenance: jest.fn(async () => database),
+      openDeviceCandidate: jest.fn(async () => database),
       deleteMaintenance: jest.fn(async () => undefined),
-      readDeviceKey,
+      readDeviceKey: jest.fn(async () => 'b'.repeat(64)),
+      sha256: jest.fn(async () => EMPTY_SNAPSHOT.contentHash),
+    });
+
+    await expect(boundary.exportPassphraseArchive({
+      destinationUri: 'file:///backup.db',
+      passphrase: 'correct horse battery',
+    })).resolves.toEqual(EMPTY_SNAPSHOT);
+    expect(execAsync).toHaveBeenCalledWith('PRAGMA passphrase_export.user_version = 1');
+  });
+
+  test('imports rows into a fresh trusted-schema candidate without cloning source schema', async () => {
+    const source = {
+      execAsync: jest.fn(async () => undefined),
+      runAsync: jest.fn(async () => ({ changes: 0, lastInsertRowId: 0 })),
+      getFirstAsync: jest.fn(async (sql: string) => {
+        if (sql === 'PRAGMA cipher_version') return { cipher_version: '4.6.1' };
+        if (sql.includes('source_archive.user_version')) return { user_version: 1 };
+        if (sql.includes('taisa_archive_manifest')) {
+          return {
+            archive_format_version: 1,
+            schema_version: 1,
+            counts_json: JSON.stringify(EMPTY_SNAPSHOT.counts),
+            content_hash: EMPTY_SNAPSHOT.contentHash,
+          };
+        }
+        if (sql.includes('LEFT JOIN')) return null;
+        return null;
+      }),
+      getAllAsync: jest.fn(async (sql: string) => {
+        if (sql.includes('sqlite_schema')) return SOURCE_SCHEMA_OBJECTS;
+        if (sql.includes('integrity_check')) return [{ integrity_check: 'ok' }];
+        if (sql.includes('foreign_key_check')) return [];
+        if (sql.includes('table_info')) {
+          return [{ cid: 0, name: 'id', type: 'TEXT', notnull: 1, dflt_value: null, pk: 1 }];
+        }
+        return [];
+      }),
+      closeAsync: jest.fn(async () => undefined),
+    };
+    const candidate = {
+      execAsync: jest.fn(async () => undefined),
+      runAsync: jest.fn(async () => ({ changes: 1, lastInsertRowId: 0 })),
+      getFirstAsync: jest.fn(async (sql: string) => {
+        if (sql.includes('main.user_version')) return { user_version: 1 };
+        if (sql.includes('LEFT JOIN')) return null;
+        return null;
+      }),
+      getAllAsync: jest.fn(async (sql: string) => {
+        if (sql.includes('sqlite_schema')) return SORTED_TRUSTED_SCHEMA_OBJECTS;
+        if (sql.includes('integrity_check')) return [{ integrity_check: 'ok' }];
+        if (sql.includes('foreign_key_check')) return [];
+        if (sql.includes('table_info')) {
+          return [{ cid: 0, name: 'id', type: 'TEXT', notnull: 1, dflt_value: null, pk: 1 }];
+        }
+        return [];
+      }),
+      closeAsync: jest.fn(async () => undefined),
+    };
+    const openDeviceCandidate = jest.fn(async () => candidate);
+    const boundary = createSqlCipherArchiveBoundary({
+      openActive: jest.fn(async () => candidate),
+      openMaintenance: jest.fn(async () => source),
+      openDeviceCandidate,
+      deleteMaintenance: jest.fn(async () => undefined),
+      readDeviceKey: jest.fn(async () => 'b'.repeat(64)),
       sha256: jest.fn(async () => EMPTY_SNAPSHOT.contentHash),
     });
 
     await expect(boundary.createDeviceEncryptedCandidate({
       sourceUri: 'file:///restore-input.db',
-      destinationUri: 'file:///device-candidate.db',
+      destinationUri: 'file:///restore-candidate.db',
       passphrase: 'correct horse battery',
     })).resolves.toEqual(EMPTY_SNAPSHOT);
 
-    expect(runAsync).toHaveBeenCalledWith(
-      'ATTACH DATABASE ? AS source_archive KEY ?',
-      ['file:///restore-input.db', 'correct horse battery'],
+    expect(openDeviceCandidate).toHaveBeenCalledWith({
+      destinationUri: 'file:///restore-candidate.db',
+      deviceKey: 'b'.repeat(64),
+    });
+    expect(candidate.execAsync).toHaveBeenCalledWith('BEGIN IMMEDIATE');
+    expect(candidate.execAsync).toHaveBeenCalledWith('PRAGMA defer_foreign_keys = ON');
+    expect(candidate.getAllAsync).toHaveBeenCalledWith('PRAGMA foreign_key_check');
+    expect(source.execAsync).toHaveBeenCalledWith('PRAGMA trusted_schema = OFF');
+    expect(source.execAsync).toHaveBeenCalledWith('PRAGMA query_only = ON');
+    expect(source.getFirstAsync).not.toHaveBeenCalledWith(
+      expect.stringContaining("sqlcipher_export('device_candidate'"),
     );
-    expect(readDeviceKey).toHaveBeenCalledTimes(1);
-    expect(execAsync).toHaveBeenCalledWith(
-      'DROP TABLE "device_candidate"."taisa_archive_manifest"',
-    );
+  });
+
+  test('rejects an archive with more than one authoritative local profile', async () => {
+    const twoProfiles = {
+      ...EMPTY_SNAPSHOT,
+      counts: { ...EMPTY_SNAPSHOT.counts, profile: 2 },
+    };
+    const source = {
+      execAsync: jest.fn(async () => undefined),
+      runAsync: jest.fn(async () => ({ changes: 0, lastInsertRowId: 0 })),
+      getFirstAsync: jest.fn(async (sql: string) => {
+        if (sql === 'PRAGMA cipher_version') return { cipher_version: '4.6.1' };
+        if (sql.includes('source_archive.user_version')) return { user_version: 1 };
+        if (sql.includes('taisa_archive_manifest')) {
+          return {
+            archive_format_version: 1,
+            schema_version: 1,
+            counts_json: JSON.stringify(twoProfiles.counts),
+            content_hash: twoProfiles.contentHash,
+          };
+        }
+        if (sql.includes('LEFT JOIN')) return null;
+        return null;
+      }),
+      getAllAsync: jest.fn(async (sql: string) => {
+        if (sql.includes('sqlite_schema')) return SOURCE_SCHEMA_OBJECTS;
+        if (sql.includes('integrity_check')) return [{ integrity_check: 'ok' }];
+        if (sql.includes('foreign_key_check')) return [];
+        if (sql.includes('"source_archive"."profile"')) return [{ id: 'one' }, { id: 'two' }];
+        return [];
+      }),
+      closeAsync: jest.fn(async () => undefined),
+    };
+    const boundary = createSqlCipherArchiveBoundary({
+      openActive: jest.fn(async () => source),
+      openMaintenance: jest.fn(async () => source),
+      openDeviceCandidate: jest.fn(async () => source),
+      deleteMaintenance: jest.fn(async () => undefined),
+      readDeviceKey: jest.fn(async () => 'b'.repeat(64)),
+      sha256: jest.fn(async () => EMPTY_SNAPSHOT.contentHash),
+    });
+
+    await expect(boundary.inspectPassphraseArchive({
+      sourceUri: 'file:///restore-input.db',
+      passphrase: 'correct horse battery',
+    })).rejects.toThrow('profile');
+  });
+
+  test.each(['foreign-key', 'corrupt-search-index'] as const)(
+    'rejects a source archive with a %s integrity failure',
+    async (failure) => {
+      const source = {
+        execAsync: jest.fn(async () => undefined),
+        getFirstAsync: jest.fn(async (sql: string) => {
+          if (sql === 'PRAGMA cipher_version') return { cipher_version: '4.6.1' };
+          if (sql.includes('source_archive.user_version')) return { user_version: 1 };
+          if (sql.includes('taisa_archive_manifest')) {
+            return {
+              archive_format_version: 1,
+              schema_version: 1,
+              counts_json: JSON.stringify(EMPTY_SNAPSHOT.counts),
+              content_hash: EMPTY_SNAPSHOT.contentHash,
+            };
+          }
+          if (sql.includes('LEFT JOIN')) return null;
+          return null;
+        }),
+        getAllAsync: jest.fn(async (sql: string) => {
+          if (sql.includes('sqlite_schema')) return SOURCE_SCHEMA_OBJECTS;
+          if (sql.includes('integrity_check')) return [{ integrity_check: 'ok' }];
+          if (sql.includes('foreign_key_check')) {
+            return failure === 'foreign-key' ? [{ table: 'messages', rowid: 1 }] : [];
+          }
+          return [];
+        }),
+        runAsync: jest.fn(async (sql: string) => {
+          if (failure === 'corrupt-search-index' && sql.includes('integrity-check')) {
+            throw new Error('database disk image is malformed');
+          }
+          return { changes: 0, lastInsertRowId: 0 };
+        }),
+        closeAsync: jest.fn(async () => undefined),
+      };
+      const boundary = createSqlCipherArchiveBoundary({
+        openActive: jest.fn(async () => source),
+        openMaintenance: jest.fn(async () => source),
+        openDeviceCandidate: jest.fn(async () => source),
+        deleteMaintenance: jest.fn(async () => undefined),
+        readDeviceKey: jest.fn(async () => 'b'.repeat(64)),
+        sha256: jest.fn(async () => EMPTY_SNAPSHOT.contentHash),
+      });
+
+      await expect(boundary.inspectPassphraseArchive({
+        sourceUri: 'file:///restore-input.db',
+        passphrase: 'correct horse battery',
+      })).rejects.toThrow(failure === 'foreign-key' ? 'foreign key' : 'search index');
+    },
+  );
+
+  test('rejects extra or omitted source columns instead of importing archive-owned schema', async () => {
+    const source = {
+      execAsync: jest.fn(async () => undefined),
+      runAsync: jest.fn(async () => ({ changes: 0, lastInsertRowId: 0 })),
+      getFirstAsync: jest.fn(async (sql: string) => {
+        if (sql === 'PRAGMA cipher_version') return { cipher_version: '4.6.1' };
+        if (sql.includes('source_archive.user_version')) return { user_version: 1 };
+        if (sql.includes('taisa_archive_manifest')) {
+          return {
+            archive_format_version: 1,
+            schema_version: 1,
+            counts_json: JSON.stringify(EMPTY_SNAPSHOT.counts),
+            content_hash: EMPTY_SNAPSHOT.contentHash,
+          };
+        }
+        if (sql.includes('LEFT JOIN')) return null;
+        return null;
+      }),
+      getAllAsync: jest.fn(async (sql: string) => {
+        if (sql.includes('sqlite_schema')) return SOURCE_SCHEMA_OBJECTS;
+        if (sql.includes('integrity_check')) return [{ integrity_check: 'ok' }];
+        if (sql.includes('foreign_key_check')) return [];
+        if (sql.includes('table_info')) {
+          return [
+            { cid: 0, name: 'id', type: 'TEXT', notnull: 1, dflt_value: null, pk: 1 },
+            { cid: 1, name: 'archive_owned_extra', type: 'TEXT', notnull: 0, dflt_value: null, pk: 0 },
+          ];
+        }
+        return [];
+      }),
+      closeAsync: jest.fn(async () => undefined),
+    };
+    const candidate = {
+      execAsync: jest.fn(async () => undefined),
+      runAsync: jest.fn(async () => ({ changes: 0, lastInsertRowId: 0 })),
+      getFirstAsync: jest.fn(async () => null),
+      getAllAsync: jest.fn(async (sql: string) => (
+        sql.includes('sqlite_schema')
+          ? SORTED_TRUSTED_SCHEMA_OBJECTS
+          : sql.includes('table_info')
+          ? [{ cid: 0, name: 'id', type: 'TEXT', notnull: 1, dflt_value: null, pk: 1 }]
+          : []
+      )),
+      closeAsync: jest.fn(async () => undefined),
+    };
+    const boundary = createSqlCipherArchiveBoundary({
+      openActive: jest.fn(async () => candidate),
+      openMaintenance: jest.fn(async () => source),
+      openDeviceCandidate: jest.fn(async () => candidate),
+      deleteMaintenance: jest.fn(async () => undefined),
+      readDeviceKey: jest.fn(async () => 'b'.repeat(64)),
+      sha256: jest.fn(async () => EMPTY_SNAPSHOT.contentHash),
+    });
+
+    await expect(boundary.createDeviceEncryptedCandidate({
+      sourceUri: 'file:///restore-input.db',
+      destinationUri: 'file:///restore-candidate.db',
+      passphrase: 'correct horse battery',
+    })).rejects.toThrow('trusted schema');
+    expect(candidate.runAsync).not.toHaveBeenCalled();
   });
 });

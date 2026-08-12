@@ -80,9 +80,16 @@ passphrase separately. Restore copies a selected file into a candidate, verifies
 integrity, entity counts, content hash, and search indexes, re-encrypts it with the device key, and
 only then attempts rollback-safe promotion.
 
+The backup contains encrypted database state, including completed voice transcripts, but it does
+not bundle recorded audio files. Finish or abandon pending voice work before exporting. Export
+fails closed before creating an artifact while a nonterminal coaching request still references an
+audio file, so a clean-install restore cannot silently produce a request whose recording is absent.
+
 Limitations:
 
 - There is no automatic cloud backup or multi-device sync.
+- Recorded audio files are not included; a backup preserves completed transcripts and other
+  database state only.
 - Taisa cannot recover a forgotten backup passphrase.
 - Deleting the app or losing the phone before saving an export elsewhere can permanently lose data.
 - AirDrop, Files, iCloud Drive, email, or another share target may create additional copies under

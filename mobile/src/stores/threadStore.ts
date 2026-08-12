@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import * as Crypto from 'expo-crypto';
 
-import { openTaisaDatabase } from '../db/openDatabase';
+import { withTaisaDatabase } from '../db/openDatabase';
 import type { RepositoryConnection } from '../db/types';
 import {
   getConversation,
@@ -53,7 +53,8 @@ export interface ThreadSession {
 }
 
 interface ThreadStoreDependencies {
-  openDatabase(): Promise<RepositoryConnection>;
+  openDatabase?: () => Promise<RepositoryConnection>;
+  withDatabase?: <T>(work: (database: RepositoryConnection) => Promise<T>) => Promise<T>;
   getCaptureService(): Promise<PrivateCaptureService>;
 }
 
@@ -120,7 +121,7 @@ async function latestVisibleRequest(
 
 export function createThreadStore(
   dependencies: ThreadStoreDependencies = {
-    openDatabase: openTaisaDatabase,
+    withDatabase: withTaisaDatabase,
     getCaptureService: getPrivateCaptureService,
   },
 ) {
@@ -134,6 +135,13 @@ export function createThreadStore(
       ? generated
       : `local-thread-intent-${localIntentSequence += 1}`;
   }
+  function withDatabase<T>(
+    work: (database: RepositoryConnection) => Promise<T>,
+  ): Promise<T> {
+    if (dependencies.withDatabase !== undefined) return dependencies.withDatabase(work);
+    if (dependencies.openDatabase !== undefined) return dependencies.openDatabase().then(work);
+    throw new Error('Thread store database boundary is unavailable');
+  }
   return create<ThreadStore>((set, get) => ({
     threads: [],
     currentSession: null,
@@ -146,11 +154,12 @@ export function createThreadStore(
     fetchThreads: async () => {
       set({ isLoadingThreads: true, error: null });
       try {
-        const database = await dependencies.openDatabase();
-        const conversations = await listConversations(database);
-        const threads = (await Promise.all(
-          conversations.map((conversation) => summary(database, conversation.id)),
-        )).filter((item): item is Thread => item !== null);
+        const threads = await withDatabase(async (database) => {
+          const conversations = await listConversations(database);
+          return (await Promise.all(
+            conversations.map((conversation) => summary(database, conversation.id)),
+          )).filter((item): item is Thread => item !== null);
+        });
         set({ threads, isLoadingThreads: false });
       } catch {
         set({ isLoadingThreads: false, error: 'The local conversation history is unavailable.' });
@@ -162,11 +171,12 @@ export function createThreadStore(
       if (!normalized) return get().fetchThreads();
       set({ isLoadingThreads: true, error: null });
       try {
-        const database = await dependencies.openDatabase();
-        const matches = await searchMessages(database, normalized, 50);
-        const ids = [...new Set(matches.map((message) => message.conversationId))];
-        const threads = (await Promise.all(ids.map((id) => summary(database, id))))
-          .filter((item): item is Thread => item !== null);
+        const threads = await withDatabase(async (database) => {
+          const matches = await searchMessages(database, normalized, 50);
+          const ids = [...new Set(matches.map((message) => message.conversationId))];
+          return (await Promise.all(ids.map((id) => summary(database, id))))
+            .filter((item): item is Thread => item !== null);
+        });
         set({ threads, isLoadingThreads: false });
       } catch {
         set({ isLoadingThreads: false, error: 'The local conversation search is unavailable.' });
@@ -183,14 +193,18 @@ export function createThreadStore(
         error: null,
       });
       try {
-        const database = await dependencies.openDatabase();
-        const conversation = await getConversation(database, sessionId);
-        if (conversation === null) throw new Error('missing');
-        const [messages, requests, confirmations] = await Promise.all([
-          listMessages(database, sessionId),
-          latestVisibleRequest(database, sessionId),
-          listMemoryConfirmationsByConversation(database, sessionId, ['pending', 'confirmed']),
-        ]);
+        const { conversation, messages, requests, confirmations } = await withDatabase(
+          async (database) => {
+            const conversation = await getConversation(database, sessionId);
+            if (conversation === null) throw new Error('missing');
+            const [messages, requests, confirmations] = await Promise.all([
+              listMessages(database, sessionId),
+              latestVisibleRequest(database, sessionId),
+              listMemoryConfirmationsByConversation(database, sessionId, ['pending', 'confirmed']),
+            ]);
+            return { conversation, messages, requests, confirmations };
+          },
+        );
         if (generation !== fetchGeneration || requestedSessionId !== sessionId) return;
         set({
           currentSession: {

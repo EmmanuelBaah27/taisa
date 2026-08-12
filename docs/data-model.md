@@ -37,6 +37,11 @@ fingerprint. The manifest exists inside the encrypted backup only. Restore valid
 archive and a device-key candidate before promotion. A rollback copy and marker preserve the prior
 active archive across recoverable failures or interruption.
 
+The archive is database-only. It preserves completed transcripts but does not bundle the files
+referenced by `coaching_requests.audio_uri` or `audio_cleanup_queue.audio_uri`. Export therefore
+fails closed while any nonterminal coaching request still references audio; pending voice work must
+be finished or abandoned before a portable backup can be created.
+
 This is manual recovery, not sync. Losing the phone before moving an export outside the app,
 forgetting the separate passphrase, uninstalling without a backup, or losing both phone and backup
 can permanently lose the archive. Taisa has no recovery key and no readable cloud copy.
@@ -48,7 +53,7 @@ can permanently lose the archive. Taisa has no recovery key and no readable clou
 The nine tables below describe the original server-authoritative journal product. No migration
 route exists because there is no backend data Baah needs to preserve. Do not add new local-first
 coaching writes here. Route unmounting is deferred until physical-device recovery evidence and
-explicit cutover approval.
+explicit route-retirement approval.
 
 ## The 9 legacy tables
 

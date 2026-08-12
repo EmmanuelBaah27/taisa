@@ -17,7 +17,7 @@ not ready to Ship before that evidence exists.
 
 There is no legacy migration system: Baah confirmed there is no backend data to preserve. Legacy
 backend routes remain mounted for rollback during BUILD and have not been retired because recovery
-and cutover approval are still pending.
+evidence and route-retirement approval are still pending.
 
 ---
 
@@ -38,7 +38,7 @@ The core loop is functional end-to-end:
 | Performance review upload | ✅ Built | Text input → Claude extracts feedback + suggests goals |
 | Daily notifications | ✅ Privacy-updated | Generic content-free local copy; no backend personalization call |
 | Legacy JSON share | ✅ Existing | Not a full-fidelity recovery mechanism |
-| Encrypted local recovery | 🧪 Code complete, device pending | Separate-passphrase SQLCipher export, candidate validation, rollback-safe restore |
+| Encrypted local recovery | 🧪 Code complete, device pending | Separate-passphrase SQLCipher database export, pending-voice guard, candidate validation, rollback-safe restore; audio files are not bundled |
 
 ---
 
@@ -67,7 +67,7 @@ These were never built, not re-scoped:
 - **No search or filter** — entries, goals, and action items cannot be filtered by date, theme, or status in the UI.
 - **Tab icons are placeholders** — geometric shapes (○ ● △ □) in `(tabs)/_layout.tsx`. No real icons installed.
 - **Notification times hard-coded** — 15:00 and 19:00 in `notifications.ts`. No user preference UI.
-- **Mixed transitional surfaces** — the new chat/thread/career path is local-first, while some old Today/You/legacy screens and backend routes remain mounted until the recovery/cutover gate.
+- **Mixed transitional surfaces** — the new chat/thread/career path is local-first, while some old Today/You/legacy screens and backend routes remain mounted until recovery evidence and the separate route-retirement gate.
 - **No milestone detail UI** — milestones exist in the DB and API but are not browsable in the app.
 
 ---
@@ -75,7 +75,7 @@ These were never built, not re-scoped:
 ## What to Build Next (Priority Order)
 
 1. **Native privacy and recovery QA** — prove SQLCipher, export/restore, app lock/shield, and private submission behavior on an iPhone development build.
-2. **Explicit cutover decision** — only after recovery proof, decide whether to unmount legacy backend user-data routes.
+2. **Explicit route-retirement decision** — only after recovery proof, decide whether to unmount legacy backend user-data routes.
 3. **Product UI plan** — Baah's final Today/Conversation/Career/History design, interaction polish, and redaction selection experience.
 4. **CV Archive as a first-class surface** — CV Moment entity, dedicated screen, copy-to-clipboard.
 5. **Settings / edit profile** — basic UX hygiene. Needed before sharing with anyone else.

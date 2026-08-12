@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, Modal, Share, Switch } from 'react-native';
 import { File } from 'expo-file-system';
 import { useFocusEffect } from 'expo-router';
@@ -13,6 +13,7 @@ import {
   restoreEncryptedArchive,
 } from '../../src/services/exportArchive';
 import { getPrivacyGuard } from '../../src/services/privacyGuard';
+import { runSingleFlight } from '../../src/services/singleFlight';
 
 interface YouData {
   currentFocus: string;
@@ -37,6 +38,7 @@ export default function YouScreen() {
   const [archiveConfirmation, setArchiveConfirmation] = useState('');
   const [archiveBusy, setArchiveBusy] = useState(false);
   const [privacyNotice, setPrivacyNotice] = useState<string | null>(null);
+  const archiveOperationRef = useRef<Promise<void> | null>(null);
 
   useEffect(() => privacyGuard.subscribe(setPrivacyState), [privacyGuard]);
 
@@ -82,21 +84,30 @@ export default function YouScreen() {
     }
   };
 
-  const runRecoveryAction = async () => {
-    if (recoveryMode === null) return;
+  const runRecoveryAction = () => runSingleFlight(archiveOperationRef, async () => {
+    const mode = recoveryMode;
+    const selectedUri = selectedArchiveUri;
+    const passphrase = archivePassphrase;
+    const confirmation = archiveConfirmation;
+    if (mode === null) return;
+
     setArchiveBusy(true);
     setPrivacyNotice(null);
+    // React Native strings cannot be zeroized, but the UI and retained state release both secrets
+    // as soon as the operation has captured its immutable local values.
+    setArchivePassphrase('');
+    setArchiveConfirmation('');
     try {
-      if (recoveryMode === 'export') {
-        const result = await exportEncryptedArchive(archivePassphrase, archiveConfirmation);
+      if (mode === 'export') {
+        const result = await exportEncryptedArchive(passphrase, confirmation);
         await Share.share({
           title: 'Save encrypted Taisa backup',
           url: result.uri,
         });
         setPrivacyNotice('Encrypted backup created. Keep the passphrase somewhere separate.');
       } else {
-        if (selectedArchiveUri === null) return;
-        await restoreEncryptedArchive(selectedArchiveUri, archivePassphrase);
+        if (selectedUri === null) return;
+        await restoreEncryptedArchive(selectedUri, passphrase);
         await fetchProfile();
         setPrivacyNotice('Encrypted backup restored and verified.');
       }
@@ -106,9 +117,11 @@ export default function YouScreen() {
         ? error.message
         : 'The archive operation could not be completed safely.');
     } finally {
+      setArchivePassphrase('');
+      setArchiveConfirmation('');
       setArchiveBusy(false);
     }
-  };
+  });
 
   const toggleAppLock = async (enabled: boolean) => {
     setPrivacyNotice(null);

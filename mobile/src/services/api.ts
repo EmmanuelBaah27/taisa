@@ -1,14 +1,13 @@
 import axios from 'axios';
-import * as SecureStore from 'expo-secure-store';
+import { getInstallationId } from './installationIdentity';
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 
 const api = axios.create({ baseURL: BASE_URL, timeout: 90000 });
 
-// Inject user ID header on every request
+// Device installation ID is a rate-limit key, not profile identity or authentication.
 api.interceptors.request.use(async (config) => {
-  const userId = await SecureStore.getItemAsync('userId');
-  if (userId) config.headers['x-user-id'] = userId;
+  config.headers['x-user-id'] = await getInstallationId();
   return config;
 });
 

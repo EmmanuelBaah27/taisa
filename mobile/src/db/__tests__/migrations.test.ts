@@ -1,5 +1,6 @@
 import {
   DatabaseRecoveryRequiredError,
+  createDatabaseAccessCoordinator,
   createDatabaseLifecycle,
   openDatabaseWithDependencies,
 } from '../openDatabase';
@@ -474,5 +475,60 @@ describe('encrypted database opening', () => {
     const secondDatabase = await lifecycle.open();
     expect(secondDatabase).not.toBe(firstDatabase);
     expect(openedDatabases).toHaveLength(2);
+  });
+
+  test('maintenance waits for an active operation and rejects new acquisitions until release', async () => {
+    const database = new FakeDatabase(1);
+    const lifecycle = {
+      open: jest.fn(async () => database),
+      close: jest.fn(async () => { database.closed = true; }),
+    };
+    const coordinator = createDatabaseAccessCoordinator(lifecycle);
+    let releaseOperation!: () => void;
+    const operationGate = new Promise<void>((resolve) => { releaseOperation = resolve; });
+    const timeline: string[] = [];
+
+    const operation = coordinator.withDatabase(async () => {
+      timeline.push('operation-started');
+      await operationGate;
+      timeline.push('operation-finished');
+    });
+    await Promise.resolve();
+
+    const maintenance = coordinator.withMaintenance(async () => {
+      timeline.push('maintenance-started');
+      await lifecycle.close();
+      timeline.push('maintenance-finished');
+    });
+    await expect(coordinator.withDatabase(async () => undefined)).rejects.toMatchObject({
+      code: 'DATABASE_MAINTENANCE_IN_PROGRESS',
+    });
+    expect(timeline).toEqual(['operation-started']);
+
+    releaseOperation();
+    await operation;
+    await maintenance;
+
+    expect(timeline).toEqual([
+      'operation-started',
+      'operation-finished',
+      'maintenance-started',
+      'maintenance-finished',
+    ]);
+    await expect(coordinator.withDatabase(async (db) => db)).resolves.toBe(database);
+  });
+
+  test('maintenance failure always reopens acquisition for later local work', async () => {
+    const database = new FakeDatabase(1);
+    const coordinator = createDatabaseAccessCoordinator({
+      open: async () => database,
+      close: async () => undefined,
+    });
+
+    await expect(coordinator.withMaintenance(async () => {
+      throw new Error('restore failed');
+    })).rejects.toThrow('restore failed');
+
+    await expect(coordinator.withDatabase(async (db) => db)).resolves.toBe(database);
   });
 });
