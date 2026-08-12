@@ -123,12 +123,15 @@ export async function updateAction(
 export async function listActions(
   database: RepositoryConnection,
   lifecycles?: readonly LocalActionLifecycle[],
+  limit?: number,
 ): Promise<LocalAction[]> {
   const filter = lifecycleFilter('lifecycle', lifecycles);
+  const limitClause = limit === undefined ? '' : ' LIMIT $limit';
+  const params = limit === undefined ? filter.params : { ...filter.params, $limit: limit };
   const rows = await database.getAllAsync<ActionRow>(
     `SELECT ${ACTION_COLUMNS} FROM actions${filter.clause}
-     ORDER BY updated_at DESC, id`,
-    filter.params,
+     ORDER BY updated_at DESC, id${limitClause}`,
+    params,
   );
   return rows.map(mapAction);
 }

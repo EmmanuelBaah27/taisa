@@ -8,14 +8,16 @@ import {
 import { listMessages } from '../../repositories/conversationRepository';
 import { getMemory, insertMemory, updateMemory } from '../../repositories/memoryRepository';
 import { getGoal } from '../../repositories/goalRepository';
-import { getAction } from '../../repositories/actionRepository';
-import { getEvidence } from '../../repositories/evidenceRepository';
+import { getAction, insertAction } from '../../repositories/actionRepository';
+import { getEvidence, insertEvidence } from '../../repositories/evidenceRepository';
+import { insertGoal } from '../../repositories/goalRepository';
 import {
   createTestDatabase,
   type TestDatabase,
 } from '../../repositories/__tests__/testDatabase';
 import {
   createPrivateCaptureService,
+  mergeContextMemoryCandidates,
   type AudioFileStore,
   type PrivateCaptureService,
   SubmissionValidationError,
@@ -118,6 +120,24 @@ async function getRequest(db: TestDatabase, id: string): Promise<RequestRow | nu
 }
 
 describe('private local capture and deliberate submission', () => {
+  test('saturated context fairly preserves goals, actions, and durable memory', () => {
+    const memory = (id: string, type: 'goal' | 'commitment' | 'decision') => ({
+      id, type, statement: id, provenance: 'user-confirmed' as const,
+      lifecycle: 'active' as const, confidence: 'established' as const,
+      createdAt: NOW, confirmedAt: NOW, lastSupportedAt: NOW, statusChangedAt: NOW,
+      sourceMessageIds: [], sourceEvidenceIds: [], updatedAt: NOW, supersedesId: null,
+    });
+    const selected = mergeContextMemoryCandidates(
+      Array.from({ length: 50 }, (_, index) => memory(`goal-${index}`, 'goal')),
+      Array.from({ length: 50 }, (_, index) => memory(`action-${index}`, 'commitment')),
+      Array.from({ length: 50 }, (_, index) => memory(`memory-${index}`, 'decision')),
+      50,
+    );
+    expect(selected).toHaveLength(50);
+    expect(selected.some((item) => item.id.startsWith('goal-'))).toBe(true);
+    expect(selected.some((item) => item.id.startsWith('action-'))).toBe(true);
+    expect(selected.some((item) => item.id.startsWith('memory-'))).toBe(true);
+  });
   let db: TestDatabase;
   let coach: jest.Mock<Promise<CoachingResponse>, [CoachingRequest]>;
   let transcribe: jest.Mock;
@@ -241,6 +261,82 @@ describe('private local capture and deliberate submission', () => {
     }));
     expect(staged?.proposal_json).toContain('"provenance":"ai-inferred"');
     expect(staged?.proposal_json).not.toContain('provider-supplied-source');
+  });
+
+  test('deliberate submission includes bounded months-old nonlexical evidence linked to active outcomes', async () => {
+    await db.withTransaction(async (transaction) => {
+      await insertGoal(transaction, {
+        id: 'goal-influence', title: 'Grow stakeholder influence', description: null,
+        lifecycle: 'active', priority: 'high', progressPercent: 0, targetDate: null,
+        sourceMessageId: null, supersedesId: null, createdAt: NOW, updatedAt: NOW,
+        statusChangedAt: NOW,
+      }, 'seed-active-goal');
+      await insertGoal(transaction, {
+        id: 'goal-archived', title: 'Old direction', description: null,
+        lifecycle: 'archived', priority: null, progressPercent: 0, targetDate: null,
+        sourceMessageId: null, supersedesId: null, createdAt: NOW, updatedAt: NOW,
+        statusChangedAt: NOW,
+      }, 'seed-archived-goal');
+      await insertEvidence(transaction, {
+        id: 'evidence-old-related', statement: 'Facilitated alignment across three departments.',
+        occurredAt: '2026-01-10T09:00:00.000Z', sourceMessageIds: [],
+        goalIds: ['goal-influence'], actionIds: [], createdAt: NOW, updatedAt: NOW,
+      }, 'seed-related-evidence');
+      await insertEvidence(transaction, {
+        id: 'evidence-old-inactive', statement: 'Presented a retired planning framework.',
+        occurredAt: '2026-01-09T09:00:00.000Z', sourceMessageIds: [],
+        goalIds: ['goal-archived'], actionIds: [], createdAt: NOW, updatedAt: NOW,
+      }, 'seed-inactive-evidence');
+    });
+    coach.mockImplementationOnce(async (request) => {
+      return { ...coachingResponse(request), proposals: [] };
+    });
+
+    await service.submitText({
+      conversationId: 'relationship-context',
+      content: 'Navigating power dynamics today.',
+    });
+    expect(coach).toHaveBeenCalledTimes(1);
+    const submittedContext = coach.mock.calls[0]![0].context;
+    expect(submittedContext?.memory).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'goal-influence', statement: 'Grow stakeholder influence' }),
+    ]));
+    expect(submittedContext?.evidence).toEqual([
+      expect.objectContaining({ id: 'evidence-old-related', goalIds: ['goal-influence'] }),
+    ]);
+    expect(JSON.stringify(submittedContext)).not.toContain('evidence-old-inactive');
+  });
+
+  test('relationship context stays within candidate bounds and is never loaded during private save', async () => {
+    await db.withTransaction(async (transaction) => {
+      await insertAction(transaction, {
+        id: 'action-related', goalId: null, sourceMessageId: null, title: 'Practice influence',
+        description: null, lifecycle: 'open', priority: null, dueAt: null, supersedesId: null,
+        createdAt: NOW, updatedAt: NOW, statusChangedAt: NOW,
+      }, 'seed-related-action');
+      for (let index = 0; index < 12; index += 1) {
+        await insertEvidence(transaction, {
+          id: `evidence-related-${index}`, statement: `Historical unrelated wording ${index}`,
+          occurredAt: `2026-01-${String(index + 1).padStart(2, '0')}T09:00:00.000Z`,
+          sourceMessageIds: [], goalIds: [], actionIds: ['action-related'],
+          createdAt: NOW, updatedAt: NOW,
+        }, `seed-related-${index}`);
+      }
+    });
+    const bounded = createPrivateCaptureService({
+      database: db, coach, transcribe, now: () => NOW, createId: () => ids.shift()!,
+      getProfileId: async () => 'profile-1', audioFiles,
+      contextLimits: { maxCharacters: 20_000, maxEstimatedTokens: 20_000,
+        memoryCandidateLimit: 50, evidenceCandidateLimit: 4 },
+    });
+    await bounded.savePrivateDraft({ conversationId: 'private-only', content: 'Do not submit.' });
+    expect(coach).not.toHaveBeenCalled();
+    coach.mockImplementationOnce(async (request) => {
+      expect(request.context.evidence).toHaveLength(4);
+      expect(request.context.evidence.every((item) => item.actionIds.includes('action-related'))).toBe(true);
+      return { ...coachingResponse(request), proposals: [] };
+    });
+    await bounded.submitText({ conversationId: 'bounded-related', content: 'No matching vocabulary.' });
   });
 
   test.each([

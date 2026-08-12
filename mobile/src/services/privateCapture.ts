@@ -2,7 +2,10 @@ import type {
   CoachingRequest,
   CoachingResponse,
   OutcomeDelta,
+  LocalAction,
   LocalConversation,
+  LocalGoal,
+  LocalMemoryItem,
   LocalMemorySource,
   LocalMessage,
   UsageReceipt,
@@ -39,7 +42,7 @@ import type {
 } from '../db/types';
 import { withRepositoryTransaction } from '../db/types';
 import { insertAction, listActions } from '../repositories/actionRepository';
-import { insertGoal } from '../repositories/goalRepository';
+import { insertGoal, listGoals } from '../repositories/goalRepository';
 import {
   getCoachingRequest,
   insertCoachingRequest,
@@ -65,7 +68,12 @@ import {
   listRecentMessages,
   updateMessage,
 } from '../repositories/conversationRepository';
-import { insertEvidence, listEvidence, searchEvidence } from '../repositories/evidenceRepository';
+import {
+  insertEvidence,
+  listEvidence,
+  listEvidenceByRelationships,
+  searchEvidence,
+} from '../repositories/evidenceRepository';
 import {
   getMemoryConfirmation,
   listMemoryConfirmationsByConversation,
@@ -276,16 +284,85 @@ async function ensureConversation(
   await insertConversation(transaction, conversation, `${id}:create`);
 }
 
-function contextRepositories(database: RepositoryConnection) {
+function contextRepositories(
+  database: RepositoryConnection,
+  activeGoals: readonly LocalGoal[] = [],
+  openActions: readonly LocalAction[] = [],
+) {
+  const relatedGoalIds = activeGoals.map((goal) => goal.id);
+  const relatedActionIds = openActions.map((action) => action.id);
+  const outcomeMemory: LocalMemoryItem[] = [
+    ...activeGoals.map((goal): LocalMemoryItem => ({
+      id: goal.id,
+      type: 'goal',
+      statement: [goal.title, goal.description].filter(Boolean).join(': '),
+      provenance: 'user-confirmed', lifecycle: 'active', confidence: 'established',
+      createdAt: goal.createdAt, confirmedAt: goal.statusChangedAt,
+      lastSupportedAt: goal.updatedAt, statusChangedAt: goal.statusChangedAt,
+      sourceMessageIds: goal.sourceMessageId === null ? [] : [goal.sourceMessageId],
+      sourceEvidenceIds: [], updatedAt: goal.updatedAt,
+      supersedesId: goal.supersedesId,
+    })),
+    ...openActions.map((action): LocalMemoryItem => ({
+      id: action.id,
+      type: 'commitment',
+      statement: [action.title, action.description].filter(Boolean).join(': '),
+      provenance: 'user-confirmed', lifecycle: 'active', confidence: 'established',
+      createdAt: action.createdAt, confirmedAt: action.statusChangedAt,
+      lastSupportedAt: action.updatedAt, statusChangedAt: action.statusChangedAt,
+      sourceMessageIds: action.sourceMessageId === null ? [] : [action.sourceMessageId],
+      sourceEvidenceIds: [], updatedAt: action.updatedAt,
+      supersedesId: action.supersedesId,
+    })),
+  ];
   return {
     getProfile: (profileId: string) => getProfile(database, profileId),
     listRecentMessages: (conversationId: string, limit: number) =>
       listRecentMessages(database, conversationId, limit),
-    listMemoryCandidates: (lifecycles: Parameters<typeof listMemories>[1], limit: number) =>
-      listMemories(database, lifecycles, limit),
-    listEvidenceCandidates: (query: string, limit: number) =>
-      searchEvidence(database, safeFtsQuery(query), limit),
+    listMemoryCandidates: async (lifecycles: Parameters<typeof listMemories>[1], limit: number) => {
+      const stored = await listMemories(database, lifecycles, limit);
+      return mergeContextMemoryCandidates(
+        outcomeMemory.filter((item) => item.type === 'goal'),
+        outcomeMemory.filter((item) => item.type === 'commitment'),
+        stored,
+        limit,
+      );
+    },
+    listEvidenceCandidates: async (query: string, limit: number) => {
+      const [lexical, related] = await Promise.all([
+        searchEvidence(database, safeFtsQuery(query), limit),
+        listEvidenceByRelationships(database, relatedGoalIds, relatedActionIds, limit),
+      ]);
+      const unique = new Map([...related, ...lexical].map((item) => [item.id, item]));
+      return [...unique.values()].slice(0, limit);
+    },
   };
+}
+
+export function mergeContextMemoryCandidates(
+  goals: readonly LocalMemoryItem[],
+  actions: readonly LocalMemoryItem[],
+  memory: readonly LocalMemoryItem[],
+  limit: number,
+): LocalMemoryItem[] {
+  const groups = [goals, actions, memory];
+  const selected: LocalMemoryItem[] = [];
+  const seen = new Set<string>();
+  for (let index = 0; selected.length < limit; index += 1) {
+    let found = false;
+    for (const group of groups) {
+      const item = group[index];
+      if (item === undefined) continue;
+      found = true;
+      if (!seen.has(item.id)) {
+        seen.add(item.id);
+        selected.push(item);
+        if (selected.length === limit) break;
+      }
+    }
+    if (!found) break;
+  }
+  return selected;
 }
 
 async function governanceState(
@@ -541,6 +618,16 @@ export function createPrivateCaptureService(
     const profileId = await dependencies.getProfileId();
     let assembled;
     try {
+      const [activeGoals, openActions] = await Promise.all([
+        listGoals(dependencies.database, ['active'], COACHING_GATEWAY_LIMITS.maxMemoryItems),
+        listActions(dependencies.database, ['open'], COACHING_GATEWAY_LIMITS.maxMemoryItems),
+      ]);
+      const relatedGoalIds = activeGoals
+        .map((goal) => goal.id)
+        .slice(0, COACHING_GATEWAY_LIMITS.maxIdListLength);
+      const relatedActionIds = openActions
+        .map((action) => action.id)
+        .slice(0, COACHING_GATEWAY_LIMITS.maxIdListLength);
       assembled = await assembleCoachingContext(
         {
           requestId: storedRequest.id,
@@ -550,10 +637,10 @@ export function createPrivateCaptureService(
           profileId,
           directEvidenceIds: [],
           directSourceMessageIds: [storedMessage.id],
-          relatedGoalIds: [],
-          relatedActionIds: [],
+          relatedGoalIds,
+          relatedActionIds,
         },
-        contextRepositories(dependencies.database),
+        contextRepositories(dependencies.database, activeGoals, openActions),
         limits,
       );
     } catch {

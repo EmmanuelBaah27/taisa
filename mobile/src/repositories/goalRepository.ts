@@ -159,12 +159,15 @@ export async function updateGoal(
 export async function listGoals(
   database: RepositoryConnection,
   lifecycles?: readonly LocalGoalLifecycle[],
+  limit?: number,
 ): Promise<LocalGoal[]> {
   const filter = lifecycleFilter('lifecycle', lifecycles);
+  const limitClause = limit === undefined ? '' : ' LIMIT $limit';
+  const params = limit === undefined ? filter.params : { ...filter.params, $limit: limit };
   const rows = await database.getAllAsync<GoalRow>(
     `SELECT ${GOAL_COLUMNS} FROM goals${filter.clause}
-     ORDER BY updated_at DESC, id`,
-    filter.params,
+     ORDER BY updated_at DESC, id${limitClause}`,
+    params,
   );
   return rows.map(mapGoal);
 }

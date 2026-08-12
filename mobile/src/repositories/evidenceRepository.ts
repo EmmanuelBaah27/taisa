@@ -134,3 +134,36 @@ export async function searchEvidence(
   );
   return rows.map(mapEvidence);
 }
+
+export async function listEvidenceByRelationships(
+  database: RepositoryConnection,
+  goalIds: readonly string[],
+  actionIds: readonly string[],
+  limit = 50,
+): Promise<LocalEvidenceItem[]> {
+  if (goalIds.length === 0 && actionIds.length === 0) return [];
+  const params: Record<string, string | number> = { $limit: limit };
+  const bindList = (prefix: string, ids: readonly string[]) => ids.map((id, index) => {
+    const key = `$${prefix}${index}`;
+    params[key] = id;
+    return key;
+  });
+  const goalBindings = bindList('goal', goalIds);
+  const actionBindings = bindList('action', actionIds);
+  const relationships = [
+    goalBindings.length === 0 ? null :
+      `EXISTS (SELECT 1 FROM json_each(e.goal_ids_json) WHERE value IN (${goalBindings.join(', ')}))`,
+    actionBindings.length === 0 ? null :
+      `EXISTS (SELECT 1 FROM json_each(e.action_ids_json) WHERE value IN (${actionBindings.join(', ')}))`,
+  ].filter((clause): clause is string => clause !== null);
+  const rows = await database.getAllAsync<EvidenceRow>(
+    `SELECT e.id, e.statement, e.occurred_at, e.source_message_ids_json, e.goal_ids_json,
+            e.action_ids_json, e.created_at, e.updated_at
+       FROM evidence e
+      WHERE ${relationships.join(' OR ')}
+      ORDER BY occurred_at DESC, id
+      LIMIT $limit`,
+    params,
+  );
+  return rows.map(mapEvidence);
+}
