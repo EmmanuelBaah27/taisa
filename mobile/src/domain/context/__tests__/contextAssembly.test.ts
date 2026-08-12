@@ -173,6 +173,16 @@ describe('assembleCoachingContext', () => {
     );
 
     expect(result.context.recentMessages).toHaveLength(20);
+    expect(result.context.profile).toEqual({
+      currentRole: 'Product Designer',
+      currentCompany: 'Example Co',
+      careerStage: 'senior',
+      currentFocusArea: 'Influence',
+      shortTermGoal: 'Lead strategy work',
+      longTermGoal: 'Become Staff',
+      coachingStyle: 'supportive',
+      accountabilityLevel: 'moderate',
+    });
     expect(result.context.memory).toHaveLength(50);
     expect(result.context.evidence).toHaveLength(8);
     expect(result.manifest.included.messageIds).toEqual(

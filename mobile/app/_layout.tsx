@@ -1,24 +1,29 @@
 import '../global.css';
 import { useEffect, useState } from 'react';
-import { Stack } from 'expo-router';
+import { router, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { AppState, Text, TouchableOpacity, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import * as Crypto from 'expo-crypto';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
-import { LocalProfileArchiveError, useCareerStore } from '../src/stores/careerStore';
+import { useCareerStore } from '../src/stores/careerStore';
 import {
   getPrivacyGuard,
   type GuardedAppState,
 } from '../src/services/privacyGuard';
+import {
+  hydrateStartupProfile,
+  recoveryPresentation,
+  type StartupProfileResult,
+} from '../src/services/startupProfile';
 
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const { initUser, fetchProfile } = useCareerStore();
+  const { fetchProfile } = useCareerStore();
   const privacyGuard = getPrivacyGuard();
   const [privacyState, setPrivacyState] = useState(privacyGuard.getState());
+  const [startup, setStartup] = useState<StartupProfileResult | null>(null);
 
   const [fontsLoaded] = useFonts({
     'StrichpunktSans': require('../assets/fonts/StrichpunktSans-Regular.ttf'),
@@ -31,17 +36,12 @@ export default function RootLayout() {
   }, [fontsLoaded]);
 
   useEffect(() => {
-    async function hydrateUser() {
-      try {
-        await fetchProfile();
-      } catch (error) {
-        if (!(error instanceof LocalProfileArchiveError) || error.reason !== 'missing') throw error;
-        await initUser(Crypto.randomUUID(), {});
-      }
-    }
-    void hydrateUser().catch(() => {
-      // Fail closed: do not invent or select a profile when the local archive is ambiguous or
-      // temporarily unavailable. The recovery controls remain the explicit repair path.
+    void hydrateStartupProfile({
+      fetchProfile,
+      route: () => router.replace('/onboarding'),
+    }).then(setStartup).catch(() => {
+      // Unknown failures remain fail-closed instead of exposing readable screens.
+      setStartup(null);
     });
   }, []);
 
@@ -75,7 +75,29 @@ export default function RootLayout() {
     };
   }, [privacyGuard]);
 
-  if (!fontsLoaded) return null;
+  if (!fontsLoaded || startup === null) return null;
+
+  if (startup.status === 'recovery-required') {
+    const presentation = recoveryPresentation(startup.error);
+    return (
+      <View className="flex-1 items-center justify-center bg-background px-8">
+        <Text className="text-foreground text-xl font-bold text-center">{presentation.title}</Text>
+        <Text className="text-text-tertiary text-sm text-center mt-3">{presentation.body}</Text>
+        <TouchableOpacity
+          className="bg-primary rounded-full px-6 py-3 mt-6"
+          onPress={() => {
+            setStartup(null);
+            void hydrateStartupProfile({
+              fetchProfile,
+              route: () => router.replace('/onboarding'),
+            }).then(setStartup).catch(() => { setStartup(null); });
+          }}
+        >
+          <Text className="text-foreground text-sm font-semibold">Retry securely</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

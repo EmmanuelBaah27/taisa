@@ -208,6 +208,9 @@ function compactProfile(profile: LocalCareerProfile | null): CoachingContext['pr
   }
   const currentRole = profile.currentRole.trim();
   const currentCompany = profile.currentCompany?.trim() ?? null;
+  const currentFocusArea = profile.currentFocusArea?.trim() ?? '';
+  const shortTermGoal = profile.shortTermGoal?.trim() ?? '';
+  const longTermGoal = profile.longTermGoal?.trim() ?? '';
   if (
     currentRole.length === 0 ||
     currentRole.length > COACHING_GATEWAY_LIMITS.maxProfileFieldLength
@@ -221,10 +224,22 @@ function compactProfile(profile: LocalCareerProfile | null): CoachingContext['pr
   ) {
     throw new ContextContractViolationError('profile.currentCompany');
   }
+  for (const [field, value] of [
+    ['currentFocusArea', currentFocusArea],
+    ['shortTermGoal', shortTermGoal],
+    ['longTermGoal', longTermGoal],
+  ] as const) {
+    if (value.length > COACHING_GATEWAY_LIMITS.maxProfileFieldLength) {
+      throw new ContextContractViolationError(`profile.${field}`);
+    }
+  }
   return {
     currentRole,
     currentCompany,
     careerStage: profile.careerStage,
+    currentFocusArea,
+    shortTermGoal,
+    longTermGoal,
     coachingStyle: profile.coachingStyle,
     accountabilityLevel: profile.accountabilityLevel,
   };

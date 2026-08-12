@@ -42,6 +42,7 @@ interface CareerStore {
   fetchProfile: () => Promise<void>;
   updateProfile: (data: Partial<CareerProfile>) => Promise<void>;
   setProfile: (profile: CareerProfile) => void;
+  clearForAuthorityReplacement: () => void;
 }
 
 function localProfile(
@@ -192,6 +193,12 @@ export function createCareerStore(
     },
 
     setProfile: (profile) => set({ profile }),
+    clearForAuthorityReplacement: () => set({
+      profile: null,
+      userId: null,
+      isOnboarded: false,
+      isLoading: false,
+    }),
   }));
 }
 

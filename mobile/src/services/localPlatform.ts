@@ -43,7 +43,7 @@ export async function initializeLocalCaptureService(
   return service;
 }
 
-const servicesByDatabase = new WeakMap<SQLiteDatabase, Promise<PrivateCaptureService>>();
+let servicesByDatabase = new WeakMap<SQLiteDatabase, Promise<PrivateCaptureService>>();
 
 function getServiceForDatabase(database: SQLiteDatabase): Promise<PrivateCaptureService> {
   const existing = servicesByDatabase.get(database);
@@ -76,7 +76,9 @@ const leasedCaptureService = createLeasedPrivateCaptureService(
 );
 
 // Existing callers may retain this facade safely; it never retains a database handle.
-export function invalidateLocalCaptureService(): void {}
+export function invalidateLocalCaptureService(): void {
+  servicesByDatabase = new WeakMap<SQLiteDatabase, Promise<PrivateCaptureService>>();
+}
 
 export async function getPrivateCaptureService(): Promise<PrivateCaptureService> {
   return leasedCaptureService;

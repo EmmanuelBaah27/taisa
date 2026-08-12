@@ -72,6 +72,7 @@ interface ThreadStore {
   sendMessage: (sessionId: string, content: string) => Promise<void>;
   clearThread: (sessionId: string) => void;
   clearError: () => void;
+  clearForAuthorityReplacement: () => void;
 }
 
 function safeMessage(error: unknown): string {
@@ -273,6 +274,19 @@ export function createThreadStore(
       });
     },
     clearError: () => set({ error: null }),
+    clearForAuthorityReplacement: () => {
+      fetchGeneration += 1;
+      requestedSessionId = null;
+      set({
+        threads: [],
+        currentSession: null,
+        currentMessages: [],
+        isLoadingThreads: false,
+        isLoadingMessages: false,
+        isSending: false,
+        error: null,
+      });
+    },
   }));
 }
 

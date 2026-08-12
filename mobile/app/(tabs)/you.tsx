@@ -14,6 +14,7 @@ import {
 } from '../../src/services/exportArchive';
 import { getPrivacyGuard } from '../../src/services/privacyGuard';
 import { runSingleFlight } from '../../src/services/singleFlight';
+import { replaceReadableStoreAuthority } from '../../src/services/restoredStoreAuthority';
 
 interface YouData {
   currentFocus: string;
@@ -108,7 +109,7 @@ export default function YouScreen() {
       } else {
         if (selectedUri === null) return;
         await restoreEncryptedArchive(selectedUri, passphrase);
-        await fetchProfile();
+        await replaceReadableStoreAuthority();
         setPrivacyNotice('Encrypted backup restored and verified.');
       }
       resetRecoveryModal();
