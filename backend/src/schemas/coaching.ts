@@ -2,6 +2,9 @@ import { z } from 'zod';
 import { COACHING_GATEWAY_LIMITS, type CoachingRequest } from '@taisa/shared';
 
 const IdSchema = z.string().trim().min(1).max(COACHING_GATEWAY_LIMITS.maxIdLength);
+const UuidSchema = z.string().regex(
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+);
 const TimestampSchema = z
   .string()
   .max(COACHING_GATEWAY_LIMITS.maxTimestampLength)
@@ -95,7 +98,7 @@ const OutcomeDeltaSchema = z.object({
 }).strict();
 
 const CoachingRequestRuntimeSchema = z.object({
-  requestId: z.string().uuid(),
+  requestId: UuidSchema,
   submittedAt: TimestampSchema,
   input: z.string().trim().min(1).max(COACHING_GATEWAY_LIMITS.maxTextLength),
   context: z.object({

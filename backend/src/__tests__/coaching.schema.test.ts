@@ -68,6 +68,13 @@ test('the backend runtime schema accepts the shared portable boundary fixture', 
   expect(CoachingRequestSchema.safeParse(request).success).toBe(true);
 });
 
+test('the backend and portable contract reject UUID versions outside the shared request-id shape', () => {
+  const request = requestAtPortableLimits();
+  request.requestId = '11111111-1111-f111-8111-111111111111';
+  expect(firstCoachingRequestContractViolation(request)).toBe('requestId');
+  expect(CoachingRequestSchema.safeParse(request).success).toBe(false);
+});
+
 test.each([
   [
     'input text',
