@@ -150,13 +150,22 @@ interruptions, plus recovery from older empty/partial final markers. Secondary c
 reopen failures surface only a cause-free `RESTORE_FAILED`, retain recovery artifacts, and never
 reopen an unverified active database.
 
+Fix round 4 narrows startup marker recovery further: only the exact empty marker that the previous
+implementation could create before publication is treated as safely pre-promotion. Truncated JSON,
+unknown JSON shapes or versions, and random content now throw a fixed cause-free
+`ARCHIVE_PROMOTION_RECOVERY_REQUIRED` error while retaining the marker, rollback, active database,
+sidecars, staged input, and candidate untouched. The exact legacy `restore-pending-v1` marker still
+restores from the documented preserved rollback, and valid current JSON follows the verified
+rollback protocol. Setup now consistently requires a development client rather than Expo Go, and
+canonical docs distinguish local profile identity from the transport/rate-limit installation ID.
+
 ## Fresh automated verification
 
 ```bash
 cd mobile && npm test -- --runInBand && npm run typecheck
 ```
 
-Outcome: 30 suites / 314 tests passed; `tsc --noEmit` exited 0.
+Outcome: 30 suites / 317 tests passed; `tsc --noEmit` exited 0.
 
 ```bash
 npm test --workspace=backend -- --runInBand

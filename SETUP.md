@@ -52,12 +52,14 @@ You should see: `Taisa backend running on http://localhost:3000`
 ```bash
 npm run mobile
 ```
-Scan the QR code with Expo Go on your phone.
+This starts Metro for JavaScript-only work. Taisa's encrypted local platform cannot run in Expo Go.
+After Baah approves and installs the managed development build described below, start Metro with
+`cd mobile && npx expo start --dev-client` and open that development build on the iPhone.
 
 > **Note:** Your phone and Mac must be on the same WiFi network.
 
 ## Building a Dev Build (required for SQLCipher and audio recording)
-Expo Go does not include Taisa's SQLCipher-enabled SQLite module or some native audio features. A development build is therefore required before encrypted-database device QA:
+Expo Go does not include Taisa's SQLCipher-enabled SQLite module or some native audio features. A development build is therefore required to run the local-first app and before encrypted-database device QA:
 ```bash
 cd mobile
 npx expo install expo-dev-client

@@ -230,7 +230,7 @@ See `docs/api.md` for the request/response patterns. See `docs/agent-persona.md`
 | SQLCipher SQLite on iPhone | Single readable authority with a device-only Keychain key. Expo Go cannot validate this native configuration. |
 | Backend SQLite | Legacy CRUD rollback store plus a content-free usage ledger during BUILD; not a destination for new coaching content. |
 | `ts-node-dev` | Hot-reload TypeScript in dev without a build step. No compiled output needed during development. |
-| `deviceId` as `userId` | MVP shortcut. Single user, no login screen. The `x-user-id` header is set automatically by `mobile/src/services/api.ts` via an Axios interceptor. |
+| Installation ID in `x-user-id` | MVP transport shortcut for usage accounting and rate limiting, not authentication or career-data identity. The authoritative local `profile.id` lives in encrypted SQLite; the separate installation ID is set automatically by `mobile/src/services/api.ts`. |
 | Zustand (not Redux) | Lightweight global state for a solo mobile app. Three stores: `journalStore`, `careerStore`, `uiStore`. |
 | Expo managed workflow | Native configuration stays managed, but SQLCipher and LocalAuthentication require a development build; Expo Go is insufficient. |
 | `callClaudeJson` with fallback | Claude sometimes wraps JSON in markdown code fences. The fallback parser strips them before parsing. |

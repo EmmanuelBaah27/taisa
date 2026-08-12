@@ -62,7 +62,7 @@ The product docs (artifacts #001–#005) describe a slightly different product t
 
 These were never built, not re-scoped:
 
-- **No auth** — uses `deviceId` as `userId` via `x-user-id` header. Single user only. No login/logout.
+- **No auth** — sends a separate installation ID in `x-user-id` only for transport usage accounting and rate limiting. It is not the local career-profile ID or an authentication identity. Single user only; no login/logout.
 - **No settings / edit profile screen** — profile is read-only after onboarding. Updates only via API.
 - **No search or filter** — entries, goals, and action items cannot be filtered by date, theme, or status in the UI.
 - **Tab icons are placeholders** — geometric shapes (○ ● △ □) in `(tabs)/_layout.tsx`. No real icons installed.

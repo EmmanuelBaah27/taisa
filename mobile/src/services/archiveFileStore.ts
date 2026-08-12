@@ -96,6 +96,15 @@ export interface PromotionRecoveryFileBoundary {
   cleanupStaleArtifacts(): Promise<void>;
 }
 
+export class ArchivePromotionRecoveryRequiredError extends Error {
+  readonly code = 'ARCHIVE_PROMOTION_RECOVERY_REQUIRED';
+
+  constructor() {
+    super('The local archive requires recovery before it can be opened.');
+    this.name = 'ArchivePromotionRecoveryRequiredError';
+  }
+}
+
 export interface PromotionMarkerPublicationBoundary {
   readonly finalPath: string;
   createExclusiveTemp(): string;
@@ -174,24 +183,16 @@ export async function recoverArchivePromotion(
         originalSize: rollback.size,
         originalDigest: rollback.digest,
       };
-    } else if (markerText.trim() === '') {
-      // Older interrupted builds could expose an empty/truncated JSON final marker before
-      // promotion. With no complete marker, the active database remains authoritative.
+    } else if (markerText === '') {
+      // The prior non-atomic implementation created an empty marker before writing it and before
+      // promotion. Only that exact empty state is demonstrably safe to discard.
       await files.removeMarker();
       await files.cleanupStaleArtifacts();
       return;
     } else {
-      try {
-        JSON.parse(markerText);
-      } catch {
-        if (markerText.trimStart().startsWith('{')) {
-          await files.removeMarker();
-          await files.cleanupStaleArtifacts();
-          return;
-        }
-      }
-      // An unknown complete marker may describe a promotion protocol we cannot safely infer.
-      throw new Error('Restore marker is invalid');
+      // Truncated, future, or otherwise unknown content may have been present during/after
+      // promotion. Preserve every artifact for explicit recovery rather than guessing.
+      throw new ArchivePromotionRecoveryRequiredError();
     }
   }
   const rollback = await files.inspect('rollback');

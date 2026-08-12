@@ -15,7 +15,9 @@ families belong to the new path:
 | `POST /api/v1/transcribe` | Current deliberate voice path | Deletes temporary audio in `finally`; stores only content-free usage/cost metadata |
 | `GET /health` | Current operational health | No user data |
 
-The gateway still uses `x-user-id` as a device-keyed rate-limit identifier, not as authentication.
+The gateway still uses `x-user-id` as a device-keyed installation identifier for transport usage
+accounting and rate limiting, not as authentication and not as the local career-profile ID. The
+authoritative profile ID lives only in the encrypted local database.
 No migration/export endpoint exists. Baah has no backend archive to migrate, and Task 7 was removed.
 
 Profile, entries, analyze, reviews, goals, action-items, trajectory, notifications, chat, and today

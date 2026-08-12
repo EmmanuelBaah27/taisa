@@ -16,6 +16,7 @@ import { join } from 'path';
 
 import {
   createReservedExportUri,
+  ArchivePromotionRecoveryRequiredError,
   recoverArchivePromotion,
   publishPromotionMarker,
   type PromotionRecoveryFileBoundary,
@@ -109,14 +110,47 @@ function makeRealFileBoundary(interruptAfter?: string) {
 }
 
 describe('archive promotion startup recovery', () => {
-  test.each(['', '{"version":1'])('cleans an unpublished partial marker while preserving rollback and active', async (markerText) => {
+  test('cleans an empty pre-publication marker while preserving rollback and active', async () => {
     const harness = makeRealFileBoundary();
     try {
-      writeFileSync(harness.paths.marker, markerText);
+      writeFileSync(harness.paths.marker, '');
       await expect(recoverArchivePromotion(harness.boundary)).resolves.toBeUndefined();
       expect(readFileSync(harness.paths.active, 'utf8')).toBe(CANDIDATE);
       expect(existsSync(harness.paths.marker)).toBe(false);
       expect(existsSync(harness.paths.rollback)).toBe(false);
+    } finally {
+      rmSync(harness.directory, { recursive: true, force: true });
+    }
+  });
+
+  test.each([
+    ['truncated JSON', '{"version":1'],
+    ['unknown JSON shape', JSON.stringify({ version: 1, state: 'unknown' })],
+    ['future JSON version', JSON.stringify({ version: 2, state: 'prepared' })],
+    ['random complete content', 'not-a-taisa-marker'],
+    ['one space', ' '],
+    ['newline', '\n'],
+  ])('fails closed without mutating any recovery artifact for %s', async (_name, markerText) => {
+    const harness = makeRealFileBoundary();
+    try {
+      writeFileSync(harness.paths.marker, markerText);
+      let failure: unknown;
+      try {
+        await recoverArchivePromotion(harness.boundary);
+      } catch (error) {
+        failure = error;
+      }
+      expect(failure).toBeInstanceOf(ArchivePromotionRecoveryRequiredError);
+      expect(failure).toMatchObject({ code: 'ARCHIVE_PROMOTION_RECOVERY_REQUIRED' });
+      expect((failure as Error).cause).toBeUndefined();
+      expect((failure as Error).message).toBe('The local archive requires recovery before it can be opened.');
+      expect(readFileSync(harness.paths.active, 'utf8')).toBe(CANDIDATE);
+      expect(readFileSync(harness.paths.rollback, 'utf8')).toBe(ORIGINAL);
+      expect(readFileSync(harness.paths.marker, 'utf8')).toBe(markerText);
+      expect(existsSync(harness.paths.activeWal)).toBe(true);
+      expect(existsSync(harness.paths.activeShm)).toBe(true);
+      expect(existsSync(harness.paths.input)).toBe(true);
+      expect(existsSync(harness.paths.candidate)).toBe(true);
     } finally {
       rmSync(harness.directory, { recursive: true, force: true });
     }
@@ -130,32 +164,6 @@ describe('archive promotion startup recovery', () => {
       expect(readFileSync(harness.paths.active, 'utf8')).toBe(ORIGINAL);
       expect(existsSync(harness.paths.marker)).toBe(false);
       expect(existsSync(harness.paths.rollback)).toBe(false);
-    } finally {
-      rmSync(harness.directory, { recursive: true, force: true });
-    }
-  });
-
-  test('fails closed for an unknown complete marker instead of deleting its rollback', async () => {
-    const harness = makeRealFileBoundary();
-    try {
-      writeFileSync(harness.paths.marker, 'restore-pending-v2');
-      await expect(recoverArchivePromotion(harness.boundary)).rejects.toThrow('invalid');
-      expect(readFileSync(harness.paths.active, 'utf8')).toBe(CANDIDATE);
-      expect(existsSync(harness.paths.marker)).toBe(true);
-      expect(existsSync(harness.paths.rollback)).toBe(true);
-    } finally {
-      rmSync(harness.directory, { recursive: true, force: true });
-    }
-  });
-
-  test('fails closed for a syntactically complete future JSON marker', async () => {
-    const harness = makeRealFileBoundary();
-    try {
-      writeFileSync(harness.paths.marker, JSON.stringify({ version: 2, state: 'prepared' }));
-      await expect(recoverArchivePromotion(harness.boundary)).rejects.toThrow('invalid');
-      expect(readFileSync(harness.paths.active, 'utf8')).toBe(CANDIDATE);
-      expect(existsSync(harness.paths.marker)).toBe(true);
-      expect(existsSync(harness.paths.rollback)).toBe(true);
     } finally {
       rmSync(harness.directory, { recursive: true, force: true });
     }

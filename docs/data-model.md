@@ -58,7 +58,10 @@ explicit route-retirement approval.
 ## The 9 legacy tables
 
 ### `users`
-Career profile. One row per device (v1 has no auth — `id` is the device UUID).
+Career profile. The local `profile.id` is the durable identity of the user's on-device career data;
+it is discovered from or initialized inside the encrypted database. It is not the installation ID.
+The separate device-only installation ID is sent as `x-user-id` solely for transport accounting and
+rate limiting in the no-auth MVP; it is not a profile foreign key or authentication identity.
 
 | Column | Type | Notes |
 |---|---|---|
