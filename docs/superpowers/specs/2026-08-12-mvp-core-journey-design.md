@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-12
 
-**Status:** Approved direction; written-spec review pending
+**Status:** Approved and MECE-reviewed
 
 **Track:** Platform first, then Product
 **Tier:** Full
@@ -24,14 +24,16 @@ value is a trustworthy recurring coaching loop.
    visibly regenerates coaching instead of silently rewriting history.
 4. Deliberate coaching submission sends only bounded relevant context to the configured
    provider.
-5. Taisa responds, connects relevant history, and may propose memories or commitments.
-6. The user confirms consequential memory changes and reviews proposed commitments.
-7. Conversations, decisions, actions, and evidence persist locally and remain resumable.
-8. Home answers: **What should I focus on today?**
+5. Taisa applies safety, relevance, and context-sufficiency checks before choosing a coaching
+   stance or proposing any durable outcome.
+6. Taisa responds, connects only supported history, and may propose memories or commitments.
+7. The user confirms consequential memory changes and reviews proposed commitments.
+8. Conversations, decisions, actions, and evidence persist locally and remain resumable.
+9. Home answers: **What should I focus on today?**
 
 ## MVP workstreams
 
-### 1. Reliable coaching loop
+### 1. Input, submission, and recovery
 
 Complete the device QA and recovery boundaries already represented in
 `docs/features/local-first-cutover-qa.md`:
@@ -48,33 +50,74 @@ Complete the device QA and recovery boundaries already represented in
 Small UX issues that obstruct the journey are fixed during this workstream. Pure polish that
 does not affect comprehension, control, privacy, or task completion is deferred.
 
-### 2. Career-scope guardrails
+### 2. Response decisioning
 
-Every deliberate coaching submission is classified into one of three relevance levels:
+Every deliberate coaching submission follows one ordered decision pipeline in the same bounded
+provider call:
 
-1. **Career-relevant:** engage fully using bounded goals, actions, evidence, profile, and
-   conversation history.
-2. **Adjacent personal context:** answer briefly, then connect the issue to work, wellbeing,
-   decisions, relationships, or goals when a genuine bridge exists.
-3. **Unrelated:** provide a concise answer, avoid an extended general-assistant conversation,
-   and offer an optional work-relevant bridge.
+1. **Safety:** apply applicable safety behavior before career steering.
+2. **Relevance:** decide whether Taisa should coach fully, bridge briefly, or remain concise.
+3. **Context sufficiency:** decide whether the supplied turn and bounded context support a
+   responsible answer.
+4. **Coaching stance:** only then choose Mirror, Nudge, Challenge, or Direct.
+
+The three relevance levels are mutually exclusive:
+
+1. **Career-relevant:** the primary subject is the user's work, career, professional decisions,
+   workplace relationships, goals, actions, or evidence. Engage fully using bounded context.
+2. **Adjacent personal context:** the primary subject is personal, but the user has stated a
+   concrete effect on their work, wellbeing at work, professional decisions, relationships, or
+   goals. Respond briefly and use only that explicit bridge.
+3. **Outside Taisa's scope:** neither condition above is met. Provide a concise acknowledgement,
+   avoid an extended general-assistant exchange, and optionally ask how it connects to work.
+
+Context sufficiency is a separate axis from relevance:
+
+1. **Sufficient:** the response can be grounded without inventing a material fact. Respond within
+   the selected relevance behavior.
+2. **Partially sufficient:** a useful bounded response is possible. Answer only the supported
+   portion and state the material limitation.
+3. **Insufficient:** a missing referent, event, participant, purpose, or source is necessary to
+   answer. State what is unknown and ask one neutral clarifying question.
+
+Words such as “this,” “that meeting,” “the video,” or “what happened earlier” never authorize
+Taisa to invent the referenced object, its purpose, its participants, or the user's emotional
+meaning. If clarification is necessary, Taisa must not offer advice or propose memory, evidence,
+goals, or actions. A partially sufficient response may propose an outcome only when that proposal
+is grounded entirely in the supported portion.
 
 Off-topic material must not automatically become durable career memory, evidence, goals, or
 actions. A user may still explicitly create a relevant commitment after Taisa makes the bridge.
-Safety-sensitive requests continue to use applicable safety behavior before career steering.
+The decision pipeline does not introduce background analysis or a second provider call.
 
-The relevance decision is part of the same bounded coaching call; it does not introduce
-background analysis or a second provider call.
+### 3. Durable outcomes
 
-### 3. Coaching quality and feedback
+Taisa may extract a possible memory, goal, action, or evidence item from a supported coaching
+response, but it does not silently persist a consequential interpretation or activate a
+commitment.
 
-Each coaching response may expose a small optional reaction control:
+Flow:
+
+`Conversation → proposed outcome → review → confirm/edit/dismiss → active record → later transition`
+
+Action proposals appear in the proposed inbox and may then move through completion into evidence.
+Each proposal carries its originating conversation and related records. Confirming, editing,
+dismissing, completing, pausing, or superseding is explicit and stored locally. Duplicate or
+evolving outcomes are reconciled rather than blindly appended. Future integrations use this same
+review boundary and never bypass confirmation.
+
+### 4. Feedback and evaluation
+
+Each coaching response may expose one optional, replaceable primary reaction:
 
 - Helpful
 - Missed context
 - Too generic
 - Not relevant
-- Optional private note
+
+Choosing another reaction replaces the earlier primary reaction; the private note may accompany
+any selection. This keeps the categories mutually exclusive in storage while allowing nuance in
+the note.
 
 Feedback is stored locally and linked to the response, provider/model configuration, and a
 content-free context manifest. It is never automatically sent to an AI provider or analytics
@@ -95,7 +138,7 @@ Taisa's coaching quality is controlled in the product repository—not in a prov
 
 Provider consoles remain operational tools for billing, usage, and isolated experiments.
 
-### 4. Journey-led information architecture
+### 5. Navigation and retrieval
 
 The initial navigation is replaced only after the core behavior above is stable. Proposed MVP
 destinations are:
@@ -104,27 +147,15 @@ destinations are:
   appear beneath.
 - **Conversations:** searchable history, pending recovery states, and exact resume.
 - **Progress:** goals, evidence, recurring patterns, and movement over time.
-- **Actions:** proposed inbox, active commitments, and completed actions.
+- **Actions:** the destination that displays the proposed inbox, active commitments, and completed
+  actions; outcome creation and lifecycle rules remain owned by Durable outcomes.
 - **You:** career context, coaching preferences, privacy, export/restore, and provider/cost
   visibility.
 
-The persistent capture control remains available across primary destinations. Navigation labels
-and screen composition require a Product design handoff before implementation.
-
-### 5. Proposed action inbox
-
-Taisa may extract a possible commitment from a coaching response, but it does not silently make
-that commitment active.
-
-Flow:
-
-`Conversation → proposed action → inbox → confirm/edit/dismiss → active action → completion → evidence`
-
-Each proposal carries its originating conversation and any related goal. Confirming, editing,
-dismissing, completing, pausing, or superseding an action is explicit and stored locally.
-Duplicate or evolving actions are reconciled rather than blindly appended.
-
-Future integrations use the same inbox. Their extracted commitments never bypass confirmation.
+The persistent capture control remains available across primary destinations. Navigation owns
+only discovery, presentation, and retrieval; it does not redefine coaching or outcome lifecycle
+rules. Navigation labels and screen composition require a Product design handoff before
+implementation.
 
 ## Data and privacy boundaries
 
@@ -149,6 +180,13 @@ Future integrations use the same inbox. Their extracted commitments never bypass
   black microphone icon and the label **Reply**. One tap begins the next recording. It never
   activates the microphone merely because Taisa finished responding. Switching to keyboard makes
   text the conversation's active modality until the user switches back.
+- The whole voice-ready control is tappable and has the accessibility label “Reply by voice,
+  starts recording.” While coaching is processing it is disabled; offline recording remains
+  available because capture is local, while Send explains that a connection is required.
+- The locally stored conversation modality changes only through an explicit voice/keyboard
+  switch. It survives app restart and conversation resume. Failed voice submission retains the
+  voice draft and voice modality; transcript correction returns to voice-ready after regenerated
+  coaching. Cancelling a recording returns to voice-ready without changing the modality.
 - New capture never silently resumes old failed work; History exposes explicit Resume.
 - Cost, validation, and privacy rejection happen before provider invocation whenever possible.
 - The UI explains the safe next action without revealing provider payloads or private content in
@@ -156,11 +194,11 @@ Future integrations use the same inbox. Their extracted commitments never bypass
 
 ## Execution order and gates
 
-1. Finish reliable-loop device QA and commit current QA fixes.
-2. Scope and build career-scope guardrails with evaluation fixtures.
-3. Design and build the optional local feedback control.
-4. Produce the navigation design handoff, then implement Today-first information architecture.
-5. Build the proposed action inbox.
+1. Finish input/submission/recovery device QA and commit current QA fixes.
+2. Build the ordered response-decisioning contract with synthetic evaluation fixtures.
+3. Complete durable-outcome review and the proposed action inbox.
+4. Design and build the optional local feedback control.
+5. Produce the navigation design handoff, then implement Today-first information architecture.
 6. Reassess the MVP against observed use before promoting any integration.
 
 Platform behavior precedes Product surfaces. Baah approves Scope, Plan, device QA, and Ship at
@@ -170,6 +208,8 @@ the existing workflow gates.
 
 - A user can complete text and voice coaching journeys and resume them after interruption.
 - Taisa uses relevant longitudinal context without unrelated context leakage.
+- Missing referents trigger a neutral clarification rather than invented context, emotion, advice,
+  or durable proposals.
 - Off-topic prompts receive a brief answer and an appropriate work bridge without derailing
   durable career memory.
 - The user can explain why an action or memory was proposed and controls whether it persists.
