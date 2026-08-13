@@ -43,15 +43,18 @@ export async function stopRecording(): Promise<RecordingResult> {
   const ownedRecording = recording;
   const ownedStartTime = startTime;
   const teardown = (async () => {
-    const status = await ownedRecording.stopAndUnloadAsync();
-    const uri = ownedRecording.getURI();
-    const durationSeconds = status.durationMillis > 0
-      ? status.durationMillis / 1000
-      : (Date.now() - ownedStartTime) / 1000;
-    if (recording === ownedRecording) recording = null;
-    await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
-    if (!uri) throw new Error('Recording URI is null');
-    return { uri, durationSeconds };
+    try {
+      const status = await ownedRecording.stopAndUnloadAsync();
+      const uri = ownedRecording.getURI();
+      const durationSeconds = status.durationMillis > 0
+        ? status.durationMillis / 1000
+        : (Date.now() - ownedStartTime) / 1000;
+      if (!uri) throw new Error('Recording URI is null');
+      return { uri, durationSeconds };
+    } finally {
+      if (recording === ownedRecording) recording = null;
+      await Audio.setAudioModeAsync({ allowsRecordingIOS: false }).catch(() => {});
+    }
   })();
   nativeRecorderTeardown = teardown.then(() => undefined, () => undefined);
   return teardown;
