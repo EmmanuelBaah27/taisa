@@ -2,6 +2,10 @@ import type { CoachingProvider, ProviderCoachingInput } from '../services/coachi
 import { getConfiguredProvider } from '../services/coaching/provider';
 import { createOpenAIProvider } from '../services/coaching/openaiProvider';
 import { createAnthropicProvider } from '../services/coaching/anthropicProvider';
+import {
+  COACHING_GATEWAY_LIMITS,
+  firstCoachingResponseContractViolation,
+} from '@taisa/shared';
 import { CoachingResponsePayloadSchema } from '../schemas/coaching';
 import {
   estimateConfiguredCoachingUsage,
@@ -82,6 +86,46 @@ const validPayloadFixtures = [
   ],
 ] as const;
 
+const invalidPayloadFixtures = [
+  ['clarify response with proposals', { ...validPayloadFixtures[1][1], proposals: coachingPayloadFixture.proposals }],
+  ['clarify response with a coaching stance', { ...validPayloadFixtures[1][1], stance: 'nudge' }],
+  ['coach response with insufficient context', { ...coachingPayloadFixture, contextSufficiency: 'insufficient' }],
+  ['redirect response with career relevance', { ...validPayloadFixtures[2][1], relevance: 'career-relevant' }],
+  ['coach response with outside-scope relevance', { ...coachingPayloadFixture, relevance: 'outside-scope' }],
+  ['clarify response with sufficient context', { ...validPayloadFixtures[1][1], contextSufficiency: 'sufficient' }],
+  ['redirect response with insufficient context', { ...validPayloadFixtures[2][1], contextSufficiency: 'insufficient' }],
+] as const;
+
+const outcomePayloadFixture = {
+  ...coachingPayloadFixture,
+  proposals: [{
+    operation: 'propose-outcome' as const,
+    candidate: {
+      kind: 'evidence' as const,
+      statement: 'Facilitated roadmap alignment.',
+      occurredAt: '2026-08-09T00:00:00Z',
+      goalIds: ['goal-1'],
+      actionIds: ['action-1'],
+    },
+    reason: 'This is grounded in the submitted context.',
+    requiresConfirmation: true as const,
+  }],
+};
+
+function portableResponse(payload: unknown) {
+  return {
+    ...(payload as object),
+    requestId: requestFixture.requestId,
+    usage: {
+      provider: 'openai',
+      model: 'fixture',
+      inputTokens: 10,
+      outputTokens: 4,
+      estimatedCostUsd: 0.000052,
+    },
+  };
+}
+
 const providerInput: ProviderCoachingInput = {
   systemPrompt: 'System prompt',
   userPrompt: JSON.stringify(requestFixture),
@@ -110,17 +154,36 @@ test.each(validPayloadFixtures)(
   },
 );
 
-test.each([
-  ['clarify response with proposals', { ...validPayloadFixtures[1][1], proposals: coachingPayloadFixture.proposals }],
-  ['clarify response with a coaching stance', { ...validPayloadFixtures[1][1], stance: 'nudge' }],
-  ['coach response with insufficient context', { ...coachingPayloadFixture, contextSufficiency: 'insufficient' }],
-  ['redirect response with career relevance', { ...validPayloadFixtures[2][1], relevance: 'career-relevant' }],
-  ['coach response with outside-scope relevance', { ...coachingPayloadFixture, relevance: 'outside-scope' }],
-  ['clarify response with sufficient context', { ...validPayloadFixtures[1][1], contextSufficiency: 'sufficient' }],
-  ['redirect response with insufficient context', { ...validPayloadFixtures[2][1], contextSufficiency: 'insufficient' }],
-])('the shared schema rejects a %s mode-axis conflict', (_name, payload) => {
+test.each(invalidPayloadFixtures)('the shared schema rejects a %s mode-axis conflict', (_name, payload) => {
   expect(CoachingResponsePayloadSchema.safeParse(payload).success).toBe(false);
 });
+
+test.each([
+  ['empty proposal text', { ...outcomePayloadFixture, proposals: [{ ...outcomePayloadFixture.proposals[0], reason: '' }] }],
+  ['whitespace-only proposal text', { ...outcomePayloadFixture, proposals: [{ ...outcomePayloadFixture.proposals[0], reason: '   ' }] }],
+  ['oversized proposal text', { ...outcomePayloadFixture, proposals: [{ ...outcomePayloadFixture.proposals[0], reason: 'r'.repeat(COACHING_GATEWAY_LIMITS.maxTextLength + 1) }] }],
+  ['malformed outcome timestamp', { ...outcomePayloadFixture, proposals: [{ ...outcomePayloadFixture.proposals[0], candidate: { ...outcomePayloadFixture.proposals[0].candidate, occurredAt: 'not-a-timestamp' } }] }],
+  ['oversized outcome ID list', { ...outcomePayloadFixture, proposals: [{ ...outcomePayloadFixture.proposals[0], candidate: { ...outcomePayloadFixture.proposals[0].candidate, goalIds: Array(COACHING_GATEWAY_LIMITS.maxIdListLength + 1).fill('goal-1') } }] }],
+  ['invalid outcome ID', { ...outcomePayloadFixture, proposals: [{ ...outcomePayloadFixture.proposals[0], candidate: { ...outcomePayloadFixture.proposals[0].candidate, actionIds: [''] } }] }],
+  ['whitespace-only outcome ID', { ...outcomePayloadFixture, proposals: [{ ...outcomePayloadFixture.proposals[0], candidate: { ...outcomePayloadFixture.proposals[0].candidate, actionIds: ['   '] } }] }],
+  ['oversized outcome ID', { ...outcomePayloadFixture, proposals: [{ ...outcomePayloadFixture.proposals[0], candidate: { ...outcomePayloadFixture.proposals[0].candidate, actionIds: ['a'.repeat(COACHING_GATEWAY_LIMITS.maxIdLength + 1)] } }] }],
+])('the authoritative schema rejects %s', (_name, payload) => {
+  expect(CoachingResponsePayloadSchema.safeParse(payload).success).toBe(false);
+});
+
+test.each(validPayloadFixtures)(
+  'the portable client contract accepts the valid %s response mode',
+  (_mode, payload) => {
+    expect(firstCoachingResponseContractViolation(portableResponse(payload), requestFixture.requestId)).toBeNull();
+  },
+);
+
+test.each(invalidPayloadFixtures)(
+  'the portable client contract rejects the %s mode-axis conflict',
+  (_name, payload) => {
+    expect(firstCoachingResponseContractViolation(portableResponse(payload), requestFixture.requestId)).not.toBeNull();
+  },
+);
 
 test.each(validPayloadFixtures)(
   'OpenAI and Anthropic adapters honor the same %s structured coaching contract with one SDK call',
@@ -222,6 +285,61 @@ test.each(validPayloadFixtures)(
   expect(JSON.stringify(anthropicSchema)).toEqual(
     expect.stringContaining('propose-outcome'),
   );
+  const coachBranch = anthropicSchema.oneOf.find((branch: any) => branch.properties.mode.const === 'coach');
+  const proposalBranches = coachBranch.properties.proposals.items.oneOf;
+  const proposalBranch = (operation: string) => proposalBranches.find(
+    (branch: any) => branch.properties.operation.const === operation,
+  );
+  const textSchema = {
+    type: 'string',
+    minLength: 1,
+    maxLength: COACHING_GATEWAY_LIMITS.maxTextLength,
+    pattern: '\\S',
+  };
+  const idSchema = {
+    type: 'string',
+    minLength: 1,
+    maxLength: COACHING_GATEWAY_LIMITS.maxIdLength,
+    pattern: '\\S',
+  };
+  const timestampSchema = {
+    type: 'string',
+    maxLength: COACHING_GATEWAY_LIMITS.maxTimestampLength,
+    format: 'date-time',
+  };
+  const proposedMemory = proposalBranch('propose');
+  expect(proposedMemory.properties.reason).toEqual(textSchema);
+  expect(proposedMemory.properties.candidate.properties.statement).toEqual(textSchema);
+  expect(proposedMemory.properties.candidate.properties.sourceMessageIds).toEqual({
+    type: 'array', items: idSchema, maxItems: COACHING_GATEWAY_LIMITS.maxIdListLength,
+  });
+  expect(proposedMemory.properties.candidate.properties.supersedesId).toEqual({
+    anyOf: [idSchema, { type: 'null' }],
+  });
+  const transition = proposalBranch('transition');
+  expect(transition.properties.targetId).toEqual(idSchema);
+  expect(transition.properties.reason).toEqual(textSchema);
+  const support = proposalBranch('support');
+  expect(support.properties.targetId).toEqual(idSchema);
+  expect(support.properties.sourceMessageId).toEqual(idSchema);
+  expect(support.properties.reason).toEqual(textSchema);
+  const outcome = proposalBranch('propose-outcome');
+  const outcomeGoal = outcome.properties.candidate.oneOf.find(
+    (branch: any) => branch.properties.kind.const === 'goal',
+  );
+  const outcomeEvidence = outcome.properties.candidate.oneOf.find(
+    (branch: any) => branch.properties.kind.const === 'evidence',
+  );
+  expect(outcome.properties.reason).toEqual(textSchema);
+  expect(outcomeGoal.properties.title).toEqual(textSchema);
+  expect(outcomeGoal.properties.targetDate).toEqual({ anyOf: [timestampSchema, { type: 'null' }] });
+  expect(outcomeEvidence.properties.occurredAt).toEqual(timestampSchema);
+  expect(outcomeEvidence.properties.goalIds).toEqual({
+    type: 'array', items: idSchema, maxItems: COACHING_GATEWAY_LIMITS.maxIdListLength,
+  });
+  expect(outcomeEvidence.properties.actionIds).toEqual({
+    type: 'array', items: idSchema, maxItems: COACHING_GATEWAY_LIMITS.maxIdListLength,
+  });
   expect(JSON.stringify(openAIParse.mock.calls[0][0].response_format)).toEqual(
     expect.stringContaining('contextSufficiency'),
   );

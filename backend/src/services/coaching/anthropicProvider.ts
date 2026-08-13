@@ -11,6 +11,30 @@ import { estimateCostUsd } from './provider';
 
 type AnthropicClient = Pick<Anthropic, 'messages'>;
 
+const TextJsonSchema = {
+  type: 'string' as const,
+  minLength: 1,
+  maxLength: COACHING_GATEWAY_LIMITS.maxTextLength,
+  pattern: '\\S',
+};
+const IdJsonSchema = {
+  type: 'string' as const,
+  minLength: 1,
+  maxLength: COACHING_GATEWAY_LIMITS.maxIdLength,
+  pattern: '\\S',
+};
+const TimestampJsonSchema = {
+  type: 'string' as const,
+  maxLength: COACHING_GATEWAY_LIMITS.maxTimestampLength,
+  format: 'date-time',
+};
+const IdListJsonSchema = {
+  type: 'array' as const,
+  items: IdJsonSchema,
+  maxItems: COACHING_GATEWAY_LIMITS.maxIdListLength,
+};
+const nullable = (schema: object) => ({ anyOf: [schema, { type: 'null' as const }] });
+
 const COACHING_RESPONSE_INPUT_SCHEMA = {
   type: 'object' as const,
   oneOf: [
@@ -22,7 +46,7 @@ const COACHING_RESPONSE_INPUT_SCHEMA = {
         mode: { const: 'coach' },
         relevance: { type: 'string', enum: ['career-relevant', 'adjacent'] },
         contextSufficiency: { type: 'string', enum: ['sufficient', 'partial'] },
-        reply: { type: 'string', minLength: 1, maxLength: 4000 },
+        reply: TextJsonSchema,
         stance: { type: 'string', enum: ['mirror', 'nudge', 'challenge', 'direct'] },
         proposals: {
           type: 'array',
@@ -60,7 +84,7 @@ const COACHING_RESPONSE_INPUT_SCHEMA = {
                       'pattern',
                     ],
                   },
-                  statement: { type: 'string' },
+                  statement: TextJsonSchema,
                   provenance: {
                     type: 'string',
                     enum: ['user-stated', 'user-confirmed', 'ai-inferred', 'system-observed'],
@@ -70,11 +94,11 @@ const COACHING_RESPONSE_INPUT_SCHEMA = {
                     enum: ['proposed', 'active', 'paused', 'superseded', 'completed', 'rejected', 'archived'],
                   },
                   confidence: { type: 'string', enum: ['tentative', 'supported', 'established'] },
-                  sourceMessageIds: { type: 'array', items: { type: 'string' } },
-                  supersedesId: { type: ['string', 'null'] },
+                  sourceMessageIds: IdListJsonSchema,
+                  supersedesId: nullable(IdJsonSchema),
                 },
               },
-              reason: { type: 'string' },
+              reason: TextJsonSchema,
               requiresConfirmation: { type: 'boolean' },
             },
           },
@@ -84,12 +108,12 @@ const COACHING_RESPONSE_INPUT_SCHEMA = {
             required: ['operation', 'targetId', 'to', 'reason', 'requiresConfirmation'],
             properties: {
               operation: { const: 'transition' },
-              targetId: { type: 'string' },
+              targetId: IdJsonSchema,
               to: {
                 type: 'string',
                 enum: ['proposed', 'active', 'paused', 'superseded', 'completed', 'rejected', 'archived'],
               },
-              reason: { type: 'string' },
+              reason: TextJsonSchema,
               requiresConfirmation: { type: 'boolean' },
             },
           },
@@ -105,9 +129,9 @@ const COACHING_RESPONSE_INPUT_SCHEMA = {
             ],
             properties: {
               operation: { const: 'support' },
-              targetId: { type: 'string' },
-              sourceMessageId: { type: 'string' },
-              reason: { type: 'string' },
+              targetId: IdJsonSchema,
+              sourceMessageId: IdJsonSchema,
+              reason: TextJsonSchema,
               requiresConfirmation: { const: false },
             },
           },
@@ -125,11 +149,11 @@ const COACHING_RESPONSE_INPUT_SCHEMA = {
                     required: ['kind', 'title', 'description', 'priority', 'targetDate', 'supersedesId'],
                     properties: {
                       kind: { const: 'goal' },
-                      title: { type: 'string' },
-                      description: { type: ['string', 'null'] },
-                      priority: { type: ['string', 'null'], enum: ['low', 'medium', 'high', null] },
-                      targetDate: { type: ['string', 'null'] },
-                      supersedesId: { type: ['string', 'null'] },
+                      title: TextJsonSchema,
+                      description: nullable(TextJsonSchema),
+                      priority: { anyOf: [{ type: 'string', enum: ['low', 'medium', 'high'] }, { type: 'null' }] },
+                      targetDate: nullable(TimestampJsonSchema),
+                      supersedesId: nullable(IdJsonSchema),
                     },
                   },
                   {
@@ -138,12 +162,12 @@ const COACHING_RESPONSE_INPUT_SCHEMA = {
                     required: ['kind', 'title', 'description', 'priority', 'dueAt', 'goalId', 'supersedesId'],
                     properties: {
                       kind: { const: 'action' },
-                      title: { type: 'string' },
-                      description: { type: ['string', 'null'] },
-                      priority: { type: ['string', 'null'], enum: ['low', 'medium', 'high', null] },
-                      dueAt: { type: ['string', 'null'] },
-                      goalId: { type: ['string', 'null'] },
-                      supersedesId: { type: ['string', 'null'] },
+                      title: TextJsonSchema,
+                      description: nullable(TextJsonSchema),
+                      priority: { anyOf: [{ type: 'string', enum: ['low', 'medium', 'high'] }, { type: 'null' }] },
+                      dueAt: nullable(TimestampJsonSchema),
+                      goalId: nullable(IdJsonSchema),
+                      supersedesId: nullable(IdJsonSchema),
                     },
                   },
                   {
@@ -152,15 +176,15 @@ const COACHING_RESPONSE_INPUT_SCHEMA = {
                     required: ['kind', 'statement', 'occurredAt', 'goalIds', 'actionIds'],
                     properties: {
                       kind: { const: 'evidence' },
-                      statement: { type: 'string' },
-                      occurredAt: { type: 'string' },
-                      goalIds: { type: 'array', items: { type: 'string' } },
-                      actionIds: { type: 'array', items: { type: 'string' } },
+                      statement: TextJsonSchema,
+                      occurredAt: TimestampJsonSchema,
+                      goalIds: IdListJsonSchema,
+                      actionIds: IdListJsonSchema,
                     },
                   },
                 ],
               },
-              reason: { type: 'string' },
+              reason: TextJsonSchema,
               requiresConfirmation: { const: true },
             },
           },
@@ -177,7 +201,7 @@ const COACHING_RESPONSE_INPUT_SCHEMA = {
         mode: { const: 'clarify' },
         relevance: { type: 'string', enum: ['career-relevant', 'adjacent', 'outside-scope'] },
         contextSufficiency: { const: 'insufficient' },
-        reply: { type: 'string', minLength: 1, maxLength: 4000 },
+        reply: TextJsonSchema,
         stance: { type: 'null' },
         proposals: { type: 'array', minItems: 0, maxItems: 0 },
       },
@@ -190,7 +214,7 @@ const COACHING_RESPONSE_INPUT_SCHEMA = {
         mode: { const: 'redirect' },
         relevance: { const: 'outside-scope' },
         contextSufficiency: { type: 'string', enum: ['sufficient', 'partial'] },
-        reply: { type: 'string', minLength: 1, maxLength: 4000 },
+        reply: TextJsonSchema,
         stance: { type: 'null' },
         proposals: { type: 'array', minItems: 0, maxItems: 0 },
       },
