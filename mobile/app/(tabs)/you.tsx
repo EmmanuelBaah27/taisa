@@ -15,6 +15,11 @@ import {
 import { getPrivacyGuard } from '../../src/services/privacyGuard';
 import { runSingleFlight } from '../../src/services/singleFlight';
 import { replaceReadableStoreAuthority } from '../../src/services/restoredStoreAuthority';
+import api from '../../src/services/api';
+import {
+  createDeviceEnrollmentClient,
+  getDeviceCredential,
+} from '../../src/services/deviceEnrollment';
 
 interface YouData {
   currentFocus: string;
@@ -39,6 +44,9 @@ export default function YouScreen() {
   const [archiveConfirmation, setArchiveConfirmation] = useState('');
   const [archiveBusy, setArchiveBusy] = useState(false);
   const [privacyNotice, setPrivacyNotice] = useState<string | null>(null);
+  const [enrollmentCode, setEnrollmentCode] = useState('');
+  const [deviceEnrolled, setDeviceEnrolled] = useState(false);
+  const [enrollmentBusy, setEnrollmentBusy] = useState(false);
   const archiveOperationRef = useRef<Promise<void> | null>(null);
 
   useEffect(() => privacyGuard.subscribe(setPrivacyState), [privacyGuard]);
@@ -46,9 +54,27 @@ export default function YouScreen() {
   useFocusEffect(
     useCallback(() => {
       fetchProfile();
+      void getDeviceCredential().then((credential) => setDeviceEnrolled(credential !== null));
       return () => reportScroll(0);
     }, [])
   );
+
+  const enrollThisDevice = async () => {
+    const code = enrollmentCode;
+    if (!code.trim() || enrollmentBusy) return;
+    setEnrollmentBusy(true);
+    setPrivacyNotice(null);
+    setEnrollmentCode('');
+    try {
+      await createDeviceEnrollmentClient(api).enroll(code);
+      setDeviceEnrolled(true);
+      setPrivacyNotice('This iPhone can now connect securely to your private Taisa service.');
+    } catch {
+      setPrivacyNotice('The enrollment code is invalid, expired, or has already been used.');
+    } finally {
+      setEnrollmentBusy(false);
+    }
+  };
 
   const saveGoals = async () => {
     try {
@@ -213,6 +239,40 @@ export default function YouScreen() {
 
       {/* Settings */}
       <SectionLabel style={{ marginTop: 16 }}>Settings</SectionLabel>
+
+      <View className="bg-card rounded-xl px-4 py-3 mb-2">
+        <Text className="text-foreground text-sm font-semibold">Private service</Text>
+        <Text className="text-text-tertiary text-xs mt-0.5 mb-3">
+          {deviceEnrolled
+            ? 'This iPhone is securely enrolled.'
+            : 'Enter the one-time code from your private Taisa service.'}
+        </Text>
+        {!deviceEnrolled ? (
+          <View className="flex-row items-center gap-2">
+            <TextInput
+              className="flex-1 bg-background rounded-lg px-3 py-2 text-foreground"
+              value={enrollmentCode}
+              onChangeText={setEnrollmentCode}
+              placeholder="One-time code"
+              placeholderTextColor={colors.textTertiary}
+              autoCapitalize="none"
+              autoCorrect={false}
+              editable={!enrollmentBusy}
+              returnKeyType="done"
+              onSubmitEditing={() => { void enrollThisDevice(); }}
+            />
+            <TouchableOpacity
+              className="bg-foreground rounded-lg px-4 py-2"
+              disabled={enrollmentBusy || !enrollmentCode.trim()}
+              onPress={() => { void enrollThisDevice(); }}
+            >
+              <Text className="text-background text-sm font-semibold">
+                {enrollmentBusy ? 'Connecting…' : 'Connect'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
+      </View>
 
       <TouchableOpacity
         className="bg-card rounded-xl px-4 py-3 mb-2 flex-row justify-between items-center"

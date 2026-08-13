@@ -21,6 +21,10 @@ import coachingRouter from './routes/coaching';
 import { getConfiguredProvider } from './services/coaching/provider';
 import { coachingRateLimit } from './middleware/coachingRateLimit';
 import { contentSafeErrorHandler, requestContext } from './middleware/requestContext';
+import { readDeviceAuthConfig } from './config/deviceAuth';
+import { DeviceCredentialStore } from './auth/deviceCredentials';
+import { createDeviceAuthentication } from './middleware/deviceAuthentication';
+import { createDeviceEnrollmentRouter } from './routes/deviceEnrollment';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -37,6 +41,19 @@ getDb();
 // Validate provider, model, and pricing configuration before accepting traffic.
 getConfiguredProvider();
 
+const deviceAuthConfig = readDeviceAuthConfig();
+let deviceCredentialStore: DeviceCredentialStore | null = null;
+if (deviceAuthConfig.required) {
+  deviceCredentialStore = new DeviceCredentialStore({
+    databasePath: deviceAuthConfig.databasePath,
+    pepper: deviceAuthConfig.pepper,
+  });
+  deviceCredentialStore.registerEnrollmentCode(
+    deviceAuthConfig.enrollmentCode,
+    deviceAuthConfig.enrollmentExpiresAt,
+  );
+}
+
 // Legacy limiter for existing AI-heavy routes.
 const aiRateLimit = rateLimit({
   windowMs: 60 * 1000,
@@ -46,7 +63,26 @@ const aiRateLimit = rateLimit({
   message: { success: false, error: { code: 'RATE_LIMITED', message: 'Too many requests, please wait a moment.' } },
 });
 
+const enrollmentRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    error: { code: 'RATE_LIMITED', message: 'Too many enrollment attempts, please wait.' },
+  },
+});
+
 // Routes
+if (deviceCredentialStore !== null) {
+  app.use(
+    '/api/v1/device-enrollments',
+    enrollmentRateLimit,
+    createDeviceEnrollmentRouter(deviceCredentialStore),
+  );
+  app.use('/api/v1', createDeviceAuthentication(deviceCredentialStore));
+}
 app.use('/api/v1/profile', profileRouter);
 app.use('/api/v1/entries', entriesRouter);
 app.use('/api/v1/transcribe', aiRateLimit, transcribeRouter);
