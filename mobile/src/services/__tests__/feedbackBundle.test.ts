@@ -18,7 +18,7 @@ test('builds a bounded preview from the exact request and excludes unrelated loc
         transcription_request_id, audio_duration_seconds, stance, context_manifest_json,
         attempt_count, submitted_at, created_at, updated_at)
       VALUES ('r1', 'i1', 'c1', 'u1', 'voice', 'completed', 'a1', 'transcription-1', 12,
-        'challenge', '{"includedMemoryIds":["m1"],"excluded":{"audio":true}}',
+        'challenge', '{"included":{"profileId":null,"messageIds":["u1"],"memoryIds":[],"evidenceIds":[]},"excluded":[{"entityType":"query","id":"audio","reason":"not-submitted"}]}',
         1, $now, $now, $now)`,
     { $now: NOW });
 
@@ -34,7 +34,11 @@ test('builds a bounded preview from the exact request and excludes unrelated loc
       stance: 'challenge',
       userTurn: 'Discuss [PROJECT] with [NAME]',
       assistantReply: 'Ask what outcome the meeting needs.',
-      contextManifest: { includedMemoryIds: ['m1'], excluded: { audio: true } },
+      contextManifest: {
+        included: { profileId: null, messageIds: ['u1'], memoryIds: [], evidenceIds: [] },
+        excluded: [{ entityType: 'query', id: 'audio', reason: 'not-submitted' }],
+      },
+      usedContext: ['Discuss Project Cedar with Morgan'],
       consentRequired: true,
     });
     expect(JSON.stringify(preview)).not.toContain('UNRELATED_PRIVATE_SECRET');

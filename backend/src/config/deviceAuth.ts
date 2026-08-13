@@ -33,3 +33,18 @@ export function readDeviceAuthConfig(environment: Environment = process.env): De
   }
   return { required: true, pepper, databasePath, enrollmentCode, enrollmentExpiresAt };
 }
+
+export interface FeedbackConfig {
+  readonly encryptionKeyBase64: string;
+  readonly databasePath: string;
+}
+
+export function readFeedbackConfig(environment: Environment = process.env): FeedbackConfig | null {
+  const encryptionKeyBase64 = environment.TAISA_FEEDBACK_ENCRYPTION_KEY ?? '';
+  const databasePath = environment.TAISA_FEEDBACK_DATABASE_PATH ?? '';
+  if (!encryptionKeyBase64 && !databasePath) return null;
+  if (!encryptionKeyBase64 || !databasePath) {
+    throw new Error('Feedback storage configuration is incomplete');
+  }
+  return { encryptionKeyBase64, databasePath };
+}

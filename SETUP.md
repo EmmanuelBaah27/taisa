@@ -41,9 +41,23 @@ TAISA_TRANSCRIPTION_MODEL=whisper-1
 TAISA_TRANSCRIPTION_MAX_DURATION_SECONDS=300
 TAISA_TRANSCRIPTION_MAX_UPLOAD_BYTES=26214400
 TAISA_TRANSCRIPTION_PRICE_USD_PER_MINUTE=your-current-price
+TAISA_DEVICE_AUTH_REQUIRED=true
+TAISA_DEVICE_CREDENTIAL_PEPPER=at-least-24-random-characters
+TAISA_DEVICE_AUTH_DATABASE_PATH=./taisa-device-auth.sqlite
+TAISA_DEVICE_ENROLLMENT_CODE=a-short-lived-one-time-code
+TAISA_DEVICE_ENROLLMENT_EXPIRES_AT=an-ISO-8601-expiry
+TAISA_FEEDBACK_ENCRYPTION_KEY=a-base64-encoded-32-byte-key
+TAISA_FEEDBACK_DATABASE_PATH=./taisa-feedback.sqlite
 ```
 
 The selected provider's model, current input/output prices, output cap, and positive structured-output/tool-schema token overhead are all required. The gateway adds the overhead before reserving spend, so set it to a conservative bound from the selected provider's current token accounting. Blank, zero, or invalid required values fail closed at startup or before a provider call. Configure the unselected provider only when switching to it.
+
+Hosted production refuses to start without device authentication. The enrollment code is
+single-use and only credential digests are stored by the service; the issued device token stays in
+iPhone SecureStore. Feedback storage is optional in local development, but when enabled both
+feedback variables are required. Shared examples are encrypted with AES-256-GCM and stored
+separately from conversations. Never place the credential pepper, enrollment code, feedback key,
+or provider key in `mobile/.env` or an Expo public variable.
 
 ### 3. Configure mobile environment
 ```bash

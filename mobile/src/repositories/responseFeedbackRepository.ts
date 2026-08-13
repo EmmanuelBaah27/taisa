@@ -94,3 +94,38 @@ export async function markFeedbackPreviewed(
   );
   if (result.changes !== 1) throw new Error('Response feedback is unavailable');
 }
+
+export async function markFeedbackShared(
+  transaction: RepositoryTransaction,
+  responseMessageId: string,
+  consentedAt: string,
+  receiptId: string,
+  updatedAt: string,
+): Promise<void> {
+  const result = await transaction.runAsync(
+    `UPDATE response_feedback SET share_status = 'shared', share_consent_at = $consentedAt,
+      share_receipt_id = $receiptId, updated_at = $updatedAt
+     WHERE response_message_id = $responseMessageId`,
+    {
+      $responseMessageId: responseMessageId,
+      $consentedAt: consentedAt,
+      $receiptId: receiptId,
+      $updatedAt: updatedAt,
+    },
+  );
+  if (result.changes !== 1) throw new Error('Response feedback is unavailable');
+}
+
+export async function markFeedbackLocalOnly(
+  transaction: RepositoryTransaction,
+  responseMessageId: string,
+  updatedAt: string,
+): Promise<void> {
+  const result = await transaction.runAsync(
+    `UPDATE response_feedback SET share_status = 'local-only', share_consent_at = NULL,
+      share_receipt_id = NULL, updated_at = $updatedAt
+     WHERE response_message_id = $responseMessageId`,
+    { $responseMessageId: responseMessageId, $updatedAt: updatedAt },
+  );
+  if (result.changes !== 1) throw new Error('Response feedback is unavailable');
+}

@@ -21,10 +21,12 @@ import coachingRouter from './routes/coaching';
 import { getConfiguredProvider } from './services/coaching/provider';
 import { coachingRateLimit } from './middleware/coachingRateLimit';
 import { contentSafeErrorHandler, requestContext } from './middleware/requestContext';
-import { readDeviceAuthConfig } from './config/deviceAuth';
+import { readDeviceAuthConfig, readFeedbackConfig } from './config/deviceAuth';
 import { DeviceCredentialStore } from './auth/deviceCredentials';
 import { createDeviceAuthentication } from './middleware/deviceAuthentication';
 import { createDeviceEnrollmentRouter } from './routes/deviceEnrollment';
+import { FeedbackRepository } from './feedback/feedbackRepository';
+import { createFeedbackRouter } from './routes/feedback';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -82,6 +84,15 @@ if (deviceCredentialStore !== null) {
     createDeviceEnrollmentRouter(deviceCredentialStore),
   );
   app.use('/api/v1', createDeviceAuthentication(deviceCredentialStore));
+}
+const feedbackConfig = readFeedbackConfig();
+if (feedbackConfig !== null) {
+  if (deviceCredentialStore === null) throw new Error('Feedback storage requires device authentication');
+  const feedbackRepository = new FeedbackRepository({
+    encryptionKeyBase64: feedbackConfig.encryptionKeyBase64,
+    databasePath: feedbackConfig.databasePath,
+  });
+  app.use('/api/v1/feedback-examples', createFeedbackRouter(feedbackRepository));
 }
 app.use('/api/v1/profile', profileRouter);
 app.use('/api/v1/entries', entriesRouter);

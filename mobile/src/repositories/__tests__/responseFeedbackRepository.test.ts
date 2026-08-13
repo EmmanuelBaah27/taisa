@@ -1,6 +1,8 @@
 import { withRepositoryTransaction } from '../../db/types';
 import {
   getResponseFeedback,
+  markFeedbackLocalOnly,
+  markFeedbackShared,
   saveResponseReaction,
 } from '../responseFeedbackRepository';
 import { createTestDatabase, LATER, NOW } from './testDatabase';
@@ -63,6 +65,29 @@ describe('responseFeedbackRepository', () => {
         shareStatus: 'local-only',
         createdAt: NOW,
         updatedAt: LATER,
+      });
+
+      await withRepositoryTransaction(db, (transaction) => markFeedbackShared(
+        transaction,
+        'assistant-1',
+        LATER,
+        'receipt-1',
+        LATER,
+      ));
+      expect(await getResponseFeedback(db, 'assistant-1')).toMatchObject({
+        shareStatus: 'shared',
+        shareConsentAt: LATER,
+        shareReceiptId: 'receipt-1',
+      });
+      await withRepositoryTransaction(db, (transaction) => markFeedbackLocalOnly(
+        transaction,
+        'assistant-1',
+        LATER,
+      ));
+      expect(await getResponseFeedback(db, 'assistant-1')).toMatchObject({
+        shareStatus: 'local-only',
+        shareConsentAt: null,
+        shareReceiptId: null,
       });
     } finally {
       db.close();

@@ -15,6 +15,7 @@ export interface FeedbackShareDraft {
   readonly userTurn: string;
   readonly assistantReply: string;
   readonly contextManifest: Readonly<Record<string, unknown>>;
+  readonly usedContext: readonly string[];
   readonly consentRequired: true;
 }
 
@@ -40,6 +41,41 @@ function parseManifest(serialized: string | null): Readonly<Record<string, unkno
   }
 }
 
+function safeIds(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === 'string').slice(0, 50)
+    : [];
+}
+
+async function loadUsedContext(
+  database: RepositoryConnection,
+  manifest: Readonly<Record<string, unknown>>,
+): Promise<string[]> {
+  const included = typeof manifest.included === 'object' && manifest.included !== null
+    ? manifest.included as Record<string, unknown>
+    : {};
+  const values: string[] = [];
+  for (const id of safeIds(included.messageIds)) {
+    const row = await database.getFirstAsync<{ content: string }>(
+      'SELECT content FROM messages WHERE id = $id', { $id: id },
+    );
+    if (row?.content) values.push(row.content.slice(0, 2000));
+  }
+  for (const id of safeIds(included.memoryIds)) {
+    const row = await database.getFirstAsync<{ statement: string }>(
+      'SELECT statement FROM memory_items WHERE id = $id', { $id: id },
+    );
+    if (row?.statement) values.push(row.statement.slice(0, 2000));
+  }
+  for (const id of safeIds(included.evidenceIds)) {
+    const row = await database.getFirstAsync<{ statement: string }>(
+      'SELECT statement FROM evidence WHERE id = $id', { $id: id },
+    );
+    if (row?.statement) values.push(row.statement.slice(0, 2000));
+  }
+  return values.slice(0, 50);
+}
+
 export async function buildFeedbackPreview(
   database: RepositoryConnection,
   responseMessageId: string,
@@ -57,6 +93,7 @@ export async function buildFeedbackPreview(
     { $responseMessageId: responseMessageId },
   );
   if (row === null) throw new Error('Response is unavailable for feedback');
+  const contextManifest = parseManifest(row.context_manifest_json);
   return {
     responseMessageId: row.response_message_id,
     requestId: row.request_id,
@@ -64,7 +101,8 @@ export async function buildFeedbackPreview(
     stance: row.stance,
     userTurn: redactSubmission(row.user_turn, redactions.userTurn).text,
     assistantReply: redactSubmission(row.assistant_reply, redactions.assistantReply).text,
-    contextManifest: parseManifest(row.context_manifest_json),
+    contextManifest,
+    usedContext: await loadUsedContext(database, contextManifest),
     consentRequired: true,
   };
 }

@@ -47,16 +47,35 @@ import { withTaisaDatabase } from '../../src/db/openDatabase';
 import { withRepositoryTransaction } from '../../src/db/types';
 import {
   getResponseFeedback,
+  markFeedbackLocalOnly,
+  markFeedbackShared,
   saveResponseReaction,
   type ResponseReaction,
 } from '../../src/repositories/responseFeedbackRepository';
 import { buildFeedbackPreview } from '../../src/services/feedbackBundle';
+import api from '../../src/services/api';
+import { createFeedbackClient } from '../../src/services/feedbackClient';
 
 const DISMISS_VELOCITY = 800;
 const SPRING_BACK = { damping: 26, stiffness: 200 };
 
 interface ChatScreenProps {
   presentation?: ChatPresentation;
+}
+
+function promptEditable(title: string, value: string): Promise<string | null> {
+  return new Promise((resolve) => {
+    Alert.prompt(
+      title,
+      'Remove or replace anything you do not want to share.',
+      [
+        { text: 'Cancel', style: 'cancel', onPress: () => resolve(null) },
+        { text: 'Continue', onPress: (edited?: string) => resolve(edited?.trim() || '') },
+      ],
+      'plain-text',
+      value,
+    );
+  });
 }
 
 export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) {
@@ -526,11 +545,87 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
 
   async function handleShareExample(responseId: string) {
     try {
-      const preview = await withTaisaDatabase((database) => buildFeedbackPreview(database, responseId));
+      const [preview, feedback] = await withTaisaDatabase(async (database) => Promise.all([
+        buildFeedbackPreview(database, responseId),
+        getResponseFeedback(database, responseId),
+      ]));
+      if (feedback === null) throw new Error('Feedback is unavailable');
+      if (feedback.shareStatus === 'shared' && feedback.shareReceiptId !== null) {
+        Alert.alert(
+          'Shared example',
+          'The encrypted example is in your private feedback store. Your local reaction will remain if you delete it there.',
+          [
+            { text: 'Keep it', style: 'cancel' },
+            {
+              text: 'Delete shared copy',
+              style: 'destructive',
+              onPress: () => {
+                void createFeedbackClient(api).remove(feedback.shareReceiptId!).then(() =>
+                  withTaisaDatabase((database) => withRepositoryTransaction(database, (transaction) =>
+                    markFeedbackLocalOnly(transaction, responseId, new Date().toISOString()))))
+                  .then(() => Alert.alert('Shared copy deleted', 'Your reaction remains on this phone.'))
+                  .catch(() => Alert.alert('Could not delete', 'Try again when Taisa is connected.'));
+              },
+            },
+          ],
+        );
+        return;
+      }
       Alert.alert(
         'Review before sharing',
-        `Nothing has been sent. This example would include:\n\nYou: ${preview.userTurn}\n\nTaisa: ${preview.assistantReply}\n\nSharing will remain a separate, explicit action after you review and redact the example.`,
-        [{ text: 'Keep local', style: 'cancel' }],
+        `Nothing has been sent. This example includes:\n\nYou: ${preview.userTurn}\n\nTaisa: ${preview.assistantReply}\n\nContext used (${preview.usedContext.length}):\n${preview.usedContext.join('\n') || 'No earlier context'}\n\nOnly tap Share if you consent to sending this example to your private Taisa feedback store.`,
+        [
+          { text: 'Keep local', style: 'cancel' },
+          {
+            text: 'Redact & review',
+            onPress: () => {
+              void (async () => {
+                const userTurn = await promptEditable('Review your message', preview.userTurn);
+                if (userTurn === null) return;
+                const assistantReply = await promptEditable('Review Taisa’s response', preview.assistantReply);
+                if (assistantReply === null) return;
+                const context = await promptEditable('Review the context used', preview.usedContext.join('\n'));
+                if (context === null) return;
+                Alert.alert(
+                  'Share this example?',
+                  'This sends only the reviewed text and context to your encrypted private feedback store. You can delete it later.',
+                  [
+                    { text: 'Keep local', style: 'cancel' },
+                    {
+                      text: 'Share',
+                      onPress: () => {
+                        const consentedAt = new Date().toISOString();
+                        void createFeedbackClient(api).share({
+                          idempotencyId: `${responseId}:share-v1`,
+                          consentedAt,
+                          reaction: feedback.reaction,
+                          note: feedback.note,
+                          draft: {
+                            ...preview,
+                            userTurn,
+                            assistantReply,
+                            usedContext: context ? [context] : [],
+                          },
+                        }).then(({ receiptId }) => withTaisaDatabase((database) =>
+                          withRepositoryTransaction(database, (transaction) => markFeedbackShared(
+                            transaction,
+                            responseId,
+                            consentedAt,
+                            receiptId,
+                            new Date().toISOString(),
+                          )))).then(() => {
+                          Alert.alert('Example shared', 'You can delete the shared example later from Taisa.');
+                        }).catch(() => {
+                          Alert.alert('Could not share', 'The feedback remains only on your phone.');
+                        });
+                      },
+                    },
+                  ],
+                );
+              })();
+            },
+          },
+        ],
       );
     } catch {
       Alert.alert('Preview unavailable', 'This feedback remains only on your phone.');

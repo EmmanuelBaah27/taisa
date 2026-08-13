@@ -738,6 +738,31 @@ No request body required.
 
 ---
 
+## Private device and feedback endpoints
+
+### `POST /api/v1/device-enrollments`
+
+Exchanges a short-lived, single-use enrollment code for a random device credential. This is the
+only unauthenticated `/api/v1` endpoint when device authentication is enabled. The credential is
+returned once; the service persists only a keyed digest.
+
+### `POST /api/v1/feedback-examples`
+
+Requires `Authorization: Bearer <device credential>`. Accepts one bounded example only after an
+explicit consent timestamp. User text, Taisa's reply, and reviewed context are stored only as an
+AES-256-GCM envelope; lifecycle metadata and ownership remain content-free. Returns an opaque
+receipt ID and is idempotent per device and idempotency ID.
+
+### `DELETE /api/v1/feedback-examples/:receiptId`
+
+Deletes only a feedback envelope owned by the enrolled device. The response is idempotent and
+does not reveal whether another device owns a receipt.
+
+Rating a response does not call either feedback endpoint. Ratings and notes remain local until the
+user previews, edits/redacts, and confirms **Share** separately.
+
+---
+
 ## Error Response Shape
 
 All error responses use a consistent envelope:
@@ -756,7 +781,7 @@ Common codes:
 | HTTP | Code | Meaning |
 |---|---|---|
 | 400 | `MISSING_*` / `NO_FILE` | Required field absent |
-| 401 | `UNAUTHORIZED` | `x-user-id` header missing |
+| 401 | `DEVICE_AUTHENTICATION_REQUIRED` | Valid enrolled device bearer credential missing |
 | 404 | `NOT_FOUND` | Resource not found or not owned by user |
 | 500 | `*_FAILED` / `INTERNAL_ERROR` | Server or Claude error |
 

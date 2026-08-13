@@ -1,4 +1,4 @@
-import { readDeviceAuthConfig } from '../config/deviceAuth';
+import { readDeviceAuthConfig, readFeedbackConfig } from '../config/deviceAuth';
 
 const valid = {
   TAISA_DEVICE_AUTH_REQUIRED: 'true',
@@ -29,4 +29,17 @@ test('enabled device authentication requires complete fail-closed configuration'
 test('production refuses to start without device authentication', () => {
   expect(() => readDeviceAuthConfig({ NODE_ENV: 'production' }))
     .toThrow('Device authentication is required in production');
+});
+
+test('feedback storage is optional locally but rejects partial configuration', () => {
+  expect(readFeedbackConfig({})).toBeNull();
+  expect(readFeedbackConfig({
+    TAISA_FEEDBACK_ENCRYPTION_KEY: Buffer.alloc(32, 4).toString('base64'),
+    TAISA_FEEDBACK_DATABASE_PATH: '/tmp/taisa-feedback.sqlite',
+  })).toEqual({
+    encryptionKeyBase64: Buffer.alloc(32, 4).toString('base64'),
+    databasePath: '/tmp/taisa-feedback.sqlite',
+  });
+  expect(() => readFeedbackConfig({ TAISA_FEEDBACK_DATABASE_PATH: '/tmp/only.sqlite' }))
+    .toThrow('Feedback storage configuration is incomplete');
 });
