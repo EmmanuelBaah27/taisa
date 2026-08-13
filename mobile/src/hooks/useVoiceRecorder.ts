@@ -1,25 +1,40 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useSharedValue } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
-import { startRecording, stopRecording, requestAudioPermissions, onMeteringUpdate, RecordingResult } from '../services/audio';
+import {
+  startRecording,
+  stopRecording,
+  pauseRecording,
+  resumeRecording,
+  requestAudioPermissions,
+  onMeteringUpdate,
+  RecordingResult,
+} from '../services/audio';
+import { classifyVoiceActivity } from '../services/voiceActivity';
 
 interface UseVoiceRecorder {
   isRecording: boolean;
+  isPaused: boolean;
   duration: number;
   amplitude: ReturnType<typeof useSharedValue<number>>;
   permissionGranted: boolean | null;
   start: () => Promise<void>;
   stop: () => Promise<RecordingResult>;
+  pause: () => Promise<void>;
+  resume: () => Promise<void>;
+  getActivity: () => ReturnType<typeof classifyVoiceActivity>;
   requestPermission: () => Promise<boolean>;
 }
 
 export function useVoiceRecorder(): UseVoiceRecorder {
   const [isRecording, setIsRecording] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const [duration, setDuration] = useState(0);
   const [permissionGranted, setPermissionGranted] = useState<boolean | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const unsubMeteringRef = useRef<(() => void) | null>(null);
   const mountedRef = useRef(true);
+  const activitySamplesRef = useRef<number[]>([]);
   const amplitude = useSharedValue(0);
 
   useEffect(() => {
@@ -44,9 +59,11 @@ export function useVoiceRecorder(): UseVoiceRecorder {
     await startRecording();
     if (mountedRef.current) {
       setIsRecording(true);
+      setIsPaused(false);
       setDuration(0);
     }
     amplitude.value = 0;
+    activitySamplesRef.current = [];
     if (!mountedRef.current) return;
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
@@ -56,6 +73,7 @@ export function useVoiceRecorder(): UseVoiceRecorder {
 
     unsubMeteringRef.current = onMeteringUpdate(amp => {
       amplitude.value = amp;
+      activitySamplesRef.current.push(amp);
     });
   }, [permissionGranted]);
 
@@ -64,12 +82,47 @@ export function useVoiceRecorder(): UseVoiceRecorder {
     unsubMeteringRef.current?.();
     amplitude.value = 0;
     const result = await stopRecording();
+    const activity = classifyVoiceActivity(activitySamplesRef.current);
     if (mountedRef.current) {
       setIsRecording(false);
+      setIsPaused(false);
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     }
-    return result;
+    return { ...result, activity };
   }, []);
 
-  return { isRecording, duration, amplitude, permissionGranted, start, stop, requestPermission };
+  const pause = useCallback(async () => {
+    await pauseRecording();
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = null;
+    amplitude.value = 0;
+    if (mountedRef.current) setIsPaused(true);
+  }, []);
+
+  const resume = useCallback(async () => {
+    await resumeRecording();
+    timerRef.current = setInterval(() => {
+      if (mountedRef.current) setDuration(d => d + 1);
+    }, 1000);
+    if (mountedRef.current) setIsPaused(false);
+  }, []);
+
+  const getActivity = useCallback(
+    () => classifyVoiceActivity(activitySamplesRef.current),
+    [],
+  );
+
+  return {
+    isRecording,
+    isPaused,
+    duration,
+    amplitude,
+    permissionGranted,
+    start,
+    stop,
+    pause,
+    resume,
+    getActivity,
+    requestPermission,
+  };
 }

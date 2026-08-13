@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3';
 
-import { SCHEMA_V1_STATEMENTS } from '../../db/schema';
+import { SCHEMA_V1_STATEMENTS, SCHEMA_V2_STATEMENTS } from '../../db/schema';
 import type {
   ExclusiveTransactionConnection,
   RepositoryConnection,
@@ -28,6 +28,9 @@ export function createTestDatabase(): TestDatabase {
   const database = new Database(':memory:');
   database.pragma('foreign_keys = ON');
   for (const statement of SCHEMA_V1_STATEMENTS) {
+    database.exec(statement);
+  }
+  for (const statement of SCHEMA_V2_STATEMENTS) {
     database.exec(statement);
   }
 

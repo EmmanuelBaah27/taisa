@@ -3,7 +3,9 @@ export type ChatConversationRouteParam = string | string[] | undefined;
 export function resolveInitialChatConversationId(
   routeConversationId: ChatConversationRouteParam,
   activeConversationId: string | null,
+  forceFresh = false,
 ): string | null {
+  if (forceFresh) return null;
   const candidate = Array.isArray(routeConversationId)
     ? routeConversationId[0]
     : routeConversationId;
@@ -20,6 +22,14 @@ export function chatConversationRoute(conversationId: string) {
 }
 
 export type ChatPresentation = 'route' | 'overlay';
+
+export function startFreshCapture(actions: {
+  clearActiveConversation(): void;
+  openCapture(): void;
+}): void {
+  actions.clearActiveConversation();
+  actions.openCapture();
+}
 
 export function closeChatPresentation(
   presentation: ChatPresentation,

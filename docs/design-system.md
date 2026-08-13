@@ -113,6 +113,25 @@ Never use raw `text-sm font-semibold` combinations — use the composite utiliti
 | `RecordingGlow` | `amplitude: number` | Amplitude-reactive lime glow anchored to screen bottom; 0 = very faint, 10 = full brightness; uses `expo-linear-gradient` + `Animated` with `useNativeDriver` |
 | `LiveTranscriptionText` | `transcript: string` | Centred text area; shows grey "What's on your mind?" when empty, switches to `text-lime-700` when transcript streams in |
 | `TaisaReplyCard` | `content: string` | Assistant reply bubble; `bg-subtle` surface, `rounded-3`, no business logic |
+| `VoiceComposer` | `mode`, `voiceState`, `durationSeconds`, `amplitude`, draft state and callbacks | Bottom-loaded active voice/text composer with a voice-ready Reply control, speech-responsive Pause/Resume cradle, and stable Send position |
+| `VoiceDraftStrip` | `label`, `preview`, `onOpen`, `onDelete` | Compact representation of the inactive input; deletion remains an isolated tap target |
 
 **Extraction rule:** pattern appears in 2+ places → extract to `ui/`. Do not extract speculatively.
 **DS compliance:** no `StyleSheet.create()`, no raw hex, import tokens from Tailwind classes only.
+## Voice composer
+
+`VoiceComposer` is the bottom-loaded mixed-input control used by coaching conversations.
+Its three stable voice slots are input-mode switch, speech-responsive waveform with a
+negative-space Pause/Resume cradle, and Send. Keyboard mode gives the text field the full
+available center width; any inactive voice or text input is represented by `VoiceDraftStrip`
+above the composer. Draft-strip deletion targets only that input, and voice deletion requires
+screen-level confirmation.
+
+When a conversation prefers voice, the idle composer is one soft-grey, full-width `Reply` control
+with a black microphone icon. Its accessible label is `Reply by voice, starts recording`; it starts
+recording only after that explicit tap. The control is unavailable only while a submission is in
+progress, so offline recording remains available.
+
+> **BTS:** Preferred input mode is local conversation state, not a microphone permission state.
+> Persisting it lets an answered voice turn return to a calm, intentional Reply control after a
+> restart without ever reopening the microphone on its own.

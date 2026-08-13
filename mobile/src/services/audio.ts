@@ -1,9 +1,11 @@
 import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system';
+import type { VoiceActivitySummary } from './voiceActivity';
 
 export interface RecordingResult {
   uri: string;
   durationSeconds: number;
+  activity?: VoiceActivitySummary;
 }
 
 let recording: Audio.Recording | null = null;
@@ -37,9 +39,11 @@ export async function startRecording(): Promise<void> {
 export async function stopRecording(): Promise<RecordingResult> {
   if (!recording) throw new Error('No active recording');
 
-  await recording.stopAndUnloadAsync();
+  const status = await recording.stopAndUnloadAsync();
   const uri = recording.getURI();
-  const durationSeconds = (Date.now() - startTime) / 1000;
+  const durationSeconds = status.durationMillis > 0
+    ? status.durationMillis / 1000
+    : (Date.now() - startTime) / 1000;
 
   recording = null;
 
@@ -48,6 +52,16 @@ export async function stopRecording(): Promise<RecordingResult> {
   if (!uri) throw new Error('Recording URI is null');
 
   return { uri, durationSeconds };
+}
+
+export async function pauseRecording(): Promise<void> {
+  if (!recording) throw new Error('No active recording');
+  await recording.pauseAsync();
+}
+
+export async function resumeRecording(): Promise<void> {
+  if (!recording) throw new Error('No active recording');
+  await recording.startAsync();
 }
 
 export function isRecording(): boolean {

@@ -9,6 +9,7 @@ import {
   isConversationCacheCurrent,
   returnFromRoutedChat,
   resolveInitialChatConversationId,
+  startFreshCapture,
 } from '../chatConversationRoute';
 
 jest.mock('expo-router', () => ({
@@ -51,6 +52,12 @@ describe('durable conversation resume navigation', () => {
     )).toBe('conversation-from-history');
     expect(resolveInitialChatConversationId(undefined, 'current-view-conversation'))
       .toBe('current-view-conversation');
+  });
+
+  test('a fresh overlay never restores the previous active conversation snapshot', () => {
+    expect(resolveInitialChatConversationId(undefined, 'failed-conversation', true)).toBeNull();
+    expect(resolveInitialChatConversationId('history-conversation', 'failed-conversation', false))
+      .toBe('history-conversation');
   });
 
   test('the resume route carries the durable SQLite conversation ID', () => {
@@ -96,6 +103,18 @@ describe('durable conversation resume navigation', () => {
       pendingRequestStatus: 'completed',
       pendingProposalCount: 0,
     })).toBeNull();
+  });
+
+  test('the global record control starts fresh while durable failed work remains resumable from history', () => {
+    const clearActiveConversation = jest.fn();
+    const openCapture = jest.fn();
+
+    startFreshCapture({ clearActiveConversation, openCapture });
+
+    expect(clearActiveConversation).toHaveBeenCalledTimes(1);
+    expect(openCapture).toHaveBeenCalledTimes(1);
+    expect(clearActiveConversation.mock.invocationCallOrder[0])
+      .toBeLessThan(openCapture.mock.invocationCallOrder[0]);
   });
 
   test('a routed Resume returns to history while the tabs overlay closes locally', () => {

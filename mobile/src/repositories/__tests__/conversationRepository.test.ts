@@ -11,6 +11,7 @@ import {
   listRecentConversationMessages,
   listRecentMessages,
   searchMessages,
+  setConversationPreferredInputMode,
   updateConversation,
   updateMessage,
 } from '../conversationRepository';
@@ -20,6 +21,7 @@ const conversation: LocalConversation = {
   id: 'conversation-1',
   title: 'Roadmap reflection',
   lifecycle: 'active',
+  preferredInputMode: 'text',
   createdAt: NOW,
   updatedAt: NOW,
   archivedAt: null,
@@ -38,6 +40,41 @@ const message: LocalMessage = {
 };
 
 describe('conversationRepository', () => {
+  test('defaults new conversations to text and persists an explicit mode switch only once', async () => {
+    const db = createTestDatabase();
+
+    try {
+      await db.withTransaction((tx) => insertConversation(tx, conversation, 'conversation-create-1'));
+      expect(await db.getFirstAsync<{ preferred_input_mode: string; updated_at: string }>(
+        'SELECT preferred_input_mode, updated_at FROM conversations WHERE id = $id',
+        { $id: conversation.id },
+      )).toEqual({ preferred_input_mode: 'text', updated_at: NOW });
+
+      await db.withTransaction((tx) => setConversationPreferredInputMode(
+        tx,
+        conversation.id,
+        'voice',
+        LATER,
+        'conversation-mode-voice',
+      ));
+      await db.withTransaction((tx) => setConversationPreferredInputMode(
+        tx,
+        conversation.id,
+        'voice',
+        '2026-08-10T11:00:00.000Z',
+        'conversation-mode-voice-retry',
+      ));
+
+      expect(await getConversation(db, conversation.id)).toEqual({
+        ...conversation,
+        preferredInputMode: 'voice',
+        updatedAt: LATER,
+      });
+    } finally {
+      db.close();
+    }
+  });
+
   test('creates, reads, updates, lists, filters, and searches conversations and messages', async () => {
     const db = createTestDatabase();
 

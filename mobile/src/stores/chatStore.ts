@@ -1,5 +1,6 @@
 import * as Crypto from 'expo-crypto';
 import { create } from 'zustand';
+import type { PreferredInputMode } from '@taisa/shared';
 
 import { getPrivateCaptureService } from '../services/localPlatform';
 import type {
@@ -21,7 +22,9 @@ export type ChatPhase =
 interface ChatStore {
   activeSessionId: string | null;
   activeRequestId: string | null;
+  activeRequestKind: 'text' | 'voice' | null;
   activeMessageId: string | null;
+  preferredInputMode: PreferredInputMode;
   transcript: string;
   pendingProposalIds: string[];
   pendingProposals: PendingProposal[];
@@ -32,15 +35,21 @@ interface ChatStore {
   setPhase: (phase: ChatPhase) => void;
   drainAudioCleanupQueue: () => Promise<void>;
   hydrateConversation: (conversationId: string) => Promise<void>;
+  setPreferredInputMode: (
+    conversationId: string,
+    preferredInputMode: PreferredInputMode,
+  ) => Promise<void>;
   savePrivateDraft: (conversationId: string, content: string) => Promise<void>;
   submitText: (conversationId: string, content: string) => Promise<void>;
   submitVoice: (
     conversationId: string,
     audioUri: string,
     durationSeconds: number,
+    typedClarification?: string,
   ) => Promise<void>;
   updateTranscript: (transcript: string) => Promise<void>;
   confirmTranscript: () => Promise<void>;
+  reviseTranscript: (transcript: string) => Promise<void>;
   retrySubmission: () => Promise<void>;
   confirmProposal: (confirmationId: string) => Promise<void>;
   resolveClarification: (
@@ -145,7 +154,9 @@ export function createChatStore(
     return ({
     activeSessionId: null,
     activeRequestId: null,
+    activeRequestKind: null,
     activeMessageId: null,
+    preferredInputMode: 'text',
     transcript: '',
     pendingProposalIds: [],
     pendingProposals: [],
@@ -174,7 +185,9 @@ export function createChatStore(
       setIfCurrent(ownership, {
         activeSessionId: conversationId,
         activeRequestId: null,
+        activeRequestKind: null,
         activeMessageId: null,
+        preferredInputMode: 'text',
         transcript: '',
         pendingProposalIds: [],
         pendingProposals: [],
@@ -195,7 +208,9 @@ export function createChatStore(
         setIfCurrent(ownership, {
           activeSessionId: conversationId,
           activeRequestId: restored.requestId,
+          activeRequestKind: restored.requestKind,
           activeMessageId: restored.messageId,
+          preferredInputMode: restored.preferredInputMode,
           transcript: restored.transcript,
           pendingProposalIds: restored.pendingProposals.map((proposal) => proposal.id),
           pendingProposals: restored.pendingProposals,
@@ -208,6 +223,7 @@ export function createChatStore(
         setIfCurrent(ownership, {
           activeSessionId: conversationId,
           activeRequestId: null,
+          activeRequestKind: null,
           activeMessageId: null,
           transcript: '',
           pendingProposalIds: [],
@@ -219,6 +235,17 @@ export function createChatStore(
       }
     },
 
+    setPreferredInputMode: async (conversationId, preferredInputMode) => {
+      const ownership = activateConversation(conversationId);
+      setIfCurrent(ownership, { preferredInputMode });
+      const service = await getCaptureService();
+      await service.setPreferredInputMode({
+        conversationId,
+        preferredInputMode,
+        idempotencyId: createLocalIntentId(),
+      });
+    },
+
     savePrivateDraft: async (conversationId, content) => {
       const ownership = activateConversation(conversationId);
       try {
@@ -226,6 +253,7 @@ export function createChatStore(
         const result = await service.savePrivateDraft({ conversationId, content });
         setIfCurrent(ownership, {
           activeSessionId: conversationId,
+          activeRequestKind: 'text',
           activeMessageId: result.messageId,
           error: null,
         });
@@ -242,6 +270,7 @@ export function createChatStore(
           phase: 'processing',
           error: null,
           activeSessionId: conversationId,
+          activeRequestKind: 'text',
         });
         try {
           const service = await getCaptureService();
@@ -271,27 +300,47 @@ export function createChatStore(
       });
     },
 
-    submitVoice: (conversationId, audioUri, durationSeconds) => {
+    submitVoice: (conversationId, audioUri, durationSeconds, typedClarification) => {
       const ownership = activateConversation(conversationId);
       return guarded(ownership, async () => {
         setIfCurrent(ownership, {
           phase: 'transcribing',
           error: null,
           activeSessionId: conversationId,
+          activeRequestKind: 'voice',
         });
         try {
           const service = await getCaptureService();
-          const result = await service.submitVoice({
+          const confirmation = await service.submitVoice({
             conversationId,
             audioUri,
             durationSeconds,
+            preferredInputMode: get().preferredInputMode,
             intentId: createLocalIntentId(),
           });
+          const clarification = typedClarification?.trim() ?? '';
+          const submittedTranscript = clarification.length > 0
+            ? `${confirmation.transcript}\n\n${clarification}`
+            : confirmation.transcript;
+          if (clarification.length > 0) {
+            await service.updateTranscript({
+              requestId: confirmation.requestId,
+              transcript: submittedTranscript,
+            });
+          }
+          setIfCurrent(ownership, {
+            activeRequestId: confirmation.requestId,
+            activeMessageId: confirmation.messageId,
+            transcript: submittedTranscript,
+            phase: 'processing',
+          });
+          const result = await service.confirmTranscript({ requestId: confirmation.requestId });
           setIfCurrent(ownership, {
             activeRequestId: result.requestId,
             activeMessageId: result.messageId,
-            transcript: result.transcript,
-            phase: 'transcript-review',
+            pendingProposalIds: result.pendingProposalIds,
+            pendingProposals: result.pendingProposals,
+            phase: 'responded',
           });
         } catch (error) {
           const requestId = typeof error === 'object' && error !== null && 'requestId' in error
@@ -338,6 +387,31 @@ export function createChatStore(
               : 'error',
             error: safeError(error),
           });
+          throw error;
+        }
+      });
+    },
+
+    reviseTranscript: (transcript) => {
+      const requestId = get().activeRequestId;
+      if (requestId === null || get().activeRequestKind !== 'voice') {
+        return Promise.reject(new Error('No completed voice transcript is active'));
+      }
+      const ownership = captureOwnership(requestId);
+      return guarded(ownership, async () => {
+        setIfCurrent(ownership, { phase: 'processing', error: null });
+        try {
+          const service = await getCaptureService();
+          const result = await service.reviseSubmittedTranscript({ requestId, transcript });
+          setIfCurrent(ownership, {
+            activeMessageId: result.messageId,
+            pendingProposalIds: result.pendingProposalIds,
+            pendingProposals: result.pendingProposals,
+            transcript,
+            phase: 'responded',
+          });
+        } catch (error) {
+          setIfCurrent(ownership, { phase: 'error', error: safeError(error) });
           throw error;
         }
       });
@@ -418,6 +492,7 @@ export function createChatStore(
       await service.abandonVoiceSubmission(requestId);
       setIfCurrent(ownership, {
         activeRequestId: null,
+        activeRequestKind: null,
         activeMessageId: null,
         transcript: '',
         phase: 'idle',
@@ -430,6 +505,7 @@ export function createChatStore(
       set({
         activeSessionId: null,
         activeRequestId: null,
+        activeRequestKind: null,
         activeMessageId: null,
         transcript: '',
         pendingProposalIds: [],

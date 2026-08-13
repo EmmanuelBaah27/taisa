@@ -7,10 +7,11 @@ import {
   type ArchiveDependencies,
   type ArchiveSnapshot,
 } from '../exportArchive';
+import { SCHEMA_VERSION } from '../../db/migrations';
 
 const SNAPSHOT: ArchiveSnapshot = {
   archiveFormatVersion: 1,
-  schemaVersion: 1,
+  schemaVersion: SCHEMA_VERSION,
   counts: {
     profile: 1,
     conversations: 3,
@@ -173,7 +174,10 @@ describe('encrypted archive recovery', () => {
 
   test('rejects a newer archive schema before creating or promoting a candidate', async () => {
     const { service, sqlCipher, files } = makeHarness();
-    sqlCipher.inspectPassphraseArchive.mockResolvedValueOnce({ ...SNAPSHOT, schemaVersion: 2 });
+    sqlCipher.inspectPassphraseArchive.mockResolvedValueOnce({
+      ...SNAPSHOT,
+      schemaVersion: SCHEMA_VERSION + 1,
+    });
 
     await expect(service.restoreEncryptedArchive(
       'file:///selected/backup.sqlite3',
@@ -186,12 +190,12 @@ describe('encrypted archive recovery', () => {
   test('identifies a newer manifest before trying to interpret future entity tables', () => {
     const snapshot = parseArchiveManifestForValidation({
       archive_format_version: 1,
-      schema_version: 2,
+      schema_version: SCHEMA_VERSION + 1,
       counts_json: JSON.stringify({ ...SNAPSHOT.counts, future_private_entity: 7 }),
       content_hash: SNAPSHOT.contentHash,
     });
 
-    expect(snapshot.schemaVersion).toBe(2);
+    expect(snapshot.schemaVersion).toBe(SCHEMA_VERSION + 1);
     expect(snapshot.counts).toEqual(SNAPSHOT.counts);
   });
 
@@ -339,7 +343,9 @@ describe('encrypted archive recovery', () => {
   test('sets the passphrase export user_version when sqlcipher_export starts it at zero', async () => {
     let passphraseExportVersion = 0;
     const execAsync = jest.fn(async (sql: string) => {
-      if (sql === 'PRAGMA passphrase_export.user_version = 1') passphraseExportVersion = 1;
+      if (sql === `PRAGMA passphrase_export.user_version = ${SCHEMA_VERSION}`) {
+        passphraseExportVersion = SCHEMA_VERSION;
+      }
     });
     const database = {
       execAsync,
@@ -348,11 +354,11 @@ describe('encrypted archive recovery', () => {
         if (sql.includes('passphrase_export.user_version')) {
           return { user_version: passphraseExportVersion };
         }
-        if (sql.includes('main.user_version')) return { user_version: 1 };
+        if (sql.includes('main.user_version')) return { user_version: SCHEMA_VERSION };
         if (sql.includes('taisa_archive_manifest')) {
           return {
             archive_format_version: 1,
-            schema_version: 1,
+            schema_version: SCHEMA_VERSION,
             counts_json: JSON.stringify(EMPTY_SNAPSHOT.counts),
             content_hash: EMPTY_SNAPSHOT.contentHash,
           };
@@ -378,7 +384,7 @@ describe('encrypted archive recovery', () => {
       destinationUri: 'file:///backup.db',
       passphrase: 'correct horse battery',
     })).resolves.toEqual(EMPTY_SNAPSHOT);
-    expect(execAsync).toHaveBeenCalledWith('PRAGMA passphrase_export.user_version = 1');
+    expect(execAsync).toHaveBeenCalledWith(`PRAGMA passphrase_export.user_version = ${SCHEMA_VERSION}`);
   });
 
   test('imports rows into a fresh trusted-schema candidate without cloning source schema', async () => {
@@ -387,11 +393,11 @@ describe('encrypted archive recovery', () => {
       runAsync: jest.fn(async () => ({ changes: 0, lastInsertRowId: 0 })),
       getFirstAsync: jest.fn(async (sql: string) => {
         if (sql === 'PRAGMA cipher_version') return { cipher_version: '4.6.1' };
-        if (sql.includes('source_archive.user_version')) return { user_version: 1 };
+        if (sql.includes('source_archive.user_version')) return { user_version: SCHEMA_VERSION };
         if (sql.includes('taisa_archive_manifest')) {
           return {
             archive_format_version: 1,
-            schema_version: 1,
+            schema_version: SCHEMA_VERSION,
             counts_json: JSON.stringify(EMPTY_SNAPSHOT.counts),
             content_hash: EMPTY_SNAPSHOT.contentHash,
           };
@@ -414,7 +420,7 @@ describe('encrypted archive recovery', () => {
       execAsync: jest.fn(async () => undefined),
       runAsync: jest.fn(async () => ({ changes: 1, lastInsertRowId: 0 })),
       getFirstAsync: jest.fn(async (sql: string) => {
-        if (sql.includes('main.user_version')) return { user_version: 1 };
+        if (sql.includes('main.user_version')) return { user_version: SCHEMA_VERSION };
         if (sql.includes('LEFT JOIN')) return null;
         return null;
       }),
@@ -469,11 +475,11 @@ describe('encrypted archive recovery', () => {
       runAsync: jest.fn(async () => ({ changes: 0, lastInsertRowId: 0 })),
       getFirstAsync: jest.fn(async (sql: string) => {
         if (sql === 'PRAGMA cipher_version') return { cipher_version: '4.6.1' };
-        if (sql.includes('source_archive.user_version')) return { user_version: 1 };
+        if (sql.includes('source_archive.user_version')) return { user_version: SCHEMA_VERSION };
         if (sql.includes('taisa_archive_manifest')) {
           return {
             archive_format_version: 1,
-            schema_version: 1,
+            schema_version: SCHEMA_VERSION,
             counts_json: JSON.stringify(twoProfiles.counts),
             content_hash: twoProfiles.contentHash,
           };
@@ -512,11 +518,11 @@ describe('encrypted archive recovery', () => {
         execAsync: jest.fn(async () => undefined),
         getFirstAsync: jest.fn(async (sql: string) => {
           if (sql === 'PRAGMA cipher_version') return { cipher_version: '4.6.1' };
-          if (sql.includes('source_archive.user_version')) return { user_version: 1 };
+          if (sql.includes('source_archive.user_version')) return { user_version: SCHEMA_VERSION };
           if (sql.includes('taisa_archive_manifest')) {
             return {
               archive_format_version: 1,
-              schema_version: 1,
+              schema_version: SCHEMA_VERSION,
               counts_json: JSON.stringify(EMPTY_SNAPSHOT.counts),
               content_hash: EMPTY_SNAPSHOT.contentHash,
             };
@@ -562,11 +568,11 @@ describe('encrypted archive recovery', () => {
       runAsync: jest.fn(async () => ({ changes: 0, lastInsertRowId: 0 })),
       getFirstAsync: jest.fn(async (sql: string) => {
         if (sql === 'PRAGMA cipher_version') return { cipher_version: '4.6.1' };
-        if (sql.includes('source_archive.user_version')) return { user_version: 1 };
+        if (sql.includes('source_archive.user_version')) return { user_version: SCHEMA_VERSION };
         if (sql.includes('taisa_archive_manifest')) {
           return {
             archive_format_version: 1,
-            schema_version: 1,
+            schema_version: SCHEMA_VERSION,
             counts_json: JSON.stringify(EMPTY_SNAPSHOT.counts),
             content_hash: EMPTY_SNAPSHOT.contentHash,
           };

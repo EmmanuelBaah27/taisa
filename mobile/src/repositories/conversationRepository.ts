@@ -3,6 +3,7 @@ import type {
   LocalConversation,
   LocalMessage,
   MessageLifecycle,
+  PreferredInputMode,
 } from '@taisa/shared';
 
 import type { RepositoryConnection, RepositoryTransaction } from '../db/types';
@@ -14,6 +15,7 @@ interface ConversationRow {
   id: string;
   title: string | null;
   lifecycle: ConversationLifecycle;
+  preferred_input_mode: PreferredInputMode;
   created_at: string;
   updated_at: string;
   archived_at: string | null;
@@ -31,7 +33,7 @@ interface MessageRow {
   updated_at: string;
 }
 
-const CONVERSATION_COLUMNS = 'id, title, lifecycle, created_at, updated_at, archived_at';
+const CONVERSATION_COLUMNS = 'id, title, lifecycle, preferred_input_mode, created_at, updated_at, archived_at';
 const MESSAGE_COLUMNS = `id, conversation_id, parent_message_id, role, content, lifecycle,
   request_id, created_at, updated_at`;
 
@@ -40,6 +42,7 @@ function mapConversation(row: ConversationRow): LocalConversation {
     id: row.id,
     title: row.title,
     lifecycle: row.lifecycle,
+    preferredInputMode: row.preferred_input_mode,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     archivedAt: row.archived_at,
@@ -65,6 +68,7 @@ function conversationParams(conversation: LocalConversation) {
     $id: conversation.id,
     $title: conversation.title,
     $lifecycle: conversation.lifecycle,
+    $preferredInputMode: conversation.preferredInputMode,
     $createdAt: conversation.createdAt,
     $updatedAt: conversation.updatedAt,
     $archivedAt: conversation.archivedAt,
@@ -103,8 +107,8 @@ export async function insertConversation(
   }
   await transaction.runAsync(
     `INSERT INTO conversations
-       (id, title, lifecycle, created_at, updated_at, archived_at, idempotency_key)
-     VALUES ($id, $title, $lifecycle, $createdAt, $updatedAt, $archivedAt, $idempotencyId)`,
+       (id, title, lifecycle, preferred_input_mode, created_at, updated_at, archived_at, idempotency_key)
+     VALUES ($id, $title, $lifecycle, $preferredInputMode, $createdAt, $updatedAt, $archivedAt, $idempotencyId)`,
     { ...params, $idempotencyId: idempotencyId },
   );
 }
@@ -138,9 +142,49 @@ export async function updateConversation(
   }
   const result = await transaction.runAsync(
     `UPDATE conversations SET title = $title, lifecycle = $lifecycle,
+       preferred_input_mode = $preferredInputMode,
        created_at = $createdAt, updated_at = $updatedAt, archived_at = $archivedAt
      WHERE id = $id`,
     params,
+  );
+  requireExactlyOneAffectedRow(result, 'Cannot update missing conversation');
+}
+
+export async function setConversationPreferredInputMode(
+  transaction: RepositoryTransaction,
+  conversationId: string,
+  preferredInputMode: PreferredInputMode,
+  updatedAt: string,
+  idempotencyId: string,
+): Promise<void> {
+  const current = await getConversation(transaction, conversationId);
+  if (current === null) throw new Error('Cannot update missing conversation');
+  if (current.preferredInputMode === preferredInputMode) return;
+
+  const payload = {
+    conversationId,
+    preferredInputMode,
+    updatedAt,
+  };
+  if (!(await claimMutation(
+    transaction,
+    idempotencyId,
+    'conversation',
+    conversationId,
+    'set-preferred-input-mode',
+    toDatabaseMutationPayload(payload),
+  ))) {
+    return;
+  }
+  const result = await transaction.runAsync(
+    `UPDATE conversations
+     SET preferred_input_mode = $preferredInputMode, updated_at = $updatedAt
+     WHERE id = $conversationId AND preferred_input_mode <> $preferredInputMode`,
+    {
+      $conversationId: conversationId,
+      $preferredInputMode: preferredInputMode,
+      $updatedAt: updatedAt,
+    },
   );
   requireExactlyOneAffectedRow(result, 'Cannot update missing conversation');
 }

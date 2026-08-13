@@ -24,6 +24,7 @@ const conversation: LocalConversation = {
   id: 'conversation-confirmation',
   title: 'Career direction',
   lifecycle: 'active',
+  preferredInputMode: 'text',
   createdAt: NOW,
   updatedAt: NOW,
   archivedAt: null,

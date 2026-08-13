@@ -1,7 +1,7 @@
-import { SCHEMA_V1_STATEMENTS } from './schema';
+import { SCHEMA_V1_STATEMENTS, SCHEMA_V2_STATEMENTS } from './schema';
 import type { DatabaseLike } from './types';
 
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 interface Migration {
   readonly version: number;
@@ -14,6 +14,11 @@ const MIGRATIONS: readonly Migration[] = [
     version: 1,
     versionStatement: 'PRAGMA user_version = 1',
     statements: SCHEMA_V1_STATEMENTS,
+  },
+  {
+    version: 2,
+    versionStatement: 'PRAGMA user_version = 2',
+    statements: SCHEMA_V2_STATEMENTS,
   },
 ];
 

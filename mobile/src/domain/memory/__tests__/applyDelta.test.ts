@@ -43,6 +43,7 @@ const conversation: LocalConversation = {
   id: 'conversation-memory-engine',
   title: 'Career direction',
   lifecycle: 'active',
+  preferredInputMode: 'text',
   createdAt: NOW,
   updatedAt: NOW,
   archivedAt: null,

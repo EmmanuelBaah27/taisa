@@ -546,6 +546,49 @@ describe('private local capture and deliberate submission', () => {
     expect(coach).not.toHaveBeenCalled();
   });
 
+  test('deliberate voice send transcribes and coaches without a review stop', async () => {
+    const completed = await service.submitVoiceAndCoach({
+      conversationId: 'conversation-1',
+      audioUri: 'file:///private/direct-send.m4a',
+      durationSeconds: 12,
+      typedClarification: 'I want help deciding what to do next.',
+    });
+
+    expect(completed.status).toBe('completed');
+    expect(transcribe).toHaveBeenCalledTimes(1);
+    expect(coach).toHaveBeenCalledTimes(1);
+    expect(coach.mock.calls[0][0].input).toContain('I want help deciding what to do next.');
+    expect(await getRequest(db, completed.requestId)).toEqual(expect.objectContaining({
+      status: 'completed',
+      audio_uri: null,
+    }));
+  });
+
+  test('correcting a completed voice transcript regenerates the visible response on the same request', async () => {
+    const first = await service.submitVoiceAndCoach({
+      conversationId: 'conversation-1',
+      audioUri: 'file:///private/revise.m4a',
+      durationSeconds: 9,
+    });
+    coach.mockImplementationOnce(async (request) => ({
+      ...coachingResponse(request),
+      reply: 'Revised coaching response',
+    }));
+
+    const revised = await service.reviseSubmittedTranscript({
+      requestId: first.requestId,
+      transcript: 'Corrected transcript after sending.',
+    });
+
+    expect(revised.requestId).toBe(first.requestId);
+    expect(revised.assistantMessageId).toBe(first.assistantMessageId);
+    expect(coach).toHaveBeenCalledTimes(2);
+    expect((await listMessages(db, 'conversation-1')).map((message) => message.content)).toEqual([
+      'Corrected transcript after sending.',
+      'Revised coaching response',
+    ]);
+  });
+
   test('proposal confirmation is authorized only by an explicit local action and applies the staged governed payload once', async () => {
     const result = await service.submitText({
       conversationId: 'conversation-1',

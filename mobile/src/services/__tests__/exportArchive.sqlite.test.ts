@@ -5,7 +5,7 @@ import { join } from 'path';
 import Database from 'better-sqlite3';
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-import { SCHEMA_V1_STATEMENTS } from '../../db/schema';
+import { SCHEMA_V1_STATEMENTS, SCHEMA_V2_STATEMENTS } from '../../db/schema';
 import {
   createSqlCipherArchiveBoundary,
   schemaSqlMatchesExactly,
@@ -26,7 +26,8 @@ const hash = (value: string) => createHash('sha256').update(value).digest('hex')
 function migrate(database: Database.Database): void {
   database.pragma('foreign_keys = ON');
   SCHEMA_V1_STATEMENTS.forEach((statement) => database.exec(statement));
-  database.pragma('user_version = 1');
+  SCHEMA_V2_STATEMENTS.forEach((statement) => database.exec(statement));
+  database.pragma('user_version = 2');
 }
 
 function fingerprint(database: Database.Database): ArchiveSnapshot {
@@ -37,7 +38,7 @@ function fingerprint(database: Database.Database): ArchiveSnapshot {
     counts[table] = rows.length;
     canonical.push([table, rows]);
   }
-  return { archiveFormatVersion: 1, schemaVersion: 1, counts, contentHash: hash(JSON.stringify(canonical)) };
+  return { archiveFormatVersion: 1, schemaVersion: 2, counts, contentHash: hash(JSON.stringify(canonical)) };
 }
 
 function addManifest(database: Database.Database, value: ArchiveSnapshot): void {
@@ -45,14 +46,15 @@ function addManifest(database: Database.Database, value: ArchiveSnapshot): void 
     id INTEGER PRIMARY KEY NOT NULL, archive_format_version INTEGER NOT NULL,
     schema_version INTEGER NOT NULL, counts_json TEXT NOT NULL,
     content_hash TEXT NOT NULL, created_at TEXT NOT NULL)`);
-  database.prepare(`INSERT INTO taisa_archive_manifest VALUES (1, 1, 1, ?, ?, ?)`)
+  database.prepare(`INSERT INTO taisa_archive_manifest VALUES (1, 1, 2, ?, ?, ?)`)
     .run(JSON.stringify(value.counts), value.contentHash, NOW);
 }
 
 function populate(database: Database.Database): void {
   database.prepare(`INSERT INTO profile (id, created_at, updated_at) VALUES ('p', ?, ?)`).run(NOW, NOW);
   database.prepare(`INSERT INTO conversations
-    (id, lifecycle, created_at, updated_at) VALUES ('c', 'active', ?, ?)`).run(NOW, NOW);
+    (id, lifecycle, preferred_input_mode, created_at, updated_at)
+    VALUES ('c', 'active', 'voice', ?, ?)`).run(NOW, NOW);
   database.prepare(`INSERT INTO messages
     (id, conversation_id, role, content, lifecycle, created_at, updated_at)
     VALUES ('z-parent', 'c', 'user', 'Parent thought', 'submitted', ?, ?)`).run(NOW, NOW);
@@ -168,6 +170,8 @@ describe('real SQLite archive boundaries', () => {
       .toEqual({ supersedes_id: 'z-action' });
     expect(candidate.prepare(`SELECT supersedes_id FROM memory_items WHERE id='a-memory'`).get())
       .toEqual({ supersedes_id: 'z-memory' });
+    expect(candidate.prepare(`SELECT preferred_input_mode FROM conversations WHERE id='c'`).get())
+      .toEqual({ preferred_input_mode: 'voice' });
     expect(candidate.pragma('foreign_key_check')).toEqual([]);
     candidate.close();
   });

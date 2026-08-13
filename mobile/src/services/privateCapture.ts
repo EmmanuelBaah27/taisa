@@ -66,6 +66,7 @@ import {
   insertMessage,
   listConversations,
   listRecentMessages,
+  setConversationPreferredInputMode,
   updateMessage,
 } from '../repositories/conversationRepository';
 import {
@@ -139,8 +140,10 @@ export interface PendingProposal {
 export type ClarificationChoice = 'replace' | 'pause' | 'coexist';
 
 export interface HydratedConversationState {
+  preferredInputMode: LocalConversation['preferredInputMode'];
   requestId: string | null;
   messageId: string | null;
+  requestKind: LocalCoachingRequest['kind'] | null;
   requestStatus: LocalCoachingRequest['status'] | null;
   transcript: string;
   pendingProposals: PendingProposal[];
@@ -166,8 +169,21 @@ export interface PrivateCaptureService {
     conversationId: string;
     audioUri: string;
     durationSeconds: number;
+    preferredInputMode?: LocalConversation['preferredInputMode'];
     intentId?: string;
   }): Promise<TranscriptConfirmationResult>;
+  submitVoiceAndCoach(input: {
+    conversationId: string;
+    audioUri: string;
+    durationSeconds: number;
+    typedClarification?: string;
+    preferredInputMode?: LocalConversation['preferredInputMode'];
+    intentId?: string;
+  }): Promise<CompletedSubmissionResult>;
+  reviseSubmittedTranscript(input: {
+    requestId: string;
+    transcript: string;
+  }): Promise<CompletedSubmissionResult>;
   updateTranscript(input: { requestId: string; transcript: string }): Promise<void>;
   confirmTranscript(input: { requestId: string }): Promise<CompletedSubmissionResult>;
   retrySubmission(requestId: string): Promise<SubmissionResult>;
@@ -183,6 +199,11 @@ export interface PrivateCaptureService {
     actedAt: string;
   }): Promise<void>;
   hydrateConversation(conversationId: string): Promise<HydratedConversationState>;
+  setPreferredInputMode(input: {
+    conversationId: string;
+    preferredInputMode: LocalConversation['preferredInputMode'];
+    idempotencyId: string;
+  }): Promise<void>;
   drainAudioCleanupQueue(): Promise<void>;
   discardRecording(uri: string): Promise<void>;
   abandonVoiceSubmission(requestId: string): Promise<void>;
@@ -270,6 +291,7 @@ async function ensureConversation(
   id: string,
   timestamp: string,
   titleSource: string,
+  preferredInputMode: LocalConversation['preferredInputMode'] = 'text',
 ): Promise<void> {
   if (await getConversation(transaction, id)) return;
   const title = titleSource.trim().slice(0, 80) || 'Voice reflection';
@@ -277,6 +299,7 @@ async function ensureConversation(
     id,
     title,
     lifecycle: 'active',
+    preferredInputMode,
     createdAt: timestamp,
     updatedAt: timestamp,
     archivedAt: null,
@@ -533,7 +556,9 @@ export function createPrivateCaptureService(
     const pendingProposals: PendingProposal[] = [];
     for (let index = 0; index < response.proposals.length; index += 1) {
       const providerProposal = response.proposals[index];
-      const proposalId = `${request.id}:proposal:${index}`;
+      const proposalId = request.attemptCount === 1
+        ? `${request.id}:proposal:${index}`
+        : `${request.id}:attempt:${request.attemptCount}:proposal:${index}`;
       if (providerProposal.operation === 'propose-outcome') {
         await stageMemoryConfirmation(transaction, {
           confirmationId: proposalId,
@@ -658,7 +683,7 @@ export function createPrivateCaptureService(
     }
 
     const timestamp = dependencies.now();
-    const assistantMessageId = dependencies.createId();
+    const assistantMessageId = storedRequest.assistantMessageId ?? dependencies.createId();
     try {
       return await withRepositoryTransaction(dependencies.database, async (transaction) => {
         const request = await getCoachingRequest(transaction, requestId);
@@ -687,20 +712,31 @@ export function createPrivateCaptureService(
           createdAt: timestamp,
           updatedAt: timestamp,
         };
-        await insertMessage(
-          transaction,
-          assistantMessage,
-          `${request.id}:assistant-message`,
-        );
+        if (request.assistantMessageId === null) {
+          await insertMessage(
+            transaction,
+            assistantMessage,
+            `${request.id}:assistant-message`,
+          );
+        } else {
+          await updateMessage(
+            transaction,
+            assistantMessage,
+            `${request.id}:attempt:${request.attemptCount}:assistant-message`,
+          );
+        }
+        const coachingUsageId = request.attemptCount === 1
+          ? `${request.id}:coaching-usage`
+          : `${request.id}:attempt:${request.attemptCount}:coaching-usage`;
         await insertUsageReceipt(
           transaction,
           {
-            id: `${request.id}:coaching-usage`,
-            requestId: request.id,
+            id: coachingUsageId,
+            requestId: request.attemptCount === 1 ? request.id : coachingUsageId,
             receipt: response.usage,
             recordedAt: timestamp,
           },
-          `${request.id}:coaching-usage`,
+          coachingUsageId,
         );
         const pendingProposals = await stageResponseProposals(
           transaction,
@@ -855,7 +891,7 @@ export function createPrivateCaptureService(
     return withInFlightRequest(requestId, () => runTranscriptionOnce(requestId));
   }
 
-  return {
+  const service: PrivateCaptureService = {
     async savePrivateDraft(input) {
       const content = requireContent(input.content, 'Private draft');
       const timestamp = dependencies.now();
@@ -945,7 +981,13 @@ export function createPrivateCaptureService(
         });
         try {
           await withRepositoryTransaction(dependencies.database, async (transaction) => {
-            await ensureConversation(transaction, input.conversationId, timestamp, 'Voice reflection');
+            await ensureConversation(
+              transaction,
+              input.conversationId,
+              timestamp,
+              'Voice reflection',
+              input.preferredInputMode,
+            );
             await insertMessage(
               transaction,
               messageFor(messageId, input.conversationId, '', 'pending', requestId, timestamp),
@@ -985,6 +1027,48 @@ export function createPrivateCaptureService(
         }
         return runTranscription(requestId);
       });
+    },
+
+    async submitVoiceAndCoach(input) {
+      const confirmation = await service.submitVoice(input);
+      const clarification = input.typedClarification?.trim() ?? '';
+      if (clarification.length > 0) {
+        await service.updateTranscript({
+          requestId: confirmation.requestId,
+          transcript: `${confirmation.transcript}\n\n${clarification}`,
+        });
+      }
+      return service.confirmTranscript({ requestId: confirmation.requestId });
+    },
+
+    async reviseSubmittedTranscript(input) {
+      const transcript = validateCoachingContent(input.transcript, 'Transcript');
+      const timestamp = dependencies.now();
+      await withRepositoryTransaction(dependencies.database, async (transaction) => {
+        const request = await getCoachingRequest(transaction, input.requestId);
+        if (request === null || request.kind !== 'voice' || request.status !== 'completed') {
+          throw new LocalSubmissionStateError('Only a completed voice transcript can be revised');
+        }
+        const message = await getMessage(transaction, request.userMessageId);
+        if (message === null) throw new LocalSubmissionStateError('Transcript message is missing');
+        await updateMessage(
+          transaction,
+          { ...message, content: transcript, lifecycle: 'pending', updatedAt: timestamp },
+          `${request.id}:attempt:${request.attemptCount + 1}:transcript-revision`,
+        );
+        await updateCoachingRequest(
+          transaction,
+          {
+            ...request,
+            status: 'coaching-pending',
+            errorCode: null,
+            attemptCount: request.attemptCount + 1,
+            updatedAt: timestamp,
+          },
+          `${request.id}:attempt:${request.attemptCount + 1}:revision-pending`,
+        );
+      });
+      return runCoaching(input.requestId);
     },
 
     async updateTranscript(input) {
@@ -1108,6 +1192,7 @@ export function createPrivateCaptureService(
     },
 
     async hydrateConversation(conversationId) {
+      const conversation = await getConversation(dependencies.database, conversationId);
       let requests = await listCoachingRequestsByConversation(
         dependencies.database,
         conversationId,
@@ -1142,12 +1227,27 @@ export function createPrivateCaptureService(
         await Promise.all(confirmations.map(pendingProposalFromConfirmation))
       ).filter((proposal): proposal is PendingProposal => proposal !== null);
       return {
+        preferredInputMode: conversation?.preferredInputMode ?? 'text',
         requestId: request?.id ?? null,
         messageId: request?.userMessageId ?? null,
+        requestKind: request?.kind ?? null,
         requestStatus: request?.status ?? null,
         transcript: request?.kind === 'voice' ? message?.content ?? '' : '',
         pendingProposals,
       };
+    },
+
+    async setPreferredInputMode(input) {
+      if (await getConversation(dependencies.database, input.conversationId) === null) return;
+      await withRepositoryTransaction(dependencies.database, async (transaction) => {
+        await setConversationPreferredInputMode(
+          transaction,
+          input.conversationId,
+          input.preferredInputMode,
+          dependencies.now(),
+          input.idempotencyId,
+        );
+      });
     },
 
     drainAudioCleanupQueue,
@@ -1336,6 +1436,7 @@ export function createPrivateCaptureService(
       });
     },
   };
+  return service;
 }
 
 export type { ContextManifest };

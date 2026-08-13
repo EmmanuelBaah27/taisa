@@ -20,6 +20,10 @@ export type { ChatNavBarProps } from './ChatNavBar';
 
 export { RecordingGlow } from './RecordingGlow';
 export type { RecordingGlowProps } from './RecordingGlow';
+export { VoiceComposer } from './VoiceComposer';
+export type { VoiceComposerProps } from './VoiceComposer';
+export { VoiceDraftStrip } from './VoiceDraftStrip';
+export type { VoiceDraftStripProps } from './VoiceDraftStrip';
 
 export { CubeRefractionOverlay } from './CubeRefractionOverlay';
 export type { CubeRefractionOverlayProps } from './CubeRefractionOverlay';

@@ -20,6 +20,8 @@ export function createLeasedPrivateCaptureService(
     savePrivateDraft: (input) => withService((service) => service.savePrivateDraft(input)),
     submitText: (input) => withService((service) => service.submitText(input)),
     submitVoice: (input) => withService((service) => service.submitVoice(input)),
+    submitVoiceAndCoach: (input) => withService((service) => service.submitVoiceAndCoach(input)),
+    reviseSubmittedTranscript: (input) => withService((service) => service.reviseSubmittedTranscript(input)),
     updateTranscript: (input) => withService((service) => service.updateTranscript(input)),
     confirmTranscript: (input) => withService((service) => service.confirmTranscript(input)),
     retrySubmission: (requestId) => withService((service) => service.retrySubmission(requestId)),
@@ -28,6 +30,7 @@ export function createLeasedPrivateCaptureService(
     hydrateConversation: (conversationId) => (
       withService((service) => service.hydrateConversation(conversationId))
     ),
+    setPreferredInputMode: (input) => withService((service) => service.setPreferredInputMode(input)),
     drainAudioCleanupQueue: () => withService((service) => service.drainAudioCleanupQueue()),
     discardRecording: (uri) => withService((service) => service.discardRecording(uri)),
     abandonVoiceSubmission: (requestId) => (

@@ -64,4 +64,73 @@ describe('local-first capture navigation', () => {
     expect(recordingRoute).not.toMatch(/\/entries(?:[/'"`?]|$)/);
     expect(recordingRoute).not.toMatch(/\/analyze(?:[/'"`?]|$)/);
   });
+
+  test('a microphone start failure offers a keyboard escape instead of retry-only UI', () => {
+    const chatScreen = fs.readFileSync(
+      path.resolve(__dirname, '../../../app/chat/index.tsx'),
+      'utf8',
+    );
+
+    expect(chatScreen).toMatch(/The microphone is unavailable/);
+    expect(chatScreen).toMatch(/Use keyboard/);
+    expect(chatScreen).toMatch(/setPhase\('idle'\)/);
+  });
+
+  test('the composer remains visible above the iOS keyboard and clears after a successful retry', () => {
+    const chatScreen = fs.readFileSync(
+      path.resolve(__dirname, '../../../app/chat/index.tsx'),
+      'utf8',
+    );
+
+    expect(chatScreen).toMatch(/KeyboardAvoidingView/);
+    expect(chatScreen).toMatch(/behavior=\{Platform\.OS === 'ios' \? 'padding' : undefined\}/);
+    expect(chatScreen).toMatch(/await retrySubmission\(\);[\s\S]*setDraft\(''\)/);
+  });
+
+  test('completed coaching refreshes Recents immediately', () => {
+    const chatScreen = fs.readFileSync(
+      path.resolve(__dirname, '../../../app/chat/index.tsx'),
+      'utf8',
+    );
+    expect(chatScreen).toMatch(/async function refreshConversation[\s\S]*fetchThread[\s\S]*fetchThreads/);
+  });
+
+  test('voice-ready follow-up requires one deliberate Reply tap and never auto-starts recording', () => {
+    const chatScreen = fs.readFileSync(
+      path.resolve(__dirname, '../../../app/chat/index.tsx'),
+      'utf8',
+    );
+    const composer = fs.readFileSync(
+      path.resolve(__dirname, '../../components/ui/VoiceComposer.tsx'),
+      'utf8',
+    );
+
+    expect(composer).toMatch(/Reply by voice, starts recording/);
+    expect(composer).toMatch(/onStartVoice/);
+    expect(chatScreen).not.toMatch(/else \{\s*startListening\(\);\s*\}/);
+  });
+
+  test('every remaining form surface declares iOS keyboard avoidance', () => {
+    const files = [
+      '../../../app/onboarding/index.tsx',
+      '../../../app/(tabs)/you.tsx',
+      '../../../app/thread/[id].tsx',
+      '../../../app/chat/index.tsx',
+    ];
+    for (const file of files) {
+      const source = fs.readFileSync(path.resolve(__dirname, file), 'utf8');
+      expect(source).toMatch(/KeyboardAvoidingView/);
+    }
+  });
+
+  test('backup passphrases can be revealed deliberately and are never presented as recoverable', () => {
+    const youScreen = fs.readFileSync(
+      path.resolve(__dirname, '../../../app/(tabs)/you.tsx'),
+      'utf8',
+    );
+    expect(youScreen).toMatch(/Show passphrase/);
+    expect(youScreen).toMatch(/Hide passphrase/);
+    expect(youScreen).toMatch(/secureTextEntry=\{!passphraseVisible\}/);
+    expect(youScreen).toMatch(/Taisa does not save this passphrase and cannot recover it/);
+  });
 });

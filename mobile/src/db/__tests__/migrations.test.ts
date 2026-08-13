@@ -51,8 +51,8 @@ class FakeDatabase implements DatabaseLike {
       throw new Error('injected migration failure');
     }
 
-    if (source === 'PRAGMA user_version = 1') {
-      this.userVersion = 1;
+    if (source === 'PRAGMA user_version = 1' || source === 'PRAGMA user_version = 2') {
+      this.userVersion = Number(source.at(-1));
       return;
     }
 
@@ -81,19 +81,32 @@ class FakeDatabase implements DatabaseLike {
 }
 
 describe('local database migrations', () => {
-  test('runs schema version 1 once and advances user_version transactionally', async () => {
+  test('runs each schema migration once and advances user_version transactionally', async () => {
     const db = new FakeDatabase(0);
 
     await runMigrations(db);
     await runMigrations(db);
 
-    expect(db.userVersion).toBe(1);
-    expect(db.calls.filter((statement) => statement === 'BEGIN IMMEDIATE')).toHaveLength(1);
+    expect(db.userVersion).toBe(2);
+    expect(db.calls.filter((statement) => statement === 'BEGIN IMMEDIATE')).toHaveLength(2);
     expect(
       db.appliedStatements.filter((statement) =>
         statement.includes('CREATE TABLE conversations'),
       ),
     ).toHaveLength(1);
+  });
+
+  test('upgrades an existing version 1 archive once with a text preferred input mode', async () => {
+    const db = new FakeDatabase(1);
+
+    await runMigrations(db);
+    await runMigrations(db);
+
+    expect(db.userVersion).toBe(2);
+    expect(db.calls.filter((statement) => statement === 'BEGIN IMMEDIATE')).toHaveLength(1);
+    expect(db.appliedStatements).toContain(
+      "ALTER TABLE conversations ADD COLUMN preferred_input_mode TEXT NOT NULL DEFAULT 'text' CHECK (preferred_input_mode IN ('voice', 'text'))",
+    );
   });
 
   test('creates every local entity and both FTS5 search indexes with foreign keys', async () => {
@@ -186,7 +199,7 @@ describe('local database migrations', () => {
   });
 
   test('refuses to open a database created by a newer app schema', async () => {
-    const db = new FakeDatabase(2);
+    const db = new FakeDatabase(3);
 
     await expect(runMigrations(db)).rejects.toBeInstanceOf(UnsupportedDatabaseVersionError);
     expect(db.calls).not.toContain('BEGIN IMMEDIATE');
@@ -251,7 +264,7 @@ describe('encrypted database opening', () => {
   });
 
   test('validates a non-empty SQLCipher version before reading sqlite_master', async () => {
-    const db = new FakeDatabase(1);
+    const db = new FakeDatabase(2);
 
     await expect(
       openDatabaseWithDependencies({

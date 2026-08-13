@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Modal, Share, Switch } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Modal, Share, Switch, KeyboardAvoidingView, Platform } from 'react-native';
 import { File } from 'expo-file-system';
 import { useFocusEffect } from 'expo-router';
 import { useCareerStore } from '../../src/stores/careerStore';
@@ -302,9 +302,14 @@ function RecoveryModal({
   onDismiss: () => void;
 }) {
   const exporting = mode === 'export';
+  const [passphraseVisible, setPassphraseVisible] = useState(false);
   return (
     <Modal visible={mode !== null} transparent animationType="slide" onRequestClose={onDismiss}>
-      <View className="flex-1 justify-end" style={{ backgroundColor: 'rgba(6,7,7,0.5)' }}>
+      <KeyboardAvoidingView
+        className="flex-1 justify-end"
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ backgroundColor: 'rgba(6,7,7,0.5)' }}
+      >
         <View className="bg-background rounded-t-3xl px-6 pt-4 pb-12">
           <View className="w-8 h-1 bg-border rounded-full self-center mb-4" />
           <Text className="text-foreground text-base font-bold mb-2">
@@ -312,19 +317,26 @@ function RecoveryModal({
           </Text>
           <Text className="text-text-tertiary text-xs leading-relaxed mb-4">
             {exporting
-              ? 'Use a separate passphrase of at least 12 characters. Taisa cannot recover it for you.'
+              ? 'Use a separate passphrase of at least 12 characters. Taisa does not save this passphrase and cannot recover it.'
               : 'Restoring replaces the phone archive only after the backup passes integrity checks.'}
           </Text>
-          <TextInput
-            value={passphrase}
-            onChangeText={onChangePassphrase}
-            placeholder="Backup passphrase"
-            placeholderTextColor={colors.textTertiary}
-            className="bg-card rounded-xl px-4 py-3 text-foreground text-sm mb-3"
-            secureTextEntry
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
+          <View className="bg-card rounded-xl px-4 mb-3 flex-row items-center">
+            <TextInput
+              value={passphrase}
+              onChangeText={onChangePassphrase}
+              placeholder="Backup passphrase"
+              placeholderTextColor={colors.textTertiary}
+              className="flex-1 py-3 text-foreground text-sm"
+              secureTextEntry={!passphraseVisible}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            <TouchableOpacity onPress={() => setPassphraseVisible((visible) => !visible)} className="pl-3 py-3">
+              <Text className="text-lime-700 text-xs font-semibold">
+                {passphraseVisible ? 'Hide passphrase' : 'Show passphrase'}
+              </Text>
+            </TouchableOpacity>
+          </View>
           {exporting ? (
             <TextInput
               value={confirmation}
@@ -332,7 +344,7 @@ function RecoveryModal({
               placeholder="Confirm backup passphrase"
               placeholderTextColor={colors.textTertiary}
               className="bg-card rounded-xl px-4 py-3 text-foreground text-sm mb-4"
-              secureTextEntry
+              secureTextEntry={!passphraseVisible}
               autoCapitalize="none"
               autoCorrect={false}
             />
@@ -356,7 +368,7 @@ function RecoveryModal({
             </TouchableOpacity>
           </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -390,7 +402,11 @@ function EditModal({ visible, title, value, onChangeText, onSave, onDismiss, pla
 }) {
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onDismiss}>
-      <View className="flex-1 justify-end" style={{ backgroundColor: 'rgba(6,7,7,0.5)' }}>
+      <KeyboardAvoidingView
+        className="flex-1 justify-end"
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ backgroundColor: 'rgba(6,7,7,0.5)' }}
+      >
         <View className="bg-background rounded-t-3xl px-6 pt-4 pb-12">
           <View className="w-8 h-1 bg-border rounded-full self-center mb-4" />
           <Text className="text-foreground text-base font-bold mb-4">{title}</Text>
@@ -413,7 +429,7 @@ function EditModal({ visible, title, value, onChangeText, onSave, onDismiss, pla
             </TouchableOpacity>
           </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

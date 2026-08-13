@@ -21,6 +21,7 @@ const conversation: LocalConversation = {
   id: 'conversation-source',
   title: null,
   lifecycle: 'active',
+  preferredInputMode: 'text',
   createdAt: NOW,
   updatedAt: NOW,
   archivedAt: null,

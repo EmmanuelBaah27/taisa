@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { View, Text, TextInput, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, ScrollView, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { router } from 'expo-router';
 import * as Crypto from 'expo-crypto';
 import { useCareerStore } from '../../src/stores/careerStore';
@@ -148,14 +148,17 @@ export default function OnboardingScreen() {
   ];
 
   return (
-    <View className="flex-1 bg-background">
+    <KeyboardAvoidingView
+      className="flex-1 bg-background"
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
       <View className="flex-row justify-center gap-2 pt-[60px] mb-6">
         {[0, 1, 2].map(i => (
           <View key={i} className={`w-2 h-2 rounded-full ${step >= i ? 'bg-primary' : 'bg-border'}`} />
         ))}
       </View>
       {steps[step]}
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

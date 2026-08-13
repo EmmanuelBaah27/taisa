@@ -35,8 +35,10 @@ function deferred<T>(): Deferred<T> {
 type ChatStoreInstance = ReturnType<typeof createChatStore>;
 
 const HYDRATED_B = {
+  preferredInputMode: 'voice' as const,
   requestId: 'request-b',
   messageId: 'message-b',
+  requestKind: 'voice' as const,
   requestStatus: 'transcript-confirmation-required' as const,
   transcript: 'Private transcript B',
   pendingProposals: [{
@@ -47,6 +49,56 @@ const HYDRATED_B = {
     status: 'pending' as const,
   }],
 };
+
+test('a restored failed voice request can be abandoned to return to the composer', async () => {
+  const service = {
+    hydrateConversation: jest.fn(async () => ({
+      ...HYDRATED_B,
+      requestStatus: 'transcription-failed' as const,
+      transcript: '',
+    })),
+    abandonVoiceSubmission: jest.fn(async () => undefined),
+  } as unknown as PrivateCaptureService;
+  const store = createChatStore(async () => service);
+
+  await store.getState().hydrateConversation('conversation-b');
+  expect(store.getState()).toMatchObject({
+    phase: 'error',
+    activeRequestKind: 'voice',
+    activeRequestId: 'request-b',
+  });
+
+  await store.getState().abandonVoiceSubmission('request-b');
+  expect(service.abandonVoiceSubmission).toHaveBeenCalledWith('request-b');
+  expect(store.getState()).toMatchObject({
+    phase: 'idle',
+    activeRequestKind: null,
+    activeRequestId: null,
+    preferredInputMode: 'voice',
+  });
+});
+
+test('hydrates and durably switches the conversation input mode', async () => {
+  const service = {
+    hydrateConversation: jest.fn(async () => ({
+      ...HYDRATED_B,
+      preferredInputMode: 'voice' as const,
+    })),
+    setPreferredInputMode: jest.fn(async () => undefined),
+  } as unknown as PrivateCaptureService;
+  const store = createChatStore(async () => service);
+
+  await store.getState().hydrateConversation('conversation-b');
+  expect(store.getState().preferredInputMode).toBe('voice');
+
+  await store.getState().setPreferredInputMode('conversation-b', 'text');
+  expect(service.setPreferredInputMode).toHaveBeenCalledWith(expect.objectContaining({
+    conversationId: 'conversation-b',
+    preferredInputMode: 'text',
+    idempotencyId: expect.any(String),
+  }));
+  expect(store.getState().preferredInputMode).toBe('text');
+});
 
 const COMPLETED_A = {
   status: 'completed' as const,
@@ -384,7 +436,7 @@ describe('local-first stores', () => {
     expect(drainAudioCleanupQueue).toHaveBeenCalledTimes(1);
   });
 
-  test('a fresh chat store restores the same durable voice request without provider calls', async () => {
+  test('a fresh chat store restores the completed voice request without provider calls', async () => {
     const beforeRestartTranscribe = jest.fn(async () => ({
       transcript: 'A transcript that survives process death',
       durationSeconds: 21,
@@ -411,6 +463,10 @@ describe('local-first stores', () => {
     });
     const beforeRestartStore = createChatStore(async () => beforeRestartService);
 
+    await beforeRestartStore.getState().setPreferredInputMode(
+      'conversation-after-process-death',
+      'voice',
+    );
     await beforeRestartStore.getState().submitVoice(
       'conversation-after-process-death',
       'file:///cache/temporary-recording.m4a',
@@ -442,8 +498,9 @@ describe('local-first stores', () => {
       activeSessionId: 'conversation-after-process-death',
       activeRequestId: durableRequestId,
       activeMessageId: durableMessageId,
+      preferredInputMode: 'voice',
       transcript: 'A transcript that survives process death',
-      phase: 'transcript-review',
+      phase: 'responded',
     }));
     expect(afterRestartCoach).not.toHaveBeenCalled();
     expect(afterRestartTranscribe).not.toHaveBeenCalled();
@@ -515,16 +572,20 @@ describe('local-first stores', () => {
     await Promise.resolve();
     await Promise.resolve();
     resolveB({
+      preferredInputMode: 'voice',
       requestId: 'request-b',
       messageId: 'message-b',
+      requestKind: 'voice',
       requestStatus: 'transcript-confirmation-required',
       transcript: 'Private transcript B',
       pendingProposals: [],
     });
     await hydrationB;
     resolveA({
+      preferredInputMode: 'text',
       requestId: 'request-a',
       messageId: 'message-a',
+      requestKind: 'text',
       requestStatus: 'completed',
       transcript: 'Private transcript A',
       pendingProposals: [{
@@ -541,6 +602,7 @@ describe('local-first stores', () => {
       activeSessionId: 'conversation-b',
       activeRequestId: 'request-b',
       activeMessageId: 'message-b',
+      preferredInputMode: 'voice',
       transcript: 'Private transcript B',
       pendingProposals: [],
       phase: 'transcript-review',
@@ -596,6 +658,7 @@ describe('local-first stores', () => {
           messageId: 'unused',
           transcript: 'unused',
         })),
+        submitVoiceAndCoach: jest.fn(async () => COMPLETED_A),
         updateTranscript: jest.fn(async () => undefined),
         confirmTranscript: jest.fn(async () => COMPLETED_A),
         retrySubmission: jest.fn(async () => COMPLETED_A),

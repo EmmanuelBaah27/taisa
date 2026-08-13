@@ -64,6 +64,7 @@ const conversation: LocalConversation = {
   id: 'conversation-roadmap',
   title: 'Roadmap reflection',
   lifecycle: 'active',
+  preferredInputMode: 'text',
   createdAt: NOW,
   updatedAt: NOW,
   archivedAt: null,

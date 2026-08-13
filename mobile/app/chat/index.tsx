@@ -1,9 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useReducer, useRef, useState } from 'react';
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
+  KeyboardAvoidingView,
+  Platform,
+  Alert,
   useWindowDimensions,
 } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
@@ -39,7 +42,12 @@ import {
   RecordingGlow,
   TaisaReplyCard,
   Icon,
+  VoiceComposer,
 } from '../../src/components/ui';
+import {
+  createVoiceComposerState,
+  reduceVoiceComposer,
+} from '../../src/services/voiceComposerState';
 
 const BACKGROUND_HEX = '#ffffff';
 const BACKGROUND_TRANSPARENT = 'rgba(255,255,255,0)';
@@ -60,12 +68,15 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
   const {
     activeSessionId,
     activeRequestId,
+    activeRequestKind,
+    activeMessageId,
     transcript: storedTranscript,
     pendingProposals: storedPendingProposals,
     phase: storedPhase,
     isBusy,
     error: storedError,
     setActiveSessionId,
+    setPreferredInputMode,
     setPhase,
     drainAudioCleanupQueue,
     hydrateConversation,
@@ -74,6 +85,7 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
     submitVoice,
     updateTranscript,
     confirmTranscript,
+    reviseTranscript,
     retrySubmission,
     confirmProposal,
     resolveClarification,
@@ -84,6 +96,7 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
     currentSession,
     currentMessages: storedMessages,
     fetchThread,
+    fetchThreads,
   } = useThreadStore();
   const { setChatMorphing } = useUIStore();
   const { translateY, open, close } = useMorphTransition();
@@ -96,6 +109,7 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
   const initialConversationId = resolveInitialChatConversationId(
     routeConversationId,
     activeSessionId,
+    presentation === 'overlay',
   );
   const initialConversationIdRef = useRef<string | null>(initialConversationId);
   const sessionIdRef = useRef<string | null>(initialConversationIdRef.current);
@@ -103,8 +117,15 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
     initialConversationIdRef.current === null,
   );
   const [draft, setDraft] = useState('');
+  const [composer, dispatchComposer] = useReducer(
+    reduceVoiceComposer,
+    undefined,
+    createVoiceComposerState,
+  );
   const [transcriptDraft, setTranscriptDraft] = useState('');
   const [pendingRecording, setPendingRecording] = useState<RecordingResult | null>(null);
+  const [recordingStartFailed, setRecordingStartFailed] = useState(false);
+  const [editingTranscript, setEditingTranscript] = useState<string | null>(null);
   const pendingRecordingRef = useRef<RecordingResult | null>(null);
   const scrollRef = useRef<ScrollView>(null);
   const restartTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -167,8 +188,6 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
     void drainAudioCleanupQueue().catch(() => {});
     if (initialConversationIdRef.current) {
       void loadSession(initialConversationIdRef.current).catch(() => {});
-    } else {
-      startListening();
     }
     return () => {
       mountedRef.current = false;
@@ -230,9 +249,10 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
     try {
       await hydrateConversation(sessionId);
       await fetchThread(sessionId);
-      if (useChatStore.getState().phase === 'idle') {
-        restartTimerRef.current = setTimeout(startListening, 2000);
-      }
+      dispatchComposer({
+        type: 'restore-mode',
+        mode: useChatStore.getState().preferredInputMode,
+      });
     } finally {
       if (mountedRef.current) setInitialHydrationComplete(true);
     }
@@ -244,9 +264,11 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
     }
     const startAttempt = recordingStartGuardRef.current.begin();
     if (startAttempt === null) return;
+    setRecordingStartFailed(false);
     setPhase('listening');
     try {
       await recorder.start();
+      dispatchComposer({ type: 'start-voice' });
       const session = createRecordingStopSession({
         stop: recorder.stop,
         discard: discardRecording,
@@ -262,8 +284,119 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
       }
     } catch {
       const isCurrentAttempt = recordingStartGuardRef.current.complete(startAttempt);
-      if (isCurrentAttempt && mountedRef.current && !closingRef.current) setPhase('error');
+      if (isCurrentAttempt && mountedRef.current && !closingRef.current) {
+        setRecordingStartFailed(true);
+        setPhase('error');
+      }
     }
+  }
+
+  async function handlePauseVoice() {
+    try {
+      await recorder.pause();
+      dispatchComposer({ type: 'pause-voice' });
+    } catch {
+      if (mountedRef.current) setPhase('error');
+    }
+  }
+
+  async function handleResumeVoice() {
+    try {
+      await recorder.resume();
+      dispatchComposer({ type: 'resume-voice' });
+    } catch {
+      if (mountedRef.current) setPhase('error');
+    }
+  }
+
+  async function handleSwitchToText() {
+    const activity = recorder.getActivity();
+    if (composer.voice === 'recording') {
+      if (activity === 'silence') {
+        await stopActiveRecordingAndDiscard();
+      } else {
+        await recorder.pause();
+      }
+    }
+    dispatchComposer({ type: 'switch-to-text', activity });
+    if (sessionIdRef.current !== null) {
+      void setPreferredInputMode(sessionIdRef.current, 'text').catch(() => {});
+    }
+    setPhase('idle');
+  }
+
+  function handleSwitchToVoice() {
+    dispatchComposer({ type: 'switch-to-voice' });
+    const conversationId = sessionIdRef.current ?? `conversation-${Date.now()}`;
+    sessionIdRef.current = conversationId;
+    setActiveSessionId(conversationId);
+    void setPreferredInputMode(conversationId, 'voice').catch(() => {});
+    setPhase('idle');
+  }
+
+  function handleDeleteVoiceDraft() {
+    Alert.alert(
+      'Delete voice draft?',
+      'This recording will be permanently removed.',
+      [
+        { text: 'Keep it', style: 'cancel', onPress: () => dispatchComposer({ type: 'cancel-delete-voice' }) },
+        {
+          text: 'Delete recording',
+          style: 'destructive',
+          onPress: () => {
+            const pending = pendingRecordingRef.current;
+            pendingRecordingRef.current = null;
+            setPendingRecording(null);
+            void stopActiveRecordingAndDiscard().then(async () => {
+              if (pending !== null) await discardRecording(pending.uri);
+              dispatchComposer({ type: 'confirm-delete-voice' });
+            });
+          },
+        },
+      ],
+    );
+    dispatchComposer({ type: 'request-delete-voice' });
+  }
+
+  async function handleComposerSend() {
+    if (isBusy) return;
+    dispatchComposer({ type: 'send' });
+    if (composer.voice === 'none') {
+      await handleSubmitText();
+      dispatchComposer({ type: 'reset' });
+      return;
+    }
+    const session = recordingStopSessionRef.current;
+    const result = pendingRecordingRef.current ?? await session?.stopForReview() ?? null;
+    recordingStopSessionRef.current = null;
+    if (result === null) return;
+    pendingRecordingRef.current = null;
+    setPendingRecording(null);
+    dispatchComposer({ type: 'pause-voice' });
+    const conversationId = sessionIdRef.current ?? `conversation-${Date.now()}`;
+    sessionIdRef.current = conversationId;
+    setActiveSessionId(conversationId);
+    try {
+      await submitVoice(conversationId, result.uri, result.durationSeconds, draft.trim() || undefined);
+      setDraft('');
+      dispatchComposer({ type: 'reset' });
+      await refreshConversation();
+    } catch {
+      pendingRecordingRef.current = result;
+      setPendingRecording(result);
+      dispatchComposer({ type: 'submission-failed' });
+    }
+  }
+
+  async function handleSaveTranscriptRevision() {
+    const corrected = editingTranscript?.trim() ?? '';
+    if (!corrected) return;
+    try {
+      await reviseTranscript(corrected);
+      setEditingTranscript(null);
+      dispatchComposer({ type: 'reset' });
+      await refreshConversation();
+    } catch {}
   }
 
   // Stopping is local-only. Transcription begins only after the separate Submit action.
@@ -292,6 +425,7 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
 
   async function refreshConversation() {
     if (sessionIdRef.current) await fetchThread(sessionIdRef.current);
+    await fetchThreads();
   }
 
   async function handleSubmitText() {
@@ -370,6 +504,7 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
       await confirmTranscript();
       pendingRecordingRef.current = null;
       if (mountedRef.current) setPendingRecording(null);
+      dispatchComposer({ type: 'reset' });
       await refreshConversation();
     } catch {}
   }
@@ -400,7 +535,17 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
     }
     try {
       await retrySubmission();
+      if (mountedRef.current) setDraft('');
+      if (activeRequestKind === 'voice') dispatchComposer({ type: 'reset' });
       await refreshConversation();
+    } catch {}
+  }
+
+  async function handleDiscardFailedRecording() {
+    if (activeRequestId === null || activeRequestKind !== 'voice' || isBusy) return;
+    try {
+      await abandonVoiceSubmission(activeRequestId);
+      dispatchComposer({ type: 'reset' });
     } catch {}
   }
 
@@ -411,8 +556,12 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
   }
 
   return (
-    <GestureDetector gesture={dragGesture}>
-      <Animated.View style={[{ flex: 1, backgroundColor: '#ffffff' }, slideStyle]}>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <GestureDetector gesture={dragGesture}>
+        <Animated.View style={[{ flex: 1, backgroundColor: '#ffffff' }, slideStyle]}>
         {/* Drag handle */}
         <View style={{ alignItems: 'center', paddingTop: insets.top + 6 }}>
           <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: '#d8d8d8' }} />
@@ -433,14 +582,47 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
               msg.role === 'assistant' ? (
                 <TaisaReplyCard key={msg.id} content={msg.content} />
               ) : (
-                <View
+                <TouchableOpacity
                   key={msg.id}
+                  disabled={msg.id !== activeMessageId || activeRequestKind !== 'voice' || isBusy}
+                  onPress={() => setEditingTranscript(msg.content)}
                   className="self-end mb-3 bg-lime-100 rounded-3 px-4 py-3 max-w-xs"
                 >
                   <Text className="text-foreground text-base-regular">{msg.content}</Text>
-                </View>
+                  {msg.id === activeMessageId && activeRequestKind === 'voice' ? (
+                    <Text className="mt-1 text-text-tertiary text-caption-regular">Tap to correct transcript</Text>
+                  ) : null}
+                </TouchableOpacity>
               )
             )}
+
+            {phase === 'processing' && transcript.length > 0 && !messages.some((message) => message.id === activeMessageId) ? (
+              <View className="self-end mb-3 bg-lime-100 rounded-3 px-4 py-3 max-w-xs">
+                <Text className="text-foreground text-base-regular">{transcript}</Text>
+                <Text className="mt-1 text-text-tertiary text-caption-regular">Transcribed · you can correct this afterward</Text>
+              </View>
+            ) : null}
+
+            {editingTranscript !== null ? (
+              <View className="mb-3 rounded-3 border border-border bg-background p-3">
+                <Text className="mb-2 text-foreground text-small-semibold">Correct transcript</Text>
+                <TextInput
+                  value={editingTranscript}
+                  onChangeText={setEditingTranscript}
+                  multiline
+                  autoFocus
+                  className="mb-3 max-h-40 rounded-3 bg-subtle px-3 py-2 text-foreground text-base-regular"
+                />
+                <View className="flex-row justify-end gap-2">
+                  <TouchableOpacity onPress={() => setEditingTranscript(null)} className="rounded-full px-4 py-2">
+                    <Text className="text-foreground text-small-semibold">Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => { void handleSaveTranscriptRevision(); }} className="rounded-full bg-muted px-4 py-2">
+                    <Text className="text-foreground text-small-semibold">Update response</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : null}
 
             {phase === 'processing' && (
               <View className="items-start mb-3">
@@ -453,11 +635,38 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
             {phase === 'error' && (
               <View className="items-center py-4">
                 <Text className="text-danger text-small-regular mb-3 text-center">
-                  {error ?? 'Taisa could not complete this action. Your content remains on this device.'}
+                  {recordingStartFailed
+                    ? 'The microphone is unavailable. Finish the active call or use the keyboard.'
+                    : error ?? 'Taisa could not complete this action. Your content remains on this device.'}
                 </Text>
-                <TouchableOpacity disabled={isBusy} onPress={handleRetry} className="bg-muted rounded-full px-6 py-3">
-                  <Text className="text-foreground text-small-semibold">Try again</Text>
-                </TouchableOpacity>
+                <View className="flex-row gap-3">
+                  {recordingStartFailed ? (
+                    <TouchableOpacity
+                      onPress={() => { setRecordingStartFailed(false); setPhase('idle'); }}
+                      className="border border-border rounded-full px-6 py-3"
+                    >
+                      <Text className="text-foreground text-small-semibold">Use keyboard</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                  {activeRequestKind === 'voice' ? (
+                    <TouchableOpacity
+                      disabled={isBusy}
+                      onPress={handleDiscardFailedRecording}
+                      className="border border-border rounded-full px-6 py-3"
+                    >
+                      <Text className="text-foreground text-small-semibold">Discard recording</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                  <TouchableOpacity
+                    disabled={isBusy}
+                    onPress={recordingStartFailed ? startListening : handleRetry}
+                    className="bg-muted rounded-full px-6 py-3"
+                  >
+                    <Text className="text-foreground text-small-semibold">
+                      {recordingStartFailed ? 'Try microphone again' : 'Try again'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             )}
 
@@ -511,108 +720,44 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
           />
         </View>
 
-        <RecordingGlow amplitude={recorder.amplitude} visible={phase === 'listening'} />
+        <RecordingGlow amplitude={recorder.amplitude} visible={composer.mode === 'voice' && composer.voice === 'recording'} />
 
-        {phase === 'listening' && (
-          <View style={{ height: 200 }}>
-            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-              <Text className="text-text-tertiary text-small-regular">Listening…</Text>
-            </View>
-            <View
-              className="flex-row items-center justify-between px-5"
-              style={{ paddingBottom: insets.bottom + 12 }}
-            >
-              <View className="w-10 h-10 rounded-full border border-border items-center justify-center opacity-40">
-                <TouchableOpacity onPress={() => {
-                  void stopActiveRecordingAndDiscard().catch(() => {});
-                  if (mountedRef.current) setPhase('idle');
-                }}>
-                  <Icon name="IconKeyboard" size={20} color="#898989" />
-                </TouchableOpacity>
-              </View>
-              <TouchableOpacity
-                disabled={isBusy}
-                onPress={handleStop}
-                className="flex-row items-center gap-2 bg-background border border-border rounded-full px-4 py-2"
-              >
-                <Icon name="IconStopCircle" size={18} color="#060707" />
-                <Text className="text-foreground text-small-semibold">Stop</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-
-        {phase === 'transcribing' && (
-          <View style={{ height: 200, alignItems: 'center', justifyContent: 'center', paddingBottom: insets.bottom + 12 }}>
-            <Text className="text-text-tertiary text-small-regular">Transcribing…</Text>
-          </View>
-        )}
-
-        {phase === 'recording-ready' && (
-          <View className="px-5" style={{ paddingBottom: insets.bottom + 12 }}>
-            <Text className="text-text-tertiary text-small-regular mb-3 text-center">
-              This recording is still only on your phone.
+        {(phase === 'transcribing' || phase === 'processing') ? (
+          <View style={{ height: 120, alignItems: 'center', justifyContent: 'center', paddingBottom: insets.bottom + 12 }}>
+            <Text className="text-text-tertiary text-small-regular">
+              {phase === 'transcribing' ? 'Transcribing…' : 'Taisa is thinking…'}
             </Text>
-            <View className="flex-row gap-3">
-              <TouchableOpacity disabled={isBusy} onPress={handleRecordAgain} className="flex-1 border border-border rounded-full px-4 py-3">
-                <Text className="text-foreground text-small-semibold text-center">Record again</Text>
-              </TouchableOpacity>
-              <TouchableOpacity disabled={isBusy} onPress={handleSubmitRecording} className="flex-1 bg-muted rounded-full px-4 py-3">
-                <Text className="text-foreground text-small-semibold text-center">Submit to Taisa</Text>
-              </TouchableOpacity>
-            </View>
           </View>
-        )}
-
-        {phase === 'transcript-review' && (
+        ) : (
           <View className="px-5" style={{ paddingBottom: insets.bottom + 12 }}>
-            <Text className="text-text-tertiary text-small-regular mb-2">Review the transcript before coaching</Text>
-            <TextInput
-              value={transcriptDraft}
-              onChangeText={setTranscriptDraft}
-              multiline
-              className="bg-subtle rounded-3 px-4 py-3 text-foreground text-base-regular mb-3"
+            <VoiceComposer
+              mode={composer.mode}
+              voiceState={composer.voice}
+              durationSeconds={recorder.duration}
+              amplitude={recorder.amplitude}
+              text={draft}
+              hasVoiceDraft={composer.voice !== 'none'}
+              disabled={isBusy}
+              onChangeText={(value) => {
+                setDraft(value);
+                dispatchComposer({ type: 'set-text', text: value });
+              }}
+              onSwitchToText={() => { void handleSwitchToText(); }}
+              onSwitchToVoice={handleSwitchToVoice}
+              onStartVoice={() => { void startListening(); }}
+              onPause={() => { void handlePauseVoice(); }}
+              onResume={() => { void handleResumeVoice(); }}
+              onDeleteText={() => {
+                setDraft('');
+                dispatchComposer({ type: 'delete-text' });
+              }}
+              onDeleteVoice={handleDeleteVoiceDraft}
+              onSend={() => { void handleComposerSend(); }}
             />
-            <Text className="text-text-tertiary text-small-regular mb-3 text-center">
-              Confirming sends this transcript and selected local context for external AI processing.
-            </Text>
-            {error !== null && (
-              <Text className="text-danger text-small-regular mb-3 text-center">{error}</Text>
-            )}
-            <View className="flex-row gap-3">
-              <TouchableOpacity disabled={isBusy} onPress={handleRecordAgain} className="flex-1 border border-border rounded-full px-4 py-3">
-                <Text className="text-foreground text-small-semibold text-center">Record again</Text>
-              </TouchableOpacity>
-              <TouchableOpacity disabled={isBusy} onPress={handleConfirmTranscript} className="flex-1 bg-muted rounded-full px-4 py-3">
-                <Text className="text-foreground text-small-semibold text-center">Confirm and submit</Text>
-              </TouchableOpacity>
-            </View>
           </View>
         )}
-
-        {(phase === 'idle' || phase === 'responded') && (
-          <View className="px-5" style={{ paddingBottom: insets.bottom + 12 }}>
-            <TextInput
-              value={draft}
-              onChangeText={setDraft}
-              placeholder="Write a work thought…"
-              multiline
-              className="bg-subtle rounded-3 px-4 py-3 text-foreground text-base-regular mb-3"
-            />
-            <Text className="text-text-tertiary text-small-regular mb-3 text-center">
-              Private save stays on this phone. Submit sends this thought and selected local context for external AI processing.
-            </Text>
-            <View className="flex-row gap-3">
-              <TouchableOpacity disabled={isBusy} onPress={handlePrivateSave} className="flex-1 border border-border rounded-full px-4 py-3">
-                <Text className="text-foreground text-small-semibold text-center">Private save</Text>
-              </TouchableOpacity>
-              <TouchableOpacity disabled={isBusy} onPress={handleSubmitText} className="flex-1 bg-muted rounded-full px-4 py-3">
-                <Text className="text-foreground text-small-semibold text-center">Submit to Taisa</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-      </Animated.View>
-    </GestureDetector>
+        </Animated.View>
+      </GestureDetector>
+    </KeyboardAvoidingView>
   );
 }

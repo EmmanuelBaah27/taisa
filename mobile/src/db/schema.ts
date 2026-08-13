@@ -308,3 +308,7 @@ export const SCHEMA_V1_STATEMENTS: readonly string[] = [
     INSERT INTO evidence_search(rowid, statement) VALUES (new.rowid, new.statement);
   END`,
 ];
+
+export const SCHEMA_V2_STATEMENTS: readonly string[] = [
+  "ALTER TABLE conversations ADD COLUMN preferred_input_mode TEXT NOT NULL DEFAULT 'text' CHECK (preferred_input_mode IN ('voice', 'text'))",
+];

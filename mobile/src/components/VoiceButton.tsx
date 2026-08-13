@@ -9,6 +9,8 @@ import Animated, {
 import { Icon } from './ui/Icon';
 import { colors } from '../constants/theme';
 import { useUIStore } from '../stores/uiStore';
+import { useChatStore } from '../stores/chatStore';
+import { startFreshCapture } from '../navigation/chatConversationRoute';
 
 interface VoiceButtonProps {
   onPress?: () => void;
@@ -17,8 +19,12 @@ interface VoiceButtonProps {
 export function VoiceButton({ onPress }: VoiceButtonProps) {
   const insets = useSafeAreaInsets();
   const { chatMorphing, setChatMorphing } = useUIStore();
+  const clearActiveSession = useChatStore((state) => state.clearActiveSession);
 
-  const handlePress = onPress ?? (() => setChatMorphing(true));
+  const handlePress = onPress ?? (() => startFreshCapture({
+    clearActiveConversation: clearActiveSession,
+    openCapture: () => setChatMorphing(true),
+  }));
 
   const scale = useSharedValue(1);
 

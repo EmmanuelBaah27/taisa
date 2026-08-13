@@ -26,11 +26,13 @@ export interface LocalCareerProfile {
 }
 
 export type ConversationLifecycle = 'active' | 'archived';
+export type PreferredInputMode = 'voice' | 'text';
 
 export interface LocalConversation {
   id: string;
   title: string | null;
   lifecycle: ConversationLifecycle;
+  preferredInputMode: PreferredInputMode;
   createdAt: string;
   updatedAt: string;
   archivedAt: string | null;
