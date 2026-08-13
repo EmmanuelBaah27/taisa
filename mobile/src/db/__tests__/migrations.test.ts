@@ -51,7 +51,11 @@ class FakeDatabase implements DatabaseLike {
       throw new Error('injected migration failure');
     }
 
-    if (source === 'PRAGMA user_version = 1' || source === 'PRAGMA user_version = 2') {
+    if (
+      source === 'PRAGMA user_version = 1'
+      || source === 'PRAGMA user_version = 2'
+      || source === 'PRAGMA user_version = 3'
+    ) {
       this.userVersion = Number(source.at(-1));
       return;
     }
@@ -87,8 +91,8 @@ describe('local database migrations', () => {
     await runMigrations(db);
     await runMigrations(db);
 
-    expect(db.userVersion).toBe(2);
-    expect(db.calls.filter((statement) => statement === 'BEGIN IMMEDIATE')).toHaveLength(2);
+    expect(db.userVersion).toBe(3);
+    expect(db.calls.filter((statement) => statement === 'BEGIN IMMEDIATE')).toHaveLength(3);
     expect(
       db.appliedStatements.filter((statement) =>
         statement.includes('CREATE TABLE conversations'),
@@ -102,8 +106,8 @@ describe('local database migrations', () => {
     await runMigrations(db);
     await runMigrations(db);
 
-    expect(db.userVersion).toBe(2);
-    expect(db.calls.filter((statement) => statement === 'BEGIN IMMEDIATE')).toHaveLength(1);
+    expect(db.userVersion).toBe(3);
+    expect(db.calls.filter((statement) => statement === 'BEGIN IMMEDIATE')).toHaveLength(2);
     expect(db.appliedStatements).toContain(
       "ALTER TABLE conversations ADD COLUMN preferred_input_mode TEXT NOT NULL DEFAULT 'text' CHECK (preferred_input_mode IN ('voice', 'text'))",
     );
@@ -199,7 +203,7 @@ describe('local database migrations', () => {
   });
 
   test('refuses to open a database created by a newer app schema', async () => {
-    const db = new FakeDatabase(3);
+    const db = new FakeDatabase(4);
 
     await expect(runMigrations(db)).rejects.toBeInstanceOf(UnsupportedDatabaseVersionError);
     expect(db.calls).not.toContain('BEGIN IMMEDIATE');
@@ -264,7 +268,7 @@ describe('encrypted database opening', () => {
   });
 
   test('validates a non-empty SQLCipher version before reading sqlite_master', async () => {
-    const db = new FakeDatabase(2);
+    const db = new FakeDatabase(3);
 
     await expect(
       openDatabaseWithDependencies({

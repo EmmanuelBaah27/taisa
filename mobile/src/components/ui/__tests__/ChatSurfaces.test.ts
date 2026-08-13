@@ -1,16 +1,22 @@
 import React from 'react';
 
 import { ChatMessageBubble, PendingProposalCard } from '../ChatSurfaces';
+import { TaisaReplyCard } from '../TaisaReplyCard';
 
 function findElementByLabel(
   node: React.ReactNode,
   label: string,
 ): React.ReactElement<{ label?: string; onPress?: () => void }> | null {
   for (const child of React.Children.toArray(node)) {
-    if (!React.isValidElement<{ label?: string; onPress?: () => void; children?: React.ReactNode }>(child)) {
+    if (!React.isValidElement<{
+      label?: string;
+      accessibilityLabel?: string;
+      onPress?: () => void;
+      children?: React.ReactNode;
+    }>(child)) {
       continue;
     }
-    if (child.props.label === label) return child;
+    if (child.props.label === label || child.props.accessibilityLabel === label) return child;
     const nested = findElementByLabel(child.props.children, label);
     if (nested !== null) return nested;
   }
@@ -56,5 +62,22 @@ describe('chat design-system surfaces', () => {
       ['clarification-1', 'pause'],
       ['clarification-1', 'coexist'],
     ]);
+  });
+
+  test('response reactions are local controls and sharing requires a separate review action', () => {
+    const onReact = jest.fn();
+    const onShareExample = jest.fn();
+    const card = TaisaReplyCard({
+      responseId: 'response-1',
+      content: 'A reply',
+      reaction: 'helpful',
+      onReact,
+      onShareExample,
+    }) as React.ReactElement<{ children?: React.ReactNode }>;
+
+    findElementByLabel(card.props.children, 'Mark response unhelpful')?.props.onPress?.();
+    findElementByLabel(card.props.children, 'Review example before sharing')?.props.onPress?.();
+    expect(onReact).toHaveBeenCalledWith('response-1', 'unhelpful');
+    expect(onShareExample).toHaveBeenCalledWith('response-1');
   });
 });

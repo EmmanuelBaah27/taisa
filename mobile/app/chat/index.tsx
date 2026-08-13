@@ -43,6 +43,14 @@ import {
   createVoiceComposerState,
   reduceVoiceComposer,
 } from '../../src/services/voiceComposerState';
+import { withTaisaDatabase } from '../../src/db/openDatabase';
+import { withRepositoryTransaction } from '../../src/db/types';
+import {
+  getResponseFeedback,
+  saveResponseReaction,
+  type ResponseReaction,
+} from '../../src/repositories/responseFeedbackRepository';
+import { buildFeedbackPreview } from '../../src/services/feedbackBundle';
 
 const DISMISS_VELOCITY = 800;
 const SPRING_BACK = { damping: 26, stiffness: 200 };
@@ -119,6 +127,7 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
   const [pendingRecording, setPendingRecording] = useState<RecordingResult | null>(null);
   const [recordingStartFailed, setRecordingStartFailed] = useState(false);
   const [editingTranscript, setEditingTranscript] = useState<string | null>(null);
+  const [reactions, setReactions] = useState<Record<string, ResponseReaction>>({});
   const pendingRecordingRef = useRef<RecordingResult | null>(null);
   const scrollRef = useRef<ScrollView>(null);
   const restartTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -168,6 +177,25 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
     }
   }, [messages.length]);
+
+  useEffect(() => {
+    const responseIds = messages
+      .filter((message) => message.role === 'assistant')
+      .map((message) => message.id);
+    if (responseIds.length === 0) {
+      setReactions({});
+      return;
+    }
+    let active = true;
+    void withTaisaDatabase(async (database) => {
+      const stored = await Promise.all(responseIds.map((id) => getResponseFeedback(database, id)));
+      if (!active) return;
+      setReactions(Object.fromEntries(stored
+        .filter((item) => item !== null)
+        .map((item) => [item.responseMessageId, item.reaction])));
+    }).catch(() => {});
+    return () => { active = false; };
+  }, [messages]);
 
   useEffect(() => {
     setTranscriptDraft(transcript);
@@ -473,6 +501,42 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
     await fetchThreads();
   }
 
+  async function handleReaction(responseId: string, reaction: ResponseReaction) {
+    const note = await new Promise<string | null>((resolve) => {
+      if (reaction === 'helpful') return resolve(null);
+      Alert.prompt(
+        'What could be better?',
+        'Optional. This stays on your phone unless you separately share the example.',
+        [
+          { text: 'Skip', onPress: () => resolve(null) },
+          { text: 'Save', onPress: (value?: string) => resolve(value?.trim() || null) },
+        ],
+        'plain-text',
+      );
+    });
+    await withTaisaDatabase((database) => withRepositoryTransaction(database, (transaction) =>
+      saveResponseReaction(transaction, {
+        responseMessageId: responseId,
+        reaction,
+        note,
+        updatedAt: new Date().toISOString(),
+      })));
+    setReactions((current) => ({ ...current, [responseId]: reaction }));
+  }
+
+  async function handleShareExample(responseId: string) {
+    try {
+      const preview = await withTaisaDatabase((database) => buildFeedbackPreview(database, responseId));
+      Alert.alert(
+        'Review before sharing',
+        `Nothing has been sent. This example would include:\n\nYou: ${preview.userTurn}\n\nTaisa: ${preview.assistantReply}\n\nSharing will remain a separate, explicit action after you review and redact the example.`,
+        [{ text: 'Keep local', style: 'cancel' }],
+      );
+    } catch {
+      Alert.alert('Preview unavailable', 'This feedback remains only on your phone.');
+    }
+  }
+
   async function handleSubmitText() {
     const content = draft.trim();
     if (!content) return;
@@ -648,6 +712,7 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
         microphoneUnavailable={recordingStartFailed}
         pendingProposals={pendingProposals}
         editingTranscript={editingTranscript}
+        reactions={reactions}
         onScrollAtTopChange={(atTop) => { scrollAtTop.value = atTop; }}
         onEditTranscript={setEditingTranscript}
         onChangeTranscript={setEditingTranscript}
@@ -657,6 +722,8 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
         onRetry={recordingStartFailed ? startListening : handleRetry}
         onConfirmProposal={(proposalId) => { void confirmProposal(proposalId); }}
         onResolveProposal={(proposalId, choice) => { void resolveClarification(proposalId, choice); }}
+        onReact={(responseId, reaction) => { void handleReaction(responseId, reaction); }}
+        onShareExample={(responseId) => { void handleShareExample(responseId); }}
       />
       <RecordingGlow
         amplitude={recorder.amplitude}

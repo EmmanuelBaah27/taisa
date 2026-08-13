@@ -114,12 +114,12 @@ Never use raw `text-sm font-semibold` combinations — use the composite utiliti
 | `ChatNavBar` | `onClose: () => void` | Chat modal nav bar; caret-down close on left, "Taisa" centred; no right slot |
 | `RecordingGlow` | `amplitude: number` | Amplitude-reactive lime glow anchored to screen bottom; 0 = very faint, 10 = full brightness; uses `expo-linear-gradient` + `Animated` with `useNativeDriver` |
 | `LiveTranscriptionText` | `transcript: string` | Centred text area; shows grey "What's on your mind?" when empty, switches to `text-lime-700` when transcript streams in |
-| `TaisaReplyCard` | `content: string` | Assistant reply bubble; `bg-subtle` surface, `rounded-3`, no business logic |
+| `TaisaReplyCard` | `responseId`, `content`, local reaction state and callbacks | Assistant reply bubble with local Helpful / Not helpful controls; sharing is exposed only as a separate preview action after a reaction |
 | `VoiceComposer` | `mode`, `voiceState`, `durationSeconds`, `amplitude`, draft state and callbacks | Bottom-loaded active voice/text composer with a voice-ready Reply control, speech-responsive Pause/Resume cradle, and stable Send position |
 | `VoiceDraftStrip` | `label`, `preview`, `onOpen`, `onDelete` | Compact representation of the inactive input; deletion remains an isolated tap target |
 | `TranscriptCorrectionCard` | `value`, `disabled`, `onChangeText`, `onCancel`, `onSubmit` | Presentational transcript correction editor with Cancel and Update response actions |
 | `ChatScreenShell` | `topInset`, `gesture`, `animatedStyle`, `onClose`, `footer` | Keyboard-safe modal shell, drag handle, navigation, and footer slots |
-| `ChatConversationSurface` | messages, active request state, error/proposal/transcript callbacks | Scrollable conversation rendering composed from typed chat surfaces |
+| `ChatConversationSurface` | messages, active request state, reaction state, error/proposal/transcript callbacks | Scrollable conversation rendering composed from typed chat surfaces |
 | `ChatMessageBubble` | `content`, `editable`, `showCorrectionHint`, `onEdit` | User turn bubble with a semantic transcript-correction action |
 | `PendingTranscriptBubble` | `transcript` | Optimistic voice transcript shown while coaching is pending |
 | `ChatProcessingBubble` | _(none)_ | Assistant thinking interstitial |

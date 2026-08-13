@@ -18,6 +18,7 @@ import type { ChatPhase } from '../../stores/chatStore';
 import type { ChatMessage } from '../../stores/threadStore';
 import { ChatNavBar } from './ChatNavBar';
 import { TaisaReplyCard } from './TaisaReplyCard';
+import type { ResponseReaction } from '../../repositories/responseFeedbackRepository';
 import { TranscriptCorrectionCard } from './TranscriptCorrectionCard';
 
 export interface ChatScreenShellProps {
@@ -212,6 +213,7 @@ export interface ChatConversationSurfaceProps {
   microphoneUnavailable: boolean;
   pendingProposals: readonly PendingProposal[];
   editingTranscript: string | null;
+  reactions?: Readonly<Record<string, ResponseReaction>>;
   onScrollAtTopChange: (atTop: boolean) => void;
   onEditTranscript: (value: string | null) => void;
   onChangeTranscript: (value: string) => void;
@@ -221,6 +223,8 @@ export interface ChatConversationSurfaceProps {
   onRetry: () => void;
   onConfirmProposal: (proposalId: string) => void;
   onResolveProposal: (proposalId: string, choice: ClarificationChoice) => void;
+  onReact?: (responseId: string, reaction: ResponseReaction) => void;
+  onShareExample?: (responseId: string) => void;
 }
 
 export function ChatConversationSurface(props: ChatConversationSurfaceProps) {
@@ -236,7 +240,14 @@ export function ChatConversationSurface(props: ChatConversationSurfaceProps) {
       >
         {props.messages.filter((message) => message.content.length > 0).map((message) => (
           message.role === 'assistant' ? (
-            <TaisaReplyCard key={message.id} content={message.content} />
+            <TaisaReplyCard
+              key={message.id}
+              responseId={message.id}
+              content={message.content}
+              reaction={props.reactions?.[message.id] ?? null}
+              onReact={props.onReact}
+              onShareExample={props.onShareExample}
+            />
           ) : (
             <ChatMessageBubble
               key={message.id}

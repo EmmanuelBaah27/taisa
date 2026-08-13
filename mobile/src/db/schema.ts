@@ -312,3 +312,23 @@ export const SCHEMA_V1_STATEMENTS: readonly string[] = [
 export const SCHEMA_V2_STATEMENTS: readonly string[] = [
   "ALTER TABLE conversations ADD COLUMN preferred_input_mode TEXT NOT NULL DEFAULT 'text' CHECK (preferred_input_mode IN ('voice', 'text'))",
 ];
+
+export const SCHEMA_V3_STATEMENTS: readonly string[] = [
+  `CREATE TABLE response_feedback (
+    response_message_id TEXT PRIMARY KEY NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+    reaction TEXT NOT NULL CHECK (reaction IN ('helpful', 'unhelpful')),
+    note TEXT CHECK (note IS NULL OR length(note) <= 1000),
+    share_status TEXT NOT NULL DEFAULT 'local-only'
+      CHECK (share_status IN ('local-only', 'previewed', 'shared')),
+    share_consent_at TEXT,
+    share_receipt_id TEXT UNIQUE,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    CHECK (
+      (share_status IN ('local-only', 'previewed')
+        AND share_consent_at IS NULL AND share_receipt_id IS NULL)
+      OR
+      (share_status = 'shared' AND share_consent_at IS NOT NULL AND share_receipt_id IS NOT NULL)
+    )
+  )`,
+];
