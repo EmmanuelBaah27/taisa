@@ -60,6 +60,37 @@ test('coaching client rejects malformed or mismatched output without exposing tr
   expect(post).toHaveBeenCalledTimes(1);
 });
 
+test('coaching client reports only the invalid response field', async () => {
+  const diagnostics: string[] = [];
+  const client = createCoachingClient({
+    post: jest.fn(async () => ({
+      data: { success: true, data: { ...response, mode: 'unknown-mode' } },
+    })),
+  }, (code) => diagnostics.push(code));
+
+  await expect(client(request)).rejects.toBeInstanceOf(CoachingClientError);
+  expect(diagnostics).toEqual(['COACHING_RESPONSE_INVALID_MODE']);
+});
+
+test('coaching client reports a content-free transport category', async () => {
+  const diagnostics: string[] = [];
+  const client = createCoachingClient({
+    post: jest.fn(async () => {
+      throw {
+        code: 'ECONNABORTED',
+        response: { status: 504, data: { error: { code: 'COACHING_FAILED_SQLITE_BUSY' } } },
+        privatePayload: 'never log this',
+      };
+    }),
+  }, (code) => diagnostics.push(code));
+
+  await expect(client(request)).rejects.toBeInstanceOf(CoachingClientError);
+  expect(diagnostics).toEqual([
+    'COACHING_TRANSPORT_ECONNABORTED_HTTP_504_SERVER_COACHING_FAILED_SQLITE_BUSY',
+  ]);
+  expect(diagnostics.join(' ')).not.toContain('never log this');
+});
+
 const propose = {
   operation: 'propose' as const,
   candidate: {

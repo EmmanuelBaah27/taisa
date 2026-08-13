@@ -59,6 +59,9 @@ function getServiceForDatabase(database: SQLiteDatabase): Promise<PrivateCapture
       now: () => new Date().toISOString(),
       createId: () => Crypto.randomUUID(),
       audioFiles: createExpoAudioFileStore(),
+      reportDiagnostic(code) {
+        console.warn(`[Taisa diagnostic] ${code}`);
+      },
       async getProfileId() {
         const profiles = await listProfiles(database);
         if (profiles.length !== 1) {

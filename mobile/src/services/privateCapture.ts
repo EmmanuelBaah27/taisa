@@ -114,7 +114,15 @@ export interface PrivateCaptureDependencies {
   getProfileId(): Promise<string>;
   audioFiles: AudioFileStore;
   contextLimits?: ContextAssemblyLimits;
+  reportDiagnostic?(code: CoachingSaveDiagnosticCode): void;
 }
+
+export type CoachingSaveDiagnosticCode =
+  | 'COACHING_SAVE_USER_MESSAGE_FAILED'
+  | 'COACHING_SAVE_ASSISTANT_MESSAGE_FAILED'
+  | 'COACHING_SAVE_USAGE_FAILED'
+  | 'COACHING_SAVE_PROPOSALS_FAILED'
+  | 'COACHING_SAVE_REQUEST_FAILED';
 
 export interface PrivateSaveResult {
   status: 'private';
@@ -686,6 +694,7 @@ export function createPrivateCaptureService(
 
     const timestamp = dependencies.now();
     const assistantMessageId = storedRequest.assistantMessageId ?? dependencies.createId();
+    let saveStage: CoachingSaveDiagnosticCode = 'COACHING_SAVE_USER_MESSAGE_FAILED';
     try {
       return await withRepositoryTransaction(dependencies.database, async (transaction) => {
         const request = await getCoachingRequest(transaction, requestId);
@@ -703,6 +712,7 @@ export function createPrivateCaptureService(
           submittedMessage,
           `${request.id}:attempt:${request.attemptCount}:message-submitted`,
         );
+        saveStage = 'COACHING_SAVE_ASSISTANT_MESSAGE_FAILED';
         const assistantMessage: LocalMessage = {
           id: assistantMessageId,
           conversationId: request.conversationId,
@@ -729,6 +739,7 @@ export function createPrivateCaptureService(
             `${request.id}:attempt:${request.attemptCount}:assistant-message`,
           );
         }
+        saveStage = 'COACHING_SAVE_USAGE_FAILED';
         const coachingUsageId = request.attemptCount === 1
           ? `${request.id}:coaching-usage`
           : `${request.id}:attempt:${request.attemptCount}:coaching-usage`;
@@ -742,6 +753,7 @@ export function createPrivateCaptureService(
           },
           coachingUsageId,
         );
+        saveStage = 'COACHING_SAVE_PROPOSALS_FAILED';
         const pendingProposals = response.mode === 'coach'
           ? await stageResponseProposals(
             transaction,
@@ -751,6 +763,7 @@ export function createPrivateCaptureService(
             timestamp,
           )
           : [];
+        saveStage = 'COACHING_SAVE_REQUEST_FAILED';
         await updateCoachingRequest(
           transaction,
           {
@@ -774,6 +787,7 @@ export function createPrivateCaptureService(
         };
       });
     } catch {
+      dependencies.reportDiagnostic?.(saveStage);
       return markFailed(requestId, 'coaching');
     }
   }

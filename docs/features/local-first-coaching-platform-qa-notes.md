@@ -35,3 +35,25 @@ Pending device checks:
 - Plain waveform starts recording; waveform plus duration opens draft actions without recording.
 - Failed submission shows only Try again and Discard recording.
 - Retry uses the retained recording; deletion returns to a focused keyboard composer.
+
+## 2026-08-13 OpenAI coaching contract correction
+
+Observed on iPhone:
+
+- Voice transcription completed and persisted locally, but coaching returned a retryable failure.
+- Content-free diagnostics isolated the failure to OpenAI HTTP 400 `invalid_request_error`.
+- The generated empty-proposal tuple used `items: []`, outside OpenAI's supported Structured
+  Outputs subset.
+
+Implemented and verified:
+
+- Provider-facing empty arrays now use an item schema with `maxItems: 0`; Taisa's Zod parser still
+  enforces the exact portable response contract.
+- Provider-facing schema normalization does not weaken local response validation.
+- A synthetic, content-free `gpt-4o-mini` request was accepted and parsed as `redirect`.
+- Backend: 15 suites, 201 tests, and TypeScript build passed.
+- Mobile: 41 suites, 403 tests, and TypeScript check passed.
+
+Pending device check:
+
+- Retry the retained real submission and confirm the coaching response persists and renders.

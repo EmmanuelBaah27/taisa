@@ -1432,6 +1432,17 @@ describe('private local capture and deliberate submission', () => {
   });
 
   test('assistant response, usage, and governed proposals roll back together when local proposal staging fails', async () => {
+    const diagnostics: string[] = [];
+    service = createPrivateCaptureService({
+      database: db,
+      coach,
+      transcribe,
+      now: () => NOW,
+      createId: () => ids.shift()!,
+      getProfileId: async () => 'profile-1',
+      audioFiles,
+      reportDiagnostic: (code) => diagnostics.push(code),
+    });
     coach.mockImplementationOnce(async (request) => {
       await db.execAsync(`CREATE TRIGGER force_confirmation_failure
         BEFORE INSERT ON memory_confirmations
@@ -1450,6 +1461,7 @@ describe('private local capture and deliberate submission', () => {
     }
 
     expect(failure).toBeInstanceOf(SubmissionFailedError);
+    expect(diagnostics).toEqual(['COACHING_SAVE_PROPOSALS_FAILED']);
     expect(await db.getFirstAsync('SELECT id FROM usage_receipts')).toBeNull();
     expect(await db.getFirstAsync('SELECT id FROM memory_confirmations')).toBeNull();
     expect((await listMessages(db, 'conversation-1'))).toEqual([

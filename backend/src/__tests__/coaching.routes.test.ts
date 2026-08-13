@@ -147,6 +147,47 @@ test('accepts supplied context without loading backend user data', async () => {
   expect(reservation.commit).toHaveBeenCalledWith(res.body.data.usage);
 });
 
+test('returns an already-paid response when actual usage exceeds its conservative reservation', async () => {
+  const usageLedger = jest.requireMock('../services/usage/costLedger');
+  const warning = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+  usageLedger.reserveUsage.mockReturnValueOnce({
+    beginProviderInvocation: jest.fn(),
+    commit: jest.fn(() => { throw new usageLedger.UsageExceedsReservationError(0.001, 0.002); }),
+    consumeEstimate: jest.fn(),
+    release: jest.fn(),
+  });
+
+  const res = await request(app)
+    .post('/api/v1/coaching/respond')
+    .set('x-user-id', 'device-1')
+    .send(validRequest);
+
+  expect(res.status).toBe(200);
+  expect(res.body.data.reply).toBe('What changed?');
+  expect(warning).toHaveBeenCalledWith('[Taisa diagnostic] COACHING_USAGE_EXCEEDED_RESERVATION');
+  warning.mockRestore();
+});
+
+test('generic provider failures expose only an allowlisted operational classification', async () => {
+  const gateway = jest.requireMock('../services/coaching/coachingGateway');
+  gateway.requestCoaching.mockRejectedValueOnce(Object.assign(
+    new Error('private provider payload'),
+    { code: 'sk-secret-private-details', status: 503, type: 'provider_error' },
+  ));
+
+  const res = await request(app)
+    .post('/api/v1/coaching/respond')
+    .set('x-user-id', 'device-1')
+    .send(validRequest);
+
+  expect(res.status).toBe(500);
+  expect(res.body.error.code).toBe(
+    'COACHING_FAILED_HTTP_503_PROVIDER_ERROR',
+  );
+  expect(JSON.stringify(res.body)).not.toContain('private provider payload');
+  expect(JSON.stringify(res.body)).not.toContain('SECRET_PRIVATE_DETAILS');
+});
+
 test('rejects a coaching request at the shared cost ceiling before the provider', async () => {
   const usageLedger = jest.requireMock('../services/usage/costLedger');
   usageLedger.reserveUsage.mockImplementationOnce(() => {

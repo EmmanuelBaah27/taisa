@@ -238,6 +238,33 @@ test.each(validPayloadFixtures)(
     required: ['response'],
     additionalProperties: false,
   });
+  const openAISchema = openAIParse.mock.calls[0][0].response_format.json_schema.schema;
+  const countObjectProperties = (value: unknown): number => {
+    if (Array.isArray(value)) {
+      return value.reduce<number>((sum, item) => sum + countObjectProperties(item), 0);
+    }
+    if (!value || typeof value !== 'object') return 0;
+    const record = value as Record<string, unknown>;
+    const own = record.properties && typeof record.properties === 'object'
+      ? Object.keys(record.properties as Record<string, unknown>).length
+      : 0;
+    return own + Object.values(record).reduce<number>(
+      (sum, item) => sum + countObjectProperties(item),
+      0,
+    );
+  };
+  const objectPropertyCount = countObjectProperties(openAISchema);
+  expect(objectPropertyCount).toBeLessThanOrEqual(5000);
+  expect(openAISchema.definitions?.coaching_response).toBeUndefined();
+  expect(JSON.stringify(openAISchema)).not.toMatch(/\"(?:minLength|maxLength)\":/);
+  const arraysUseSingleItemSchemas = (value: unknown): boolean => {
+    if (Array.isArray(value)) return value.every(arraysUseSingleItemSchemas);
+    if (!value || typeof value !== 'object') return true;
+    const record = value as Record<string, unknown>;
+    if (record.type === 'array' && Array.isArray(record.items)) return false;
+    return Object.values(record).every(arraysUseSingleItemSchemas);
+  };
+  expect(arraysUseSingleItemSchemas(openAISchema)).toBe(true);
   expect(openAIParse.mock.calls[0][0].max_completion_tokens).toBe(2048);
   expect(openAIParse.mock.calls[0][0].max_tokens).toBeUndefined();
   expect(openAIParse.mock.calls[0][1]).toEqual({ maxRetries: 0 });
