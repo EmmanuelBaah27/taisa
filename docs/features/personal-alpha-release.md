@@ -4,7 +4,7 @@
 
 **Tracks:** Platform + Product
 
-**Status:** Scope agreed; plan approved
+**Status:** Code-only build complete; external deployment approval pending
 **Owner:** Baah
 
 ## What is it?
@@ -56,3 +56,25 @@ blocked by Metro and a Mac-hosted API, while response improvement lacks a consen
 - Multi-user accounts, subscriptions, public signup, team administration, or external beta testers.
 - App Store launch, analytics SDKs, integrations, todos, Notion, Granola, or meeting ingestion.
 - Legacy-route retirement before the existing recovery/privacy gate is complete.
+
+## Current handoff — 2026-08-13
+
+The approved code-only build is committed on `feature/local-first-coaching-platform` through
+`850b3d6`. Implemented slices:
+
+- `4d6ddcb` restores provider-compatible OpenAI coaching submissions.
+- `0c279c6` adds one-time enrolled-device authentication.
+- `ddf758d` adds encrypted-phone response reactions and preview records.
+- `f932b28` adds explicitly consented, editable/redacted, encrypted feedback sharing and deletion.
+- `5691299` packages the fail-closed single-replica Railway service.
+- `850b3d6` configures the standalone personal-alpha iPhone release profile.
+
+Fresh verification before this handoff: backend 19 suites / 221 tests and TypeScript build passed;
+mobile 46 suites / 417 tests and typecheck passed; Expo public config inspection, workflow
+verification, secret scan, DS scan, and diff checks passed. Docker is not installed locally, so the
+container image itself is not yet built.
+
+Next session must stop for Baah approval before creating a Railway project or volume, adding
+billing/secrets, or deploying. After deployment, set the non-secret hosted HTTPS `/api/v1` URL for
+the `personal-alpha` build, then stop again before Apple signing/EAS upload or standalone install.
+The branch is local-only with no upstream as of this handoff; pushing it is a separate Git action.

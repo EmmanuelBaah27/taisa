@@ -12,6 +12,14 @@ phone and encrypted before storage in a separate hosted feedback database.
 **Tech Stack:** Expo SDK 54, React Native, Expo SecureStore, SQLCipher SQLite, Express, Zod,
 better-sqlite3, Node crypto AES-256-GCM, OpenAI gateway, Railway, local Xcode release build.
 
+## Execution status — 2026-08-13
+
+Tasks 1–6 are code-complete through commit `850b3d6`, except the Docker image could not be built
+because Docker is not installed locally. No Railway resource, billing, secret, deployment, EAS
+upload, Apple credential action, or standalone install has run. Task 7 and the external parts of
+Tasks 5–6 remain pending. Continue from the Railway approval gate documented in
+`docs/features/personal-alpha-release.md`; do not repeat the completed implementation slices.
+
 ## Global Constraints
 
 - Do not deploy or create paid resources before Baah approves this plan and the relevant external action.
