@@ -2,6 +2,7 @@ import type { CoachingProvider, ProviderCoachingInput } from '../services/coachi
 import { getConfiguredProvider } from '../services/coaching/provider';
 import { createOpenAIProvider } from '../services/coaching/openaiProvider';
 import { createAnthropicProvider } from '../services/coaching/anthropicProvider';
+import { CoachingResponsePayloadSchema } from '../schemas/coaching';
 import {
   estimateConfiguredCoachingUsage,
   requestCoaching,
@@ -38,7 +39,10 @@ const requestFixture = {
   },
 };
 
-const payloadFixture = {
+const coachingPayloadFixture = {
+  mode: 'coach' as const,
+  relevance: 'career-relevant' as const,
+  contextSufficiency: 'sufficient' as const,
   reply: 'Earlier you preferred the Staff path. Has that changed?',
   stance: 'challenge' as const,
   proposals: [
@@ -51,6 +55,32 @@ const payloadFixture = {
     },
   ],
 };
+
+const validPayloadFixtures = [
+  ['coach', coachingPayloadFixture],
+  [
+    'clarify',
+    {
+      mode: 'clarify' as const,
+      relevance: 'career-relevant' as const,
+      contextSufficiency: 'insufficient' as const,
+      reply: 'Which meeting are you referring to?',
+      stance: null,
+      proposals: [],
+    },
+  ],
+  [
+    'redirect',
+    {
+      mode: 'redirect' as const,
+      relevance: 'outside-scope' as const,
+      contextSufficiency: 'sufficient' as const,
+      reply: 'I can help when this connects to your work or career.',
+      stance: null,
+      proposals: [],
+    },
+  ],
+] as const;
 
 const providerInput: ProviderCoachingInput = {
   systemPrompt: 'System prompt',
@@ -73,9 +103,30 @@ const anthropicConfig = {
   structuredOutputInputTokenOverhead: 512,
 };
 
-test('OpenAI and Anthropic adapters honor the same structured coaching contract with one SDK call', async () => {
+test.each(validPayloadFixtures)(
+  'the shared schema accepts a valid %s response mode',
+  (_mode, payload) => {
+    expect(CoachingResponsePayloadSchema.safeParse(payload).success).toBe(true);
+  },
+);
+
+test.each([
+  ['clarify response with proposals', { ...validPayloadFixtures[1][1], proposals: coachingPayloadFixture.proposals }],
+  ['clarify response with a coaching stance', { ...validPayloadFixtures[1][1], stance: 'nudge' }],
+  ['coach response with insufficient context', { ...coachingPayloadFixture, contextSufficiency: 'insufficient' }],
+  ['redirect response with career relevance', { ...validPayloadFixtures[2][1], relevance: 'career-relevant' }],
+  ['coach response with outside-scope relevance', { ...coachingPayloadFixture, relevance: 'outside-scope' }],
+  ['clarify response with sufficient context', { ...validPayloadFixtures[1][1], contextSufficiency: 'sufficient' }],
+  ['redirect response with insufficient context', { ...validPayloadFixtures[2][1], contextSufficiency: 'insufficient' }],
+])('the shared schema rejects a %s mode-axis conflict', (_name, payload) => {
+  expect(CoachingResponsePayloadSchema.safeParse(payload).success).toBe(false);
+});
+
+test.each(validPayloadFixtures)(
+  'OpenAI and Anthropic adapters honor the same %s structured coaching contract with one SDK call',
+  async (_mode, payloadFixture) => {
   const openAIParse = jest.fn().mockResolvedValue({
-    choices: [{ message: { parsed: payloadFixture } }],
+    choices: [{ message: { parsed: { response: payloadFixture } } }],
     usage: { prompt_tokens: 10, completion_tokens: 4 },
   });
   const anthropicCreate = jest.fn().mockResolvedValue({
@@ -115,7 +166,16 @@ test('OpenAI and Anthropic adapters honor the same structured coaching contract 
   }
 
   expect(openAIParse.mock.calls[0][0].response_format.type).toBe('json_schema');
-  expect(openAIParse.mock.calls[0][0].max_tokens).toBe(2048);
+  expect(openAIParse.mock.calls[0][0].response_format.json_schema.schema).toMatchObject({
+    type: 'object',
+    properties: {
+      response: expect.objectContaining({ anyOf: expect.any(Array) }),
+    },
+    required: ['response'],
+    additionalProperties: false,
+  });
+  expect(openAIParse.mock.calls[0][0].max_completion_tokens).toBe(2048);
+  expect(openAIParse.mock.calls[0][0].max_tokens).toBeUndefined();
   expect(openAIParse.mock.calls[0][1]).toEqual({ maxRetries: 0 });
   expect(anthropicCreate.mock.calls[0][0]).toMatchObject({
     max_tokens: 1024,
@@ -127,7 +187,46 @@ test('OpenAI and Anthropic adapters honor the same structured coaching contract 
     tools: [{ name: 'submit_coaching_response', input_schema: { type: 'object' } }],
   });
   expect(anthropicCreate.mock.calls[0][1]).toEqual({ maxRetries: 0 });
-});
+  const anthropicSchema = anthropicCreate.mock.calls[0][0].tools[0].input_schema;
+  expect(anthropicSchema).toMatchObject({
+    type: 'object',
+    oneOf: expect.any(Array),
+  });
+  expect(anthropicSchema.oneOf).toEqual(expect.arrayContaining([
+    expect.objectContaining({
+      properties: expect.objectContaining({
+        mode: { const: 'coach' },
+        relevance: { type: 'string', enum: ['career-relevant', 'adjacent'] },
+        contextSufficiency: { type: 'string', enum: ['sufficient', 'partial'] },
+        stance: { type: 'string', enum: ['mirror', 'nudge', 'challenge', 'direct'] },
+      }),
+    }),
+    expect.objectContaining({
+      properties: expect.objectContaining({
+        mode: { const: 'clarify' },
+        contextSufficiency: { const: 'insufficient' },
+        stance: { type: 'null' },
+        proposals: { type: 'array', minItems: 0, maxItems: 0 },
+      }),
+    }),
+    expect.objectContaining({
+      properties: expect.objectContaining({
+        mode: { const: 'redirect' },
+        relevance: { const: 'outside-scope' },
+        contextSufficiency: { type: 'string', enum: ['sufficient', 'partial'] },
+        stance: { type: 'null' },
+        proposals: { type: 'array', minItems: 0, maxItems: 0 },
+      }),
+    }),
+  ]));
+  expect(JSON.stringify(anthropicSchema)).toEqual(
+    expect.stringContaining('propose-outcome'),
+  );
+  expect(JSON.stringify(openAIParse.mock.calls[0][0].response_format)).toEqual(
+    expect.stringContaining('contextSufficiency'),
+  );
+},
+);
 
 test.each(['openai', 'anthropic'] as const)(
   'configuration selects %s and requestCoaching invokes exactly that provider once',
@@ -136,7 +235,7 @@ test.each(['openai', 'anthropic'] as const)(
       openai: {
         id: 'openai',
         respond: jest.fn().mockResolvedValue({
-          payload: payloadFixture,
+          payload: coachingPayloadFixture,
           usage: {
             provider: 'openai',
             model: 'openai-mock',
@@ -149,7 +248,7 @@ test.each(['openai', 'anthropic'] as const)(
       anthropic: {
         id: 'anthropic',
         respond: jest.fn().mockResolvedValue({
-          payload: payloadFixture,
+          payload: coachingPayloadFixture,
           usage: {
             provider: 'anthropic',
             model: 'anthropic-mock',
@@ -181,7 +280,7 @@ test.each(['openai', 'anthropic'] as const)(
 
     expect(response).toMatchObject({
       requestId: requestFixture.requestId,
-      ...payloadFixture,
+      ...coachingPayloadFixture,
       usage: { provider: providerId },
     });
     expect(providers[providerId].respond).toHaveBeenCalledTimes(1);

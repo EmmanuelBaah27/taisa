@@ -49,10 +49,7 @@ export async function requestCoaching(
 
   try {
     const result = await provider.respond(prompt);
-    const payload = CoachingResponsePayloadSchema.parse(result.payload) as Pick<
-      CoachingResponse,
-      'reply' | 'stance' | 'proposals'
-    >;
+    const payload = CoachingResponsePayloadSchema.parse(result.payload);
     return {
       requestId: request.requestId,
       ...payload,

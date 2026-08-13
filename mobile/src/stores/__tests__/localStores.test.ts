@@ -262,6 +262,9 @@ function visibleChatState(store: ChatStoreInstance) {
 function response(request: CoachingRequest): CoachingResponse {
   return {
     requestId: request.requestId,
+    mode: 'coach',
+    relevance: 'career-relevant',
+    contextSufficiency: 'sufficient',
     reply: 'What would a good next conversation accomplish?',
     stance: 'nudge',
     proposals: [],
@@ -918,6 +921,10 @@ describe('local-first stores', () => {
       database: db,
       coach: async (request) => ({
         ...response(request),
+        mode: 'coach',
+        relevance: 'career-relevant',
+        contextSufficiency: 'sufficient',
+        stance: 'nudge',
         proposals: [{
           operation: 'propose',
           candidate: {

@@ -1,5 +1,9 @@
 import { z } from 'zod';
-import { COACHING_GATEWAY_LIMITS, type CoachingRequest } from '@taisa/shared';
+import {
+  COACHING_GATEWAY_LIMITS,
+  type CoachingRequest,
+  type CoachingResponseDecision,
+} from '@taisa/shared';
 
 const IdSchema = z.string().trim().min(1).max(COACHING_GATEWAY_LIMITS.maxIdLength);
 const UuidSchema = z.string().regex(
@@ -143,10 +147,44 @@ const CoachingRequestRuntimeSchema = z.object({
 // The explicit output type reflects the runtime-required, strict schema above.
 export const CoachingRequestSchema = CoachingRequestRuntimeSchema as z.ZodType<CoachingRequest>;
 
-export const CoachingResponsePayloadSchema = z.object({
-  reply: StatementSchema,
-  stance: z.enum(['mirror', 'nudge', 'challenge', 'direct']),
-  proposals: z.array(z.union([MemoryDeltaSchema, OutcomeDeltaSchema])).max(COACHING_GATEWAY_LIMITS.maxProposals),
-}).strict();
+const CoachingRelevanceSchema = z.enum(['career-relevant', 'adjacent', 'outside-scope']);
+const ContextSufficiencySchema = z.enum(['sufficient', 'partial', 'insufficient']);
+const CoachingStanceSchema = z.enum(['mirror', 'nudge', 'challenge', 'direct']);
+const CoachingProposalSchema = z
+  .array(z.union([MemoryDeltaSchema, OutcomeDeltaSchema]))
+  .max(COACHING_GATEWAY_LIMITS.maxProposals);
+const EmptyProposalSchema = z.tuple([]);
 
-export type CoachingResponsePayload = z.infer<typeof CoachingResponsePayloadSchema>;
+export type CoachingResponsePayload = CoachingResponseDecision & { reply: string };
+
+export const CoachingResponsePayloadSchema = z.discriminatedUnion('mode', [
+  z.object({
+    mode: z.literal('coach'),
+    relevance: CoachingRelevanceSchema.exclude(['outside-scope']),
+    contextSufficiency: ContextSufficiencySchema.exclude(['insufficient']),
+    reply: StatementSchema,
+    stance: CoachingStanceSchema,
+    proposals: CoachingProposalSchema,
+  }).strict(),
+  z.object({
+    mode: z.literal('clarify'),
+    relevance: CoachingRelevanceSchema,
+    contextSufficiency: z.literal('insufficient'),
+    reply: StatementSchema,
+    stance: z.null(),
+    proposals: EmptyProposalSchema,
+  }).strict(),
+  z.object({
+    mode: z.literal('redirect'),
+    relevance: z.literal('outside-scope'),
+    contextSufficiency: ContextSufficiencySchema.exclude(['insufficient']),
+    reply: StatementSchema,
+    stance: z.null(),
+    proposals: EmptyProposalSchema,
+  }).strict(),
+]) as z.ZodType<CoachingResponsePayload>;
+
+// OpenAI Structured Outputs requires a root object; keep the portable decision union nested.
+export const OpenAICoachingResponseEnvelopeSchema = z.object({
+  response: CoachingResponsePayloadSchema,
+}).strict();

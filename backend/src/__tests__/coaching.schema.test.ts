@@ -170,6 +170,9 @@ test.each([
 
 test('the backend accepts strict proposals at the portable output boundary', () => {
   expect(CoachingResponsePayloadSchema.safeParse({
+    mode: 'coach',
+    relevance: 'career-relevant',
+    contextSufficiency: 'sufficient',
     reply: 'r'.repeat(COACHING_GATEWAY_LIMITS.maxTextLength),
     stance: 'direct',
     proposals: Array.from({ length: COACHING_GATEWAY_LIMITS.maxProposals }, () => ({

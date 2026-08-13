@@ -15,6 +15,9 @@ jest.mock('../services/coaching/coachingGateway', () => ({
   }),
   requestCoaching: jest.fn().mockResolvedValue({
     requestId: '11111111-1111-4111-8111-111111111111',
+    mode: 'coach',
+    relevance: 'career-relevant',
+    contextSufficiency: 'sufficient',
     reply: 'What changed?',
     stance: 'nudge',
     proposals: [],
@@ -113,6 +116,13 @@ test('accepts supplied context without loading backend user data', async () => {
 
   expect(res.status).toBe(200);
   expect(res.body.data.reply).toBe('What changed?');
+  expect(res.body.data).toMatchObject({
+    mode: 'coach',
+    relevance: 'career-relevant',
+    contextSufficiency: 'sufficient',
+    stance: 'nudge',
+    proposals: [],
+  });
   expect(jest.requireMock('../services/coaching/coachingGateway').requestCoaching).toHaveBeenCalledWith(validRequest);
   const usageLedger = jest.requireMock('../services/usage/costLedger');
   expect(usageLedger.reserveUsage).toHaveBeenCalledWith(

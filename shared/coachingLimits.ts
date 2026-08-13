@@ -351,20 +351,48 @@ export function firstCoachingResponseContractViolation(
 ): string | null {
   if (
     !isRecord(response) ||
-    !hasOnlyKeys(response, ['requestId', 'reply', 'stance', 'proposals', 'usage'])
+    !hasOnlyKeys(response, [
+      'requestId',
+      'mode',
+      'relevance',
+      'contextSufficiency',
+      'reply',
+      'stance',
+      'proposals',
+      'usage',
+    ])
   ) return 'response';
   if (!isUuid(response.requestId) || (
     expectedRequestId !== undefined && response.requestId !== expectedRequestId
   )) return 'requestId';
+  if (!isOneOf(response.mode, ['coach', 'clarify', 'redirect'])) return 'mode';
+  if (!isOneOf(response.relevance, ['career-relevant', 'adjacent', 'outside-scope'])) return 'relevance';
+  if (!isOneOf(response.contextSufficiency, ['sufficient', 'partial', 'insufficient'])) {
+    return 'contextSufficiency';
+  }
   if (!isStatement(response.reply)) return 'reply';
-  if (!isOneOf(response.stance, ['mirror', 'nudge', 'challenge', 'direct'])) return 'stance';
-  if (
-    !Array.isArray(response.proposals) ||
-    response.proposals.length > COACHING_GATEWAY_LIMITS.maxProposals
-  ) return 'proposals';
-  for (let index = 0; index < response.proposals.length; index += 1) {
-    const invalidProposal = memoryDeltaViolation(response.proposals[index], index);
-    if (invalidProposal !== null) return invalidProposal;
+
+  if (response.mode === 'coach') {
+    if (!isOneOf(response.relevance, ['career-relevant', 'adjacent'])) return 'relevance';
+    if (!isOneOf(response.contextSufficiency, ['sufficient', 'partial'])) return 'contextSufficiency';
+    if (!isOneOf(response.stance, ['mirror', 'nudge', 'challenge', 'direct'])) return 'stance';
+    if (
+      !Array.isArray(response.proposals) ||
+      response.proposals.length > COACHING_GATEWAY_LIMITS.maxProposals
+    ) return 'proposals';
+    for (let index = 0; index < response.proposals.length; index += 1) {
+      const invalidProposal = memoryDeltaViolation(response.proposals[index], index);
+      if (invalidProposal !== null) return invalidProposal;
+    }
+  } else if (response.mode === 'clarify') {
+    if (response.contextSufficiency !== 'insufficient') return 'contextSufficiency';
+    if (response.stance !== null) return 'stance';
+    if (!Array.isArray(response.proposals) || response.proposals.length !== 0) return 'proposals';
+  } else {
+    if (response.relevance !== 'outside-scope') return 'relevance';
+    if (!isOneOf(response.contextSufficiency, ['sufficient', 'partial'])) return 'contextSufficiency';
+    if (response.stance !== null) return 'stance';
+    if (!Array.isArray(response.proposals) || response.proposals.length !== 0) return 'proposals';
   }
   return usageViolation(response.usage);
 }

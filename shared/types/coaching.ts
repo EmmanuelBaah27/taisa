@@ -38,10 +38,36 @@ export interface UsageReceipt {
   estimatedCostUsd: number;
 }
 
-export interface CoachingResponse {
+export type CoachingResponseMode = 'coach' | 'clarify' | 'redirect';
+export type CoachingRelevance = 'career-relevant' | 'adjacent' | 'outside-scope';
+export type ContextSufficiency = 'sufficient' | 'partial' | 'insufficient';
+export type CoachingStance = 'mirror' | 'nudge' | 'challenge' | 'direct';
+
+export type CoachingResponseDecision =
+  | {
+    mode: 'coach';
+    relevance: Exclude<CoachingRelevance, 'outside-scope'>;
+    contextSufficiency: Exclude<ContextSufficiency, 'insufficient'>;
+    stance: CoachingStance;
+    proposals: Array<MemoryDelta | OutcomeDelta>;
+  }
+  | {
+    mode: 'clarify';
+    relevance: CoachingRelevance;
+    contextSufficiency: 'insufficient';
+    stance: null;
+    proposals: [];
+  }
+  | {
+    mode: 'redirect';
+    relevance: 'outside-scope';
+    contextSufficiency: Exclude<ContextSufficiency, 'insufficient'>;
+    stance: null;
+    proposals: [];
+  };
+
+export type CoachingResponse = CoachingResponseDecision & {
   requestId: string;
   reply: string;
-  stance: 'mirror' | 'nudge' | 'challenge' | 'direct';
-  proposals: Array<MemoryDelta | OutcomeDelta>;
   usage: UsageReceipt;
-}
+};

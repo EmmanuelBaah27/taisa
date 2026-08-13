@@ -54,6 +54,9 @@ const proposal = {
 function coachingResponse(request: CoachingRequest): CoachingResponse {
   return {
     requestId: request.requestId,
+    mode: 'coach',
+    relevance: 'career-relevant',
+    contextSufficiency: 'sufficient',
     reply: 'What would moving toward Staff change in your next project?',
     stance: 'challenge',
     proposals: [proposal],
@@ -70,6 +73,10 @@ function coachingResponse(request: CoachingRequest): CoachingResponse {
 function conflictingResponse(request: CoachingRequest): CoachingResponse {
   return {
     ...coachingResponse(request),
+    mode: 'coach',
+    relevance: 'career-relevant',
+    contextSufficiency: 'sufficient',
+    stance: 'challenge',
     proposals: [{
       ...proposal,
       candidate: { ...proposal.candidate, supersedesId: 'old-direction' },
@@ -367,6 +374,10 @@ describe('private local capture and deliberate submission', () => {
   ])('stages and applies a confirmed first-class %s outcome with local provenance', async (kind, outcome) => {
     coach.mockImplementationOnce(async (request) => ({
       ...coachingResponse(request),
+      mode: 'coach',
+      relevance: 'career-relevant',
+      contextSufficiency: 'sufficient',
+      stance: 'challenge',
       proposals: [{
         operation: 'propose-outcome' as const,
         candidate: outcome,

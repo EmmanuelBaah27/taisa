@@ -1,9 +1,15 @@
-import type { CoachingResponse, MemoryDelta } from '@taisa/shared';
+import type { CoachingResponse, MemoryDelta, OutcomeDelta } from '@taisa/shared';
 import type { CoachingEvaluationScenario } from './scenarios';
 
 export interface CoachingRubricScores { coachingUsefulness: number; continuityConflictDetection: number; actionQuality: number; memoryCorrectness: number; schemaCompliance: number; }
 
-function proposalTargets(proposals: CoachingResponse['proposals']): Array<{ operation: MemoryDelta['operation']; targetId: string }> {
+type CoachEvaluationPayload = {
+  reply: string;
+  stance: NonNullable<CoachingResponse['stance']>;
+  proposals: Array<MemoryDelta | OutcomeDelta>;
+};
+
+function proposalTargets(proposals: CoachEvaluationPayload['proposals']): Array<{ operation: MemoryDelta['operation']; targetId: string }> {
   const targets: Array<{ operation: MemoryDelta['operation']; targetId: string }> = [];
   for (const proposal of proposals) {
     if (proposal.operation === 'propose' && proposal.candidate.supersedesId) {
@@ -17,7 +23,7 @@ function proposalTargets(proposals: CoachingResponse['proposals']): Array<{ oper
 
 export function scoreCoachingResponse(
   scenario: CoachingEvaluationScenario,
-  payload: Pick<CoachingResponse, 'reply' | 'stance' | 'proposals'>,
+  payload: CoachEvaluationPayload,
 ): CoachingRubricScores {
   const { expected } = scenario;
   const operations = payload.proposals.map((proposal) => proposal.operation);

@@ -1,4 +1,5 @@
 import type Anthropic from '@anthropic-ai/sdk';
+import { COACHING_GATEWAY_LIMITS } from '@taisa/shared';
 import anthropicClient from '../claude/client';
 import { CoachingResponsePayloadSchema } from '../../schemas/coaching';
 import type {
@@ -12,15 +13,22 @@ type AnthropicClient = Pick<Anthropic, 'messages'>;
 
 const COACHING_RESPONSE_INPUT_SCHEMA = {
   type: 'object' as const,
-  additionalProperties: false,
-  required: ['reply', 'stance', 'proposals'],
-  properties: {
-    reply: { type: 'string', minLength: 1, maxLength: 4000 },
-    stance: { type: 'string', enum: ['mirror', 'nudge', 'challenge', 'direct'] },
-    proposals: {
-      type: 'array',
-      items: {
-        oneOf: [
+  oneOf: [
+    {
+      type: 'object',
+      additionalProperties: false,
+      required: ['mode', 'relevance', 'contextSufficiency', 'reply', 'stance', 'proposals'],
+      properties: {
+        mode: { const: 'coach' },
+        relevance: { type: 'string', enum: ['career-relevant', 'adjacent'] },
+        contextSufficiency: { type: 'string', enum: ['sufficient', 'partial'] },
+        reply: { type: 'string', minLength: 1, maxLength: 4000 },
+        stance: { type: 'string', enum: ['mirror', 'nudge', 'challenge', 'direct'] },
+        proposals: {
+          type: 'array',
+          maxItems: COACHING_GATEWAY_LIMITS.maxProposals,
+          items: {
+            oneOf: [
           {
             type: 'object',
             additionalProperties: false,
@@ -103,10 +111,91 @@ const COACHING_RESPONSE_INPUT_SCHEMA = {
               requiresConfirmation: { const: false },
             },
           },
+          {
+            type: 'object',
+            additionalProperties: false,
+            required: ['operation', 'candidate', 'reason', 'requiresConfirmation'],
+            properties: {
+              operation: { const: 'propose-outcome' },
+              candidate: {
+                oneOf: [
+                  {
+                    type: 'object',
+                    additionalProperties: false,
+                    required: ['kind', 'title', 'description', 'priority', 'targetDate', 'supersedesId'],
+                    properties: {
+                      kind: { const: 'goal' },
+                      title: { type: 'string' },
+                      description: { type: ['string', 'null'] },
+                      priority: { type: ['string', 'null'], enum: ['low', 'medium', 'high', null] },
+                      targetDate: { type: ['string', 'null'] },
+                      supersedesId: { type: ['string', 'null'] },
+                    },
+                  },
+                  {
+                    type: 'object',
+                    additionalProperties: false,
+                    required: ['kind', 'title', 'description', 'priority', 'dueAt', 'goalId', 'supersedesId'],
+                    properties: {
+                      kind: { const: 'action' },
+                      title: { type: 'string' },
+                      description: { type: ['string', 'null'] },
+                      priority: { type: ['string', 'null'], enum: ['low', 'medium', 'high', null] },
+                      dueAt: { type: ['string', 'null'] },
+                      goalId: { type: ['string', 'null'] },
+                      supersedesId: { type: ['string', 'null'] },
+                    },
+                  },
+                  {
+                    type: 'object',
+                    additionalProperties: false,
+                    required: ['kind', 'statement', 'occurredAt', 'goalIds', 'actionIds'],
+                    properties: {
+                      kind: { const: 'evidence' },
+                      statement: { type: 'string' },
+                      occurredAt: { type: 'string' },
+                      goalIds: { type: 'array', items: { type: 'string' } },
+                      actionIds: { type: 'array', items: { type: 'string' } },
+                    },
+                  },
+                ],
+              },
+              reason: { type: 'string' },
+              requiresConfirmation: { const: true },
+            },
+          },
         ],
+          },
+        },
       },
     },
-  },
+    {
+      type: 'object',
+      additionalProperties: false,
+      required: ['mode', 'relevance', 'contextSufficiency', 'reply', 'stance', 'proposals'],
+      properties: {
+        mode: { const: 'clarify' },
+        relevance: { type: 'string', enum: ['career-relevant', 'adjacent', 'outside-scope'] },
+        contextSufficiency: { const: 'insufficient' },
+        reply: { type: 'string', minLength: 1, maxLength: 4000 },
+        stance: { type: 'null' },
+        proposals: { type: 'array', minItems: 0, maxItems: 0 },
+      },
+    },
+    {
+      type: 'object',
+      additionalProperties: false,
+      required: ['mode', 'relevance', 'contextSufficiency', 'reply', 'stance', 'proposals'],
+      properties: {
+        mode: { const: 'redirect' },
+        relevance: { const: 'outside-scope' },
+        contextSufficiency: { type: 'string', enum: ['sufficient', 'partial'] },
+        reply: { type: 'string', minLength: 1, maxLength: 4000 },
+        stance: { type: 'null' },
+        proposals: { type: 'array', minItems: 0, maxItems: 0 },
+      },
+    },
+  ],
 };
 
 export function createAnthropicProvider(

@@ -21,6 +21,9 @@ import os from 'os';
 import path from 'path';
 
 const successfulPayload = {
+  mode: 'coach' as const,
+  relevance: 'career-relevant' as const,
+  contextSufficiency: 'sufficient' as const,
   reply: 'Name the trade-off, confirm the next action, and revisit it next week.',
   stance: 'nudge' as const,
   proposals: [],

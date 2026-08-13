@@ -11,6 +11,9 @@ const request: CoachingRequest = {
 
 const response: CoachingResponse = {
   requestId: request.requestId,
+  mode: 'coach',
+  relevance: 'career-relevant',
+  contextSufficiency: 'sufficient',
   reply: 'What outcome matters most?',
   stance: 'nudge',
   proposals: [],
