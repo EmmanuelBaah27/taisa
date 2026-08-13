@@ -1,5 +1,4 @@
 import { CoachingResponsePayloadSchema } from '../../schemas/coaching';
-import type { MemoryDelta } from '@taisa/shared';
 import { buildSeniorSelfPrompt } from '../../prompts/system/seniorSelf';
 import { createProviderForId } from '../../services/coaching/provider';
 import type { CoachingProvider, CoachingProviderId } from '../../services/coaching/provider';
@@ -41,6 +40,12 @@ const zeroRubric: CoachingRubricScores = {
   actionQuality: 0,
   memoryCorrectness: 0,
   schemaCompliance: 0,
+  responseMode: 0,
+  relevance: 0,
+  contextSufficiency: 0,
+  responseInvariants: 0,
+  stance: 0,
+  proposalInvariants: 0,
 };
 
 export async function runCoachingEvaluation(
@@ -86,7 +91,7 @@ export async function runCoachingEvaluation(
         scenarioId: scenario.id,
         rubric: scoreCoachingResponse(
           scenario,
-          parsed.data as { reply: string; stance: 'mirror' | 'nudge' | 'challenge' | 'direct'; proposals: MemoryDelta[] },
+          parsed.data,
         ),
         latencyMs,
         inputTokens: providerResult.usage.inputTokens ?? 0,
@@ -127,6 +132,12 @@ export const COACHING_EVALUATION_THRESHOLDS = Object.freeze({
   memoryCorrectnessMinimum: 0.9,
   actionQualityMinimum: 0.8,
   continuityConflictDetectionMinimum: 0.7,
+  guardrailResponseModeMinimum: 1,
+  guardrailRelevanceMinimum: 1,
+  guardrailContextSufficiencyMinimum: 1,
+  guardrailResponseInvariantsMinimum: 1,
+  guardrailStanceMinimum: 1,
+  guardrailProposalInvariantsMinimum: 1,
   manualUsefulnessMinimum: 0.8,
 });
 
@@ -140,10 +151,18 @@ export function buildManualReviewArtifact(summary: CoachingEvaluationSummary) {
   };
   const continuityScenarioIds = new Set(coachingEvaluationScenarios
     .filter((scenario) => scenario.expected.continuityRequired).map((scenario) => scenario.id));
+  const guardrailScenarioIds = new Set(coachingEvaluationScenarios
+    .filter((scenario) => scenario.id.startsWith('guardrail-')).map((scenario) => scenario.id));
   const automatedPassed = average('schemaCompliance') >= COACHING_EVALUATION_THRESHOLDS.schemaComplianceMinimum &&
     average('memoryCorrectness') >= COACHING_EVALUATION_THRESHOLDS.memoryCorrectnessMinimum &&
     average('actionQuality') >= COACHING_EVALUATION_THRESHOLDS.actionQualityMinimum &&
-    average('continuityConflictDetection', continuityScenarioIds) >= COACHING_EVALUATION_THRESHOLDS.continuityConflictDetectionMinimum;
+    average('continuityConflictDetection', continuityScenarioIds) >= COACHING_EVALUATION_THRESHOLDS.continuityConflictDetectionMinimum &&
+    average('responseMode', guardrailScenarioIds) >= COACHING_EVALUATION_THRESHOLDS.guardrailResponseModeMinimum &&
+    average('relevance', guardrailScenarioIds) >= COACHING_EVALUATION_THRESHOLDS.guardrailRelevanceMinimum &&
+    average('contextSufficiency', guardrailScenarioIds) >= COACHING_EVALUATION_THRESHOLDS.guardrailContextSufficiencyMinimum &&
+    average('responseInvariants', guardrailScenarioIds) >= COACHING_EVALUATION_THRESHOLDS.guardrailResponseInvariantsMinimum &&
+    average('stance', guardrailScenarioIds) >= COACHING_EVALUATION_THRESHOLDS.guardrailStanceMinimum &&
+    average('proposalInvariants', guardrailScenarioIds) >= COACHING_EVALUATION_THRESHOLDS.guardrailProposalInvariantsMinimum;
   return {
     packVersion: summary.packVersion, provider: summary.provider, syntheticOnly: true,
     thresholds: COACHING_EVALUATION_THRESHOLDS, automatedPassed,
@@ -156,6 +175,11 @@ export function buildManualReviewArtifact(summary: CoachingEvaluationSummary) {
         syntheticInput: scenario.request.input,
         response: result.manualReviewResponse ?? '',
         manualUsefulness: null,
+        inventedReferent: null,
+        inventedEmotion: null,
+        inventedParticipantOrPurpose: null,
+        clarificationQuestionNeutral: null,
+        proposalsGroundedInSupportedObservation: null,
       };
     }),
   };

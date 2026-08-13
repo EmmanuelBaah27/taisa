@@ -60,6 +60,10 @@ test('the versioned pack covers every required synthetic coaching situation with
       'sensitive-inference',
       'action-evolution',
       'no-memory',
+      'missing-referent',
+      'outside-scope',
+      'adjacent-context',
+      'partial-context',
     ].every((topic) => coveredTopics.has(topic as CoachingEvaluationCoverage)),
   ).toBe(true);
   expect(coachingEvaluationScenarios.every((scenario) => scenario.synthetic)).toBe(true);
@@ -68,11 +72,74 @@ test('the versioned pack covers every required synthetic coaching situation with
   expect(
     coachingEvaluationScenarios.every(
       (scenario) =>
-        scenario.expected.allowedStances.length > 0 &&
+        (scenario.expected.mode !== 'coach' || scenario.expected.allowedStances.length > 0) &&
         (scenario.request.context.memory.length === 0 ||
           scenario.expected.forbiddenTargetIdsByOperation.transition.length > 0),
     ),
   ).toBe(true);
+});
+
+test('the guardrail pack specifies response decisions for missing, scoped, adjacent, and partial context', () => {
+  const scenario = (id: string) => coachingEvaluationScenarios.find((candidate) => candidate.id === id);
+
+  expect(scenario('guardrail-missing-video')).toMatchObject({
+    synthetic: true,
+    expected: { mode: 'clarify', allowedContextSufficiency: ['insufficient'], requireNoProposals: true },
+  });
+  expect(scenario('guardrail-missing-meeting')).toMatchObject({
+    synthetic: true,
+    expected: { mode: 'clarify', allowedContextSufficiency: ['insufficient'], requireNoProposals: true },
+  });
+  expect(scenario('guardrail-workplace-conflict')).toMatchObject({
+    expected: {
+      mode: 'coach', allowedRelevance: ['career-relevant'], allowedContextSufficiency: ['sufficient'],
+    },
+  });
+  expect(scenario('guardrail-unrelated-factual')).toMatchObject({
+    expected: { mode: 'redirect', allowedRelevance: ['outside-scope'], requireNoProposals: true },
+  });
+  expect(scenario('guardrail-adjacent-fatigue')).toMatchObject({
+    expected: { mode: 'coach', allowedRelevance: ['adjacent'], allowedContextSufficiency: ['sufficient', 'partial'] },
+  });
+  expect(scenario('guardrail-partial-work')).toMatchObject({
+    expected: { mode: 'coach', allowedContextSufficiency: ['partial'], requireNoProposals: false },
+  });
+});
+
+test('the rubric deterministically rejects a guardrail response with the wrong mode, axes, stance, or proposals', () => {
+  const scenario = coachingEvaluationScenarios.find((candidate) => candidate.id === 'guardrail-missing-video')!;
+  const score = scoreCoachingResponse(scenario, {
+    mode: 'coach',
+    relevance: 'career-relevant',
+    contextSufficiency: 'sufficient',
+    reply: 'You sound overwhelmed by the video. Ask the team to change it.',
+    stance: 'direct',
+    proposals: [{
+      operation: 'propose-outcome',
+      candidate: { kind: 'action', title: 'Change the video', description: null, priority: 'medium', dueAt: null, goalId: null, supersedesId: null },
+      reason: 'Synthetic proposal.',
+      requiresConfirmation: true,
+    }],
+  });
+  const unrelatedScenario = coachingEvaluationScenarios.find((candidate) => candidate.id === 'guardrail-unrelated-factual')!;
+  const relevanceScore = scoreCoachingResponse(unrelatedScenario, {
+    mode: 'redirect',
+    relevance: 'career-relevant',
+    contextSufficiency: 'sufficient',
+    reply: 'Here is a factual answer.',
+    stance: null,
+    proposals: [],
+  });
+
+  expect(score).toEqual(expect.objectContaining({
+    responseMode: 0,
+    relevance: 1,
+    contextSufficiency: 0,
+    responseInvariants: 0,
+    stance: 0,
+    proposalInvariants: 0,
+  }));
+  expect(relevanceScore).toEqual(expect.objectContaining({ relevance: 0, responseInvariants: 0 }));
 });
 
 test('manual review artifact contains synthetic outputs, thresholds, and remains explicitly synthetic-only', async () => {
@@ -85,7 +152,42 @@ test('manual review artifact contains synthetic outputs, thresholds, and remains
   expect(artifact.reviews[0]).toEqual(expect.objectContaining({
     scenarioId: 'synthetic-01', syntheticInput: coachingEvaluationScenarios[0].request.input,
     response: successfulPayload.reply, manualUsefulness: null,
+    inventedReferent: null,
+    inventedEmotion: null,
+    inventedParticipantOrPurpose: null,
+    clarificationQuestionNeutral: null,
   }));
+});
+
+test('the 100 percent structural gate includes the fully specified workplace conflict case', () => {
+  const summary = {
+    packVersion: 'synthetic-test-pack',
+    provider: 'openai' as const,
+    results: coachingEvaluationScenarios.map((scenario) => ({
+      scenarioId: scenario.id,
+      rubric: {
+        coachingUsefulness: 1,
+        continuityConflictDetection: 1,
+        actionQuality: 1,
+        memoryCorrectness: 1,
+        schemaCompliance: 1,
+        responseMode: scenario.id === 'guardrail-workplace-conflict' ? 0 : 1,
+        relevance: 1,
+        contextSufficiency: 1,
+        responseInvariants: 1,
+        stance: 1,
+        proposalInvariants: 1,
+      },
+      latencyMs: 0,
+      inputTokens: 0,
+      outputTokens: 0,
+      estimatedCostUsd: 0,
+      schemaStatus: 'valid' as const,
+      errorCode: null,
+    })),
+  };
+
+  expect(buildManualReviewArtifact(summary).automatedPassed).toBe(false);
 });
 
 test('CLI durably reserves and records every evaluation call under the explicit budget and emits review artifact', async () => {
@@ -126,9 +228,15 @@ test('the runner makes one fake-provider call per scenario and emits only allowl
   expect(Object.keys(parsed.results[0].rubric).sort()).toEqual([
     'actionQuality',
     'coachingUsefulness',
+    'contextSufficiency',
     'continuityConflictDetection',
     'memoryCorrectness',
+    'proposalInvariants',
+    'relevance',
+    'responseInvariants',
+    'responseMode',
     'schemaCompliance',
+    'stance',
   ]);
   expect(serialized).not.toContain(successfulPayload.reply);
   expect(serialized).not.toContain(coachingEvaluationScenarios[0].request.input);
@@ -140,6 +248,9 @@ test('a fluent hallucinated reply earns no automatic usefulness or continuity cr
   const conflictScenario = coachingEvaluationScenarios.find((scenario) => scenario.id === 'synthetic-07')!;
 
   const score = scoreCoachingResponse(conflictScenario, {
+    mode: 'coach',
+    relevance: 'career-relevant',
+    contextSufficiency: 'sufficient',
     reply: 'Everything will work out brilliantly.',
     stance: 'mirror',
     proposals: [],
@@ -151,6 +262,9 @@ test('a fluent hallucinated reply earns no automatic usefulness or continuity cr
 
 test('the rubric rejects an invented propose mutation that supersedes a forbidden target', () => {
   const score = scoreCoachingResponse(coachingEvaluationScenarios[0], {
+    mode: 'coach',
+    relevance: 'career-relevant',
+    contextSufficiency: 'sufficient',
     reply: 'A concise synthetic response.',
     stance: 'nudge',
     proposals: [
@@ -177,6 +291,9 @@ test('the rubric rejects an invented propose mutation that supersedes a forbidde
 test('the rubric enforces required proposed memory type and provenance', () => {
   const careerScenario = coachingEvaluationScenarios.find((scenario) => scenario.id === 'synthetic-03')!;
   const score = scoreCoachingResponse(careerScenario, {
+    mode: 'coach',
+    relevance: 'career-relevant',
+    contextSufficiency: 'sufficient',
     reply: 'A concise synthetic response.',
     stance: 'nudge',
     proposals: [{
@@ -238,6 +355,9 @@ test.each(
       requiredProposedProvenance: [],
     },
   }, {
+    mode: 'coach',
+    relevance: 'career-relevant',
+    contextSufficiency: 'sufficient',
     reply: 'Synthetic response.',
     stance: scenario.expected.requiredStance ?? 'nudge',
     proposals: [proposalTargeting(operation, targetId)],
