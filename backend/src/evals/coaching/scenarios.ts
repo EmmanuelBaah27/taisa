@@ -16,6 +16,15 @@ export type CoachingEvaluationCoverage =
   | 'historical-context' | 'evidence' | 'sensitive-inference' | 'action-evolution' | 'no-memory'
   | 'missing-referent' | 'outside-scope' | 'adjacent-context' | 'partial-context';
 
+export const GUARDRAIL_SCENARIO_IDS = [
+  'guardrail-missing-video',
+  'guardrail-missing-meeting',
+  'guardrail-workplace-conflict',
+  'guardrail-unrelated-factual',
+  'guardrail-adjacent-fatigue',
+  'guardrail-partial-work',
+] as const;
+
 type ProposalOperation = MemoryDelta['operation'];
 type AllowedProposalOperation = ProposalOperation | 'propose-outcome';
 type ProposedMemory = Extract<MemoryDelta, { operation: 'propose' }>['candidate'];
@@ -51,6 +60,25 @@ export interface CoachingEvaluationScenario {
 }
 
 const timestamp = '2026-08-09T00:00:00Z';
+
+const syntheticRequestNumbers: Readonly<Record<string, number>> = {
+  'synthetic-01': 1, 'synthetic-02': 2, 'synthetic-03': 3, 'synthetic-04': 4,
+  'synthetic-05': 5, 'synthetic-06': 6, 'synthetic-07': 7, 'synthetic-08': 8,
+  'synthetic-09': 9, 'synthetic-10': 10, 'synthetic-11': 11, 'synthetic-12': 12,
+  'synthetic-13': 13, 'synthetic-14': 14, 'synthetic-15': 15, 'synthetic-16': 16,
+  'synthetic-17': 17, 'synthetic-18': 18, 'synthetic-19': 19, 'synthetic-20': 20,
+  'guardrail-missing-video': 21, 'guardrail-missing-meeting': 22,
+  'guardrail-workplace-conflict': 23, 'guardrail-unrelated-factual': 24,
+  'guardrail-adjacent-fatigue': 25, 'guardrail-partial-work': 26,
+};
+
+function syntheticRequestId(id: string): string {
+  const requestNumber = syntheticRequestNumbers[id];
+  if (!requestNumber) {
+    throw new Error(`Missing synthetic request UUID mapping for ${id}`);
+  }
+  return `20000000-0000-4000-8000-${requestNumber.toString().padStart(12, '0')}`;
+}
 
 function memory(id: string, statement: string): MemoryItem {
   return { id, type: 'goal', statement, provenance: 'user-confirmed', lifecycle: 'active', confidence: 'established', createdAt: timestamp, confirmedAt: timestamp, lastSupportedAt: timestamp, statusChangedAt: timestamp, sourceMessageIds: [`source-${id}`] };
@@ -110,11 +138,10 @@ function scenario(
   memories: MemoryItem[],
   decision?: ExpectedDecisionOverrides,
 ): CoachingEvaluationScenario {
-  const requestNumber = id.split('-').at(-1)?.padStart(12, '0') ?? '000000000000';
   return {
     id, synthetic: true, coverage,
     request: {
-      requestId: `20000000-0000-4000-8000-${requestNumber}`, submittedAt: timestamp, input,
+      requestId: syntheticRequestId(id), submittedAt: timestamp, input,
       context: { profile: { currentRole: 'Synthetic product designer', currentCompany: 'Example Studio', careerStage: 'mid', coachingStyle: 'structured', accountabilityLevel: 'moderate', currentFocusArea: '', shortTermGoal: 'Grow scope', longTermGoal: '' }, recentMessages: [], memory: memories, evidence: coverage.includes('evidence') ? [syntheticEvidence] : [] },
     },
     expected: expected(coverage, memories, decision),
@@ -158,7 +185,7 @@ export const coachingEvaluationScenarios: CoachingEvaluationScenario[] = [
     'I cannot use some of this in the video.',
     [],
     {
-      mode: 'clarify', allowedRelevance: ['career-relevant', 'adjacent', 'outside-scope'],
+      mode: 'clarify', allowedRelevance: ['outside-scope'],
       allowedContextSufficiency: ['insufficient'], allowedProposalOperations: [],
     },
   ),
@@ -168,7 +195,7 @@ export const coachingEvaluationScenarios: CoachingEvaluationScenario[] = [
     'That meeting changed everything.',
     [],
     {
-      mode: 'clarify', allowedRelevance: ['career-relevant', 'adjacent', 'outside-scope'],
+      mode: 'clarify', allowedRelevance: ['outside-scope'],
       allowedContextSufficiency: ['insufficient'], allowedProposalOperations: [],
     },
   ),

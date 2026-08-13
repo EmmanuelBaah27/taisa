@@ -4,6 +4,7 @@ import {
 } from '../services/coaching/provider';
 import {
   coachingEvaluationScenarios,
+  GUARDRAIL_SCENARIO_IDS,
   type CoachingEvaluationCoverage,
 } from '../evals/coaching/scenarios';
 import { scoreCoachingResponse } from '../evals/coaching/rubric';
@@ -14,8 +15,10 @@ import {
   runEvaluationCli,
   serializeEvaluationSummary,
   buildManualReviewArtifact,
+  type CoachingEvaluationSummary,
 } from '../evals/coaching/run';
 import { CostLedger } from '../services/usage/costLedger';
+import { CoachingRequestSchema } from '../schemas/coaching';
 import { mkdtempSync, readFileSync } from 'fs';
 import os from 'os';
 import path from 'path';
@@ -84,11 +87,17 @@ test('the guardrail pack specifies response decisions for missing, scoped, adjac
 
   expect(scenario('guardrail-missing-video')).toMatchObject({
     synthetic: true,
-    expected: { mode: 'clarify', allowedContextSufficiency: ['insufficient'], requireNoProposals: true },
+    expected: {
+      mode: 'clarify', allowedRelevance: ['outside-scope'],
+      allowedContextSufficiency: ['insufficient'], requireNoProposals: true,
+    },
   });
   expect(scenario('guardrail-missing-meeting')).toMatchObject({
     synthetic: true,
-    expected: { mode: 'clarify', allowedContextSufficiency: ['insufficient'], requireNoProposals: true },
+    expected: {
+      mode: 'clarify', allowedRelevance: ['outside-scope'],
+      allowedContextSufficiency: ['insufficient'], requireNoProposals: true,
+    },
   });
   expect(scenario('guardrail-workplace-conflict')).toMatchObject({
     expected: {
@@ -104,6 +113,24 @@ test('the guardrail pack specifies response decisions for missing, scoped, adjac
   expect(scenario('guardrail-partial-work')).toMatchObject({
     expected: { mode: 'coach', allowedContextSufficiency: ['partial'], requireNoProposals: false },
   });
+});
+
+test('the guardrail gate has exactly the six approved scenario IDs', () => {
+  expect(GUARDRAIL_SCENARIO_IDS).toEqual([
+    'guardrail-missing-video',
+    'guardrail-missing-meeting',
+    'guardrail-workplace-conflict',
+    'guardrail-unrelated-factual',
+    'guardrail-adjacent-fatigue',
+    'guardrail-partial-work',
+  ]);
+});
+
+test('every synthetic scenario has a unique valid portable coaching request before evaluation runs', () => {
+  const requestIds = coachingEvaluationScenarios.map((scenario) => scenario.request.requestId);
+
+  expect(new Set(requestIds).size).toBe(coachingEvaluationScenarios.length);
+  expect(coachingEvaluationScenarios.every((scenario) => CoachingRequestSchema.safeParse(scenario.request).success)).toBe(true);
 });
 
 test('the rubric deterministically rejects a guardrail response with the wrong mode, axes, stance, or proposals', () => {
@@ -133,7 +160,7 @@ test('the rubric deterministically rejects a guardrail response with the wrong m
 
   expect(score).toEqual(expect.objectContaining({
     responseMode: 0,
-    relevance: 1,
+    relevance: 0,
     contextSufficiency: 0,
     responseInvariants: 0,
     stance: 0,
@@ -152,11 +179,54 @@ test('manual review artifact contains synthetic outputs, thresholds, and remains
   expect(artifact.reviews[0]).toEqual(expect.objectContaining({
     scenarioId: 'synthetic-01', syntheticInput: coachingEvaluationScenarios[0].request.input,
     response: successfulPayload.reply, manualUsefulness: null,
+    mode: successfulPayload.mode,
+    relevance: successfulPayload.relevance,
+    contextSufficiency: successfulPayload.contextSufficiency,
+    stance: successfulPayload.stance,
+    proposals: successfulPayload.proposals,
     inventedReferent: null,
     inventedEmotion: null,
     inventedParticipantOrPurpose: null,
     clarificationQuestionNeutral: null,
   }));
+});
+
+function structurallyPassingSummary(scenarioIds = coachingEvaluationScenarios.map((scenario) => scenario.id)): CoachingEvaluationSummary {
+  return {
+    packVersion: 'synthetic-test-pack',
+    provider: 'openai',
+    results: scenarioIds.map((scenarioId) => ({
+      scenarioId,
+      rubric: {
+        coachingUsefulness: 1,
+        continuityConflictDetection: 1,
+        actionQuality: 1,
+        memoryCorrectness: 1,
+        schemaCompliance: 1,
+        responseMode: 1,
+        relevance: 1,
+        contextSufficiency: 1,
+        responseInvariants: 1,
+        stance: 1,
+        proposalInvariants: 1,
+      },
+      latencyMs: 0,
+      inputTokens: 0,
+      outputTokens: 0,
+      estimatedCostUsd: 0,
+      schemaStatus: 'valid',
+      errorCode: null,
+    })),
+  };
+}
+
+test.each([
+  ['omits an expected guardrail result', coachingEvaluationScenarios
+    .filter((scenario) => scenario.id !== 'guardrail-missing-video').map((scenario) => scenario.id)],
+  ['duplicates a guardrail result', [...coachingEvaluationScenarios.map((scenario) => scenario.id), 'guardrail-missing-video']],
+  ['includes an unexpected guardrail result', [...coachingEvaluationScenarios.map((scenario) => scenario.id), 'guardrail-unexpected']],
+])('the structural gate fails when it %s', (_case, scenarioIds) => {
+  expect(buildManualReviewArtifact(structurallyPassingSummary(scenarioIds)).automatedPassed).toBe(false);
 });
 
 test('the 100 percent structural gate includes the fully specified workplace conflict case', () => {

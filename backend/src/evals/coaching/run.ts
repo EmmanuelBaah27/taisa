@@ -1,9 +1,13 @@
-import { CoachingResponsePayloadSchema } from '../../schemas/coaching';
+import { CoachingResponsePayloadSchema, type CoachingResponsePayload } from '../../schemas/coaching';
 import { buildSeniorSelfPrompt } from '../../prompts/system/seniorSelf';
 import { createProviderForId } from '../../services/coaching/provider';
 import type { CoachingProvider, CoachingProviderId } from '../../services/coaching/provider';
 import { scoreCoachingResponse, type CoachingRubricScores } from './rubric';
-import { COACHING_EVALUATION_PACK_VERSION, coachingEvaluationScenarios } from './scenarios';
+import {
+  COACHING_EVALUATION_PACK_VERSION,
+  GUARDRAIL_SCENARIO_IDS,
+  coachingEvaluationScenarios,
+} from './scenarios';
 import { writeFileSync } from 'fs';
 import path from 'path';
 import { costLedger, type UsageLedger } from '../../services/usage/costLedger';
@@ -17,7 +21,7 @@ export interface CoachingEvaluationResult {
   estimatedCostUsd: number;
   schemaStatus: 'valid' | 'invalid';
   errorCode: 'INVALID_SCHEMA' | 'PROVIDER_ERROR' | null;
-  manualReviewResponse?: string;
+  manualReviewResponse?: CoachingResponsePayload;
 }
 
 export interface CoachingEvaluationSummary {
@@ -82,7 +86,6 @@ export async function runCoachingEvaluation(
           estimatedCostUsd: providerResult.usage.estimatedCostUsd,
           schemaStatus: 'invalid',
           errorCode: 'INVALID_SCHEMA',
-          manualReviewResponse: '',
         });
         continue;
       }
@@ -99,7 +102,7 @@ export async function runCoachingEvaluation(
         estimatedCostUsd: providerResult.usage.estimatedCostUsd,
         schemaStatus: 'valid',
         errorCode: null,
-        manualReviewResponse: parsed.data.reply,
+        manualReviewResponse: parsed.data,
       });
     } catch {
       reservation?.release();
@@ -151,9 +154,14 @@ export function buildManualReviewArtifact(summary: CoachingEvaluationSummary) {
   };
   const continuityScenarioIds = new Set(coachingEvaluationScenarios
     .filter((scenario) => scenario.expected.continuityRequired).map((scenario) => scenario.id));
-  const guardrailScenarioIds = new Set(coachingEvaluationScenarios
-    .filter((scenario) => scenario.id.startsWith('guardrail-')).map((scenario) => scenario.id));
-  const automatedPassed = average('schemaCompliance') >= COACHING_EVALUATION_THRESHOLDS.schemaComplianceMinimum &&
+  const guardrailScenarioIds = new Set<string>(GUARDRAIL_SCENARIO_IDS);
+  const guardrailResultIds = summary.results
+    .filter((result) => result.scenarioId.startsWith('guardrail-')).map((result) => result.scenarioId);
+  const hasExactGuardrailResults = guardrailResultIds.length === guardrailScenarioIds.size &&
+    new Set(guardrailResultIds).size === guardrailScenarioIds.size &&
+    guardrailResultIds.every((scenarioId) => guardrailScenarioIds.has(scenarioId));
+  const automatedPassed = hasExactGuardrailResults &&
+    average('schemaCompliance') >= COACHING_EVALUATION_THRESHOLDS.schemaComplianceMinimum &&
     average('memoryCorrectness') >= COACHING_EVALUATION_THRESHOLDS.memoryCorrectnessMinimum &&
     average('actionQuality') >= COACHING_EVALUATION_THRESHOLDS.actionQualityMinimum &&
     average('continuityConflictDetection', continuityScenarioIds) >= COACHING_EVALUATION_THRESHOLDS.continuityConflictDetectionMinimum &&
@@ -167,13 +175,20 @@ export function buildManualReviewArtifact(summary: CoachingEvaluationSummary) {
     packVersion: summary.packVersion, provider: summary.provider, syntheticOnly: true,
     thresholds: COACHING_EVALUATION_THRESHOLDS, automatedPassed,
     manualReviewStatus: 'required' as const,
-    reviews: summary.results.map((result) => {
+    reviews: summary.results.flatMap((result) => {
       const scenario = coachingEvaluationScenarios.find((candidate) => candidate.id === result.scenarioId)!;
+      if (!scenario?.synthetic) return [];
+      const response = result.manualReviewResponse;
       return {
         scenarioId: result.scenarioId,
         coverage: scenario.coverage,
         syntheticInput: scenario.request.input,
-        response: result.manualReviewResponse ?? '',
+        response: response?.reply ?? '',
+        mode: response?.mode ?? null,
+        relevance: response?.relevance ?? null,
+        contextSufficiency: response?.contextSufficiency ?? null,
+        stance: response?.stance ?? null,
+        proposals: response?.proposals ?? [],
         manualUsefulness: null,
         inventedReferent: null,
         inventedEmotion: null,
