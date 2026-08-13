@@ -738,13 +738,15 @@ export function createPrivateCaptureService(
           },
           coachingUsageId,
         );
-        const pendingProposals = await stageResponseProposals(
-          transaction,
-          request,
-          submittedMessage,
-          response,
-          timestamp,
-        );
+        const pendingProposals = response.mode === 'coach'
+          ? await stageResponseProposals(
+            transaction,
+            request,
+            submittedMessage,
+            response,
+            timestamp,
+          )
+          : [];
         await updateCoachingRequest(
           transaction,
           {

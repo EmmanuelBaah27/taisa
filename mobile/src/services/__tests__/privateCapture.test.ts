@@ -270,6 +270,64 @@ describe('private local capture and deliberate submission', () => {
     expect(staged?.proposal_json).not.toContain('provider-supplied-source');
   });
 
+  test.each([
+    ['clarify', {
+      mode: 'clarify' as const,
+      relevance: 'career-relevant' as const,
+      contextSufficiency: 'insufficient' as const,
+      reply: 'Which meeting are you referring to?',
+      stance: null,
+      proposals: [],
+    }],
+    ['redirect', {
+      mode: 'redirect' as const,
+      relevance: 'outside-scope' as const,
+      contextSufficiency: 'sufficient' as const,
+      reply: 'I can help if this connects to a work decision.',
+      stance: null,
+      proposals: [],
+    }],
+  ] as const)('%s persists its assistant reply without creating durable outcomes', async (_mode, decision) => {
+    coach.mockImplementationOnce(async (request) => ({
+      ...coachingResponse(request),
+      ...decision,
+      proposals: [],
+    } as CoachingResponse));
+
+    const result = await service.submitText({
+      conversationId: 'non-coaching-decision',
+      content: 'That meeting changed everything.',
+    });
+
+    expect(result.pendingProposals).toEqual([]);
+    expect(await listMessages(db, 'non-coaching-decision')).toEqual(expect.arrayContaining([
+      expect.objectContaining({ role: 'assistant', lifecycle: 'received', content: decision.reply }),
+    ]));
+    for (const table of ['memory_confirmations', 'goals', 'actions', 'evidence', 'memory_items']) {
+      expect(await db.getFirstAsync<{ count: number }>(`SELECT count(*) AS count FROM ${table}`)).toEqual({ count: 0 });
+    }
+  });
+
+  test('clarify fails closed rather than staging an unexpected proposal', async () => {
+    coach.mockImplementationOnce(async (request) => ({
+      ...coachingResponse(request),
+      mode: 'clarify',
+      relevance: 'career-relevant',
+      contextSufficiency: 'insufficient',
+      reply: 'Which meeting are you referring to?',
+      stance: null,
+      proposals: [proposal],
+    } as unknown as CoachingResponse));
+
+    const result = await service.submitText({
+      conversationId: 'malformed-clarify-decision',
+      content: 'That meeting changed everything.',
+    });
+
+    expect(result.pendingProposals).toEqual([]);
+    expect(await db.getFirstAsync('SELECT id FROM memory_confirmations')).toBeNull();
+  });
+
   test('deliberate submission includes bounded months-old nonlexical evidence linked to active outcomes', async () => {
     await db.withTransaction(async (transaction) => {
       await insertGoal(transaction, {

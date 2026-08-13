@@ -530,3 +530,39 @@ test('Senior Self prompt serializes only the submitted turn and supplied context
   expect(prompt.systemPrompt).toEqual(expect.stringContaining('Direct'));
   expect(JSON.parse(prompt.userPrompt)).toEqual(requestFixture);
 });
+
+test('Senior Self decides safety, relevance, context sufficiency, then coaching stance', () => {
+  const { systemPrompt } = buildSeniorSelfPrompt(requestFixture);
+
+  const safety = systemPrompt.indexOf('1. Safety');
+  const relevance = systemPrompt.indexOf('2. Relevance');
+  const contextSufficiency = systemPrompt.indexOf('3. Context sufficiency');
+  const stance = systemPrompt.indexOf('4. Coaching stance');
+
+  expect(safety).toBeGreaterThanOrEqual(0);
+  expect(relevance).toBeGreaterThan(safety);
+  expect(contextSufficiency).toBeGreaterThan(relevance);
+  expect(stance).toBeGreaterThan(contextSufficiency);
+  expect(systemPrompt).toContain('career-relevant');
+  expect(systemPrompt).toContain('adjacent');
+  expect(systemPrompt).toContain('outside-scope');
+});
+
+test('Senior Self treats ambiguous references as missing context and makes clarify neutral', () => {
+  const { systemPrompt } = buildSeniorSelfPrompt(requestFixture);
+
+  for (const referent of ['this', 'that meeting', 'the video', 'what happened earlier']) {
+    expect(systemPrompt).toContain(referent);
+  }
+  expect(systemPrompt).toContain('possible missing referents, not facts');
+  expect(systemPrompt).toContain('exactly one neutral question');
+  expect(systemPrompt).toContain('Never diagnose or infer emotion');
+});
+
+test('Senior Self constrains redirect bridges and permits proposals only while coaching', () => {
+  const { systemPrompt } = buildSeniorSelfPrompt(requestFixture);
+
+  expect(systemPrompt).toContain('briefly acknowledge');
+  expect(systemPrompt).toContain('at most one optional work bridge');
+  expect(systemPrompt).toContain('Only coach responses may carry proposals');
+});
