@@ -1,24 +1,19 @@
 import { useEffect, useReducer, useRef, useState } from 'react';
 import {
-  View,
-  Text,
-  TouchableOpacity,
-  KeyboardAvoidingView,
-  Platform,
   Alert,
   useWindowDimensions,
 } from 'react-native';
-import { ScrollView } from 'react-native-gesture-handler';
-import { LinearGradient } from 'expo-linear-gradient';
+import type { ScrollView } from 'react-native-gesture-handler';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming, runOnJS } from 'react-native-reanimated';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { useAnimatedStyle, useSharedValue, withSpring, withTiming, runOnJS } from 'react-native-reanimated';
+import { Gesture } from 'react-native-gesture-handler';
 import { useVoiceRecorder } from '../../src/hooks/useVoiceRecorder';
 import type { RecordingResult } from '../../src/services/audio';
 import {
   createRecordingStartGuard,
   createRecordingStopSession,
+  stopOwnedRecordingAndDiscard,
   type RecordingStopSession,
 } from '../../src/services/recordingStopSession';
 import {
@@ -37,20 +32,16 @@ import {
   type ChatPresentation,
 } from '../../src/navigation/chatConversationRoute';
 import {
-  ChatNavBar,
   RecordingGlow,
-  TaisaReplyCard,
-  Icon,
   VoiceComposer,
-  TranscriptCorrectionCard,
+  ChatComposerDock,
+  ChatConversationSurface,
+  ChatScreenShell,
 } from '../../src/components/ui';
 import {
   createVoiceComposerState,
   reduceVoiceComposer,
 } from '../../src/services/voiceComposerState';
-
-const BACKGROUND_HEX = '#ffffff';
-const BACKGROUND_TRANSPARENT = 'rgba(255,255,255,0)';
 
 const DISMISS_VELOCITY = 800;
 const SPRING_BACK = { damping: 26, stiffness: 200 };
@@ -99,7 +90,7 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
     fetchThread,
     fetchThreads,
   } = useThreadStore();
-  const { setChatMorphing } = useUIStore();
+  const { setChatMorphing, consumeVoiceAutoStart } = useUIStore();
   const { translateY, open, close } = useMorphTransition();
 
   const slideStyle = useAnimatedStyle(() => ({
@@ -162,11 +153,10 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
   }
 
   function stopActiveRecordingAndDiscard(): Promise<void> {
-    recordingStartGuardRef.current.cancel();
-    const session = recordingStopSessionRef.current;
-    if (session === null) return Promise.resolve();
-    recordingStopSessionRef.current = null;
-    return session.stopAndDiscard();
+    return stopOwnedRecordingAndDiscard(
+      recordingStopSessionRef,
+      recordingStartGuardRef.current,
+    );
   }
 
   useEffect(() => {
@@ -187,6 +177,10 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
     mountedRef.current = true;
     open();
     void drainAudioCleanupQueue().catch(() => {});
+    if (consumeVoiceAutoStart()) {
+      handleSwitchToVoice();
+      void startListening();
+    }
     if (initialConversationIdRef.current) {
       void loadSession(initialConversationIdRef.current).catch(() => {});
     }
@@ -312,10 +306,10 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
 
   async function handleSwitchToText() {
     const activity = recorder.getActivity();
-    if (composer.voice === 'recording') {
+    if (composer.voice === 'recording' || composer.voice === 'paused') {
       if (activity === 'silence') {
         await stopActiveRecordingAndDiscard();
-      } else {
+      } else if (composer.voice === 'recording') {
         await recorder.pause();
       }
     }
@@ -580,197 +574,66 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
   }
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <GestureDetector gesture={dragGesture}>
-        <Animated.View style={[{ flex: 1, backgroundColor: '#ffffff' }, slideStyle]}>
-        {/* Drag handle */}
-        <View style={{ alignItems: 'center', paddingTop: insets.top + 6 }}>
-          <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: '#d8d8d8' }} />
-        </View>
-
-        <ChatNavBar onClose={handleClose} />
-
-        <View style={{ flex: 1 }}>
-          <ScrollView
-            ref={scrollRef}
-            style={{ flex: 1 }}
-            contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 24 }}
-            showsVerticalScrollIndicator={false}
-            onScroll={(e) => { scrollAtTop.value = e.nativeEvent.contentOffset.y <= 2; }}
-            scrollEventThrottle={16}
-          >
-            {messages.filter((message) => message.content.length > 0).map(msg =>
-              msg.role === 'assistant' ? (
-                <TaisaReplyCard key={msg.id} content={msg.content} />
-              ) : (
-                <TouchableOpacity
-                  key={msg.id}
-                  disabled={msg.id !== activeMessageId || activeRequestKind !== 'voice' || isBusy}
-                  onPress={() => setEditingTranscript(msg.content)}
-                  className="self-end mb-3 bg-lime-100 rounded-3 px-4 py-3 max-w-xs"
-                >
-                  <Text className="text-foreground text-base-regular">{msg.content}</Text>
-                  {msg.id === activeMessageId && activeRequestKind === 'voice' ? (
-                    <Text className="mt-1 text-text-tertiary text-caption-regular">Tap to correct transcript</Text>
-                  ) : null}
-                </TouchableOpacity>
-              )
-            )}
-
-            {phase === 'processing' && transcript.length > 0 && !messages.some((message) => message.id === activeMessageId) ? (
-              <View className="self-end mb-3 bg-lime-100 rounded-3 px-4 py-3 max-w-xs">
-                <Text className="text-foreground text-base-regular">{transcript}</Text>
-                <Text className="mt-1 text-text-tertiary text-caption-regular">Transcribed · you can correct this afterward</Text>
-              </View>
-            ) : null}
-
-            {editingTranscript !== null ? (
-              <TranscriptCorrectionCard
-                value={editingTranscript}
-                disabled={isBusy}
-                onChangeText={setEditingTranscript}
-                onCancel={() => setEditingTranscript(null)}
-                onSubmit={() => { void handleSaveTranscriptRevision(); }}
-              />
-            ) : null}
-
-            {phase === 'processing' && (
-              <View className="items-start mb-3">
-                <View className="bg-subtle rounded-3 px-4 py-3">
-                  <Text className="text-text-tertiary text-small-regular">Taisa is thinking…</Text>
-                </View>
-              </View>
-            )}
-
-            {phase === 'error' && (
-              <View className="items-center py-4">
-                <Text className="text-danger text-small-regular mb-3 text-center">
-                  {recordingStartFailed
-                    ? 'The microphone is unavailable. Finish the active call or use the keyboard.'
-                    : error ?? 'Taisa could not complete this action. Your content remains on this device.'}
-                </Text>
-                <View className="flex-row gap-3">
-                  {recordingStartFailed ? (
-                    <TouchableOpacity
-                      onPress={handleUseKeyboard}
-                      className="border border-border rounded-full px-6 py-3"
-                    >
-                      <Text className="text-foreground text-small-semibold">Use keyboard</Text>
-                    </TouchableOpacity>
-                  ) : null}
-                  {activeRequestKind === 'voice' ? (
-                    <TouchableOpacity
-                      disabled={isBusy}
-                      onPress={handleDiscardFailedRecording}
-                      className="border border-border rounded-full px-6 py-3"
-                    >
-                      <Text className="text-foreground text-small-semibold">Discard recording</Text>
-                    </TouchableOpacity>
-                  ) : null}
-                  <TouchableOpacity
-                    disabled={isBusy}
-                    onPress={recordingStartFailed ? startListening : handleRetry}
-                    className="bg-muted rounded-full px-6 py-3"
-                  >
-                    <Text className="text-foreground text-small-semibold">
-                      {recordingStartFailed ? 'Try microphone again' : 'Try again'}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
-
-            {pendingProposals.map((proposal) => (
-              <View key={proposal.id} className="bg-subtle rounded-3 px-4 py-3 mb-3">
-                <Text className="text-foreground text-small-regular mb-3">
-                  {proposal.kind === 'clarification'
-                    ? proposal.question
-                    : `Taisa suggests remembering: ${proposal.summary}`}
-                </Text>
-                {proposal.kind === 'clarification' ? (
-                  <View className="gap-2">
-                    <TouchableOpacity
-                      disabled={isBusy}
-                      onPress={() => resolveClarification(proposal.id, 'replace')}
-                      className="self-start bg-muted rounded-full px-4 py-2"
-                    >
-                      <Text className="text-foreground text-small-semibold">Replace old direction</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      disabled={isBusy}
-                      onPress={() => resolveClarification(proposal.id, 'pause')}
-                      className="self-start border border-border rounded-full px-4 py-2"
-                    >
-                      <Text className="text-foreground text-small-semibold">Pause old direction</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      disabled={isBusy}
-                      onPress={() => resolveClarification(proposal.id, 'coexist')}
-                      className="self-start border border-border rounded-full px-4 py-2"
-                    >
-                      <Text className="text-foreground text-small-semibold">Keep both</Text>
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <TouchableOpacity
-                    disabled={isBusy}
-                    onPress={() => confirmProposal(proposal.id)}
-                    className="self-start bg-muted rounded-full px-4 py-2"
-                  >
-                    <Text className="text-foreground text-small-semibold">Confirm memory</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            ))}
-          </ScrollView>
-
-          <LinearGradient
-            colors={[BACKGROUND_TRANSPARENT, BACKGROUND_HEX]}
-            style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 48, pointerEvents: 'none' }}
+    <ChatScreenShell
+      topInset={insets.top}
+      gesture={dragGesture}
+      animatedStyle={slideStyle}
+      onClose={handleClose}
+      footer={(
+        <ChatComposerDock phase={phase} bottomInset={insets.bottom}>
+          <VoiceComposer
+            mode={composer.mode}
+            voiceState={composer.voice}
+            durationSeconds={recorder.duration}
+            amplitude={recorder.amplitude}
+            text={draft}
+            hasVoiceDraft={composer.voice !== 'none'}
+            disabled={isBusy}
+            onChangeText={(value) => {
+              setDraft(value);
+              dispatchComposer({ type: 'set-text', text: value });
+            }}
+            onSwitchToText={() => { void handleSwitchToText(); }}
+            onSwitchToVoice={handleSwitchToVoice}
+            onStartVoice={() => { void startListening(); }}
+            onPause={() => { void handlePauseVoice(); }}
+            onResume={() => { void handleResumeVoice(); }}
+            onDeleteText={() => {
+              setDraft('');
+              dispatchComposer({ type: 'delete-text' });
+            }}
+            onDeleteVoice={handleDeleteVoiceDraft}
+            onSend={() => { void handleComposerSend(); }}
           />
-        </View>
-
-        <RecordingGlow amplitude={recorder.amplitude} visible={composer.mode === 'voice' && composer.voice === 'recording'} />
-
-        {(phase === 'transcribing' || phase === 'processing') ? (
-          <View style={{ height: 120, alignItems: 'center', justifyContent: 'center', paddingBottom: insets.bottom + 12 }}>
-            <Text className="text-text-tertiary text-small-regular">
-              {phase === 'transcribing' ? 'Transcribing…' : 'Taisa is thinking…'}
-            </Text>
-          </View>
-        ) : (
-          <View className="px-5" style={{ paddingBottom: insets.bottom + 12 }}>
-            <VoiceComposer
-              mode={composer.mode}
-              voiceState={composer.voice}
-              durationSeconds={recorder.duration}
-              amplitude={recorder.amplitude}
-              text={draft}
-              hasVoiceDraft={composer.voice !== 'none'}
-              disabled={isBusy}
-              onChangeText={(value) => {
-                setDraft(value);
-                dispatchComposer({ type: 'set-text', text: value });
-              }}
-              onSwitchToText={() => { void handleSwitchToText(); }}
-              onSwitchToVoice={handleSwitchToVoice}
-              onStartVoice={() => { void startListening(); }}
-              onPause={() => { void handlePauseVoice(); }}
-              onResume={() => { void handleResumeVoice(); }}
-              onDeleteText={() => {
-                setDraft('');
-                dispatchComposer({ type: 'delete-text' });
-              }}
-              onDeleteVoice={handleDeleteVoiceDraft}
-              onSend={() => { void handleComposerSend(); }}
-            />
-          </View>
-        )}
-        </Animated.View>
-      </GestureDetector>
-    </KeyboardAvoidingView>
+        </ChatComposerDock>
+      )}
+    >
+      <ChatConversationSurface
+        scrollRef={scrollRef}
+        messages={messages}
+        activeMessageId={activeMessageId}
+        activeRequestKind={activeRequestKind}
+        transcript={transcript}
+        phase={phase}
+        isBusy={isBusy}
+        error={error}
+        microphoneUnavailable={recordingStartFailed}
+        pendingProposals={pendingProposals}
+        editingTranscript={editingTranscript}
+        onScrollAtTopChange={(atTop) => { scrollAtTop.value = atTop; }}
+        onEditTranscript={setEditingTranscript}
+        onChangeTranscript={setEditingTranscript}
+        onSubmitTranscript={() => { void handleSaveTranscriptRevision(); }}
+        onUseKeyboard={handleUseKeyboard}
+        onDiscardRecording={handleDiscardFailedRecording}
+        onRetry={recordingStartFailed ? startListening : handleRetry}
+        onConfirmProposal={(proposalId) => { void confirmProposal(proposalId); }}
+        onResolveProposal={(proposalId, choice) => { void resolveClarification(proposalId, choice); }}
+      />
+      <RecordingGlow
+        amplitude={recorder.amplitude}
+        visible={composer.mode === 'voice' && composer.voice === 'recording'}
+      />
+    </ChatScreenShell>
   );
 }

@@ -39,7 +39,7 @@ const HYDRATED_B = {
   requestId: 'request-b',
   messageId: 'message-b',
   requestKind: 'voice' as const,
-  requestStatus: 'transcript-confirmation-required' as const,
+  requestStatus: 'completed' as const,
   transcript: 'Private transcript B',
   pendingProposals: [{
     id: 'proposal-b',
@@ -124,6 +124,118 @@ test('hydrates and durably switches the conversation input mode', async () => {
   expect(store.getState().preferredInputMode).toBe('text');
 });
 
+test('voice submit uses the single direct transcription-and-coaching service path', async () => {
+  const submitVoice = jest.fn();
+  const submitVoiceAndCoach = jest.fn(async () => ({
+    status: 'completed' as const,
+    requestId: 'request-direct',
+    messageId: 'message-direct',
+    assistantMessageId: 'assistant-direct',
+    pendingProposalIds: [],
+    pendingProposals: [],
+  }));
+  const service = { submitVoice, submitVoiceAndCoach } as unknown as PrivateCaptureService;
+  const store = createChatStore(async () => service);
+
+  await store.getState().submitVoice(
+    'conversation-direct',
+    'file:///direct.m4a',
+    8,
+    'Typed context',
+  );
+
+  expect(submitVoiceAndCoach).toHaveBeenCalledWith(expect.objectContaining({
+    conversationId: 'conversation-direct',
+    audioUri: 'file:///direct.m4a',
+    durationSeconds: 8,
+    typedClarification: 'Typed context',
+    intentId: expect.any(String),
+  }));
+  expect(submitVoice).not.toHaveBeenCalled();
+  expect(store.getState()).toMatchObject({
+    activeRequestId: 'request-direct',
+    activeMessageId: 'message-direct',
+    activeRequestStatus: 'completed',
+    phase: 'responded',
+  });
+});
+
+test.each([
+  ['coaching-pending', 'retrySubmission'],
+  ['transcript-confirmation-required', 'confirmTranscript'],
+] as const)(
+  'hydration automatically resumes the persisted voice %s interstitial',
+  async (requestStatus, expectedMethod) => {
+    const completed = {
+      status: 'completed' as const,
+      requestId: 'request-b',
+      messageId: 'message-b',
+      assistantMessageId: 'assistant-b',
+      pendingProposalIds: [],
+      pendingProposals: [],
+    };
+    const service = {
+      hydrateConversation: jest.fn(async () => ({ ...HYDRATED_B, requestStatus })),
+      retrySubmission: jest.fn(async () => completed),
+      confirmTranscript: jest.fn(async () => completed),
+    } as unknown as PrivateCaptureService;
+    const store = createChatStore(async () => service);
+
+    await store.getState().hydrateConversation('conversation-b');
+
+    expect(service[expectedMethod]).toHaveBeenCalledWith(
+      expectedMethod === 'retrySubmission' ? 'request-b' : { requestId: 'request-b' },
+    );
+    expect(store.getState()).toMatchObject({
+      activeRequestId: 'request-b',
+      activeMessageId: 'message-b',
+      activeRequestStatus: 'completed',
+      phase: 'responded',
+    });
+  },
+);
+
+test('a transcription retry continues directly into coaching without restoring removed review UI', async () => {
+  const confirmation = {
+    status: 'transcript-confirmation-required' as const,
+    requestId: 'request-b',
+    messageId: 'message-b',
+    transcript: 'Recovered transcript',
+  };
+  const completed = {
+    status: 'completed' as const,
+    requestId: 'request-b',
+    messageId: 'message-b',
+    assistantMessageId: 'assistant-b',
+    pendingProposalIds: [],
+    pendingProposals: [],
+  };
+  const service = {
+    retrySubmission: jest.fn(async () => confirmation),
+    confirmTranscript: jest.fn(async () => completed),
+  } as unknown as PrivateCaptureService;
+  const store = createChatStore(async () => service);
+  store.setState({
+    activeSessionId: 'conversation-b',
+    activeRequestId: 'request-b',
+    activeRequestKind: 'voice',
+    activeRequestStatus: 'transcription-failed',
+    activeMessageId: 'message-b',
+    phase: 'error',
+  });
+
+  await store.getState().retrySubmission();
+
+  expect(service.retrySubmission).toHaveBeenCalledWith('request-b');
+  expect(service.confirmTranscript).toHaveBeenCalledWith({ requestId: 'request-b' });
+  expect(store.getState()).toMatchObject({
+    activeRequestId: 'request-b',
+    activeMessageId: 'message-b',
+    activeRequestStatus: 'completed',
+    phase: 'responded',
+  });
+});
+
 const COMPLETED_A = {
   status: 'completed' as const,
   requestId: 'request-a-result',
@@ -165,13 +277,8 @@ const CHAT_OPERATION_CASES: Array<{
   },
   {
     name: 'voice submit',
-    serviceMethod: 'submitVoice',
-    result: {
-      status: 'transcript-confirmation-required',
-      requestId: 'request-a-result',
-      messageId: 'message-a-result',
-      transcript: 'Private transcript A result',
-    },
+    serviceMethod: 'submitVoiceAndCoach',
+    result: COMPLETED_A,
     start: (store) => store.getState().submitVoice('conversation-a', 'file:///a.m4a', 4),
   },
   {
@@ -409,7 +516,7 @@ describe('local-first stores', () => {
     }));
   });
 
-  test('chat store synchronously deduplicates a rapid submit intent and restores durable transcript review', async () => {
+  test('chat store synchronously deduplicates a rapid submit intent and restores a durable completed turn', async () => {
     let release!: () => void;
     const gate = new Promise<void>((resolve) => { release = resolve; });
     const submitText = jest.fn(async () => {
@@ -424,9 +531,11 @@ describe('local-first stores', () => {
       };
     });
     const hydrateConversation = jest.fn(async () => ({
+      preferredInputMode: 'voice' as const,
       requestId: 'voice-request',
       messageId: 'voice-message',
-      requestStatus: 'transcript-confirmation-required' as const,
+      requestKind: 'voice' as const,
+      requestStatus: 'completed' as const,
       transcript: 'Restored editable transcript',
       pendingProposals: [],
     }));
@@ -456,7 +565,7 @@ describe('local-first stores', () => {
       activeRequestId: 'voice-request',
       activeMessageId: 'voice-message',
       transcript: 'Restored editable transcript',
-      phase: 'transcript-review',
+      phase: 'responded',
     }));
 
     await store.getState().drainAudioCleanupQueue();
@@ -603,7 +712,7 @@ describe('local-first stores', () => {
       requestId: 'request-b',
       messageId: 'message-b',
       requestKind: 'voice',
-      requestStatus: 'transcript-confirmation-required',
+      requestStatus: 'completed',
       transcript: 'Private transcript B',
       pendingProposals: [],
     });
@@ -632,7 +741,7 @@ describe('local-first stores', () => {
       preferredInputMode: 'voice',
       transcript: 'Private transcript B',
       pendingProposals: [],
-      phase: 'transcript-review',
+      phase: 'responded',
     }));
   });
 
@@ -735,7 +844,7 @@ describe('local-first stores', () => {
           transcript: 'Private transcript B',
           pendingProposalIds: ['proposal-b'],
           pendingProposals: HYDRATED_B.pendingProposals,
-          phase: 'transcript-review',
+          phase: 'responded',
           isBusy: false,
           error: null,
         });

@@ -12,6 +12,7 @@ export interface ProviderCoachingResult {
 
 export interface CoachingProvider {
   readonly id: 'openai' | 'anthropic';
+  estimateMaximumUsage?(input: ProviderCoachingInput): UsageReceipt;
   respond(input: ProviderCoachingInput): Promise<ProviderCoachingResult>;
 }
 
@@ -118,4 +119,24 @@ export function estimateCostUsd(
       outputTokens * config.outputPriceUsdPerMillionTokens) /
     1_000_000
   );
+}
+
+export function estimateMaximumCoachingUsage(
+  provider: CoachingProviderId,
+  input: ProviderCoachingInput,
+  config: CoachingProviderConfig,
+): UsageReceipt {
+  // A UTF-8 token cannot contain less than one byte. Reserving one token per byte,
+  // plus the configured structured-output overhead, deliberately overestimates input.
+  const inputTokens = Buffer.byteLength(input.systemPrompt, 'utf8') +
+    Buffer.byteLength(input.userPrompt, 'utf8') +
+    config.structuredOutputInputTokenOverhead;
+  const outputTokens = config.maxOutputTokens;
+  return {
+    provider,
+    model: config.model,
+    inputTokens,
+    outputTokens,
+    estimatedCostUsd: estimateCostUsd(inputTokens, outputTokens, config),
+  };
 }

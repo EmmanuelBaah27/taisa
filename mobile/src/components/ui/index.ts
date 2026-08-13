@@ -26,6 +26,27 @@ export { VoiceDraftStrip } from './VoiceDraftStrip';
 export type { VoiceDraftStripProps } from './VoiceDraftStrip';
 export { TranscriptCorrectionCard } from './TranscriptCorrectionCard';
 export type { TranscriptCorrectionCardProps } from './TranscriptCorrectionCard';
+export {
+  ChatComposerDock,
+  ChatConversationSurface,
+  ChatErrorPanel,
+  ChatMessageBubble,
+  ChatProcessingBubble,
+  ChatScreenShell,
+  PendingProposalCard,
+  PendingTranscriptBubble,
+} from './ChatSurfaces';
+export type {
+  ChatComposerDockProps,
+  ChatConversationSurfaceProps,
+  ChatErrorPanelProps,
+  ChatMessageBubbleProps,
+  ChatScreenShellProps,
+  PendingProposalCardProps,
+  PendingTranscriptBubbleProps,
+} from './ChatSurfaces';
+export { VoiceEntryButton } from './VoiceEntryButton';
+export type { VoiceEntryButtonProps } from './VoiceEntryButton';
 
 export { CubeRefractionOverlay } from './CubeRefractionOverlay';
 export type { CubeRefractionOverlayProps } from './CubeRefractionOverlay';
@@ -34,5 +55,6 @@ export { GlowDevSheet } from './GlowDevSheet';
 export type { GlowDevSheetProps } from './GlowDevSheet';
 
 export { TaisaReplyCard } from './TaisaReplyCard';
+export type { TaisaReplyCardProps } from './TaisaReplyCard';
 
 export { NaviiAvatar } from './NaviiAvatar';

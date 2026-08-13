@@ -276,6 +276,18 @@ export async function updateMessage(
   requireExactlyOneAffectedRow(result, 'Cannot update missing message');
 }
 
+export async function deleteMessage(
+  transaction: RepositoryTransaction,
+  id: string,
+  idempotencyId: string,
+): Promise<void> {
+  if (!(await claimMutation(transaction, idempotencyId, 'message', id, 'delete', { id }))) {
+    return;
+  }
+  const result = await transaction.runAsync('DELETE FROM messages WHERE id = $id', { $id: id });
+  requireExactlyOneAffectedRow(result, 'Cannot delete missing message');
+}
+
 export async function listMessages(
   database: RepositoryConnection,
   conversationId: string,

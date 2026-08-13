@@ -1,17 +1,18 @@
 import { View, Text } from 'react-native';
+import { colors } from '../../constants/theme';
 
-interface TaisaReplyCardProps {
+export interface TaisaReplyCardProps {
   content: string;
 }
 
 export function TaisaReplyCard({ content }: TaisaReplyCardProps) {
   return (
     <View
-      className="bg-card rounded-lg rounded-tl-sm px-3 py-3 my-1 border border-border"
-      style={{ borderLeftWidth: 2, borderLeftColor: '#cdec1a' }}
+      className="my-1 rounded-3 rounded-tl-sm border border-border bg-card px-3 py-3"
+      style={{ borderLeftWidth: 2, borderLeftColor: colors.accent }}
     >
-      <Text className="text-lime-700 text-xs font-bold mb-1">Taisa</Text>
-      <Text className="text-muted-foreground text-sm leading-relaxed">{content}</Text>
+      <Text className="mb-1 text-lime-700 text-caption-semibold">Taisa</Text>
+      <Text className="text-muted-foreground text-small-regular">{content}</Text>
     </View>
   );
 }

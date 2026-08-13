@@ -2,6 +2,7 @@ import type { RecordingResult } from '../audio';
 import {
   createRecordingStartGuard,
   createRecordingStopSession,
+  stopOwnedRecordingAndDiscard,
 } from '../recordingStopSession';
 
 const RESULT: RecordingResult = {
@@ -76,5 +77,27 @@ describe('recording stop session', () => {
 
     await expect(session.stopAndDiscard()).resolves.toBeUndefined();
     expect(discard).not.toHaveBeenCalled();
+  });
+
+  test('paused silence detaches the native session before disposal so a later Reply can start', async () => {
+    let releaseStop!: (result: RecordingResult) => void;
+    const stop = jest.fn(() => new Promise<RecordingResult>((resolve) => {
+      releaseStop = resolve;
+    }));
+    const discard = jest.fn(async (_uri: string) => undefined);
+    const owner = { current: createRecordingStopSession({ stop, discard }) };
+    const guard = createRecordingStartGuard();
+
+    const cleanup = stopOwnedRecordingAndDiscard(owner, guard);
+
+    expect(owner.current).toBeNull();
+    expect(guard.begin()).not.toBeNull();
+    owner.current = createRecordingStopSession({
+      stop: jest.fn(async () => RESULT),
+      discard,
+    });
+    releaseStop(RESULT);
+    await cleanup;
+    expect(discard).toHaveBeenCalledWith(RESULT.uri);
   });
 });

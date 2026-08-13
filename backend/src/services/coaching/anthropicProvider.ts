@@ -7,7 +7,7 @@ import type {
   CoachingProviderConfig,
   ProviderCoachingInput,
 } from './provider';
-import { estimateCostUsd } from './provider';
+import { estimateCostUsd, estimateMaximumCoachingUsage } from './provider';
 
 type AnthropicClient = Pick<Anthropic, 'messages'>;
 
@@ -228,6 +228,7 @@ export function createAnthropicProvider(
 ): CoachingProvider {
   return {
     id: 'anthropic',
+    estimateMaximumUsage: (input) => estimateMaximumCoachingUsage('anthropic', input, config),
     async respond(input: ProviderCoachingInput) {
       const message = await client.messages.create(
         {

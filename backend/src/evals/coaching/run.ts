@@ -64,14 +64,28 @@ export async function runCoachingEvaluation(
 
   for (const scenario of coachingEvaluationScenarios) {
     const startedAt = now();
-    const reservation = options.usageLedger && options.maxCostUsd
-      ? options.usageLedger.reserveUsage(
-        { provider: options.providerId, model: 'coaching-evaluation', estimatedCostUsd: options.maxCostUsd / coachingEvaluationScenarios.length },
-        { perRequestUsd: options.maxCostUsd / coachingEvaluationScenarios.length, dailyUsd: options.maxCostUsd, monthlyUsd: options.maxCostUsd },
-      ) : null;
+    const providerInput = buildSeniorSelfPrompt(scenario.request);
+    let reservation: ReturnType<UsageLedger['reserveUsage']> | null = null;
     try {
+      if (options.maxCostUsd !== undefined || options.usageLedger !== undefined) {
+        if (options.maxCostUsd === undefined || options.usageLedger === undefined) {
+          throw new Error('Evaluation cost enforcement requires a total budget and durable ledger');
+        }
+        if (options.provider.estimateMaximumUsage === undefined) {
+          throw new Error('Selected provider cannot conservatively reserve maximum usage');
+        }
+        const maximumUsage = options.provider.estimateMaximumUsage(providerInput);
+        reservation = options.usageLedger.reserveUsage(
+          maximumUsage,
+          {
+            perRequestUsd: options.maxCostUsd,
+            dailyUsd: options.maxCostUsd,
+            monthlyUsd: options.maxCostUsd,
+          },
+        );
+      }
       reservation?.beginProviderInvocation();
-      const providerResult = await options.provider.respond(buildSeniorSelfPrompt(scenario.request));
+      const providerResult = await options.provider.respond(providerInput);
       reservation?.commit(providerResult.usage);
       const latencyMs = Math.max(0, now() - startedAt);
       const parsed = CoachingResponsePayloadSchema.safeParse(providerResult.payload);
@@ -248,8 +262,13 @@ export async function runEvaluationCli(
     const summary = await runCoachingEvaluation({ providerId, provider, maxCostUsd, usageLedger: dependencies.usageLedger });
     const outputArg = argv.find((argument) => argument.startsWith('--review-output='));
     const outputPath = outputArg?.slice('--review-output='.length) || path.resolve(process.cwd(), 'coaching-eval-review.json');
-    dependencies.writeArtifact?.(outputPath, `${JSON.stringify(buildManualReviewArtifact(summary), null, 2)}\n`);
+    const reviewArtifact = buildManualReviewArtifact(summary);
+    dependencies.writeArtifact?.(outputPath, `${JSON.stringify(reviewArtifact, null, 2)}\n`);
     dependencies.writeStdout(`${serializeEvaluationSummary(summary)}\n`);
+    if (!reviewArtifact.automatedPassed || reviewArtifact.manualReviewStatus === 'required') {
+      dependencies.writeStderr('EVAL_COACHING_REVIEW_REQUIRED\n');
+      return 1;
+    }
     return 0;
   } catch {
     dependencies.writeStderr('EVAL_COACHING_FAILED\n');

@@ -177,11 +177,31 @@ function snapshotsMatch(left: ArchiveSnapshot, right: ArchiveSnapshot): boolean 
   return ARCHIVE_TABLES.every((table) => left.counts[table] === right.counts[table]);
 }
 
-function requireSupportedSnapshot(snapshot: ArchiveSnapshot): void {
+function requireCurrentSnapshot(snapshot: ArchiveSnapshot): void {
   if (snapshot.archiveFormatVersion !== ARCHIVE_FORMAT_VERSION
     || snapshot.schemaVersion !== SCHEMA_VERSION) {
     throw new ArchiveOperationError('UNSUPPORTED_ARCHIVE_VERSION');
   }
+}
+
+function requireRestorableSnapshot(snapshot: ArchiveSnapshot): void {
+  if (snapshot.archiveFormatVersion !== ARCHIVE_FORMAT_VERSION
+    || snapshot.schemaVersion < 1
+    || snapshot.schemaVersion > SCHEMA_VERSION) {
+    throw new ArchiveOperationError('UNSUPPORTED_ARCHIVE_VERSION');
+  }
+}
+
+function candidateMatchesVerifiedSource(
+  source: ArchiveSnapshot,
+  candidate: ArchiveSnapshot,
+): boolean {
+  if (candidate.archiveFormatVersion !== ARCHIVE_FORMAT_VERSION
+    || candidate.schemaVersion !== SCHEMA_VERSION) return false;
+  if (!ARCHIVE_TABLES.every((table) => source.counts[table] === candidate.counts[table])) {
+    return false;
+  }
+  return source.schemaVersion !== candidate.schemaVersion || source.contentHash === candidate.contentHash;
 }
 
 async function requireFreeSpace(
@@ -227,7 +247,7 @@ export function createEncryptedArchiveService(
             destinationUri,
             passphrase: confirmedPassphrase.value,
           });
-          requireSupportedSnapshot(snapshot);
+          requireCurrentSnapshot(snapshot);
           return { uri: destinationUri, snapshot };
         } catch (cause) {
           try {
@@ -271,7 +291,7 @@ export function createEncryptedArchiveService(
             if (cause instanceof ArchiveOperationError) throw cause;
             throw new ArchiveOperationError('INVALID_ARCHIVE_OR_PASSPHRASE');
           }
-          requireSupportedSnapshot(sourceSnapshot);
+          requireRestorableSnapshot(sourceSnapshot);
 
           candidateUri = dependencies.files.createCandidateUri();
           const candidateSnapshot = await dependencies.sqlCipher.createDeviceEncryptedCandidate({
@@ -279,7 +299,7 @@ export function createEncryptedArchiveService(
             destinationUri: candidateUri,
             passphrase,
           });
-          if (!snapshotsMatch(sourceSnapshot, candidateSnapshot)) {
+          if (!candidateMatchesVerifiedSource(sourceSnapshot, candidateSnapshot)) {
             throw new ArchiveOperationError('ARCHIVE_VERIFICATION_FAILED');
           }
 
@@ -357,6 +377,7 @@ interface SqlCipherEngineDependencies {
   openDeviceCandidate(input: {
     destinationUri: string;
     deviceKey: string;
+    schemaVersion: number;
   }): Promise<ArchiveSqlDatabase>;
   deleteMaintenance(): Promise<void>;
   readDeviceKey(): Promise<string>;
@@ -371,6 +392,7 @@ async function fingerprintSchema(
   database: ArchiveSqlDatabase,
   schema: 'main' | 'passphrase_export' | 'source_archive' | 'device_candidate',
   sha256: (input: string) => Promise<string>,
+  verifySearchIndexes = true,
 ): Promise<ArchiveSnapshot> {
   const versionRow = await database.getFirstAsync<{ user_version: number }>(
     `PRAGMA ${schema}.user_version`,
@@ -409,11 +431,16 @@ async function fingerprintSchema(
   try {
     // For external-content FTS5 tables, rank=1 makes integrity-check compare the real index
     // against its content table. Reading the virtual table without MATCH only reads content.
-    for (const table of ['message_search', 'evidence_search'] as const) {
-      await database.runAsync(
-        `INSERT INTO ${qualified(schema, table)} (${quoteTrustedIdentifier(table)}, rank)
-         VALUES ('integrity-check', 1)`,
-      );
+    // Never issue these commands against a selected archive: only locally created trusted
+    // schemas may execute virtual-table behavior. A trusted candidate rebuilds and verifies
+    // both indexes after bound ordinary-table rows are imported.
+    if (verifySearchIndexes) {
+      for (const table of ['message_search', 'evidence_search'] as const) {
+        await database.runAsync(
+          `INSERT INTO ${qualified(schema, table)} (${quoteTrustedIdentifier(table)}, rank)
+           VALUES ('integrity-check', 1)`,
+        );
+      }
     }
   } catch {
     throw new Error('Archive search index verification failed');
@@ -453,6 +480,9 @@ export function parseArchiveManifestForValidation(row: {
     }
     counts[table] = count as number;
   }
+  if (counts.profile > 1) {
+    throw new Error('Archive must contain at most one authoritative local profile');
+  }
   return {
     archiveFormatVersion: ARCHIVE_FORMAT_VERSION,
     schemaVersion: row.schema_version,
@@ -465,6 +495,26 @@ async function inspectAttachedArchive(
   database: ArchiveSqlDatabase,
   schema: 'passphrase_export' | 'source_archive' | 'device_candidate',
   sha256: (input: string) => Promise<string>,
+  options: {
+    manifest?: ArchiveSnapshot;
+    verifySearchIndexes?: boolean;
+  } = {},
+): Promise<ArchiveSnapshot> {
+  const manifest = options.manifest ?? await readAttachedArchiveManifest(database, schema);
+  if (manifest.schemaVersion < 1 || manifest.schemaVersion > SCHEMA_VERSION) return manifest;
+  const actual = await fingerprintSchema(
+    database,
+    schema,
+    sha256,
+    options.verifySearchIndexes ?? true,
+  );
+  if (!snapshotsMatch(manifest, actual)) throw new Error('Archive fingerprint does not match');
+  return actual;
+}
+
+async function readAttachedArchiveManifest(
+  database: ArchiveSqlDatabase,
+  schema: 'passphrase_export' | 'source_archive' | 'device_candidate',
 ): Promise<ArchiveSnapshot> {
   const manifestRow = await database.getFirstAsync<{
     archive_format_version: number;
@@ -476,11 +526,7 @@ async function inspectAttachedArchive(
      FROM ${qualified(schema, 'taisa_archive_manifest')} WHERE id = 1`,
   );
   if (manifestRow === null) throw new Error('Archive manifest is missing');
-  const manifest = parseArchiveManifestForValidation(manifestRow);
-  if (manifest.schemaVersion !== SCHEMA_VERSION) return manifest;
-  const actual = await fingerprintSchema(database, schema, sha256);
-  if (!snapshotsMatch(manifest, actual)) throw new Error('Archive fingerprint does not match');
-  return actual;
+  return parseArchiveManifestForValidation(manifestRow);
 }
 
 async function requireSqlCipher(database: ArchiveSqlDatabase): Promise<void> {
@@ -747,7 +793,11 @@ export function createSqlCipherArchiveBoundary(
           await attachWithPassphrase(database, sourceUri, 'source_archive', passphrase);
           attached = true;
           await requireOrdinaryArchiveTables(database);
-          return await inspectAttachedArchive(database, 'source_archive', dependencies.sha256);
+          // This is deliberately only a non-executing preliminary inspection. SQLite integrity
+          // checks may invoke virtual-table xIntegrity implementations, so content/hash/integrity
+          // verification waits until candidate creation has proven exact schema identity against
+          // a locally generated trusted schema.
+          return readAttachedArchiveManifest(database, 'source_archive');
         } finally {
           if (attached) await detachQuietly(database, 'source_archive');
         }
@@ -763,28 +813,49 @@ export function createSqlCipherArchiveBoundary(
           await attachWithPassphrase(database, sourceUri, 'source_archive', passphrase);
           sourceAttached = true;
           await requireOrdinaryArchiveTables(database);
-          const sourceSnapshot = await inspectAttachedArchive(
-            database,
-            'source_archive',
-            dependencies.sha256,
-          );
+          const sourceManifest = await readAttachedArchiveManifest(database, 'source_archive');
+          if (sourceManifest.schemaVersion < 1 || sourceManifest.schemaVersion > SCHEMA_VERSION) {
+            throw new Error('Archive schema version is unsupported');
+          }
           const deviceKey = (await dependencies.readDeviceKey()).toLowerCase();
           if (!DEVICE_KEY_PATTERN.test(deviceKey)) throw new Error('Device key is unavailable');
           // The device key is used only to initialize a fresh trusted current-schema database.
           // No sqlite_master SQL, trigger, index, constraint, or other schema object is copied
           // from the selected archive.
-          candidate = await dependencies.openDeviceCandidate({ destinationUri, deviceKey });
+          candidate = await dependencies.openDeviceCandidate({
+            destinationUri,
+            deviceKey,
+            schemaVersion: sourceManifest.schemaVersion,
+          });
+          await requireTrustedSchemaIdentity(database, candidate);
+          const sourceSnapshot = await inspectAttachedArchive(
+            database,
+            'source_archive',
+            dependencies.sha256,
+            { manifest: sourceManifest, verifySearchIndexes: false },
+          );
           // After FTS integrity and schema identity checks, the maintenance connection becomes
           // strictly source-only for the bound-value copy.
           await database.execAsync('PRAGMA query_only = ON');
           await importAllowlistedTables(database, candidate);
+          const importedSnapshot = await fingerprintSchema(
+            candidate,
+            'main',
+            dependencies.sha256,
+          );
+          if (!snapshotsMatch(sourceSnapshot, importedSnapshot)) {
+            throw new Error('Trusted device candidate verification failed');
+          }
+          if (sourceSnapshot.schemaVersion < SCHEMA_VERSION) {
+            await runMigrations(candidate);
+          }
           const candidateSnapshot = await fingerprintSchema(
             candidate,
             'main',
             dependencies.sha256,
           );
-          if (!snapshotsMatch(sourceSnapshot, candidateSnapshot)) {
-            throw new Error('Trusted device candidate verification failed');
+          if (!candidateMatchesVerifiedSource(sourceSnapshot, candidateSnapshot)) {
+            throw new Error('Migrated device candidate verification failed');
           }
           return candidateSnapshot;
         } finally {
@@ -810,7 +881,7 @@ export function createSqlCipherArchiveBoundary(
 const nativeSqlCipherBoundary = createSqlCipherArchiveBoundary({
   openActive: openTaisaDatabase,
   openMaintenance: () => SQLite.openDatabaseAsync(MAINTENANCE_DATABASE_NAME),
-  async openDeviceCandidate({ destinationUri, deviceKey }) {
+  async openDeviceCandidate({ destinationUri, deviceKey, schemaVersion }) {
     const directory = SQLite.defaultDatabaseDirectory;
     if (typeof directory !== 'string' || directory.length === 0) {
       throw new Error('SQLite database directory is unavailable on this platform');
@@ -823,7 +894,7 @@ const nativeSqlCipherBoundary = createSqlCipherArchiveBoundary({
       await requireSqlCipher(database);
       await database.execAsync('PRAGMA foreign_keys = ON');
       await database.execAsync('PRAGMA journal_mode = DELETE');
-      await runMigrations(database);
+      await runMigrations(database, schemaVersion);
       return database;
     } catch (error) {
       await database.closeAsync();

@@ -54,14 +54,20 @@ async function applyMigration(db: DatabaseLike, migration: Migration): Promise<v
   }
 }
 
-export async function runMigrations(db: DatabaseLike): Promise<void> {
+export async function runMigrations(
+  db: DatabaseLike,
+  targetVersion: number = SCHEMA_VERSION,
+): Promise<void> {
+  if (!Number.isSafeInteger(targetVersion) || targetVersion < 1 || targetVersion > SCHEMA_VERSION) {
+    throw new UnsupportedDatabaseVersionError(targetVersion);
+  }
   const currentVersion = await readUserVersion(db);
-  if (currentVersion > SCHEMA_VERSION) {
+  if (currentVersion > targetVersion) {
     throw new UnsupportedDatabaseVersionError(currentVersion);
   }
 
   for (const migration of MIGRATIONS) {
-    if (migration.version > currentVersion) {
+    if (migration.version > currentVersion && migration.version <= targetVersion) {
       await applyMigration(db, migration);
     }
   }

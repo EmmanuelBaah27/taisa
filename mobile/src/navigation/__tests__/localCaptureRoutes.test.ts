@@ -70,9 +70,13 @@ describe('local-first capture navigation', () => {
       path.resolve(__dirname, '../../../app/chat/index.tsx'),
       'utf8',
     );
+    const chatSurfaces = fs.readFileSync(
+      path.resolve(__dirname, '../../components/ui/ChatSurfaces.tsx'),
+      'utf8',
+    );
 
-    expect(chatScreen).toMatch(/The microphone is unavailable/);
-    expect(chatScreen).toMatch(/Use keyboard/);
+    expect(chatSurfaces).toMatch(/The microphone is unavailable/);
+    expect(chatSurfaces).toMatch(/Use keyboard/);
     expect(chatScreen).toMatch(/setPhase\('idle'\)/);
   });
 
@@ -81,9 +85,13 @@ describe('local-first capture navigation', () => {
       path.resolve(__dirname, '../../../app/chat/index.tsx'),
       'utf8',
     );
+    const chatSurfaces = fs.readFileSync(
+      path.resolve(__dirname, '../../components/ui/ChatSurfaces.tsx'),
+      'utf8',
+    );
 
-    expect(chatScreen).toMatch(/KeyboardAvoidingView/);
-    expect(chatScreen).toMatch(/behavior=\{Platform\.OS === 'ios' \? 'padding' : undefined\}/);
+    expect(chatSurfaces).toMatch(/KeyboardAvoidingView/);
+    expect(chatSurfaces).toMatch(/behavior=\{Platform\.OS === 'ios' \? 'padding' : undefined\}/);
     expect(chatScreen).toMatch(/await retrySubmission\(\);[\s\S]*setDraft\(''\)/);
   });
 
@@ -118,7 +126,7 @@ describe('local-first capture navigation', () => {
 
     expect(chatScreen).toMatch(/function handleUseKeyboard\(\)[\s\S]*restore-mode[\s\S]*mode: 'text'/);
     expect(chatScreen).toMatch(/function handleUseKeyboard\(\)[\s\S]*setPreferredInputMode\([^,]+, 'text'\)/);
-    expect(chatScreen).toMatch(/onPress=\{handleUseKeyboard\}/);
+    expect(chatScreen).toMatch(/onUseKeyboard=\{handleUseKeyboard\}/);
   });
 
   test('deleting a retained failed voice draft abandons durable audio before clearing the local draft', () => {
@@ -141,7 +149,8 @@ describe('local-first capture navigation', () => {
       'utf8',
     );
 
-    expect(chatScreen).toMatch(/TranscriptCorrectionCard/);
+    expect(chatScreen).toMatch(/ChatConversationSurface/);
+    expect(index).toMatch(/ChatConversationSurface/);
     expect(index).toMatch(/export \{ TranscriptCorrectionCard \}/);
   });
 
@@ -150,7 +159,7 @@ describe('local-first capture navigation', () => {
       '../../../app/onboarding/index.tsx',
       '../../../app/(tabs)/you.tsx',
       '../../../app/thread/[id].tsx',
-      '../../../app/chat/index.tsx',
+      '../../components/ui/ChatSurfaces.tsx',
     ];
     for (const file of files) {
       const source = fs.readFileSync(path.resolve(__dirname, file), 'utf8');

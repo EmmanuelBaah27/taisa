@@ -16,6 +16,20 @@ export interface RecordingStartGuard {
   complete(attempt: number): boolean;
 }
 
+export interface RecordingStopSessionOwner {
+  current: RecordingStopSession | null;
+}
+
+export function stopOwnedRecordingAndDiscard(
+  owner: RecordingStopSessionOwner,
+  startGuard: Pick<RecordingStartGuard, 'cancel'>,
+): Promise<void> {
+  startGuard.cancel();
+  const session = owner.current;
+  owner.current = null;
+  return session?.stopAndDiscard() ?? Promise.resolve();
+}
+
 export function createRecordingStartGuard(): RecordingStartGuard {
   let generation = 0;
   let pending = false;

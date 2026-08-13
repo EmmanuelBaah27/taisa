@@ -187,6 +187,25 @@ describe('encrypted archive recovery', () => {
     expect(files.promoteCandidate).not.toHaveBeenCalled();
   });
 
+  test('restores a verified schema-v1 archive through a migrated current-schema candidate', async () => {
+    const sourceV1 = {
+      ...SNAPSHOT,
+      schemaVersion: 1,
+      contentHash: '1'.repeat(64),
+    };
+    const { service, sqlCipher, files } = makeHarness();
+    sqlCipher.inspectPassphraseArchive.mockResolvedValueOnce(sourceV1);
+    sqlCipher.createDeviceEncryptedCandidate.mockResolvedValueOnce(SNAPSHOT);
+
+    await expect(service.restoreEncryptedArchive(
+      'file:///selected/schema-v1-backup.sqlite3',
+      'correct horse battery',
+    )).resolves.toEqual({ snapshot: SNAPSHOT });
+
+    expect(sqlCipher.createDeviceEncryptedCandidate).toHaveBeenCalledTimes(1);
+    expect(files.promoteCandidate).toHaveBeenCalledTimes(1);
+  });
+
   test('identifies a newer manifest before trying to interpret future entity tables', () => {
     const snapshot = parseArchiveManifestForValidation({
       archive_format_version: 1,
@@ -454,6 +473,7 @@ describe('encrypted archive recovery', () => {
     expect(openDeviceCandidate).toHaveBeenCalledWith({
       destinationUri: 'file:///restore-candidate.db',
       deviceKey: 'b'.repeat(64),
+      schemaVersion: SCHEMA_VERSION,
     });
     expect(candidate.execAsync).toHaveBeenCalledWith('BEGIN IMMEDIATE');
     expect(candidate.execAsync).toHaveBeenCalledWith('PRAGMA defer_foreign_keys = ON');
@@ -511,9 +531,7 @@ describe('encrypted archive recovery', () => {
     })).rejects.toThrow('profile');
   });
 
-  test.each(['foreign-key', 'corrupt-search-index'] as const)(
-    'rejects a source archive with a %s integrity failure',
-    async (failure) => {
+  test('preliminary inspection does not execute source integrity behavior', async () => {
       const source = {
         execAsync: jest.fn(async () => undefined),
         getFirstAsync: jest.fn(async (sql: string) => {
@@ -534,16 +552,11 @@ describe('encrypted archive recovery', () => {
           if (sql.includes('sqlite_schema')) return SOURCE_SCHEMA_OBJECTS;
           if (sql.includes('integrity_check')) return [{ integrity_check: 'ok' }];
           if (sql.includes('foreign_key_check')) {
-            return failure === 'foreign-key' ? [{ table: 'messages', rowid: 1 }] : [];
+            return [{ table: 'messages', rowid: 1 }];
           }
           return [];
         }),
-        runAsync: jest.fn(async (sql: string) => {
-          if (failure === 'corrupt-search-index' && sql.includes('integrity-check')) {
-            throw new Error('database disk image is malformed');
-          }
-          return { changes: 0, lastInsertRowId: 0 };
-        }),
+        runAsync: jest.fn(async () => ({ changes: 0, lastInsertRowId: 0 })),
         closeAsync: jest.fn(async () => undefined),
       };
       const boundary = createSqlCipherArchiveBoundary({
@@ -558,9 +571,12 @@ describe('encrypted archive recovery', () => {
       await expect(boundary.inspectPassphraseArchive({
         sourceUri: 'file:///restore-input.db',
         passphrase: 'correct horse battery',
-      })).rejects.toThrow(failure === 'foreign-key' ? 'foreign key' : 'search index');
-    },
-  );
+      })).resolves.toEqual(EMPTY_SNAPSHOT);
+      expect(source.getAllAsync).not.toHaveBeenCalledWith(
+        expect.stringContaining('source_archive.integrity_check'),
+      );
+      expect(source.runAsync).not.toHaveBeenCalledWith(expect.stringContaining('integrity-check'));
+  });
 
   test('rejects extra or omitted source columns instead of importing archive-owned schema', async () => {
     const source = {

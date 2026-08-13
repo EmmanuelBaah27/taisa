@@ -35,6 +35,7 @@ Full token definitions and decision rules: `foundations.md` (root of repo).
 | Token | Class | Hex | Role |
 |---|---|---|---|
 | Page background | `bg-background` | `#ffffff` | Root screen background |
+| Transparent page fade | `colors.backgroundTransparent` | `rgba(255,255,255,0)` | Native gradient edge paired with page background |
 | Card surface | `bg-card` | `#ffffff` | Cards, panels, modals |
 | Subtle fill | `bg-subtle` | `#f9f9f9` | Hover states, subtle sections |
 | Muted fill | `bg-muted` | `#f3f3f3` | Input backgrounds, disabled |
@@ -107,7 +108,8 @@ Never use raw `text-sm font-semibold` combinations — use the composite utiliti
 | `Input` | `size`, `error`, `...TextInputProps` | Two sizes; error state |
 | `Icon` | `name`, `size`, `color` | 1906 icons — `round-outlined-radius-2-stroke-1.5` style via `react-native-svg` |
 | `TopNavBar` | _(none)_ | Fixed app-level nav bar; 5 tabs; active tab shows icon + label pill in `bg-muted`; uses `usePathname` + safe area insets |
-| `VoiceButton` | _(none)_ | Fixed bottom CTA; lime pill with glow shadow; routes to `/chat` |
+| `VoiceButton` | `onPress?` | State-owning wrapper for the central CTA; fresh entry opens voice mode with one automatic recorder start |
+| `VoiceEntryButton` | `bottomInset`, `hidden`, `onPress` | Presentational lime central CTA with tokenized glow and accessible voice label |
 | `WorkspaceHeader` | `subtitle: string` | Screen-level header; workspace name from `careerStore.profile.currentCompany`; contextual subtitle |
 | `ChatNavBar` | `onClose: () => void` | Chat modal nav bar; caret-down close on left, "Taisa" centred; no right slot |
 | `RecordingGlow` | `amplitude: number` | Amplitude-reactive lime glow anchored to screen bottom; 0 = very faint, 10 = full brightness; uses `expo-linear-gradient` + `Animated` with `useNativeDriver` |
@@ -116,6 +118,14 @@ Never use raw `text-sm font-semibold` combinations — use the composite utiliti
 | `VoiceComposer` | `mode`, `voiceState`, `durationSeconds`, `amplitude`, draft state and callbacks | Bottom-loaded active voice/text composer with a voice-ready Reply control, speech-responsive Pause/Resume cradle, and stable Send position |
 | `VoiceDraftStrip` | `label`, `preview`, `onOpen`, `onDelete` | Compact representation of the inactive input; deletion remains an isolated tap target |
 | `TranscriptCorrectionCard` | `value`, `disabled`, `onChangeText`, `onCancel`, `onSubmit` | Presentational transcript correction editor with Cancel and Update response actions |
+| `ChatScreenShell` | `topInset`, `gesture`, `animatedStyle`, `onClose`, `footer` | Keyboard-safe modal shell, drag handle, navigation, and footer slots |
+| `ChatConversationSurface` | messages, active request state, error/proposal/transcript callbacks | Scrollable conversation rendering composed from typed chat surfaces |
+| `ChatMessageBubble` | `content`, `editable`, `showCorrectionHint`, `onEdit` | User turn bubble with a semantic transcript-correction action |
+| `PendingTranscriptBubble` | `transcript` | Optimistic voice transcript shown while coaching is pending |
+| `ChatProcessingBubble` | _(none)_ | Assistant thinking interstitial |
+| `ChatErrorPanel` | message and recovery callbacks | Tokenized error feedback with keyboard, retry, and voice-discard actions |
+| `PendingProposalCard` | `proposal`, `disabled`, `onConfirm`, `onResolve` | Memory confirmation or explicit conflict-resolution choices |
+| `ChatComposerDock` | `phase`, `bottomInset`, `children` | Safe-area composer slot or transcribing/processing status |
 
 **Extraction rule:** pattern appears in 2+ places → extract to `ui/`. Do not extract speculatively.
 **DS compliance:** no `StyleSheet.create()`, no raw hex, import tokens from Tailwind classes only.
@@ -136,3 +146,16 @@ progress, so offline recording remains available.
 > **BTS:** Preferred input mode is local conversation state, not a microphone permission state.
 > Persisting it lets an answered voice turn return to a calm, intentional Reply control after a
 > restart without ever reopening the microphone on its own.
+
+The central `VoiceButton` is the distinct voice-first entry point. It creates a one-shot entry
+intent: the newly opened capture starts its first recording automatically when microphone
+permission permits. Consuming that intent clears it. Subsequent completed responses reset only to
+the calm voice-ready `Reply` state and never enqueue or trigger another automatic start.
+
+## Chat surfaces
+
+`app/chat/index.tsx` owns conversation state, recorder lifecycle, persistence calls, and gesture
+orchestration. Visual rendering belongs to the exported typed chat surfaces above; the screen does
+not construct React Native visual primitives or define a `StyleSheet`. Static color roles use
+NativeWind semantic utilities. Native APIs that require color values (icons, shadows, gradients)
+use `constants/theme.ts`, including `backgroundTransparent` for the conversation fade.

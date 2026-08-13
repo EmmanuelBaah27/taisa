@@ -228,12 +228,34 @@ export function createChatStore(
         isBusy: false,
         error: null,
       });
+      let restored: Awaited<ReturnType<PrivateCaptureService['hydrateConversation']>> | null = null;
       try {
         const service = await getCaptureService();
-        const restored = await service.hydrateConversation(conversationId);
-        const phase: ChatPhase = restored.requestStatus === 'transcript-confirmation-required'
-          ? 'transcript-review'
-          : restored.requestStatus === 'completed'
+        restored = await service.hydrateConversation(conversationId);
+        if (
+          restored.requestKind === 'voice' &&
+          restored.requestId !== null &&
+          (
+            restored.requestStatus === 'transcription-pending' ||
+            restored.requestStatus === 'coaching-pending' ||
+            restored.requestStatus === 'transcript-confirmation-required'
+          )
+        ) {
+          let resumed = restored.requestStatus === 'transcript-confirmation-required'
+            ? await service.confirmTranscript({ requestId: restored.requestId })
+            : await service.retrySubmission(restored.requestId);
+          if (resumed.status === 'transcript-confirmation-required') {
+            resumed = await service.confirmTranscript({ requestId: resumed.requestId });
+          }
+          restored = {
+            ...restored,
+            requestId: resumed.requestId,
+            messageId: resumed.messageId,
+            requestStatus: 'completed',
+            pendingProposals: resumed.pendingProposals,
+          };
+        }
+        const phase: ChatPhase = restored.requestStatus === 'completed'
             ? 'responded'
             : restored.requestStatus === null
               ? 'idle'
@@ -256,15 +278,18 @@ export function createChatStore(
       } catch (hydrateError) {
         setIfCurrent(ownership, {
           activeSessionId: conversationId,
-          activeRequestId: null,
-          activeRequestKind: null,
-          activeRequestStatus: null,
-          activeMessageId: null,
-          transcript: '',
-          pendingProposalIds: [],
-          pendingProposals: [],
+          activeRequestId: restored?.requestId ?? null,
+          activeRequestKind: restored?.requestKind ?? null,
+          activeRequestStatus: restored?.requestStatus ?? null,
+          activeMessageId: restored?.messageId ?? null,
+          preferredInputMode: restored?.preferredInputMode ?? 'text',
+          transcript: restored?.transcript ?? '',
+          pendingProposalIds: restored?.pendingProposals.map((proposal) => proposal.id) ?? [],
+          pendingProposals: restored?.pendingProposals ?? [],
           phase: 'error',
-          error: 'The local conversation could not be restored.',
+          error: restored === null
+            ? 'The local conversation could not be restored.'
+            : 'This submission was interrupted. Your content remains on this device and can be retried.',
         });
         throw hydrateError;
       }
@@ -353,31 +378,14 @@ export function createChatStore(
         });
         try {
           const service = await getCaptureService();
-          const confirmation = await service.submitVoice({
+          const result = await service.submitVoiceAndCoach({
             conversationId,
             audioUri,
             durationSeconds,
+            typedClarification,
             preferredInputMode: get().preferredInputMode,
             intentId: createLocalIntentId(),
           });
-          const clarification = typedClarification?.trim() ?? '';
-          const submittedTranscript = clarification.length > 0
-            ? `${confirmation.transcript}\n\n${clarification}`
-            : confirmation.transcript;
-          if (clarification.length > 0) {
-            await service.updateTranscript({
-              requestId: confirmation.requestId,
-              transcript: submittedTranscript,
-            });
-          }
-          setIfCurrent(ownership, {
-            activeRequestId: confirmation.requestId,
-            activeMessageId: confirmation.messageId,
-            activeRequestStatus: 'transcript-confirmation-required',
-            transcript: submittedTranscript,
-            phase: 'processing',
-          });
-          const result = await service.confirmTranscript({ requestId: confirmation.requestId });
           setIfCurrent(ownership, {
             activeRequestId: result.requestId,
             activeMessageId: result.messageId,
@@ -482,22 +490,18 @@ export function createChatStore(
         setIfCurrent(ownership, { phase: 'processing', error: null });
         try {
           const service = await getCaptureService();
-          const result = await service.retrySubmission(requestId);
+          let result = await service.retrySubmission(requestId);
           if (result.status === 'transcript-confirmation-required') {
-            setIfCurrent(ownership, {
-              transcript: result.transcript,
-              phase: 'transcript-review',
-              activeRequestStatus: 'transcript-confirmation-required',
-            });
-          } else {
-            setIfCurrent(ownership, {
-              activeMessageId: result.messageId,
-              pendingProposalIds: result.pendingProposalIds,
-              pendingProposals: result.pendingProposals,
-              phase: 'responded',
-              activeRequestStatus: 'completed',
-            });
+            setIfCurrent(ownership, { transcript: result.transcript });
+            result = await service.confirmTranscript({ requestId: result.requestId });
           }
+          setIfCurrent(ownership, {
+            activeMessageId: result.messageId,
+            pendingProposalIds: result.pendingProposalIds,
+            pendingProposals: result.pendingProposals,
+            phase: 'responded',
+            activeRequestStatus: 'completed',
+          });
         } catch (error) {
           setIfCurrent(ownership, {
             phase: 'error',

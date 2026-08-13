@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-native';
 import { View } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
 
+import { colors } from '../../constants/theme';
 import { VoiceComposer } from './VoiceComposer';
 
 function Preview({ mode, voiceState, hasVoiceDraft, text }: {
@@ -35,7 +36,7 @@ function Preview({ mode, voiceState, hasVoiceDraft, text }: {
 const meta: Meta<typeof VoiceComposer> = {
   title: 'Components/VoiceComposer',
   component: VoiceComposer,
-  decorators: [(Story) => <View style={{ padding: 24, backgroundColor: '#FFFFFF' }}><Story /></View>],
+  decorators: [(Story) => <View style={{ padding: 24, backgroundColor: colors.background }}><Story /></View>],
 };
 
 export default meta;

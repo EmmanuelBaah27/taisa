@@ -650,13 +650,62 @@ describe('private local capture and deliberate submission', () => {
     });
 
     expect(revised.requestId).toBe(first.requestId);
-    expect(revised.assistantMessageId).toBe(first.assistantMessageId);
+    expect(revised.assistantMessageId).not.toBe(first.assistantMessageId);
     expect(coach).toHaveBeenCalledTimes(2);
     expect((await listMessages(db, 'conversation-1')).map((message) => message.content)).toEqual([
       'Corrected transcript after sending.',
       'Revised coaching response',
     ]);
   });
+
+  test.each([
+    ['clarify', 'career-relevant', 'Which roadmap conversation do you mean?'],
+    ['redirect', 'outside-scope', 'I can help connect that to your career decisions.'],
+  ] as const)(
+    'transcript correction to %s retires stale proposals and excludes the superseded reply',
+    async (mode, relevance, reply) => {
+    const first = await service.submitVoiceAndCoach({
+      conversationId: 'conversation-1',
+      audioUri: 'file:///private/revise-to-clarify.m4a',
+      durationSeconds: 9,
+    });
+    const firstReply = (await listMessages(db, 'conversation-1'))
+      .find((message) => message.role === 'assistant')!.content;
+    expect(first.pendingProposals).toHaveLength(1);
+
+    coach.mockImplementationOnce(async (request) => mode === 'clarify' ? ({
+      ...coachingResponse(request),
+      mode: 'clarify',
+      relevance,
+      contextSufficiency: 'insufficient',
+      reply,
+      stance: null,
+      proposals: [],
+    }) : ({
+      ...coachingResponse(request),
+      mode: 'redirect',
+      relevance: 'outside-scope',
+      contextSufficiency: 'sufficient',
+      reply,
+      stance: null,
+      proposals: [],
+    }));
+
+    const revised = await service.reviseSubmittedTranscript({
+      requestId: first.requestId,
+      transcript: 'That conversation changed my view.',
+    });
+
+    expect(coach.mock.calls[1][0].context.recentMessages).not.toContainEqual(
+      expect.objectContaining({ role: 'assistant', content: firstReply }),
+    );
+    expect(revised.pendingProposals).toEqual([]);
+    expect((await service.hydrateConversation('conversation-1')).pendingProposals).toEqual([]);
+    expect(await db.getFirstAsync<{ count: number }>(
+      "SELECT count(*) AS count FROM memory_confirmations WHERE status IN ('pending', 'confirmed')",
+    )).toEqual({ count: 0 });
+    },
+  );
 
   test('proposal confirmation is authorized only by an explicit local action and applies the staged governed payload once', async () => {
     const result = await service.submitText({

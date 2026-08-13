@@ -9,7 +9,7 @@ import type {
   CoachingProviderConfig,
   ProviderCoachingInput,
 } from './provider';
-import { estimateCostUsd } from './provider';
+import { estimateCostUsd, estimateMaximumCoachingUsage } from './provider';
 
 type OpenAIClient = Pick<OpenAI, 'beta'>;
 
@@ -19,6 +19,7 @@ export function createOpenAIProvider(
 ): CoachingProvider {
   return {
     id: 'openai',
+    estimateMaximumUsage: (input) => estimateMaximumCoachingUsage('openai', input, config),
     async respond(input: ProviderCoachingInput) {
       const completion = await client.beta.chat.completions.parse(
         {

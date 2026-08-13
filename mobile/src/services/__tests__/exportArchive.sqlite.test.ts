@@ -23,11 +23,11 @@ const TABLES = [
 const NOW = '2026-08-10T09:00:00.000Z';
 const hash = (value: string) => createHash('sha256').update(value).digest('hex');
 
-function migrate(database: Database.Database): void {
+function migrate(database: Database.Database, targetVersion = 2): void {
   database.pragma('foreign_keys = ON');
   SCHEMA_V1_STATEMENTS.forEach((statement) => database.exec(statement));
-  SCHEMA_V2_STATEMENTS.forEach((statement) => database.exec(statement));
-  database.pragma('user_version = 2');
+  if (targetVersion >= 2) SCHEMA_V2_STATEMENTS.forEach((statement) => database.exec(statement));
+  database.pragma(`user_version = ${targetVersion}`);
 }
 
 function fingerprint(database: Database.Database): ArchiveSnapshot {
@@ -38,7 +38,12 @@ function fingerprint(database: Database.Database): ArchiveSnapshot {
     counts[table] = rows.length;
     canonical.push([table, rows]);
   }
-  return { archiveFormatVersion: 1, schemaVersion: 2, counts, contentHash: hash(JSON.stringify(canonical)) };
+  return {
+    archiveFormatVersion: 1,
+    schemaVersion: Number(database.pragma('user_version', { simple: true })),
+    counts,
+    contentHash: hash(JSON.stringify(canonical)),
+  };
 }
 
 function addManifest(database: Database.Database, value: ArchiveSnapshot): void {
@@ -46,15 +51,21 @@ function addManifest(database: Database.Database, value: ArchiveSnapshot): void 
     id INTEGER PRIMARY KEY NOT NULL, archive_format_version INTEGER NOT NULL,
     schema_version INTEGER NOT NULL, counts_json TEXT NOT NULL,
     content_hash TEXT NOT NULL, created_at TEXT NOT NULL)`);
-  database.prepare(`INSERT INTO taisa_archive_manifest VALUES (1, 1, 2, ?, ?, ?)`)
-    .run(JSON.stringify(value.counts), value.contentHash, NOW);
+  database.prepare(`INSERT INTO taisa_archive_manifest VALUES (1, 1, ?, ?, ?, ?)`)
+    .run(value.schemaVersion, JSON.stringify(value.counts), value.contentHash, NOW);
 }
 
-function populate(database: Database.Database): void {
+function populate(database: Database.Database, schemaVersion = 2): void {
   database.prepare(`INSERT INTO profile (id, created_at, updated_at) VALUES ('p', ?, ?)`).run(NOW, NOW);
-  database.prepare(`INSERT INTO conversations
-    (id, lifecycle, preferred_input_mode, created_at, updated_at)
-    VALUES ('c', 'active', 'voice', ?, ?)`).run(NOW, NOW);
+  if (schemaVersion === 1) {
+    database.prepare(`INSERT INTO conversations
+      (id, lifecycle, created_at, updated_at)
+      VALUES ('c', 'active', ?, ?)`).run(NOW, NOW);
+  } else {
+    database.prepare(`INSERT INTO conversations
+      (id, lifecycle, preferred_input_mode, created_at, updated_at)
+      VALUES ('c', 'active', 'voice', ?, ?)`).run(NOW, NOW);
+  }
   database.prepare(`INSERT INTO messages
     (id, conversation_id, role, content, lifecycle, created_at, updated_at)
     VALUES ('z-parent', 'c', 'user', 'Parent thought', 'submitted', ?, ?)`).run(NOW, NOW);
@@ -88,10 +99,16 @@ function populate(database: Database.Database): void {
     VALUES ('e', 'Led launch', ?, ?, ?)`).run(NOW, NOW, NOW);
 }
 
-function adapter(database: Database.Database, cipher = false, corruptCandidate = false) {
+function adapter(
+  database: Database.Database,
+  cipher = false,
+  corruptCandidate = false,
+  observeRunSql?: (sql: string) => void,
+) {
   let importing = false;
   return {
     async execAsync(sql: string) {
+      observeRunSql?.(sql);
       if (sql === 'BEGIN IMMEDIATE') importing = true;
       database.exec(sql);
       if (sql === 'COMMIT' && importing && corruptCandidate) {
@@ -99,6 +116,7 @@ function adapter(database: Database.Database, cipher = false, corruptCandidate =
       }
     },
     async runAsync(sql: string, params: readonly unknown[] = []) {
+      observeRunSql?.(sql);
       const actual = sql === 'ATTACH DATABASE ? AS source_archive KEY ?'
         ? 'ATTACH DATABASE ? AS source_archive' : sql;
       const actualParams = actual === sql ? params : [params[0]];
@@ -106,10 +124,12 @@ function adapter(database: Database.Database, cipher = false, corruptCandidate =
       return { changes: result.changes, lastInsertRowId: Number(result.lastInsertRowid) };
     },
     async getFirstAsync<T>(sql: string, params: readonly unknown[] = []): Promise<T | null> {
+      observeRunSql?.(sql);
       if (cipher && sql === 'PRAGMA cipher_version') return { cipher_version: 'test' } as T;
       return (database.prepare(sql).get(...params) as T | undefined) ?? null;
     },
     async getAllAsync<T>(sql: string, params: readonly unknown[] = []): Promise<T[]> {
+      observeRunSql?.(sql);
       return database.prepare(sql).all(...params) as T[];
     },
     async closeAsync() { database.close(); },
@@ -131,13 +151,13 @@ describe('real SQLite archive boundaries', () => {
   });
   afterEach(() => rmSync(directory, { recursive: true, force: true }));
 
-  function makeBoundary(corruptCandidate = false) {
+  function makeBoundary(corruptCandidate = false, observeRunSql?: (sql: string) => void) {
     return createSqlCipherArchiveBoundary({
       openActive: async () => adapter(new Database(':memory:')),
-      openMaintenance: async () => adapter(new Database(':memory:'), true),
-      openDeviceCandidate: async () => {
+      openMaintenance: async () => adapter(new Database(':memory:'), true, false, observeRunSql),
+      openDeviceCandidate: async ({ schemaVersion }: { schemaVersion: number }) => {
         const database = new Database(candidatePath);
-        migrate(database);
+        migrate(database, schemaVersion);
         return adapter(database, false, corruptCandidate);
       },
       deleteMaintenance: async () => undefined,
@@ -146,10 +166,10 @@ describe('real SQLite archive boundaries', () => {
     });
   }
 
-  function createSource(populated = true): ArchiveSnapshot {
+  function createSource(populated = true, schemaVersion = 2): ArchiveSnapshot {
     const database = new Database(sourcePath);
-    migrate(database);
-    if (populated) populate(database);
+    migrate(database, schemaVersion);
+    if (populated) populate(database, schemaVersion);
     const value = fingerprint(database);
     addManifest(database, value);
     database.close();
@@ -176,14 +196,67 @@ describe('real SQLite archive boundaries', () => {
     candidate.close();
   });
 
-  test('rejects a corrupted source message FTS index', async () => {
+  test('imports a trusted schema-v1 backup and migrates the candidate to schema v2', async () => {
+    const sourceV1 = createSource(true, 1);
+
+    const restored = await makeBoundary().createDeviceEncryptedCandidate({
+      sourceUri: sourcePath,
+      destinationUri: candidatePath,
+      passphrase: 'long passphrase',
+    });
+
+    expect(sourceV1.schemaVersion).toBe(1);
+    expect(restored.schemaVersion).toBe(2);
+    expect(restored.counts).toEqual(sourceV1.counts);
+    const candidate = new Database(candidatePath, { readonly: true });
+    expect(candidate.prepare(`SELECT preferred_input_mode FROM conversations WHERE id='c'`).get())
+      .toEqual({ preferred_input_mode: 'text' });
+    expect(candidate.pragma('foreign_key_check')).toEqual([]);
+    candidate.close();
+  });
+
+  test('never runs executable schema checks while preliminarily inspecting a selected archive', async () => {
     createSource();
+    const sourceSql: string[] = [];
+
+    await makeBoundary(false, (sql) => sourceSql.push(sql)).inspectPassphraseArchive({
+      sourceUri: sourcePath,
+      passphrase: 'long passphrase',
+    });
+
+    expect(sourceSql).not.toContainEqual(expect.stringContaining('source_archive"."message_search'));
+    expect(sourceSql).not.toContainEqual(expect.stringContaining('source_archive"."evidence_search'));
+    expect(sourceSql).not.toContainEqual(expect.stringContaining('source_archive.integrity_check'));
+  });
+
+  test('rebuilds a selected archive search index in the trusted candidate without executing it', async () => {
+    const expected = createSource();
     const source = new Database(sourcePath);
     source.prepare(`INSERT INTO message_search(message_search) VALUES ('delete-all')`).run();
     source.close();
-    await expect(makeBoundary().inspectPassphraseArchive({
-      sourceUri: sourcePath, passphrase: 'long passphrase',
-    })).rejects.toThrow(/search index/i);
+
+    await expect(makeBoundary().createDeviceEncryptedCandidate({
+      sourceUri: sourcePath,
+      destinationUri: candidatePath,
+      passphrase: 'long passphrase',
+    })).resolves.toEqual(expected);
+  });
+
+  test('rejects source foreign-key corruption only after exact trusted schema identity', async () => {
+    createSource();
+    const source = new Database(sourcePath);
+    source.pragma('foreign_keys = OFF');
+    source.prepare(`INSERT INTO messages
+      (id, conversation_id, role, content, lifecycle, created_at, updated_at)
+      VALUES ('orphan', 'missing-conversation', 'user', 'orphan', 'submitted', ?, ?)`)
+      .run(NOW, NOW);
+    source.close();
+
+    await expect(makeBoundary().createDeviceEncryptedCandidate({
+      sourceUri: sourcePath,
+      destinationUri: candidatePath,
+      passphrase: 'long passphrase',
+    })).rejects.toThrow(/foreign key/i);
   });
 
   test('rejects a corrupted rebuilt evidence FTS index', async () => {
@@ -208,6 +281,19 @@ describe('real SQLite archive boundaries', () => {
     source.close();
     await expect(makeBoundary().createDeviceEncryptedCandidate({
       sourceUri: sourcePath, destinationUri: candidatePath, passphrase: 'long passphrase',
+    })).rejects.toThrow(/trusted schema/i);
+  });
+
+  test('rejects archive-owned schema objects in a schema-v1 source before migration', async () => {
+    createSource(false, 1);
+    const source = new Database(sourcePath);
+    source.exec(`CREATE VIEW archive_owned_v1_helper AS SELECT id FROM profile`);
+    source.close();
+
+    await expect(makeBoundary().createDeviceEncryptedCandidate({
+      sourceUri: sourcePath,
+      destinationUri: candidatePath,
+      passphrase: 'long passphrase',
     })).rejects.toThrow(/trusted schema/i);
   });
 

@@ -150,6 +150,28 @@ export async function insertPendingMemoryConfirmation(
   );
 }
 
+export async function deletePendingMemoryConfirmationsForMessage(
+  transaction: RepositoryTransaction,
+  sourceMessageId: string,
+  idempotencyId: string,
+): Promise<void> {
+  if (!(await claimMutation(
+    transaction,
+    idempotencyId,
+    'memory-confirmation',
+    sourceMessageId,
+    'retire-pending-for-message',
+    { sourceMessageId },
+  ))) {
+    return;
+  }
+  await transaction.runAsync(
+    `DELETE FROM memory_confirmations
+     WHERE source_message_id = $sourceMessageId AND status = 'pending'`,
+    { $sourceMessageId: sourceMessageId },
+  );
+}
+
 export async function confirmPendingMemoryConfirmation(
   transaction: RepositoryTransaction,
   input: {

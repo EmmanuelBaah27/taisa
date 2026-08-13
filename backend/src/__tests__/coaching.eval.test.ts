@@ -1,5 +1,6 @@
 import {
   createProviderForId,
+  estimateMaximumCoachingUsage,
   type CoachingProvider,
 } from '../services/coaching/provider';
 import {
@@ -35,6 +36,13 @@ const successfulPayload = {
 function createFakeProvider(id: 'openai' | 'anthropic' = 'openai'): CoachingProvider {
   return {
     id,
+    estimateMaximumUsage: jest.fn(() => ({
+      provider: id,
+      model: 'synthetic-test-model',
+      inputTokens: 1_000,
+      outputTokens: 1_000,
+      estimatedCostUsd: 0.01,
+    })),
     respond: jest.fn().mockResolvedValue({
       payload: successfulPayload,
       usage: {
@@ -260,7 +268,7 @@ test('the 100 percent structural gate includes the fully specified workplace con
   expect(buildManualReviewArtifact(summary).automatedPassed).toBe(false);
 });
 
-test('CLI durably reserves and records every evaluation call under the explicit budget and emits review artifact', async () => {
+test('CLI durably records every evaluation call but remains nonzero while manual review is required', async () => {
   const directory = mkdtempSync(path.join(os.tmpdir(), 'taisa-eval-'));
   const ledger = new CostLedger({ databasePath: path.join(directory, 'usage.sqlite') });
   const artifactPath = path.join(directory, 'review.json');
@@ -271,9 +279,78 @@ test('CLI durably reserves and records every evaluation call under the explicit 
     usageLedger: ledger,
     writeArtifact: (target, value) => require('fs').writeFileSync(target, value, { flag: 'wx' }),
   });
-  expect(exitCode).toBe(0);
-  expect(ledger.listUsage()).toHaveLength(coachingEvaluationScenarios.length);
+  expect(exitCode).toBe(1);
+  const usage = ledger.listUsage();
+  expect(usage).toHaveLength(coachingEvaluationScenarios.length);
+  expect(usage.every((entry) => entry.receipt.estimatedCostUsd === 0.000031)).toBe(true);
   expect(JSON.parse(readFileSync(artifactPath, 'utf8')).syntheticOnly).toBe(true);
+  ledger.close();
+});
+
+test('actual usage replaces the conservative reservation before the next total-budget check', async () => {
+  const provider = createFakeProvider();
+  provider.estimateMaximumUsage = jest.fn(() => ({
+    provider: 'openai', model: 'synthetic-test-model', estimatedCostUsd: 0.04,
+  }));
+  (provider.respond as jest.Mock).mockResolvedValue({
+    payload: successfulPayload,
+    usage: { provider: 'openai', model: 'synthetic-test-model', estimatedCostUsd: 0.03 },
+  });
+  const ledger = new CostLedger();
+
+  await runCoachingEvaluation({
+    provider,
+    providerId: 'openai',
+    maxCostUsd: 0.07,
+    usageLedger: ledger,
+  });
+
+  expect(provider.respond).toHaveBeenCalledTimes(2);
+  expect(ledger.listUsage().map((entry) => entry.receipt.estimatedCostUsd)).toEqual([0.03, 0.03]);
+  ledger.close();
+});
+
+test('the configured maximum-usage estimate covers every input byte, structured overhead, and output token', () => {
+  const estimate = estimateMaximumCoachingUsage(
+    'openai',
+    { systemPrompt: 'system', userPrompt: 'Résumé' },
+    {
+      model: 'configured-model',
+      inputPriceUsdPerMillionTokens: 2,
+      outputPriceUsdPerMillionTokens: 10,
+      maxOutputTokens: 4_000,
+      structuredOutputInputTokenOverhead: 800,
+    },
+  );
+
+  expect(estimate.inputTokens).toBe(Buffer.byteLength('systemRésumé', 'utf8') + 800);
+  expect(estimate.outputTokens).toBe(4_000);
+  expect(estimate.estimatedCostUsd).toBeCloseTo(
+    ((estimate.inputTokens ?? 0) * 2 + 4_000 * 10) / 1_000_000,
+  );
+});
+
+test('the explicit total budget blocks every provider call when one maximum configured call cannot fit', async () => {
+  const provider = createFakeProvider();
+  provider.estimateMaximumUsage = jest.fn(() => ({
+    provider: 'openai',
+    model: 'synthetic-test-model',
+    inputTokens: 2_000,
+    outputTokens: 2_000,
+    estimatedCostUsd: 0.04,
+  }));
+  const ledger = new CostLedger();
+
+  const summary = await runCoachingEvaluation({
+    provider,
+    providerId: 'openai',
+    maxCostUsd: 0.03,
+    usageLedger: ledger,
+  });
+
+  expect(provider.respond).not.toHaveBeenCalled();
+  expect(summary.results.every((result) => result.errorCode === 'PROVIDER_ERROR')).toBe(true);
+  expect(ledger.listUsage()).toEqual([]);
   ledger.close();
 });
 
@@ -487,10 +564,10 @@ test.each(['openai', 'anthropic'] as const)(
       writeStderr,
     });
 
-    expect(exitCode).toBe(0);
+    expect(exitCode).toBe(1);
     expect(createProvider).toHaveBeenCalledWith(providerId);
     expect(writeStdout).toHaveBeenCalledTimes(1);
-    expect(writeStderr).not.toHaveBeenCalled();
+    expect(writeStderr).toHaveBeenCalledWith('EVAL_COACHING_REVIEW_REQUIRED\n');
   },
 );
 
