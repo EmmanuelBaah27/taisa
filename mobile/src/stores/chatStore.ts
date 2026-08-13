@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import type { PreferredInputMode } from '@taisa/shared';
 
 import { getPrivateCaptureService } from '../services/localPlatform';
+import type { CoachingRequestStatus } from '../repositories/coachingRequestRepository';
 import type {
   ClarificationChoice,
   PendingProposal,
@@ -23,6 +24,7 @@ interface ChatStore {
   activeSessionId: string | null;
   activeRequestId: string | null;
   activeRequestKind: 'text' | 'voice' | null;
+  activeRequestStatus: CoachingRequestStatus | null;
   activeMessageId: string | null;
   preferredInputMode: PreferredInputMode;
   transcript: string;
@@ -75,6 +77,35 @@ function safeError(error: unknown): string {
     (error.name === 'SubmissionFailedError' || error.name === 'SubmissionValidationError')
     ? error.message
     : 'Taisa could not complete this action. Your content remains on this device.';
+}
+
+const abandonableVoiceRequestStatuses = new Set<CoachingRequestStatus>([
+  'transcription-pending',
+  'transcription-failed',
+  'transcript-confirmation-required',
+  'coaching-pending',
+  'coaching-failed',
+]);
+
+export function canAbandonVoiceSubmission(
+  request: Pick<ChatStore, 'activeRequestId' | 'activeRequestKind' | 'activeRequestStatus'>,
+): boolean {
+  return request.activeRequestId !== null &&
+    request.activeRequestKind === 'voice' &&
+    request.activeRequestStatus !== null &&
+    abandonableVoiceRequestStatuses.has(request.activeRequestStatus);
+}
+
+function failedRequestStatus(error: unknown): CoachingRequestStatus | null {
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'phase' in error &&
+    (error.phase === 'transcription' || error.phase === 'coaching')
+  ) {
+    return error.phase === 'transcription' ? 'transcription-failed' : 'coaching-failed';
+  }
+  return null;
 }
 
 export function createChatStore(
@@ -155,6 +186,7 @@ export function createChatStore(
     activeSessionId: null,
     activeRequestId: null,
     activeRequestKind: null,
+    activeRequestStatus: null,
     activeMessageId: null,
     preferredInputMode: 'text',
     transcript: '',
@@ -186,6 +218,7 @@ export function createChatStore(
         activeSessionId: conversationId,
         activeRequestId: null,
         activeRequestKind: null,
+        activeRequestStatus: null,
         activeMessageId: null,
         preferredInputMode: 'text',
         transcript: '',
@@ -209,6 +242,7 @@ export function createChatStore(
           activeSessionId: conversationId,
           activeRequestId: restored.requestId,
           activeRequestKind: restored.requestKind,
+          activeRequestStatus: restored.requestStatus,
           activeMessageId: restored.messageId,
           preferredInputMode: restored.preferredInputMode,
           transcript: restored.transcript,
@@ -224,6 +258,7 @@ export function createChatStore(
           activeSessionId: conversationId,
           activeRequestId: null,
           activeRequestKind: null,
+          activeRequestStatus: null,
           activeMessageId: null,
           transcript: '',
           pendingProposalIds: [],
@@ -254,6 +289,7 @@ export function createChatStore(
         setIfCurrent(ownership, {
           activeSessionId: conversationId,
           activeRequestKind: 'text',
+          activeRequestStatus: null,
           activeMessageId: result.messageId,
           error: null,
         });
@@ -270,7 +306,9 @@ export function createChatStore(
           phase: 'processing',
           error: null,
           activeSessionId: conversationId,
+          activeRequestId: null,
           activeRequestKind: 'text',
+          activeRequestStatus: null,
         });
         try {
           const service = await getCaptureService();
@@ -281,6 +319,7 @@ export function createChatStore(
           });
           setIfCurrent(ownership, {
             activeRequestId: result.requestId,
+            activeRequestStatus: 'completed',
             activeMessageId: result.messageId,
             pendingProposalIds: result.pendingProposalIds,
             pendingProposals: result.pendingProposals,
@@ -292,6 +331,7 @@ export function createChatStore(
             : null;
           setIfCurrent(ownership, {
             activeRequestId: requestId,
+            activeRequestStatus: failedRequestStatus(error),
             phase: 'error',
             error: safeError(error),
           });
@@ -307,7 +347,9 @@ export function createChatStore(
           phase: 'transcribing',
           error: null,
           activeSessionId: conversationId,
+          activeRequestId: null,
           activeRequestKind: 'voice',
+          activeRequestStatus: null,
         });
         try {
           const service = await getCaptureService();
@@ -331,6 +373,7 @@ export function createChatStore(
           setIfCurrent(ownership, {
             activeRequestId: confirmation.requestId,
             activeMessageId: confirmation.messageId,
+            activeRequestStatus: 'transcript-confirmation-required',
             transcript: submittedTranscript,
             phase: 'processing',
           });
@@ -338,6 +381,7 @@ export function createChatStore(
           setIfCurrent(ownership, {
             activeRequestId: result.requestId,
             activeMessageId: result.messageId,
+            activeRequestStatus: 'completed',
             pendingProposalIds: result.pendingProposalIds,
             pendingProposals: result.pendingProposals,
             phase: 'responded',
@@ -348,6 +392,7 @@ export function createChatStore(
             : null;
           setIfCurrent(ownership, {
             activeRequestId: requestId,
+            activeRequestStatus: failedRequestStatus(error),
             phase: 'error',
             error: safeError(error),
           });
@@ -362,7 +407,10 @@ export function createChatStore(
       const ownership = captureOwnership(requestId);
       const service = await getCaptureService();
       await service.updateTranscript({ requestId, transcript });
-      setIfCurrent(ownership, { transcript });
+      setIfCurrent(ownership, {
+        transcript,
+        activeRequestStatus: 'transcript-confirmation-required',
+      });
     },
 
     confirmTranscript: () => {
@@ -378,6 +426,7 @@ export function createChatStore(
             activeMessageId: result.messageId,
             pendingProposalIds: result.pendingProposalIds,
             pendingProposals: result.pendingProposals,
+            activeRequestStatus: 'completed',
             phase: 'responded',
           });
         } catch (error) {
@@ -385,6 +434,9 @@ export function createChatStore(
             phase: error instanceof Error && error.name === 'SubmissionValidationError'
               ? 'transcript-review'
               : 'error',
+            activeRequestStatus: error instanceof Error && error.name === 'SubmissionValidationError'
+              ? 'transcript-confirmation-required'
+              : failedRequestStatus(error),
             error: safeError(error),
           });
           throw error;
@@ -408,10 +460,15 @@ export function createChatStore(
             pendingProposalIds: result.pendingProposalIds,
             pendingProposals: result.pendingProposals,
             transcript,
+            activeRequestStatus: 'completed',
             phase: 'responded',
           });
         } catch (error) {
-          setIfCurrent(ownership, { phase: 'error', error: safeError(error) });
+          setIfCurrent(ownership, {
+            phase: 'error',
+            error: safeError(error),
+            activeRequestStatus: failedRequestStatus(error) ?? get().activeRequestStatus,
+          });
           throw error;
         }
       });
@@ -430,6 +487,7 @@ export function createChatStore(
             setIfCurrent(ownership, {
               transcript: result.transcript,
               phase: 'transcript-review',
+              activeRequestStatus: 'transcript-confirmation-required',
             });
           } else {
             setIfCurrent(ownership, {
@@ -437,10 +495,15 @@ export function createChatStore(
               pendingProposalIds: result.pendingProposalIds,
               pendingProposals: result.pendingProposals,
               phase: 'responded',
+              activeRequestStatus: 'completed',
             });
           }
         } catch (error) {
-          setIfCurrent(ownership, { phase: 'error', error: safeError(error) });
+          setIfCurrent(ownership, {
+            phase: 'error',
+            error: safeError(error),
+            activeRequestStatus: failedRequestStatus(error) ?? get().activeRequestStatus,
+          });
           throw error;
         }
       });
@@ -493,6 +556,7 @@ export function createChatStore(
       setIfCurrent(ownership, {
         activeRequestId: null,
         activeRequestKind: null,
+        activeRequestStatus: null,
         activeMessageId: null,
         transcript: '',
         phase: 'idle',
@@ -506,6 +570,7 @@ export function createChatStore(
         activeSessionId: null,
         activeRequestId: null,
         activeRequestKind: null,
+        activeRequestStatus: null,
         activeMessageId: null,
         transcript: '',
         pendingProposalIds: [],

@@ -26,7 +26,7 @@ import {
   type RecordingSubmissionLease,
 } from '../../src/services/recordingSubmissionLease';
 import { useMorphTransition } from '../../src/hooks/useMorphTransition';
-import { useChatStore } from '../../src/stores/chatStore';
+import { canAbandonVoiceSubmission, useChatStore } from '../../src/stores/chatStore';
 import { useThreadStore } from '../../src/stores/threadStore';
 import { useUIStore } from '../../src/stores/uiStore';
 import {
@@ -69,6 +69,7 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
     activeSessionId,
     activeRequestId,
     activeRequestKind,
+    activeRequestStatus,
     activeMessageId,
     transcript: storedTranscript,
     pendingProposals: storedPendingProposals,
@@ -345,7 +346,11 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
   }
 
   async function confirmVoiceDraftDeletion() {
-    const requestId = activeRequestKind === 'voice' ? activeRequestId : null;
+    const requestId = canAbandonVoiceSubmission({
+      activeRequestId,
+      activeRequestKind,
+      activeRequestStatus,
+    }) ? activeRequestId : null;
     if (requestId !== null) await abandonVoiceSubmission(requestId);
 
     const pending = pendingRecordingRef.current;

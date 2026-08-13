@@ -127,7 +127,7 @@ describe('local-first capture navigation', () => {
       'utf8',
     );
 
-    expect(chatScreen).toMatch(/async function confirmVoiceDraftDeletion\(\)[\s\S]*await abandonVoiceSubmission\(requestId\)[\s\S]*setPendingRecording\(null\)[\s\S]*confirm-delete-voice/);
+    expect(chatScreen).toMatch(/async function confirmVoiceDraftDeletion\(\)[\s\S]*canAbandonVoiceSubmission\([\s\S]*await abandonVoiceSubmission\(requestId\)[\s\S]*setPendingRecording\(null\)[\s\S]*confirm-delete-voice/);
     expect(chatScreen).toMatch(/confirmVoiceDraftDeletion\(\)\.catch/);
   });
 

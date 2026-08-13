@@ -4,7 +4,7 @@ import { getProfile, listProfiles } from '../../repositories/profileRepository';
 import { createTestDatabase, type TestDatabase } from '../../repositories/__tests__/testDatabase';
 import { createPrivateCaptureService, type PrivateCaptureService } from '../../services/privateCapture';
 import { createCareerStore } from '../careerStore';
-import { createChatStore } from '../chatStore';
+import { canAbandonVoiceSubmission, createChatStore } from '../chatStore';
 import { createThreadStore } from '../threadStore';
 
 const NOW = '2026-08-10T09:00:00.000Z';
@@ -49,6 +49,30 @@ const HYDRATED_B = {
     status: 'pending' as const,
   }],
 };
+
+test('a fresh local voice draft does not own a completed voice submission', async () => {
+  const service = {
+    hydrateConversation: jest.fn(async () => ({
+      ...HYDRATED_B,
+      requestStatus: 'completed' as const,
+    })),
+  } as unknown as PrivateCaptureService;
+  const store = createChatStore(async () => service);
+
+  await store.getState().hydrateConversation('conversation-b');
+  expect(store.getState()).toMatchObject({
+    activeRequestId: 'request-b',
+    activeRequestKind: 'voice',
+    activeRequestStatus: 'completed',
+  });
+  expect(canAbandonVoiceSubmission(store.getState())).toBe(false);
+
+  expect(canAbandonVoiceSubmission({
+    activeRequestId: 'failed-voice-request',
+    activeRequestKind: 'voice',
+    activeRequestStatus: 'transcription-failed',
+  })).toBe(true);
+});
 
 test('a restored failed voice request can be abandoned to return to the composer', async () => {
   const service = {
