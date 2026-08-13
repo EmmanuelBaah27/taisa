@@ -110,6 +110,41 @@ describe('local-first capture navigation', () => {
     expect(chatScreen).not.toMatch(/else \{\s*startListening\(\);\s*\}/);
   });
 
+  test('a microphone failure offers a working keyboard fallback that selects text mode', () => {
+    const chatScreen = fs.readFileSync(
+      path.resolve(__dirname, '../../../app/chat/index.tsx'),
+      'utf8',
+    );
+
+    expect(chatScreen).toMatch(/function handleUseKeyboard\(\)[\s\S]*restore-mode[\s\S]*mode: 'text'/);
+    expect(chatScreen).toMatch(/function handleUseKeyboard\(\)[\s\S]*setPreferredInputMode\([^,]+, 'text'\)/);
+    expect(chatScreen).toMatch(/onPress=\{handleUseKeyboard\}/);
+  });
+
+  test('deleting a retained failed voice draft abandons durable audio before clearing the local draft', () => {
+    const chatScreen = fs.readFileSync(
+      path.resolve(__dirname, '../../../app/chat/index.tsx'),
+      'utf8',
+    );
+
+    expect(chatScreen).toMatch(/async function confirmVoiceDraftDeletion\(\)[\s\S]*await abandonVoiceSubmission\(requestId\)[\s\S]*setPendingRecording\(null\)[\s\S]*confirm-delete-voice/);
+    expect(chatScreen).toMatch(/confirmVoiceDraftDeletion\(\)\.catch/);
+  });
+
+  test('transcript correction is rendered by a typed design-system component', () => {
+    const chatScreen = fs.readFileSync(
+      path.resolve(__dirname, '../../../app/chat/index.tsx'),
+      'utf8',
+    );
+    const index = fs.readFileSync(
+      path.resolve(__dirname, '../../components/ui/index.ts'),
+      'utf8',
+    );
+
+    expect(chatScreen).toMatch(/TranscriptCorrectionCard/);
+    expect(index).toMatch(/export \{ TranscriptCorrectionCard \}/);
+  });
+
   test('every remaining form surface declares iOS keyboard avoidance', () => {
     const files = [
       '../../../app/onboarding/index.tsx',

@@ -24,6 +24,8 @@ export { VoiceComposer } from './VoiceComposer';
 export type { VoiceComposerProps } from './VoiceComposer';
 export { VoiceDraftStrip } from './VoiceDraftStrip';
 export type { VoiceDraftStripProps } from './VoiceDraftStrip';
+export { TranscriptCorrectionCard } from './TranscriptCorrectionCard';
+export type { TranscriptCorrectionCardProps } from './TranscriptCorrectionCard';
 
 export { CubeRefractionOverlay } from './CubeRefractionOverlay';
 export type { CubeRefractionOverlayProps } from './CubeRefractionOverlay';

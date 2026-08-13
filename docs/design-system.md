@@ -115,6 +115,7 @@ Never use raw `text-sm font-semibold` combinations — use the composite utiliti
 | `TaisaReplyCard` | `content: string` | Assistant reply bubble; `bg-subtle` surface, `rounded-3`, no business logic |
 | `VoiceComposer` | `mode`, `voiceState`, `durationSeconds`, `amplitude`, draft state and callbacks | Bottom-loaded active voice/text composer with a voice-ready Reply control, speech-responsive Pause/Resume cradle, and stable Send position |
 | `VoiceDraftStrip` | `label`, `preview`, `onOpen`, `onDelete` | Compact representation of the inactive input; deletion remains an isolated tap target |
+| `TranscriptCorrectionCard` | `value`, `disabled`, `onChangeText`, `onCancel`, `onSubmit` | Presentational transcript correction editor with Cancel and Update response actions |
 
 **Extraction rule:** pattern appears in 2+ places → extract to `ui/`. Do not extract speculatively.
 **DS compliance:** no `StyleSheet.create()`, no raw hex, import tokens from Tailwind classes only.

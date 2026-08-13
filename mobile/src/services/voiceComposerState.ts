@@ -70,7 +70,7 @@ export function reduceVoiceComposer(
     case 'cancel-delete-voice':
       return { ...state, confirmDeleteVoice: false };
     case 'confirm-delete-voice':
-      return { ...state, mode: 'text', voice: 'none', confirmDeleteVoice: false };
+      return { ...state, mode: 'voice', voice: 'ready', confirmDeleteVoice: false };
     case 'send':
       return state.voice === 'none' && state.text.trim().length === 0
         ? state

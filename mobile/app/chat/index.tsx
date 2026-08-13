@@ -2,7 +2,6 @@ import { useEffect, useReducer, useRef, useState } from 'react';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
@@ -43,6 +42,7 @@ import {
   TaisaReplyCard,
   Icon,
   VoiceComposer,
+  TranscriptCorrectionCard,
 } from '../../src/components/ui';
 import {
   createVoiceComposerState,
@@ -334,6 +334,28 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
     setPhase('idle');
   }
 
+  function handleUseKeyboard() {
+    setRecordingStartFailed(false);
+    dispatchComposer({ type: 'restore-mode', mode: 'text' });
+    const conversationId = sessionIdRef.current ?? `conversation-${Date.now()}`;
+    sessionIdRef.current = conversationId;
+    setActiveSessionId(conversationId);
+    void setPreferredInputMode(conversationId, 'text').catch(() => {});
+    setPhase('idle');
+  }
+
+  async function confirmVoiceDraftDeletion() {
+    const requestId = activeRequestKind === 'voice' ? activeRequestId : null;
+    if (requestId !== null) await abandonVoiceSubmission(requestId);
+
+    const pending = pendingRecordingRef.current;
+    await stopActiveRecordingAndDiscard();
+    if (pending !== null) await discardRecording(pending.uri);
+    pendingRecordingRef.current = null;
+    if (mountedRef.current) setPendingRecording(null);
+    dispatchComposer({ type: 'confirm-delete-voice' });
+  }
+
   function handleDeleteVoiceDraft() {
     Alert.alert(
       'Delete voice draft?',
@@ -344,12 +366,9 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
           text: 'Delete recording',
           style: 'destructive',
           onPress: () => {
-            const pending = pendingRecordingRef.current;
-            pendingRecordingRef.current = null;
-            setPendingRecording(null);
-            void stopActiveRecordingAndDiscard().then(async () => {
-              if (pending !== null) await discardRecording(pending.uri);
-              dispatchComposer({ type: 'confirm-delete-voice' });
+            void confirmVoiceDraftDeletion().catch(() => {
+              dispatchComposer({ type: 'cancel-delete-voice' });
+              if (mountedRef.current) setPhase('error');
             });
           },
         },
@@ -604,24 +623,13 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
             ) : null}
 
             {editingTranscript !== null ? (
-              <View className="mb-3 rounded-3 border border-border bg-background p-3">
-                <Text className="mb-2 text-foreground text-small-semibold">Correct transcript</Text>
-                <TextInput
-                  value={editingTranscript}
-                  onChangeText={setEditingTranscript}
-                  multiline
-                  autoFocus
-                  className="mb-3 max-h-40 rounded-3 bg-subtle px-3 py-2 text-foreground text-base-regular"
-                />
-                <View className="flex-row justify-end gap-2">
-                  <TouchableOpacity onPress={() => setEditingTranscript(null)} className="rounded-full px-4 py-2">
-                    <Text className="text-foreground text-small-semibold">Cancel</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => { void handleSaveTranscriptRevision(); }} className="rounded-full bg-muted px-4 py-2">
-                    <Text className="text-foreground text-small-semibold">Update response</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
+              <TranscriptCorrectionCard
+                value={editingTranscript}
+                disabled={isBusy}
+                onChangeText={setEditingTranscript}
+                onCancel={() => setEditingTranscript(null)}
+                onSubmit={() => { void handleSaveTranscriptRevision(); }}
+              />
             ) : null}
 
             {phase === 'processing' && (
@@ -642,7 +650,7 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
                 <View className="flex-row gap-3">
                   {recordingStartFailed ? (
                     <TouchableOpacity
-                      onPress={() => { setRecordingStartFailed(false); setPhase('idle'); }}
+                      onPress={handleUseKeyboard}
                       className="border border-border rounded-full px-6 py-3"
                     >
                       <Text className="text-foreground text-small-semibold">Use keyboard</Text>

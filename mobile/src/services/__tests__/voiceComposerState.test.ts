@@ -118,7 +118,8 @@ describe('voice composer state', () => {
     expect(requested.voice).toBe('paused');
     expect(requested.confirmDeleteVoice).toBe(true);
     expect(reduceVoiceComposer(requested, { type: 'confirm-delete-voice' })).toMatchObject({
-      voice: 'none',
+      mode: 'voice',
+      voice: 'ready',
       confirmDeleteVoice: false,
     });
   });
