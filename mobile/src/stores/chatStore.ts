@@ -459,7 +459,13 @@ export function createChatStore(
       }
       const ownership = captureOwnership(requestId);
       return guarded(ownership, async () => {
-        setIfCurrent(ownership, { phase: 'processing', error: null });
+        setIfCurrent(ownership, {
+          phase: 'processing',
+          error: null,
+          activeMessageId: null,
+          pendingProposalIds: [],
+          pendingProposals: [],
+        });
         try {
           const service = await getCaptureService();
           const result = await service.reviseSubmittedTranscript({ requestId, transcript });

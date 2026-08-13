@@ -1,5 +1,6 @@
 import type { RecordingResult } from '../audio';
 import {
+  createRecordingCleanupBarrier,
   createRecordingStartGuard,
   createRecordingStopSession,
   stopOwnedRecordingAndDiscard,
@@ -79,7 +80,7 @@ describe('recording stop session', () => {
     expect(discard).not.toHaveBeenCalled();
   });
 
-  test('paused silence detaches the native session before disposal so a later Reply can start', async () => {
+  test('paused silence detaches UI ownership but blocks recorder reacquisition until native disposal settles', async () => {
     let releaseStop!: (result: RecordingResult) => void;
     const stop = jest.fn(() => new Promise<RecordingResult>((resolve) => {
       releaseStop = resolve;
@@ -87,17 +88,18 @@ describe('recording stop session', () => {
     const discard = jest.fn(async (_uri: string) => undefined);
     const owner = { current: createRecordingStopSession({ stop, discard }) };
     const guard = createRecordingStartGuard();
+    const barrier = createRecordingCleanupBarrier();
 
-    const cleanup = stopOwnedRecordingAndDiscard(owner, guard);
+    const cleanup = barrier.run(() => stopOwnedRecordingAndDiscard(owner, guard));
+    let reacquired = false;
+    const reacquire = barrier.wait().then(() => { reacquired = true; });
 
     expect(owner.current).toBeNull();
-    expect(guard.begin()).not.toBeNull();
-    owner.current = createRecordingStopSession({
-      stop: jest.fn(async () => RESULT),
-      discard,
-    });
+    await Promise.resolve();
+    expect(reacquired).toBe(false);
     releaseStop(RESULT);
-    await cleanup;
+    await Promise.all([cleanup, reacquire]);
+    expect(reacquired).toBe(true);
     expect(discard).toHaveBeenCalledWith(RESULT.uri);
   });
 });

@@ -74,6 +74,47 @@ test('a fresh local voice draft does not own a completed voice submission', asyn
   })).toBe(true);
 });
 
+test('transcript revision immediately retires stale visible proposals and keeps them cleared on failure', async () => {
+  const revision = deferred<Awaited<ReturnType<PrivateCaptureService['reviseSubmittedTranscript']>>>();
+  const service = {
+    reviseSubmittedTranscript: jest.fn(() => revision.promise),
+  } as unknown as PrivateCaptureService;
+  const store = createChatStore(async () => service);
+  store.setState({
+    activeSessionId: 'conversation-a',
+    activeRequestId: 'request-a',
+    activeRequestKind: 'voice',
+    activeRequestStatus: 'completed',
+    activeMessageId: 'old-assistant-message',
+    pendingProposalIds: ['stale-proposal'],
+    pendingProposals: [{
+      id: 'stale-proposal',
+      summary: 'Stale interpretation',
+      kind: 'proposal',
+      question: null,
+      status: 'pending',
+    }],
+    phase: 'responded',
+  });
+
+  const pending = store.getState().reviseTranscript('Corrected transcript');
+  expect(store.getState()).toEqual(expect.objectContaining({
+    activeMessageId: null,
+    pendingProposalIds: [],
+    pendingProposals: [],
+    phase: 'processing',
+  }));
+
+  revision.reject(new Error('provider unavailable'));
+  await expect(pending).rejects.toThrow('provider unavailable');
+  expect(store.getState()).toEqual(expect.objectContaining({
+    activeMessageId: null,
+    pendingProposalIds: [],
+    pendingProposals: [],
+    phase: 'error',
+  }));
+});
+
 test('a restored failed voice request can be abandoned to return to the composer', async () => {
   const service = {
     hydrateConversation: jest.fn(async () => ({

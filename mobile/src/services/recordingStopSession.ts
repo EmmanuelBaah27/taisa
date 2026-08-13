@@ -20,6 +20,28 @@ export interface RecordingStopSessionOwner {
   current: RecordingStopSession | null;
 }
 
+export interface RecordingCleanupBarrier {
+  run(cleanup: () => Promise<void>): Promise<void>;
+  wait(): Promise<void>;
+}
+
+/** Serializes native recorder teardown with the next recorder acquisition. */
+export function createRecordingCleanupBarrier(): RecordingCleanupBarrier {
+  let pending: Promise<void> = Promise.resolve();
+  return {
+    run(cleanup) {
+      // The owner is detached synchronously inside cleanup, while the returned promise remains
+      // the barrier that the next native recorder acquisition must await.
+      const next = cleanup();
+      pending = next.catch(() => {});
+      return next;
+    },
+    wait() {
+      return pending;
+    },
+  };
+}
+
 export function stopOwnedRecordingAndDiscard(
   owner: RecordingStopSessionOwner,
   startGuard: Pick<RecordingStartGuard, 'cancel'>,

@@ -11,6 +11,7 @@ import { Gesture } from 'react-native-gesture-handler';
 import { useVoiceRecorder } from '../../src/hooks/useVoiceRecorder';
 import type { RecordingResult } from '../../src/services/audio';
 import {
+  createRecordingCleanupBarrier,
   createRecordingStartGuard,
   createRecordingStopSession,
   stopOwnedRecordingAndDiscard,
@@ -125,6 +126,7 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
   const mountedRef = useRef(true);
   const recordingStartGuardRef = useRef(createRecordingStartGuard());
   const recordingStopSessionRef = useRef<RecordingStopSession | null>(null);
+  const recordingCleanupBarrierRef = useRef(createRecordingCleanupBarrier());
   const recordingSubmissionLeaseRef = useRef<RecordingSubmissionLease | null>(null);
 
   const isHydratingInitialConversation = !initialHydrationComplete;
@@ -153,9 +155,11 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
   }
 
   function stopActiveRecordingAndDiscard(): Promise<void> {
-    return stopOwnedRecordingAndDiscard(
-      recordingStopSessionRef,
-      recordingStartGuardRef.current,
+    return recordingCleanupBarrierRef.current.run(
+      () => stopOwnedRecordingAndDiscard(
+        recordingStopSessionRef,
+        recordingStartGuardRef.current,
+      ),
     );
   }
 
@@ -254,6 +258,7 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
   }
 
   async function startListening() {
+    await recordingCleanupBarrierRef.current.wait();
     if (closingRef.current || !mountedRef.current || recordingStopSessionRef.current !== null) {
       return;
     }
@@ -413,8 +418,11 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
       await reviseTranscript(corrected);
       setEditingTranscript(null);
       dispatchComposer({ type: 'reset' });
+    } catch {
+      // The durable revision transaction already retired the superseded reply and proposals.
+    } finally {
       await refreshConversation();
-    } catch {}
+    }
   }
 
   // Stopping is local-only. Transcription begins only after the separate Submit action.
