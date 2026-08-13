@@ -10,6 +10,7 @@ Claude maintains the Active Work table — Baah never needs to update it.
 | Feature | Track | Stage | Branch | Blocked on |
 |---|---|---|---|---|
 | Local-first coaching platform | Platform | Build | `feature/local-first-coaching-platform` | Managed-device recovery/privacy QA is next; paid live provider evaluation remains gated; legacy-route retirement requires later explicit approval |
+| Personal alpha release | Platform + Product | Plan | `feature/local-first-coaching-platform` | Baah plan approval; hosted deployment and iOS distribution remain separate external-action gates |
 
 ---
 
