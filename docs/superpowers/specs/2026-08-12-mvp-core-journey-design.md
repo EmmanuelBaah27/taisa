@@ -19,8 +19,9 @@ value is a trustworthy recurring coaching loop.
 ## Priority user journey
 
 1. The user freely composes text or records audio locally.
-2. Voice is sent for transcription only after deliberate submission.
-3. The user reviews and may edit the transcript before coaching.
+2. Voice is sent for transcription and coaching only after deliberate submission.
+3. The transcript appears as the sent user message and remains correctable afterward; correction
+   visibly regenerates coaching instead of silently rewriting history.
 4. Deliberate coaching submission sends only bounded relevant context to the configured
    provider.
 5. Taisa responds, connects relevant history, and may propose memories or commitments.
@@ -36,7 +37,8 @@ Complete the device QA and recovery boundaries already represented in
 `docs/features/local-first-cutover-qa.md`:
 
 - text and voice submission;
-- transcript review and confirmation;
+- voice-first capture with pause/resume, keyboard switching, mixed voice/text drafts, and
+  post-send transcript correction;
 - immediate Recents refresh;
 - force-quit/restart continuity;
 - encrypted export/restore and key-loss recovery;
@@ -139,6 +141,14 @@ Future integrations use the same inbox. Their extracted commitments never bypass
 
 - A failed provider request leaves the local message and exact request IDs retryable.
 - A failed transcription retains the app-owned recording for explicit retry or abandonment.
+- Recording begins automatically only after explicit voice entry. Switching inputs never submits;
+  locally detected meaningful or uncertain audio becomes a removable Voice Draft, while silence
+  creates no draft.
+- A conversation preserves its deliberately chosen input modality. After Taisa answers a voice
+  turn, the composer returns to a non-recording **voice-ready** state: a soft-grey control with a
+  black microphone icon and the label **Reply**. One tap begins the next recording. It never
+  activates the microphone merely because Taisa finished responding. Switching to keyboard makes
+  text the conversation's active modality until the user switches back.
 - New capture never silently resumes old failed work; History exposes explicit Resume.
 - Cost, validation, and privacy rejection happen before provider invocation whenever possible.
 - The UI explains the safe next action without revealing provider payloads or private content in
