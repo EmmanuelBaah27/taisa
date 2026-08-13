@@ -6,6 +6,7 @@ import {
   COACHING_GATEWAY_LIMITS,
   firstCoachingResponseContractViolation,
 } from '@taisa/shared';
+import type { CoachingRequest } from '@taisa/shared';
 import { CoachingResponsePayloadSchema } from '../schemas/coaching';
 import {
   estimateConfiguredCoachingUsage,
@@ -543,9 +544,9 @@ test('Senior Self decides safety, relevance, context sufficiency, then coaching 
   expect(relevance).toBeGreaterThan(safety);
   expect(contextSufficiency).toBeGreaterThan(relevance);
   expect(stance).toBeGreaterThan(contextSufficiency);
-  expect(systemPrompt).toContain('career-relevant');
-  expect(systemPrompt).toContain('adjacent');
-  expect(systemPrompt).toContain('outside-scope');
+  expect(systemPrompt).toContain('Career-relevant');
+  expect(systemPrompt).toContain('Adjacent personal context');
+  expect(systemPrompt).toContain("Outside Taisa's scope");
 });
 
 test('Senior Self treats ambiguous references as missing context and makes clarify neutral', () => {
@@ -555,7 +556,7 @@ test('Senior Self treats ambiguous references as missing context and makes clari
     expect(systemPrompt).toContain(referent);
   }
   expect(systemPrompt).toContain('possible missing referents, not facts');
-  expect(systemPrompt).toContain('exactly one neutral question');
+  expect(systemPrompt).toContain('ask one neutral clarifying question');
   expect(systemPrompt).toContain('Never diagnose or infer emotion');
 });
 
@@ -565,4 +566,100 @@ test('Senior Self constrains redirect bridges and permits proposals only while c
   expect(systemPrompt).toContain('briefly acknowledge');
   expect(systemPrompt).toContain('at most one optional work bridge');
   expect(systemPrompt).toContain('Only coach responses may carry proposals');
+});
+
+test('Senior Self classifies relevance from the current turn before consulting career context', () => {
+  const { systemPrompt } = buildSeniorSelfPrompt(requestFixture);
+
+  expect(systemPrompt).toContain(
+    'Classify relevance from the primary subject of the current user turn before consulting bounded context.',
+  );
+  expect(systemPrompt).toContain(
+    'Never make a turn career-relevant merely because profile, conversation history, memory, or evidence contains work.',
+  );
+  expect(systemPrompt).toContain(
+    'Use bounded context only after the relevance decision.',
+  );
+  expect(systemPrompt).toContain(
+    "Career-relevant: the primary subject is the user's work, career, professional decisions, workplace relationships, goals, actions, or evidence.",
+  );
+  expect(systemPrompt).toContain(
+    'Adjacent personal context: the primary subject is personal, but the user has stated a concrete effect on their work, wellbeing at work, professional decisions, relationships, or goals.',
+  );
+  expect(systemPrompt).toContain(
+    "Outside Taisa's scope: neither condition above is met.",
+  );
+});
+
+test('Senior Self applies the approved sufficiency limits before allowing advice or proposals', () => {
+  const { systemPrompt } = buildSeniorSelfPrompt(requestFixture);
+
+  expect(systemPrompt).toContain(
+    'Sufficient: the response can be grounded without inventing a material fact.',
+  );
+  expect(systemPrompt).toContain(
+    'Partially sufficient: a useful bounded response is possible. Answer only the supported portion and state the material limitation.',
+  );
+  expect(systemPrompt).toContain(
+    'Insufficient: a missing referent, event, participant, purpose, or source is necessary to answer. State what is unknown and ask one neutral clarifying question.',
+  );
+  expect(systemPrompt).toContain(
+    'If clarification is necessary, do not offer advice or propose memory, evidence, goals, or actions.',
+  );
+  expect(systemPrompt).toContain(
+    'A partially sufficient response may propose an outcome only when that proposal is grounded entirely in the supported portion.',
+  );
+});
+
+test('an off-topic current turn with career profile and history receives a structured redirect', async () => {
+  const offTopicRequest: CoachingRequest = {
+    ...requestFixture,
+    input: 'What is the capital of Ghana?',
+    context: {
+      profile: {
+        currentRole: 'Product Designer',
+        currentCompany: 'Taisa',
+        careerStage: 'mid',
+        coachingStyle: 'direct',
+        accountabilityLevel: 'moderate',
+        shortTermGoal: 'Lead a design initiative',
+        longTermGoal: 'Become a design director',
+        currentFocusArea: 'Stakeholder management',
+      },
+      recentMessages: [
+        { role: 'user' as const, content: 'I need to prepare for my design review.' },
+        { role: 'assistant' as const, content: 'What decision needs the clearest framing?' },
+      ],
+      memory: requestFixture.context.memory,
+      evidence: requestFixture.context.evidence,
+    },
+  };
+  const provider: CoachingProvider = {
+    id: 'openai',
+    respond: jest.fn(async (prompt) => {
+      expect(JSON.parse(prompt.userPrompt)).toEqual(offTopicRequest);
+      return {
+        payload: {
+          mode: 'redirect' as const,
+          relevance: 'outside-scope' as const,
+          contextSufficiency: 'sufficient' as const,
+          reply: 'I can help when this connects to your work or career.',
+          stance: null,
+          proposals: [],
+        },
+        usage: {
+          provider: 'openai' as const, model: 'fixture', inputTokens: 10, outputTokens: 4,
+          estimatedCostUsd: 0.000052,
+        },
+      };
+    }),
+  };
+
+  const response = await requestCoaching(offTopicRequest, provider);
+
+  expect(response).toMatchObject({
+    mode: 'redirect', relevance: 'outside-scope', contextSufficiency: 'sufficient',
+    stance: null, proposals: [],
+  });
+  expect(provider.respond).toHaveBeenCalledTimes(1);
 });

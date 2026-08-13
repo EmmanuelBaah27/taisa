@@ -27,3 +27,15 @@ All commands used local mocks/test databases only; no provider, network, native,
 
 - Physical-device QA remains the next Baah approval gate; it was intentionally not run.
 - Pre-existing untracked `backend/taisa-usage-ledger.sqlite`, `-shm`, and `-wal` files were preserved and excluded from this task's commit.
+
+## Correction round 1
+
+- Corrected relevance to be decided from the primary subject of the current user turn before bounded context is consulted. Career profile, history, memory, and evidence cannot make an off-topic turn career-relevant.
+- Replaced the abbreviated relevance and sufficiency guidance with the approved mutually exclusive definitions, including the explicit adjacent-work-effect requirement and the separate sufficient, partially sufficient, and insufficient clauses.
+- Added an offline fixture-boundary regression: an off-topic question with a populated career profile, work history, and memory produces the valid `redirect` / `outside-scope` structure without a live model call.
+- Added prompt assertions for the approved relevance and sufficiency constraints, including no advice/proposals for clarification and proposal grounding limited to the supported portion of partial context.
+
+Fresh correction-round verification:
+
+- Focused: backend 66 tests + build; mobile 45 tests + typecheck.
+- Full: backend 188 tests + build; mobile 380 tests + typecheck.
