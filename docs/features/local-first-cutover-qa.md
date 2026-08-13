@@ -70,3 +70,17 @@ Status: code-only recovery/privacy implementation and automated tests exist. Tas
 
 No migration route exists or is needed. Task 10 Step 6 legacy-route retirement was not performed;
 `backend/src/index.ts` is intentionally unchanged until this gate passes.
+
+## Personal-alpha standalone gate
+
+- [ ] Deploy the approved private single-replica service with every SQLite path on its persistent volume.
+- [ ] Exchange the short-lived code once, verify the iPhone credential survives restart, then revoke and re-enroll it.
+- [ ] Install the signed `personal-alpha` Release build and confirm it launches with Metro and the Mac stopped.
+- [ ] On cellular away from the Mac, complete text coaching, voice transcription/coaching, retry, and force-quit recovery.
+- [ ] Rate one response and confirm zero feedback traffic; preview and manually redact one synthetic example, explicitly share it, then delete the encrypted server copy while retaining the local reaction.
+- [ ] Trigger per-request and daily ceilings and confirm rejection occurs before any provider call.
+- [ ] Confirm production logs contain only request IDs, routes, statuses, latency, and allowlisted error categories.
+
+Status: code-only release profiles and hosted-URL validation are implemented. Railway resource
+creation, secrets, deployment, Apple signing/upload, standalone installation, and this device
+journey remain gated and unrun.

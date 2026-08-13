@@ -71,6 +71,12 @@ EXPO_PUBLIC_API_URL=http://YOUR_MAC_IP:3001/api/v1
 > **Important:** Use your Mac's local IP (e.g. `192.168.1.5`), not `localhost`, so your phone can reach the backend over WiFi.
 > Find it with: `ipconfig getifaddr en0`
 
+The `personal-alpha` release profile sets `EXPO_PUBLIC_TAISA_BUILD_PROFILE=personal-alpha` and
+requires `EXPO_PUBLIC_API_URL` to be a hosted HTTPS URL ending in `/api/v1`. It rejects localhost,
+loopback, `.local`, and private LAN addresses at startup. This URL is public configuration, not a
+secret; all provider keys, enrollment codes, credential peppers, and feedback keys remain backend
+variables only.
+
 ### 4. Start the backend
 ```bash
 npm run backend
@@ -96,6 +102,12 @@ npx expo run:ios
 ```
 
 This native command is an explicit execution gate: record it for setup, but do not run it, prebuild native projects, or start a simulator/device build until Baah approves the native verification step.
+
+After the private service is deployed and Baah separately approves signing/build execution, create
+the standalone internal profile with `eas build --platform ios --profile personal-alpha` or a local
+Xcode Release archive using the same profile variables. `developmentClient` is disabled for this
+profile, so the installed app must launch and operate with Metro stopped. EAS upload, Apple
+credential access, and installation remain gated external actions.
 
 The managed configuration enables SQLCipher and LocalAuthentication. Do not claim encrypted-file,
 Face ID, app-switcher, sharing, or restore behavior from Expo Go or unit tests.
