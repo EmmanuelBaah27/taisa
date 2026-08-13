@@ -9,6 +9,8 @@ export interface VoiceComposerState {
   text: string;
   confirmDeleteVoice: boolean;
   submitting: boolean;
+  submissionFailed: boolean;
+  textFocusRequest: number;
 }
 
 export type VoiceComposerAction =
@@ -34,6 +36,8 @@ export function createVoiceComposerState(mode: VoiceComposerMode = 'text'): Voic
     text: '',
     confirmDeleteVoice: false,
     submitting: false,
+    submissionFailed: false,
+    textFocusRequest: 0,
   };
 }
 
@@ -41,6 +45,12 @@ export function reduceVoiceComposer(
   state: VoiceComposerState,
   action: VoiceComposerAction,
 ): VoiceComposerState {
+  if (
+    state.submissionFailed &&
+    action.type !== 'reset' &&
+    action.type !== 'confirm-delete-voice'
+  ) return state;
+
   switch (action.type) {
     case 'start-voice':
       return { ...state, mode: 'voice', voice: 'recording', confirmDeleteVoice: false };
@@ -54,7 +64,7 @@ export function reduceVoiceComposer(
       return {
         ...state,
         mode: 'text',
-        voice: action.activity === 'silence' ? 'none' : 'paused',
+        voice: action.activity === 'speech' ? 'paused' : 'none',
         confirmDeleteVoice: false,
       };
     case 'switch-to-voice':
@@ -70,13 +80,20 @@ export function reduceVoiceComposer(
     case 'cancel-delete-voice':
       return { ...state, confirmDeleteVoice: false };
     case 'confirm-delete-voice':
-      return { ...state, mode: 'voice', voice: 'ready', confirmDeleteVoice: false };
+      return {
+        ...state,
+        mode: 'text',
+        voice: 'none',
+        confirmDeleteVoice: false,
+        submissionFailed: false,
+        textFocusRequest: state.textFocusRequest + 1,
+      };
     case 'send':
       return state.voice === 'none' && state.text.trim().length === 0
         ? state
         : { ...state, submitting: true, confirmDeleteVoice: false };
     case 'submission-failed':
-      return { ...state, submitting: false };
+      return { ...state, submitting: false, submissionFailed: true };
     case 'restore-mode':
       return createVoiceComposerState(action.mode);
     case 'reset':

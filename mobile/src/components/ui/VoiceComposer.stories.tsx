@@ -20,6 +20,8 @@ function Preview({ mode, voiceState, hasVoiceDraft, text }: {
       amplitude={amplitude}
       text={text}
       hasVoiceDraft={hasVoiceDraft}
+      submissionFailed={false}
+      textFocusRequest={0}
       onChangeText={() => undefined}
       onSwitchToText={() => undefined}
       onSwitchToVoice={() => undefined}

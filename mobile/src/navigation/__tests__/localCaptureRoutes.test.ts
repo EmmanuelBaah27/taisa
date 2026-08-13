@@ -19,6 +19,29 @@ describe('local-first capture navigation', () => {
     push.mockClear();
   });
 
+  test('the composer uses waveform voice entry outside the text field and restricts failed voice recovery', () => {
+    const composer = fs.readFileSync(
+      path.resolve(__dirname, '../../components/ui/VoiceComposer.tsx'),
+      'utf8',
+    );
+    const chat = fs.readFileSync(path.resolve(__dirname, '../../../app/chat/index.tsx'), 'utf8');
+
+    expect(composer).not.toMatch(/IconMicrophone/);
+    expect(composer).toMatch(/IconVoiceMid/);
+    const surfaces = fs.readFileSync(
+      path.resolve(__dirname, '../../components/ui/ChatSurfaces.tsx'),
+      'utf8',
+    );
+    expect(surfaces).toMatch(/Discard recording/);
+    expect(composer).toMatch(/Resume/);
+    expect(chat).toMatch(/submissionFailed/);
+    expect(chat).toMatch(/pendingRecording\?\.durationSeconds \?\? recorder\.duration/);
+    expect(chat).toMatch(/hydrated\.activeRequestStatus === 'transcription-failed'/);
+    expect(chat).toMatch(/if \(activeRequestId === null\)/);
+    expect(chat).toMatch(/pendingRecordingRef\.current !== null\) await handleComposerSend/);
+    expect(chat).toMatch(/await confirmVoiceDraftDeletion\(\)/);
+  });
+
   test('the default Taisa card action opens local-first chat capture', () => {
     const card = TaisaCard({
       eyebrow: 'A pattern worth exploring',

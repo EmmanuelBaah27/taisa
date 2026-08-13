@@ -131,15 +131,15 @@ Never use raw `text-sm font-semibold` combinations — use the composite utiliti
 **DS compliance:** no `StyleSheet.create()`, no raw hex, import tokens from Tailwind classes only.
 ## Voice composer
 
-`VoiceComposer` is the bottom-loaded mixed-input control used by coaching conversations.
-Its three stable voice slots are input-mode switch, speech-responsive waveform with a
-negative-space Pause/Resume cradle, and Send. Keyboard mode gives the text field the full
-available center width; any inactive voice or text input is represented by `VoiceDraftStrip`
-above the composer. Draft-strip deletion targets only that input, and voice deletion requires
-screen-level confirmation.
+`VoiceComposer` is the bottom-loaded mixed-input control used by coaching conversations. The
+waveform is its sole voice symbol across primary entry, mode switching, saved drafts, and Reply;
+the text field contains no voice icon. In text mode, a separate soft-grey waveform control starts
+recording when no draft exists, or includes the saved duration and opens draft actions when one
+does. A stopped draft opens with Delete, Resume, and Send. Failed submitted audio hides the
+editable composer and leaves only the conversation-level retry and discard actions.
 
 When a conversation prefers voice, the idle composer is one soft-grey, full-width `Reply` control
-with a black microphone icon. Its accessible label is `Reply by voice, starts recording`; it starts
+with a black waveform icon. Its accessible label is `Reply by voice, starts recording`; it starts
 recording only after that explicit tap. The control is unavailable only while a submission is in
 progress, so offline recording remains available.
 

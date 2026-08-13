@@ -9,7 +9,7 @@ describe('voice activity classification', () => {
     expect(classifyVoiceActivity(Array.from({ length: 125 }, () => 0.015))).toBe('silence');
   });
 
-  test('an isolated loud sound is uncertain and therefore preserved', () => {
+  test('an isolated loud sound is uncertain but not eligible for a draft', () => {
     expect(classifyVoiceActivity([0.01, 0.01, 0.75, 0.01, 0.01, 0.01])).toBe('uncertain');
   });
 
@@ -19,5 +19,9 @@ describe('voice activity classification', () => {
 
   test('an empty meter history is silence', () => {
     expect(classifyVoiceActivity([])).toBe('silence');
+  });
+
+  test('detected speech can be valid while the displayed timer still rounds to zero', () => {
+    expect(classifyVoiceActivity([0.12, 0.16, 0.13])).toBe('speech');
   });
 });

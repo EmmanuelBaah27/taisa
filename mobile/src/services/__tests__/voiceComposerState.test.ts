@@ -28,7 +28,7 @@ describe('voice composer state', () => {
     });
   });
 
-  test('a failed voice submission retains the paused voice draft and selected mode', () => {
+  test('a failed voice submission becomes terminal and cannot resume, edit, or switch modes', () => {
     const failed = reduceVoiceComposer(
       {
         ...createVoiceComposerState('voice'),
@@ -38,7 +38,12 @@ describe('voice composer state', () => {
       { type: 'submission-failed' },
     );
 
-    expect(failed).toMatchObject({ mode: 'voice', voice: 'paused', submitting: false });
+    expect(failed).toMatchObject({
+      mode: 'voice', voice: 'paused', submitting: false, submissionFailed: true,
+    });
+    expect(reduceVoiceComposer(failed, { type: 'resume-voice' })).toEqual(failed);
+    expect(reduceVoiceComposer(failed, { type: 'set-text', text: 'append this' })).toEqual(failed);
+    expect(reduceVoiceComposer(failed, { type: 'switch-to-text', activity: 'speech' })).toEqual(failed);
   });
 
   test('cancelling a paused voice draft returns to a non-recording ready reply', () => {
@@ -62,16 +67,21 @@ describe('voice composer state', () => {
     expect(reduceVoiceComposer(paused, { type: 'resume-voice' }).voice).toBe('recording');
   });
 
-  test.each(['speech', 'uncertain'] as const)(
-    'switching to text preserves %s audio as a paused draft',
-    (activity) => {
-      const recording = reduceVoiceComposer(createVoiceComposerState(), { type: 'start-voice' });
-      expect(reduceVoiceComposer(recording, { type: 'switch-to-text', activity })).toMatchObject({
-        mode: 'text',
-        voice: 'paused',
-      });
-    },
-  );
+  test('switching to text preserves only detected speech as a paused draft', () => {
+    const recording = reduceVoiceComposer(createVoiceComposerState(), { type: 'start-voice' });
+    expect(reduceVoiceComposer(recording, { type: 'switch-to-text', activity: 'speech' })).toMatchObject({
+      mode: 'text',
+      voice: 'paused',
+    });
+  });
+
+  test('switching to text discards uncertain noise instead of creating a draft', () => {
+    const recording = reduceVoiceComposer(createVoiceComposerState(), { type: 'start-voice' });
+    expect(reduceVoiceComposer(recording, { type: 'switch-to-text', activity: 'uncertain' })).toMatchObject({
+      mode: 'text',
+      voice: 'none',
+    });
+  });
 
   test('switching to text discards silence instead of creating a draft', () => {
     const recording = reduceVoiceComposer(createVoiceComposerState(), { type: 'start-voice' });
@@ -118,9 +128,10 @@ describe('voice composer state', () => {
     expect(requested.voice).toBe('paused');
     expect(requested.confirmDeleteVoice).toBe(true);
     expect(reduceVoiceComposer(requested, { type: 'confirm-delete-voice' })).toMatchObject({
-      mode: 'voice',
-      voice: 'ready',
+      mode: 'text',
+      voice: 'none',
       confirmDeleteVoice: false,
+      textFocusRequest: 1,
     });
   });
 

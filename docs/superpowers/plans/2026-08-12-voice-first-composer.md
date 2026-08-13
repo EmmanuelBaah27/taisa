@@ -13,7 +13,8 @@
 - Recording starts automatically only after an explicit voice entry.
 - Nothing is transcribed or coached until the user taps Send.
 - Speech detection and draft classification remain entirely on-device.
-- Silence creates no Voice Draft; meaningful or uncertain audio is preserved.
+- Only detected speech creates a Voice Draft; silence, isolated noise, and sub-second non-speech
+  are discarded.
 - The active input owns the full composer; the inactive input is a removable draft strip.
 - Send combines voice transcript first and typed clarification second.
 - Sent transcripts are editable; correction visibly regenerates coaching.
@@ -25,6 +26,8 @@
   survives restart and exact resume.
 - Existing dirty device-QA fixes must be preserved.
 - No new dependency, provider call, background analysis, or navigation redesign.
+- The waveform is the sole voice symbol. Text fields contain no microphone or waveform icon.
+- A failed submitted voice turn exposes only retry and deletion; it cannot be edited or extended.
 
 ---
 
@@ -245,3 +248,79 @@ Expected: all mobile tests and typecheck pass. On iPhone, verify voice reply →
 tap recording, keyboard/voice persistence after force-quit, offline local recording, failed-send
 draft retention, cancellation, transcript correction, VoiceOver label, and no automatic microphone
 activation.
+
+### Task 6: Speech-only drafts and terminal submission recovery
+
+**Files:**
+- Modify: `mobile/src/services/voiceActivity.ts`
+- Modify: `mobile/src/services/voiceComposerState.ts`
+- Modify: `mobile/src/services/__tests__/voiceActivity.test.ts`
+- Modify: `mobile/src/services/__tests__/voiceComposerState.test.ts`
+- Modify: `mobile/src/components/ui/VoiceComposer.tsx`
+- Modify: `mobile/src/components/ui/ChatSurfaces.tsx`
+- Modify: `mobile/src/components/ui/VoiceComposer.stories.tsx`
+- Modify: `mobile/app/chat/index.tsx`
+- Modify: `mobile/src/navigation/__tests__/localCaptureRoutes.test.ts`
+- Modify: `docs/design-system.md`
+
+**Interfaces:**
+- Consumes: local speech classification, stopped-draft duration, preferred input mode, and
+  persisted submission status.
+- Produces: speech-only draft retention; waveform-only voice entry; `Delete / Resume / Send`
+  draft actions; and a terminal failed-submission state with `Try again / Delete recording`.
+
+- [x] **Step 1: Write failing classification and state-transition tests**
+
+Assert silence, isolated noise, and sub-second non-speech never create a draft. Assert detected
+speech can create a draft even when the rounded display is `0:00`. Assert deleting a draft returns
+to text mode with keyboard focus requested; tapping a plain waveform starts voice recording;
+tapping waveform plus duration opens draft actions without starting; and an attempted submission
+cannot resume, append audio, switch input, or edit text.
+
+- [x] **Step 2: Run the logic RED**
+
+Run: `cd mobile && npm test -- voiceActivity voiceComposerState --runInBand`
+
+Expected: FAIL because uncertain/sub-second noise is currently retained and failed submissions
+still inherit editable draft transitions.
+
+- [x] **Step 3: Implement the minimal state rules**
+
+Make speech activity, not the rounded timer, authoritative. Remove non-speech recordings through
+the existing recoverable audio-cleanup path. Represent stopped valid drafts separately from
+submitted failures so only the former can resume. Emit an explicit `focus-text` effect after draft
+deletion rather than inferring focus from rendering.
+
+- [x] **Step 4: Run the logic GREEN**
+
+Run: `cd mobile && npm test -- voiceActivity voiceComposerState --runInBand && npm run typecheck`
+
+Expected: focused tests and typecheck pass.
+
+- [x] **Step 5: Write failing composer behavior tests**
+
+Assert the primary record control, text-mode switch, duration draft control, and Reply control all
+use the same waveform symbol. Assert the text field contains no voice icon. Assert valid draft
+voice mode begins with Delete, Resume, and Send; failed submission renders only Try again and
+Delete recording; and deleting returns to a focused text composer.
+
+- [x] **Step 6: Run the UI RED**
+
+Run: `cd mobile && npm test -- localCaptureRoutes voiceComposer --runInBand`
+
+Expected: FAIL on the existing icon and failed-submission affordances.
+
+- [x] **Step 7: Update the DS composer surfaces, then wire the screen**
+
+Use the existing waveform asset/component in every voice entry. The text-mode voice control is
+grey and shows duration only for a valid draft. With no draft it switches to voice and immediately
+records; with a draft it opens the action row without touching the recorder. Keep business state
+in the screen/reducer and document only the presentational DS variants.
+
+- [ ] **Step 8: Verify and repeat physical-device QA**
+
+Run: `cd mobile && npm test -- --runInBand && npm run typecheck`
+
+Expected: all mobile checks pass. On iPhone verify noise creates no draft, short detected speech is
+recoverable, waveform consistency, draft-action entry, text focus after deletion, and failed voice
+submission offers only retry or deletion without losing the locally retained audio.

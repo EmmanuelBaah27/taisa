@@ -248,10 +248,16 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
     try {
       await hydrateConversation(sessionId);
       await fetchThread(sessionId);
+      const hydrated = useChatStore.getState();
       dispatchComposer({
         type: 'restore-mode',
-        mode: useChatStore.getState().preferredInputMode,
+        mode: hydrated.preferredInputMode,
       });
+      if (
+        hydrated.activeRequestKind === 'voice' &&
+        (hydrated.activeRequestStatus === 'transcription-failed' ||
+          hydrated.activeRequestStatus === 'coaching-failed')
+      ) dispatchComposer({ type: 'submission-failed' });
     } finally {
       if (mountedRef.current) setInitialHydrationComplete(true);
     }
@@ -312,7 +318,7 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
   async function handleSwitchToText() {
     const activity = recorder.getActivity();
     if (composer.voice === 'recording' || composer.voice === 'paused') {
-      if (activity === 'silence') {
+      if (activity !== 'speech') {
         await stopActiveRecordingAndDiscard();
       } else if (composer.voice === 'recording') {
         await recorder.pause();
@@ -332,6 +338,11 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
     setActiveSessionId(conversationId);
     void setPreferredInputMode(conversationId, 'voice').catch(() => {});
     setPhase('idle');
+  }
+
+  function handleStartVoiceFromComposer() {
+    handleSwitchToVoice();
+    void startListening();
   }
 
   function handleUseKeyboard() {
@@ -564,7 +575,7 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
 
   async function handleRetry() {
     if (activeRequestId === null) {
-      startListening();
+      if (pendingRecordingRef.current !== null) await handleComposerSend();
       return;
     }
     try {
@@ -576,10 +587,9 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
   }
 
   async function handleDiscardFailedRecording() {
-    if (activeRequestId === null || activeRequestKind !== 'voice' || isBusy) return;
+    if (activeRequestKind !== 'voice' || isBusy) return;
     try {
-      await abandonVoiceSubmission(activeRequestId);
-      dispatchComposer({ type: 'reset' });
+      await confirmVoiceDraftDeletion();
     } catch {}
   }
 
@@ -600,10 +610,12 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
           <VoiceComposer
             mode={composer.mode}
             voiceState={composer.voice}
-            durationSeconds={recorder.duration}
+            durationSeconds={pendingRecording?.durationSeconds ?? recorder.duration}
             amplitude={recorder.amplitude}
             text={draft}
             hasVoiceDraft={composer.voice !== 'none'}
+            submissionFailed={composer.submissionFailed}
+            textFocusRequest={composer.textFocusRequest}
             disabled={isBusy}
             onChangeText={(value) => {
               setDraft(value);
@@ -611,7 +623,7 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
             }}
             onSwitchToText={() => { void handleSwitchToText(); }}
             onSwitchToVoice={handleSwitchToVoice}
-            onStartVoice={() => { void startListening(); }}
+            onStartVoice={handleStartVoiceFromComposer}
             onPause={() => { void handlePauseVoice(); }}
             onResume={() => { void handleResumeVoice(); }}
             onDeleteText={() => {

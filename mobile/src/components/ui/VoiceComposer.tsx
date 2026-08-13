@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { Text, TextInput, TouchableOpacity, View } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
@@ -14,6 +15,8 @@ export interface VoiceComposerProps {
   amplitude: SharedValue<number>;
   text: string;
   hasVoiceDraft: boolean;
+  submissionFailed: boolean;
+  textFocusRequest: number;
   disabled?: boolean;
   onChangeText: (value: string) => void;
   onSwitchToText: () => void;
@@ -58,32 +61,43 @@ function Waveform({ paused, amplitude }: { paused: boolean; amplitude: SharedVal
 }
 
 export function VoiceComposer(props: VoiceComposerProps) {
+  const textInputRef = useRef<TextInput>(null);
+
+  useEffect(() => {
+    if (props.mode === 'text' && props.textFocusRequest > 0) {
+      textInputRef.current?.focus();
+    }
+  }, [props.mode, props.textFocusRequest]);
+
+  if (props.submissionFailed) return null;
+
   if (props.mode === 'text') {
     return (
-      <View>
-        {props.hasVoiceDraft ? (
-          <VoiceDraftStrip
-            label={`Voice draft · ${formatDuration(props.durationSeconds)}`}
-            onOpen={props.onSwitchToVoice}
-            onDelete={props.onDeleteVoice}
-          />
-        ) : null}
+      <View className="gap-2">
+        <TouchableOpacity
+          accessibilityLabel={props.hasVoiceDraft
+            ? `Open voice draft, ${formatDuration(props.durationSeconds)}`
+            : 'Switch to voice and start recording'}
+          disabled={props.disabled}
+          onPress={props.hasVoiceDraft ? props.onSwitchToVoice : props.onStartVoice}
+          className="h-10 self-start flex-row items-center gap-2 rounded-full bg-subtle px-4"
+        >
+          <Icon name="IconVoiceMid" size={18} color={colors.textPrimary} />
+          {props.hasVoiceDraft ? (
+            <Text className="text-foreground text-small-semibold">
+              {formatDuration(props.durationSeconds)}
+            </Text>
+          ) : null}
+        </TouchableOpacity>
         <View className="min-h-14 flex-row items-end gap-2 rounded-full border border-border bg-background p-1.5 pl-4">
           <TextInput
+            ref={textInputRef}
             value={props.text}
             onChangeText={props.onChangeText}
             placeholder="Write something…"
             multiline
             className="max-h-32 min-h-10 flex-1 py-2 text-foreground text-base-regular"
           />
-          <TouchableOpacity
-            accessibilityLabel="Switch to voice reply"
-            disabled={props.disabled}
-            onPress={props.onSwitchToVoice}
-            className="h-10 w-10 items-center justify-center rounded-full bg-subtle"
-          >
-            <Icon name="IconMicrophone" size={18} color={colors.textPrimary} />
-          </TouchableOpacity>
           <TouchableOpacity disabled={props.disabled} onPress={props.onSend} className="h-10 w-10 items-center justify-center rounded-full bg-muted">
             <Icon name="IconArrowUp" size={18} color={colors.textPrimary} />
           </TouchableOpacity>
@@ -101,7 +115,7 @@ export function VoiceComposer(props: VoiceComposerProps) {
         onPress={props.onStartVoice}
         className="h-14 w-full flex-row items-center justify-center gap-2 rounded-full bg-muted"
       >
-        <Icon name="IconMicrophone" size={20} color={colors.textPrimary} />
+        <Icon name="IconVoiceMid" size={20} color={colors.textPrimary} />
         <Text className="text-foreground text-base-semibold">Reply</Text>
       </TouchableOpacity>
     );
@@ -116,8 +130,12 @@ export function VoiceComposer(props: VoiceComposerProps) {
       ) : null}
       <Text className="mb-1 text-center text-text-tertiary text-caption-regular">{paused ? 'Paused' : 'Recording'} · {formatDuration(props.durationSeconds)}</Text>
       <View className="h-14 flex-row items-center gap-2 rounded-full border border-border bg-background p-1.5">
-        <TouchableOpacity onPress={props.onSwitchToText} className="h-10 w-10 items-center justify-center rounded-full bg-subtle">
-          <Icon name="IconKeyboard" size={18} color={colors.textPrimary} />
+        <TouchableOpacity
+          accessibilityLabel={paused ? 'Delete recording' : 'Switch to keyboard'}
+          onPress={paused ? props.onDeleteVoice : props.onSwitchToText}
+          className="h-10 w-10 items-center justify-center rounded-full bg-subtle"
+        >
+          <Icon name={paused ? 'IconX' : 'IconKeyboard'} size={18} color={colors.textPrimary} />
         </TouchableOpacity>
         <TouchableOpacity className="flex-1" onPress={paused ? props.onResume : props.onPause}>
           <Waveform paused={paused} amplitude={props.amplitude} />

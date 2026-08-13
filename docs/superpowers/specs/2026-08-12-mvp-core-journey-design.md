@@ -172,12 +172,12 @@ implementation.
 
 - A failed provider request leaves the local message and exact request IDs retryable.
 - A failed transcription retains the app-owned recording for explicit retry or abandonment.
-- Recording begins automatically only after explicit voice entry. Switching inputs never submits;
-  locally detected meaningful or uncertain audio becomes a removable Voice Draft, while silence
-  creates no draft.
+- Recording begins automatically only after explicit voice entry. Switching inputs never submits.
+  Only locally detected speech becomes a removable Voice Draft; silence, isolated noise, and
+  sub-second non-speech are discarded.
 - A conversation preserves its deliberately chosen input modality. After Taisa answers a voice
   turn, the composer returns to a non-recording **voice-ready** state: a soft-grey control with a
-  black microphone icon and the label **Reply**. One tap begins the next recording. It never
+  black waveform icon and the label **Reply**. One tap begins the next recording. It never
   activates the microphone merely because Taisa finished responding. Switching to keyboard makes
   text the conversation's active modality until the user switches back.
 - The whole voice-ready control is tappable and has the accessibility label “Reply by voice,
@@ -187,6 +187,15 @@ implementation.
   switch. It survives app restart and conversation resume. Failed voice submission retains the
   voice draft and voice modality; transcript correction returns to voice-ready after regenerated
   coaching. Cancelling a recording returns to voice-ready without changing the modality.
+- The waveform is the only voice symbol across the primary record control, voice-mode switch, and
+  Reply control. Text input contains no voice icon. In text mode, a plain grey waveform switches
+  to voice and starts a new recording; when a valid draft exists, the same control includes its
+  duration and opens the draft actions without recording.
+- A valid stopped voice draft opens voice mode at **Delete / Resume / Send**. Resume continues the
+  same draft; Send submits it; Delete returns to the default text entry with the keyboard active.
+- Once a voice submission has been attempted, its recovery state permits only **Try again** or
+  **Delete recording**. The user cannot append audio, resume recording, or type into that submitted
+  turn. Deleting returns to the default text entry because nothing completed.
 - New capture never silently resumes old failed work; History exposes explicit Resume.
 - Cost, validation, and privacy rejection happen before provider invocation whenever possible.
 - The UI explains the safe next action without revealing provider payloads or private content in
