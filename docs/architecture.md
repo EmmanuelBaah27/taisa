@@ -230,3 +230,21 @@ See `docs/api.md` for the request/response patterns. See `docs/agent-persona.md`
 | Zustand (not Redux) | Lightweight global state for a solo mobile app. Three stores: `journalStore`, `careerStore`, `uiStore`. |
 | Expo managed workflow | Native configuration stays managed, but SQLCipher and LocalAuthentication require a development build; Expo Go is insufficient. |
 | `callClaudeJson` with fallback | Claude sometimes wraps JSON in markdown code fences. The fallback parser strips them before parsing. |
+
+## Personal-alpha hosted boundary
+
+The personal alpha uses one private, single-replica Node service. The iPhone remains the readable
+career-data authority. The hosted service receives bounded content only when the user deliberately
+submits coaching or transcription, and it does not persist that content. A device credential,
+separate from the installation rate-limit ID, protects `/api/v1` routes.
+
+Three content-free or encrypted operational stores live on one persistent volume:
+
+- usage reservations and receipts;
+- keyed device-credential digests and consumed enrollment codes;
+- explicitly consented feedback envelopes encrypted with AES-256-GCM.
+
+Local Helpful / Not helpful reactions do not cross the network. Sharing requires an editable
+preview and a second explicit confirmation; deletion is scoped to the enrolled device and
+idempotent. SQLite accounting is intentionally single-instance, so horizontal replicas remain
+prohibited until these stores move to shared transactional infrastructure.

@@ -1,0 +1,16 @@
+.git
+.worktrees
+**/.env
+**/.env.*
+!**/.env.example
+**/node_modules
+**/dist
+**/.expo
+**/*.db
+**/*.db-shm
+**/*.db-wal
+**/*.sqlite
+**/*.sqlite-shm
+**/*.sqlite-wal
+mobile
+.superpowers

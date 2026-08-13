@@ -2,7 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import { getDb } from './db/connection';
+import { closeDb, getDb } from './db/connection';
 
 import rateLimit from 'express-rate-limit';
 
@@ -27,14 +27,17 @@ import { createDeviceAuthentication } from './middleware/deviceAuthentication';
 import { createDeviceEnrollmentRouter } from './routes/deviceEnrollment';
 import { FeedbackRepository } from './feedback/feedbackRepository';
 import { createFeedbackRouter } from './routes/feedback';
+import { readProductionConfig } from './config/production';
+import { closeDefaultCostLedger } from './services/usage/costLedger';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const productionConfig = readProductionConfig();
 
 // Middleware
 app.use(requestContext);
 app.use(helmet());
-app.use(cors());
+app.use(cors(productionConfig === null ? undefined : { origin: productionConfig.publicOrigin }));
 app.use(express.json({ limit: '10mb' }));
 
 // Init DB on startup
@@ -86,9 +89,10 @@ if (deviceCredentialStore !== null) {
   app.use('/api/v1', createDeviceAuthentication(deviceCredentialStore));
 }
 const feedbackConfig = readFeedbackConfig();
+let feedbackRepository: FeedbackRepository | null = null;
 if (feedbackConfig !== null) {
   if (deviceCredentialStore === null) throw new Error('Feedback storage requires device authentication');
-  const feedbackRepository = new FeedbackRepository({
+  feedbackRepository = new FeedbackRepository({
     encryptionKeyBase64: feedbackConfig.encryptionKeyBase64,
     databasePath: feedbackConfig.databasePath,
   });
@@ -115,8 +119,24 @@ app.get('/health', (_req, res) => {
 // Error handler
 app.use(contentSafeErrorHandler);
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Taisa backend running on http://localhost:${PORT}`);
 });
+
+let shuttingDown = false;
+function shutdown(): void {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  server.close(() => {
+    feedbackRepository?.close();
+    deviceCredentialStore?.close();
+    closeDefaultCostLedger();
+    closeDb();
+    process.exit(0);
+  });
+}
+
+process.once('SIGTERM', shutdown);
+process.once('SIGINT', shutdown);
 
 export default app;

@@ -140,6 +140,29 @@ git diff --check
 These commands make no live provider call. Device and paid-provider evaluations are recorded and
 approved separately.
 
+## Private Railway service (approval required before creation)
+
+The repository includes `backend/Dockerfile` and root `railway.json`. Configure Railway with the
+repository root as build context, one service replica, and one persistent volume mounted at an
+absolute path such as `/data`. Set all four mutable SQLite paths beneath that mount:
+
+- `DB_PATH`
+- `TAISA_USAGE_LEDGER_PATH`
+- `TAISA_DEVICE_AUTH_DATABASE_PATH`
+- `TAISA_FEEDBACK_DATABASE_PATH`
+
+Also set `NODE_ENV=production`, `TAISA_PUBLIC_ORIGIN` to one HTTPS origin, the provider and
+transcription variables above, device-auth variables, feedback encryption key, and all three cost
+ceilings. Production startup fails closed if any required secret, ceiling, HTTPS origin, or durable
+path is absent. Keep one replica because the operational, credential, and feedback stores are
+single-instance SQLite. `/health` is public and content-free; every `/api/v1` route except the
+single-use enrollment exchange requires the enrolled bearer credential.
+
+Do not paste secrets into source control, build arguments, or Expo public variables. Create the
+Railway project, volume, billing, variables, and first deployment only after Baah approves that
+external action. For rollback, select the last healthy Railway deployment without changing or
+deleting the persistent volume.
+
 After explicit paid-provider approval, run an evaluation with a provider, hard total budget, and
 new local review-artifact path:
 

@@ -397,3 +397,10 @@ export function reserveUsage(
 export function recordUsage(receipt: UsageReceipt): void {
   getDefaultLedger().recordUsage(receipt);
 }
+
+export function closeDefaultCostLedger(): void {
+  if (defaultLedger) {
+    defaultLedger.close();
+    defaultLedger = undefined;
+  }
+}
