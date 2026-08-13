@@ -103,6 +103,14 @@ describe('local-first capture navigation', () => {
     expect(chatScreen).toMatch(/async function refreshConversation[\s\S]*fetchThread[\s\S]*fetchThreads/);
   });
 
+  test('transcript revision refresh stays owned by the conversation that started it', () => {
+    const chatScreen = fs.readFileSync(
+      path.resolve(__dirname, '../../../app/chat/index.tsx'),
+      'utf8',
+    );
+    expect(chatScreen).toMatch(/revisionConversationId[\s\S]*sessionIdRef\.current === revisionConversationId[\s\S]*refreshConversation/);
+  });
+
   test('voice-ready follow-up requires one deliberate Reply tap and never auto-starts recording', () => {
     const chatScreen = fs.readFileSync(
       path.resolve(__dirname, '../../../app/chat/index.tsx'),

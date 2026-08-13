@@ -414,6 +414,7 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
   async function handleSaveTranscriptRevision() {
     const corrected = editingTranscript?.trim() ?? '';
     if (!corrected) return;
+    const revisionConversationId = sessionIdRef.current;
     try {
       await reviseTranscript(corrected);
       setEditingTranscript(null);
@@ -421,7 +422,14 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
     } catch {
       // The durable revision transaction already retired the superseded reply and proposals.
     } finally {
-      await refreshConversation();
+      if (
+        revisionConversationId !== null &&
+        mountedRef.current &&
+        sessionIdRef.current === revisionConversationId &&
+        useChatStore.getState().activeSessionId === revisionConversationId
+      ) {
+        await refreshConversation();
+      }
     }
   }
 

@@ -27,17 +27,21 @@ export interface RecordingCleanupBarrier {
 
 /** Serializes native recorder teardown with the next recorder acquisition. */
 export function createRecordingCleanupBarrier(): RecordingCleanupBarrier {
-  let pending: Promise<void> = Promise.resolve();
+  let pending: Promise<void> | null = null;
   return {
     run(cleanup) {
       // The owner is detached synchronously inside cleanup, while the returned promise remains
       // the barrier that the next native recorder acquisition must await.
-      const next = cleanup();
-      pending = next.catch(() => {});
+      const next = pending === null ? cleanup() : pending.then(cleanup, cleanup);
+      const settled = next.catch(() => {});
+      pending = settled;
+      void settled.finally(() => {
+        if (pending === settled) pending = null;
+      });
       return next;
     },
     wait() {
-      return pending;
+      return pending ?? Promise.resolve();
     },
   };
 }

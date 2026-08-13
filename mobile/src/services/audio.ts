@@ -10,6 +10,7 @@ export interface RecordingResult {
 
 let recording: Audio.Recording | null = null;
 let startTime: number = 0;
+let nativeRecorderTeardown: Promise<void> = Promise.resolve();
 
 export async function requestAudioPermissions(): Promise<boolean> {
   const { granted } = await Audio.requestPermissionsAsync();
@@ -17,6 +18,7 @@ export async function requestAudioPermissions(): Promise<boolean> {
 }
 
 export async function startRecording(): Promise<void> {
+  await nativeRecorderTeardown;
   const granted = await requestAudioPermissions();
   if (!granted) throw new Error('Audio permission denied');
 
@@ -38,20 +40,21 @@ export async function startRecording(): Promise<void> {
 
 export async function stopRecording(): Promise<RecordingResult> {
   if (!recording) throw new Error('No active recording');
-
-  const status = await recording.stopAndUnloadAsync();
-  const uri = recording.getURI();
-  const durationSeconds = status.durationMillis > 0
-    ? status.durationMillis / 1000
-    : (Date.now() - startTime) / 1000;
-
-  recording = null;
-
-  await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
-
-  if (!uri) throw new Error('Recording URI is null');
-
-  return { uri, durationSeconds };
+  const ownedRecording = recording;
+  const ownedStartTime = startTime;
+  const teardown = (async () => {
+    const status = await ownedRecording.stopAndUnloadAsync();
+    const uri = ownedRecording.getURI();
+    const durationSeconds = status.durationMillis > 0
+      ? status.durationMillis / 1000
+      : (Date.now() - ownedStartTime) / 1000;
+    if (recording === ownedRecording) recording = null;
+    await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
+    if (!uri) throw new Error('Recording URI is null');
+    return { uri, durationSeconds };
+  })();
+  nativeRecorderTeardown = teardown.then(() => undefined, () => undefined);
+  return teardown;
 }
 
 export async function pauseRecording(): Promise<void> {

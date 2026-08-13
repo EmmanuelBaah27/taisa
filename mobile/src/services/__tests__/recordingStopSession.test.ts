@@ -102,4 +102,19 @@ describe('recording stop session', () => {
     expect(reacquired).toBe(true);
     expect(discard).toHaveBeenCalledWith(RESULT.uri);
   });
+
+  test('a second cleanup cannot replace an unresolved native cleanup barrier', async () => {
+    let releaseFirst!: () => void;
+    const barrier = createRecordingCleanupBarrier();
+    const first = barrier.run(() => new Promise<void>((resolve) => { releaseFirst = resolve; }));
+    const second = barrier.run(async () => undefined);
+    let released = false;
+    const wait = barrier.wait().then(() => { released = true; });
+
+    await Promise.resolve();
+    expect(released).toBe(false);
+    releaseFirst();
+    await Promise.all([first, second, wait]);
+    expect(released).toBe(true);
+  });
 });
