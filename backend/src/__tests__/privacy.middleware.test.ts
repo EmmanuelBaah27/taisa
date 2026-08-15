@@ -74,7 +74,7 @@ const validRequest = {
 };
 
 const transcriptionEnvironment = {
-  TAISA_TRANSCRIPTION_MODEL: 'whisper-mock',
+  TAISA_TRANSCRIPTION_MODEL: 'gpt-4o-mini-transcribe',
   TAISA_TRANSCRIPTION_MAX_DURATION_SECONDS: '300',
   TAISA_TRANSCRIPTION_MAX_UPLOAD_BYTES: '100000',
   TAISA_TRANSCRIPTION_PRICE_USD_PER_MINUTE: '0.006',
@@ -386,7 +386,7 @@ describe('transcription privacy and spend boundaries', () => {
     expect(completed?.transcript).toBe('private transcript');
     expect(completed?.usage).toEqual({
       provider: 'openai',
-      model: 'whisper-mock',
+      model: 'gpt-4o-mini-transcribe',
       audioSeconds: 1,
       estimatedCostUsd: 0.0001,
     });
@@ -520,7 +520,7 @@ describe('transcription privacy and spend boundaries', () => {
         recordedAt: expect.any(String),
         receipt: {
           provider: 'openai',
-          model: 'whisper-mock',
+          model: 'gpt-4o-mini-transcribe',
           audioSeconds: 1,
           estimatedCostUsd: 0.0001,
         },
@@ -547,7 +547,7 @@ describe('transcription privacy and spend boundaries', () => {
     const fullReservation = ledger.reserveUsage(
       {
         provider: 'openai',
-        model: 'whisper-mock',
+        model: 'gpt-4o-mini-transcribe',
         audioSeconds: 1,
         estimatedCostUsd: 1,
       },
@@ -576,7 +576,7 @@ describe('transcription privacy and spend boundaries', () => {
 describe('content-free usage ledger', () => {
   const receipt: UsageReceipt = {
     provider: 'openai',
-    model: 'whisper-mock',
+    model: 'gpt-4o-mini-transcribe',
     audioSeconds: 60,
     estimatedCostUsd: 0.006,
   };

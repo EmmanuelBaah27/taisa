@@ -247,12 +247,12 @@ describe('streaming transcription route', () => {
     yield* events;
   }
 
-  function createApp(create: jest.Mock) {
+  function createApp(create: jest.Mock, environmentOverride = environment) {
     const app = express();
     app.use(requestContext);
     app.use('/api/v1/transcribe', createTranscribeRouter({
       client: { audio: { transcriptions: { create } } } as never,
-      environment,
+      environment: environmentOverride,
     }));
     return app;
   }
@@ -309,6 +309,27 @@ describe('streaming transcription route', () => {
       expect(errorSpy.mock.calls.flat().join(' ')).not.toContain('provider private transcript');
     } finally {
       errorSpy.mockRestore();
+      await fs.promises.rm(fixturePath, { force: true });
+    }
+  });
+
+  test('rejects whisper-1 before provider spend because it cannot stream', async () => {
+    const fixturePath = createAudioFixture();
+    const create = jest.fn();
+
+    try {
+      const response = await request(createApp(create, {
+        ...environment,
+        TAISA_TRANSCRIPTION_MODEL: 'whisper-1',
+      }))
+        .post('/api/v1/transcribe')
+        .set('x-request-id', requestId)
+        .attach('audio', fixturePath);
+
+      expect(response.status).toBe(503);
+      expect(response.body.error.code).toBe('TRANSCRIPTION_CONFIG_ERROR');
+      expect(create).not.toHaveBeenCalled();
+    } finally {
       await fs.promises.rm(fixturePath, { force: true });
     }
   });

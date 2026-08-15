@@ -5,7 +5,13 @@ import { join } from 'path';
 import Database from 'better-sqlite3';
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-import { SCHEMA_V1_STATEMENTS, SCHEMA_V2_STATEMENTS, SCHEMA_V3_STATEMENTS } from '../../db/schema';
+import {
+  SCHEMA_V1_STATEMENTS,
+  SCHEMA_V2_STATEMENTS,
+  SCHEMA_V3_STATEMENTS,
+  SCHEMA_V4_STATEMENTS,
+} from '../../db/schema';
+import { SCHEMA_VERSION } from '../../db/migrations';
 import {
   createSqlCipherArchiveBoundary,
   schemaSqlMatchesExactly,
@@ -28,6 +34,7 @@ function migrate(database: Database.Database, targetVersion = 2): void {
   SCHEMA_V1_STATEMENTS.forEach((statement) => database.exec(statement));
   if (targetVersion >= 2) SCHEMA_V2_STATEMENTS.forEach((statement) => database.exec(statement));
   if (targetVersion >= 3) SCHEMA_V3_STATEMENTS.forEach((statement) => database.exec(statement));
+  if (targetVersion >= 4) SCHEMA_V4_STATEMENTS.forEach((statement) => database.exec(statement));
   database.pragma(`user_version = ${targetVersion}`);
 }
 
@@ -167,7 +174,7 @@ describe('real SQLite archive boundaries', () => {
     });
   }
 
-  function createSource(populated = true, schemaVersion = 3): ArchiveSnapshot {
+  function createSource(populated = true, schemaVersion = SCHEMA_VERSION): ArchiveSnapshot {
     const database = new Database(sourcePath);
     migrate(database, schemaVersion);
     if (populated) populate(database, schemaVersion);
@@ -207,7 +214,7 @@ describe('real SQLite archive boundaries', () => {
     });
 
     expect(sourceV1.schemaVersion).toBe(1);
-    expect(restored.schemaVersion).toBe(3);
+    expect(restored.schemaVersion).toBe(SCHEMA_VERSION);
     expect(restored.counts).toEqual(sourceV1.counts);
     const candidate = new Database(candidatePath, { readonly: true });
     expect(candidate.prepare(`SELECT preferred_input_mode FROM conversations WHERE id='c'`).get())

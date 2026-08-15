@@ -126,3 +126,16 @@ test('abort cancels XHR and rejects an incomplete request content-free', async (
   expect(xhr.aborted).toBe(true);
   await expect(subscription.completed).rejects.toBeInstanceOf(TranscriptionClientError);
 });
+
+test('a valid-looking terminal event cannot make a non-2xx response succeed', async () => {
+  const { xhr, start } = createHarness();
+  const subscription = await start({
+    requestId,
+    audioUri: 'file:///private/original.m4a',
+    durationSeconds: 12,
+  }, jest.fn());
+  xhr.progress(`{"type":"transcript.no_speech","requestId":"${requestId}","sequence":0}\n`);
+  xhr.finish(500);
+
+  await expect(subscription.completed).rejects.toBeInstanceOf(TranscriptionClientError);
+});

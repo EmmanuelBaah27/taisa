@@ -51,6 +51,7 @@ export function createStreamingTranscriptionClient(
     let bufferedLine = '';
     let nextSequence = 0;
     let terminalReceived = false;
+    let terminalEvent: Exclude<TranscriptionStreamEvent, { type: 'transcript.delta' }> | null = null;
     let settled = false;
     let resolveCompleted!: (event: SuccessfulTerminalEvent) => void;
     let rejectCompleted!: (error: TranscriptionClientError) => void;
@@ -88,12 +89,7 @@ export function createStreamingTranscriptionClient(
       onEvent(value);
       if (value.type === 'transcript.delta') return;
       terminalReceived = true;
-      if (value.type === 'transcript.failed') {
-        fail();
-        return;
-      }
-      settled = true;
-      resolveCompleted(value);
+      terminalEvent = value;
     };
 
     const consumeProgress = () => {
@@ -119,7 +115,16 @@ export function createStreamingTranscriptionClient(
         bufferedLine = '';
         acceptLine(finalLine);
       }
-      if (xhr.status < 200 || xhr.status >= 300 || !terminalReceived) fail();
+      if (xhr.status < 200 || xhr.status >= 300 || terminalEvent === null) {
+        fail();
+        return;
+      }
+      if (terminalEvent.type === 'transcript.failed') {
+        fail();
+        return;
+      }
+      settled = true;
+      resolveCompleted(terminalEvent);
     };
     xhr.onerror = fail;
     xhr.ontimeout = fail;

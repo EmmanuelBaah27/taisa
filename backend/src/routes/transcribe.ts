@@ -74,6 +74,10 @@ function requiredNonNegativeNumber(
 function loadTranscriptionConfig(
   environment: Record<string, string | undefined>,
 ): TranscriptionConfig {
+  const model = requiredString(environment, 'TAISA_TRANSCRIPTION_MODEL');
+  if (model !== 'gpt-4o-transcribe' && model !== 'gpt-4o-mini-transcribe') {
+    throw new Error('TAISA_TRANSCRIPTION_MODEL must support streaming log probabilities');
+  }
   const maxDurationSeconds = requiredNonNegativeNumber(
     environment,
     'TAISA_TRANSCRIPTION_MAX_DURATION_SECONDS',
@@ -83,7 +87,7 @@ function loadTranscriptionConfig(
   }
 
   return {
-    model: requiredString(environment, 'TAISA_TRANSCRIPTION_MODEL'),
+    model,
     maxDurationSeconds,
     maxUploadBytes: loadMaxUploadBytes(environment),
     priceUsdPerMinute: requiredNonNegativeNumber(
