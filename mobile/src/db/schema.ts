@@ -332,3 +332,72 @@ export const SCHEMA_V3_STATEMENTS: readonly string[] = [
     )
   )`,
 ];
+
+export const SCHEMA_V4_STATEMENTS: readonly string[] = [
+  'DROP INDEX coaching_requests_conversation_status_updated_idx',
+  'DROP INDEX coaching_requests_active_audio_uri_idx',
+  'ALTER TABLE coaching_requests RENAME TO coaching_requests_v3',
+  `CREATE TABLE coaching_requests (
+    id TEXT PRIMARY KEY NOT NULL,
+    intent_id TEXT NOT NULL UNIQUE,
+    conversation_id TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+    user_message_id TEXT UNIQUE REFERENCES messages(id) ON DELETE CASCADE,
+    transcription_request_id TEXT UNIQUE,
+    kind TEXT NOT NULL CHECK (kind IN ('text', 'voice')),
+    status TEXT NOT NULL CHECK (status IN (
+      'transcription-pending', 'transcription-failed',
+      'transcription-uncertain', 'no-speech',
+      'transcript-confirmation-required', 'coaching-pending',
+      'coaching-failed', 'completed', 'abandoned'
+    )),
+    audio_uri TEXT,
+    audio_duration_seconds REAL CHECK (
+      audio_duration_seconds IS NULL OR audio_duration_seconds >= 0
+    ),
+    transcript_draft TEXT,
+    transcript_confirmed_at TEXT,
+    assistant_message_id TEXT UNIQUE REFERENCES messages(id) ON DELETE SET NULL,
+    stance TEXT CHECK (stance IS NULL OR stance IN ('mirror', 'nudge', 'challenge', 'direct')),
+    context_manifest_json TEXT,
+    error_code TEXT,
+    attempt_count INTEGER NOT NULL CHECK (attempt_count >= 1),
+    submitted_at TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    CHECK (
+      (kind = 'text' AND transcription_request_id IS NULL AND audio_uri IS NULL
+        AND audio_duration_seconds IS NULL AND transcript_draft IS NULL
+        AND user_message_id IS NOT NULL)
+      OR
+      (kind = 'voice' AND transcription_request_id IS NOT NULL
+        AND audio_duration_seconds IS NOT NULL
+        AND (
+          audio_uri IS NOT NULL
+          OR status NOT IN ('transcription-pending', 'transcription-failed', 'transcription-uncertain')
+        ))
+    ),
+    CHECK (
+      status != 'transcription-uncertain'
+      OR (user_message_id IS NULL AND transcript_draft IS NOT NULL
+        AND length(trim(transcript_draft)) > 0)
+    ),
+    CHECK (status != 'no-speech' OR user_message_id IS NULL)
+  )`,
+  `INSERT INTO coaching_requests (
+    id, intent_id, conversation_id, user_message_id, transcription_request_id, kind, status,
+    audio_uri, audio_duration_seconds, transcript_draft, transcript_confirmed_at,
+    assistant_message_id, stance, context_manifest_json, error_code, attempt_count,
+    submitted_at, created_at, updated_at
+  ) SELECT
+    id, intent_id, conversation_id, user_message_id, transcription_request_id, kind, status,
+    audio_uri, audio_duration_seconds, NULL, transcript_confirmed_at,
+    assistant_message_id, stance, context_manifest_json, error_code, attempt_count,
+    submitted_at, created_at, updated_at
+  FROM coaching_requests_v3`,
+  'DROP TABLE coaching_requests_v3',
+  `CREATE INDEX coaching_requests_conversation_status_updated_idx
+    ON coaching_requests(conversation_id, status, updated_at DESC)`,
+  `CREATE INDEX coaching_requests_active_audio_uri_idx
+    ON coaching_requests(audio_uri)
+    WHERE audio_uri IS NOT NULL AND status NOT IN ('completed', 'abandoned')`,
+];

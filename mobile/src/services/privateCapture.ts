@@ -9,6 +9,7 @@ import type {
   LocalMemorySource,
   LocalMessage,
   UsageReceipt,
+  TranscriptionStreamEvent,
 } from '@taisa/shared';
 import { COACHING_GATEWAY_LIMITS } from '@taisa/shared';
 
@@ -103,12 +104,20 @@ export interface TranscriptionResult {
   transcript: string;
   durationSeconds: number;
   usage: UsageReceipt;
+  quality?: 'clear' | 'uncertain';
+}
+
+export interface NoSpeechTranscriptionResult {
+  status: 'no-speech';
 }
 
 export interface PrivateCaptureDependencies {
   database: ExclusiveTransactionConnection;
   coach(request: CoachingRequest): Promise<CoachingResponse>;
-  transcribe(request: TranscriptionRequest): Promise<TranscriptionResult>;
+  transcribe(
+    request: TranscriptionRequest,
+    onEvent?: (event: TranscriptionStreamEvent) => void,
+  ): Promise<TranscriptionResult | NoSpeechTranscriptionResult>;
   now(): string;
   createId(): string;
   getProfileId(): Promise<string>;
@@ -166,7 +175,13 @@ export interface TranscriptConfirmationResult {
   transcript: string;
 }
 
-export type SubmissionResult = CompletedSubmissionResult | TranscriptConfirmationResult;
+export type VoiceSubmissionResult =
+  | CompletedSubmissionResult
+  | TranscriptConfirmationResult
+  | { status: 'transcription-uncertain'; requestId: string; transcript: string }
+  | { status: 'no-speech'; requestId: string };
+
+export type SubmissionResult = VoiceSubmissionResult;
 
 export interface PrivateCaptureService {
   savePrivateDraft(input: { conversationId: string; content: string }): Promise<PrivateSaveResult>;
@@ -181,6 +196,7 @@ export interface PrivateCaptureService {
     durationSeconds: number;
     preferredInputMode?: LocalConversation['preferredInputMode'];
     intentId?: string;
+    onTranscriptEvent?: (event: TranscriptionStreamEvent) => void;
   }): Promise<TranscriptConfirmationResult>;
   submitVoiceAndCoach(input: {
     conversationId: string;
@@ -189,7 +205,8 @@ export interface PrivateCaptureService {
     typedClarification?: string;
     preferredInputMode?: LocalConversation['preferredInputMode'];
     intentId?: string;
-  }): Promise<CompletedSubmissionResult>;
+    onTranscriptEvent?: (event: TranscriptionStreamEvent) => void;
+  }): Promise<VoiceSubmissionResult>;
   reviseSubmittedTranscript(input: {
     requestId: string;
     transcript: string;
@@ -255,6 +272,19 @@ function requireContent(value: string, label: string): string {
   const normalized = value.trim();
   if (normalized.length === 0) throw new TypeError(`${label} must not be empty`);
   return normalized;
+}
+
+function requireUserMessageId(request: LocalCoachingRequest): string {
+  if (request.userMessageId === null) {
+    throw new LocalSubmissionStateError('Submission message no longer exists');
+  }
+  return request.userMessageId;
+}
+
+function isNoSpeechResult(
+  result: TranscriptionResult | NoSpeechTranscriptionResult,
+): result is NoSpeechTranscriptionResult {
+  return 'status' in result && result.status === 'no-speech';
 }
 
 function validateCoachingContent(value: string, label: string): string {
@@ -538,7 +568,7 @@ export function createPrivateCaptureService(
     await withRepositoryTransaction(dependencies.database, async (transaction) => {
       const request = await getCoachingRequest(transaction, requestId);
       if (request === null) throw new LocalSubmissionStateError('Submission no longer exists');
-      const message = await getMessage(transaction, request.userMessageId);
+      const message = await getMessage(transaction, requireUserMessageId(request));
       if (message === null) throw new LocalSubmissionStateError('Submission message no longer exists');
       const status = phase === 'transcription' ? 'transcription-failed' : 'coaching-failed';
       const errorCode = phase === 'transcription' ? 'TRANSCRIPTION_FAILED' : 'COACHING_FAILED';
@@ -648,7 +678,10 @@ export function createPrivateCaptureService(
   async function runCoachingOnce(requestId: string): Promise<CompletedSubmissionResult> {
     const storedRequest = await getCoachingRequest(dependencies.database, requestId);
     if (storedRequest === null) throw new LocalSubmissionStateError('Submission no longer exists');
-    const storedMessage = await getMessage(dependencies.database, storedRequest.userMessageId);
+    const storedMessage = await getMessage(
+      dependencies.database,
+      requireUserMessageId(storedRequest),
+    );
     if (storedMessage === null) throw new LocalSubmissionStateError('Submission message no longer exists');
     const profileId = await dependencies.getProfileId();
     let assembled;
@@ -698,7 +731,9 @@ export function createPrivateCaptureService(
     try {
       return await withRepositoryTransaction(dependencies.database, async (transaction) => {
         const request = await getCoachingRequest(transaction, requestId);
-        const userMessage = request === null ? null : await getMessage(transaction, request.userMessageId);
+        const userMessage = request === null
+          ? null
+          : await getMessage(transaction, requireUserMessageId(request));
         if (request === null || userMessage === null) {
           throw new LocalSubmissionStateError('Submission state changed before completion');
         }
@@ -792,7 +827,10 @@ export function createPrivateCaptureService(
     }
   }
 
-  async function runTranscriptionOnce(requestId: string): Promise<SubmissionResult> {
+  async function runTranscriptionOnce(
+    requestId: string,
+    onEvent?: (event: TranscriptionStreamEvent) => void,
+  ): Promise<SubmissionResult> {
     const request = await getCoachingRequest(dependencies.database, requestId);
     if (
       request === null ||
@@ -803,24 +841,92 @@ export function createPrivateCaptureService(
     ) {
       throw new LocalSubmissionStateError('Voice submission is incomplete');
     }
-    let result: TranscriptionResult;
+    let result: TranscriptionResult | NoSpeechTranscriptionResult;
     try {
       result = await dependencies.transcribe({
         requestId: request.transcriptionRequestId,
         audioUri: request.audioUri,
         durationSeconds: request.audioDurationSeconds,
-      });
-      requireContent(result.transcript, 'Transcript');
+      }, onEvent);
+      if (!isNoSpeechResult(result)) {
+        requireContent(result.transcript, 'Transcript');
+      }
     } catch {
       return markFailed(requestId, 'transcription');
     }
     const timestamp = dependencies.now();
+    if (isNoSpeechResult(result)) {
+      let retiredAudioUri: string | null = null;
+      await withRepositoryTransaction(dependencies.database, async (transaction) => {
+        const current = await getCoachingRequest(transaction, requestId);
+        const message = current?.userMessageId === null || current === null
+          ? null
+          : await getMessage(transaction, current.userMessageId);
+        if (current === null || current.audioUri === null) {
+          throw new LocalSubmissionStateError('Voice submission state changed');
+        }
+        const audioUri = current.audioUri;
+        await enqueueAudioCleanup(transaction, { audioUri, enqueuedAt: timestamp });
+        await updateCoachingRequest(transaction, {
+          ...current,
+          status: 'no-speech',
+          userMessageId: null,
+          transcriptDraft: null,
+          audioUri: null,
+          errorCode: null,
+          updatedAt: timestamp,
+        }, `${current.id}:attempt:${current.attemptCount}:no-speech`);
+        if (message !== null) {
+          await deleteMessage(transaction, message.id, `${current.id}:no-speech-message`);
+        }
+        retiredAudioUri = audioUri;
+      });
+      if (retiredAudioUri !== null) {
+        await joinRecordingCleanup(retiredAudioUri, false).catch(() => {});
+      }
+      return { status: 'no-speech', requestId };
+    }
+
+    if (result.quality === 'uncertain') {
+      const transcript = result.transcript.trim();
+      await withRepositoryTransaction(dependencies.database, async (transaction) => {
+        const current = await getCoachingRequest(transaction, requestId);
+        const message = current?.userMessageId === null || current === null
+          ? null
+          : await getMessage(transaction, current.userMessageId);
+        if (current === null || current.transcriptionRequestId === null || current.audioUri === null) {
+          throw new LocalSubmissionStateError('Voice submission state changed');
+        }
+        await insertUsageReceipt(transaction, {
+          id: `${current.transcriptionRequestId}:usage`,
+          requestId: current.transcriptionRequestId,
+          receipt: result.usage,
+          recordedAt: timestamp,
+        }, `${current.transcriptionRequestId}:usage`);
+        await updateCoachingRequest(transaction, {
+          ...current,
+          status: 'transcription-uncertain',
+          userMessageId: null,
+          transcriptDraft: transcript,
+          audioDurationSeconds: result.durationSeconds,
+          errorCode: null,
+          updatedAt: timestamp,
+        }, `${current.id}:attempt:${current.attemptCount}:transcription-uncertain`);
+        if (message !== null) {
+          await deleteMessage(transaction, message.id, `${current.id}:uncertain-message`);
+        }
+      });
+      return { status: 'transcription-uncertain', requestId, transcript };
+    }
+
     let retiredAudioUri: string | null = null;
     let confirmation: TranscriptConfirmationResult;
     try {
       confirmation = await withRepositoryTransaction(dependencies.database, async (transaction) => {
         const current = await getCoachingRequest(transaction, requestId);
-        const message = current === null ? null : await getMessage(transaction, current.userMessageId);
+        const message = current === null
+          ? null
+          : await getMessage(transaction, requireUserMessageId(current));
         if (
           current === null ||
           message === null ||
@@ -874,7 +980,7 @@ export function createPrivateCaptureService(
         return {
           status: 'transcript-confirmation-required',
           requestId: current.id,
-          messageId: current.userMessageId,
+          messageId: message.id,
           transcript,
         };
       });
@@ -918,8 +1024,11 @@ export function createPrivateCaptureService(
     return withInFlightRequest(requestId, () => runCoachingOnce(requestId));
   }
 
-  function runTranscription(requestId: string): Promise<SubmissionResult> {
-    return withInFlightRequest(requestId, () => runTranscriptionOnce(requestId));
+  function runTranscription(
+    requestId: string,
+    onEvent?: (event: TranscriptionStreamEvent) => void,
+  ): Promise<SubmissionResult> {
+    return withInFlightRequest(requestId, () => runTranscriptionOnce(requestId, onEvent));
   }
 
   function beginVoiceSubmission(
@@ -999,7 +1108,7 @@ export function createPrivateCaptureService(
       if (sourceUri !== durableAudioUri) {
         await queueAndAttemptRecordingCleanup(sourceUri);
       }
-      return runTranscription(requestId);
+      return runTranscription(requestId, input.onTranscriptEvent);
     });
   }
 
@@ -1091,7 +1200,7 @@ export function createPrivateCaptureService(
         if (request === null || request.kind !== 'voice' || request.status !== 'completed') {
           throw new LocalSubmissionStateError('Only a completed voice transcript can be revised');
         }
-        const message = await getMessage(transaction, request.userMessageId);
+        const message = await getMessage(transaction, requireUserMessageId(request));
         if (message === null) throw new LocalSubmissionStateError('Transcript message is missing');
         await deletePendingMemoryConfirmationsForMessage(
           transaction,
@@ -1140,7 +1249,7 @@ export function createPrivateCaptureService(
         ) {
           throw new LocalSubmissionStateError('Transcript is not available for editing');
         }
-        const message = await getMessage(transaction, request.userMessageId);
+        const message = await getMessage(transaction, requireUserMessageId(request));
         if (message === null) throw new LocalSubmissionStateError('Transcript message is missing');
         await updateMessage(
           transaction,
@@ -1172,7 +1281,7 @@ export function createPrivateCaptureService(
           if (request === null || request.status !== 'transcript-confirmation-required') {
             throw new LocalSubmissionStateError('Transcript requires explicit confirmation');
           }
-          const message = await getMessage(transaction, request.userMessageId);
+          const message = await getMessage(transaction, requireUserMessageId(request));
           if (message === null) throw new LocalSubmissionStateError('Transcript message is missing');
           validateCoachingContent(message.content, 'Transcript');
           await updateCoachingRequest(
@@ -1205,6 +1314,7 @@ export function createPrivateCaptureService(
               ![
                 'transcription-pending',
                 'transcription-failed',
+                'transcription-uncertain',
                 'coaching-pending',
                 'coaching-failed',
               ].includes(current.status)
@@ -1213,23 +1323,29 @@ export function createPrivateCaptureService(
                 'Only an interrupted or failed submission can be retried',
               );
             }
-            const message = await getMessage(transaction, current.userMessageId);
-            if (message === null) {
+            const message = current.userMessageId === null
+              ? null
+              : await getMessage(transaction, current.userMessageId);
+            if (message === null && current.status !== 'transcription-uncertain') {
               throw new LocalSubmissionStateError('Submission message is missing');
             }
             const attemptCount = current.attemptCount + 1;
             const status = current.status === 'transcription-failed' ||
-              current.status === 'transcription-pending'
+              current.status === 'transcription-pending' ||
+              current.status === 'transcription-uncertain'
               ? 'transcription-pending'
               : 'coaching-pending';
-            await updateMessage(
-              transaction,
-              { ...message, lifecycle: 'pending', updatedAt: timestamp },
-              `${current.id}:attempt:${attemptCount}:message-pending`,
-            );
+            if (message !== null) {
+              await updateMessage(
+                transaction,
+                { ...message, lifecycle: 'pending', updatedAt: timestamp },
+                `${current.id}:attempt:${attemptCount}:message-pending`,
+              );
+            }
             const updated: LocalCoachingRequest = {
               ...current,
               status,
+              transcriptDraft: status === 'transcription-pending' ? null : current.transcriptDraft,
               attemptCount,
               errorCode: null,
               updatedAt: timestamp,
@@ -1256,6 +1372,8 @@ export function createPrivateCaptureService(
         [
           'transcription-pending',
           'transcription-failed',
+          'transcription-uncertain',
+          'no-speech',
           'transcript-confirmation-required',
           'coaching-pending',
           'coaching-failed',
@@ -1271,7 +1389,7 @@ export function createPrivateCaptureService(
         );
       }
       const request = requests[0] ?? null;
-      const message = request === null
+      const message = request === null || request.userMessageId === null
         ? null
         : await getMessage(dependencies.database, request.userMessageId);
       const confirmations = await listMemoryConfirmationsByConversation(
@@ -1289,7 +1407,9 @@ export function createPrivateCaptureService(
         messageId: request?.userMessageId ?? null,
         requestKind: request?.kind ?? null,
         requestStatus: request?.status ?? null,
-        transcript: request?.kind === 'voice' ? message?.content ?? '' : '',
+        transcript: request?.kind === 'voice'
+          ? request.transcriptDraft ?? message?.content ?? ''
+          : '',
         pendingProposals,
       };
     },
@@ -1323,7 +1443,9 @@ export function createPrivateCaptureService(
             throw new LocalSubmissionStateError('Voice submission cannot be abandoned');
           }
           if (request.status === 'abandoned') return request;
-          const message = await getMessage(transaction, request.userMessageId);
+          const message = request.userMessageId === null
+            ? null
+            : await getMessage(transaction, request.userMessageId);
           if (message === null) throw new LocalSubmissionStateError('Voice message is missing');
           await updateMessage(
             transaction,

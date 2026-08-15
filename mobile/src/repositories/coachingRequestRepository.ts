@@ -8,6 +8,8 @@ export type CoachingRequestKind = 'text' | 'voice';
 export type CoachingRequestStatus =
   | 'transcription-pending'
   | 'transcription-failed'
+  | 'transcription-uncertain'
+  | 'no-speech'
   | 'transcript-confirmation-required'
   | 'coaching-pending'
   | 'coaching-failed'
@@ -18,12 +20,13 @@ export interface LocalCoachingRequest {
   id: string;
   intentId: string;
   conversationId: string;
-  userMessageId: string;
+  userMessageId: string | null;
   transcriptionRequestId: string | null;
   kind: CoachingRequestKind;
   status: CoachingRequestStatus;
   audioUri: string | null;
   audioDurationSeconds: number | null;
+  transcriptDraft?: string | null;
   transcriptConfirmedAt: string | null;
   assistantMessageId: string | null;
   stance: 'mirror' | 'nudge' | 'challenge' | 'direct' | null;
@@ -39,12 +42,13 @@ interface CoachingRequestRow {
   id: string;
   intent_id: string;
   conversation_id: string;
-  user_message_id: string;
+  user_message_id: string | null;
   transcription_request_id: string | null;
   kind: CoachingRequestKind;
   status: CoachingRequestStatus;
   audio_uri: string | null;
   audio_duration_seconds: number | null;
+  transcript_draft: string | null;
   transcript_confirmed_at: string | null;
   assistant_message_id: string | null;
   stance: LocalCoachingRequest['stance'];
@@ -57,7 +61,7 @@ interface CoachingRequestRow {
 }
 
 const COLUMNS = `id, intent_id, conversation_id, user_message_id, transcription_request_id, kind, status,
-  audio_uri, audio_duration_seconds, transcript_confirmed_at, assistant_message_id, stance,
+  audio_uri, audio_duration_seconds, transcript_draft, transcript_confirmed_at, assistant_message_id, stance,
   context_manifest_json, error_code, attempt_count, submitted_at, created_at, updated_at`;
 
 function mapRow(row: CoachingRequestRow): LocalCoachingRequest {
@@ -71,6 +75,7 @@ function mapRow(row: CoachingRequestRow): LocalCoachingRequest {
     status: row.status,
     audioUri: row.audio_uri,
     audioDurationSeconds: row.audio_duration_seconds,
+    transcriptDraft: row.transcript_draft,
     transcriptConfirmedAt: row.transcript_confirmed_at,
     assistantMessageId: row.assistant_message_id,
     stance: row.stance,
@@ -94,6 +99,7 @@ function params(request: LocalCoachingRequest) {
     $status: request.status,
     $audioUri: request.audioUri,
     $audioDurationSeconds: request.audioDurationSeconds,
+    $transcriptDraft: request.transcriptDraft ?? null,
     $transcriptConfirmedAt: request.transcriptConfirmedAt,
     $assistantMessageId: request.assistantMessageId,
     $stance: request.stance,
@@ -123,7 +129,7 @@ export async function insertCoachingRequest(
   await transaction.runAsync(
     `INSERT INTO coaching_requests (${COLUMNS})
      VALUES ($id, $intentId, $conversationId, $userMessageId, $transcriptionRequestId, $kind, $status,
-       $audioUri, $audioDurationSeconds, $transcriptConfirmedAt, $assistantMessageId, $stance,
+       $audioUri, $audioDurationSeconds, $transcriptDraft, $transcriptConfirmedAt, $assistantMessageId, $stance,
        $contextManifestJson, $errorCode, $attemptCount, $submittedAt, $createdAt, $updatedAt)`,
     values,
   );
@@ -183,6 +189,7 @@ export async function updateCoachingRequest(
        user_message_id = $userMessageId, transcription_request_id = $transcriptionRequestId,
        kind = $kind, status = $status, audio_uri = $audioUri,
        audio_duration_seconds = $audioDurationSeconds,
+       transcript_draft = $transcriptDraft,
        transcript_confirmed_at = $transcriptConfirmedAt,
        assistant_message_id = $assistantMessageId, stance = $stance,
        context_manifest_json = $contextManifestJson, error_code = $errorCode,

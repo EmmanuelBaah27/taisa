@@ -105,10 +105,11 @@ async function seedOldDirection(db: TestDatabase): Promise<void> {
 
 interface RequestRow {
   id: string;
-  user_message_id: string;
+  user_message_id: string | null;
   transcription_request_id: string | null;
   status: string;
   audio_uri: string | null;
+  transcript_draft: string | null;
   transcript_confirmed_at: string | null;
   assistant_message_id: string | null;
   context_manifest_json: string | null;
@@ -118,7 +119,7 @@ interface RequestRow {
 
 async function getRequest(db: TestDatabase, id: string): Promise<RequestRow | null> {
   return db.getFirstAsync<RequestRow>(
-    `SELECT id, user_message_id, transcription_request_id, status, audio_uri,
+    `SELECT id, user_message_id, transcription_request_id, status, audio_uri, transcript_draft,
             transcript_confirmed_at, assistant_message_id, context_manifest_json, error_code,
             attempt_count
        FROM coaching_requests WHERE id = $id`,
@@ -503,6 +504,8 @@ describe('private local capture and deliberate submission', () => {
 
     const retried = await service.retrySubmission(failed!.requestId);
 
+    expect(retried.status).toBe('completed');
+    if (retried.status !== 'completed') throw new Error('Expected completed retry');
     expect(retried.requestId).toBe(failed!.requestId);
     expect(retried.messageId).toBe(failedRequest!.user_message_id);
     expect(coach.mock.calls[0][0].requestId).toBe(coach.mock.calls[1][0].requestId);
@@ -633,12 +636,69 @@ describe('private local capture and deliberate submission', () => {
     }));
   });
 
+  test('uncertain transcription stays editable without creating a message or coaching call', async () => {
+    transcribe.mockResolvedValueOnce({
+      transcript: 'Possible words from the recording',
+      durationSeconds: 12,
+      quality: 'uncertain',
+      usage: {
+        provider: 'openai' as const,
+        model: 'fixture-transcription',
+        audioSeconds: 12,
+        estimatedCostUsd: 0.0012,
+      },
+    });
+
+    const result = await service.submitVoiceAndCoach({
+      conversationId: 'uncertain-conversation',
+      audioUri: 'file:///private/uncertain.m4a',
+      durationSeconds: 12,
+    }) as any;
+
+    expect(result).toEqual(expect.objectContaining({
+      status: 'transcription-uncertain',
+      transcript: 'Possible words from the recording',
+    }));
+    expect(await listMessages(db, 'uncertain-conversation')).toEqual([]);
+    expect(await getRequest(db, result.requestId)).toEqual(expect.objectContaining({
+      status: 'transcription-uncertain',
+      transcript_draft: 'Possible words from the recording',
+      audio_uri: expect.stringContaining('/taisa-audio/'),
+    }));
+    expect(await service.hydrateConversation('uncertain-conversation')).toEqual(
+      expect.objectContaining({
+        requestStatus: 'transcription-uncertain',
+        transcript: 'Possible words from the recording',
+      }),
+    );
+    expect(coach).not.toHaveBeenCalled();
+  });
+
+  test('no-speech ends without a message or coaching interaction', async () => {
+    transcribe.mockResolvedValueOnce({ status: 'no-speech' });
+
+    const result = await service.submitVoiceAndCoach({
+      conversationId: 'silent-conversation',
+      audioUri: 'file:///private/silent.m4a',
+      durationSeconds: 12,
+    }) as any;
+
+    expect(result.status).toBe('no-speech');
+    expect(await listMessages(db, 'silent-conversation')).toEqual([]);
+    expect(await getRequest(db, result.requestId)).toEqual(expect.objectContaining({
+      status: 'no-speech',
+      audio_uri: null,
+    }));
+    expect(coach).not.toHaveBeenCalled();
+  });
+
   test('correcting a completed voice transcript regenerates the visible response on the same request', async () => {
     const first = await service.submitVoiceAndCoach({
       conversationId: 'conversation-1',
       audioUri: 'file:///private/revise.m4a',
       durationSeconds: 9,
     });
+    if (first.status !== 'completed') throw new Error('Expected completed voice submission');
     coach.mockImplementationOnce(async (request) => ({
       ...coachingResponse(request),
       reply: 'Revised coaching response',
@@ -669,6 +729,7 @@ describe('private local capture and deliberate submission', () => {
       audioUri: 'file:///private/revise-to-clarify.m4a',
       durationSeconds: 9,
     });
+    if (first.status !== 'completed') throw new Error('Expected completed voice submission');
     const firstReply = (await listMessages(db, 'conversation-1'))
       .find((message) => message.role === 'assistant')!.content;
     expect(first.pendingProposals).toHaveLength(1);

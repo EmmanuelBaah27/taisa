@@ -1,7 +1,12 @@
-import { SCHEMA_V1_STATEMENTS, SCHEMA_V2_STATEMENTS, SCHEMA_V3_STATEMENTS } from './schema';
+import {
+  SCHEMA_V1_STATEMENTS,
+  SCHEMA_V2_STATEMENTS,
+  SCHEMA_V3_STATEMENTS,
+  SCHEMA_V4_STATEMENTS,
+} from './schema';
 import type { DatabaseLike } from './types';
 
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 interface Migration {
   readonly version: number;
@@ -24,6 +29,11 @@ const MIGRATIONS: readonly Migration[] = [
     version: 3,
     versionStatement: 'PRAGMA user_version = 3',
     statements: SCHEMA_V3_STATEMENTS,
+  },
+  {
+    version: 4,
+    versionStatement: 'PRAGMA user_version = 4',
+    statements: SCHEMA_V4_STATEMENTS,
   },
 ];
 

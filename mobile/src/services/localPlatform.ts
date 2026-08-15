@@ -6,7 +6,7 @@ import { listProfiles } from '../repositories/profileRepository';
 import { createExpoAudioFileStore } from './audioFileStore';
 import { requestCoaching } from './coaching';
 import { createPrivateCaptureService, type PrivateCaptureService } from './privateCapture';
-import { requestTranscription } from './transcription';
+import { requestStreamingTranscription } from './transcription';
 
 type WithCaptureService = <T>(
   work: (service: PrivateCaptureService) => Promise<T>,
@@ -55,7 +55,19 @@ function getServiceForDatabase(database: SQLiteDatabase): Promise<PrivateCapture
     const service = createPrivateCaptureService({
       database,
       coach: requestCoaching,
-      transcribe: requestTranscription,
+      async transcribe(request, onEvent) {
+        const subscription = await requestStreamingTranscription(request, (event) => {
+          onEvent?.(event);
+        });
+        const terminal = await subscription.completed;
+        if (terminal.type === 'transcript.no_speech') return { status: 'no-speech' };
+        return {
+          transcript: terminal.transcript,
+          durationSeconds: terminal.durationSeconds,
+          quality: terminal.quality,
+          usage: terminal.usage,
+        };
+      },
       now: () => new Date().toISOString(),
       createId: () => Crypto.randomUUID(),
       audioFiles: createExpoAudioFileStore(),

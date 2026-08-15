@@ -5,7 +5,7 @@ import {
   openDatabaseWithDependencies,
 } from '../openDatabase';
 import { runMigrations, UnsupportedDatabaseVersionError } from '../migrations';
-import { SCHEMA_V1_STATEMENTS } from '../schema';
+import { SCHEMA_V1_STATEMENTS, SCHEMA_V4_STATEMENTS } from '../schema';
 import type { DatabaseLike } from '../types';
 
 class FakeDatabase implements DatabaseLike {
@@ -55,6 +55,7 @@ class FakeDatabase implements DatabaseLike {
       source === 'PRAGMA user_version = 1'
       || source === 'PRAGMA user_version = 2'
       || source === 'PRAGMA user_version = 3'
+      || source === 'PRAGMA user_version = 4'
     ) {
       this.userVersion = Number(source.at(-1));
       return;
@@ -91,8 +92,8 @@ describe('local database migrations', () => {
     await runMigrations(db);
     await runMigrations(db);
 
-    expect(db.userVersion).toBe(3);
-    expect(db.calls.filter((statement) => statement === 'BEGIN IMMEDIATE')).toHaveLength(3);
+    expect(db.userVersion).toBe(4);
+    expect(db.calls.filter((statement) => statement === 'BEGIN IMMEDIATE')).toHaveLength(4);
     expect(
       db.appliedStatements.filter((statement) =>
         statement.includes('CREATE TABLE conversations'),
@@ -106,8 +107,8 @@ describe('local database migrations', () => {
     await runMigrations(db);
     await runMigrations(db);
 
-    expect(db.userVersion).toBe(3);
-    expect(db.calls.filter((statement) => statement === 'BEGIN IMMEDIATE')).toHaveLength(2);
+    expect(db.userVersion).toBe(4);
+    expect(db.calls.filter((statement) => statement === 'BEGIN IMMEDIATE')).toHaveLength(3);
     expect(db.appliedStatements).toContain(
       "ALTER TABLE conversations ADD COLUMN preferred_input_mode TEXT NOT NULL DEFAULT 'text' CHECK (preferred_input_mode IN ('voice', 'text'))",
     );
@@ -191,6 +192,17 @@ describe('local database migrations', () => {
     expect(table).not.toMatch(/content|transcript|response|message|conversation/i);
   });
 
+  test('version 4 preserves uncertain transcripts without creating a message', () => {
+    const rebuiltTable = SCHEMA_V4_STATEMENTS.find((statement) =>
+      statement.includes('CREATE TABLE coaching_requests'),
+    );
+
+    expect(rebuiltTable).toContain("'transcription-uncertain', 'no-speech'");
+    expect(rebuiltTable).toContain('user_message_id TEXT UNIQUE');
+    expect(rebuiltTable).not.toContain('user_message_id TEXT NOT NULL');
+    expect(rebuiltTable).toContain('transcript_draft TEXT');
+  });
+
   test('rolls back the schema and user_version when a migration statement fails', async () => {
     const db = new FakeDatabase(0);
     db.failWhenStatementIncludes = 'CREATE TABLE messages';
@@ -203,7 +215,7 @@ describe('local database migrations', () => {
   });
 
   test('refuses to open a database created by a newer app schema', async () => {
-    const db = new FakeDatabase(4);
+    const db = new FakeDatabase(5);
 
     await expect(runMigrations(db)).rejects.toBeInstanceOf(UnsupportedDatabaseVersionError);
     expect(db.calls).not.toContain('BEGIN IMMEDIATE');
@@ -268,7 +280,7 @@ describe('encrypted database opening', () => {
   });
 
   test('validates a non-empty SQLCipher version before reading sqlite_master', async () => {
-    const db = new FakeDatabase(3);
+    const db = new FakeDatabase(4);
 
     await expect(
       openDatabaseWithDependencies({
