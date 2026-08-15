@@ -46,6 +46,18 @@ export function isConversationCacheCurrent(
   return targetConversationId !== null && targetConversationId === cachedConversationId;
 }
 
+const EMPTY_CONVERSATION_MESSAGES: never[] = [];
+
+export function selectConversationMessages<T>(
+  targetConversationId: string | null,
+  cachedConversationId: string | null,
+  cachedMessages: T[],
+): T[] {
+  return isConversationCacheCurrent(targetConversationId, cachedConversationId)
+    ? cachedMessages
+    : EMPTY_CONVERSATION_MESSAGES;
+}
+
 export function returnFromRoutedChat(actions: {
   canGoBack(): boolean;
   back(): void;

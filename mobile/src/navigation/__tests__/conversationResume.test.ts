@@ -9,6 +9,7 @@ import {
   isConversationCacheCurrent,
   returnFromRoutedChat,
   resolveInitialChatConversationId,
+  selectConversationMessages,
   startFreshCapture,
 } from '../chatConversationRoute';
 
@@ -135,6 +136,24 @@ describe('durable conversation resume navigation', () => {
     expect(isConversationCacheCurrent('conversation-b', 'conversation-a')).toBe(false);
     expect(isConversationCacheCurrent('conversation-b', 'conversation-b')).toBe(true);
     expect(isConversationCacheCurrent('conversation-b', null)).toBe(false);
+  });
+
+  test('an unavailable conversation cache returns one stable empty list across rerenders', () => {
+    const cachedMessages = [{ id: 'message-from-previous-thread' }];
+
+    const firstRender = selectConversationMessages(
+      'conversation-b',
+      'conversation-a',
+      cachedMessages,
+    );
+    const secondRender = selectConversationMessages(
+      'conversation-b',
+      'conversation-a',
+      cachedMessages,
+    );
+
+    expect(firstRender).toEqual([]);
+    expect(secondRender).toBe(firstRender);
   });
 
   test('a cold chat deep link returns home when there is no route history', () => {
