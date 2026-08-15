@@ -148,4 +148,23 @@ describe('voice composer state', () => {
       text: 'Clarification',
     });
   });
+
+  test('an uncertain transcript becomes focused editable text without a voice draft', () => {
+    const state = {
+      ...createVoiceComposerState('voice'),
+      voice: 'paused' as const,
+      submitting: true,
+    };
+
+    expect(reduceVoiceComposer(state, {
+      type: 'load-uncertain-transcript',
+      text: 'Possible words from the recording',
+    })).toMatchObject({
+      mode: 'text',
+      voice: 'none',
+      text: 'Possible words from the recording',
+      submitting: false,
+      textFocusRequest: 1,
+    });
+  });
 });

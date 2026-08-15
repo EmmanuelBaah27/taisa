@@ -27,8 +27,8 @@ import { useThreadStore } from '../../src/stores/threadStore';
 import { useUIStore } from '../../src/stores/uiStore';
 import {
   closeChatPresentation,
-  isConversationCacheCurrent,
   resolveInitialChatConversationId,
+  selectConversationMessages,
   returnFromRoutedChat,
   type ChatPresentation,
 } from '../../src/navigation/chatConversationRoute';
@@ -91,6 +91,8 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
     activeRequestStatus,
     activeMessageId,
     transcript: storedTranscript,
+    provisionalTranscript,
+    transcriptionOutcome,
     pendingProposals: storedPendingProposals,
     phase: storedPhase,
     isBusy,
@@ -162,12 +164,11 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
   const pendingProposals = isHydratingInitialConversation ? [] : storedPendingProposals;
   const phase = isHydratingInitialConversation ? 'processing' : storedPhase;
   const error = isHydratingInitialConversation ? null : storedError;
-  const messages = !isHydratingInitialConversation && isConversationCacheCurrent(
-    sessionIdRef.current,
+  const messages = selectConversationMessages(
+    isHydratingInitialConversation ? null : sessionIdRef.current,
     currentSession?.id ?? null,
-  )
-    ? storedMessages
-    : [];
+    storedMessages,
+  );
 
   const recorder = useVoiceRecorder();
 
@@ -196,6 +197,12 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
     }
   }, [messages.length]);
+
+  useEffect(() => {
+    if (transcriptionOutcome !== 'uncertain' || !transcript.trim()) return;
+    setDraft(transcript);
+    dispatchComposer({ type: 'load-uncertain-transcript', text: transcript });
+  }, [transcript, transcriptionOutcome]);
 
   useEffect(() => {
     const responseIds = messages
@@ -459,8 +466,11 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
     setActiveSessionId(conversationId);
     try {
       await submitVoice(conversationId, result.uri, result.durationSeconds, draft.trim() || undefined);
-      setDraft('');
-      dispatchComposer({ type: 'reset' });
+      const transcription = useChatStore.getState();
+      if (transcription.transcriptionOutcome !== 'uncertain') {
+        setDraft('');
+        dispatchComposer({ type: 'reset' });
+      }
       await refreshConversation();
     } catch {
       pendingRecordingRef.current = result;
@@ -767,15 +777,16 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
       footer={(
         <ChatComposerDock phase={phase} bottomInset={insets.bottom}>
           <VoiceComposer
-            mode={composer.mode}
+            mode={transcriptionOutcome === 'streaming' ? 'text' : composer.mode}
             voiceState={composer.voice}
             durationSeconds={pendingRecording?.durationSeconds ?? recorder.duration}
             amplitude={recorder.amplitude}
-            text={draft}
+            text={transcriptionOutcome === 'streaming' ? provisionalTranscript : draft}
             hasVoiceDraft={composer.voice !== 'none'}
             submissionFailed={composer.submissionFailed}
             textFocusRequest={composer.textFocusRequest}
             disabled={isBusy}
+            transcribing={transcriptionOutcome === 'streaming'}
             onChangeText={(value) => {
               setDraft(value);
               dispatchComposer({ type: 'set-text', text: value });
@@ -814,7 +825,7 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
         onSubmitTranscript={() => { void handleSaveTranscriptRevision(); }}
         onUseKeyboard={handleUseKeyboard}
         onDiscardRecording={handleDiscardFailedRecording}
-        onRetry={recordingStartFailed ? startListening : handleRetry}
+        onRetry={recordingStartFailed || activeRequestStatus === 'no-speech' ? startListening : handleRetry}
         onConfirmProposal={(proposalId) => { void confirmProposal(proposalId); }}
         onResolveProposal={(proposalId, choice) => { void resolveClarification(proposalId, choice); }}
         onReact={(responseId, reaction) => { void handleReaction(responseId, reaction); }}

@@ -26,6 +26,7 @@ export type VoiceComposerAction =
   | { type: 'confirm-delete-voice' }
   | { type: 'send' }
   | { type: 'submission-failed' }
+  | { type: 'load-uncertain-transcript'; text: string }
   | { type: 'restore-mode'; mode: VoiceComposerMode }
   | { type: 'reset' };
 
@@ -48,7 +49,8 @@ export function reduceVoiceComposer(
   if (
     state.submissionFailed &&
     action.type !== 'reset' &&
-    action.type !== 'confirm-delete-voice'
+    action.type !== 'confirm-delete-voice' &&
+    action.type !== 'load-uncertain-transcript'
   ) return state;
 
   switch (action.type) {
@@ -94,6 +96,12 @@ export function reduceVoiceComposer(
         : { ...state, submitting: true, confirmDeleteVoice: false };
     case 'submission-failed':
       return { ...state, submitting: false, submissionFailed: true };
+    case 'load-uncertain-transcript':
+      return {
+        ...createVoiceComposerState('text'),
+        text: action.text,
+        textFocusRequest: state.textFocusRequest + 1,
+      };
     case 'restore-mode':
       return createVoiceComposerState(action.mode);
     case 'reset':

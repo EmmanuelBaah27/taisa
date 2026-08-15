@@ -201,6 +201,61 @@ test('voice submit uses the single direct transcription-and-coaching service pat
   });
 });
 
+test('streamed deltas stay provisional and uncertain completion returns editable composer text', async () => {
+  const submitVoiceAndCoach = jest.fn(async (input) => {
+    input.onTranscriptEvent?.({
+      type: 'transcript.delta',
+      requestId: '00000000-0000-4000-8000-000000000099',
+      sequence: 0,
+      delta: 'Possible words',
+    });
+    return {
+      status: 'transcription-uncertain' as const,
+      requestId: 'request-uncertain',
+      transcript: 'Possible words from the recording',
+    };
+  });
+  const service = { submitVoiceAndCoach } as unknown as PrivateCaptureService;
+  const store = createChatStore(async () => service);
+
+  await store.getState().submitVoice('conversation-uncertain', 'file:///uncertain.m4a', 8);
+
+  expect(store.getState()).toMatchObject({
+    activeRequestId: 'request-uncertain',
+    activeRequestStatus: 'transcription-uncertain',
+    provisionalTranscript: '',
+    transcript: 'Possible words from the recording',
+    transcriptionOutcome: 'uncertain',
+    phase: 'idle',
+  });
+});
+
+test('no-speech clears provisional text and surfaces the recoverable recording error', async () => {
+  const service = {
+    submitVoiceAndCoach: jest.fn(async (input) => {
+      input.onTranscriptEvent?.({
+        type: 'transcript.delta',
+        requestId: '00000000-0000-4000-8000-000000000099',
+        sequence: 0,
+        delta: 'False start',
+      });
+      return { status: 'no-speech' as const, requestId: 'request-silent' };
+    }),
+  } as unknown as PrivateCaptureService;
+  const store = createChatStore(async () => service);
+
+  await store.getState().submitVoice('conversation-silent', 'file:///silent.m4a', 8);
+
+  expect(store.getState()).toMatchObject({
+    activeRequestId: 'request-silent',
+    activeRequestStatus: 'no-speech',
+    provisionalTranscript: '',
+    transcriptionOutcome: 'no-speech',
+    phase: 'error',
+    error: 'I couldn’t hear any clear speech. Try recording again or use the keyboard.',
+  });
+});
+
 test.each([
   ['coaching-pending', 'retrySubmission'],
   ['transcript-confirmation-required', 'confirmTranscript'],

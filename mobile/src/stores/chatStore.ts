@@ -28,6 +28,8 @@ interface ChatStore {
   activeMessageId: string | null;
   preferredInputMode: PreferredInputMode;
   transcript: string;
+  provisionalTranscript: string;
+  transcriptionOutcome: 'none' | 'streaming' | 'uncertain' | 'no-speech';
   pendingProposalIds: string[];
   pendingProposals: PendingProposal[];
   phase: ChatPhase;
@@ -61,6 +63,7 @@ interface ChatStore {
   discardRecording: (uri: string) => Promise<void>;
   abandonVoiceSubmission: (requestId: string) => Promise<void>;
   clearActiveSession: () => void;
+  clearTranscriptionDraft: () => void;
   clearError: () => void;
 }
 
@@ -190,6 +193,8 @@ export function createChatStore(
     activeMessageId: null,
     preferredInputMode: 'text',
     transcript: '',
+    provisionalTranscript: '',
+    transcriptionOutcome: 'none',
     pendingProposalIds: [],
     pendingProposals: [],
     phase: 'idle',
@@ -222,6 +227,8 @@ export function createChatStore(
         activeMessageId: null,
         preferredInputMode: 'text',
         transcript: '',
+        provisionalTranscript: '',
+        transcriptionOutcome: 'none',
         pendingProposalIds: [],
         pendingProposals: [],
         phase: 'processing',
@@ -247,16 +254,20 @@ export function createChatStore(
           if (resumed.status === 'transcript-confirmation-required') {
             resumed = await service.confirmTranscript({ requestId: resumed.requestId });
           }
-          restored = {
-            ...restored,
-            requestId: resumed.requestId,
-            messageId: resumed.messageId,
-            requestStatus: 'completed',
-            pendingProposals: resumed.pendingProposals,
-          };
+          if (resumed.status === 'completed') {
+            restored = {
+              ...restored,
+              requestId: resumed.requestId,
+              messageId: resumed.messageId,
+              requestStatus: 'completed',
+              pendingProposals: resumed.pendingProposals,
+            };
+          }
         }
         const phase: ChatPhase = restored.requestStatus === 'completed'
             ? 'responded'
+            : restored.requestStatus === 'transcription-uncertain'
+              ? 'idle'
             : restored.requestStatus === null
               ? 'idle'
               : 'error';
@@ -268,11 +279,19 @@ export function createChatStore(
           activeMessageId: restored.messageId,
           preferredInputMode: restored.preferredInputMode,
           transcript: restored.transcript,
+          provisionalTranscript: '',
+          transcriptionOutcome: restored.requestStatus === 'transcription-uncertain'
+            ? 'uncertain'
+            : restored.requestStatus === 'no-speech'
+              ? 'no-speech'
+              : 'none',
           pendingProposalIds: restored.pendingProposals.map((proposal) => proposal.id),
           pendingProposals: restored.pendingProposals,
           phase,
-          error: phase === 'error'
-            ? 'This submission was interrupted. Your content remains on this device and can be retried.'
+          error: restored.requestStatus === 'no-speech'
+            ? 'I couldn’t hear any clear speech. Try recording again or use the keyboard.'
+            : phase === 'error'
+              ? 'This submission was interrupted. Your content remains on this device and can be retried.'
             : null,
         });
       } catch (hydrateError) {
@@ -370,6 +389,8 @@ export function createChatStore(
       return guarded(ownership, async () => {
         setIfCurrent(ownership, {
           phase: 'transcribing',
+          provisionalTranscript: '',
+          transcriptionOutcome: 'streaming',
           error: null,
           activeSessionId: conversationId,
           activeRequestId: null,
@@ -385,15 +406,45 @@ export function createChatStore(
             typedClarification,
             preferredInputMode: get().preferredInputMode,
             intentId: createLocalIntentId(),
+            onTranscriptEvent: (event) => {
+              if (event.type !== 'transcript.delta') return;
+              setIfCurrent(ownership, (state) => ({
+                provisionalTranscript: `${state.provisionalTranscript}${event.delta}`,
+              }));
+            },
           });
-          setIfCurrent(ownership, {
-            activeRequestId: result.requestId,
-            activeMessageId: result.messageId,
-            activeRequestStatus: 'completed',
-            pendingProposalIds: result.pendingProposalIds,
-            pendingProposals: result.pendingProposals,
-            phase: 'responded',
-          });
+          if (result.status === 'transcription-uncertain') {
+            setIfCurrent(ownership, {
+              activeRequestId: result.requestId,
+              activeMessageId: null,
+              activeRequestStatus: 'transcription-uncertain',
+              transcript: result.transcript,
+              provisionalTranscript: '',
+              transcriptionOutcome: 'uncertain',
+              phase: 'idle',
+            });
+          } else if (result.status === 'no-speech') {
+            setIfCurrent(ownership, {
+              activeRequestId: result.requestId,
+              activeMessageId: null,
+              activeRequestStatus: 'no-speech',
+              provisionalTranscript: '',
+              transcriptionOutcome: 'no-speech',
+              phase: 'error',
+              error: 'I couldn’t hear any clear speech. Try recording again or use the keyboard.',
+            });
+          } else if (result.status === 'completed') {
+            setIfCurrent(ownership, {
+              activeRequestId: result.requestId,
+              activeMessageId: result.messageId,
+              activeRequestStatus: 'completed',
+              pendingProposalIds: result.pendingProposalIds,
+              pendingProposals: result.pendingProposals,
+              provisionalTranscript: '',
+              transcriptionOutcome: 'none',
+              phase: 'responded',
+            });
+          }
         } catch (error) {
           const requestId = typeof error === 'object' && error !== null && 'requestId' in error
             ? String(error.requestId)
@@ -501,13 +552,33 @@ export function createChatStore(
             setIfCurrent(ownership, { transcript: result.transcript });
             result = await service.confirmTranscript({ requestId: result.requestId });
           }
-          setIfCurrent(ownership, {
-            activeMessageId: result.messageId,
-            pendingProposalIds: result.pendingProposalIds,
-            pendingProposals: result.pendingProposals,
-            phase: 'responded',
-            activeRequestStatus: 'completed',
-          });
+          if (result.status === 'completed') {
+            setIfCurrent(ownership, {
+              activeMessageId: result.messageId,
+              pendingProposalIds: result.pendingProposalIds,
+              pendingProposals: result.pendingProposals,
+              phase: 'responded',
+              activeRequestStatus: 'completed',
+              provisionalTranscript: '',
+              transcriptionOutcome: 'none',
+            });
+          } else if (result.status === 'transcription-uncertain') {
+            setIfCurrent(ownership, {
+              transcript: result.transcript,
+              phase: 'idle',
+              activeRequestStatus: 'transcription-uncertain',
+              provisionalTranscript: '',
+              transcriptionOutcome: 'uncertain',
+            });
+          } else if (result.status === 'no-speech') {
+            setIfCurrent(ownership, {
+              phase: 'error',
+              activeRequestStatus: 'no-speech',
+              provisionalTranscript: '',
+              transcriptionOutcome: 'no-speech',
+              error: 'I couldn’t hear any clear speech. Try recording again or use the keyboard.',
+            });
+          }
         } catch (error) {
           setIfCurrent(ownership, {
             phase: 'error',
@@ -569,6 +640,8 @@ export function createChatStore(
         activeRequestStatus: null,
         activeMessageId: null,
         transcript: '',
+        provisionalTranscript: '',
+        transcriptionOutcome: 'none',
         phase: 'idle',
         error: null,
       });
@@ -583,6 +656,8 @@ export function createChatStore(
         activeRequestStatus: null,
         activeMessageId: null,
         transcript: '',
+        provisionalTranscript: '',
+        transcriptionOutcome: 'none',
         pendingProposalIds: [],
         pendingProposals: [],
         phase: 'idle',
@@ -590,6 +665,11 @@ export function createChatStore(
         error: null,
       });
     },
+    clearTranscriptionDraft: () => set({
+      transcript: '',
+      provisionalTranscript: '',
+      transcriptionOutcome: 'none',
+    }),
     clearError: () => set({ error: null }),
     });
   });

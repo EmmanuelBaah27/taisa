@@ -18,6 +18,7 @@ export interface VoiceComposerProps {
   submissionFailed: boolean;
   textFocusRequest: number;
   disabled?: boolean;
+  transcribing?: boolean;
   onChangeText: (value: string) => void;
   onSwitchToText: () => void;
   onSwitchToVoice: () => void;
@@ -74,6 +75,9 @@ export function VoiceComposer(props: VoiceComposerProps) {
   if (props.mode === 'text') {
     return (
       <View className="gap-2">
+        {props.transcribing ? (
+          <Text className="text-center text-text-tertiary text-caption-regular">Transcribing…</Text>
+        ) : null}
         <TouchableOpacity
           accessibilityLabel={props.hasVoiceDraft
             ? `Open voice draft, ${formatDuration(props.durationSeconds)}`
@@ -94,6 +98,7 @@ export function VoiceComposer(props: VoiceComposerProps) {
             ref={textInputRef}
             value={props.text}
             onChangeText={props.onChangeText}
+            editable={!props.disabled}
             placeholder="Write something…"
             multiline
             className="max-h-32 min-h-10 flex-1 py-2 text-foreground text-base-regular"
