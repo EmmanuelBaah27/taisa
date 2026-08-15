@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-15
 
-**Status:** Implemented; managed-device calibration pending
+**Status:** Implemented; managed-device QA passed
 
 **Area:** Voice capture, transcription, privacy
 
@@ -71,3 +71,14 @@ said. The lesson was not merely to filter one strange phrase. It was to design t
 handoff between hearing and understanding: fast enough to feel conversational,
 explicit enough to preserve privacy, and humble enough to stop when recognition
 is uncertain.
+
+## Managed-device QA note
+
+The QA iPhone was providing the Mac's internet connection through Personal
+Hotspot, so it could not connect back to Metro or the API over the Mac's LAN
+ports. An approved Expo tunnel solved bundle delivery. Because the tunnel helper
+could not open a second tunnel for the backend, Metro now forwards development
+requests under `/api/v1` to the local backend. This proxy exists only in the
+development server; production builds do not include it. The combined tunnel was
+verified from outside the local network, and the post-Send voice flow passed on
+the managed iPhone.
