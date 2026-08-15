@@ -1,4 +1,23 @@
 import { isTranscriptionStreamEvent } from '@taisa/shared';
+import express from 'express';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+import request from 'supertest';
+
+jest.mock(
+  'music-metadata',
+  () => ({
+    parseFile: jest.fn(async (filePath: string) => {
+      const wav = fs.readFileSync(filePath);
+      return { format: { duration: wav.readUInt32LE(40) / wav.readUInt32LE(28) } };
+    }),
+  }),
+  { virtual: true },
+);
+
+import { requestContext } from '../middleware/requestContext';
+import { createTranscribeRouter } from '../routes/transcribe';
 import {
   classifyTranscriptionEvidence,
   streamTranscription,
@@ -169,5 +188,128 @@ describe('provider streaming adapter', () => {
       transcript: 'Possible words',
     });
     expect(events.filter((event) => event.type !== 'transcript.delta')).toHaveLength(1);
+  });
+
+  test('forwards cancellation to the provider request', async () => {
+    const abortController = new AbortController();
+    const provider = jest.fn(async () => providerEvents([
+      { type: 'transcript.text.done', text: '', logprobs: [] },
+    ]));
+
+    for await (const _event of streamTranscription({
+      ...input,
+      abortSignal: abortController.signal,
+    }, provider)) {
+      // Consume the stream so the provider request is made.
+    }
+
+    expect(provider).toHaveBeenCalledWith(expect.any(Object), {
+      maxRetries: 0,
+      signal: abortController.signal,
+    });
+  });
+});
+
+describe('streaming transcription route', () => {
+  const environment = {
+    TAISA_TRANSCRIPTION_MODEL: 'gpt-4o-mini-transcribe',
+    TAISA_TRANSCRIPTION_MAX_DURATION_SECONDS: '300',
+    TAISA_TRANSCRIPTION_MAX_UPLOAD_BYTES: '100000',
+    TAISA_TRANSCRIPTION_PRICE_USD_PER_MINUTE: '0.006',
+    TAISA_AI_COST_CEILING_PER_REQUEST_USD: '0.05',
+    TAISA_AI_COST_CEILING_DAILY_USD: '1',
+    TAISA_AI_COST_CEILING_MONTHLY_USD: '10',
+  };
+
+  function createAudioFixture(): string {
+    const fixturePath = path.join(os.tmpdir(), `taisa-stream-${process.pid}-${Date.now()}.wav`);
+    const sampleRate = 8000;
+    const dataLength = sampleRate * 2;
+    const wav = Buffer.alloc(44 + dataLength);
+    wav.write('RIFF', 0);
+    wav.writeUInt32LE(36 + dataLength, 4);
+    wav.write('WAVE', 8);
+    wav.write('fmt ', 12);
+    wav.writeUInt32LE(16, 16);
+    wav.writeUInt16LE(1, 20);
+    wav.writeUInt16LE(1, 22);
+    wav.writeUInt32LE(sampleRate, 24);
+    wav.writeUInt32LE(sampleRate * 2, 28);
+    wav.writeUInt16LE(2, 32);
+    wav.writeUInt16LE(16, 34);
+    wav.write('data', 36);
+    wav.writeUInt32LE(dataLength, 40);
+    fs.writeFileSync(fixturePath, wav);
+    return fixturePath;
+  }
+
+  async function* routeProviderEvents(events: ProviderTranscriptionEvent[]) {
+    yield* events;
+  }
+
+  function createApp(create: jest.Mock) {
+    const app = express();
+    app.use(requestContext);
+    app.use('/api/v1/transcribe', createTranscribeRouter({
+      client: { audio: { transcriptions: { create } } } as never,
+      environment,
+    }));
+    return app;
+  }
+
+  function parseNdjson(text: string) {
+    return text.trim().split('\n').map((line) => JSON.parse(line));
+  }
+
+  test('responds with ordered NDJSON transcript events', async () => {
+    const fixturePath = createAudioFixture();
+    const create = jest.fn(async () => routeProviderEvents([
+      { type: 'transcript.text.delta', delta: 'I led ', logprobs: [{ logprob: -0.1 }] },
+      { type: 'transcript.text.delta', delta: 'the review', logprobs: [{ logprob: -0.2 }] },
+      { type: 'transcript.text.done', text: 'I led the review', logprobs: [{ logprob: -0.1 }, { logprob: -0.2 }] },
+    ]));
+
+    try {
+      const response = await request(createApp(create))
+        .post('/api/v1/transcribe')
+        .set('x-request-id', requestId)
+        .attach('audio', fixturePath);
+
+      expect(response.status).toBe(200);
+      expect(response.headers['content-type']).toMatch(/application\/x-ndjson/);
+      expect(parseNdjson(response.text).map((event) => event.type)).toEqual([
+        'transcript.delta',
+        'transcript.delta',
+        'transcript.completed',
+      ]);
+    } finally {
+      await fs.promises.rm(fixturePath, { force: true });
+    }
+  });
+
+  test('returns one content-free failed event when the provider rejects', async () => {
+    const fixturePath = createAudioFixture();
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    const create = jest.fn().mockRejectedValue(new Error('provider private transcript'));
+
+    try {
+      const response = await request(createApp(create))
+        .post('/api/v1/transcribe')
+        .set('x-request-id', requestId)
+        .attach('audio', fixturePath);
+
+      expect(response.status).toBe(200);
+      expect(parseNdjson(response.text)).toEqual([{
+        type: 'transcript.failed',
+        requestId,
+        sequence: 0,
+        code: 'TRANSCRIPTION_FAILED',
+      }]);
+      expect(response.text).not.toContain('provider private transcript');
+      expect(errorSpy.mock.calls.flat().join(' ')).not.toContain('provider private transcript');
+    } finally {
+      errorSpy.mockRestore();
+      await fs.promises.rm(fixturePath, { force: true });
+    }
   });
 });

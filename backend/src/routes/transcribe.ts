@@ -14,6 +14,10 @@ import {
   type UsageLedger,
 } from '../services/usage/costLedger';
 import { measureAudioDurationSeconds } from '../services/transcription/audioDuration';
+import {
+  streamTranscription,
+  type StreamingTranscriptionProvider,
+} from '../services/transcription/streamingTranscription';
 
 type TranscriptionClient = Pick<OpenAI, 'audio'>;
 const UPLOAD_DIRECTORY = '/tmp/beats-audio/';
@@ -185,7 +189,13 @@ export function createTranscribeRouter(options: TranscribeRouterOptions = {}) {
     }
 
     let reservation: CostReservation | undefined;
-    let result: RouteResult;
+    let result: RouteResult | undefined;
+    let streamStarted = false;
+    let terminalWritten = false;
+    const providerAbort = new AbortController();
+    const abortProvider = () => providerAbort.abort();
+    req.once('aborted', abortProvider);
+    res.once('close', abortProvider);
     try {
       let config: TranscriptionConfig;
       try {
@@ -251,28 +261,35 @@ export function createTranscribeRouter(options: TranscribeRouterOptions = {}) {
       const fileName = `audio.${safeAudioExtension(req.file.originalname)}`;
       const client = options.client ?? new OpenAI({ apiKey: environment.OPENAI_API_KEY });
       reservation.beginProviderInvocation();
-      const transcription = await client.audio.transcriptions.create(
-        {
-          file: new File([fs.readFileSync(req.file.path)], fileName, { type: req.file.mimetype }),
-          model: config.model,
-          language: 'en',
-        },
-        { maxRetries: 0 },
-      );
+      const provider = client.audio.transcriptions.create.bind(
+        client.audio.transcriptions,
+      ) as unknown as StreamingTranscriptionProvider;
 
-      const usage = estimatedUsage;
-      reservation.commit(usage);
-      result = {
-        status: 200,
-        body: {
-          success: true,
-          data: {
-            transcript: transcription.text,
-            durationSeconds: measuredDurationSeconds,
-            usage,
-          },
-        },
-      };
+      res.status(200);
+      res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
+      res.setHeader('Cache-Control', 'no-store');
+      res.flushHeaders();
+      streamStarted = true;
+
+      for await (const event of streamTranscription({
+        requestId: req.requestId ?? 'missing-request-id',
+        file: new File([fs.readFileSync(req.file.path)], fileName, { type: req.file.mimetype }),
+        model: config.model,
+        durationSeconds: measuredDurationSeconds,
+        usage: estimatedUsage,
+        abortSignal: providerAbort.signal,
+      }, provider)) {
+        if (res.destroyed) break;
+        if (event.type !== 'transcript.delta') {
+          terminalWritten = true;
+          if (event.type === 'transcript.completed' || event.type === 'transcript.no_speech') {
+            reservation.commit(estimatedUsage);
+          } else {
+            logRequestError(req, event.code, new Error(event.code));
+          }
+        }
+        res.write(`${JSON.stringify(event)}\n`);
+      }
     } catch (error) {
       if (error instanceof TranscriptionBoundaryError) {
         if (error.shouldLog) logRequestError(req, error.code, error.cause ?? error);
@@ -285,34 +302,56 @@ export function createTranscribeRouter(options: TranscribeRouterOptions = {}) {
         };
       } else {
         logRequestError(req, 'TRANSCRIPTION_FAILED', error);
-        result = {
-          status: 500,
-          body: {
-            success: false,
-            error: { code: 'TRANSCRIPTION_FAILED', message: 'Unable to transcribe audio' },
-          },
-        };
+        if (streamStarted && !res.destroyed && !terminalWritten) {
+          res.write(`${JSON.stringify({
+            type: 'transcript.failed',
+            requestId: req.requestId ?? 'missing-request-id',
+            sequence: 0,
+            code: 'TRANSCRIPTION_FAILED',
+          })}\n`);
+          terminalWritten = true;
+        } else if (!streamStarted) {
+          result = {
+            status: 500,
+            body: {
+              success: false,
+              error: { code: 'TRANSCRIPTION_FAILED', message: 'Unable to transcribe audio' },
+            },
+          };
+        }
       }
     } finally {
+      req.off('aborted', abortProvider);
+      res.off('close', abortProvider);
       reservation?.release();
       try {
         await fs.promises.rm(req.file.path, { force: true });
       } catch (error) {
         logRequestError(req, 'TRANSCRIPTION_AUDIO_CLEANUP_FAILED', error);
-        result = {
-          status: 500,
-          body: {
-            success: false,
-            error: {
-              code: 'TRANSCRIPTION_AUDIO_CLEANUP_FAILED',
-              message: 'Temporary audio cleanup failed',
+        if (!streamStarted) {
+          result = {
+            status: 500,
+            body: {
+              success: false,
+              error: {
+                code: 'TRANSCRIPTION_AUDIO_CLEANUP_FAILED',
+                message: 'Temporary audio cleanup failed',
+              },
             },
-          },
-        };
+          };
+        }
       }
     }
 
-    return res.status(result.status).json(result.body);
+    if (streamStarted) return res.end();
+    const fallback = result ?? {
+      status: 500,
+      body: {
+        success: false,
+        error: { code: 'TRANSCRIPTION_FAILED', message: 'Unable to transcribe audio' },
+      },
+    };
+    return res.status(fallback.status).json(fallback.body);
   });
 
   return router;

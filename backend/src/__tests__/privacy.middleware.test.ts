@@ -143,6 +143,27 @@ function createTranscriptionApp(options: {
   return app;
 }
 
+async function* successfulTranscriptionStream(text: string) {
+  yield {
+    type: 'transcript.text.delta' as const,
+    delta: text,
+    logprobs: [{ logprob: -0.1 }],
+  };
+  yield {
+    type: 'transcript.text.done' as const,
+    text,
+    logprobs: [{ logprob: -0.1 }],
+  };
+}
+
+function createSuccessfulTranscription(text = 'private transcript'): jest.Mock {
+  return jest.fn(async () => successfulTranscriptionStream(text));
+}
+
+function parseTranscriptionStream(text: string): Array<Record<string, unknown>> {
+  return text.trim().split('\n').filter(Boolean).map((line) => JSON.parse(line));
+}
+
 describe('content-free request telemetry', () => {
   let logSpy: jest.SpyInstance;
   const requestLedgerPath = createLedgerPath();
@@ -297,10 +318,10 @@ describe('transcription privacy and spend boundaries', () => {
     fs.rmSync(uploadDirectory, { recursive: true, force: true });
   });
 
-  test.each([
-    ['succeeds', jest.fn().mockResolvedValue({ text: 'private transcript' }), 200],
-    ['fails', jest.fn().mockRejectedValue(new Error('provider payload: private transcript')), 500],
-  ])('deletes uploaded audio when transcription %s', async (_case, create, expectedStatus) => {
+  test.each(['succeeds', 'fails'])('deletes uploaded audio when transcription %s', async (outcome) => {
+    const create = outcome === 'succeeds'
+      ? createSuccessfulTranscription()
+      : jest.fn().mockRejectedValue(new Error('provider payload: private transcript'));
     let capturedTempPath = '';
     const actualRm = fs.promises.rm.bind(fs.promises);
     jest.spyOn(fs.promises, 'rm').mockImplementation(async (filePath, options) => {
@@ -315,12 +336,12 @@ describe('transcription privacy and spend boundaries', () => {
       .field('durationSeconds', '1')
       .attach('audio', fixturePath);
 
-    expect(response.status).toBe(expectedStatus);
+    expect(response.status).toBe(200);
     expect(capturedTempPath).not.toBe('');
     expect(fs.existsSync(capturedTempPath)).toBe(false);
-    if (expectedStatus === 500) {
+    if (outcome === 'fails') {
       expect(errorSpy.mock.calls.flat().join(' ')).not.toContain('private transcript');
-      expect(JSON.stringify(response.body)).not.toContain('private transcript');
+      expect(response.text).not.toContain('private transcript');
     }
   });
 
@@ -337,20 +358,14 @@ describe('transcription privacy and spend boundaries', () => {
     });
 
     const response = await request(createTranscriptionApp({
-      create: jest.fn().mockResolvedValue({ text: 'private transcript' }),
+      create: createSuccessfulTranscription(),
     }))
       .post('/api/v1/transcribe')
       .attach('audio', fixturePath)
       .timeout({ response: 1000 });
 
-    expect(response.status).toBe(500);
-    expect(response.body).toEqual({
-      success: false,
-      error: {
-        code: 'TRANSCRIPTION_AUDIO_CLEANUP_FAILED',
-        message: 'Temporary audio cleanup failed',
-      },
-    });
+    expect(response.status).toBe(200);
+    expect(response.headers['content-type']).toMatch(/application\/x-ndjson/);
     expect(errorSpy.mock.calls.flat().join(' ')).not.toContain('private temporary path');
     errorSpy.mockRestore();
   });
@@ -358,7 +373,7 @@ describe('transcription privacy and spend boundaries', () => {
   test('returns transcript but records only content-free transcription usage', async () => {
     const databasePath = createLedgerPath();
     const ledger = new CostLedger({ databasePath });
-    const create = jest.fn().mockResolvedValue({ text: 'private transcript' });
+    const create = createSuccessfulTranscription();
     jest.spyOn(console, 'info').mockImplementation(() => undefined);
 
     const response = await request(createTranscriptionApp({ create, ledger }))
@@ -366,8 +381,10 @@ describe('transcription privacy and spend boundaries', () => {
       .attach('audio', fixturePath);
 
     expect(response.status).toBe(200);
-    expect(response.body.data.transcript).toBe('private transcript');
-    expect(response.body.data.usage).toEqual({
+    const events = parseTranscriptionStream(response.text);
+    const completed = events.find((event) => event.type === 'transcript.completed');
+    expect(completed?.transcript).toBe('private transcript');
+    expect(completed?.usage).toEqual({
       provider: 'openai',
       model: 'whisper-mock',
       audioSeconds: 1,
@@ -376,7 +393,7 @@ describe('transcription privacy and spend boundaries', () => {
     expect(ledger.listUsage()).toEqual([
       {
         recordedAt: expect.any(String),
-        receipt: response.body.data.usage,
+        receipt: completed?.usage,
       },
     ]);
     expect(JSON.stringify(ledger.listUsage())).not.toContain('private transcript');
@@ -493,7 +510,10 @@ describe('transcription privacy and spend boundaries', () => {
       .post('/api/v1/transcribe')
       .attach('audio', fixturePath);
 
-    expect(response.status).toBe(500);
+    expect(response.status).toBe(200);
+    expect(parseTranscriptionStream(response.text)).toEqual([
+      expect.objectContaining({ type: 'transcript.failed', code: 'TRANSCRIPTION_FAILED' }),
+    ]);
     expect(create).toHaveBeenCalledTimes(1);
     expect(ledger.listUsage()).toEqual([
       {
@@ -539,7 +559,7 @@ describe('transcription privacy and spend boundaries', () => {
   });
 
   test('disables OpenAI SDK retries for each transcription request', async () => {
-    const create = jest.fn().mockResolvedValue({ text: 'private transcript' });
+    const create = createSuccessfulTranscription();
     jest.spyOn(console, 'info').mockImplementation(() => undefined);
 
     const response = await request(createTranscriptionApp({ create }))
@@ -548,7 +568,8 @@ describe('transcription privacy and spend boundaries', () => {
 
     expect(response.status).toBe(200);
     expect(create).toHaveBeenCalledTimes(1);
-    expect(create.mock.calls[0][1]).toEqual({ maxRetries: 0 });
+    expect(create.mock.calls[0][1].maxRetries).toBe(0);
+    expect(create.mock.calls[0][1].signal).toBeInstanceOf(AbortSignal);
   });
 });
 

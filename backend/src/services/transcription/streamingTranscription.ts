@@ -14,6 +14,7 @@ export interface StreamingTranscriptionInput {
   model: string;
   durationSeconds: number;
   usage: UsageReceipt;
+  abortSignal?: AbortSignal;
 }
 
 export type ProviderTranscriptionEvent =
@@ -31,7 +32,7 @@ export type StreamingTranscriptionProvider = (
     chunking_strategy: { type: 'server_vad'; threshold: number };
     temperature: 0;
   },
-  options: { maxRetries: 0 },
+  options: { maxRetries: 0; signal?: AbortSignal },
 ) => Promise<AsyncIterable<ProviderTranscriptionEvent>>;
 
 export function classifyTranscriptionEvidence(input: {
@@ -101,7 +102,10 @@ export async function* streamTranscription(
       include: ['logprobs'],
       chunking_strategy: { type: 'server_vad', threshold: 0.8 },
       temperature: 0,
-    }, { maxRetries: 0 });
+    }, {
+      maxRetries: 0,
+      ...(input.abortSignal ? { signal: input.abortSignal } : {}),
+    });
 
     for await (const event of stream) {
       if (event.type === 'transcript.text.delta') {
