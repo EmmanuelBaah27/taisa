@@ -11,6 +11,7 @@ Claude maintains the Active Work table — Baah never needs to update it.
 |---|---|---|---|---|
 | Local-first coaching platform | Platform | Build | `feature/local-first-coaching-platform` | Managed-device recovery/privacy QA is next; paid live provider evaluation remains gated; legacy-route retirement requires later explicit approval |
 | Personal alpha release | Platform + Product | Build | `feature/local-first-coaching-platform` | Code-only build complete at `850b3d6`; next gate is Baah approval to create Railway resources, add billing/secrets, and deploy. Signed iPhone installation follows as a separate gate. |
+| Post-Send streaming transcription | Platform + Product | Plan | `feature/local-first-coaching-platform` | Baah plan approval |
 
 ---
 
