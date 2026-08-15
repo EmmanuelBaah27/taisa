@@ -297,7 +297,7 @@ Update an entry's edited transcript or status.
 
 ### `POST /api/v1/transcribe`
 
-Transcribe an audio file using the configured OpenAI transcription model. Accepts `multipart/form-data`. The temporary file is deleted before the success or failure response completes. The server measures the uploaded audio and uses that measured duration for duration and cost checks before OpenAI is invoked.
+Transcribe an audio file using a streaming-capable OpenAI transcription model. Accepts `multipart/form-data` and, after all pre-provider validation passes, responds as `application/x-ndjson`. The server measures the uploaded audio and uses that measured duration for duration and cost checks before OpenAI is invoked. Disconnecting the client aborts the provider request and temporary audio is deleted when the stream closes.
 
 **Request** — `multipart/form-data`
 | Field | Type | Notes |
@@ -305,24 +305,24 @@ Transcribe an audio file using the configured OpenAI transcription model. Accept
 | `audio` | file | Required. A parseable format accepted by the configured transcription provider, within `TAISA_TRANSCRIPTION_MAX_UPLOAD_BYTES` |
 | `durationSeconds` | string/number | Optional display metadata. A material mismatch with measured duration is rejected; it is never used for cost or ceiling decisions |
 
-**Response** `200`
-```json
-{
-  "success": true,
-  "data": {
-    "transcript": "string",
-    "durationSeconds": "number",
-    "usage": {
-      "provider": "openai",
-      "model": "string",
-      "audioSeconds": "number",
-      "estimatedCostUsd": "number"
-    }
-  }
-}
+**Streaming response** `200 application/x-ndjson`
+
+Each line is one JSON event. `sequence` starts at `0` and increases by one. Every successful stream has zero or more deltas followed by exactly one terminal event.
+
+```text
+{"type":"transcript.delta","requestId":"uuid","sequence":0,"delta":"I led "}
+{"type":"transcript.completed","requestId":"uuid","sequence":1,"transcript":"I led the review","durationSeconds":4,"quality":"clear","usage":{"provider":"openai","model":"gpt-4o-transcribe","audioSeconds":4,"estimatedCostUsd":0.0004}}
 ```
 
-Required runtime settings are `TAISA_TRANSCRIPTION_MODEL`, `TAISA_TRANSCRIPTION_MAX_DURATION_SECONDS`, `TAISA_TRANSCRIPTION_MAX_UPLOAD_BYTES`, `TAISA_TRANSCRIPTION_PRICE_USD_PER_MINUTE`, `TAISA_AI_COST_CEILING_PER_REQUEST_USD`, `TAISA_AI_COST_CEILING_DAILY_USD`, and `TAISA_AI_COST_CEILING_MONTHLY_USD`. Missing or invalid settings fail closed with `503 TRANSCRIPTION_CONFIG_ERROR`; upload or duration overflow returns `413`; a caller-duration mismatch returns `422 AUDIO_DURATION_MISMATCH`; a cost ceiling returns `429 COST_LIMIT_EXCEEDED`. Only content-free usage receipts, timestamps, and reservations are stored at `TAISA_USAGE_LEDGER_PATH`; transcripts, prompts, responses, and uploaded audio are never stored there.
+Terminal events are:
+
+- `transcript.completed` with `quality: "clear" | "uncertain"`;
+- `transcript.no_speech` when no usable speech was recognized;
+- `transcript.failed` with the fixed code `TRANSCRIPTION_FAILED`.
+
+Provider confidence arrays, provider errors, and raw provider event shapes never cross the gateway. A clear completion can start coaching automatically. An uncertain completion is editable composer text and creates no coaching interaction. No-speech creates neither a conversation message nor a coaching interaction.
+
+Required runtime settings are `TAISA_TRANSCRIPTION_MODEL`, `TAISA_TRANSCRIPTION_MAX_DURATION_SECONDS`, `TAISA_TRANSCRIPTION_MAX_UPLOAD_BYTES`, `TAISA_TRANSCRIPTION_PRICE_USD_PER_MINUTE`, `TAISA_AI_COST_CEILING_PER_REQUEST_USD`, `TAISA_AI_COST_CEILING_DAILY_USD`, and `TAISA_AI_COST_CEILING_MONTHLY_USD`. `TAISA_TRANSCRIPTION_MODEL` must support streaming and log probabilities (`gpt-4o-transcribe` is the deployment default; `whisper-1` is not supported by this route). Missing or invalid settings fail closed with `503 TRANSCRIPTION_CONFIG_ERROR`; upload or duration overflow returns `413`; a caller-duration mismatch returns `422 AUDIO_DURATION_MISMATCH`; a cost ceiling returns `429 COST_LIMIT_EXCEEDED`. These pre-provider failures remain ordinary JSON because streaming has not begun. Only content-free usage receipts, timestamps, and reservations are stored at `TAISA_USAGE_LEDGER_PATH`; transcripts, prompts, responses, and uploaded audio are never stored there.
 
 The SQLite usage ledger provides transactional reservations and restart recovery for the single-instance MVP. Horizontal replicas require a shared accounting store so reservations remain globally atomic. Coaching providers additionally require their `TAISA_<PROVIDER>_MODEL`, input/output price, and `MAX_OUTPUT_TOKENS` settings; the explicit output cap is included in the conservative pre-call reservation.
 

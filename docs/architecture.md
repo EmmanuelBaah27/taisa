@@ -95,7 +95,7 @@ screens during BUILD, not as the authority model for the new local coaching flow
    → mobile/src/services/transcription.ts
    → POST /api/v1/transcribe (multipart/form-data)
    → backend/src/routes/transcribe.ts
-   → OpenAI Whisper API (model: whisper-1)
+   → OpenAI streaming transcription (default: gpt-4o-transcribe)
    → returns { transcript: string }
 
 3. Entry created with transcript

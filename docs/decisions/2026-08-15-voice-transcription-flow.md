@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-15
 
-**Status:** Approved
+**Status:** Implemented; managed-device calibration pending
 
 **Area:** Voice capture, transcription, privacy
 
@@ -57,6 +57,12 @@ final result as clear, uncertain, or no usable speech before coaching begins.
 
 Thresholds will be calibrated through automated fixtures and managed-device QA.
 They are policy, not universal truths, and should remain observable and adjustable.
+
+Implementation uses typed NDJSON over the existing post-Send upload. Provisional
+deltas remain transient. A clear terminal result atomically creates the user
+message and starts coaching; an uncertain result is stored as a private draft
+and loaded into the text composer; no-speech creates no message or coaching
+interaction. Provider confidence remains inside the gateway.
 
 ## Story angle
 

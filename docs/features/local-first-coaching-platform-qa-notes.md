@@ -21,6 +21,11 @@ Implemented for renewed QA:
   created. Deletion also works in that pre-durable failure state.
 - Deleting returns to text mode and requests keyboard focus.
 
+Superseded on 2026-08-15: on-device amplitude classification remains useful for
+the recorder presentation, but it no longer decides whether a deliberate Send
+may reach transcription. Final recognition evidence now owns clear, uncertain,
+and no-speech outcomes.
+
 Verification before renewed device QA:
 
 - `cd mobile && npm test -- voiceActivity voiceComposerState localCaptureRoutes --runInBand`
@@ -35,6 +40,31 @@ Pending device checks:
 - Plain waveform starts recording; waveform plus duration opens draft actions without recording.
 - Failed submission shows only Try again and Discard recording.
 - Retry uses the retained recording; deletion returns to a focused keyboard composer.
+
+## 2026-08-14 managed iPhone QA
+
+- Encrypted local conversation containing `QA persistence 14 Aug` survived a remotely verified force-quit and relaunch.
+- Taisa's app-switcher preview remained obscured.
+- Cancelling device authentication kept conversation content shielded.
+- Enabling and completing Face ID restored the conversation content.
+- Voice capture initially hit a reaction-state render loop; the empty conversation message selector is now referentially stable and covered by regression tests.
+- Noise-only and unintelligible recordings were repeatedly hallucinated as `BACKGROUND NOISES` or `Thanks for watching`, then incorrectly reached coaching.
+- Phrase filtering and single Whisper segment thresholds were tried and rejected: the same words may be legitimate speech, and one acoustic threshold did not generalize to fan noise or other gibberish.
+- The replacement streams transcription only after Send. Strong recognition automatically coaches, uncertain recognition becomes editable composer text without coaching, and no usable speech creates a recoverable error with no message or coaching interaction.
+- Provider confidence stays inside the gateway; temporary audio, transcript content, and provider payloads remain absent from logs.
+
+Automated verification completed before renewed device QA:
+
+- Backend: 20 suites and 242 tests passed; TypeScript build passed.
+- Mobile: 46 suites and 426 tests passed; TypeScript check passed.
+- Workflow verification and `git diff --check` passed.
+
+Pending managed-iPhone calibration:
+
+- Clear speech streams visible text and produces exactly one coaching response.
+- Silence, steady background noise, and general unintelligible audio produce no coaching response.
+- Uncertain recognition opens as editable text without a confirmation screen.
+- Legitimately saying `Thanks for watching` remains valid when speech evidence is strong.
 
 ## 2026-08-13 OpenAI coaching contract correction
 

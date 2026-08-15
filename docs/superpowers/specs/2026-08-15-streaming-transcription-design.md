@@ -53,13 +53,13 @@ content-minimal events:
 
 - `transcript.delta`
 - `transcript.completed`
-- `transcript.uncertain`
 - `transcript.no_speech`
 - `transcript.failed`
 
-The final event includes the durable request ID and the outcome needed by the
-mobile state machine. Provider payloads and raw confidence details remain inside
-the gateway boundary.
+`transcript.completed` carries `quality: clear | uncertain`. The final event
+includes the durable request ID and the outcome needed by the mobile state
+machine. Provider payloads and raw confidence details remain inside the gateway
+boundary.
 
 ### Quality classification
 
