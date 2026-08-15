@@ -58,3 +58,55 @@ test('transcription client converts transport failures into content-free errors'
   expect(failure?.message).not.toContain('raw transcript');
   expect(post).toHaveBeenCalledTimes(1);
 });
+
+test('transcription client does not infer speech activity from the returned words', async () => {
+  const transcript = 'Thanks for watching!';
+  const post = jest.fn(async () => ({
+    data: {
+      success: true,
+      data: {
+        transcript,
+        durationSeconds: 4,
+        usage: {
+          provider: 'openai',
+          model: 'fixture-transcription',
+          audioSeconds: 4,
+          estimatedCostUsd: 0.0004,
+        },
+      },
+    },
+  }));
+  const transcribe = createTranscriptionClient({ post });
+
+  await expect(transcribe({
+    requestId: '00000000-0000-4000-8000-000000000001',
+    audioUri: 'file:///private/noise-only.m4a',
+    durationSeconds: 4,
+  })).resolves.toMatchObject({ transcript });
+});
+
+test('transcription client accepts speech that mentions background noise', async () => {
+  const transcript = 'The background noise made it difficult to focus at work.';
+  const post = jest.fn(async () => ({
+    data: {
+      success: true,
+      data: {
+        transcript,
+        durationSeconds: 8,
+        usage: {
+          provider: 'openai',
+          model: 'fixture-transcription',
+          audioSeconds: 8,
+          estimatedCostUsd: 0.0008,
+        },
+      },
+    },
+  }));
+  const transcribe = createTranscriptionClient({ post });
+
+  await expect(transcribe({
+    requestId: '00000000-0000-4000-8000-000000000001',
+    audioUri: 'file:///private/spoken-content.m4a',
+    durationSeconds: 8,
+  })).resolves.toMatchObject({ transcript });
+});

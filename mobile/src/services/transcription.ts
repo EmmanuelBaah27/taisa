@@ -2,6 +2,26 @@ import * as Crypto from 'expo-crypto';
 import type { UsageReceipt } from '@taisa/shared';
 
 import api from './api';
+import { getDeviceCredential } from './deviceEnrollment';
+import { getInstallationId } from './installationIdentity';
+import { mobileApiConfig } from './mobileApiConfig';
+import {
+  createStreamingTranscriptionClient,
+  TranscriptionClientError as StreamingTranscriptionClientError,
+} from './streamingTranscription';
+
+export type {
+  StreamingTranscriptionRequest,
+  StreamingTranscriptionSubscription,
+} from './streamingTranscription';
+export { StreamingTranscriptionClientError };
+
+export const requestStreamingTranscription = createStreamingTranscriptionClient({
+  createRequest: () => new XMLHttpRequest(),
+  getInstallationId,
+  getDeviceCredential,
+  baseUrl: mobileApiConfig.baseUrl,
+});
 
 interface HttpClient {
   post(path: string, body: unknown, config?: unknown): Promise<{ data: unknown }>;
