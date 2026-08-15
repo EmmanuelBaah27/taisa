@@ -6,4 +6,5 @@ export * from './types/memory';
 export * from './types/coaching';
 export * from './types/migration';
 export * from './types/local';
+export * from './types/transcription';
 export * from './coachingLimits';
