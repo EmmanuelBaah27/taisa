@@ -10,7 +10,7 @@
 
 **Spec:** `docs/superpowers/specs/2026-08-16-current-experience-consolidation-design.md`
 
-**Status:** Approved — in progress
+**Status:** Complete — awaiting device QA
 
 ## Global Constraints
 
