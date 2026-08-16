@@ -21,6 +21,13 @@ export function chatConversationRoute(conversationId: string) {
   };
 }
 
+export function chatThreadRoute(conversationId: string) {
+  return {
+    pathname: '/thread/[id]' as const,
+    params: { id: conversationId },
+  };
+}
+
 export type ChatPresentation = 'route' | 'overlay';
 
 export function startFreshCapture(actions: {

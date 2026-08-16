@@ -5,6 +5,7 @@ import { router } from 'expo-router';
 import { ThreadResumeAction } from '../../components/ThreadResumeAction';
 import {
   chatConversationRoute,
+  chatThreadRoute,
   closeChatPresentation,
   isConversationCacheCurrent,
   returnFromRoutedChat,
@@ -66,6 +67,14 @@ describe('durable conversation resume navigation', () => {
       .toEqual({
         pathname: '/chat',
         params: { conversationId: 'conversation/with private work' },
+      });
+  });
+
+  test('the Chats list opens a thread with the durable SQLite conversation ID', () => {
+    expect(chatThreadRoute('conversation/with private work'))
+      .toEqual({
+        pathname: '/thread/[id]',
+        params: { id: 'conversation/with private work' },
       });
   });
 

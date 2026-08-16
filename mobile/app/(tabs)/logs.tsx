@@ -1,51 +1,68 @@
-import { useCallback, useState } from 'react';
-import { View, Text, ScrollView, ActivityIndicator } from 'react-native';
-import { useFocusEffect } from 'expo-router';
-import { useThreadStore } from '../../src/stores/threadStore';
-import { ThreadRow } from '../../src/components/ThreadRow';
-import { SearchBar } from '../../src/components/SearchBar';
-import { useScrollContext } from '../../src/contexts/ScrollContext';
+import { useCallback } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { router, useFocusEffect } from 'expo-router';
+
+import { ChatListRow } from '../../src/components/ui';
 import { colors } from '../../src/constants/theme';
+import { useScrollContext } from '../../src/contexts/ScrollContext';
+import { chatThreadRoute } from '../../src/navigation/chatConversationRoute';
+import { useThreadStore } from '../../src/stores/threadStore';
+import { getChatPreview, groupChatsByDate } from '../../src/utils/chatPresentation';
 
 export default function LogsScreen() {
-  const { threads, isLoadingThreads, fetchThreads } = useThreadStore();
+  const { threads, isLoadingThreads, error, fetchThreads } = useThreadStore();
   const { reportScroll } = useScrollContext();
-  const [query, setQuery] = useState('');
 
-  useFocusEffect(
-    useCallback(() => {
-      fetchThreads();
-      return () => reportScroll(0);
-    }, [])
-  );
+  useFocusEffect(useCallback(() => {
+    fetchThreads();
+    return () => reportScroll(0);
+  }, [fetchThreads, reportScroll]));
 
-  const filtered = query.trim()
-    ? threads.filter(t =>
-        t.title.toLowerCase().includes(query.toLowerCase()) ||
-        (t.lastUserMessage ?? '').toLowerCase().includes(query.toLowerCase()) ||
-        (t.lastAssistantMessage ?? '').toLowerCase().includes(query.toLowerCase())
-      )
-    : threads;
+  const groups = groupChatsByDate(threads.map((thread) => ({
+    id: thread.id,
+    title: thread.title,
+    updatedAt: thread.lastMessageAt,
+    lastUserMessage: thread.lastUserMessage,
+    lastAssistantMessage: thread.lastAssistantMessage,
+  })));
 
   return (
     <View className="flex-1 bg-background">
-      <Text className="text-foreground text-H1 px-5 pt-3 pb-3">Logs</Text>
+      <Text className="px-4 pb-3 pt-3 text-foreground text-H1">Chats</Text>
       <ScrollView
         className="flex-1"
-        onScroll={(e) => reportScroll(e.nativeEvent.contentOffset.y)}
+        contentContainerStyle={{ paddingHorizontal: 8, paddingBottom: 140 }}
+        onScroll={(event) => reportScroll(event.nativeEvent.contentOffset.y)}
         scrollEventThrottle={16}
-        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 120 }}
+        showsVerticalScrollIndicator={false}
       >
-        <SearchBar value={query} onChangeText={setQuery} />
-
         {isLoadingThreads && threads.length === 0 ? (
           <ActivityIndicator color={colors.accent} style={{ marginTop: 40 }} />
-        ) : filtered.length === 0 ? (
-          <Text className="text-text-tertiary text-sm text-center mt-10">
-            {query ? 'No logs match your search.' : 'No logs yet — tap the mic to start.'}
+        ) : error && threads.length === 0 ? (
+          <View className="items-center gap-3 px-4 pt-10">
+            <Text className="text-center text-danger text-small-regular">Couldn’t load chats.</Text>
+            <Pressable accessibilityRole="button" onPress={fetchThreads} className="rounded-full bg-muted px-6 py-3">
+              <Text className="text-foreground text-small-semibold">Try again</Text>
+            </Pressable>
+          </View>
+        ) : groups.length === 0 ? (
+          <Text className="pt-10 text-center text-text-tertiary text-small-regular">
+            No chats yet — tap the mic to start.
           </Text>
         ) : (
-          filtered.map(thread => <ThreadRow key={thread.id} thread={thread} />)
+          groups.map((group) => (
+            <View key={group.key} className="mb-5 gap-1">
+              <Text className="px-2 text-muted-foreground text-small-regular">{group.label}</Text>
+              {group.chats.map((chat) => (
+                <ChatListRow
+                  key={chat.id}
+                  title={chat.title || 'Untitled chat'}
+                  preview={getChatPreview(chat)}
+                  onPress={() => router.push(chatThreadRoute(chat.id))}
+                />
+              ))}
+            </View>
+          ))
         )}
       </ScrollView>
     </View>

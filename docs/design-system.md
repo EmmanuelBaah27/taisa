@@ -115,6 +115,8 @@ Never use raw `text-sm font-semibold` combinations — use the composite utiliti
 | `RecordingGlow` | `amplitude: number` | Amplitude-reactive lime glow anchored to screen bottom; 0 = very faint, 10 = full brightness; uses `expo-linear-gradient` + `Animated` with `useNativeDriver` |
 | `LiveTranscriptionText` | `transcript: string` | Centred text area; shows grey "What's on your mind?" when empty, switches to `text-lime-700` when transcript streams in |
 | `TaisaReplyCard` | `responseId`, `content`, local reaction state and callbacks | Assistant reply bubble with local Helpful / Not helpful controls; sharing is exposed only as a separate preview action after a reaction |
+| `ChatListRow` | `title`, `preview`, `needsAttention`, `onPress` | Accessible, borderless Chats index row; attention is explicit and never inferred from message copy |
+| `ThreadMessage` | `role`, `content`, `inputType` | User messages use a neutral right-aligned bubble; assistant messages remain unboxed |
 | `VoiceComposer` | `mode`, `voiceState`, `durationSeconds`, `amplitude`, draft state and callbacks | Bottom-loaded active voice/text composer with a voice-ready Reply control, speech-responsive Pause/Resume cradle, and stable Send position |
 | `VoiceDraftStrip` | `label`, `preview`, `onOpen`, `onDelete` | Compact representation of the inactive input; deletion remains an isolated tap target |
 | `TranscriptCorrectionCard` | `value`, `disabled`, `onChangeText`, `onCancel`, `onSubmit` | Presentational transcript correction editor with Cancel and Update response actions |
