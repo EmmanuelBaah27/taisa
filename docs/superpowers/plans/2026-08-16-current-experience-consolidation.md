@@ -175,11 +175,10 @@ Run from `/Users/emmanuelbaah/Documents/Beats/VibeCoding/Taisa/.worktrees/featur
 ```bash
 npm test --workspace=backend -- --runInBand
 npm run build --workspace=backend
-npm run build --workspace=shared
 cd mobile && npm test -- --runInBand && npm run typecheck
 ```
 
-Expected: every command exits 0. If a command fails, record the command and first actionable failure in the ledger, classify it as baseline debt, and do not misreport the baseline as passing.
+Expected: every available command exits 0. The shared workspace currently has no standalone npm script; record that infrastructure gap and rely on backend/mobile TypeScript consumption until a dedicated shared check is added in a separately tested change. If another command fails, record the command and first actionable failure in the ledger, classify it as baseline debt, and do not misreport the baseline as passing.
 
 - [ ] **Step 3: Create the integration branch from the exact verified SHA**
 
@@ -556,10 +555,9 @@ git commit -m "docs: make current experience the maintained runtime"
 npm run verify:workflow
 npm test --workspace=backend -- --runInBand
 npm run build --workspace=backend
-npm run build --workspace=shared
 ```
 
-Expected: all exit 0.
+Expected: all available commands exit 0. Shared contract compilation remains covered through backend/mobile TypeScript until the repository defines a standalone shared script.
 
 - [ ] **Step 2: Run complete mobile verification**
 

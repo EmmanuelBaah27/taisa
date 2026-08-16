@@ -10,7 +10,7 @@ This ledger is the preservation record for the current-experience consolidation.
 | `feature/local-first-coaching-platform` | `edb0b3d6c5b5bfdfc8903df4b9c6328f11864537` | `origin/feature/local-first-coaching-platform` (ahead 12) | clean | 74 commits; Platform baseline | Preserve as source and integration base | — |
 | `feature/chats` | `8ae63478d1ba4b3b192256a8b5293f3e11ee6b55` | none | untracked `mobile/node_modules/` only | 8 commits; Chats UI chain | Port by responsibility | — |
 | `feature/chat-input-states` | `2a8c79fbec4105a6a1b0a06c77cbe46486b48881` | none | clean | 29 commits including the 8 Chats commits | Port input behavior after Chats | — |
-| `feature/design-system-evolution` | `3dcdcf686a00ceca021ab2919a378b42a04aa876` plus working tree | `origin/main` | 20 modified, 3 deleted, 14 untracked paths | Typography, stories, browser/native catalog experiments, DS docs/tooling | Preserve in a WIP commit, classify, then port accepted work | — |
+| `feature/design-system-evolution` | `3be2fd7c` | `origin/main` (ahead 1) | clean after recovery commit | Typography, stories, browser/native catalog experiments, DS docs/tooling | Classify, then port accepted work | Recovery commit `3be2fd7` |
 | `design-system` | `f50cba16d8cb89b0eb6c763eb7add9bbb5dc5574` plus working tree | none | 3 modified manifests and untracked root `package-lock.json` | Older dependency experiment in external worktree | Preserve untouched pending ownership decision | — |
 | `docs/reimagine-product-scope` | `f6eb523aaf05ec294dea616d17dd41301eef3a68` plus working tree | none | modified `mobile/package.json` and `mobile/package-lock.json` | 9 documentation commits plus user dependency edits | Preserve dependency edits; cherry-pick approved docs later | — |
 
@@ -59,3 +59,14 @@ Fingerprints are SHA-256 hashes of `git diff --binary` at capture time. The empt
 - `feature/chat-input-states` descends from `feature/chats`; it does not descend from the local-first platform branch.
 - No source branch or worktree is approved for deletion during Build.
 - The in-app `mobile/app/design-system.tsx` experiment is preserved in the source snapshot but is excluded from the approved browser-Storybook architecture.
+
+## Platform baseline verification
+
+Verified at `edb0b3d6c5b5bfdfc8903df4b9c6328f11864537`:
+
+- Backend Jest: 20 suites, 242 tests passed.
+- Backend TypeScript build: passed.
+- Mobile Jest: 46 suites, 426 tests passed.
+- Mobile TypeScript check: passed.
+- Shared workspace: no standalone `build` or other npm script exists; its TypeScript contracts are exercised through the passing backend and mobile builds/checks. This is recorded as an infrastructure gap rather than a passing standalone shared check.
+- Initial sandboxed backend run failed because Supertest could not bind a temporary local server (`listen EPERM 0.0.0.0`). The same suite passed outside the sandbox; no product defect was established.
