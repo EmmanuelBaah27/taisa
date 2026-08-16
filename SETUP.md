@@ -5,6 +5,18 @@
 - Xcode (for iOS simulator)
 - An iPhone managed development build for SQLCipher/LocalAuthentication validation (Expo Go is insufficient)
 
+## Maintained review runtime
+
+The current local-first + Chats + chat-input + design-system build is maintained in the integration worktree:
+
+```bash
+cd /Users/emmanuelbaah/Documents/Beats/VibeCoding/Taisa/.worktrees/feature-current-experience/mobile
+npm install
+npm start
+```
+
+For the on-demand browser design-system catalog, run `npm run storybook:web` from the same directory. The `docs/reimagine-product-scope` worktree is documentation-only and is not a mobile runtime. Native SQLCipher, recording, and device-security checks still require the managed development build described below.
+
 ## API Keys Required
 1. **Anthropic API key** — for Claude (career coach AI)
 2. **OpenAI API key** — for Whisper transcription

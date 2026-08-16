@@ -7,6 +7,7 @@ import { VoiceButton } from '../../src/components/VoiceButton';
 import { ScrollProvider } from '../../src/contexts/ScrollContext';
 import { useUIStore } from '../../src/stores/uiStore';
 import ChatScreen from '../chat/index';
+import { CURRENT_INITIAL_TAB } from '../../src/navigation/currentExperience';
 
 const SCALE_BACK = { damping: 30, stiffness: 250 };
 
@@ -34,6 +35,7 @@ export default function TabLayout() {
         <Animated.View style={scaleStyle}>
           <TopNavBar />
           <Tabs
+            initialRouteName={CURRENT_INITIAL_TAB}
             screenOptions={{
               headerShown: false,
               tabBarStyle: { display: 'none' },

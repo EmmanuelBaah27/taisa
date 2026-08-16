@@ -20,6 +20,7 @@ import {
   recoveryPresentation,
   type StartupProfileResult,
 } from '../src/services/startupProfile';
+import { CURRENT_INITIAL_STACK } from '../src/navigation/currentExperience';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -111,7 +112,7 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <StatusBar style="dark" />
-      <Stack screenOptions={{ headerShown: false, animation: 'none', contentStyle: { backgroundColor: '#ffffff' } }}>
+      <Stack initialRouteName={CURRENT_INITIAL_STACK} screenOptions={{ headerShown: false, animation: 'none', contentStyle: { backgroundColor: '#ffffff' } }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="onboarding/index" />
         <Stack.Screen name="thread/[id]" />

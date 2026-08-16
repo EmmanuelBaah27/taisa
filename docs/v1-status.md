@@ -1,12 +1,18 @@
 # V1 Status — What's Built vs. What's Spec'd
 
 > Read this before planning what to build next. Updated as features ship.
-> Last updated: 2026-08-13
+> Last updated: 2026-08-16
+
+## Current experience integration
+
+`feature/current-experience` is the maintained review line. It combines the verified local-first platform with a repository-backed Chats default, durable conversation routing, the current text/voice input state owners, and the browser-reviewable Inter design system. A normal initialized launch enters the tab shell on Chats; onboarding and fail-closed recovery remain authoritative startup gates.
+
+The older source branches remain preserved until this integration passes device QA, receives explicit Ship approval, and lands on canonical `main`. The Chats-to-thread expanding-card motion is intentionally deferred to a separate Product plan after this baseline ships.
 
 ## Current personal-alpha handoff
 
-The code-only personal-alpha release is complete on `feature/local-first-coaching-platform` at
-`850b3d6`. Device enrollment/authentication, local response feedback, explicit encrypted feedback
+The code-only personal-alpha platform source is preserved on `feature/local-first-coaching-platform`.
+Device enrollment/authentication, local response feedback, explicit encrypted feedback
 sharing/deletion, Railway packaging, production fail-closed checks, and the standalone iPhone
 release profile are implemented. The next action is not more feature code: it is Baah's explicit
 gate to create/configure/deploy Railway resources. Apple signing and standalone installation remain

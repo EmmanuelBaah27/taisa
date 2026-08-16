@@ -16,6 +16,10 @@ import type { IconName } from './Icon';
 import { useScrollContext } from '../../contexts/ScrollContext';
 import { NaviiAvatar } from './NaviiAvatar';
 import { useCareerStore } from '../../stores/careerStore';
+import {
+  CURRENT_HISTORY_LABEL,
+  CURRENT_INITIAL_TAB_PATH,
+} from '../../navigation/currentExperience';
 
 interface NavTab {
   id: string;
@@ -28,7 +32,7 @@ const TABS: NavTab[] = [
   { id: 'index',    label: 'Activity', icon: 'IconMorningBrief', path: '/'         },
   { id: 'insights', label: 'Insights', icon: 'IconAura',         path: '/insights' },
   { id: 'goals',    label: 'Goals',    icon: 'IconTargetArrow',  path: '/goals'    },
-  { id: 'logs',     label: 'Logs',     icon: 'IconChatBubbles',  path: '/logs'     },
+  { id: 'logs',     label: CURRENT_HISTORY_LABEL, icon: 'IconChatBubbles', path: CURRENT_INITIAL_TAB_PATH },
   { id: 'you',      label: 'You',      icon: 'IconPeopleCircle', path: '/you'      },
 ];
 
