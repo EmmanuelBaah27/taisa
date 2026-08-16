@@ -11,7 +11,7 @@ Full token definitions and decision rules: `foundations.md` (root of repo).
 |---|---|
 | Styling | NativeWind (Tailwind CSS for React Native) — all screens |
 | Tokens | Taisa DS light theme — `mobile/tailwind.config.js` + `mobile/global.css` |
-| Typography | Strichpunkt Sans — loaded via `expo-font` in `app/_layout.tsx` |
+| Typography | Inter — `Inter_400Regular`, `Inter_500Medium`, `Inter_600SemiBold`, and `Inter_700Bold` loaded via `expo-font` in `app/_layout.tsx` |
 | Components | Primitives in `mobile/src/components/ui/` |
 
 ---
@@ -65,11 +65,18 @@ Full token definitions and decision rules: `foundations.md` (root of repo).
 
 Never use raw `text-sm font-semibold` combinations — use the composite utilities:
 
+| Semantic weight | Inter registration |
+|---|---|
+| Regular (400) | `Inter_400Regular` |
+| Medium (500) | `Inter_500Medium` |
+| Semibold (600) | `Inter_600SemiBold` |
+| Bold (700) | `Inter_700Bold` |
+
 | Class | Size | Weight | Use for |
 |---|---|---|---|
-| `text-H1` | 20px / 36px lh | 600 | Page headings |
-| `text-H2` | 18px / 32px lh | 600 | Section headings |
-| `text-H3` | 18px / 28px lh | 600 | Sub-headings |
+| `text-H1` | 24px / 32px lh | 600 | Page headings |
+| `text-H2` | 22px / 28px lh | 600 | Section headings |
+| `text-H3` | 20px / 26px lh | 600 | Sub-headings |
 | `text-xlg-regular` | 18px / 26px lh | 400 | Large body |
 | `text-lg-regular` | 18px / 26px lh | 400 | Body |
 | `text-lg-medium` | 18px / 26px lh | 500 | Body emphasis |
@@ -77,6 +84,7 @@ Never use raw `text-sm font-semibold` combinations — use the composite utiliti
 | `text-base-regular` | 16px / 22px lh | 400 | **Base UI — default text size** |
 | `text-base-medium` | 16px / 22px lh | 500 | UI emphasis |
 | `text-base-semibold` | 16px / 22px lh | 600 | UI strong |
+| `text-base-bold` | 16px / 22px lh | 700 | Strong compact emphasis where semibold is insufficient |
 | `text-small-regular` | 14px / 20px lh | 400 | Small labels, metadata |
 | `text-small-medium` | 14px / 20px lh | 500 | Small emphasis |
 | `text-small-semibold` | 14px / 20px lh | 600 | Small strong |
@@ -128,6 +136,10 @@ Never use raw `text-sm font-semibold` combinations — use the composite utiliti
 | `ChatErrorPanel` | message and recovery callbacks | Tokenized error feedback with keyboard, retry, and voice-discard actions |
 | `PendingProposalCard` | `proposal`, `disabled`, `onConfirm`, `onResolve` | Memory confirmation or explicit conflict-resolution choices |
 | `ChatComposerDock` | `phase`, `bottomInset`, `children` | Safe-area composer slot or transcribing/processing status |
+| `ChatSurfaces` | typed chat surface exports | Module grouping the conversation, composer, pending, processing, error, and proposal presentation primitives |
+| `CubeRefractionOverlay` | shared `amplitude`, shared `cubeSize` | Native Skia recording effect; verify in the real recording screen on device |
+| `GlowDevSheet` | controls, visibility, dismiss callback | Development-only native tuning surface; verify on device |
+| `NaviiAvatar` | `seed`, `size` | Deterministic generated avatar presentation |
 
 **Extraction rule:** pattern appears in 2+ places → extract to `ui/`. Do not extract speculatively.
 **DS compliance:** no `StyleSheet.create()`, no raw hex, import tokens from Tailwind classes only.

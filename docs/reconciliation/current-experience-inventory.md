@@ -84,3 +84,19 @@ The source branch's `test:chat-input` and `test:chat-orchestration` scripts pass
 | Chat-input UI components | `VoiceComposer`, `VoiceDraftStrip`, `TranscriptCorrectionCard`, and typed `ChatSurfaces` | Keep local-first DS components; reconcile visual tokens/stories during the DS task |
 
 No duplicate chat state machine was added. This is an intentional cleanup decision: the behavioral contract is preserved by the newer tested owners, while the older server-authoritative transport is excluded.
+
+## Design-system reconciliation
+
+The recovered `feature/design-system-evolution` work was classified by responsibility before integration:
+
+| Source responsibility | Decision | Current owner |
+|---|---|---|
+| Inter typography and semantic type utilities | Accept and adapt | `mobile/app/_layout.tsx`, `mobile/global.css`, and `mobile/tailwind.config.js` |
+| Browser component stories and safe-area/gesture preview wrappers | Accept and adapt | `mobile/.rnstorybook/` and colocated `*.stories.tsx` files |
+| On-demand browser catalog | Accept with an isolated entry point | `mobile/index.ts`, `mobile/metro.config.js`, and `npm run storybook:web` |
+| In-app design-system route and Account-screen link | Reject | Browser catalog is the review surface; no product route is added |
+| Production/native Storybook configuration | Reject | Storybook remains development-only and environment gated |
+| Skia effects and native tuning surfaces | Preserve as native-only | Documented in `docs/design-system.md`; verify in real app screens during device QA |
+| Workflow edits that bypass Baah approval gates | Reject | `docs/workflow.md` remains authoritative |
+
+Browser verification on 2026-08-16 confirmed that all 19 catalog modules render with controls and no console errors. The entry point intentionally prevents Expo Router routes—and therefore native-only Skia modules—from entering the browser catalog bundle. Mobile verification after reconciliation: 48 suites, 433 tests passed; TypeScript and the design-system verifier passed.

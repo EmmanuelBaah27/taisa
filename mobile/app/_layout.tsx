@@ -5,6 +5,10 @@ import { StatusBar } from 'expo-status-bar';
 import { AppState, Text, TouchableOpacity, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useFonts } from 'expo-font';
+import { Inter_400Regular } from '@expo-google-fonts/inter/400Regular';
+import { Inter_500Medium } from '@expo-google-fonts/inter/500Medium';
+import { Inter_600SemiBold } from '@expo-google-fonts/inter/600SemiBold';
+import { Inter_700Bold } from '@expo-google-fonts/inter/700Bold';
 import * as SplashScreen from 'expo-splash-screen';
 import { useCareerStore } from '../src/stores/careerStore';
 import {
@@ -26,9 +30,10 @@ export default function RootLayout() {
   const [startup, setStartup] = useState<StartupProfileResult | null>(null);
 
   const [fontsLoaded] = useFonts({
-    'StrichpunktSans': require('../assets/fonts/StrichpunktSans-Regular.ttf'),
-    'StrichpunktSans-Medium': require('../assets/fonts/StrichpunktSans-Medium.ttf'),
-    'StrichpunktSans-Bold': require('../assets/fonts/StrichpunktSans-Bold.ttf'),
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+    Inter_700Bold,
   });
 
   useEffect(() => {
