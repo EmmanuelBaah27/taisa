@@ -1,7 +1,7 @@
 # Current Experience Consolidation Design
 
 **Date:** 2026-08-16
-**Status:** Approved in brainstorming; awaiting written-spec review
+**Status:** Approved
 **Tier:** Full
 **Track:** Platform + Product
 **Authors:** Baah + Codex

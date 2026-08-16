@@ -2,7 +2,7 @@
 
 **Track:** Platform + Product
 **Tier:** Full
-**Status:** Scope agreed; design specification awaiting review
+**Status:** Scope and design approved; implementation plan awaiting approval
 
 ## What is it?
 
