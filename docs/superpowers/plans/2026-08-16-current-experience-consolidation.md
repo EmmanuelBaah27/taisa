@@ -6,7 +6,7 @@
 
 **Architecture:** Create `feature/current-experience` from the verified local-first platform head, then port the Chats, chat-input, and design-system work as bounded behavioral slices instead of merging branches wholesale. Preserve every source branch and dirty worktree until the integration result is on canonical `main`; make the integration worktree the documented runtime for subsequent screen work.
 
-**Tech Stack:** Expo SDK 54, Expo Router 6, React Native 0.81, TypeScript 5.9, NativeWind 4, Zustand 5, React Native Reanimated 4, Expo SQLite/SQLCipher, Jest 29, Storybook React Native 10, Node/Express, Git worktrees.
+**Tech Stack:** Expo SDK 54, Expo Router 6, Expo Web, React Native 0.81, TypeScript 5.9, NativeWind 4, Zustand 5, React Native Reanimated 4, Expo SQLite/SQLCipher, Jest 29, Storybook React Native 10, Node/Express, Git worktrees.
 
 **Spec:** `docs/superpowers/specs/2026-08-16-current-experience-consolidation-design.md`
 
@@ -22,6 +22,9 @@
 - Keep the existing no-auth v1 contract and Expo managed workflow.
 - Use NativeWind for new UI; do not add `StyleSheet.create()` to changed UI files.
 - Maintain reusable visual primitives in `mobile/src/components/ui/`, with typed exported props, stories where infrastructure exists, and `docs/design-system.md` updates.
+- Use browser Storybook as the on-demand review/catalog surface. Do not add an in-app design-system route or a native Storybook gallery.
+- Verify native-only gestures, haptics, safe areas, Skia, recording, and Reanimated behavior in the real Taisa screens on device.
+- Keep stories and documentation publishable as a future versioned long-lived catalog, but publishing/hosting is outside this plan.
 - The current runtime must launch the new experience without an environment-dependent redirect or undocumented worktree choice.
 - Do not implement the Chats-to-thread expanding-card motion in this plan; it receives a dedicated Product plan after the consolidated baseline passes device QA.
 - Do not delete branches or worktrees in Build. Cleanup requires verified Ship approval and proof that every source commit/file is accounted for.
@@ -59,7 +62,7 @@
 ### Design-system evolution
 
 - Modify `mobile/global.css`, `mobile/tailwind.config.js`, `mobile/app/_layout.tsx`, `mobile/package.json`, and `mobile/package-lock.json` — accepted Inter typography and dependency reconciliation.
-- Modify `.storybook`/`.rnstorybook` configuration and component stories — accepted on-device catalog behavior.
+- Modify `.rnstorybook` configuration and component stories — browser-accessible, development-only catalog behavior.
 - Modify `docs/design-system.md` — authoritative tokens, typography, components, stories, and evolution contract.
 - Preserve or remove old font assets only after all imports are migrated and repository search proves no consumer remains.
 
@@ -435,7 +438,7 @@ git commit -m "feat: reconcile current chat input states"
 
 **Interfaces:**
 - Consumes: the recoverable DS source commit from Task 1 and current integration-branch components.
-- Produces: one Inter-based token/typography system, a working development-only Storybook catalog, and a disposition entry for every DS source file.
+- Produces: one Inter-based token/typography system, an on-demand browser Storybook catalog, and a disposition entry for every DS source file.
 
 - [ ] **Step 1: Classify every DS source path**
 
@@ -447,7 +450,8 @@ Add a lightweight test or verification script that asserts:
 
 - `global.css` registers `Inter_400Regular`, `Inter_500Medium`, `Inter_600SemiBold`, and `Inter_700Bold` utilities;
 - `_layout.tsx` loads those four font registrations;
-- production route resolution cannot open the design-system catalog;
+- `mobile/package.json` exposes `storybook:web` as `EXPO_PUBLIC_STORYBOOK=true expo start --web`;
+- no `mobile/app/design-system.tsx` route or navigation item exposes the catalog inside Taisa;
 - every newly exported visual module has a colocated story, excluding explicitly documented infrastructure wrappers.
 
 - [ ] **Step 3: Run the assertions and confirm the current gap**
@@ -456,9 +460,9 @@ Run: `cd mobile && npm test -- --runInBand && npm run typecheck`
 
 Expected: the new assertions fail before accepted DS files are ported.
 
-- [ ] **Step 4: Port accepted tokens, fonts, stories, and catalog configuration**
+- [ ] **Step 4: Port accepted tokens, fonts, stories, and browser catalog configuration**
 
-Use the local-first package versions as dependency floors. Add only missing packages required by accepted DS behavior; never downgrade Expo, React Native, Reanimated, SQLite, SecureStore, or test infrastructure to match the DS source worktree. Run `npm install` only inside `mobile/` so the lockfile reflects the reconciled manifest.
+Use the local-first package versions as dependency floors. Add only missing packages required for Storybook to render through Expo Web; never downgrade Expo, React Native, Reanimated, SQLite, SecureStore, or test infrastructure to match the DS source worktree. Add `"storybook:web": "EXPO_PUBLIC_STORYBOOK=true expo start --web"`, keep Storybook excluded from the ordinary app entry path, and do not port `mobile/app/design-system.tsx`. Run `npm install` only inside `mobile/` so the lockfile reflects the reconciled manifest.
 
 - [ ] **Step 5: Audit design-system compliance**
 
@@ -467,10 +471,11 @@ Run:
 ```bash
 rg -n 'StyleSheet\.create|#[0-9A-Fa-f]{3,8}' mobile/app/'(tabs)'/logs.tsx mobile/app/thread/'[id]'.tsx mobile/src/components/ui/ChatListRow.tsx mobile/src/components/ui/ThreadMessage.tsx
 rg -n 'StrichpunktSans' mobile docs/design-system.md
+test ! -e mobile/app/design-system.tsx
 cd mobile && npm test -- --runInBand && npm run typecheck
 ```
 
-Expected: no new `StyleSheet.create()`, no raw hex in the reconciled screen/UI files, no remaining Strichpunkt consumer after approved removal, tests/typecheck pass.
+Expected: no new `StyleSheet.create()`, no raw hex in the reconciled screen/UI files, no remaining Strichpunkt consumer after approved removal, no in-app catalog route, and tests/typecheck pass. Start `npm run storybook:web` separately and verify the catalog renders in a browser before stopping the development server.
 
 - [ ] **Step 6: Commit**
 
@@ -564,7 +569,7 @@ npm test -- --runInBand
 npm run typecheck
 ```
 
-Expected: all exit 0. Missing Storybook automation is recorded as a gap and covered on device; it is not called a pass.
+Expected: all exit 0. Missing browser Storybook automation is recorded as a gap; native-only component behavior is covered in real-screen device QA and is not called a browser pass.
 
 - [ ] **Step 3: Perform a destructive-diff guard review**
 
@@ -588,7 +593,7 @@ The QA document must require Baah to verify:
 5. text, voice, pause, resume, discard, transcription, retry, and submit states work;
 6. offline/private local capture remains local;
 7. loading, empty, error, long-text, safe-area, keyboard, and accessibility-text cases remain usable;
-8. the development design-system catalog opens, while a production-mode build cannot route to it.
+8. `npm run storybook:web` opens the design-system catalog in a browser, ordinary Taisa navigation exposes no catalog/gallery route, and native-only components work in their real screens.
 
 - [ ] **Step 5: Move workflow to Review + QA and commit evidence**
 

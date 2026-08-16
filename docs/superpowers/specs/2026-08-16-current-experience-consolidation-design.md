@@ -10,7 +10,7 @@
 
 Taisa has one maintained development line that opens into the current app experience. The local-first platform, Chats surfaces, chat input states, and current design-system work coexist on that line. Screen-by-screen design work continues there, so a developer or device tester cannot accidentally launch the legacy build by using the documented runtime.
 
-The design system is a foundation layer within the current Product branch, not an independent long-lived source of truth. `main` remains the only permanent branch and becomes authoritative after verified Ship approval.
+The design system is a foundation layer within the current Product branch. Its versioned code, stories, and `docs/design-system.md` are the source of truth; a drifting feature branch is not. Browser Storybook is the routine review surface and is designed to become a published, versioned, long-lived catalog once the system stabilizes. `main` remains the only permanent application branch and becomes authoritative after verified Ship approval.
 
 ## Current-state finding
 
@@ -84,6 +84,8 @@ Before changing the design-system worktree, make its uncommitted state recoverab
 
 Port accepted changes onto the integration branch before screen changes that depend on them. Components remain typed, presentational, NativeWind-based, and documented. Screens consume primitives from `mobile/src/components/ui/`; they do not establish competing tokens or inline primitive styles.
 
+For the current phase, stories are reviewed through browser Storybook started on demand. Taisa does not expose an in-app design-system route and does not ship a native Storybook gallery. Components that depend on native gestures, haptics, safe areas, Skia, recording, or Reanimated behavior are verified in the real screens that use them during device QA. Once component APIs and tokens stabilize, the browser catalog may be hosted as the long-lived versioned reference without changing component ownership.
+
 If a design-system change alters every existing usage or breaks an API, show Baah the visual before/after and affected screens before applying it.
 
 ### 6. Make the current experience the runtime
@@ -120,7 +122,7 @@ Consolidation is complete only when:
 2. backend tests and TypeScript build pass;
 3. shared checks pass;
 4. mobile TypeScript and relevant Jest suites pass;
-5. Storybook covers newly accepted design-system states where infrastructure exists;
+5. browser Storybook covers newly accepted portable design-system states, and native-only states have explicit real-screen device-QA coverage;
 6. DS compliance passes;
 7. a clean install/launch from the documented worktree opens the current experience;
 8. Chats can open and resume a conversation using the local-first data path;
@@ -139,4 +141,4 @@ The Plan gate authorizes reconciliation work. The Ship gate authorizes the verif
 
 ## Deliberate exclusions
 
-This effort does not redesign unrelated screens, add platform capabilities, rewrite the app in SwiftUI, introduce a second permanent integration branch, or implement the expanding-card motion before its thread design handoff is confirmed.
+This effort does not redesign unrelated screens, add platform capabilities, rewrite the app in SwiftUI, introduce a second permanent integration branch, add an in-app/native Storybook gallery, publish the catalog publicly, or implement the expanding-card motion before its thread design handoff is confirmed.

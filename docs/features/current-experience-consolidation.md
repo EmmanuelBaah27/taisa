@@ -20,7 +20,9 @@ Substantial approved work currently lives in divergent branches and worktrees ba
 - [ ] The chat input-state behavior is reconciled onto the same baseline.
 - [ ] Every uncommitted design-system change is inventoried, classified, and either preserved on the integration branch or explicitly rejected by Baah.
 - [ ] Opening the maintained runtime shows the current app experience, not the legacy Logs/journaling build.
-- [ ] The design system is maintained inside the latest Product branch and documented in `docs/design-system.md`; no separate long-lived design-system branch is treated as authoritative.
+- [ ] The design system is maintained inside the latest Product branch and documented in `docs/design-system.md`; its code and documentation are the source of truth, not a drifting feature branch.
+- [ ] Browser Storybook is the routine review/catalog surface and can be started only when needed; native-only behavior is reviewed in real Taisa screens on device.
+- [ ] The browser catalog is structured so it can later be published as Taisa's versioned, long-lived design-system reference without moving component ownership out of the repository prematurely.
 - [ ] Existing user changes and unique commits remain recoverable throughout consolidation.
 - [ ] Platform, shared, mobile logic, and mobile UI verification pass before the integration branch is proposed for Ship.
 - [ ] Only after canonical `main` contains the verified result may accounted-for branches and disposable worktrees be removed.
@@ -37,3 +39,4 @@ The approved local-first platform branch is the candidate foundation. Consolidat
 - Deleting branches or worktrees before their commits and uncommitted files are accounted for
 - Force-pushing, rewriting shared history, or resolving conflicts by selecting an entire branch wholesale
 - Implementing the expanding-card transition before the consolidated runtime is verified
+- Adding an in-app or native Storybook gallery to Taisa
