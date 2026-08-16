@@ -6,6 +6,7 @@ import {
   getMessage,
   insertConversation,
   insertMessage,
+  listChatSummaries,
   listConversations,
   listMessages,
   listRecentConversationMessages,
@@ -117,6 +118,51 @@ describe('conversationRepository', () => {
       expect(await listMessages(db, conversation.id, ['received'])).toEqual([
         { ...received, content: 'What evidence supports that change?' },
       ]);
+    } finally {
+      db.close();
+    }
+  });
+
+  test('lists active chat summaries with the latest visible message from each role', async () => {
+    const db = createTestDatabase();
+
+    try {
+      await db.withTransaction((tx) => insertConversation(tx, conversation, 'conversation-create-1'));
+      await db.withTransaction((tx) => insertMessage(tx, message, 'message-create-1'));
+      await db.withTransaction((tx) => insertMessage(tx, {
+        ...message,
+        id: 'message-2',
+        role: 'assistant',
+        content: 'Coach reply',
+        lifecycle: 'received',
+        requestId: null,
+        createdAt: LATER,
+        updatedAt: LATER,
+      }, 'message-create-2'));
+      await db.withTransaction((tx) => insertMessage(tx, {
+        ...message,
+        id: 'message-3',
+        content: 'Newest user message',
+        requestId: null,
+        createdAt: '2026-08-10T11:00:00.000Z',
+        updatedAt: '2026-08-10T11:00:00.000Z',
+      }, 'message-create-3'));
+
+      const archived = {
+        ...conversation,
+        id: 'archived-conversation',
+        lifecycle: 'archived' as const,
+        archivedAt: LATER,
+      };
+      await db.withTransaction((tx) => insertConversation(tx, archived, 'conversation-create-2'));
+
+      expect(await listChatSummaries(db)).toEqual([{
+        id: conversation.id,
+        title: conversation.title,
+        updatedAt: '2026-08-10T11:00:00.000Z',
+        lastUserMessage: 'Newest user message',
+        lastAssistantMessage: 'Coach reply',
+      }]);
     } finally {
       db.close();
     }

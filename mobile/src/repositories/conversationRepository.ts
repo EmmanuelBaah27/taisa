@@ -33,6 +33,22 @@ interface MessageRow {
   updated_at: string;
 }
 
+export interface ChatSummary {
+  id: string;
+  title: string | null;
+  updatedAt: string;
+  lastUserMessage: string | null;
+  lastAssistantMessage: string | null;
+}
+
+interface ChatSummaryRow {
+  id: string;
+  title: string | null;
+  updated_at: string;
+  last_user_message: string | null;
+  last_assistant_message: string | null;
+}
+
 const CONVERSATION_COLUMNS = 'id, title, lifecycle, preferred_input_mode, created_at, updated_at, archived_at';
 const MESSAGE_COLUMNS = `id, conversation_id, parent_message_id, role, content, lifecycle,
   request_id, created_at, updated_at`;
@@ -200,6 +216,51 @@ export async function listConversations(
     filter.params,
   );
   return rows.map(mapConversation);
+}
+
+export async function listChatSummaries(
+  database: RepositoryConnection,
+): Promise<ChatSummary[]> {
+  const rows = await database.getAllAsync<ChatSummaryRow>(
+    `SELECT c.id,
+            c.title,
+            COALESCE((
+              SELECT m.updated_at
+              FROM messages m
+              WHERE m.conversation_id = c.id
+                AND m.lifecycle IN ('submitted', 'received')
+              ORDER BY m.created_at DESC, m.id DESC
+              LIMIT 1
+            ), c.updated_at) AS updated_at,
+            (
+              SELECT m.content
+              FROM messages m
+              WHERE m.conversation_id = c.id
+                AND m.role = 'user'
+                AND m.lifecycle IN ('submitted', 'received')
+              ORDER BY m.created_at DESC, m.id DESC
+              LIMIT 1
+            ) AS last_user_message,
+            (
+              SELECT m.content
+              FROM messages m
+              WHERE m.conversation_id = c.id
+                AND m.role = 'assistant'
+                AND m.lifecycle IN ('submitted', 'received')
+              ORDER BY m.created_at DESC, m.id DESC
+              LIMIT 1
+            ) AS last_assistant_message
+       FROM conversations c
+      WHERE c.lifecycle = 'active'
+      ORDER BY updated_at DESC, c.id`,
+  );
+  return rows.map((row) => ({
+    id: row.id,
+    title: row.title,
+    updatedAt: row.updated_at,
+    lastUserMessage: row.last_user_message,
+    lastAssistantMessage: row.last_assistant_message,
+  }));
 }
 
 export async function deleteConversation(
