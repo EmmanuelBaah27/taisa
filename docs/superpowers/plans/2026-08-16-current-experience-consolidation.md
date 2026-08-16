@@ -10,7 +10,7 @@
 
 **Spec:** `docs/superpowers/specs/2026-08-16-current-experience-consolidation-design.md`
 
-**Status:** Draft — awaiting plan approval
+**Status:** Approved — in progress
 
 ## Global Constraints
 
