@@ -7,6 +7,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { colors } from '../../constants/theme';
+import { getBottomNavigationLayout } from '../../navigation/bottomNavigation';
 import { Icon } from './Icon';
 
 export interface VoiceEntryButtonProps {
@@ -16,6 +17,7 @@ export interface VoiceEntryButtonProps {
 }
 
 export function VoiceEntryButton({ bottomInset, hidden = false, onPress }: VoiceEntryButtonProps) {
+  const { recordBottom } = getBottomNavigationLayout(bottomInset);
   const scale = useSharedValue(1);
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -24,7 +26,8 @@ export function VoiceEntryButton({ bottomInset, hidden = false, onPress }: Voice
   return (
     <Animated.View
       className="absolute left-0 right-0 z-50 items-center"
-      style={[{ bottom: bottomInset + 16, opacity: hidden ? 0 : 1 }, animatedStyle]}
+      pointerEvents={hidden ? 'none' : 'box-none'}
+      style={[{ bottom: recordBottom, opacity: hidden ? 0 : 1 }, animatedStyle]}
     >
       <Pressable
         accessibilityLabel="Start a voice conversation"
@@ -32,12 +35,13 @@ export function VoiceEntryButton({ bottomInset, hidden = false, onPress }: Voice
         onPress={onPress}
         onPressIn={() => { scale.value = withTiming(0.95, { duration: 80 }); }}
         onPressOut={() => { scale.value = withSpring(1, { damping: 20, stiffness: 300 }); }}
-        className="rounded-full bg-primary px-11 py-4"
+        className="bg-primary px-10 py-4"
         style={{
+          borderRadius: 32,
           shadowColor: colors.accent,
           shadowOffset: { width: 0, height: 0 },
-          shadowOpacity: 0.6,
-          shadowRadius: 24,
+          shadowOpacity: 0.35,
+          shadowRadius: 20,
           elevation: 10,
         }}
       >

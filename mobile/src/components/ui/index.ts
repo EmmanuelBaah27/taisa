@@ -13,7 +13,7 @@ export type { InputProps, InputSize } from './Input';
 export { Icon } from './Icon';
 export type { IconProps, IconName } from './Icon';
 
-export { TopNavBar } from './TopNavBar';
+export { BottomNavBar } from './BottomNavBar';
 
 export { ChatNavBar } from './ChatNavBar';
 export type { ChatNavBarProps } from './ChatNavBar';

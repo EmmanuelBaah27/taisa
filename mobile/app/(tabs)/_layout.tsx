@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { View } from 'react-native';
 import { Tabs } from 'expo-router';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, interpolate } from 'react-native-reanimated';
-import { TopNavBar } from '../../src/components/ui/TopNavBar';
+import { BottomNavBar } from '../../src/components/ui/BottomNavBar';
 import { VoiceButton } from '../../src/components/VoiceButton';
 import { ScrollProvider } from '../../src/contexts/ScrollContext';
 import { useUIStore } from '../../src/stores/uiStore';
@@ -33,7 +33,6 @@ export default function TabLayout() {
       {/* Dark backdrop shows around the scaled-back tabs content. */}
       <View style={{ flex: 1, backgroundColor: '#111111' }}>
         <Animated.View style={scaleStyle}>
-          <TopNavBar />
           <Tabs
             initialRouteName={CURRENT_INITIAL_TAB}
             screenOptions={{
@@ -47,6 +46,7 @@ export default function TabLayout() {
             <Tabs.Screen name="logs" />
             <Tabs.Screen name="you" />
           </Tabs>
+          <BottomNavBar />
           <VoiceButton />
         </Animated.View>
 
