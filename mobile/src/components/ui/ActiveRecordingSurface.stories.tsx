@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-native';
 import { View } from 'react-native';
 
 import { ActiveRecordingActionBar, ActiveRecordingContent } from './ActiveRecordingSurface';
+import { ChatComposerDock } from './ChatSurfaces';
 
 const meta: Meta<typeof ActiveRecordingActionBar> = {
   title: 'Patterns/ActiveRecordingSurface',
@@ -34,9 +35,11 @@ const meta: Meta<typeof ActiveRecordingActionBar> = {
     </View>
   )],
   render: (args) => (
-    <View className="flex-1 px-4 pb-[34px]">
+    <View className="flex-1">
       <ActiveRecordingContent greeting="How’s it going?" />
-      <ActiveRecordingActionBar {...args} />
+      <ChatComposerDock phase="listening" bottomInset={34}>
+        <ActiveRecordingActionBar {...args} />
+      </ChatComposerDock>
     </View>
   ),
 };

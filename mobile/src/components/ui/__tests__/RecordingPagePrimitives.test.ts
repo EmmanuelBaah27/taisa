@@ -122,6 +122,30 @@ describe('recording page primitives', () => {
     expect(actionByLabel(bar, 'Send recording').props.disabled).toBe(true);
   });
 
+  test('active recording action bar leaves footer geometry to the composer dock', () => {
+    const recordingSurfaceSource = fs.readFileSync(
+      path.resolve(__dirname, '../ActiveRecordingSurface.tsx'),
+      'utf8',
+    );
+    const actionBarSource = recordingSurfaceSource.slice(
+      recordingSurfaceSource.indexOf('export function ActiveRecordingActionBar'),
+    );
+    const storySource = fs.readFileSync(
+      path.resolve(__dirname, '../ActiveRecordingSurface.stories.tsx'),
+      'utf8',
+    );
+
+    expect(actionBarSource).not.toContain('bottomInset');
+    expect(actionBarSource).not.toContain('absolute');
+    expect(actionBarSource).not.toContain('left-0');
+    expect(actionBarSource).not.toContain('right-0');
+    expect(actionBarSource).not.toContain('px-4');
+    expect(actionBarSource).not.toContain('Math.max');
+    expect(storySource).toContain('ChatComposerDock');
+    expect(storySource).not.toContain('px-4');
+    expect(storySource).not.toContain('pb-[34px]');
+  });
+
   test('reactive timestamp keeps its layout geometry while raw amplitude drives a wider canvas', () => {
     expect(VOICE_REACTIVE_TIMESTAMP).toEqual({
       width: 60,
