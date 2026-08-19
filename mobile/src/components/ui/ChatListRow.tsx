@@ -38,7 +38,7 @@ export function ChatListRow({
       accessibilityLabel={`${title}. ${preview}`}
       accessibilityHint="Opens this conversation"
       onPress={handlePress}
-      className="flex-row items-start gap-4 rounded-2 px-2 py-2 active:bg-muted"
+      className="flex-row items-start gap-4 rounded-2 py-2 active:bg-muted"
     >
       <View className="h-6 w-6 items-center justify-center">
         <Icon name="IconChatBubbles" size={24} color={colors.textSecondary} />
