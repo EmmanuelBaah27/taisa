@@ -889,6 +889,7 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
           disabled={isBusy}
           recordingActionDisabled={recorderAcquiring}
           transcribing={transcriptionOutcome === 'streaming'}
+          cancelVoiceLabel={voiceCancelAccessibilityLabel(initialConversationIdRef.current)}
           onChangeText={(value) => {
             setDraft(value);
             dispatchComposer({ type: 'set-text', text: value });

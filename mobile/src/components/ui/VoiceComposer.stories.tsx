@@ -23,6 +23,7 @@ function Preview({ mode, voiceState, hasVoiceDraft, text }: {
       submissionFailed={false}
       recordingStartFailed={false}
       textFocusRequest={0}
+      cancelVoiceLabel="Cancel recording and close"
       onChangeText={() => undefined}
       onSwitchToText={() => undefined}
       onSwitchToVoice={() => undefined}

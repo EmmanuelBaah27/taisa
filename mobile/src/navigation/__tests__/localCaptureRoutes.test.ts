@@ -122,6 +122,7 @@ describe('local-first capture navigation', () => {
     expect(chatScreen).toMatch(/messages\.length === 0[\s\S]*composer\.voice === 'recording'[\s\S]*composer\.voice === 'paused'/);
     expect(chatScreen).toMatch(/onClose=\{handleClose\}/);
     expect(chatScreen).toMatch(/cancelLabel=\{voiceCancelAccessibilityLabel\(initialConversationIdRef\.current\)\}/);
+    expect(chatScreen).toMatch(/<VoiceComposer[\s\S]*cancelVoiceLabel=\{voiceCancelAccessibilityLabel\(initialConversationIdRef\.current\)\}/);
     expect(chatScreen).toMatch(/onCancel=\{\(\) => \{ void handleCancelVoice\(\); \}\}/);
     expect(chatScreen).toMatch(/onKeyboard=\{\(\) => \{ void handleSwitchToText\(\); \}\}/);
     expect(chatScreen).toMatch(/onPauseResume=\{[\s\S]*handleResumeVoice[\s\S]*handlePauseVoice/);

@@ -28,6 +28,7 @@ export interface VoiceComposerProps {
   disabled?: boolean;
   recordingActionDisabled?: boolean;
   transcribing?: boolean;
+  cancelVoiceLabel: string;
   onChangeText: (value: string) => void;
   onSwitchToText: () => void;
   onSwitchToVoice: () => void;
@@ -169,7 +170,7 @@ export function VoiceComposer(props: VoiceComposerProps) {
       <View className="flex-row items-center justify-between">
         {paused ? (
           <TouchableOpacity
-            accessibilityLabel="Cancel voice recording"
+            accessibilityLabel={props.cancelVoiceLabel}
             accessibilityRole="button"
             disabled={props.disabled}
             onPress={props.onCancelVoice}
@@ -180,7 +181,7 @@ export function VoiceComposer(props: VoiceComposerProps) {
         ) : (
           <View className="flex-row items-center gap-3">
             <TouchableOpacity
-              accessibilityLabel="Cancel voice recording"
+              accessibilityLabel={props.cancelVoiceLabel}
               accessibilityRole="button"
               disabled={props.disabled}
               onPress={props.onCancelVoice}
