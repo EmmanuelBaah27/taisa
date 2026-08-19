@@ -212,6 +212,8 @@ export const BOTTOM_NAVIGATION_FIGMA = {
     enterScale: 0.84,
     enterTranslateX: -8,
     duration: 160,
+    exitDuration: 80,
+    exitMotion: 'fade-in-place',
     transformOrigin: 'left center',
     reveal: 'opacity-scale',
   },

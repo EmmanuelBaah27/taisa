@@ -606,26 +606,45 @@ export function BottomNavBar() {
       }),
       ...destinationLabelOpacities.map((opacity, index) => ReactNativeAnimated.timing(opacity, {
         toValue: BOTTOM_NAVIGATION_ITEMS[index].id === destination ? 1 : 0,
-        duration: labelMotion.duration,
+        duration: BOTTOM_NAVIGATION_ITEMS[index].id === destination
+          ? labelMotion.duration
+          : labelMotion.exitDuration,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: false,
       })),
-      ...destinationLabelScales.map((scale, index) => ReactNativeAnimated.timing(scale, {
-        toValue: BOTTOM_NAVIGATION_ITEMS[index].id === destination ? 1 : labelMotion.enterScale,
-        duration: labelMotion.duration,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: false,
-      })),
-      ...destinationLabelTranslations.map((translation, index) => ReactNativeAnimated.timing(
-        translation,
-        {
-          toValue: BOTTOM_NAVIGATION_ITEMS[index].id === destination
-            ? 0
-            : labelMotion.enterTranslateX,
-          duration: labelMotion.duration,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: false,
-        },
+      ...destinationLabelScales.map((scale, index) => (
+        BOTTOM_NAVIGATION_ITEMS[index].id === destination
+          ? ReactNativeAnimated.timing(scale, {
+            toValue: 1,
+            duration: labelMotion.duration,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: false,
+          })
+          : ReactNativeAnimated.sequence([
+            ReactNativeAnimated.delay(labelMotion.exitDuration),
+            ReactNativeAnimated.timing(scale, {
+              toValue: labelMotion.enterScale,
+              duration: 1,
+              useNativeDriver: false,
+            }),
+          ])
+      )),
+      ...destinationLabelTranslations.map((translation, index) => (
+        BOTTOM_NAVIGATION_ITEMS[index].id === destination
+          ? ReactNativeAnimated.timing(translation, {
+            toValue: 0,
+            duration: labelMotion.duration,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: false,
+          })
+          : ReactNativeAnimated.sequence([
+            ReactNativeAnimated.delay(labelMotion.exitDuration),
+            ReactNativeAnimated.timing(translation, {
+              toValue: labelMotion.enterTranslateX,
+              duration: 1,
+              useNativeDriver: false,
+            }),
+          ])
       )),
     ]).start(({ finished }) => {
       if (finished) finishCapsuleTransition(destination, sequence);
