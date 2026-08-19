@@ -133,6 +133,7 @@ function NavigationDestination({
   selected,
   visualHidden,
   centerOffset,
+  shellWidth,
   userId,
   onPress,
   onPressIn,
@@ -142,38 +143,48 @@ function NavigationDestination({
   selected: boolean;
   visualHidden: boolean;
   centerOffset: number | ReactNativeAnimated.Value;
+  shellWidth: ReactNativeAnimated.Value;
   userId: string | null;
   onPress: () => void;
   onPressIn: () => void;
   onPressOut: () => void;
 }) {
   return (
-    <Pressable
-      accessibilityLabel={item.label}
-      accessibilityRole="tab"
-      accessibilityState={{ selected }}
-      hitSlop={4}
-      onPress={onPress}
-      onPressIn={onPressIn}
-      onPressOut={onPressOut}
+    <ReactNativeAnimated.View
       style={{
         position: 'absolute',
         top: 5,
-        left: '50%',
+        left: ReactNativeAnimated.add(
+          ReactNativeAnimated.divide(shellWidth, 2),
+          centerOffset,
+        ),
+        marginLeft: -(inactiveItem.width / 2),
         width: inactiveItem.width,
         height: inactiveItem.height,
         alignItems: 'center',
         justifyContent: 'center',
-        transform: [
-          { translateX: centerOffset },
-          { translateX: -(inactiveItem.width / 2) },
-        ],
       }}
     >
-      <View style={{ opacity: visualHidden ? 0 : 1 }}>
-        <NavigationLeadingVisual item={item} selected={false} userId={userId} />
-      </View>
-    </Pressable>
+      <Pressable
+        accessibilityLabel={item.label}
+        accessibilityRole="tab"
+        accessibilityState={{ selected }}
+        hitSlop={4}
+        onPress={onPress}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
+        style={{
+          width: inactiveItem.width,
+          height: inactiveItem.height,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <View style={{ opacity: visualHidden ? 0 : 1 }}>
+          <NavigationLeadingVisual item={item} selected={false} userId={userId} />
+        </View>
+      </Pressable>
+    </ReactNativeAnimated.View>
   );
 }
 
@@ -851,6 +862,7 @@ export function BottomNavBar() {
                     || (motionState.phase !== 'resting' && item.id === motionState.from)
                   }
                   centerOffset={destinationOffsets[index]}
+                  shellWidth={shellWidth}
                   userId={userId}
                   onPress={() => navigateTo(item)}
                   onPressIn={() => handleNavigationPressIn(item)}
