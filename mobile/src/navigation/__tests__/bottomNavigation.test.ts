@@ -1,16 +1,17 @@
 import {
   BOTTOM_NAVIGATION_ITEMS,
+  BOTTOM_NAVIGATION_ACTIVE_FILL,
   getBottomNavigationLayout,
-  getBottomNavigationItemWidth,
+  getBottomNavigationStateLayout,
   resolveGlassAvailability,
 } from '../bottomNavigation';
 
 describe('bottom navigation', () => {
-  test('exposes only the approved Home, Chats, and Account destinations', () => {
+  test('exposes only the approved Home, Chats, and Me destinations', () => {
     expect(BOTTOM_NAVIGATION_ITEMS).toEqual([
       { id: 'index', label: 'Home', path: '/', icon: 'IconHomeLine' },
       { id: 'logs', label: 'Chats', path: '/logs', icon: 'IconChatBubbles' },
-      { id: 'you', label: 'Account', path: '/you', icon: 'IconPeopleCircle' },
+      { id: 'you', label: 'Me', path: '/you', icon: 'IconPeopleCircle' },
     ]);
   });
 
@@ -42,9 +43,22 @@ describe('bottom navigation', () => {
     expect(resolveGlassAvailability(missingNativeModule, () => true)).toBe(false);
   });
 
-  test('keeps the active label in the 240px capsule row', () => {
-    expect(getBottomNavigationItemWidth(false)).toBe(48);
-    expect(getBottomNavigationItemWidth(true)).toBe(124);
-    expect(48 + 4 + 124 + 4 + 48 + 12).toBe(240);
+  test('matches the Figma width for each active navigation state', () => {
+    expect(getBottomNavigationStateLayout('index')).toEqual({
+      navigationWidth: 240,
+      itemWidths: [108, 56, 56],
+    });
+    expect(getBottomNavigationStateLayout('logs')).toEqual({
+      navigationWidth: 240,
+      itemWidths: [56, 108, 56],
+    });
+    expect(getBottomNavigationStateLayout('you')).toEqual({
+      navigationWidth: 220,
+      itemWidths: [56, 56, 88],
+    });
+  });
+
+  test('uses the approved six-percent black active fill', () => {
+    expect(BOTTOM_NAVIGATION_ACTIVE_FILL).toBe('rgba(15,16,16,0.06)');
   });
 });

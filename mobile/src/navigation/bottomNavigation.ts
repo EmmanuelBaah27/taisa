@@ -2,7 +2,7 @@ import type { IconName } from '../components/ui/Icon';
 
 export interface BottomNavigationItem {
   id: 'index' | 'logs' | 'you';
-  label: 'Home' | 'Chats' | 'Account';
+  label: 'Home' | 'Chats' | 'Me';
   path: '/' | '/logs' | '/you';
   icon: IconName;
 }
@@ -10,8 +10,10 @@ export interface BottomNavigationItem {
 export const BOTTOM_NAVIGATION_ITEMS: readonly BottomNavigationItem[] = [
   { id: 'index', label: 'Home', path: '/', icon: 'IconHomeLine' },
   { id: 'logs', label: 'Chats', path: '/logs', icon: 'IconChatBubbles' },
-  { id: 'you', label: 'Account', path: '/you', icon: 'IconPeopleCircle' },
+  { id: 'you', label: 'Me', path: '/you', icon: 'IconPeopleCircle' },
 ];
+
+export const BOTTOM_NAVIGATION_ACTIVE_FILL = 'rgba(15,16,16,0.06)';
 
 export const BOTTOM_NAVIGATION_FIGMA = {
   navigationHeight: 60,
@@ -22,8 +24,14 @@ export const BOTTOM_NAVIGATION_FIGMA = {
   fadeHeight: 90,
 } as const;
 
-export function getBottomNavigationItemWidth(active: boolean): 48 | 124 {
-  return active ? 124 : 48;
+export function getBottomNavigationStateLayout(activeId: BottomNavigationItem['id']) {
+  if (activeId === 'index') {
+    return { navigationWidth: 240, itemWidths: [108, 56, 56] as const };
+  }
+  if (activeId === 'logs') {
+    return { navigationWidth: 240, itemWidths: [56, 108, 56] as const };
+  }
+  return { navigationWidth: 220, itemWidths: [56, 56, 88] as const };
 }
 
 export function getBottomNavigationLayout(safeAreaBottom: number) {

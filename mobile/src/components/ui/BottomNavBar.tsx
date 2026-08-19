@@ -19,8 +19,9 @@ import Animated, {
 
 import {
   BOTTOM_NAVIGATION_ITEMS,
+  BOTTOM_NAVIGATION_ACTIVE_FILL,
   getBottomNavigationLayout,
-  getBottomNavigationItemWidth,
+  getBottomNavigationStateLayout,
   resolveGlassAvailability,
   type BottomNavigationItem,
 } from '../../navigation/bottomNavigation';
@@ -33,7 +34,6 @@ const supportsNativeGlass =
   && resolveGlassAvailability(isGlassEffectAPIAvailable, isLiquidGlassAvailable);
 
 const materialStyle: ViewStyle = {
-  width: 240,
   height: 60,
   overflow: 'hidden',
   borderRadius: 32,
@@ -41,14 +41,20 @@ const materialStyle: ViewStyle = {
   borderColor: 'rgba(23,23,23,0.08)',
 };
 
-function NavigationMaterial({ children }: { children: React.ReactNode }) {
+function NavigationMaterial({
+  children,
+  width,
+}: {
+  children: React.ReactNode;
+  width: number;
+}) {
   if (supportsNativeGlass) {
     return (
       <GlassView
         glassEffectStyle="regular"
         tintColor="rgba(255,255,255,0.10)"
         colorScheme="light"
-        style={materialStyle}
+        style={[materialStyle, { width }]}
       >
         {children}
       </GlassView>
@@ -59,7 +65,7 @@ function NavigationMaterial({ children }: { children: React.ReactNode }) {
     <BlurView
       intensity={45}
       tint="systemUltraThinMaterialLight"
-      style={materialStyle}
+      style={[materialStyle, { width }]}
     >
       <View
         pointerEvents="none"
@@ -79,12 +85,14 @@ function NavigationButton({
   active,
   itemIndex,
   activeIndex,
+  width,
   userId,
 }: {
   item: BottomNavigationItem;
   active: boolean;
   itemIndex: number;
   activeIndex: number;
+  width: number;
   userId: string | null;
 }) {
   const nudgeX = useSharedValue(0);
@@ -119,7 +127,7 @@ function NavigationButton({
   return (
     <Animated.View
       style={[
-        { width: getBottomNavigationItemWidth(active), height: 48 },
+        { width, height: 48 },
         animatedStyle,
       ]}
     >
@@ -143,7 +151,7 @@ function NavigationButton({
                 gap: 8,
                 paddingHorizontal: 16,
                 paddingVertical: 12,
-                backgroundColor: 'rgba(0,0,0,0.04)',
+                backgroundColor: BOTTOM_NAVIGATION_ACTIVE_FILL,
               }
             : { padding: 12 },
           pressed && { opacity: 0.72 },
@@ -179,6 +187,8 @@ export function BottomNavBar() {
     path === '/' ? pathname === '/' || pathname === '/index' : pathname.startsWith(path)
   );
   const activeIndex = BOTTOM_NAVIGATION_ITEMS.findIndex((item) => isActive(item.path));
+  const activeId = BOTTOM_NAVIGATION_ITEMS[activeIndex]?.id ?? 'logs';
+  const stateLayout = getBottomNavigationStateLayout(activeId);
 
   return (
     <View pointerEvents="box-none" className="absolute inset-0">
@@ -195,8 +205,9 @@ export function BottomNavBar() {
         style={{ bottom: layout.navigationBottom }}
       >
         <View
-          className="h-[60px] w-[240px] rounded-[32px]"
+          className="h-[60px] rounded-[32px]"
           style={{
+            width: stateLayout.navigationWidth,
             shadowColor: '#000000',
             shadowOffset: { width: 0, height: 0 },
             shadowOpacity: 0.04,
@@ -204,10 +215,10 @@ export function BottomNavBar() {
             elevation: 4,
           }}
         >
-          <NavigationMaterial>
+          <NavigationMaterial width={stateLayout.navigationWidth}>
             <View
               style={{
-                width: 238,
+                width: stateLayout.navigationWidth - 2,
                 height: 58,
                 flexDirection: 'row',
                 alignItems: 'center',
@@ -222,6 +233,7 @@ export function BottomNavBar() {
                   active={isActive(item.path)}
                   itemIndex={index}
                   activeIndex={activeIndex}
+                  width={stateLayout.itemWidths[index]}
                   userId={userId}
                 />
               ))}

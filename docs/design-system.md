@@ -115,7 +115,7 @@ Never use raw `text-sm font-semibold` combinations — use the composite utiliti
 | `Card` | `surface`, `className`, `style` | Two surfaces (default / elevated) |
 | `Input` | `size`, `error`, `...TextInputProps` | Two sizes; error state |
 | `Icon` | `name`, `size`, `color` | 1906 icons — `round-outlined-radius-2-stroke-1.5` style via `react-native-svg` |
-| `BottomNavBar` | _(none)_ | Floating 240×60 app navigation; Home, Chats, Account; active destination expands into a label pill; Account preserves the Navii avatar; native iOS glass with material-blur fallback |
+| `BottomNavBar` | _(none)_ | Figma-state app navigation: 240×60 for Home/Chats and 220×60 for Me; active destination uses a 6% black label pill; Me preserves the Navii avatar; native iOS glass with material-blur fallback |
 | `VoiceButton` | `onPress?` | State-owning wrapper for the central CTA; fresh entry opens voice mode with one automatic recorder start |
 | `VoiceEntryButton` | `bottomInset`, `hidden`, `onPress` | Presentational 104×56 lime CTA positioned 12px above `BottomNavBar`, with the Figma glow and accessible voice label |
 | `WorkspaceHeader` | `subtitle: string` | Screen-level header; workspace name from `careerStore.profile.currentCompany`; contextual subtitle |
