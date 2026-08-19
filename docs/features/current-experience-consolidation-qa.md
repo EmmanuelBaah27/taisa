@@ -1,6 +1,6 @@
 # Current Experience Consolidation — QA
 
-**Status:** Automated verification passed; Baah device QA pending<br>
+**Status:** Navigation correction verified automatically; Baah device re-QA pending<br>
 **Branch:** `feature/current-experience`<br>
 **Runtime:** `/Users/emmanuelbaah/Documents/Beats/VibeCoding/Taisa/.worktrees/feature-current-experience/mobile`
 
@@ -15,6 +15,8 @@ npm start
 Use the managed development build for native checks; Expo Go is not valid for SQLCipher, recording, or device-security evidence.
 
 ## Baah device checklist
+
+- [ ] Active navigation content keeps its icon and label on one horizontal row (failed 2026-08-19: Chats stacked vertically on device).
 
 - [ ] Cold launch shows the current Chats experience after the existing onboarding/startup gates.
 - [ ] Navigation says **Chats** (never **Logs**) and Inter typography matches the current design system.
@@ -41,6 +43,17 @@ Run `npm run storybook:web`, open the printed local URL, and confirm the compone
 - Reconciliation audit, destructive-diff review, and whitespace check — passed; no files deleted.
 
 The dependency audit has 37 open findings (2 low, 17 moderate, 17 high, 1 critical). They are recorded for deliberate dependency hygiene; no broad automatic upgrade was applied during this UI consolidation.
+
+## Navigation correction — 2026-08-19
+
+Device QA showed the active Chats icon and label stacked vertically. The active item now owns an explicit horizontal content row rather than relying on the pressable's dynamic layout style. The approved 6% black active fill and Figma state widths remain unchanged.
+
+- Mobile Jest — 50 suites, 441 tests passed.
+- Mobile TypeScript — passed.
+- Design-system verifier — passed, 19 modules.
+- Taisa relaunched on the paired iPhone against the running LAN bundle; visual re-QA remains pending.
+
+> **BTS:** The selected icon and label are one visual unit. Giving that unit its own row container makes the Figma relationship structural, so pressed-state styling cannot accidentally change its axis on iOS.
 
 ## Deferred
 

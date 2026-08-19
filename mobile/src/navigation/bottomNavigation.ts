@@ -26,12 +26,24 @@ export const BOTTOM_NAVIGATION_FIGMA = {
 
 export function getBottomNavigationStateLayout(activeId: BottomNavigationItem['id']) {
   if (activeId === 'index') {
-    return { navigationWidth: 240, itemWidths: [108, 56, 56] as const };
+    return {
+      navigationWidth: 240,
+      itemWidths: [108, 56, 56] as const,
+      activeContentDirection: 'row' as const,
+    };
   }
   if (activeId === 'logs') {
-    return { navigationWidth: 240, itemWidths: [56, 108, 56] as const };
+    return {
+      navigationWidth: 240,
+      itemWidths: [56, 108, 56] as const,
+      activeContentDirection: 'row' as const,
+    };
   }
-  return { navigationWidth: 220, itemWidths: [56, 56, 88] as const };
+  return {
+    navigationWidth: 220,
+    itemWidths: [56, 56, 88] as const,
+    activeContentDirection: 'row' as const,
+  };
 }
 
 export function getBottomNavigationLayout(safeAreaBottom: number) {

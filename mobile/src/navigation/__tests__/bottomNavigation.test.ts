@@ -47,14 +47,17 @@ describe('bottom navigation', () => {
     expect(getBottomNavigationStateLayout('index')).toEqual({
       navigationWidth: 240,
       itemWidths: [108, 56, 56],
+      activeContentDirection: 'row',
     });
     expect(getBottomNavigationStateLayout('logs')).toEqual({
       navigationWidth: 240,
       itemWidths: [56, 108, 56],
+      activeContentDirection: 'row',
     });
     expect(getBottomNavigationStateLayout('you')).toEqual({
       navigationWidth: 220,
       itemWidths: [56, 56, 88],
+      activeContentDirection: 'row',
     });
   });
 

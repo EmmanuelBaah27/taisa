@@ -87,6 +87,7 @@ function NavigationButton({
   activeIndex,
   width,
   userId,
+  contentDirection,
 }: {
   item: BottomNavigationItem;
   active: boolean;
@@ -94,6 +95,7 @@ function NavigationButton({
   activeIndex: number;
   width: number;
   userId: string | null;
+  contentDirection: 'row';
 }) {
   const nudgeX = useSharedValue(0);
   const scale = useSharedValue(1);
@@ -147,8 +149,6 @@ function NavigationButton({
           },
           active
             ? {
-                flexDirection: 'row',
-                gap: 8,
                 paddingHorizontal: 16,
                 paddingVertical: 12,
                 backgroundColor: BOTTOM_NAVIGATION_ACTIVE_FILL,
@@ -157,22 +157,30 @@ function NavigationButton({
           pressed && { opacity: 0.72 },
         ]}
       >
-        {item.id === 'you' && userId ? (
-          <View className="h-6 w-6 items-center justify-center overflow-hidden rounded-full">
-            <NaviiAvatar seed={userId} size={32} />
-          </View>
-        ) : (
-          <Icon name={item.icon} size={24} color={active ? '#0F1010' : '#898989'} />
-        )}
-        {active ? (
-          <Text
-            numberOfLines={1}
-            className="font-inter-medium text-base text-[#0F1010]"
-            style={{ lineHeight: 24, letterSpacing: -0.36 }}
-          >
-            {item.label}
-          </Text>
-        ) : null}
+        <View
+          style={{
+            flexDirection: contentDirection,
+            alignItems: 'center',
+            gap: active ? 8 : 0,
+          }}
+        >
+          {item.id === 'you' && userId ? (
+            <View className="h-6 w-6 items-center justify-center overflow-hidden rounded-full">
+              <NaviiAvatar seed={userId} size={32} />
+            </View>
+          ) : (
+            <Icon name={item.icon} size={24} color={active ? '#0F1010' : '#898989'} />
+          )}
+          {active ? (
+            <Text
+              numberOfLines={1}
+              className="font-inter-medium text-base text-[#0F1010]"
+              style={{ lineHeight: 24, letterSpacing: -0.36 }}
+            >
+              {item.label}
+            </Text>
+          ) : null}
+        </View>
       </Pressable>
     </Animated.View>
   );
@@ -235,6 +243,7 @@ export function BottomNavBar() {
                   activeIndex={activeIndex}
                   width={stateLayout.itemWidths[index]}
                   userId={userId}
+                  contentDirection={stateLayout.activeContentDirection}
                 />
               ))}
             </View>
