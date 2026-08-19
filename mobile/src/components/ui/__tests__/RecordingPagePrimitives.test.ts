@@ -85,15 +85,13 @@ describe('recording page primitives', () => {
     expect(timestamp[0].props).toMatchObject({ durationSeconds: 4, amplitude, paused: false });
   });
 
-  test('reactive timestamp preserves Figma geometry and stagger with bounded voice smoothing', () => {
+  test('reactive timestamp keeps its layout geometry while raw amplitude drives a wider canvas', () => {
     expect(VOICE_REACTIVE_TIMESTAMP).toEqual({
       width: 60,
       height: 56,
-      duration: 2000,
-      noiseGate: 0.05,
-      attack: 90,
-      release: 220,
-      peaks: [0.35, 0.5, 0.65],
+      canvasWidth: 180,
+      canvasHeight: 112,
+      rawAmplitude: true,
     });
   });
 });
