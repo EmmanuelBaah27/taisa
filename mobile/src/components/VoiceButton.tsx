@@ -1,4 +1,5 @@
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 import { VoiceEntryButton } from './ui';
 import { useUIStore } from '../stores/uiStore';
 import { useChatStore } from '../stores/chatStore';
@@ -15,7 +16,10 @@ export function VoiceButton({ onPress }: VoiceButtonProps) {
 
   const handlePress = onPress ?? (() => startFreshCapture({
     clearActiveConversation: clearActiveSession,
-    openCapture: openVoiceCapture,
+    openCapture: () => {
+      openVoiceCapture();
+      router.push('/chat');
+    },
   }));
 
   return (

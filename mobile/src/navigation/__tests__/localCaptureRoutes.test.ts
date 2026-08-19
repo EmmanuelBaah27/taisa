@@ -167,6 +167,21 @@ describe('local-first capture navigation', () => {
     expect(chatScreen).not.toMatch(/else \{\s*startListening\(\);\s*\}/);
   });
 
+  test('the global recorder opens as an Expo Router screen instead of mounting a route component manually', () => {
+    const voiceButton = fs.readFileSync(
+      path.resolve(__dirname, '../../components/VoiceButton.tsx'),
+      'utf8',
+    );
+    const tabLayout = fs.readFileSync(
+      path.resolve(__dirname, '../../../app/(tabs)/_layout.tsx'),
+      'utf8',
+    );
+
+    expect(voiceButton).toMatch(/router\.push\('\/chat'\)/);
+    expect(tabLayout).not.toMatch(/import ChatScreen/);
+    expect(tabLayout).not.toMatch(/<ChatScreen/);
+  });
+
   test('a microphone failure offers a working keyboard fallback that selects text mode', () => {
     const chatScreen = fs.readFileSync(
       path.resolve(__dirname, '../../../app/chat/index.tsx'),

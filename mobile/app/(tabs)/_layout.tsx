@@ -6,7 +6,6 @@ import { BottomNavBar } from '../../src/components/ui/BottomNavBar';
 import { VoiceButton } from '../../src/components/VoiceButton';
 import { ScrollProvider } from '../../src/contexts/ScrollContext';
 import { useUIStore } from '../../src/stores/uiStore';
-import ChatScreen from '../chat/index';
 import { CURRENT_INITIAL_TAB } from '../../src/navigation/currentExperience';
 
 const SCALE_BACK = { damping: 30, stiffness: 250 };
@@ -49,13 +48,6 @@ export default function TabLayout() {
           <BottomNavBar />
           <VoiceButton />
         </Animated.View>
-
-        {/* Chat sheet — rendered outside the scaled wrapper so it isn't affected. */}
-        {chatMorphing && (
-          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100 }}>
-            <ChatScreen presentation="overlay" />
-          </View>
-        )}
       </View>
     </ScrollProvider>
   );

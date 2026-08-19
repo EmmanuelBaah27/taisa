@@ -257,7 +257,7 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
       mountedRef.current = false;
       void stopActiveRecordingAndDiscard().catch(() => {});
       discardPendingRecording();
-      if (presentation === 'overlay') setChatMorphing(false);
+      setChatMorphing(false);
     };
   }, []);
 
