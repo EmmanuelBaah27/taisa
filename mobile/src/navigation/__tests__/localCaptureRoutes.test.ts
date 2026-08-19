@@ -121,6 +121,18 @@ describe('local-first capture navigation', () => {
     expect(chatScreen).toMatch(/onSend=\{\(\) => \{ void handleComposerSend\(\); \}\}/);
   });
 
+  test('recording controls stay inert until native recorder acquisition completes', () => {
+    const chatScreen = fs.readFileSync(
+      path.resolve(__dirname, '../../../app/chat/index.tsx'),
+      'utf8',
+    );
+
+    expect(chatScreen).toMatch(/const recorderAcquiring = [\s\S]*!recorder\.isRecording/);
+    expect(chatScreen).toMatch(/recordingActionDisabled=\{recorderAcquiring\}/);
+    expect(chatScreen).toMatch(/async function handleComposerSend\(\) \{[\s\S]*if \(recorderAcquiring\) return;[\s\S]*dispatchComposer\(\{ type: 'send' \}\)/);
+    expect(chatScreen).toMatch(/async function handlePauseVoice\(\) \{[\s\S]*if \(recorderAcquiring\) return;/);
+  });
+
   test('a microphone start failure closes the active recording process', () => {
     const chatScreen = fs.readFileSync(
       path.resolve(__dirname, '../../../app/chat/index.tsx'),

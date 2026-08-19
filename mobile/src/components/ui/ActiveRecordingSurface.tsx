@@ -16,6 +16,7 @@ export interface ActiveRecordingSurfaceProps {
   amplitudeLevel: number;
   paused: boolean;
   disabled?: boolean;
+  recordingActionDisabled?: boolean;
   onClose: () => void;
   onCancel: () => void;
   onKeyboard: () => void;
@@ -81,7 +82,7 @@ export function ActiveRecordingSurface(props: ActiveRecordingSurfaceProps) {
           <SecondaryIconButton
             label={props.paused ? 'Resume recording' : 'Pause recording'}
             icon={props.paused ? 'IconArrowTriangleRight' : 'IconPause'}
-            disabled={props.disabled}
+            disabled={props.disabled || props.recordingActionDisabled}
             onPress={props.onPauseResume}
           />
           <Button
@@ -89,7 +90,7 @@ export function ActiveRecordingSurface(props: ActiveRecordingSurfaceProps) {
             size="icon-lg"
             label="Send recording"
             icon={<Icon name="IconArrowUp" size={24} color={colors.secondaryActionIcon} />}
-            disabled={props.disabled}
+            disabled={props.disabled || props.recordingActionDisabled}
             onPress={props.onSend}
           />
         </View>

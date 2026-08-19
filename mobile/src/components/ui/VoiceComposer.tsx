@@ -26,6 +26,7 @@ export interface VoiceComposerProps {
   recordingStartFailed: boolean;
   textFocusRequest: number;
   disabled?: boolean;
+  recordingActionDisabled?: boolean;
   transcribing?: boolean;
   onChangeText: (value: string) => void;
   onSwitchToText: () => void;
@@ -210,7 +211,7 @@ export function VoiceComposer(props: VoiceComposerProps) {
             <TouchableOpacity
               accessibilityLabel={`Resume recording, ${formatDuration(props.durationSeconds)}`}
               accessibilityRole="button"
-              disabled={props.disabled}
+              disabled={props.disabled || props.recordingActionDisabled}
               onPress={props.onResume}
               className="h-14 flex-row items-center gap-2 rounded-full border border-border-subtle bg-background px-4 shadow-sm"
             >
@@ -222,7 +223,7 @@ export function VoiceComposer(props: VoiceComposerProps) {
             <TouchableOpacity
               accessibilityLabel="Pause recording"
               accessibilityRole="button"
-              disabled={props.disabled}
+              disabled={props.disabled || props.recordingActionDisabled}
               onPress={props.onPause}
               className="h-14 w-14 items-center justify-center rounded-full border border-border-subtle bg-background shadow-sm"
             >
@@ -233,7 +234,7 @@ export function VoiceComposer(props: VoiceComposerProps) {
           <TouchableOpacity
             accessibilityLabel="Send recording"
             accessibilityRole="button"
-            disabled={props.disabled}
+            disabled={props.disabled || props.recordingActionDisabled}
             onPress={props.onSend}
             className={paused
               ? 'h-14 w-14 items-center justify-center rounded-full bg-primary shadow-sm'
