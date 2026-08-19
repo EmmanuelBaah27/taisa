@@ -2,9 +2,13 @@ import {
   BOTTOM_NAVIGATION_ITEMS,
   BOTTOM_NAVIGATION_ACTIVE_FILL,
   BOTTOM_NAVIGATION_FIGMA,
+  getBottomNavigationCapsuleFrame,
   getBottomNavigationLayout,
   getBottomNavigationStateLayout,
   resolveGlassAvailability,
+  settleBottomNavigationTransition,
+  shouldShowBottomNavigationSelectedFill,
+  startBottomNavigationTransition,
 } from '../bottomNavigation';
 
 describe('bottom navigation', () => {
@@ -110,6 +114,31 @@ describe('bottom navigation', () => {
       releaseDuration: 340,
       releaseBounce: 0.2,
     });
+  });
+
+  test('matches the persistent capsule frame for each destination', () => {
+    expect(getBottomNavigationCapsuleFrame('index')).toEqual({ shellWidth: 240, x: 6, width: 108 });
+    expect(getBottomNavigationCapsuleFrame('logs')).toEqual({ shellWidth: 240, x: 66, width: 108 });
+    expect(getBottomNavigationCapsuleFrame('you')).toEqual({ shellWidth: 220, x: 126, width: 88 });
+  });
+
+  test('models travelling, interruption, settlement, and selected fill visibility', () => {
+    const resting = { from: 'logs', to: 'logs', phase: 'resting' } as const;
+    const travelling = startBottomNavigationTransition(resting, 'you');
+
+    expect(travelling).toEqual({ from: 'logs', to: 'you', phase: 'travelling' });
+    expect(shouldShowBottomNavigationSelectedFill(travelling)).toBe(false);
+    expect(startBottomNavigationTransition(travelling, 'index')).toEqual({
+      from: 'logs',
+      to: 'index',
+      phase: 'travelling',
+    });
+    expect(settleBottomNavigationTransition(travelling)).toEqual({
+      from: 'you',
+      to: 'you',
+      phase: 'resting',
+    });
+    expect(shouldShowBottomNavigationSelectedFill(resting)).toBe(true);
   });
 
 });

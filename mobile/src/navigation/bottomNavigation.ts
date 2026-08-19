@@ -13,6 +13,58 @@ export const BOTTOM_NAVIGATION_ITEMS: readonly BottomNavigationItem[] = [
   { id: 'you', label: 'Me', path: '/you', icon: 'IconPeopleCircle' },
 ];
 
+export interface NavigationCapsuleFrame {
+  shellWidth: number;
+  x: number;
+  width: number;
+}
+
+export type NavigationCapsulePhase = 'resting' | 'travelling' | 'settling';
+
+export interface NavigationCapsuleState {
+  from: BottomNavigationItem['id'];
+  to: BottomNavigationItem['id'];
+  phase: NavigationCapsulePhase;
+}
+
+export const BOTTOM_NAVIGATION_CAPSULE_FRAMES: Record<
+  BottomNavigationItem['id'],
+  NavigationCapsuleFrame
+> = {
+  index: { shellWidth: 240, x: 6, width: 108 },
+  logs: { shellWidth: 240, x: 66, width: 108 },
+  you: { shellWidth: 220, x: 126, width: 88 },
+};
+
+export function getBottomNavigationCapsuleFrame(
+  id: BottomNavigationItem['id'],
+): NavigationCapsuleFrame {
+  return BOTTOM_NAVIGATION_CAPSULE_FRAMES[id];
+}
+
+export function startBottomNavigationTransition(
+  state: NavigationCapsuleState,
+  destination: BottomNavigationItem['id'],
+): NavigationCapsuleState {
+  return {
+    from: state.phase === 'resting' ? state.to : state.from,
+    to: destination,
+    phase: destination === state.to && state.phase === 'resting' ? 'resting' : 'travelling',
+  };
+}
+
+export function settleBottomNavigationTransition(
+  state: NavigationCapsuleState,
+): NavigationCapsuleState {
+  return { from: state.to, to: state.to, phase: 'resting' };
+}
+
+export function shouldShowBottomNavigationSelectedFill(
+  state: NavigationCapsuleState,
+): boolean {
+  return state.phase === 'resting';
+}
+
 export const BOTTOM_NAVIGATION_ACTIVE_FILL = 'rgba(15,16,16,0.06)';
 
 export const BOTTOM_NAVIGATION_FIGMA = {
