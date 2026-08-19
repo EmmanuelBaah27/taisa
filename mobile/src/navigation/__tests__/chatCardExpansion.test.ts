@@ -1,4 +1,5 @@
 import {
+  getClosingChatShellOpacity,
   getChatCardInitialTransform,
   isChatCardSourceViewportCurrent,
   parseChatCardFrame,
@@ -6,6 +7,13 @@ import {
 } from '../chatCardExpansion';
 
 describe('chat card expansion geometry', () => {
+  test('the closing white shell reveals the real card during the final quarter', () => {
+    expect(getClosingChatShellOpacity(0)).toBe(1);
+    expect(getClosingChatShellOpacity(0.75)).toBe(1);
+    expect(getClosingChatShellOpacity(0.875)).toBe(0.5);
+    expect(getClosingChatShellOpacity(1)).toBe(0);
+  });
+
   test('parses a complete positive card frame from route values', () => {
     expect(parseChatCardFrame({
       cardX: '16',

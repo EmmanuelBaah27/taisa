@@ -134,6 +134,7 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
     scaleX,
     scaleY,
     borderRadius,
+    shellOpacity,
     contentOpacity,
     contentTranslateY,
     open,
@@ -144,6 +145,7 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
   const slideStyle = useAnimatedStyle(() => ({
     flex: 1,
     borderRadius: borderRadius.value,
+    opacity: shellOpacity.value,
     transform: [
       { translateX: translateX.value },
       { translateY: translateY.value },

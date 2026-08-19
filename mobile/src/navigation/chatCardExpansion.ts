@@ -90,3 +90,9 @@ export function isChatCardSourceViewportCurrent(
   return Math.abs(source.viewport.width - viewport.width) <= 1 &&
     Math.abs(source.viewport.height - viewport.height) <= 1;
 }
+
+export function getClosingChatShellOpacity(progress: number): number {
+  const normalized = Math.min(Math.max(progress, 0), 1);
+  if (normalized <= 0.75) return 1;
+  return (1 - normalized) / 0.25;
+}

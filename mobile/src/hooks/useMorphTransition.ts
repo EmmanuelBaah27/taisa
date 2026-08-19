@@ -5,12 +5,14 @@ import {
   SharedValue,
   useReducedMotion,
   runOnJS,
+  useDerivedValue,
   withDelay,
 } from 'react-native-reanimated';
 import { useWindowDimensions } from 'react-native';
 import { useRef } from 'react';
 import type { ChatCardSource } from '../navigation/chatCardExpansion';
 import {
+  getClosingChatShellOpacity,
   getChatCardInitialTransform,
   isChatCardSourceViewportCurrent,
 } from '../navigation/chatCardExpansion';
@@ -27,6 +29,7 @@ export interface SlideTransition {
   scaleX: SharedValue<number>;
   scaleY: SharedValue<number>;
   borderRadius: SharedValue<number>;
+  shellOpacity: SharedValue<number>;
   contentOpacity: SharedValue<number>;
   contentTranslateY: SharedValue<number>;
   open: () => void;
@@ -45,6 +48,8 @@ export function useMorphTransition(source: ChatCardSource | null): SlideTransiti
   const scaleX = useSharedValue(initial?.scaleX ?? 1);
   const scaleY = useSharedValue(initial?.scaleY ?? 1);
   const borderRadius = useSharedValue(initial === null ? 0 : 24);
+  const closeProgress = useSharedValue(0);
+  const shellOpacity = useDerivedValue(() => getClosingChatShellOpacity(closeProgress.value));
   const contentOpacity = useSharedValue(initial === null ? 1 : 0);
   const contentTranslateY = useSharedValue(initial === null ? 0 : 8);
   const contentRevealStarted = useRef(initial === null);
@@ -55,6 +60,7 @@ export function useMorphTransition(source: ChatCardSource | null): SlideTransiti
     scaleX.value = withTiming(1, { duration: OPEN_DURATION, easing: OPEN_EASING });
     scaleY.value = withTiming(1, { duration: OPEN_DURATION, easing: OPEN_EASING });
     borderRadius.value = withTiming(0, { duration: OPEN_DURATION, easing: OPEN_EASING });
+    closeProgress.value = 0;
   }
 
   function revealContent() {
@@ -77,7 +83,8 @@ export function useMorphTransition(source: ChatCardSource | null): SlideTransiti
     translateY.value = withTiming(initial.translateY, options);
     scaleX.value = withTiming(initial.scaleX, options);
     scaleY.value = withTiming(initial.scaleY, options);
-    borderRadius.value = withTiming(24, options, (finished) => {
+    borderRadius.value = withTiming(24, options);
+    closeProgress.value = withTiming(1, options, (finished) => {
       if (finished) runOnJS(onFinished)();
     });
   }
@@ -88,6 +95,7 @@ export function useMorphTransition(source: ChatCardSource | null): SlideTransiti
     scaleX,
     scaleY,
     borderRadius,
+    shellOpacity,
     contentOpacity,
     contentTranslateY,
     open,

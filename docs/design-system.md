@@ -185,7 +185,8 @@ Chats history opens the canonical chat route with one source snapshot: the selec
 viewport frame, the list's exact scroll offset, and the viewport dimensions. A blank white shell
 expands from that frame over the shared 380ms ease-out curve. Header, messages, and composer live on
 a separate layer that reveals near the end only after the historical chat is positioned at its
-bottom offset without animation. Closing hides that content as the shell reverses before route dismissal.
+bottom offset without animation. Closing hides that content as the shell reverses, then fades the
+shell through the final quarter so the mounted source-card text is visible before route dismissal.
 The underlying list stays mounted, does not refresh while the card-backed chat is open, and restores
 its offset before refreshing after return. Missing geometry, changed viewport dimensions, fresh
 capture, and reduced motion use an immediate exit. The legacy slide-down and drag-to-dismiss
