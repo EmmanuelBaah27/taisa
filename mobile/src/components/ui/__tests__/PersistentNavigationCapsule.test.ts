@@ -22,24 +22,19 @@ describe('PersistentNavigationCapsule', () => {
     }) as CapsuleElement;
   }
 
-  test('uses an optically distinct neutral clear-glass base on white', () => {
+  test('uses the exact Figma clear-glass travelling surface', () => {
     const restingCapsule = renderCapsule('resting');
     const travellingCapsule = renderCapsule('travelling');
     const settlingCapsule = renderCapsule('settling');
 
     expect(BOTTOM_NAVIGATION_CLEAR_GLASS_SURFACE).toEqual({
-      backgroundColor: 'rgba(255,255,255,0.01)',
-      borderColor: 'rgba(15,16,16,0.10)',
+      backgroundColor: 'rgba(255,255,255,0.04)',
+      borderColor: 'rgba(23,23,23,0.04)',
       borderWidth: 1,
-      shadowColor: '#0F1010',
-      shadowOpacity: 0.08,
-      shadowRadius: 8,
-      shadowOffset: { width: 0, height: 2 },
     });
     expect(restingCapsule.props.style).not.toContainEqual(BOTTOM_NAVIGATION_CLEAR_GLASS_SURFACE);
     expect(travellingCapsule.props.style).toContainEqual(BOTTOM_NAVIGATION_CLEAR_GLASS_SURFACE);
     expect(settlingCapsule.props.style).toContainEqual(BOTTOM_NAVIGATION_CLEAR_GLASS_SURFACE);
-    expect(BOTTOM_NAVIGATION_CLEAR_GLASS_SURFACE.borderColor).not.toContain('255,255,255');
 
     const restingFill = restingCapsule.props.children[0] as ReactElement<{ style: unknown[] }>;
     const travellingFill = travellingCapsule.props.children[0] as ReactElement<{ style: unknown[] }>;

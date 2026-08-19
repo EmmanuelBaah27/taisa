@@ -4,7 +4,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Replace remounted tab selections with one persistent capsule that moves between destinations while the entire glass navigation pill scales uniformly to `1.12`.
+**Goal:** Replace remounted tab selections with one persistent capsule that moves immediately on touch-down while the entire glass navigation pill scales uniformly to `1.12` without compounded capsule scaling.
 
 **Architecture:** Keep three stable accessible destination targets beneath one absolute selected-capsule layer. `BottomNavBar` owns route-aware Reanimated values; pure frame and phase functions remain in the navigation model, and visual primitives remain business-free.
 
@@ -16,7 +16,7 @@
 
 - Preserve Figma resting geometry: Home/Chats shell 240×60, Me shell 220×60, selected widths 108/108/88, inactive width 56.
 - Preserve selected fill `rgba(15,16,16,0.06)`, 24px icons, 8px gap, and Inter Medium 16/24 with `-0.36` tracking.
-- Press feedback for the entire pill is one uniform `scale: 1.12`; never separate `scaleX` and `scaleY`.
+- Press feedback is one uniform `scale: 1.12` for the entire pill; the capsule adds no second scale, and neither uses separate `scaleX` and `scaleY`.
 - The capsule is transparent while travelling and restores the 6% fill only after final settlement.
 - Route immediately; never wait for motion completion.
 - Rapid taps retarget the running spring without resetting scale or flashing grey.
@@ -225,7 +225,7 @@ git commit -m "feat(ds): add persistent navigation capsule"
 ```ts
 expect(BOTTOM_NAVIGATION_FIGMA.shellMotion).toEqual({
   pressedScale: 1.12,
-  pressDuration: 140,
+  pressDuration: 90,
   releaseDuration: 320,
   releaseDampingRatio: 0.78,
 });
@@ -347,7 +347,7 @@ Verify Metro, then relaunch `com.taisa.app` on `CB2D8D19-B858-55E5-A24E-3BC7AD31
 - [x] **Step 3: Record the exact device checklist**
 
 ```markdown
-- [ ] Entire glass pill scales uniformly to 1.12; it never stretches or squashes.
+- [ ] On touch-down, the entire glass pill scales uniformly to 1.12 without a second capsule scale; neither stretches or squashes.
 - [ ] Capsule is plain glass during travel and restores 6% grey only after settlement.
 - [ ] Capsule visibly moves Home ↔ Chats ↔ Me while route content changes immediately.
 - [ ] Destination label emerges from its icon; old label returns toward its icon.

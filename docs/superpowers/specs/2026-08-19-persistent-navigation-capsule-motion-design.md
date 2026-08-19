@@ -16,7 +16,7 @@ This replaces the navigation's internal selected-state rendering model while pre
 ### Tap sequence
 
 1. A destination receives the tap immediately.
-2. The entire translucent navigation pill scales uniformly from `1.00` to `1.12`. It must never use unequal X/Y scaling.
+2. On touch-down, the entire translucent navigation pill scales uniformly from `1.00` to `1.12`. The selected capsule must not add a second scale, and neither may use unequal X/Y scaling.
 3. The selected capsule's 6% black fill fades to transparent, making the moving capsule read as plain glass.
 4. The screen navigates immediately; navigation does not wait for the motion to finish.
 5. One persistent capsule springs horizontally from its current position to the destination frame.
@@ -69,7 +69,7 @@ The navigation model will expose destination frames and motion constants as test
 - No motion sequence may delay route navigation or block another tap.
 - Avoid decorative neighboring-icon nudges, drag gestures, blur, haptics, or sound.
 
-The exact spring stiffness/damping values may be tuned on the paired iPhone, but these observable behaviors and `1.12` pressed scale are fixed.
+The exact spring stiffness/damping values may be tuned on the paired iPhone, but these observable behaviors and the `1.12` shell scale without compounded capsule scaling are fixed.
 
 ## Verification
 

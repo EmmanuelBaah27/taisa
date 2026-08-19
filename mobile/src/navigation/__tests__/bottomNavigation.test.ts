@@ -5,6 +5,7 @@ import {
   BOTTOM_NAVIGATION_FALLBACK_GLASS,
   getBottomNavigationCapsuleFrame,
   getBottomNavigationCapsuleCenterOffset,
+  getBottomNavigationDestinationCenterOffset,
   getBottomNavigationRenderPolicy,
   getBottomNavigationSurfaceTimeline,
   getBottomNavigationTransitionStartPolicy,
@@ -148,12 +149,21 @@ describe('bottom navigation', () => {
     });
   });
 
-  test('drives capsule position and width with one coordinated spring contract', () => {
+  test('does not compound the shell scale with a second capsule scale', () => {
     expect(BOTTOM_NAVIGATION_FIGMA.capsuleMotion).toEqual({
-      duration: 280,
-      dampingRatio: 0.82,
+      stiffness: 260,
+      damping: 26,
+      mass: 0.85,
       coordinatesShellWidth: true,
+      travellingScale: 1,
+      expandedHeight: 48,
     });
+  });
+
+  test('keeps destination hit targets fixed while the capsule moves', () => {
+    expect(getBottomNavigationDestinationCenterOffset('index')).toBe(-60);
+    expect(getBottomNavigationDestinationCenterOffset('logs')).toBe(0);
+    expect(getBottomNavigationDestinationCenterOffset('you')).toBe(60);
   });
 
   test('moves the selected label outward from its destination icon', () => {
@@ -231,11 +241,7 @@ describe('bottom navigation', () => {
   });
 
   test('coordinates shell width, capsule travel, and fill restoration on one settlement', () => {
-    expect(BOTTOM_NAVIGATION_FIGMA.capsuleMotion).toEqual({
-      duration: 280,
-      dampingRatio: 0.82,
-      coordinatesShellWidth: true,
-    });
+    expect(BOTTOM_NAVIGATION_FIGMA.capsuleMotion.coordinatesShellWidth).toBe(true);
     expect(getBottomNavigationSurfaceTimeline(false)).toEqual({
       spatialMotion: true,
       fillFadeOutDuration: 90,
@@ -251,8 +257,11 @@ describe('bottom navigation', () => {
 
   test('starts capsule motion synchronously before routing', () => {
     expect(getBottomNavigationTransitionStartPolicy()).toEqual({
+      startEvent: 'pressIn',
       beforeRoute: true,
       deferred: false,
+      routeEvent: 'press',
+      cancelReturnsToOrigin: true,
     });
   });
 

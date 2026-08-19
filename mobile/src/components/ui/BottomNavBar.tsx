@@ -21,14 +21,13 @@ import {
   BOTTOM_NAVIGATION_FALLBACK_GLASS,
   getBottomNavigationCapsuleCenterOffset,
   getBottomNavigationCapsuleFrame,
+  getBottomNavigationDestinationCenterOffset,
   getBottomNavigationLayout,
   getBottomNavigationRenderPolicy,
   getBottomNavigationSurfaceTimeline,
-  getBottomNavigationStateLayout,
   resolveGlassAvailability,
   resolveOptionalGlassModule,
   settleBottomNavigationTransition,
-  shouldReleaseBottomNavigationCancelledPress,
   startBottomNavigationTransition,
   type BottomNavigationItem,
   type NavigationCapsuleState,
@@ -133,7 +132,7 @@ function NavigationDestination({
   item,
   selected,
   visualHidden,
-  width,
+  centerOffset,
   userId,
   onPress,
   onPressIn,
@@ -142,7 +141,7 @@ function NavigationDestination({
   item: BottomNavigationItem;
   selected: boolean;
   visualHidden: boolean;
-  width: number;
+  centerOffset: number;
   userId: string | null;
   onPress: () => void;
   onPressIn: () => void;
@@ -158,10 +157,14 @@ function NavigationDestination({
       onPressIn={onPressIn}
       onPressOut={onPressOut}
       style={{
-        width,
+        position: 'absolute',
+        top: 5,
+        left: '50%',
+        width: inactiveItem.width,
         height: inactiveItem.height,
         alignItems: 'center',
         justifyContent: 'center',
+        transform: [{ translateX: centerOffset - (inactiveItem.width / 2) }],
       }}
     >
       <View style={{ opacity: visualHidden ? 0 : 1 }}>
@@ -193,10 +196,14 @@ export function BottomNavBar() {
   const latestTransitionRef = useRef({ destination: activeId, sequence: 0 });
   const mountedRef = useRef(true);
   const cancelledPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pressAttemptRef = useRef({ sequence: 0, navigationCommitted: true });
+  const pressAttemptRef = useRef<{
+    sequence: number;
+    navigationCommitted: boolean;
+    origin: BottomNavigationItem['id'];
+    destination: BottomNavigationItem['id'] | null;
+  }>({ sequence: 0, navigationCommitted: true, origin: activeId, destination: null });
   const [motionState, setMotionState] = useState(initialMotionState);
   const [outgoingLabel, setOutgoingLabel] = useState<BottomNavigationItem['label'] | null>(null);
-  const stateLayout = getBottomNavigationStateLayout(motionState.to);
   const destinationFrame = getBottomNavigationCapsuleFrame(motionState.to);
   const renderPolicy = getBottomNavigationRenderPolicy(motionState);
 
@@ -296,6 +303,20 @@ export function BottomNavBar() {
     const latest = latestTransitionRef.current;
     if (latest.destination !== destination || latest.sequence !== sequence) return;
     if (transitionRef.current.to !== destination) return;
+
+    const pressAttempt = pressAttemptRef.current;
+    if (
+      pressAttempt.destination === destination
+      && !pressAttempt.navigationCommitted
+    ) {
+      const settlingState: NavigationCapsuleState = {
+        ...transitionRef.current,
+        phase: 'settling',
+      };
+      transitionRef.current = settlingState;
+      setMotionState(settlingState);
+      return;
+    }
 
     const settledState = settleBottomNavigationTransition(transitionRef.current);
     transitionRef.current = settledState;
@@ -446,31 +467,35 @@ export function BottomNavBar() {
     capsuleX.stopAnimation();
     capsuleWidth.stopAnimation();
     shellWidth.stopAnimation();
-    const coordinatedTiming = {
-      duration: capsuleMotion.duration,
-      easing: Easing.bezier(0.23, 1, 0.32, 1),
+    const coordinatedSpring = {
+      stiffness: capsuleMotion.stiffness,
+      damping: capsuleMotion.damping,
+      mass: capsuleMotion.mass,
+      overshootClamping: false,
+      restDisplacementThreshold: 0.1,
+      restSpeedThreshold: 0.1,
+      useNativeDriver: false,
     };
     ReactNativeAnimated.parallel([
-      ReactNativeAnimated.timing(capsuleX, {
+      ReactNativeAnimated.spring(capsuleX, {
         toValue: centerOffset,
-        ...coordinatedTiming,
-        useNativeDriver: false,
+        ...coordinatedSpring,
       }),
-      ReactNativeAnimated.timing(capsuleWidth, {
+      ReactNativeAnimated.spring(capsuleWidth, {
         toValue: frame.width,
-        ...coordinatedTiming,
-        useNativeDriver: false,
+        ...coordinatedSpring,
       }),
-      ReactNativeAnimated.timing(shellWidth, {
+      ReactNativeAnimated.spring(shellWidth, {
         toValue: frame.shellWidth,
-        ...coordinatedTiming,
-        useNativeDriver: false,
+        ...coordinatedSpring,
       }),
     ]).start(({ finished }) => {
       if (finished) finishCapsuleTransition(destination, sequence);
     });
   }, [
-    capsuleMotion.duration,
+    capsuleMotion.damping,
+    capsuleMotion.mass,
+    capsuleMotion.stiffness,
     capsuleWidth,
     capsuleX,
     finishCapsuleTransition,
@@ -482,63 +507,46 @@ export function BottomNavBar() {
     startSelectedContentMotion,
   ]);
 
-  const handleNavigationPressIn = useCallback(() => {
+  const handleNavigationPressIn = useCallback((item: BottomNavigationItem) => {
     if (cancelledPressTimerRef.current) {
       clearTimeout(cancelledPressTimerRef.current);
       cancelledPressTimerRef.current = null;
     }
+
+    const pressSequence = pressAttemptRef.current.sequence + 1;
     pressAttemptRef.current = {
-      sequence: pressAttemptRef.current.sequence + 1,
+      sequence: pressSequence,
       navigationCommitted: false,
+      origin: activeId,
+      destination: item.id,
     };
     shellScale.stopAnimation();
     if (reduceMotion) {
       shellScale.setValue(1);
-      return;
+    } else {
+      ReactNativeAnimated.timing(shellScale, {
+        toValue: shellMotion.pressedScale,
+        duration: shellMotion.pressDuration,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: false,
+      }).start();
     }
 
-    ReactNativeAnimated.timing(shellScale, {
-      toValue: shellMotion.pressedScale,
-      duration: shellMotion.pressDuration,
-      easing: Easing.bezier(0.23, 1, 0.32, 1),
-      useNativeDriver: false,
-    }).start();
-  }, [reduceMotion, shellMotion.pressDuration, shellMotion.pressedScale, shellScale]);
-
-  const handleNavigationPressOut = useCallback(() => {
-    const pressSequence = pressAttemptRef.current.sequence;
-    cancelledPressTimerRef.current = setTimeout(() => {
-      cancelledPressTimerRef.current = null;
-      if (!mountedRef.current) return;
-      if (pressAttemptRef.current.sequence !== pressSequence) return;
-      if (!shouldReleaseBottomNavigationCancelledPress(
-        pressAttemptRef.current.navigationCommitted,
-        transitionRef.current,
-      )) return;
-
-      releaseShell();
-    }, 0);
-  }, [releaseShell]);
-
-  const navigateTo = useCallback((item: BottomNavigationItem) => {
-    pressAttemptRef.current.navigationCommitted = true;
     if (transitionRef.current.to === item.id) {
-      router.navigate(item.path as never);
-      if (transitionRef.current.phase === 'resting') releaseShell();
       return;
     }
 
-    const nextState = startBottomNavigationTransition(transitionRef.current, item.id);
     const previousItem = BOTTOM_NAVIGATION_ITEMS.find(
       (destination) => destination.id === transitionRef.current.to,
     );
+    const nextState = startBottomNavigationTransition(transitionRef.current, item.id);
     setOutgoingLabel(previousItem?.label ?? null);
     transitionRef.current = nextState;
     setMotionState(nextState);
 
-    const sequence = transitionSequenceRef.current + 1;
-    transitionSequenceRef.current = sequence;
-    latestTransitionRef.current = { destination: item.id, sequence };
+    const transitionSequence = transitionSequenceRef.current + 1;
+    transitionSequenceRef.current = transitionSequence;
+    latestTransitionRef.current = { destination: item.id, sequence: transitionSequence };
 
     selectedFillOpacity.stopAnimation();
     ReactNativeAnimated.timing(selectedFillOpacity, {
@@ -549,15 +557,114 @@ export function BottomNavBar() {
       easing: Easing.bezier(0.23, 1, 0.32, 1),
       useNativeDriver: true,
     }).start();
-    startCapsuleTransition(item.id, sequence);
-    router.navigate(item.path as never);
+    startCapsuleTransition(item.id, transitionSequence);
   }, [
+    activeId,
     reduceMotion,
     reducedMotion.crossfadeDuration,
-    releaseShell,
     selectedFillOpacity,
+    shellMotion.pressDuration,
+    shellMotion.pressedScale,
+    shellScale,
     startCapsuleTransition,
     surfaceTimeline,
+  ]);
+
+  const cancelNavigationPreview = useCallback(() => {
+    const attempt = pressAttemptRef.current;
+    if (attempt.navigationCommitted || !attempt.destination) return;
+
+    const origin = attempt.origin;
+    const frame = getBottomNavigationCapsuleFrame(origin);
+    const restingState: NavigationCapsuleState = {
+      from: origin,
+      to: origin,
+      phase: 'resting',
+    };
+    transitionSequenceRef.current += 1;
+    latestTransitionRef.current = {
+      destination: origin,
+      sequence: transitionSequenceRef.current,
+    };
+    pressAttemptRef.current = {
+      ...attempt,
+      destination: null,
+    };
+    transitionRef.current = restingState;
+    setMotionState(restingState);
+    setOutgoingLabel(null);
+
+    capsuleX.stopAnimation();
+    capsuleWidth.stopAnimation();
+    shellWidth.stopAnimation();
+    selectedFillOpacity.stopAnimation();
+    stopSelectedContentMotion();
+    const returnSpring = {
+      stiffness: capsuleMotion.stiffness,
+      damping: capsuleMotion.damping,
+      mass: capsuleMotion.mass,
+      useNativeDriver: false,
+    };
+    ReactNativeAnimated.parallel([
+      ReactNativeAnimated.spring(capsuleX, {
+        toValue: getBottomNavigationCapsuleCenterOffset(origin),
+        ...returnSpring,
+      }),
+      ReactNativeAnimated.spring(capsuleWidth, {
+        toValue: frame.width,
+        ...returnSpring,
+      }),
+      ReactNativeAnimated.spring(shellWidth, {
+        toValue: frame.shellWidth,
+        ...returnSpring,
+      }),
+    ]).start();
+    selectedContentOpacity.setValue(1);
+    selectedLabelOpacity.setValue(1);
+    selectedLabelScale.setValue(1);
+    selectedLabelTranslateX.setValue(0);
+    outgoingLabelOpacity.setValue(0);
+    selectedFillOpacity.setValue(1);
+    releaseShell();
+  }, [
+    capsuleMotion.damping,
+    capsuleMotion.mass,
+    capsuleMotion.stiffness,
+    capsuleWidth,
+    capsuleX,
+    outgoingLabelOpacity,
+    releaseShell,
+    selectedContentOpacity,
+    selectedFillOpacity,
+    selectedLabelOpacity,
+    selectedLabelScale,
+    selectedLabelTranslateX,
+    shellWidth,
+    stopSelectedContentMotion,
+  ]);
+
+  const handleNavigationPressOut = useCallback(() => {
+    const pressSequence = pressAttemptRef.current.sequence;
+    cancelledPressTimerRef.current = setTimeout(() => {
+      cancelledPressTimerRef.current = null;
+      if (!mountedRef.current) return;
+      if (pressAttemptRef.current.sequence !== pressSequence) return;
+      if (pressAttemptRef.current.navigationCommitted) return;
+      cancelNavigationPreview();
+    }, 0);
+  }, [cancelNavigationPreview]);
+
+  const navigateTo = useCallback((item: BottomNavigationItem) => {
+    pressAttemptRef.current.navigationCommitted = true;
+    router.navigate(item.path as never);
+    if (transitionRef.current.phase === 'settling') {
+      finishCapsuleTransition(item.id, latestTransitionRef.current.sequence);
+    } else if (transitionRef.current.phase === 'resting') {
+      releaseShell();
+    }
+  }, [
+    finishCapsuleTransition,
+    releaseShell,
   ]);
 
   useEffect(() => {
@@ -602,6 +709,10 @@ export function BottomNavBar() {
 
   useEffect(() => {
     if (transitionRef.current.to === activeId) return;
+    if (
+      !pressAttemptRef.current.navigationCommitted
+      && pressAttemptRef.current.destination === transitionRef.current.to
+    ) return;
 
     const frame = getBottomNavigationCapsuleFrame(activeId);
     const restingState: NavigationCapsuleState = {
@@ -685,22 +796,19 @@ export function BottomNavBar() {
               style={{
                 width: '100%',
                 height: 58,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 4,
-                padding: 5,
+                position: 'relative',
               }}
             >
-              {BOTTOM_NAVIGATION_ITEMS.map((item, index) => (
+              {BOTTOM_NAVIGATION_ITEMS.map((item) => (
                 <NavigationDestination
                   key={item.id}
                   item={item}
                   selected={item.id === motionState.to}
                   visualHidden={item.id === renderPolicy.hiddenStableDestination}
-                  width={stateLayout.itemWidths[index]}
+                  centerOffset={getBottomNavigationDestinationCenterOffset(item.id)}
                   userId={userId}
                   onPress={() => navigateTo(item)}
-                  onPressIn={handleNavigationPressIn}
+                  onPressIn={() => handleNavigationPressIn(item)}
                   onPressOut={handleNavigationPressOut}
                 />
               ))}

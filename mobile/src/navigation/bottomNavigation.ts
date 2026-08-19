@@ -49,6 +49,14 @@ export function getBottomNavigationCapsuleCenterOffset(
   return frame.x - (frame.shellWidth / 2);
 }
 
+export function getBottomNavigationDestinationCenterOffset(
+  id: BottomNavigationItem['id'],
+): number {
+  if (id === 'index') return -60;
+  if (id === 'logs') return 0;
+  return 60;
+}
+
 export function startBottomNavigationTransition(
   state: NavigationCapsuleState,
   destination: BottomNavigationItem['id'],
@@ -112,8 +120,11 @@ export function getBottomNavigationSurfaceTimeline(reduceMotion: boolean) {
 
 export function getBottomNavigationTransitionStartPolicy() {
   return {
+    startEvent: 'pressIn' as const,
     beforeRoute: true as const,
     deferred: false as const,
+    routeEvent: 'press' as const,
+    cancelReturnsToOrigin: true as const,
   };
 }
 
@@ -125,13 +136,9 @@ export const BOTTOM_NAVIGATION_FALLBACK_GLASS = {
   sheenColors: ['rgba(255,255,255,0.42)', 'rgba(255,255,255,0.06)'],
 } as const;
 export const BOTTOM_NAVIGATION_CLEAR_GLASS_SURFACE = {
-  backgroundColor: 'rgba(255,255,255,0.01)',
-  borderColor: 'rgba(15,16,16,0.10)',
+  backgroundColor: 'rgba(255,255,255,0.04)',
+  borderColor: 'rgba(23,23,23,0.04)',
   borderWidth: 1,
-  shadowColor: '#0F1010',
-  shadowOpacity: 0.08,
-  shadowRadius: 8,
-  shadowOffset: { width: 0, height: 2 },
 } as const;
 
 export const BOTTOM_NAVIGATION_FIGMA = {
@@ -167,9 +174,12 @@ export const BOTTOM_NAVIGATION_FIGMA = {
     releaseDampingRatio: 0.78,
   },
   capsuleMotion: {
-    duration: 280,
-    dampingRatio: 0.82,
+    stiffness: 260,
+    damping: 26,
+    mass: 0.85,
     coordinatesShellWidth: true,
+    travellingScale: 1,
+    expandedHeight: 48,
   },
   labelMotion: {
     enterScale: 0.94,
