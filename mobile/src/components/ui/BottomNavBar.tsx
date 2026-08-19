@@ -277,7 +277,7 @@ export function BottomNavBar() {
       toValue: 1,
       duration: shellMotion.releaseDuration,
       easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
+      useNativeDriver: false,
     }).start();
   }, [
     reduceMotion,
@@ -451,7 +451,7 @@ export function BottomNavBar() {
       ReactNativeAnimated.timing(capsuleX, {
         toValue: centerOffset,
         ...coordinatedTiming,
-        useNativeDriver: true,
+        useNativeDriver: false,
       }),
       ReactNativeAnimated.timing(capsuleWidth, {
         toValue: frame.width,
@@ -498,7 +498,7 @@ export function BottomNavBar() {
       toValue: shellMotion.pressedScale,
       duration: shellMotion.pressDuration,
       easing: Easing.bezier(0.23, 1, 0.32, 1),
-      useNativeDriver: true,
+      useNativeDriver: false,
     }).start();
   }, [reduceMotion, shellMotion.pressDuration, shellMotion.pressedScale, shellScale]);
 
