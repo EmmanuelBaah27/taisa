@@ -10,7 +10,7 @@
 
 **Spec:** `docs/features/chat-card-expansion.md`
 
-**Status:** Ship approved — pending merge
+**Status:** Shipped — merged as `3d7da1c`
 
 ## Global Constraints
 
