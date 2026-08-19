@@ -182,8 +182,10 @@ NativeWind semantic utilities. Native APIs that require color values (icons, sha
 use `constants/theme.ts`, including `backgroundTransparent` for the conversation fade.
 
 Chats history opens the canonical chat route with one source snapshot: the selected row's measured
-viewport frame, the list's exact scroll offset, and the viewport dimensions. The screen expands
-from that frame over the shared 380ms ease-out curve and reverses to it before route dismissal.
+viewport frame, the list's exact scroll offset, and the viewport dimensions. A blank white shell
+expands from that frame over the shared 380ms ease-out curve. Header, messages, and composer live on
+a separate layer that reveals near the end only after the historical chat is positioned at its
+bottom offset without animation. Closing hides that content as the shell reverses before route dismissal.
 The underlying list stays mounted, does not refresh while the card-backed chat is open, and restores
 its offset before refreshing after return. Missing geometry, changed viewport dimensions, fresh
 capture, and reduced motion use an immediate exit. The legacy slide-down and drag-to-dismiss

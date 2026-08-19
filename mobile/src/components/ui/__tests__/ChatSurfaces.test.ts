@@ -1,7 +1,13 @@
 import React from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView } from 'react-native-gesture-handler';
 
-import { ChatMessageBubble, PendingProposalCard } from '../ChatSurfaces';
+import {
+  ChatConversationSurface,
+  ChatMessageBubble,
+  ChatScreenShell,
+  PendingProposalCard,
+} from '../ChatSurfaces';
 import { ChatNavBar } from '../ChatNavBar';
 import { TaisaReplyCard } from '../TaisaReplyCard';
 
@@ -48,6 +54,55 @@ function findElementByLabel(
 }
 
 describe('chat design-system surfaces', () => {
+  test('the morphing white shell keeps conversation content on a separate animated layer', () => {
+    const shellStyle = { transform: [{ scaleX: 0.5 }] };
+    const contentStyle = { opacity: 0 };
+    const shell = ChatScreenShell({
+      topInset: 47,
+      title: 'A conversation',
+      animatedStyle: shellStyle,
+      contentAnimatedStyle: contentStyle,
+      onClose: jest.fn(),
+      children: React.createElement(View, { testID: 'messages' }),
+      footer: React.createElement(View, { testID: 'composer' }),
+    });
+    const animatedLayers = descendants(shell).filter((node) => (
+      node.props.style === shellStyle || node.props.style === contentStyle
+    ));
+
+    expect(animatedLayers.map((node) => node.props.style)).toEqual([shellStyle, contentStyle]);
+  });
+
+  test('conversation layout exposes a content-size callback for an immediate initial bottom position', () => {
+    const onContentSizeChange = jest.fn();
+    const surface = ChatConversationSurface({
+      scrollRef: { current: null },
+      messages: [],
+      activeMessageId: null,
+      activeRequestKind: null,
+      transcript: '',
+      phase: 'idle',
+      isBusy: false,
+      error: null,
+      microphoneUnavailable: false,
+      pendingProposals: [],
+      editingTranscript: null,
+      onContentSizeChange,
+      onEditTranscript: jest.fn(),
+      onChangeTranscript: jest.fn(),
+      onSubmitTranscript: jest.fn(),
+      onUseKeyboard: jest.fn(),
+      onDiscardRecording: jest.fn(),
+      onRetry: jest.fn(),
+      onConfirmProposal: jest.fn(),
+      onResolveProposal: jest.fn(),
+    });
+    const scrollView = descendants(surface).find((node) => node.type === ScrollView);
+
+    scrollView?.props.onContentSizeChange?.(393, 1200);
+    expect(onContentSizeChange).toHaveBeenCalledWith(393, 1200);
+  });
+
   test('the Figma header uses a floating close control and the conversation title', () => {
     const header = ChatNavBar({
       onClose: jest.fn(),

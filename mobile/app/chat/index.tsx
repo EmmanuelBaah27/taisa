@@ -128,7 +128,18 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
   } = useThreadStore();
   const { setChatMorphing, consumeVoiceAutoStart } = useUIStore();
   const sourceSnapshot = parseChatCardSource(routeParams);
-  const { translateX, translateY, scaleX, scaleY, borderRadius, open, close } = useMorphTransition(sourceSnapshot);
+  const {
+    translateX,
+    translateY,
+    scaleX,
+    scaleY,
+    borderRadius,
+    contentOpacity,
+    contentTranslateY,
+    open,
+    revealContent,
+    close,
+  } = useMorphTransition(sourceSnapshot);
 
   const slideStyle = useAnimatedStyle(() => ({
     flex: 1,
@@ -139,6 +150,10 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
       { scaleX: scaleX.value },
       { scaleY: scaleY.value },
     ],
+  }));
+  const contentStyle = useAnimatedStyle(() => ({
+    opacity: contentOpacity.value,
+    transform: [{ translateY: contentTranslateY.value }],
   }));
 
   const initialConversationId = resolveInitialChatConversationId(
@@ -170,6 +185,8 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
   const recordingStopSessionRef = useRef<RecordingStopSession | null>(null);
   const recordingCleanupBarrierRef = useRef(createRecordingCleanupBarrier());
   const recordingSubmissionLeaseRef = useRef<RecordingSubmissionLease | null>(null);
+  const initialBottomSettledRef = useRef(false);
+  const previousMessageCountRef = useRef(0);
 
   const isHydratingInitialConversation = !initialHydrationComplete;
   const transcript = isHydratingInitialConversation ? '' : storedTranscript;
@@ -205,10 +222,19 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
   }
 
   useEffect(() => {
-    if (messages.length > 0) {
+    if (initialBottomSettledRef.current && messages.length > previousMessageCountRef.current) {
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
     }
+    previousMessageCountRef.current = messages.length;
   }, [messages.length]);
+
+  function handleConversationContentSizeChange() {
+    if (!initialHydrationComplete || initialBottomSettledRef.current) return;
+    scrollRef.current?.scrollToEnd({ animated: false });
+    initialBottomSettledRef.current = true;
+    previousMessageCountRef.current = messages.length;
+    requestAnimationFrame(revealContent);
+  }
 
   useEffect(() => {
     if (transcriptionOutcome !== 'uncertain' || !transcript.trim()) return;
@@ -815,6 +841,7 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
       topInset={insets.top}
       title={currentSession?.title ?? routeTitle ?? 'Taisa'}
       animatedStyle={slideStyle}
+      contentAnimatedStyle={contentStyle}
       onClose={handleClose}
       footer={(
         <ChatComposerDock phase={phase} bottomInset={insets.bottom}>
@@ -862,6 +889,7 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
         microphoneUnavailable={recordingStartFailed}
         pendingProposals={pendingProposals}
         editingTranscript={editingTranscript}
+        onContentSizeChange={handleConversationContentSizeChange}
         reactions={reactions}
         onEditTranscript={setEditingTranscript}
         onChangeTranscript={setEditingTranscript}

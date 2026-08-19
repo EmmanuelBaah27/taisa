@@ -25,6 +25,7 @@ export interface ChatScreenShellProps {
   topInset: number;
   title: string;
   animatedStyle: StyleProp<ViewStyle>;
+  contentAnimatedStyle: StyleProp<ViewStyle>;
   onClose: () => void;
   children: ReactNode;
   footer: ReactNode;
@@ -34,6 +35,7 @@ export function ChatScreenShell({
   topInset,
   title,
   animatedStyle,
+  contentAnimatedStyle,
   onClose,
   children,
   footer,
@@ -44,9 +46,11 @@ export function ChatScreenShell({
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
         <Animated.View className="flex-1 overflow-hidden bg-background" style={animatedStyle}>
-          <ChatNavBar title={title} topInset={topInset} onClose={onClose} />
-          {children}
-          {footer}
+          <Animated.View className="flex-1" style={contentAnimatedStyle}>
+            <ChatNavBar title={title} topInset={topInset} onClose={onClose} />
+            {children}
+            {footer}
+          </Animated.View>
         </Animated.View>
     </KeyboardAvoidingView>
   );
@@ -210,6 +214,7 @@ export interface ChatConversationSurfaceProps {
   editingTranscript: string | null;
   reactions?: Readonly<Record<string, ResponseReaction>>;
   onScrollAtTopChange?: (atTop: boolean) => void;
+  onContentSizeChange?: (width: number, height: number) => void;
   onEditTranscript: (value: string | null) => void;
   onChangeTranscript: (value: string) => void;
   onSubmitTranscript: () => void;
@@ -231,6 +236,7 @@ export function ChatConversationSurface(props: ChatConversationSurfaceProps) {
         contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 32, paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}
         onScroll={(event) => props.onScrollAtTopChange?.(event.nativeEvent.contentOffset.y <= 2)}
+        onContentSizeChange={props.onContentSizeChange}
         scrollEventThrottle={16}
       >
         {props.messages.filter((message) => message.content.length > 0).map((message) => (

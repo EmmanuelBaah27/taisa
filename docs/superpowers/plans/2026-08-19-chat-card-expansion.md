@@ -10,7 +10,7 @@
 
 **Spec:** `docs/features/chat-card-expansion.md`
 
-**Status:** Review + QA — reverse morph implemented and awaiting device QA
+**Status:** Review + QA — white-shell reveal implemented and awaiting device QA
 
 ## Global Constraints
 
@@ -105,4 +105,12 @@
 - [x] Preserve and restore the Chats scroll offset before its post-close refresh.
 - [x] Animate the chat surface back to the source transform and pop only after completion.
 - [x] Keep deep-link, fresh-capture, invalid-geometry, and reduced-motion exits immediate.
+- [x] Re-run full mobile and workflow verification before returning to device QA.
+
+### Task 6: White-shell content reveal QA revision
+
+- [x] Keep the shell transform separate from header, messages, and composer content.
+- [x] Stagger the content reveal until the white shell is nearly full-screen.
+- [x] Hide content as closing begins, before it can appear compressed.
+- [x] Position the initial historical conversation at the bottom without animation while content is hidden.
 - [x] Re-run full mobile and workflow verification before returning to device QA.

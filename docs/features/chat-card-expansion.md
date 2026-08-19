@@ -2,7 +2,7 @@
 
 **Track:** Product
 **Tier:** Standard
-**Status:** Review + QA — reverse morph awaiting device QA
+**Status:** Review + QA — white-shell reveal awaiting device QA
 **Design:** [Figma node 409:4635](https://www.figma.com/design/TlIBdEHicoKUR9RhCFuLPi/-Taisa--UI-Design?node-id=409-4635&m=dev)
 
 ## What is it?
@@ -27,6 +27,8 @@ Make a Chats-list item expand into the canonical conversation view and morph bac
 - User messages are right-aligned neutral bubbles with 32px corners and 16px padding; assistant messages are unboxed 16/24 body copy.
 - The bottom Reply control sits inside a white fade and preserves the existing voice/text composer states once activated.
 - The opening and closing animations are paired: expand from the selected Chats card on entry and collapse to the same stable card frame before route dismissal.
+- The transforming layer is an empty white shell. Conversation content stays on a separate layer, reveals only after the shell is nearly full-screen, and hides as closing begins so text and controls are never visibly compressed.
+- Historical conversations are positioned at their final bottom offset while hidden; the first visible chat frame is already settled rather than scrolling into place.
 - Existing semantic tokens and `Icon`, conversation primitives, and composer behavior are reused. No new dependency or platform capability is introduced.
 
 ## Out of scope

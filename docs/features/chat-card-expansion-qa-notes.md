@@ -11,3 +11,9 @@ Baah requested that closing a historical chat reverse the opening transition and
 - The underlying Chats list remains mounted and restores its captured offset before it refreshes or reorders.
 - Deep links, fresh capture, invalid geometry, orientation mismatch, and reduced motion close immediately rather than targeting stale geometry.
 - Recorder cleanup starts when closing begins and remains safe while the reverse animation finishes.
+
+## 2026-08-19 — White-shell reveal and settled chat position
+
+Baah reported that transforming the full conversation made its content look visibly squashed. The card morph must therefore animate only a blank white shell. Header, messages, and composer reveal on a separate layer as the shell approaches full-screen and hide as the reverse morph begins.
+
+Historical chats must also complete their initial non-animated bottom positioning while that content layer is hidden. The first visible conversation frame is already at the latest message; no initial animated scroll is shown.
