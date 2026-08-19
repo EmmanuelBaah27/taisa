@@ -10,7 +10,7 @@
 
 **Spec:** `docs/superpowers/specs/2026-08-19-shared-chat-recording-shell-design.md`
 
-**Status:** Awaiting Baah plan approval
+**Status:** Approved — Build in progress
 
 ## Global Constraints
 
