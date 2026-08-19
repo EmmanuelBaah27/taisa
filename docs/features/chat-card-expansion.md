@@ -2,7 +2,7 @@
 
 **Track:** Product
 **Tier:** Standard
-**Status:** Ship approved — pending merge
+**Status:** Shipped — merged as `3d7da1c`
 **Design:** [Figma node 409:4635](https://www.figma.com/design/TlIBdEHicoKUR9RhCFuLPi/-Taisa--UI-Design?node-id=409-4635&m=dev)
 
 ## What is it?

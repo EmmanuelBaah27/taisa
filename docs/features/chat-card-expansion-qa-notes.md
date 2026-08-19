@@ -31,3 +31,5 @@ The first overlap-fade build terminated when opening a chat because its opacity 
 ## 2026-08-19 — Ship approval
 
 Baah approved the final card spacing, eased press feedback, faster overlapping expansion/fade, immediate pre-measurement handoff, reverse morph, and recording-surface corrections for merge.
+
+Merged through PR #5 as `3d7da1c`.
