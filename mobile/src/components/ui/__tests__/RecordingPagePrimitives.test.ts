@@ -2,7 +2,6 @@ import React from 'react';
 
 import { Button } from '../Button';
 import {
-  RECORDING_VOICE_MARK_MOTION,
   RECORDING_VOICE_MARK_PATHS,
 } from '../RecordingVoiceMark';
 import { ActiveRecordingSurface } from '../ActiveRecordingSurface';
@@ -37,12 +36,11 @@ describe('recording page primitives', () => {
     expect(button.props.className).toContain('w-[56px]');
   });
 
-  test('voice mark preserves the supplied paths and two-second motion cohort', () => {
+  test('voice mark preserves the supplied paths without a motion contract', () => {
     expect(RECORDING_VOICE_MARK_PATHS).toEqual({
       left: 'M24.4282 26.8479C17.9055 28.4497 10.1559 16.8666 4.66667 16.8666',
       right: 'M7.13333 24.4666C15.1614 24.4666 20.3298 14.3333 28.3298 14.3333',
     });
-    expect(RECORDING_VOICE_MARK_MOTION).toMatchObject({ duration: 2000, loop: true });
   });
 
   test('active surface composes the Figma cancel bar and one primary send action', () => {
