@@ -93,20 +93,16 @@ export const BOTTOM_NAVIGATION_FIGMA = {
     paddingVertical: 12,
     iconColor: '#9C9C9C',
   },
-  pressMotion: {
-    pressedScaleX: 1.05,
-    pressedScaleY: 0.9,
-    pressInDuration: 100,
-    releaseDuration: 300,
-    releaseBounce: 0.25,
-  },
   shellMotion: {
-    pressedScaleX: 1.025,
-    pressedScaleY: 0.96,
-    pressDelay: 20,
-    pressInDuration: 110,
-    releaseDuration: 340,
-    releaseBounce: 0.2,
+    pressedScale: 1.12,
+    pressDuration: 140,
+    releaseDuration: 320,
+    releaseDampingRatio: 0.78,
+  },
+  labelMotion: {
+    enterScale: 0.94,
+    enterTranslateX: -6,
+    duration: 180,
   },
 } as const;
 

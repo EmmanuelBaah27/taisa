@@ -95,24 +95,20 @@ describe('bottom navigation', () => {
     });
   });
 
-  test('uses a perceptible jelly deformation for tab presses', () => {
-    expect(BOTTOM_NAVIGATION_FIGMA.pressMotion).toEqual({
-      pressedScaleX: 1.05,
-      pressedScaleY: 0.9,
-      pressInDuration: 100,
-      releaseDuration: 300,
-      releaseBounce: 0.25,
+  test('scales the entire glass shell uniformly until the capsule settles', () => {
+    expect(BOTTOM_NAVIGATION_FIGMA.shellMotion).toEqual({
+      pressedScale: 1.12,
+      pressDuration: 140,
+      releaseDuration: 320,
+      releaseDampingRatio: 0.78,
     });
   });
 
-  test('propagates a gentler jelly deformation through the glass shell', () => {
-    expect(BOTTOM_NAVIGATION_FIGMA.shellMotion).toEqual({
-      pressedScaleX: 1.025,
-      pressedScaleY: 0.96,
-      pressDelay: 20,
-      pressInDuration: 110,
-      releaseDuration: 340,
-      releaseBounce: 0.2,
+  test('moves the selected label outward from its destination icon', () => {
+    expect(BOTTOM_NAVIGATION_FIGMA.labelMotion).toEqual({
+      enterScale: 0.94,
+      enterTranslateX: -6,
+      duration: 180,
     });
   });
 
