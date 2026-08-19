@@ -206,6 +206,7 @@ export const BOTTOM_NAVIGATION_FIGMA = {
     easing: [0.22, 1, 0.36, 1],
     coordinatesShellWidth: true,
     coordinatesTabIcons: true,
+    directIconTrajectory: true,
     travellingScale: 1,
     expandedHeight: 48,
   },
