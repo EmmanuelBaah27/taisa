@@ -599,8 +599,8 @@ export function BottomNavBar() {
             ? -(BOTTOM_NAVIGATION_FIGMA.selectedItem.gap
               + BOTTOM_NAVIGATION_LABEL_WIDTHS[item.id]) / 2
             : 0,
-          duration: labelMotion.duration,
-          easing: Easing.out(Easing.cubic),
+          duration: capsuleMotion.duration,
+          easing: Easing.bezier(...capsuleMotion.easing),
           useNativeDriver: false,
         });
       }),
@@ -807,8 +807,8 @@ export function BottomNavBar() {
             ? -(BOTTOM_NAVIGATION_FIGMA.selectedItem.gap
               + BOTTOM_NAVIGATION_LABEL_WIDTHS[item.id]) / 2
             : 0,
-          duration: labelMotion.duration,
-          easing: Easing.out(Easing.cubic),
+          duration: capsuleMotion.duration,
+          easing: Easing.bezier(...capsuleMotion.easing),
           useNativeDriver: false,
         });
       }),
