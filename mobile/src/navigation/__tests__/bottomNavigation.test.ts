@@ -146,10 +146,11 @@ describe('bottom navigation', () => {
   test('scales the entire glass shell uniformly until the capsule settles', () => {
     expect(BOTTOM_NAVIGATION_FIGMA.shellMotion).toEqual({
       pressedScale: 1.12,
-      pressDuration: 90,
-      releaseDuration: 220,
+      pressDuration: 70,
+      holdDuration: 100,
+      releaseDuration: 90,
       releaseDampingRatio: 0.78,
-      releaseOverlapsTravel: true,
+      releaseCompletesWithTravel: true,
     });
   });
 

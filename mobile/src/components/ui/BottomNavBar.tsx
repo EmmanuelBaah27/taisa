@@ -696,6 +696,7 @@ export function BottomNavBar() {
           easing: Easing.out(Easing.cubic),
           useNativeDriver: false,
         }),
+        ReactNativeAnimated.delay(shellMotion.holdDuration),
         ReactNativeAnimated.timing(shellScale, {
           toValue: 1,
           duration: shellMotion.releaseDuration,
@@ -753,6 +754,7 @@ export function BottomNavBar() {
     reducedMotion.crossfadeDuration,
     selectedFillOpacity,
     shellMotion.pressDuration,
+    shellMotion.holdDuration,
     shellMotion.pressedScale,
     shellMotion.releaseDuration,
     shellScale,

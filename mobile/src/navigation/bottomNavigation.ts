@@ -195,10 +195,11 @@ export const BOTTOM_NAVIGATION_FIGMA = {
   },
   shellMotion: {
     pressedScale: 1.12,
-    pressDuration: 90,
-    releaseDuration: 220,
+    pressDuration: 70,
+    holdDuration: 100,
+    releaseDuration: 90,
     releaseDampingRatio: 0.78,
-    releaseOverlapsTravel: true,
+    releaseCompletesWithTravel: true,
   },
   capsuleMotion: {
     duration: 260,
