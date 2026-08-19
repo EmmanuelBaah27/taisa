@@ -56,7 +56,7 @@ half4 main(float2 fragCoord) {
   float3 color = mix(base1, hot1, p1) * g1
     + mix(base2, hot2, p2) * g2
     + mix(base3, hot3, p3) * g3;
-  float alpha = clamp((g1 + g2 + g3) * mix(0.075, 0.16, energy), 0.0, 0.34);
+  float alpha = clamp((g1 + g2 + g3) * mix(0.14, 0.28, energy), 0.0, 0.55);
   return half4(half3(clamp(color / max(g1 + g2 + g3, 1.0), 0.0, 1.0)), half(alpha));
 }
 `);
@@ -108,13 +108,23 @@ export function VoiceReactiveTimestamp({
   }));
 
   return (
-    <View className="h-14 w-[60px] items-center justify-center">
+    <View className="relative h-14 w-[60px] items-center justify-center">
       {EFFECT ? (
-        <Canvas className="absolute inset-0" style={{ width: 60, height: 56, pointerEvents: 'none' }}>
+        <Canvas
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: VOICE_REACTIVE_TIMESTAMP.width,
+            height: VOICE_REACTIVE_TIMESTAMP.height,
+            pointerEvents: 'none',
+            zIndex: 0,
+          }}
+        >
           <Fill><Shader source={EFFECT} uniforms={uniforms} /></Fill>
         </Canvas>
       ) : null}
-      <Text className="text-muted-foreground text-small-regular">
+      <Text className="text-muted-foreground text-small-regular" style={{ zIndex: 1 }}>
         {formatDuration(durationSeconds)}
       </Text>
     </View>
