@@ -1,6 +1,6 @@
 # Shared Chat and Recording Shell Design
 
-**Status:** Design approved in chat — awaiting written-spec review
+**Status:** Approved — implementation plan awaiting Baah approval
 
 ## Purpose
 
