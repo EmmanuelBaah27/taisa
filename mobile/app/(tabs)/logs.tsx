@@ -83,8 +83,8 @@ export default function LogsScreen() {
           </Text>
         ) : (
           groups.map((group) => (
-            <View key={group.key} className="mb-5 gap-1">
-              <Text className="text-muted-foreground text-small-regular">{group.label}</Text>
+            <View key={group.key} className="mb-5">
+              <Text className="mb-1 text-muted-foreground text-small-regular">{group.label}</Text>
               {group.chats.map((chat) => (
                 <ChatListRow
                   key={chat.id}
