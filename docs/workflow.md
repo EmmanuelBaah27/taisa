@@ -13,7 +13,7 @@ Claude maintains the Active Work table — Baah never needs to update it.
 | Personal alpha release | Platform + Product | Build | `feature/local-first-coaching-platform` | Code-only build complete at `850b3d6`; next gate is Baah approval to create Railway resources, add billing/secrets, and deploy. Signed iPhone installation follows as a separate gate. |
 | Post-Send streaming transcription | Platform + Product | Review + QA | `feature/local-first-coaching-platform` | Managed-device clear/uncertain/no-speech calibration before Ship approval |
 | Taisa system architecture | Platform | Review + QA | `docs/reimagine-product-scope` | Baah document review |
-| Current experience consolidation | Platform + Product | Review + QA | `feature/current-experience` | ExpoGlassEffect runtime failure now falls back safely; Baah device retry is next |
+| Current experience consolidation | Platform + Product | Review + QA | `feature/current-experience` | Bottom-navigation material clipping and active-tab row correction loaded on device; Baah visual retry is next |
 
 ---
 

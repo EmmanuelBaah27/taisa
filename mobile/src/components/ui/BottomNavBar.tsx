@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Platform, Pressable, Text, View } from 'react-native';
+import { Platform, Pressable, Text, View, type ViewStyle } from 'react-native';
 import { BlurView } from 'expo-blur';
 import {
   GlassView,
@@ -20,6 +20,7 @@ import Animated, {
 import {
   BOTTOM_NAVIGATION_ITEMS,
   getBottomNavigationLayout,
+  getBottomNavigationItemWidth,
   resolveGlassAvailability,
   type BottomNavigationItem,
 } from '../../navigation/bottomNavigation';
@@ -31,6 +32,15 @@ const supportsNativeGlass =
   Platform.OS === 'ios'
   && resolveGlassAvailability(isGlassEffectAPIAvailable, isLiquidGlassAvailable);
 
+const materialStyle: ViewStyle = {
+  width: 240,
+  height: 60,
+  overflow: 'hidden',
+  borderRadius: 32,
+  borderWidth: 1,
+  borderColor: 'rgba(23,23,23,0.08)',
+};
+
 function NavigationMaterial({ children }: { children: React.ReactNode }) {
   if (supportsNativeGlass) {
     return (
@@ -38,7 +48,7 @@ function NavigationMaterial({ children }: { children: React.ReactNode }) {
         glassEffectStyle="regular"
         tintColor="rgba(255,255,255,0.10)"
         colorScheme="light"
-        className="h-[60px] w-[240px] overflow-hidden rounded-[32px] border border-[rgba(23,23,23,0.08)]"
+        style={materialStyle}
       >
         {children}
       </GlassView>
@@ -49,9 +59,16 @@ function NavigationMaterial({ children }: { children: React.ReactNode }) {
     <BlurView
       intensity={45}
       tint="systemUltraThinMaterialLight"
-      className="h-[60px] w-[240px] overflow-hidden rounded-[32px] border border-[rgba(23,23,23,0.08)]"
+      style={materialStyle}
     >
-      <View pointerEvents="none" className="absolute inset-0 bg-[rgba(255,255,255,0.10)]" />
+      <View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          inset: 0,
+          backgroundColor: 'rgba(255,255,255,0.10)',
+        }}
+      />
       {children}
     </BlurView>
   );
@@ -100,7 +117,12 @@ function NavigationButton({
   }, [active, activeIndex, itemIndex, nudgeX, scale]);
 
   return (
-    <Animated.View style={animatedStyle}>
+    <Animated.View
+      style={[
+        { width: getBottomNavigationItemWidth(active), height: 48 },
+        animatedStyle,
+      ]}
+    >
       <Pressable
         accessibilityLabel={item.label}
         accessibilityRole="tab"
@@ -109,21 +131,21 @@ function NavigationButton({
         onPress={() => router.navigate(item.path as never)}
         style={({ pressed }) => [
           {
-            minHeight: 48,
+            width: '100%',
+            height: 48,
             alignItems: 'center',
             justifyContent: 'center',
             borderRadius: 32,
           },
           active
             ? {
-                flex: 1,
                 flexDirection: 'row',
                 gap: 8,
                 paddingHorizontal: 16,
                 paddingVertical: 12,
                 backgroundColor: 'rgba(0,0,0,0.04)',
               }
-            : { width: 48, padding: 12 },
+            : { padding: 12 },
           pressed && { opacity: 0.72 },
         ]}
       >
@@ -136,6 +158,7 @@ function NavigationButton({
         )}
         {active ? (
           <Text
+            numberOfLines={1}
             className="font-inter-medium text-base text-[#0F1010]"
             style={{ lineHeight: 24, letterSpacing: -0.36 }}
           >
@@ -182,7 +205,16 @@ export function BottomNavBar() {
           }}
         >
           <NavigationMaterial>
-            <View className="h-full flex-row items-center gap-1 p-1.5">
+            <View
+              style={{
+                width: 238,
+                height: 58,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 4,
+                padding: 5,
+              }}
+            >
               {BOTTOM_NAVIGATION_ITEMS.map((item, index) => (
                 <NavigationButton
                   key={item.id}

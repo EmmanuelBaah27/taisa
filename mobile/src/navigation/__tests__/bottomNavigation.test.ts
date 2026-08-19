@@ -1,6 +1,7 @@
 import {
   BOTTOM_NAVIGATION_ITEMS,
   getBottomNavigationLayout,
+  getBottomNavigationItemWidth,
   resolveGlassAvailability,
 } from '../bottomNavigation';
 
@@ -39,5 +40,11 @@ describe('bottom navigation', () => {
     };
 
     expect(resolveGlassAvailability(missingNativeModule, () => true)).toBe(false);
+  });
+
+  test('keeps the active label in the 240px capsule row', () => {
+    expect(getBottomNavigationItemWidth(false)).toBe(48);
+    expect(getBottomNavigationItemWidth(true)).toBe(124);
+    expect(48 + 4 + 124 + 4 + 48 + 12).toBe(240);
   });
 });

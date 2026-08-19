@@ -19,3 +19,9 @@ Code verification: 50 Jest suites / 438 tests passed, TypeScript passed, and the
 The rebuilt iPhone binary compiled and linked `ExpoGlassEffect`, but Expo's runtime module registry still reported `Cannot find native module 'ExpoGlassEffect'`. The navigation availability boundary must catch that runtime failure and use the documented material-blur fallback instead of preventing the app shell from loading.
 
 Correction verified in code: the availability boundary now converts a missing native module into the material-blur fallback; 50 Jest suites / 439 tests, TypeScript, and the design-system verifier pass. Baah device retry remains the visual QA gate.
+
+## 2026-08-19 — bottom navigation visual mismatch
+
+Device screenshot showed the 240×60 fallback material without its 32px clipping, producing an opaque rectangular sheet, and the Account label below the icon row. Root causes: critical geometry was passed as `className` to third-party `BlurView`, which does not reliably consume NativeWind styling, and active flex sizing was applied inside the animated item wrapper. Correction uses explicit native geometry on the material surface and a fixed 48/124/48 row model inside the 240px capsule.
+
+Correction loaded on the connected iPhone. Verification: 50 Jest suites / 440 tests, TypeScript, and the design-system verifier pass. Baah visual retry remains the gate.

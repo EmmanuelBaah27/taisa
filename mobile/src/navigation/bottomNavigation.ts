@@ -22,6 +22,10 @@ export const BOTTOM_NAVIGATION_FIGMA = {
   fadeHeight: 90,
 } as const;
 
+export function getBottomNavigationItemWidth(active: boolean): 48 | 124 {
+  return active ? 124 : 48;
+}
+
 export function getBottomNavigationLayout(safeAreaBottom: number) {
   const safeAreaAdjustment = Math.max(
     0,
