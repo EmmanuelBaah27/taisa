@@ -10,7 +10,7 @@
 
 **Spec:** `docs/superpowers/specs/2026-08-19-shared-chat-recording-shell-design.md`
 
-**Status:** Approved — Build in progress
+**Status:** Review + QA — awaiting Baah device verification
 
 ## Global Constraints
 
@@ -342,7 +342,7 @@ git commit -m "fix: preserve contextual recording cancellation"
 - Documents: `ActiveRecordingContent`, `ActiveRecordingActionBar`, and their use inside `ChatScreenShell`.
 - Produces: Review + QA handoff with automated evidence and a device checklist.
 
-- [ ] **Step 1: Update design-system documentation**
+- [x] **Step 1: Update design-system documentation**
 
 Document that:
 
@@ -366,7 +366,7 @@ git diff --check
 
 Expected: all Jest suites pass, TypeScript exits 0, design-system verification passes, and `git diff --check` produces no output.
 
-- [ ] **Step 3: Review the final diff against the spec**
+- [x] **Step 3: Review the final diff against the spec**
 
 Confirm explicitly:
 
@@ -380,11 +380,11 @@ Confirm explicitly:
 - existing-chat and standalone Cancel take different destinations;
 - reverse morph, reduced motion, transcription, and persistence code are unchanged.
 
-- [ ] **Step 4: Update status for device QA**
+- [x] **Step 4: Update status for device QA**
 
 Set the spec and plan status to `Review + QA — awaiting Baah device verification`. Record the automated command results. Do not mark Shipped.
 
-- [ ] **Step 5: Commit documentation and evidence**
+- [x] **Step 5: Commit documentation and evidence**
 
 ```bash
 git add docs/design-system.md \
@@ -407,3 +407,18 @@ Verify on the paired iPhone:
 8. Deny or interrupt recorder acquisition; confirm Cancel and Keyboard remain usable while Pause/Send stay disabled.
 
 Expected: Baah confirms the two states read as one page and both Cancel destinations are correct before Ship approval.
+
+#### Automated verification evidence — 2026-08-19
+
+| Command | Result |
+|---|---|
+| `npm test -- --runInBand` | Blocked: 14 suites / 173 tests fail because this worktree lacks the local `better-sqlite3` native binding (`better_sqlite3.node`). This is recorded as an environment gap, not a passing suite. |
+| Focused recording/shell/cancellation tests | Pass — 5 suites / 49 tests: `RecordingPagePrimitives`, `ChatSurfaces`, `VoiceComposer`, `localCaptureRoutes`, and `conversationResume`. |
+| `npm run typecheck` | Pass — `tsc --noEmit` exited 0. |
+| `npm run verify:design-system` | Pass — 26 catalog modules. |
+| `git diff --check` and `git diff --check origin/main...HEAD` | Pass — no output. |
+
+The source review confirms the single `ChatScreenShell` path, constant `Taisa` title, shared footer dock,
+static mark, unchanged raw-amplitude timestamp/worklet contract, acquisition interactivity, contextual
+Cancel destinations, and unchanged reverse morph, reduced motion, transcription, and persistence behavior.
+Device verification remains the next Baah approval gate; do not mark this plan Shipped.

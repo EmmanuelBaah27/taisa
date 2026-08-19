@@ -1,6 +1,6 @@
 # Shared Chat and Recording Shell Design
 
-**Status:** Approved — implementation plan awaiting Baah approval
+**Status:** Review + QA — awaiting Baah device verification
 
 ## Purpose
 
@@ -98,6 +98,40 @@ The screen no longer returns a separate full-screen recording page before render
 - Tests preserve the static mark and raw-amplitude timestamp glow contract.
 - Mobile TypeScript, full mobile Jest suite, design-system verification, and `git diff --check` pass.
 - Device QA compares chat and recording header margins, title alignment, button geometry, footer margins, state transitions, and both Cancel destinations.
+
+## Review + QA handoff — 2026-08-19
+
+### Automated evidence
+
+| Command | Result |
+|---|---|
+| `npm test -- --runInBand` | Blocked by the local `better-sqlite3` native binding: 14 suites / 173 tests fail because `better_sqlite3.node` is absent. This is an environment gap, not a pass. |
+| Focused shell suite: `npm test -- --runInBand src/components/ui/__tests__/RecordingPagePrimitives.test.ts src/components/ui/__tests__/ChatSurfaces.test.ts src/components/ui/__tests__/VoiceComposer.test.ts src/navigation/__tests__/localCaptureRoutes.test.ts src/navigation/__tests__/conversationResume.test.ts` | Pass — 5 suites / 49 tests. |
+| `npm run typecheck` | Pass — `tsc --noEmit` exited 0. |
+| `npm run verify:design-system` | Pass — 26 catalog modules. |
+| `git diff --check` and `git diff --check origin/main...HEAD` | Pass — no output. |
+
+### Final source review
+
+- One `ChatScreenShell` return path remains; no early standalone recording-page return exists.
+- Every chat state supplies `Taisa` to `ChatNavBar`; content and footer switch through the same shell and `ChatComposerDock`.
+- `RecordingVoiceMark` remains static. `VoiceReactiveTimestamp` retains raw-amplitude glow values and the correction that keeps Skia uniforms off the Reanimated worklet runtime.
+- Recorder acquisition leaves Close, Cancel, and Keyboard enabled while disabling only Pause/Resume and Send.
+- The screen retains different existing-chat (`Reply`) and standalone (`close`) Cancel destinations.
+- Reverse morph, reduced-motion, transcription, recording cleanup, and persistence behavior are unchanged by this refactor.
+
+### Paired-device checklist — Baah
+
+- [ ] Open a historical chat and confirm title, header, and margins.
+- [ ] Start recording and confirm the header does not jump or remount.
+- [ ] Compare footer margins, 56px action buttons, and bottom spacing with Reply.
+- [ ] Pause and resume; confirm only the content/footer state changes.
+- [ ] Cancel from a historical chat; confirm it returns to Reply.
+- [ ] Start a main/new voice recording; confirm the title is `Taisa`.
+- [ ] Cancel a main/new recording; confirm the Taisa page closes.
+- [ ] Deny or interrupt recorder acquisition; confirm Cancel and Keyboard remain usable while Pause/Resume and Send stay disabled.
+
+Ship remains blocked until the native-binding test environment is repaired or its result is otherwise resolved, and Baah confirms the paired-device checklist.
 
 ## Out of scope
 
