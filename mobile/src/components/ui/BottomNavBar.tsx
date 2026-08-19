@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Platform, Pressable, Text, View, type ViewStyle } from 'react-native';
+import { Platform, View, type ViewStyle } from 'react-native';
 import { BlurView } from 'expo-blur';
 import {
   GlassView,
@@ -11,15 +11,18 @@ import { router, usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   Easing,
+  cancelAnimation,
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
-  withSequence,
+  withDelay,
+  withSpring,
   withTiming,
 } from 'react-native-reanimated';
 
 import {
   BOTTOM_NAVIGATION_ITEMS,
-  BOTTOM_NAVIGATION_ACTIVE_FILL,
+  BOTTOM_NAVIGATION_FIGMA,
   getBottomNavigationLayout,
   getBottomNavigationStateLayout,
   resolveGlassAvailability,
@@ -27,7 +30,9 @@ import {
 } from '../../navigation/bottomNavigation';
 import { useCareerStore } from '../../stores/careerStore';
 import { Icon } from './Icon';
+import { InactiveNavigationItem } from './InactiveNavigationItem';
 import { NaviiAvatar } from './NaviiAvatar';
+import { SelectedNavigationItem } from './SelectedNavigationItem';
 
 const supportsNativeGlass =
   Platform.OS === 'ios'
@@ -83,105 +88,119 @@ function NavigationMaterial({
 function NavigationButton({
   item,
   active,
-  itemIndex,
-  activeIndex,
   width,
   userId,
-  contentDirection,
+  onNavigationPressIn,
+  onNavigationPressOut,
 }: {
   item: BottomNavigationItem;
   active: boolean;
-  itemIndex: number;
-  activeIndex: number;
   width: number;
   userId: string | null;
-  contentDirection: 'row';
+  onNavigationPressIn: () => void;
+  onNavigationPressOut: () => void;
 }) {
-  const nudgeX = useSharedValue(0);
-  const scale = useSharedValue(1);
-  const previousActiveIndex = useRef(-1);
+  const scaleX = useSharedValue(1);
+  const scaleY = useSharedValue(1);
+  const wasActive = useRef(active);
+  const reduceMotion = useReducedMotion();
   const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: nudgeX.value }, { scale: scale.value }],
+    transform: [
+      { scaleX: scaleX.value },
+      { scaleY: scaleY.value },
+    ],
   }));
-
+  const motion = BOTTOM_NAVIGATION_FIGMA.pressMotion;
+  const easeOut = Easing.bezier(0.23, 1, 0.32, 1);
   useEffect(() => {
-    const previous = previousActiveIndex.current;
-    previousActiveIndex.current = activeIndex;
-    if (previous < 0 || previous === activeIndex) return;
+    const becameActive = active && !wasActive.current;
+    wasActive.current = active;
+    if (!becameActive) return;
 
-    if (active) {
-      scale.value = withSequence(
-        withTiming(1.04, { duration: 100, easing: Easing.out(Easing.ease) }),
-        withTiming(1, { duration: 180, easing: Easing.out(Easing.ease) }),
-      );
+    cancelAnimation(scaleX);
+    cancelAnimation(scaleY);
+    if (reduceMotion) {
+      scaleX.value = 1;
+      scaleY.value = 1;
       return;
     }
 
-    if (Math.abs(itemIndex - activeIndex) === 1) {
-      const outward = itemIndex < activeIndex ? -3 : 3;
-      nudgeX.value = withSequence(
-        withTiming(outward, { duration: 100, easing: Easing.out(Easing.ease) }),
-        withTiming(0, { duration: 180, easing: Easing.out(Easing.ease) }),
-      );
+    scaleX.value = motion.pressedScaleX;
+    scaleY.value = motion.pressedScaleY;
+    const spring = {
+      duration: motion.releaseDuration,
+      bounce: motion.releaseBounce,
+    };
+    scaleX.value = withSpring(1, spring);
+    scaleY.value = withSpring(1, spring);
+  }, [active, motion, reduceMotion, scaleX, scaleY]);
+  const handlePressIn = () => {
+    onNavigationPressIn();
+    cancelAnimation(scaleX);
+    cancelAnimation(scaleY);
+    if (reduceMotion) {
+      scaleX.value = 1;
+      scaleY.value = 1;
+      return;
     }
-  }, [active, activeIndex, itemIndex, nudgeX, scale]);
-
+    scaleX.value = withTiming(motion.pressedScaleX, {
+      duration: motion.pressInDuration,
+      easing: easeOut,
+    });
+    scaleY.value = withTiming(motion.pressedScaleY, {
+      duration: motion.pressInDuration,
+      easing: easeOut,
+    });
+  };
+  const handlePressOut = () => {
+    onNavigationPressOut();
+    cancelAnimation(scaleX);
+    cancelAnimation(scaleY);
+    if (reduceMotion) {
+      scaleX.value = 1;
+      scaleY.value = 1;
+      return;
+    }
+    const spring = {
+      duration: motion.releaseDuration,
+      bounce: motion.releaseBounce,
+    };
+    scaleX.value = withSpring(1, spring);
+    scaleY.value = withSpring(1, spring);
+  };
   return (
     <Animated.View
-      style={[
-        { width, height: 48 },
-        animatedStyle,
-      ]}
+      style={[{ width, height: 48 }, active ? animatedStyle : undefined]}
     >
-      <Pressable
-        accessibilityLabel={item.label}
-        accessibilityRole="tab"
-        accessibilityState={{ selected: active }}
-        hitSlop={4}
-        onPress={() => router.navigate(item.path as never)}
-        style={({ pressed }) => [
-          {
-            width: '100%',
-            height: 48,
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderRadius: 32,
-          },
-          active
-            ? {
-                paddingHorizontal: 16,
-                paddingVertical: 12,
-                backgroundColor: BOTTOM_NAVIGATION_ACTIVE_FILL,
-              }
-            : { padding: 12 },
-          pressed && { opacity: 0.72 },
-        ]}
-      >
-        <View
-          style={{
-            flexDirection: contentDirection,
-            alignItems: 'center',
-            gap: active ? 8 : 0,
-          }}
-        >
-          {item.id === 'you' && userId ? (
+      {active ? (
+        <SelectedNavigationItem
+          label={item.label}
+          width={width}
+          onPress={() => router.navigate(item.path as never)}
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}
+          leadingVisual={item.id === 'you' && userId ? (
             <View className="h-6 w-6 items-center justify-center overflow-hidden rounded-full">
               <NaviiAvatar seed={userId} size={32} />
             </View>
           ) : (
-            <Icon name={item.icon} size={24} color={active ? '#0F1010' : '#898989'} />
+            <Icon name={item.icon} size={24} color="#0F1010" />
           )}
-          {active ? (
-            <Text
-              numberOfLines={1}
-              className="font-inter-medium text-base text-[#0F1010]"
-              style={{ lineHeight: 24, letterSpacing: -0.36 }}
-            >
-              {item.label}
-            </Text>
-          ) : null}
-        </View>
-      </Pressable>
+        />
+      ) : (
+        <InactiveNavigationItem
+          accessibilityLabel={item.label}
+          icon={item.icon}
+          onPress={() => router.navigate(item.path as never)}
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}
+          leadingVisual={item.id === 'you' && userId ? (
+            <View className="h-6 w-6 items-center justify-center overflow-hidden rounded-full">
+              <NaviiAvatar seed={userId} size={32} />
+            </View>
+          ) : undefined}
+        />
+      )}
     </Animated.View>
   );
 }
@@ -197,6 +216,52 @@ export function BottomNavBar() {
   const activeIndex = BOTTOM_NAVIGATION_ITEMS.findIndex((item) => isActive(item.path));
   const activeId = BOTTOM_NAVIGATION_ITEMS[activeIndex]?.id ?? 'logs';
   const stateLayout = getBottomNavigationStateLayout(activeId);
+  const shellScaleX = useSharedValue(1);
+  const shellScaleY = useSharedValue(1);
+  const reduceMotion = useReducedMotion();
+  const shellMotion = BOTTOM_NAVIGATION_FIGMA.shellMotion;
+  const shellStyle = useAnimatedStyle(() => ({
+    transform: [{ scaleX: shellScaleX.value }, { scaleY: shellScaleY.value }],
+  }));
+  const handleNavigationPressIn = () => {
+    cancelAnimation(shellScaleX);
+    cancelAnimation(shellScaleY);
+    if (reduceMotion) {
+      shellScaleX.value = 1;
+      shellScaleY.value = 1;
+      return;
+    }
+    const easeOut = Easing.bezier(0.23, 1, 0.32, 1);
+    shellScaleX.value = withDelay(
+      shellMotion.pressDelay,
+      withTiming(shellMotion.pressedScaleX, {
+        duration: shellMotion.pressInDuration,
+        easing: easeOut,
+      }),
+    );
+    shellScaleY.value = withDelay(
+      shellMotion.pressDelay,
+      withTiming(shellMotion.pressedScaleY, {
+        duration: shellMotion.pressInDuration,
+        easing: easeOut,
+      }),
+    );
+  };
+  const handleNavigationPressOut = () => {
+    cancelAnimation(shellScaleX);
+    cancelAnimation(shellScaleY);
+    if (reduceMotion) {
+      shellScaleX.value = 1;
+      shellScaleY.value = 1;
+      return;
+    }
+    const spring = {
+      duration: shellMotion.releaseDuration,
+      bounce: shellMotion.releaseBounce,
+    };
+    shellScaleX.value = withSpring(1, spring);
+    shellScaleY.value = withSpring(1, spring);
+  };
 
   return (
     <View pointerEvents="box-none" className="absolute inset-0">
@@ -212,16 +277,19 @@ export function BottomNavBar() {
         className="absolute left-0 right-0 items-center"
         style={{ bottom: layout.navigationBottom }}
       >
-        <View
+        <Animated.View
           className="h-[60px] rounded-[32px]"
-          style={{
-            width: stateLayout.navigationWidth,
-            shadowColor: '#000000',
-            shadowOffset: { width: 0, height: 0 },
-            shadowOpacity: 0.04,
-            shadowRadius: 28,
-            elevation: 4,
-          }}
+          style={[
+            {
+              width: stateLayout.navigationWidth,
+              shadowColor: '#000000',
+              shadowOffset: { width: 0, height: 0 },
+              shadowOpacity: 0.04,
+              shadowRadius: 28,
+              elevation: 4,
+            },
+            shellStyle,
+          ]}
         >
           <NavigationMaterial width={stateLayout.navigationWidth}>
             <View
@@ -239,16 +307,15 @@ export function BottomNavBar() {
                   key={item.id}
                   item={item}
                   active={isActive(item.path)}
-                  itemIndex={index}
-                  activeIndex={activeIndex}
                   width={stateLayout.itemWidths[index]}
                   userId={userId}
-                  contentDirection={stateLayout.activeContentDirection}
+                  onNavigationPressIn={handleNavigationPressIn}
+                  onNavigationPressOut={handleNavigationPressOut}
                 />
               ))}
             </View>
           </NavigationMaterial>
-        </View>
+        </Animated.View>
       </View>
     </View>
   );

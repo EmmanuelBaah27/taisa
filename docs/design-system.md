@@ -115,7 +115,9 @@ Never use raw `text-sm font-semibold` combinations — use the composite utiliti
 | `Card` | `surface`, `className`, `style` | Two surfaces (default / elevated) |
 | `Input` | `size`, `error`, `...TextInputProps` | Two sizes; error state |
 | `Icon` | `name`, `size`, `color` | 1906 icons — `round-outlined-radius-2-stroke-1.5` style via `react-native-svg` |
-| `BottomNavBar` | _(none)_ | Figma-state app navigation: 240×60 for Home/Chats and 220×60 for Me; active destination uses a 6% black label pill; Me preserves the Navii avatar; native iOS glass with material-blur fallback |
+| `BottomNavBar` | _(none)_ | Figma-state app navigation: 240×60 for Home/Chats and 220×60 for Me; active destination uses a 6% black label pill and a reduced-motion-aware 1.05×0.90 jelly press; the glass shell follows at 1.025×0.96; Me preserves the Navii avatar; native iOS glass with material-blur fallback |
+| `SelectedNavigationItem` | `label`, `leadingVisual`, `width`, `onPress`, `onPressIn?`, `onPressOut?` | Selected tab primitive from Figma node 454:738: 48px high, 16px horizontal padding, 24px visual, 8px gap, Inter Medium 16/24, and 6% black fill |
+| `InactiveNavigationItem` | `accessibilityLabel`, `icon`, `leadingVisual?`, `onPress`, `onPressIn?`, `onPressOut?` | Inactive tab primitive from Figma node 453:723: 56×48px, 16px horizontal padding, 24px Neutral/400 icon, no fill; optional leading visual preserves the Navii profile avatar |
 | `VoiceButton` | `onPress?` | State-owning wrapper for the central CTA; fresh entry opens voice mode with one automatic recorder start |
 | `VoiceEntryButton` | `bottomInset`, `hidden`, `onPress` | Presentational 104×56 lime CTA positioned 12px above `BottomNavBar`, with the Figma glow and accessible voice label |
 | `WorkspaceHeader` | `subtitle: string` | Screen-level header; workspace name from `careerStore.profile.currentCompany`; contextual subtitle |

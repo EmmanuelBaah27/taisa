@@ -1,6 +1,7 @@
 import {
   BOTTOM_NAVIGATION_ITEMS,
   BOTTOM_NAVIGATION_ACTIVE_FILL,
+  BOTTOM_NAVIGATION_FIGMA,
   getBottomNavigationLayout,
   getBottomNavigationStateLayout,
   resolveGlassAvailability,
@@ -64,4 +65,51 @@ describe('bottom navigation', () => {
   test('uses the approved six-percent black active fill', () => {
     expect(BOTTOM_NAVIGATION_ACTIVE_FILL).toBe('rgba(15,16,16,0.06)');
   });
+
+  test('matches the Figma selected-item geometry', () => {
+    expect(BOTTOM_NAVIGATION_FIGMA.selectedItem).toEqual({
+      height: 48,
+      iconSize: 24,
+      gap: 8,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderRadius: 32,
+      fontSize: 16,
+      lineHeight: 24,
+      letterSpacing: -0.36,
+    });
+  });
+
+  test('matches the Figma inactive-item geometry and color', () => {
+    expect(BOTTOM_NAVIGATION_FIGMA.inactiveItem).toEqual({
+      width: 56,
+      height: 48,
+      iconSize: 24,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      iconColor: '#9C9C9C',
+    });
+  });
+
+  test('uses a perceptible jelly deformation for tab presses', () => {
+    expect(BOTTOM_NAVIGATION_FIGMA.pressMotion).toEqual({
+      pressedScaleX: 1.05,
+      pressedScaleY: 0.9,
+      pressInDuration: 100,
+      releaseDuration: 300,
+      releaseBounce: 0.25,
+    });
+  });
+
+  test('propagates a gentler jelly deformation through the glass shell', () => {
+    expect(BOTTOM_NAVIGATION_FIGMA.shellMotion).toEqual({
+      pressedScaleX: 1.025,
+      pressedScaleY: 0.96,
+      pressDelay: 20,
+      pressInDuration: 110,
+      releaseDuration: 340,
+      releaseBounce: 0.2,
+    });
+  });
+
 });

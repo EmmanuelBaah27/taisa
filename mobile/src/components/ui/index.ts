@@ -14,6 +14,10 @@ export { Icon } from './Icon';
 export type { IconProps, IconName } from './Icon';
 
 export { BottomNavBar } from './BottomNavBar';
+export { SelectedNavigationItem } from './SelectedNavigationItem';
+export type { SelectedNavigationItemProps } from './SelectedNavigationItem';
+export { InactiveNavigationItem } from './InactiveNavigationItem';
+export type { InactiveNavigationItemProps } from './InactiveNavigationItem';
 
 export { ChatNavBar } from './ChatNavBar';
 export type { ChatNavBarProps } from './ChatNavBar';

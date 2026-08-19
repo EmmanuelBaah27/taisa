@@ -22,6 +22,40 @@ export const BOTTOM_NAVIGATION_FIGMA = {
   recordGap: 12,
   fadeBottom: 20,
   fadeHeight: 90,
+  selectedItem: {
+    height: 48,
+    iconSize: 24,
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 32,
+    fontSize: 16,
+    lineHeight: 24,
+    letterSpacing: -0.36,
+  },
+  inactiveItem: {
+    width: 56,
+    height: 48,
+    iconSize: 24,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    iconColor: '#9C9C9C',
+  },
+  pressMotion: {
+    pressedScaleX: 1.05,
+    pressedScaleY: 0.9,
+    pressInDuration: 100,
+    releaseDuration: 300,
+    releaseBounce: 0.25,
+  },
+  shellMotion: {
+    pressedScaleX: 1.025,
+    pressedScaleY: 0.96,
+    pressDelay: 20,
+    pressInDuration: 110,
+    releaseDuration: 340,
+    releaseBounce: 0.2,
+  },
 } as const;
 
 export function getBottomNavigationStateLayout(activeId: BottomNavigationItem['id']) {
