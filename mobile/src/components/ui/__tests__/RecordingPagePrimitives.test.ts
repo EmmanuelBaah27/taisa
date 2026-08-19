@@ -5,8 +5,9 @@ import path from 'node:path';
 import { Button } from '../Button';
 import {
   RECORDING_VOICE_MARK_PATHS,
+  RecordingVoiceMark,
 } from '../RecordingVoiceMark';
-import { ActiveRecordingSurface } from '../ActiveRecordingSurface';
+import { ActiveRecordingActionBar, ActiveRecordingContent } from '../ActiveRecordingSurface';
 import { SecondaryIconButton } from '../SecondaryIconButton';
 import { VoiceReactiveTimestamp, VOICE_REACTIVE_TIMESTAMP } from '../VoiceReactiveTimestamp';
 
@@ -21,6 +22,7 @@ type PrimitiveElement = React.ReactElement<{
   children?: React.ReactNode;
   label?: string;
   size?: string;
+  disabled?: boolean;
 }>;
 
 function findElementsByType(node: React.ReactNode, type: unknown): PrimitiveElement[] {
@@ -31,6 +33,23 @@ function findElementsByType(node: React.ReactNode, type: unknown): PrimitiveElem
     matches.push(...findElementsByType(child.props.children, type));
   }
   return matches;
+}
+
+function textContent(node: React.ReactNode): string {
+  if (typeof node === 'string' || typeof node === 'number') return String(node);
+  if (Array.isArray(node)) return node.map(textContent).join('');
+  if (!React.isValidElement<{ children?: React.ReactNode }>(node)) return '';
+  return textContent(node.props.children);
+}
+
+function actionByLabel(node: React.ReactNode, label: string): PrimitiveElement {
+  const actions = [
+    ...findElementsByType(node, SecondaryIconButton),
+    ...findElementsByType(node, Button),
+  ];
+  const action = actions.find((item) => item.props.label === label);
+  if (!action) throw new Error(`Could not find action with label: ${label}`);
+  return action;
 }
 
 describe('recording page primitives', () => {
@@ -53,29 +72,43 @@ describe('recording page primitives', () => {
     });
   });
 
-  test('active surface composes the Figma cancel bar and one primary send action', () => {
-    const surface = ActiveRecordingSurface({
-      topInset: 47,
-      bottomInset: 34,
-      title: 'New chat',
+  test('active recording content owns the static mark and greeting without page-shell inputs', () => {
+    const content = ActiveRecordingContent({
       greeting: 'How’s it going?',
+    }) as React.ReactElement<{ children?: React.ReactNode }>;
+
+    const source = fs.readFileSync(
+      path.resolve(__dirname, '../ActiveRecordingSurface.tsx'),
+      'utf8',
+    );
+
+    expect(findElementsByType(content.props.children, RecordingVoiceMark)).toHaveLength(1);
+    expect(textContent(content)).toContain('How’s it going?');
+    expect(source).not.toContain('topInset');
+    expect(source).not.toContain('title');
+    expect(source).not.toContain('onClose');
+  });
+
+  test('active recording action bar keeps cancellation and keyboard available while recording actions are disabled', () => {
+    const bar = ActiveRecordingActionBar({
       durationSeconds: 4,
       amplitudeLevel: 0.4,
       paused: false,
-      onClose: jest.fn(),
+      disabled: false,
+      recordingActionDisabled: true,
+      cancelLabel: 'Cancel recording and close',
       onCancel: jest.fn(),
       onKeyboard: jest.fn(),
       onPauseResume: jest.fn(),
       onSend: jest.fn(),
     }) as React.ReactElement<{ children?: React.ReactNode }>;
 
-    const secondary = findElementsByType(surface.props.children, SecondaryIconButton);
-    const primary = findElementsByType(surface.props.children, Button);
-    const timestamp = findElementsByType(surface.props.children, VoiceReactiveTimestamp);
+    const secondary = findElementsByType(bar.props.children, SecondaryIconButton);
+    const primary = findElementsByType(bar.props.children, Button);
+    const timestamp = findElementsByType(bar.props.children, VoiceReactiveTimestamp);
 
     expect(secondary.map((item) => item.props.label)).toEqual([
-      'Close recording',
-      'Cancel voice recording',
+      'Cancel recording and close',
       'Switch to keyboard',
       'Pause recording',
     ]);
@@ -83,6 +116,10 @@ describe('recording page primitives', () => {
     expect(primary[0].props).toMatchObject({ label: 'Send recording', size: 'icon-lg' });
     expect(timestamp).toHaveLength(1);
     expect(timestamp[0].props).toMatchObject({ durationSeconds: 4, amplitudeLevel: 0.4, paused: false });
+    expect(actionByLabel(bar, 'Cancel recording and close').props.disabled).toBe(false);
+    expect(actionByLabel(bar, 'Switch to keyboard').props.disabled).toBe(false);
+    expect(actionByLabel(bar, 'Pause recording').props.disabled).toBe(true);
+    expect(actionByLabel(bar, 'Send recording').props.disabled).toBe(true);
   });
 
   test('reactive timestamp keeps its layout geometry while raw amplitude drives a wider canvas', () => {

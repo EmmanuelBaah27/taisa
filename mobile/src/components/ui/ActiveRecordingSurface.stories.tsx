@@ -1,21 +1,18 @@
 import type { Meta, StoryObj } from '@storybook/react-native';
 import { View } from 'react-native';
 
-import { ActiveRecordingSurface } from './ActiveRecordingSurface';
+import { ActiveRecordingActionBar, ActiveRecordingContent } from './ActiveRecordingSurface';
 
-const meta: Meta<typeof ActiveRecordingSurface> = {
+const meta: Meta<typeof ActiveRecordingActionBar> = {
   title: 'Patterns/ActiveRecordingSurface',
-  component: ActiveRecordingSurface,
+  component: ActiveRecordingActionBar,
   args: {
-    topInset: 47,
-    bottomInset: 34,
-    title: 'New chat',
-    greeting: 'How’s it going?',
     durationSeconds: 0,
     amplitudeLevel: 0.35,
     paused: false,
     disabled: false,
-    onClose: () => undefined,
+    recordingActionDisabled: false,
+    cancelLabel: 'Cancel recording and close',
     onCancel: () => undefined,
     onKeyboard: () => undefined,
     onPauseResume: () => undefined,
@@ -24,8 +21,8 @@ const meta: Meta<typeof ActiveRecordingSurface> = {
   argTypes: {
     paused: { control: 'boolean' },
     disabled: { control: 'boolean' },
+    recordingActionDisabled: { control: 'boolean' },
     durationSeconds: { control: 'number' },
-    onClose: { action: 'closed' },
     onCancel: { action: 'cancelled' },
     onKeyboard: { action: 'keyboard' },
     onPauseResume: { action: 'pause/resume' },
@@ -36,6 +33,12 @@ const meta: Meta<typeof ActiveRecordingSurface> = {
       <Story />
     </View>
   )],
+  render: (args) => (
+    <View className="flex-1 px-4 pb-[34px]">
+      <ActiveRecordingContent greeting="How’s it going?" />
+      <ActiveRecordingActionBar {...args} />
+    </View>
+  ),
 };
 
 export default meta;
@@ -45,4 +48,8 @@ export const Recording: Story = {};
 
 export const Paused: Story = {
   args: { paused: true, durationSeconds: 24 },
+};
+
+export const Acquiring: Story = {
+  args: { recordingActionDisabled: true },
 };

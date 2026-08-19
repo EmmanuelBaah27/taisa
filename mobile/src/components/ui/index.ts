@@ -10,8 +10,14 @@ export type { SecondaryIconButtonProps } from './SecondaryIconButton';
 export { RecordingVoiceMark } from './RecordingVoiceMark';
 export { VoiceReactiveTimestamp, VOICE_REACTIVE_TIMESTAMP } from './VoiceReactiveTimestamp';
 export type { VoiceReactiveTimestampProps } from './VoiceReactiveTimestamp';
-export type { ActiveRecordingSurfaceProps } from './ActiveRecordingSurface';
-export { ActiveRecordingSurface } from './ActiveRecordingSurface';
+export {
+  ActiveRecordingActionBar,
+  ActiveRecordingContent,
+} from './ActiveRecordingSurface';
+export type {
+  ActiveRecordingActionBarProps,
+  ActiveRecordingContentProps,
+} from './ActiveRecordingSurface';
 
 export { Badge } from './Badge';
 export type { BadgeProps, BadgeColor, BadgeAppearance, BadgeSize } from './Badge';
