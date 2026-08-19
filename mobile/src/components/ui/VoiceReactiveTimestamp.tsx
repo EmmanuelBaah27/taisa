@@ -24,21 +24,16 @@ half4 main(float2 fragCoord) {
   float3 base1 = float3(0.992, 0.902, 0.541);
   float3 base2 = float3(0.796, 0.682, 1.000);
   float3 base3 = float3(0.678, 0.922, 0.710);
-  float3 hot1 = float3(0.980, 0.749, 0.141);
-  float3 hot2 = float3(0.659, 0.482, 0.961);
-  float3 hot3 = float3(0.314, 0.816, 0.380);
-
-  float spread = mix(0.025, 0.065, energy);
-  float g1 = exp(-dot(uv - float2(0.35, 0.53), uv - float2(0.35, 0.53)) / spread);
+  float spread = mix(0.018, 0.048, energy);
+  float g1 = exp(-dot(uv - float2(0.28, 0.53), uv - float2(0.28, 0.53)) / spread);
   float g2 = exp(-dot(uv - float2(0.50, 0.50), uv - float2(0.50, 0.50)) / (spread * 1.15));
-  float g3 = exp(-dot(uv - float2(0.65, 0.52), uv - float2(0.65, 0.52)) / spread);
+  float g3 = exp(-dot(uv - float2(0.72, 0.52), uv - float2(0.72, 0.52)) / spread);
 
-  float3 color = mix(base1, hot1, energy) * g1
-    + mix(base2, hot2, energy) * g2
-    + mix(base3, hot3, energy) * g3;
+  float purple = g2 * 1.45;
+  float3 color = base1 * g1 + base2 * purple + base3 * g3;
   float edgeX = smoothstep(0.0, 0.24, uv.x) * (1.0 - smoothstep(0.76, 1.0, uv.x));
   float edgeY = smoothstep(0.0, 0.26, uv.y) * (1.0 - smoothstep(0.74, 1.0, uv.y));
-  float glow = g1 + g2 + g3;
+  float glow = g1 + purple + g3;
   float alpha = clamp(glow * (0.28 * energy), 0.0, 0.46) * edgeX * edgeY;
   float3 finalColor = clamp(color / max(glow, 0.0001), 0.0, 1.0);
   return half4(half3(finalColor * alpha), half(alpha));
