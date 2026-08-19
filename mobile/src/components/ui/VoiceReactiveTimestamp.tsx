@@ -8,8 +8,8 @@ import {
 export const VOICE_REACTIVE_TIMESTAMP = {
   width: 60,
   height: 56,
-  canvasWidth: 180,
-  canvasHeight: 112,
+  canvasWidth: 220,
+  canvasHeight: 140,
   rawAmplitude: true,
 } as const;
 
@@ -28,7 +28,7 @@ half4 main(float2 fragCoord) {
   float3 hot2 = float3(0.659, 0.482, 0.961);
   float3 hot3 = float3(0.314, 0.816, 0.380);
 
-  float spread = mix(0.045, 0.095, energy);
+  float spread = mix(0.035, 0.115, energy);
   float g1 = exp(-dot(uv - float2(0.35, 0.53), uv - float2(0.35, 0.53)) / spread);
   float g2 = exp(-dot(uv - float2(0.50, 0.50), uv - float2(0.50, 0.50)) / (spread * 1.15));
   float g3 = exp(-dot(uv - float2(0.65, 0.52), uv - float2(0.65, 0.52)) / spread);
@@ -38,8 +38,9 @@ half4 main(float2 fragCoord) {
     + mix(base3, hot3, energy) * g3;
   float edgeX = smoothstep(0.0, 0.18, uv.x) * (1.0 - smoothstep(0.82, 1.0, uv.x));
   float edgeY = smoothstep(0.0, 0.20, uv.y) * (1.0 - smoothstep(0.80, 1.0, uv.y));
-  float alpha = clamp((g1 + g2 + g3) * mix(0.10, 0.32, energy), 0.0, 0.58) * edgeX * edgeY;
-  return half4(half3(clamp(color / max(g1 + g2 + g3, 1.0), 0.0, 1.0)), half(alpha));
+  float alpha = clamp((g1 + g2 + g3) * (0.36 * energy), 0.0, 0.62) * edgeX * edgeY;
+  float3 finalColor = clamp(color / max(g1 + g2 + g3, 1.0), 0.0, 1.0);
+  return half4(half3(finalColor * alpha), half(alpha));
 }
 `);
 
