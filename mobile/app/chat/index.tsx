@@ -1,13 +1,11 @@
 import { useEffect, useReducer, useRef, useState } from 'react';
 import {
   Alert,
-  useWindowDimensions,
 } from 'react-native';
-import type { ScrollView } from 'react-native-gesture-handler';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAnimatedStyle, useSharedValue, withSpring, withTiming, runOnJS } from 'react-native-reanimated';
-import { Gesture } from 'react-native-gesture-handler';
+import Animated, { useAnimatedStyle } from 'react-native-reanimated';
+import type { ScrollView } from 'react-native-gesture-handler';
 import { useVoiceRecorder } from '../../src/hooks/useVoiceRecorder';
 import type { RecordingResult } from '../../src/services/audio';
 import {
@@ -30,14 +28,15 @@ import {
   resolveInitialChatConversationId,
   selectConversationMessages,
   returnFromRoutedChat,
+  voiceCancelDestination,
   type ChatPresentation,
 } from '../../src/navigation/chatConversationRoute';
 import {
-  RecordingGlow,
   VoiceComposer,
   ChatComposerDock,
   ChatConversationSurface,
   ChatScreenShell,
+  ActiveRecordingSurface,
 } from '../../src/components/ui';
 import {
   createVoiceComposerState,
@@ -55,9 +54,7 @@ import {
 import { buildFeedbackPreview } from '../../src/services/feedbackBundle';
 import api from '../../src/services/api';
 import { createFeedbackClient } from '../../src/services/feedbackClient';
-
-const DISMISS_VELOCITY = 800;
-const SPRING_BACK = { damping: 26, stiffness: 200 };
+import { parseChatCardSource } from '../../src/navigation/chatCardExpansion';
 
 interface ChatScreenProps {
   presentation?: ChatPresentation;
@@ -80,10 +77,19 @@ function promptEditable(title: string, value: string): Promise<string | null> {
 
 export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) {
   const insets = useSafeAreaInsets();
-  const { height: screenH } = useWindowDimensions();
-  const { conversationId: routeConversationId } = useLocalSearchParams<{
+  const routeParams = useLocalSearchParams<{
     conversationId?: string | string[];
+    title?: string | string[];
+    cardX?: string | string[];
+    cardY?: string | string[];
+    cardWidth?: string | string[];
+    cardHeight?: string | string[];
+    listScrollY?: string | string[];
+    sourceViewportWidth?: string | string[];
+    sourceViewportHeight?: string | string[];
   }>();
+  const routeConversationId = routeParams.conversationId;
+  const routeTitle = Array.isArray(routeParams.title) ? routeParams.title[0] : routeParams.title;
   const {
     activeSessionId,
     activeRequestId,
@@ -121,11 +127,35 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
     fetchThreads,
   } = useThreadStore();
   const { setChatMorphing, consumeVoiceAutoStart } = useUIStore();
-  const { translateY, open, close } = useMorphTransition();
+  const sourceSnapshot = parseChatCardSource(routeParams);
+  const {
+    translateX,
+    translateY,
+    scaleX,
+    scaleY,
+    borderRadius,
+    shellOpacity,
+    contentOpacity,
+    contentTranslateY,
+    open,
+    revealContent,
+    close,
+  } = useMorphTransition(sourceSnapshot);
 
   const slideStyle = useAnimatedStyle(() => ({
     flex: 1,
-    transform: [{ translateY: translateY.value }],
+    borderRadius: borderRadius.value,
+    opacity: shellOpacity.value,
+    transform: [
+      { translateX: translateX.value },
+      { translateY: translateY.value },
+      { scaleX: scaleX.value },
+      { scaleY: scaleY.value },
+    ],
+  }));
+  const contentStyle = useAnimatedStyle(() => ({
+    opacity: contentOpacity.value,
+    transform: [{ translateY: contentTranslateY.value }],
   }));
 
   const initialConversationId = resolveInitialChatConversationId(
@@ -151,13 +181,14 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
   const [reactions, setReactions] = useState<Record<string, ResponseReaction>>({});
   const pendingRecordingRef = useRef<RecordingResult | null>(null);
   const scrollRef = useRef<ScrollView>(null);
-  const restartTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const closingRef = useRef(false);
   const mountedRef = useRef(true);
   const recordingStartGuardRef = useRef(createRecordingStartGuard());
   const recordingStopSessionRef = useRef<RecordingStopSession | null>(null);
   const recordingCleanupBarrierRef = useRef(createRecordingCleanupBarrier());
   const recordingSubmissionLeaseRef = useRef<RecordingSubmissionLease | null>(null);
+  const initialBottomSettledRef = useRef(false);
+  const previousMessageCountRef = useRef(0);
 
   const isHydratingInitialConversation = !initialHydrationComplete;
   const transcript = isHydratingInitialConversation ? '' : storedTranscript;
@@ -193,10 +224,19 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
   }
 
   useEffect(() => {
-    if (messages.length > 0) {
+    if (initialBottomSettledRef.current && messages.length > previousMessageCountRef.current) {
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
     }
+    previousMessageCountRef.current = messages.length;
   }, [messages.length]);
+
+  function handleConversationContentSizeChange() {
+    if (!initialHydrationComplete || initialBottomSettledRef.current) return;
+    scrollRef.current?.scrollToEnd({ animated: false });
+    initialBottomSettledRef.current = true;
+    previousMessageCountRef.current = messages.length;
+    requestAnimationFrame(revealContent);
+  }
 
   useEffect(() => {
     if (transcriptionOutcome !== 'uncertain' || !transcript.trim()) return;
@@ -244,57 +284,22 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
     }
     return () => {
       mountedRef.current = false;
-      clearTimeout(restartTimerRef.current);
       void stopActiveRecordingAndDiscard().catch(() => {});
       discardPendingRecording();
-      if (presentation === 'overlay') setChatMorphing(false);
+      setChatMorphing(false);
     };
   }, []);
 
-  // ─── Drag-to-dismiss ────────────────────────────────────────────────────────
-
-  const scrollAtTop = useSharedValue(true);
-  const isHandlingDrag = useSharedValue(false);
-
-  function commitClose(delay: number) {
-    if (closingRef.current) return;
-    closingRef.current = true;
-    clearTimeout(restartTimerRef.current);
-    void stopActiveRecordingAndDiscard().catch(() => {});
-    discardPendingRecording();
-    restartTimerRef.current = setTimeout(() => {
-      closeChatPresentation(presentation, {
-        closeRoute: () => returnFromRoutedChat({
-          canGoBack: () => router.canGoBack(),
-          back: () => router.back(),
-          replace: (path) => router.replace(path),
-        }),
-        closeOverlay: () => setChatMorphing(false),
-      });
-    }, delay);
-  }
-
-  const gestureCommitClose = () => commitClose(300);
-
-  const dragGesture = Gesture.Pan()
-    .activeOffsetY([5, Infinity])
-    .onBegin(() => {
-      isHandlingDrag.value = scrollAtTop.value;
-    })
-    .onUpdate((e) => {
-      if (!isHandlingDrag.value || e.translationY <= 0) return;
-      translateY.value = e.translationY;
-    })
-    .onEnd((e) => {
-      if (!isHandlingDrag.value) return;
-      const dismiss = e.translationY > screenH * 0.3 || e.velocityY > DISMISS_VELOCITY;
-      if (dismiss) {
-        translateY.value = withTiming(screenH, { duration: 280 });
-        runOnJS(gestureCommitClose)();
-      } else {
-        translateY.value = withSpring(0, SPRING_BACK);
-      }
+  function commitClose() {
+    closeChatPresentation(presentation, {
+      closeRoute: () => returnFromRoutedChat({
+        canGoBack: () => router.canGoBack(),
+        back: () => router.back(),
+        replace: (path) => router.replace(path),
+      }),
+      closeOverlay: () => setChatMorphing(false),
     });
+  }
 
   // ─── Data & voice ───────────────────────────────────────────────────────────
 
@@ -318,17 +323,29 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
   }
 
   async function startListening() {
-    await recordingCleanupBarrierRef.current.wait();
     if (closingRef.current || !mountedRef.current || recordingStopSessionRef.current !== null) {
       return;
     }
-    const startAttempt = recordingStartGuardRef.current.begin();
-    if (startAttempt === null) return;
     setRecordingStartFailed(false);
     setPhase('listening');
+    dispatchComposer({ type: 'start-voice' });
+
+    await recordingCleanupBarrierRef.current.wait();
+    if (closingRef.current || !mountedRef.current || recordingStopSessionRef.current !== null) {
+      if (mountedRef.current && !closingRef.current) {
+        dispatchComposer({ type: 'recording-start-failed' });
+        setPhase('idle');
+      }
+      return;
+    }
+    const startAttempt = recordingStartGuardRef.current.begin();
+    if (startAttempt === null) {
+      dispatchComposer({ type: 'recording-start-failed' });
+      setPhase('idle');
+      return;
+    }
     try {
       await recorder.start();
-      dispatchComposer({ type: 'start-voice' });
       const session = createRecordingStopSession({
         stop: recorder.stop,
         discard: discardRecording,
@@ -345,8 +362,7 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
     } catch {
       const isCurrentAttempt = recordingStartGuardRef.current.complete(startAttempt);
       if (isCurrentAttempt && mountedRef.current && !closingRef.current) {
-        setRecordingStartFailed(true);
-        setPhase('error');
+        await handleCancelVoice();
       }
     }
   }
@@ -527,7 +543,7 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
 
   async function refreshConversation() {
     if (sessionIdRef.current) await fetchThread(sessionIdRef.current);
-    await fetchThreads();
+    if (sourceSnapshot === null) await fetchThreads();
   }
 
   async function handleReaction(responseId: string, reaction: ResponseReaction) {
@@ -764,15 +780,70 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
 
   function handleClose() {
     if (closingRef.current) return;
-    close();
-    commitClose(340);
+    closingRef.current = true;
+    void stopActiveRecordingAndDiscard().catch(() => {});
+    discardPendingRecording();
+    if (sourceSnapshot === null) {
+      commitClose();
+      return;
+    }
+    close(commitClose);
+  }
+
+  async function handleCancelVoice() {
+    if (voiceCancelDestination(initialConversationIdRef.current) === 'close') {
+      handleClose();
+      return;
+    }
+
+    await stopActiveRecordingAndDiscard();
+    discardPendingRecording();
+    if (!mountedRef.current) return;
+    setPendingRecording(null);
+    setRecordingStartFailed(false);
+    setPhase('idle');
+    dispatchComposer({ type: 'restore-mode', mode: 'voice' });
+  }
+
+  const showActiveRecordingSurface = messages.length === 0
+    && initialConversationIdRef.current === null
+    && composer.mode === 'voice'
+    && (composer.voice === 'recording' || composer.voice === 'paused')
+    && !composer.submissionFailed
+    && !composer.submitting
+    && !isBusy;
+
+  if (showActiveRecordingSurface) {
+    return (
+      <Animated.View className="flex-1 bg-background" style={slideStyle}>
+          <ActiveRecordingSurface
+            topInset={insets.top}
+            bottomInset={insets.bottom}
+            title="New chat"
+            greeting="How’s it going?"
+            durationSeconds={recorder.duration}
+            amplitudeLevel={recorder.amplitudeLevel}
+            paused={composer.voice === 'paused'}
+            disabled={composer.submitting || isBusy}
+            onClose={handleClose}
+            onCancel={() => { void handleCancelVoice(); }}
+            onKeyboard={() => { void handleSwitchToText(); }}
+            onPauseResume={() => {
+              if (composer.voice === 'paused') void handleResumeVoice();
+              else void handlePauseVoice();
+            }}
+            onSend={() => { void handleComposerSend(); }}
+          />
+      </Animated.View>
+    );
   }
 
   return (
     <ChatScreenShell
       topInset={insets.top}
-      gesture={dragGesture}
+      title={currentSession?.title ?? routeTitle ?? 'Taisa'}
       animatedStyle={slideStyle}
+      contentAnimatedStyle={contentStyle}
       onClose={handleClose}
       footer={(
         <ChatComposerDock phase={phase} bottomInset={insets.bottom}>
@@ -784,6 +855,7 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
             text={transcriptionOutcome === 'streaming' ? provisionalTranscript : draft}
             hasVoiceDraft={composer.voice !== 'none'}
             submissionFailed={composer.submissionFailed}
+            recordingStartFailed={recordingStartFailed}
             textFocusRequest={composer.textFocusRequest}
             disabled={isBusy}
             transcribing={transcriptionOutcome === 'streaming'}
@@ -796,6 +868,7 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
             onStartVoice={handleStartVoiceFromComposer}
             onPause={() => { void handlePauseVoice(); }}
             onResume={() => { void handleResumeVoice(); }}
+            onCancelVoice={() => { void handleCancelVoice(); }}
             onDeleteText={() => {
               setDraft('');
               dispatchComposer({ type: 'delete-text' });
@@ -818,8 +891,8 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
         microphoneUnavailable={recordingStartFailed}
         pendingProposals={pendingProposals}
         editingTranscript={editingTranscript}
+        onContentSizeChange={handleConversationContentSizeChange}
         reactions={reactions}
-        onScrollAtTopChange={(atTop) => { scrollAtTop.value = atTop; }}
         onEditTranscript={setEditingTranscript}
         onChangeTranscript={setEditingTranscript}
         onSubmitTranscript={() => { void handleSaveTranscriptRevision(); }}
@@ -830,10 +903,6 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
         onResolveProposal={(proposalId, choice) => { void resolveClarification(proposalId, choice); }}
         onReact={(responseId, reaction) => { void handleReaction(responseId, reaction); }}
         onShareExample={(responseId) => { void handleShareExample(responseId); }}
-      />
-      <RecordingGlow
-        amplitude={recorder.amplitude}
-        visible={composer.mode === 'voice' && composer.voice === 'recording'}
       />
     </ChatScreenShell>
   );

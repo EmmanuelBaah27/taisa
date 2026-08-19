@@ -10,7 +10,7 @@ export type ButtonVariant =
   | 'secondary-destructive'
   | 'tertiary-destructive';
 
-export type ButtonSize = 'default' | 'sm' | 'icon';
+export type ButtonSize = 'default' | 'sm' | 'icon' | 'icon-lg';
 
 export interface ButtonProps {
   /** Visual hierarchy level */
@@ -61,18 +61,21 @@ const SIZE_CONTAINER: Record<ButtonSize, string> = {
   default: 'h-[40px] px-5',
   sm:      'h-[32px] px-3',
   icon:    'h-[40px] w-[40px] p-[10px]',
+  'icon-lg': 'h-[56px] w-[56px] p-4',
 };
 
 const SIZE_ICON_GAP: Record<ButtonSize, string> = {
   default: 'gap-2',
   sm:      'gap-1',
   icon:    '',
+  'icon-lg': '',
 };
 
 const SIZE_TEXT: Record<ButtonSize, string> = {
   default: 'text-base font-semibold',
   sm:      'text-sm font-semibold',
   icon:    '',
+  'icon-lg': '',
 };
 
 // Spinner color is the same as the text color for each variant
@@ -96,9 +99,9 @@ export function Button({
   onPress,
 }: ButtonProps) {
   const isDisabled = disabled || loading;
-  const isIconOnly = size === 'icon';
+  const isIconOnly = size === 'icon' || size === 'icon-lg';
   const hasIcon = !!icon && !isIconOnly && !loading;
-  const iconSize = size === 'sm' ? 16 : 20;
+  const iconSize = size === 'sm' ? 16 : size === 'icon-lg' ? 24 : 20;
 
   const containerClass = [
     CONTAINER_BASE,

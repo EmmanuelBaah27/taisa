@@ -20,6 +20,7 @@ import {
   createDeviceEnrollmentClient,
   getDeviceCredential,
 } from '../../src/services/deviceEnrollment';
+import { usePageHeaderPaddingTop } from '../../src/navigation/pageSafeArea';
 
 interface YouData {
   currentFocus: string;
@@ -30,6 +31,7 @@ interface YouData {
 type RecoveryMode = 'export' | 'restore' | null;
 
 export default function YouScreen() {
+  const pageHeaderPaddingTop = usePageHeaderPaddingTop();
   const { profile, userId, fetchProfile, updateProfile } = useCareerStore();
   const { reportScroll } = useScrollContext();
   const [editingGoals, setEditingGoals] = useState(false);
@@ -169,7 +171,7 @@ export default function YouScreen() {
 
   return (
     <View className="flex-1 bg-background">
-      <Text className="text-foreground text-H1 px-5 pt-3 pb-3">You</Text>
+      <Text className="text-foreground text-H1 px-5 pb-3" style={{ paddingTop: pageHeaderPaddingTop }}>You</Text>
     <ScrollView
       className="flex-1 bg-background"
       onScroll={(e) => reportScroll(e.nativeEvent.contentOffset.y)}

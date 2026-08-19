@@ -1,4 +1,4 @@
-import type { ComponentProps, ReactNode, RefObject } from 'react';
+import type { ReactNode, RefObject } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -9,7 +9,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { GestureDetector, ScrollView } from 'react-native-gesture-handler';
+import { ScrollView } from 'react-native-gesture-handler';
 import Animated from 'react-native-reanimated';
 
 import { colors } from '../../constants/theme';
@@ -23,8 +23,9 @@ import { TranscriptCorrectionCard } from './TranscriptCorrectionCard';
 
 export interface ChatScreenShellProps {
   topInset: number;
-  gesture: ComponentProps<typeof GestureDetector>['gesture'];
+  title: string;
   animatedStyle: StyleProp<ViewStyle>;
+  contentAnimatedStyle: StyleProp<ViewStyle>;
   onClose: () => void;
   children: ReactNode;
   footer: ReactNode;
@@ -32,8 +33,9 @@ export interface ChatScreenShellProps {
 
 export function ChatScreenShell({
   topInset,
-  gesture,
+  title,
   animatedStyle,
+  contentAnimatedStyle,
   onClose,
   children,
   footer,
@@ -43,16 +45,13 @@ export function ChatScreenShell({
       className="flex-1"
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <GestureDetector gesture={gesture}>
-        <Animated.View className="flex-1 bg-background" style={animatedStyle}>
-          <View className="items-center" style={{ paddingTop: topInset + 6 }}>
-            <View className="h-1 w-9 rounded-full bg-border-strong" />
-          </View>
-          <ChatNavBar onClose={onClose} />
-          {children}
-          {footer}
+        <Animated.View className="flex-1 overflow-hidden bg-background" style={animatedStyle}>
+          <Animated.View className="flex-1" style={contentAnimatedStyle}>
+            <ChatNavBar title={title} topInset={topInset} onClose={onClose} />
+            {children}
+            {footer}
+          </Animated.View>
         </Animated.View>
-      </GestureDetector>
     </KeyboardAvoidingView>
   );
 }
@@ -75,7 +74,7 @@ export function ChatMessageBubble({
       accessibilityLabel={editable ? 'Correct voice transcript' : undefined}
       disabled={!editable}
       onPress={onEdit}
-      className="mb-3 max-w-xs self-end rounded-3 bg-lime-100 px-4 py-3"
+      className="mb-8 max-w-[336px] self-end rounded-8 bg-muted px-4 py-4"
     >
       <Text className="text-foreground text-base-regular">{content}</Text>
       {showCorrectionHint ? (
@@ -214,7 +213,8 @@ export interface ChatConversationSurfaceProps {
   pendingProposals: readonly PendingProposal[];
   editingTranscript: string | null;
   reactions?: Readonly<Record<string, ResponseReaction>>;
-  onScrollAtTopChange: (atTop: boolean) => void;
+  onScrollAtTopChange?: (atTop: boolean) => void;
+  onContentSizeChange?: (width: number, height: number) => void;
   onEditTranscript: (value: string | null) => void;
   onChangeTranscript: (value: string) => void;
   onSubmitTranscript: () => void;
@@ -233,15 +233,17 @@ export function ChatConversationSurface(props: ChatConversationSurfaceProps) {
       <ScrollView
         ref={props.scrollRef}
         className="flex-1"
-        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 24 }}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 32, paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}
-        onScroll={(event) => props.onScrollAtTopChange(event.nativeEvent.contentOffset.y <= 2)}
+        onScroll={(event) => props.onScrollAtTopChange?.(event.nativeEvent.contentOffset.y <= 2)}
+        onContentSizeChange={props.onContentSizeChange}
         scrollEventThrottle={16}
       >
         {props.messages.filter((message) => message.content.length > 0).map((message) => (
           message.role === 'assistant' ? (
             <TaisaReplyCard
               key={message.id}
+              appearance="plain"
               responseId={message.id}
               content={message.content}
               reaction={props.reactions?.[message.id] ?? null}
@@ -322,8 +324,11 @@ export function ChatComposerDock({ phase, bottomInset, children }: ChatComposerD
       </Text>
     </View>
   ) : (
-    <View className="px-5" style={{ paddingBottom: bottomInset + 12 }}>
+    <LinearGradient
+      colors={[colors.backgroundTransparent, colors.background]}
+      style={{ paddingHorizontal: 16, paddingTop: 24, paddingBottom: bottomInset + 12 }}
+    >
       {children}
-    </View>
+    </LinearGradient>
   );
 }

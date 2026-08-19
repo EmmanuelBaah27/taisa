@@ -1,21 +1,44 @@
-import { useCallback } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { useCallback, useRef } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, Text, useWindowDimensions, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 
 import { ChatListRow } from '../../src/components/ui';
 import { colors } from '../../src/constants/theme';
 import { useScrollContext } from '../../src/contexts/ScrollContext';
-import { chatThreadRoute } from '../../src/navigation/chatConversationRoute';
+import { chatConversationRoute } from '../../src/navigation/chatConversationRoute';
+import { usePageHeaderPaddingTop } from '../../src/navigation/pageSafeArea';
 import { useThreadStore } from '../../src/stores/threadStore';
+import { useUIStore } from '../../src/stores/uiStore';
 import { getChatPreview, groupChatsByDate } from '../../src/utils/chatPresentation';
 
 export default function LogsScreen() {
+  const pageHeaderPaddingTop = usePageHeaderPaddingTop();
   const { threads, isLoadingThreads, error, fetchThreads } = useThreadStore();
   const { reportScroll } = useScrollContext();
+  const viewport = useWindowDimensions();
+  const scrollRef = useRef<ScrollView>(null);
+  const scrollOffsetRef = useRef(0);
 
   useFocusEffect(useCallback(() => {
-    fetchThreads();
-    return () => reportScroll(0);
+    const returnOffset = useUIStore.getState().consumeChatListReturn();
+    let restoreFrame: number | undefined;
+    let refreshFrame: number | undefined;
+    if (returnOffset === null) {
+      void fetchThreads();
+    } else {
+      scrollOffsetRef.current = returnOffset;
+      reportScroll(returnOffset);
+      scrollRef.current?.scrollTo({ y: returnOffset, animated: false });
+      restoreFrame = requestAnimationFrame(() => {
+        scrollRef.current?.scrollTo({ y: returnOffset, animated: false });
+        refreshFrame = requestAnimationFrame(() => { void fetchThreads(); });
+      });
+    }
+    return () => {
+      if (restoreFrame !== undefined) cancelAnimationFrame(restoreFrame);
+      if (refreshFrame !== undefined) cancelAnimationFrame(refreshFrame);
+      reportScroll(0);
+    };
   }, [fetchThreads, reportScroll]));
 
   const groups = groupChatsByDate(threads.map((thread) => ({
@@ -28,11 +51,20 @@ export default function LogsScreen() {
 
   return (
     <View className="flex-1 bg-background">
-      <Text className="px-4 pb-3 pt-3 text-foreground text-H1">Chats</Text>
+      <Text
+        className="px-5 pb-3 text-foreground text-H1"
+        style={{ paddingTop: pageHeaderPaddingTop }}
+      >
+        Chats
+      </Text>
       <ScrollView
+        ref={scrollRef}
         className="flex-1"
-        contentContainerStyle={{ paddingHorizontal: 8, paddingBottom: 140 }}
-        onScroll={(event) => reportScroll(event.nativeEvent.contentOffset.y)}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 140 }}
+        onScroll={(event) => {
+          scrollOffsetRef.current = Math.max(0, event.nativeEvent.contentOffset.y);
+          reportScroll(scrollOffsetRef.current);
+        }}
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
       >
@@ -51,14 +83,28 @@ export default function LogsScreen() {
           </Text>
         ) : (
           groups.map((group) => (
-            <View key={group.key} className="mb-5 gap-1">
-              <Text className="px-2 text-muted-foreground text-small-regular">{group.label}</Text>
+            <View key={group.key} className="mb-5">
+              <Text className="text-muted-foreground text-small-regular">{group.label}</Text>
               {group.chats.map((chat) => (
                 <ChatListRow
                   key={chat.id}
                   title={chat.title || 'Untitled chat'}
                   preview={getChatPreview(chat)}
-                  onPress={() => router.push(chatThreadRoute(chat.id))}
+                  onOpen={(frame) => {
+                    const source = frame === null ? null : {
+                      frame,
+                      listScrollY: scrollOffsetRef.current,
+                      viewport: { width: viewport.width, height: viewport.height },
+                    };
+                    if (source !== null) {
+                      useUIStore.getState().captureChatListReturn(source.listScrollY);
+                    }
+                    router.push(chatConversationRoute(
+                      chat.id,
+                      source,
+                      chat.title || 'Untitled chat',
+                    ));
+                  }}
                 />
               ))}
             </View>

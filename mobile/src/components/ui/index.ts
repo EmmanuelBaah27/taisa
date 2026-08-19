@@ -1,6 +1,18 @@
 export { Button } from './Button';
 export type { ButtonProps, ButtonVariant, ButtonSize } from './Button';
 
+export {
+  SECONDARY_ICON_BUTTON_FIGMA,
+  SECONDARY_ICON_BUTTON_MOTION,
+  SecondaryIconButton,
+} from './SecondaryIconButton';
+export type { SecondaryIconButtonProps } from './SecondaryIconButton';
+export { RecordingVoiceMark } from './RecordingVoiceMark';
+export { VoiceReactiveTimestamp, VOICE_REACTIVE_TIMESTAMP } from './VoiceReactiveTimestamp';
+export type { VoiceReactiveTimestampProps } from './VoiceReactiveTimestamp';
+export type { ActiveRecordingSurfaceProps } from './ActiveRecordingSurface';
+export { ActiveRecordingSurface } from './ActiveRecordingSurface';
+
 export { Badge } from './Badge';
 export type { BadgeProps, BadgeColor, BadgeAppearance, BadgeSize } from './Badge';
 

@@ -3,7 +3,18 @@ import { useUIStore } from '../uiStore';
 
 describe('voice capture entry intent', () => {
   beforeEach(() => {
-    useUIStore.setState({ chatMorphing: false, voiceAutoStartPending: false });
+    useUIStore.setState({
+      chatMorphing: false,
+      voiceAutoStartPending: false,
+      chatListReturnOffset: null,
+    });
+  });
+
+  test('a Chats return offset is consumed exactly once after route dismissal', () => {
+    useUIStore.getState().captureChatListReturn(248.5);
+
+    expect(useUIStore.getState().consumeChatListReturn()).toBe(248.5);
+    expect(useUIStore.getState().consumeChatListReturn()).toBeNull();
   });
 
   test('the central voice entry opens voice mode and offers exactly one automatic start', () => {

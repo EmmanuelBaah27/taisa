@@ -5,13 +5,13 @@ import { router } from 'expo-router';
 import { ThreadResumeAction } from '../../components/ThreadResumeAction';
 import {
   chatConversationRoute,
-  chatThreadRoute,
   closeChatPresentation,
   isConversationCacheCurrent,
   returnFromRoutedChat,
   resolveInitialChatConversationId,
   selectConversationMessages,
   startFreshCapture,
+  voiceCancelDestination,
 } from '../chatConversationRoute';
 
 jest.mock('expo-router', () => ({
@@ -62,6 +62,11 @@ describe('durable conversation resume navigation', () => {
       .toBe('history-conversation');
   });
 
+  test('voice cancel returns an existing chat to reply and closes a fresh capture', () => {
+    expect(voiceCancelDestination('conversation-from-history')).toBe('reply');
+    expect(voiceCancelDestination(null)).toBe('close');
+  });
+
   test('the resume route carries the durable SQLite conversation ID', () => {
     expect(chatConversationRoute('conversation/with private work'))
       .toEqual({
@@ -70,11 +75,25 @@ describe('durable conversation resume navigation', () => {
       });
   });
 
-  test('the Chats list opens a thread with the durable SQLite conversation ID', () => {
-    expect(chatThreadRoute('conversation/with private work'))
+  test('the Chats list opens canonical chat with its measured source frame', () => {
+    expect(chatConversationRoute('conversation/with private work', {
+      frame: { x: 16, y: 140, width: 361, height: 72 },
+      listScrollY: 248.5,
+      viewport: { width: 393, height: 852 },
+    }, 'Navigating a career change'))
       .toEqual({
-        pathname: '/thread/[id]',
-        params: { id: 'conversation/with private work' },
+        pathname: '/chat',
+        params: {
+          conversationId: 'conversation/with private work',
+          title: 'Navigating a career change',
+          cardX: '16',
+          cardY: '140',
+          cardWidth: '361',
+          cardHeight: '72',
+          listScrollY: '248.5',
+          sourceViewportWidth: '393',
+          sourceViewportHeight: '852',
+        },
       });
   });
 

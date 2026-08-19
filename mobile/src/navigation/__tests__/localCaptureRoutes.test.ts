@@ -88,19 +88,45 @@ describe('local-first capture navigation', () => {
     expect(recordingRoute).not.toMatch(/\/analyze(?:[/'"`?]|$)/);
   });
 
-  test('a microphone start failure offers a keyboard escape instead of retry-only UI', () => {
+  test('historical chat waits for its reverse morph while non-card exits stay immediate', () => {
     const chatScreen = fs.readFileSync(
       path.resolve(__dirname, '../../../app/chat/index.tsx'),
       'utf8',
     );
-    const chatSurfaces = fs.readFileSync(
-      path.resolve(__dirname, '../../components/ui/ChatSurfaces.tsx'),
+    const rootLayout = fs.readFileSync(
+      path.resolve(__dirname, '../../../app/_layout.tsx'),
       'utf8',
     );
 
-    expect(chatSurfaces).toMatch(/The microphone is unavailable/);
-    expect(chatSurfaces).toMatch(/Use keyboard/);
-    expect(chatScreen).toMatch(/setPhase\('idle'\)/);
+    expect(chatScreen).not.toMatch(/Gesture\.Pan|gestureCommitClose|commitClose\(300\)|commitClose\(340\)/);
+    expect(chatScreen).toMatch(/close\(commitClose\)/);
+    expect(chatScreen).toMatch(/if \(sourceSnapshot === null\)[\s\S]*commitClose\(\)/);
+    expect(chatScreen).toMatch(/if \(sourceSnapshot === null\) await fetchThreads\(\)/);
+    expect(rootLayout).not.toMatch(/slide_from_bottom/);
+    expect(rootLayout).toMatch(/name="chat\/index"[\s\S]*presentation: 'transparentModal'[\s\S]*animation: 'none'[\s\S]*backgroundColor: 'transparent'/);
+  });
+
+  test('fresh voice capture uses the Figma active recording surface with existing lifecycle handlers', () => {
+    const chatScreen = fs.readFileSync(
+      path.resolve(__dirname, '../../../app/chat/index.tsx'),
+      'utf8',
+    );
+
+    expect(chatScreen).toMatch(/ActiveRecordingSurface/);
+    expect(chatScreen).toMatch(/messages\.length === 0[\s\S]*composer\.voice === 'recording'[\s\S]*composer\.voice === 'paused'/);
+    expect(chatScreen).toMatch(/onClose=\{handleClose\}/);
+    expect(chatScreen).toMatch(/onCancel=\{\(\) => \{ void handleCancelVoice\(\); \}\}/);
+    expect(chatScreen).toMatch(/onKeyboard=\{\(\) => \{ void handleSwitchToText\(\); \}\}/);
+    expect(chatScreen).toMatch(/onPauseResume=\{[\s\S]*handleResumeVoice[\s\S]*handlePauseVoice/);
+    expect(chatScreen).toMatch(/onSend=\{\(\) => \{ void handleComposerSend\(\); \}\}/);
+  });
+
+  test('a microphone start failure closes the active recording process', () => {
+    const chatScreen = fs.readFileSync(
+      path.resolve(__dirname, '../../../app/chat/index.tsx'),
+      'utf8',
+    );
+    expect(chatScreen).toMatch(/catch \{[\s\S]*recordingStartGuardRef\.current\.complete\(startAttempt\)[\s\S]*await handleCancelVoice\(\)/);
   });
 
   test('the composer remains visible above the iOS keyboard and clears after a successful retry', () => {
@@ -147,6 +173,21 @@ describe('local-first capture navigation', () => {
     expect(composer).toMatch(/Reply by voice, starts recording/);
     expect(composer).toMatch(/onStartVoice/);
     expect(chatScreen).not.toMatch(/else \{\s*startListening\(\);\s*\}/);
+  });
+
+  test('the global recorder opens as an Expo Router screen instead of mounting a route component manually', () => {
+    const voiceButton = fs.readFileSync(
+      path.resolve(__dirname, '../../components/VoiceButton.tsx'),
+      'utf8',
+    );
+    const tabLayout = fs.readFileSync(
+      path.resolve(__dirname, '../../../app/(tabs)/_layout.tsx'),
+      'utf8',
+    );
+
+    expect(voiceButton).toMatch(/router\.push\('\/chat'\)/);
+    expect(tabLayout).not.toMatch(/import ChatScreen/);
+    expect(tabLayout).not.toMatch(/<ChatScreen/);
   });
 
   test('a microphone failure offers a working keyboard fallback that selects text mode', () => {

@@ -1,3 +1,5 @@
+import type { ChatCardSource } from './chatCardExpansion';
+
 export type ChatConversationRouteParam = string | string[] | undefined;
 
 export function resolveInitialChatConversationId(
@@ -14,10 +16,24 @@ export function resolveInitialChatConversationId(
     : activeConversationId;
 }
 
-export function chatConversationRoute(conversationId: string) {
+export function chatConversationRoute(
+  conversationId: string,
+  source?: ChatCardSource | null,
+  title?: string,
+) {
+  const context = title ? { conversationId, title } : { conversationId };
   return {
     pathname: '/chat' as const,
-    params: { conversationId },
+    params: source ? {
+      ...context,
+      cardX: String(source.frame.x),
+      cardY: String(source.frame.y),
+      cardWidth: String(source.frame.width),
+      cardHeight: String(source.frame.height),
+      listScrollY: String(source.listScrollY),
+      sourceViewportWidth: String(source.viewport.width),
+      sourceViewportHeight: String(source.viewport.height),
+    } : context,
   };
 }
 
@@ -29,6 +45,12 @@ export function chatThreadRoute(conversationId: string) {
 }
 
 export type ChatPresentation = 'route' | 'overlay';
+
+export function voiceCancelDestination(
+  initialConversationId: string | null,
+): 'reply' | 'close' {
+  return initialConversationId === null ? 'close' : 'reply';
+}
 
 export function startFreshCapture(actions: {
   clearActiveConversation(): void;
