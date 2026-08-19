@@ -86,7 +86,26 @@ export function getBottomNavigationRenderPolicy(
 ) {
   return {
     selectedContentLayers: 1 as const,
+    selectedIconLayers: 1 as const,
+    outgoingLabelLayers: state.phase === 'resting' ? 0 as const : 1 as const,
     hiddenStableDestination: state.to,
+  };
+}
+
+export function getBottomNavigationSurfaceTimeline(reduceMotion: boolean) {
+  if (reduceMotion) {
+    return {
+      spatialMotion: false as const,
+      crossfadeDuration: 180,
+      labelOnlyOverlap: true as const,
+    };
+  }
+
+  return {
+    spatialMotion: true as const,
+    fillFadeOutDuration: 90,
+    fillRestoreDuration: 180,
+    restoreOnValidSettlementOnly: true as const,
   };
 }
 
@@ -99,9 +118,13 @@ export function getBottomNavigationTransitionStartPolicy() {
 
 export const BOTTOM_NAVIGATION_ACTIVE_FILL = 'rgba(15,16,16,0.06)';
 export const BOTTOM_NAVIGATION_CLEAR_GLASS_SURFACE = {
-  backgroundColor: 'rgba(255,255,255,0.12)',
-  borderColor: 'rgba(255,255,255,0.34)',
+  backgroundColor: 'rgba(255,255,255,0.01)',
+  borderColor: 'rgba(15,16,16,0.10)',
   borderWidth: 1,
+  shadowColor: '#0F1010',
+  shadowOpacity: 0.08,
+  shadowRadius: 8,
+  shadowOffset: { width: 0, height: 2 },
 } as const;
 
 export const BOTTOM_NAVIGATION_FIGMA = {
@@ -139,6 +162,7 @@ export const BOTTOM_NAVIGATION_FIGMA = {
   capsuleMotion: {
     duration: 280,
     dampingRatio: 0.82,
+    coordinatesShellWidth: true,
   },
   labelMotion: {
     enterScale: 0.94,

@@ -5,6 +5,7 @@ import {
   getBottomNavigationCapsuleFrame,
   getBottomNavigationCapsuleCenterOffset,
   getBottomNavigationRenderPolicy,
+  getBottomNavigationSurfaceTimeline,
   getBottomNavigationTransitionStartPolicy,
   getBottomNavigationLayout,
   getBottomNavigationStateLayout,
@@ -112,6 +113,7 @@ describe('bottom navigation', () => {
     expect(BOTTOM_NAVIGATION_FIGMA.capsuleMotion).toEqual({
       duration: 280,
       dampingRatio: 0.82,
+      coordinatesShellWidth: true,
     });
   });
 
@@ -175,11 +177,34 @@ describe('bottom navigation', () => {
 
     expect(getBottomNavigationRenderPolicy(resting)).toEqual({
       selectedContentLayers: 1,
+      selectedIconLayers: 1,
+      outgoingLabelLayers: 0,
       hiddenStableDestination: 'logs',
     });
     expect(getBottomNavigationRenderPolicy(travelling)).toEqual({
       selectedContentLayers: 1,
+      selectedIconLayers: 1,
+      outgoingLabelLayers: 1,
       hiddenStableDestination: 'you',
+    });
+  });
+
+  test('coordinates shell width, capsule travel, and fill restoration on one settlement', () => {
+    expect(BOTTOM_NAVIGATION_FIGMA.capsuleMotion).toEqual({
+      duration: 280,
+      dampingRatio: 0.82,
+      coordinatesShellWidth: true,
+    });
+    expect(getBottomNavigationSurfaceTimeline(false)).toEqual({
+      spatialMotion: true,
+      fillFadeOutDuration: 90,
+      fillRestoreDuration: 180,
+      restoreOnValidSettlementOnly: true,
+    });
+    expect(getBottomNavigationSurfaceTimeline(true)).toEqual({
+      spatialMotion: false,
+      crossfadeDuration: 180,
+      labelOnlyOverlap: true,
     });
   });
 
