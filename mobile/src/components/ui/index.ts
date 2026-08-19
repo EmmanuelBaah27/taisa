@@ -18,6 +18,8 @@ export { SelectedNavigationItem } from './SelectedNavigationItem';
 export type { SelectedNavigationItemProps } from './SelectedNavigationItem';
 export { InactiveNavigationItem } from './InactiveNavigationItem';
 export type { InactiveNavigationItemProps } from './InactiveNavigationItem';
+export { PersistentNavigationCapsule } from './PersistentNavigationCapsule';
+export type { PersistentNavigationCapsuleProps } from './PersistentNavigationCapsule';
 
 export { ChatNavBar } from './ChatNavBar';
 export type { ChatNavBarProps } from './ChatNavBar';
