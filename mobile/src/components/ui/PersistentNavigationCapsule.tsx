@@ -98,6 +98,7 @@ export function PersistentNavigationCapsule({
               fontSize: SELECTED.fontSize,
               lineHeight: SELECTED.lineHeight,
               letterSpacing: SELECTED.letterSpacing,
+              transformOrigin: BOTTOM_NAVIGATION_FIGMA.labelMotion.transformOrigin,
             },
             animatedLabelStyle,
           ]}
@@ -116,6 +117,7 @@ export function PersistentNavigationCapsule({
               fontSize: SELECTED.fontSize,
               lineHeight: SELECTED.lineHeight,
               letterSpacing: SELECTED.letterSpacing,
+              transformOrigin: BOTTOM_NAVIGATION_FIGMA.labelMotion.transformOrigin,
             },
             animatedOutgoingLabelStyle,
           ]}

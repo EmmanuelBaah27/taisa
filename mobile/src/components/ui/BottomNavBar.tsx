@@ -21,7 +21,7 @@ import {
   BOTTOM_NAVIGATION_FALLBACK_GLASS,
   getBottomNavigationCapsuleCenterOffset,
   getBottomNavigationCapsuleFrame,
-  getBottomNavigationDestinationCenterOffset,
+  getBottomNavigationDestinationOffsets,
   getBottomNavigationLayout,
   getBottomNavigationRenderPolicy,
   getBottomNavigationSurfaceTimeline,
@@ -141,7 +141,7 @@ function NavigationDestination({
   item: BottomNavigationItem;
   selected: boolean;
   visualHidden: boolean;
-  centerOffset: number;
+  centerOffset: number | ReactNativeAnimated.Value;
   userId: string | null;
   onPress: () => void;
   onPressIn: () => void;
@@ -164,7 +164,10 @@ function NavigationDestination({
         height: inactiveItem.height,
         alignItems: 'center',
         justifyContent: 'center',
-        transform: [{ translateX: centerOffset - (inactiveItem.width / 2) }],
+        transform: [
+          { translateX: centerOffset },
+          { translateX: -(inactiveItem.width / 2) },
+        ],
       }}
     >
       <View style={{ opacity: visualHidden ? 0 : 1 }}>
@@ -185,6 +188,7 @@ export function BottomNavBar() {
   const activeIndex = BOTTOM_NAVIGATION_ITEMS.findIndex((item) => isActive(item.path));
   const activeId = BOTTOM_NAVIGATION_ITEMS[activeIndex]?.id ?? 'logs';
   const initialFrame = getBottomNavigationCapsuleFrame(activeId);
+  const initialDestinationOffsets = getBottomNavigationDestinationOffsets(activeId);
   const initialMotionState: NavigationCapsuleState = {
     from: activeId,
     to: activeId,
@@ -219,6 +223,9 @@ export function BottomNavBar() {
     new ReactNativeAnimated.Value(getBottomNavigationCapsuleCenterOffset(activeId)),
   ).current;
   const capsuleWidth = useRef(new ReactNativeAnimated.Value(initialFrame.width)).current;
+  const destinationOffsets = useRef(
+    initialDestinationOffsets.map((offset) => new ReactNativeAnimated.Value(offset)),
+  ).current;
   const selectedFillOpacity = useRef(new ReactNativeAnimated.Value(1)).current;
 
   const selectedContentOpacity = useRef(new ReactNativeAnimated.Value(1)).current;
@@ -387,31 +394,37 @@ export function BottomNavBar() {
       ReactNativeAnimated.timing(selectedLabelOpacity, {
         toValue: 1,
         duration: labelMotion.duration,
+        easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
       ReactNativeAnimated.timing(selectedLabelScale, {
         toValue: 1,
         duration: labelMotion.duration,
+        easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
       ReactNativeAnimated.timing(selectedLabelTranslateX, {
         toValue: 0,
         duration: labelMotion.duration,
+        easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
       ReactNativeAnimated.timing(outgoingLabelOpacity, {
         toValue: 0,
         duration: labelMotion.duration,
+        easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
       ReactNativeAnimated.timing(outgoingLabelScale, {
         toValue: labelMotion.enterScale,
         duration: labelMotion.duration,
+        easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
       ReactNativeAnimated.timing(outgoingLabelTranslateX, {
         toValue: labelMotion.enterTranslateX,
         duration: labelMotion.duration,
+        easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
     ]).start();
@@ -438,16 +451,21 @@ export function BottomNavBar() {
   ) => {
     const frame = getBottomNavigationCapsuleFrame(destination);
     const centerOffset = getBottomNavigationCapsuleCenterOffset(destination);
+    const nextDestinationOffsets = getBottomNavigationDestinationOffsets(destination);
     startSelectedContentMotion(destination, sequence);
 
     if (reduceMotion) {
       capsuleX.stopAnimation();
       capsuleWidth.stopAnimation();
       shellWidth.stopAnimation();
+      destinationOffsets.forEach((offset) => offset.stopAnimation());
       selectedFillOpacity.stopAnimation();
       capsuleX.setValue(centerOffset);
       capsuleWidth.setValue(frame.width);
       shellWidth.setValue(frame.shellWidth);
+      destinationOffsets.forEach((offset, index) => {
+        offset.setValue(nextDestinationOffsets[index]);
+      });
       shellScale.setValue(1);
       ReactNativeAnimated.sequence([
         ReactNativeAnimated.timing(selectedFillOpacity, {
@@ -489,6 +507,10 @@ export function BottomNavBar() {
         toValue: frame.shellWidth,
         ...coordinatedSpring,
       }),
+      ...destinationOffsets.map((offset, index) => ReactNativeAnimated.spring(offset, {
+        toValue: nextDestinationOffsets[index],
+        ...coordinatedSpring,
+      })),
     ]).start(({ finished }) => {
       if (finished) finishCapsuleTransition(destination, sequence);
     });
@@ -498,6 +520,7 @@ export function BottomNavBar() {
     capsuleMotion.stiffness,
     capsuleWidth,
     capsuleX,
+    destinationOffsets,
     finishCapsuleTransition,
     reduceMotion,
     reducedMotion.crossfadeDuration,
@@ -576,6 +599,7 @@ export function BottomNavBar() {
 
     const origin = attempt.origin;
     const frame = getBottomNavigationCapsuleFrame(origin);
+    const originDestinationOffsets = getBottomNavigationDestinationOffsets(origin);
     const restingState: NavigationCapsuleState = {
       from: origin,
       to: origin,
@@ -597,6 +621,7 @@ export function BottomNavBar() {
     capsuleX.stopAnimation();
     capsuleWidth.stopAnimation();
     shellWidth.stopAnimation();
+    destinationOffsets.forEach((offset) => offset.stopAnimation());
     selectedFillOpacity.stopAnimation();
     stopSelectedContentMotion();
     const returnSpring = {
@@ -618,6 +643,10 @@ export function BottomNavBar() {
         toValue: frame.shellWidth,
         ...returnSpring,
       }),
+      ...destinationOffsets.map((offset, index) => ReactNativeAnimated.spring(offset, {
+        toValue: originDestinationOffsets[index],
+        ...returnSpring,
+      })),
     ]).start();
     selectedContentOpacity.setValue(1);
     selectedLabelOpacity.setValue(1);
@@ -632,6 +661,7 @@ export function BottomNavBar() {
     capsuleMotion.stiffness,
     capsuleWidth,
     capsuleX,
+    destinationOffsets,
     outgoingLabelOpacity,
     releaseShell,
     selectedContentOpacity,
@@ -696,11 +726,13 @@ export function BottomNavBar() {
       capsuleX.stopAnimation();
       capsuleWidth.stopAnimation();
       shellWidth.stopAnimation();
+      destinationOffsets.forEach((offset) => offset.stopAnimation());
       selectedFillOpacity.stopAnimation();
     };
   }, [
     capsuleWidth,
     capsuleX,
+    destinationOffsets,
     selectedFillOpacity,
     shellScale,
     shellWidth,
@@ -715,6 +747,7 @@ export function BottomNavBar() {
     ) return;
 
     const frame = getBottomNavigationCapsuleFrame(activeId);
+    const activeDestinationOffsets = getBottomNavigationDestinationOffsets(activeId);
     const restingState: NavigationCapsuleState = {
       from: activeId,
       to: activeId,
@@ -729,10 +762,14 @@ export function BottomNavBar() {
     capsuleX.stopAnimation();
     capsuleWidth.stopAnimation();
     shellWidth.stopAnimation();
+    destinationOffsets.forEach((offset) => offset.stopAnimation());
     selectedFillOpacity.stopAnimation();
     capsuleX.setValue(getBottomNavigationCapsuleCenterOffset(activeId));
     capsuleWidth.setValue(frame.width);
     shellWidth.setValue(frame.shellWidth);
+    destinationOffsets.forEach((offset, index) => {
+      offset.setValue(activeDestinationOffsets[index]);
+    });
     selectedFillOpacity.setValue(1);
     shellScale.setValue(1);
     stopSelectedContentMotion();
@@ -748,6 +785,7 @@ export function BottomNavBar() {
     activeId,
     capsuleWidth,
     capsuleX,
+    destinationOffsets,
     outgoingLabelOpacity,
     outgoingLabelScale,
     outgoingLabelTranslateX,
@@ -799,13 +837,16 @@ export function BottomNavBar() {
                 position: 'relative',
               }}
             >
-              {BOTTOM_NAVIGATION_ITEMS.map((item) => (
+              {BOTTOM_NAVIGATION_ITEMS.map((item, index) => (
                 <NavigationDestination
                   key={item.id}
                   item={item}
                   selected={item.id === motionState.to}
-                  visualHidden={item.id === renderPolicy.hiddenStableDestination}
-                  centerOffset={getBottomNavigationDestinationCenterOffset(item.id)}
+                  visualHidden={
+                    item.id === renderPolicy.hiddenStableDestination
+                    || (motionState.phase !== 'resting' && item.id === motionState.from)
+                  }
+                  centerOffset={destinationOffsets[index]}
                   userId={userId}
                   onPress={() => navigateTo(item)}
                   onPressIn={() => handleNavigationPressIn(item)}

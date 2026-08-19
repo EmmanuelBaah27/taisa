@@ -57,6 +57,14 @@ export function getBottomNavigationDestinationCenterOffset(
   return 60;
 }
 
+export function getBottomNavigationDestinationOffsets(
+  activeId: BottomNavigationItem['id'],
+): readonly [number, number, number] {
+  if (activeId === 'index') return [-60, 26, 86];
+  if (activeId === 'logs') return [-86, 0, 86];
+  return [-76, -16, 60];
+}
+
 export function startBottomNavigationTransition(
   state: NavigationCapsuleState,
   destination: BottomNavigationItem['id'],
@@ -182,9 +190,10 @@ export const BOTTOM_NAVIGATION_FIGMA = {
     expandedHeight: 48,
   },
   labelMotion: {
-    enterScale: 0.94,
-    enterTranslateX: -6,
-    duration: 180,
+    enterScale: 0.84,
+    enterTranslateX: -8,
+    duration: 160,
+    transformOrigin: 'left center',
   },
   reducedMotion: {
     crossfadeDuration: 180,

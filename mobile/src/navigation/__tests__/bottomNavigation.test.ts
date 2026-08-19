@@ -6,6 +6,7 @@ import {
   getBottomNavigationCapsuleFrame,
   getBottomNavigationCapsuleCenterOffset,
   getBottomNavigationDestinationCenterOffset,
+  getBottomNavigationDestinationOffsets,
   getBottomNavigationRenderPolicy,
   getBottomNavigationSurfaceTimeline,
   getBottomNavigationTransitionStartPolicy,
@@ -166,11 +167,18 @@ describe('bottom navigation', () => {
     expect(getBottomNavigationDestinationCenterOffset('you')).toBe(60);
   });
 
+  test('moves inactive destinations clear of the selected capsule', () => {
+    expect(getBottomNavigationDestinationOffsets('index')).toEqual([-60, 26, 86]);
+    expect(getBottomNavigationDestinationOffsets('logs')).toEqual([-86, 0, 86]);
+    expect(getBottomNavigationDestinationOffsets('you')).toEqual([-76, -16, 60]);
+  });
+
   test('moves the selected label outward from its destination icon', () => {
     expect(BOTTOM_NAVIGATION_FIGMA.labelMotion).toEqual({
-      enterScale: 0.94,
-      enterTranslateX: -6,
-      duration: 180,
+      enterScale: 0.84,
+      enterTranslateX: -8,
+      duration: 160,
+      transformOrigin: 'left center',
     });
   });
 

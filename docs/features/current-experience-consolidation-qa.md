@@ -24,6 +24,7 @@ Use the managed development build for native checks; Expo Go is not valid for SQ
 - [ ] Capsule is plain glass during travel and restores 6% grey only after settlement.
 - [ ] Capsule visibly moves Home ↔ Chats ↔ Me while route content changes immediately.
 - [ ] Destination label emerges from its icon with no duplicate outgoing icon or label.
+- [ ] Inactive icons move to their state-specific positions and remain clear of the selected capsule throughout travel.
 - [ ] Rapid retargeting redirects smoothly without grey flashes or scale reset.
 - [ ] Reduced Motion removes spatial/scale motion and preserves short crossfades.
 
@@ -77,7 +78,7 @@ The process launch confirms the review build was handed to the paired device; it
 
 ### Device failure and correction — 2026-08-19
 
-The first motion build failed paired-iPhone QA: duplicate selected content overlapped during travel, the scale response felt delayed, capsule motion paused between independently timed phases, and the transparent travelling surface visually disappeared inside the outer glass. The corrected build now uses one selected content layer, synchronous pre-route startup, one coordinated X/width spring, 90ms shell feedback, and a tested clear-glass sheen/border. Automated checks pass; every motion checklist item above remains unchecked pending device re-QA.
+The first motion build failed paired-iPhone QA: duplicate selected content overlapped during travel, the scale response felt delayed, capsule motion paused between independently timed phases, and the transparent travelling surface visually disappeared inside the outer glass. The corrected build now uses one selected content layer, synchronous pre-route startup, one coordinated capsule/shell/inactive-icon spring, 90ms shell feedback, a label reveal anchored to the icon-facing edge, and a tested clear-glass sheen/border. Automated checks pass; every motion checklist item above remains unchecked pending device re-QA.
 
 ## Deferred
 
