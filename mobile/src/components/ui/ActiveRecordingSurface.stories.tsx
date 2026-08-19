@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-native';
 import { View } from 'react-native';
+import { makeMutable } from 'react-native-reanimated';
 
 import { ActiveRecordingSurface } from './ActiveRecordingSurface';
 
@@ -12,6 +13,7 @@ const meta: Meta<typeof ActiveRecordingSurface> = {
     title: 'New chat',
     greeting: 'How’s it going?',
     durationSeconds: 0,
+    amplitude: makeMutable(0.35),
     paused: false,
     disabled: false,
     onClose: () => undefined,

@@ -6,6 +6,15 @@ import {
 } from '../RecordingVoiceMark';
 import { ActiveRecordingSurface } from '../ActiveRecordingSurface';
 import { SecondaryIconButton } from '../SecondaryIconButton';
+import { VoiceReactiveTimestamp, VOICE_REACTIVE_TIMESTAMP } from '../VoiceReactiveTimestamp';
+import type { SharedValue } from 'react-native-reanimated';
+
+jest.mock('@shopify/react-native-skia', () => ({
+  Canvas: 'Canvas',
+  Fill: 'Fill',
+  Shader: 'Shader',
+  Skia: { RuntimeEffect: { Make: jest.fn(() => ({})) } },
+}));
 
 type PrimitiveElement = React.ReactElement<{
   children?: React.ReactNode;
@@ -44,12 +53,14 @@ describe('recording page primitives', () => {
   });
 
   test('active surface composes the Figma cancel bar and one primary send action', () => {
+    const amplitude = { value: 0.4 } as SharedValue<number>;
     const surface = ActiveRecordingSurface({
       topInset: 47,
       bottomInset: 34,
       title: 'New chat',
       greeting: 'How’s it going?',
       durationSeconds: 4,
+      amplitude,
       paused: false,
       onClose: jest.fn(),
       onCancel: jest.fn(),
@@ -60,6 +71,7 @@ describe('recording page primitives', () => {
 
     const secondary = findElementsByType(surface.props.children, SecondaryIconButton);
     const primary = findElementsByType(surface.props.children, Button);
+    const timestamp = findElementsByType(surface.props.children, VoiceReactiveTimestamp);
 
     expect(secondary.map((item) => item.props.label)).toEqual([
       'Close recording',
@@ -69,6 +81,19 @@ describe('recording page primitives', () => {
     ]);
     expect(primary).toHaveLength(1);
     expect(primary[0].props).toMatchObject({ label: 'Send recording', size: 'icon-lg' });
-    expect(JSON.stringify(surface.props.children)).toContain('0:04');
+    expect(timestamp).toHaveLength(1);
+    expect(timestamp[0].props).toMatchObject({ durationSeconds: 4, amplitude, paused: false });
+  });
+
+  test('reactive timestamp preserves Figma geometry and stagger with bounded voice smoothing', () => {
+    expect(VOICE_REACTIVE_TIMESTAMP).toEqual({
+      width: 60,
+      height: 56,
+      duration: 2000,
+      noiseGate: 0.05,
+      attack: 90,
+      release: 220,
+      peaks: [0.35, 0.5, 0.65],
+    });
   });
 });

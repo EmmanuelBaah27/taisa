@@ -5,6 +5,8 @@ import { Button } from './Button';
 import { Icon } from './Icon';
 import { RecordingVoiceMark } from './RecordingVoiceMark';
 import { SecondaryIconButton } from './SecondaryIconButton';
+import { VoiceReactiveTimestamp } from './VoiceReactiveTimestamp';
+import type { SharedValue } from 'react-native-reanimated';
 
 export interface ActiveRecordingSurfaceProps {
   topInset: number;
@@ -12,6 +14,7 @@ export interface ActiveRecordingSurfaceProps {
   title: string;
   greeting: string;
   durationSeconds: number;
+  amplitude: SharedValue<number>;
   paused: boolean;
   disabled?: boolean;
   onClose: () => void;
@@ -19,11 +22,6 @@ export interface ActiveRecordingSurfaceProps {
   onKeyboard: () => void;
   onPauseResume: () => void;
   onSend: () => void;
-}
-
-function formatRecordingDuration(seconds: number): string {
-  const whole = Math.max(0, Math.floor(seconds));
-  return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, '0')}`;
 }
 
 export function ActiveRecordingSurface(props: ActiveRecordingSurfaceProps) {
@@ -74,11 +72,11 @@ export function ActiveRecordingSurface(props: ActiveRecordingSurfaceProps) {
           />
         </View>
 
-        <View className="h-14 w-[60px] items-center justify-center">
-          <Text className="text-muted-foreground text-small-regular">
-            {formatRecordingDuration(props.durationSeconds)}
-          </Text>
-        </View>
+        <VoiceReactiveTimestamp
+          durationSeconds={props.durationSeconds}
+          amplitude={props.amplitude}
+          paused={props.paused}
+        />
 
         <View className="flex-row items-center gap-[14px]">
           <SecondaryIconButton

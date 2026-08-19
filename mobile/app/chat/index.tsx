@@ -794,6 +794,7 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
             title="New chat"
             greeting="How’s it going?"
             durationSeconds={recorder.duration}
+            amplitude={recorder.amplitude}
             paused={composer.voice === 'paused'}
             disabled={composer.submitting || isBusy}
             onClose={handleClose}
