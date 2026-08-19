@@ -3,10 +3,12 @@ import {
   BOTTOM_NAVIGATION_ACTIVE_FILL,
   BOTTOM_NAVIGATION_FIGMA,
   getBottomNavigationCapsuleFrame,
+  getBottomNavigationCapsuleCenterOffset,
   getBottomNavigationLayout,
   getBottomNavigationStateLayout,
   resolveGlassAvailability,
   settleBottomNavigationTransition,
+  shouldReleaseBottomNavigationCancelledPress,
   shouldShowBottomNavigationSelectedFill,
   startBottomNavigationTransition,
 } from '../bottomNavigation';
@@ -112,10 +114,22 @@ describe('bottom navigation', () => {
     });
   });
 
+  test('crossfades reduced-motion surfaces and content together', () => {
+    expect(BOTTOM_NAVIGATION_FIGMA.reducedMotion).toEqual({
+      crossfadeDuration: 180,
+    });
+  });
+
   test('matches the persistent capsule frame for each destination', () => {
     expect(getBottomNavigationCapsuleFrame('index')).toEqual({ shellWidth: 240, x: 6, width: 108 });
     expect(getBottomNavigationCapsuleFrame('logs')).toEqual({ shellWidth: 240, x: 66, width: 108 });
     expect(getBottomNavigationCapsuleFrame('you')).toEqual({ shellWidth: 220, x: 126, width: 88 });
+  });
+
+  test('keeps capsule coordinates stable when the centered shell changes width', () => {
+    expect(getBottomNavigationCapsuleCenterOffset('index')).toBe(-114);
+    expect(getBottomNavigationCapsuleCenterOffset('logs')).toBe(-54);
+    expect(getBottomNavigationCapsuleCenterOffset('you')).toBe(16);
   });
 
   test('models travelling, interruption, settlement, and selected fill visibility', () => {
@@ -125,7 +139,7 @@ describe('bottom navigation', () => {
     expect(travelling).toEqual({ from: 'logs', to: 'you', phase: 'travelling' });
     expect(shouldShowBottomNavigationSelectedFill(travelling)).toBe(false);
     expect(startBottomNavigationTransition(travelling, 'index')).toEqual({
-      from: 'logs',
+      from: 'you',
       to: 'index',
       phase: 'travelling',
     });
@@ -135,6 +149,15 @@ describe('bottom navigation', () => {
       phase: 'resting',
     });
     expect(shouldShowBottomNavigationSelectedFill(resting)).toBe(true);
+  });
+
+  test('releases a cancelled press only when no transition was committed', () => {
+    const resting = { from: 'logs', to: 'logs', phase: 'resting' } as const;
+    const travelling = { from: 'logs', to: 'you', phase: 'travelling' } as const;
+
+    expect(shouldReleaseBottomNavigationCancelledPress(false, resting)).toBe(true);
+    expect(shouldReleaseBottomNavigationCancelledPress(true, resting)).toBe(false);
+    expect(shouldReleaseBottomNavigationCancelledPress(false, travelling)).toBe(false);
   });
 
 });

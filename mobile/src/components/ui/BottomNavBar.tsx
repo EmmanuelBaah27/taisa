@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import {
   Animated as ReactNativeAnimated,
   Platform,
@@ -32,11 +39,13 @@ import {
   BOTTOM_NAVIGATION_ACTIVE_FILL,
   BOTTOM_NAVIGATION_ITEMS,
   BOTTOM_NAVIGATION_FIGMA,
+  getBottomNavigationCapsuleCenterOffset,
   getBottomNavigationCapsuleFrame,
   getBottomNavigationLayout,
   getBottomNavigationStateLayout,
   resolveGlassAvailability,
   settleBottomNavigationTransition,
+  shouldReleaseBottomNavigationCancelledPress,
   startBottomNavigationTransition,
   type BottomNavigationItem,
   type NavigationCapsuleState,
@@ -134,6 +143,7 @@ function NavigationDestination({
   userId,
   onPress,
   onPressIn,
+  onPressOut,
 }: {
   item: BottomNavigationItem;
   selected: boolean;
@@ -142,6 +152,7 @@ function NavigationDestination({
   userId: string | null;
   onPress: () => void;
   onPressIn: () => void;
+  onPressOut: () => void;
 }) {
   return (
     <Pressable
@@ -151,6 +162,7 @@ function NavigationDestination({
       hitSlop={4}
       onPress={onPress}
       onPressIn={onPressIn}
+      onPressOut={onPressOut}
       style={{
         width,
         height: inactiveItem.height,
@@ -169,46 +181,68 @@ function OutgoingNavigationContent({
   item,
   userId,
   labelStyle,
+  containerStyle,
+  followsCapsule,
+  capsuleStyle,
 }: {
   item: BottomNavigationItem;
   userId: string | null;
   labelStyle: StyleProp<TextStyle>;
+  containerStyle: StyleProp<ViewStyle>;
+  followsCapsule: boolean;
+  capsuleStyle: StyleProp<ViewStyle>;
 }) {
   const frame = getBottomNavigationCapsuleFrame(item.id);
+  const centerOffset = getBottomNavigationCapsuleCenterOffset(item.id);
 
   return (
-    <View
+    <Animated.View
       pointerEvents="none"
-      style={{
-        position: 'absolute',
-        top: 6,
-        left: frame.x,
-        width: frame.width,
-        height: selectedItem.height,
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingHorizontal: selectedItem.paddingHorizontal,
-        paddingVertical: selectedItem.paddingVertical,
-      }}
+      style={[
+        {
+          position: 'absolute',
+          top: 0,
+          left: '50%',
+          width: frame.width,
+          height: BOTTOM_NAVIGATION_FIGMA.navigationHeight,
+          transform: [{ translateX: centerOffset }],
+        },
+        followsCapsule ? capsuleStyle : undefined,
+        containerStyle,
+      ]}
     >
-      <View className="flex-row items-center" style={{ gap: selectedItem.gap }}>
-        <NavigationLeadingVisual item={item} selected userId={userId} />
-        <ReactNativeAnimated.Text
-          numberOfLines={1}
-          className="font-sans-medium text-foreground"
-          style={[
-            {
-              fontSize: selectedItem.fontSize,
-              lineHeight: selectedItem.lineHeight,
-              letterSpacing: selectedItem.letterSpacing,
-            },
-            labelStyle,
-          ]}
-        >
-          {item.label}
-        </ReactNativeAnimated.Text>
+      <View
+        style={{
+          position: 'absolute',
+          top: 6,
+          left: 0,
+          width: frame.width,
+          height: selectedItem.height,
+          alignItems: 'center',
+          justifyContent: 'center',
+          paddingHorizontal: selectedItem.paddingHorizontal,
+          paddingVertical: selectedItem.paddingVertical,
+        }}
+      >
+        <View className="flex-row items-center" style={{ gap: selectedItem.gap }}>
+          <NavigationLeadingVisual item={item} selected userId={userId} />
+          <ReactNativeAnimated.Text
+            numberOfLines={1}
+            className="font-sans-medium text-foreground"
+            style={[
+              {
+                fontSize: selectedItem.fontSize,
+                lineHeight: selectedItem.lineHeight,
+                letterSpacing: selectedItem.letterSpacing,
+              },
+              labelStyle,
+            ]}
+          >
+            {item.label}
+          </ReactNativeAnimated.Text>
+        </View>
       </View>
-    </View>
+    </Animated.View>
   );
 }
 
@@ -223,6 +257,7 @@ export function BottomNavBar() {
   const activeIndex = BOTTOM_NAVIGATION_ITEMS.findIndex((item) => isActive(item.path));
   const activeId = BOTTOM_NAVIGATION_ITEMS[activeIndex]?.id ?? 'logs';
   const initialFrame = getBottomNavigationCapsuleFrame(activeId);
+  const initialCenterOffset = getBottomNavigationCapsuleCenterOffset(activeId);
   const initialMotionState: NavigationCapsuleState = {
     from: activeId,
     to: activeId,
@@ -232,17 +267,29 @@ export function BottomNavBar() {
   const transitionRef = useRef<NavigationCapsuleState>(initialMotionState);
   const transitionSequenceRef = useRef(0);
   const latestTransitionRef = useRef({ destination: activeId, sequence: 0 });
+  const pendingTransitionRef = useRef<{
+    destination: BottomNavigationItem['id'];
+    sequence: number;
+  } | null>(null);
+  const mountedRef = useRef(true);
+  const cancelledPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pressAttemptRef = useRef({ sequence: 0, navigationCommitted: true });
   const [motionState, setMotionState] = useState(initialMotionState);
+  const [outgoingFollowsCapsule, setOutgoingFollowsCapsule] = useState(false);
   const stateLayout = getBottomNavigationStateLayout(motionState.to);
   const destinationFrame = getBottomNavigationCapsuleFrame(motionState.to);
 
   const reduceMotion = useReducedMotion();
   const shellMotion = BOTTOM_NAVIGATION_FIGMA.shellMotion;
   const labelMotion = BOTTOM_NAVIGATION_FIGMA.labelMotion;
+  const reducedMotion = BOTTOM_NAVIGATION_FIGMA.reducedMotion;
   const shellScale = useSharedValue(1);
-  const capsuleX = useSharedValue(initialFrame.x);
+  const capsuleX = useSharedValue(initialCenterOffset);
   const capsuleWidth = useSharedValue(initialFrame.width);
   const fillOpacity = useSharedValue(1);
+  const outgoingFillOpacity = useSharedValue(0);
+  const incomingContentOpacity = useSharedValue(1);
+  const outgoingContentOpacity = useSharedValue(0);
 
   const incomingLabelOpacity = useRef(new ReactNativeAnimated.Value(1)).current;
   const incomingLabelScale = useRef(new ReactNativeAnimated.Value(1)).current;
@@ -261,6 +308,15 @@ export function BottomNavBar() {
   const selectedFillStyle = useAnimatedStyle(() => ({
     opacity: fillOpacity.value,
   }));
+  const outgoingFillStyle = useAnimatedStyle(() => ({
+    opacity: outgoingFillOpacity.value,
+  }));
+  const incomingContentStyle = useAnimatedStyle(() => ({
+    opacity: incomingContentOpacity.value,
+  }));
+  const outgoingContentStyle = useAnimatedStyle(() => ({
+    opacity: outgoingContentOpacity.value,
+  }));
 
   const incomingLabelStyle = {
     opacity: incomingLabelOpacity,
@@ -277,23 +333,8 @@ export function BottomNavBar() {
     ],
   } as unknown as StyleProp<TextStyle>;
 
-  const finishCapsuleTransition = useCallback((
-    destination: BottomNavigationItem['id'],
-    sequence: number,
-  ) => {
-    const latest = latestTransitionRef.current;
-    if (latest.destination !== destination || latest.sequence !== sequence) return;
-    if (transitionRef.current.to !== destination) return;
-
-    const settledState = settleBottomNavigationTransition(transitionRef.current);
-    transitionRef.current = settledState;
-    setMotionState(settledState);
-    outgoingLabelOpacity.setValue(0);
-    fillOpacity.value = withTiming(1, {
-      duration: reduceMotion ? labelMotion.duration : 140,
-      easing: Easing.out(Easing.quad),
-    });
-
+  const releaseShell = useCallback(() => {
+    cancelAnimation(shellScale);
     if (reduceMotion) {
       shellScale.value = 1;
       return;
@@ -304,19 +345,53 @@ export function BottomNavBar() {
       dampingRatio: shellMotion.releaseDampingRatio,
     });
   }, [
-    fillOpacity,
-    labelMotion.duration,
-    outgoingLabelOpacity,
     reduceMotion,
     shellMotion.releaseDampingRatio,
     shellMotion.releaseDuration,
     shellScale,
   ]);
 
-  const beginLabelHandoff = useCallback((
+  const finishCapsuleTransition = useCallback((
     destination: BottomNavigationItem['id'],
     sequence: number,
   ) => {
+    if (!mountedRef.current) return;
+    const latest = latestTransitionRef.current;
+    if (latest.destination !== destination || latest.sequence !== sequence) return;
+    if (transitionRef.current.to !== destination) return;
+
+    const settledState = settleBottomNavigationTransition(transitionRef.current);
+    transitionRef.current = settledState;
+    setMotionState(settledState);
+    setOutgoingFollowsCapsule(false);
+    outgoingLabelOpacity.setValue(0);
+    outgoingContentOpacity.value = 0;
+    outgoingFillOpacity.value = 0;
+
+    if (reduceMotion) {
+      incomingContentOpacity.value = 1;
+      fillOpacity.value = 1;
+      shellScale.value = 1;
+      return;
+    }
+
+    fillOpacity.value = withTiming(1, {
+      duration: 140,
+      easing: Easing.out(Easing.quad),
+    });
+    releaseShell();
+  }, [
+    fillOpacity,
+    incomingContentOpacity,
+    outgoingContentOpacity,
+    outgoingFillOpacity,
+    outgoingLabelOpacity,
+    reduceMotion,
+    releaseShell,
+    shellScale,
+  ]);
+
+  const beginLabelHandoff = useCallback(() => {
     incomingLabelOpacity.stopAnimation();
     incomingLabelScale.stopAnimation();
     incomingLabelTranslateX.stopAnimation();
@@ -324,9 +399,19 @@ export function BottomNavBar() {
     outgoingLabelScale.stopAnimation();
     outgoingLabelTranslateX.stopAnimation();
 
+    if (reduceMotion) {
+      incomingLabelOpacity.setValue(1);
+      incomingLabelScale.setValue(1);
+      incomingLabelTranslateX.setValue(0);
+      outgoingLabelOpacity.setValue(1);
+      outgoingLabelScale.setValue(1);
+      outgoingLabelTranslateX.setValue(0);
+      return;
+    }
+
     incomingLabelOpacity.setValue(0);
-    incomingLabelScale.setValue(reduceMotion ? 1 : labelMotion.enterScale);
-    incomingLabelTranslateX.setValue(reduceMotion ? 0 : labelMotion.enterTranslateX);
+    incomingLabelScale.setValue(labelMotion.enterScale);
+    incomingLabelTranslateX.setValue(labelMotion.enterTranslateX);
     outgoingLabelOpacity.setValue(1);
     outgoingLabelScale.setValue(1);
     outgoingLabelTranslateX.setValue(0);
@@ -355,22 +440,19 @@ export function BottomNavBar() {
         useNativeDriver: true,
       }),
       ReactNativeAnimated.timing(outgoingLabelScale, {
-        toValue: reduceMotion ? 1 : labelMotion.enterScale,
+        toValue: labelMotion.enterScale,
         duration: labelMotion.duration,
         useNativeDriver: true,
       }),
       ReactNativeAnimated.timing(outgoingLabelTranslateX, {
-        toValue: reduceMotion ? 0 : labelMotion.enterTranslateX,
+        toValue: labelMotion.enterTranslateX,
         duration: labelMotion.duration,
         useNativeDriver: true,
       }),
     ]).start();
 
-    incoming.start(({ finished }) => {
-      if (finished && reduceMotion) finishCapsuleTransition(destination, sequence);
-    });
+    incoming.start();
   }, [
-    finishCapsuleTransition,
     incomingLabelOpacity,
     incomingLabelScale,
     incomingLabelTranslateX,
@@ -388,20 +470,39 @@ export function BottomNavBar() {
     sequence: number,
   ) => {
     const frame = getBottomNavigationCapsuleFrame(destination);
-    beginLabelHandoff(destination, sequence);
+    const centerOffset = getBottomNavigationCapsuleCenterOffset(destination);
+    beginLabelHandoff();
 
     if (reduceMotion) {
-      capsuleX.value = frame.x;
+      outgoingFillOpacity.value = 1;
+      outgoingContentOpacity.value = 1;
+      fillOpacity.value = 0;
+      incomingContentOpacity.value = 0;
+      capsuleX.value = centerOffset;
       capsuleWidth.value = frame.width;
       shellScale.value = 1;
+
+      const crossfade = {
+        duration: reducedMotion.crossfadeDuration,
+        easing: Easing.out(Easing.quad),
+      };
+      outgoingFillOpacity.value = withTiming(0, crossfade);
+      outgoingContentOpacity.value = withTiming(0, crossfade);
+      fillOpacity.value = withTiming(1, crossfade);
+      incomingContentOpacity.value = withTiming(1, crossfade, (finished) => {
+        if (finished) runOnJS(finishCapsuleTransition)(destination, sequence);
+      });
       return;
     }
 
+    outgoingFillOpacity.value = 0;
+    outgoingContentOpacity.value = 1;
+    incomingContentOpacity.value = 1;
     capsuleWidth.value = withTiming(frame.width, {
       duration: 220,
       easing: Easing.bezier(0.77, 0, 0.175, 1),
     });
-    capsuleX.value = withSpring(frame.x, {
+    capsuleX.value = withSpring(centerOffset, {
       duration: 320,
       dampingRatio: 0.78,
     }, (finished) => {
@@ -411,12 +512,25 @@ export function BottomNavBar() {
     beginLabelHandoff,
     capsuleWidth,
     capsuleX,
+    fillOpacity,
     finishCapsuleTransition,
+    incomingContentOpacity,
+    outgoingContentOpacity,
+    outgoingFillOpacity,
     reduceMotion,
+    reducedMotion.crossfadeDuration,
     shellScale,
   ]);
 
   const handleNavigationPressIn = useCallback(() => {
+    if (cancelledPressTimerRef.current) {
+      clearTimeout(cancelledPressTimerRef.current);
+      cancelledPressTimerRef.current = null;
+    }
+    pressAttemptRef.current = {
+      sequence: pressAttemptRef.current.sequence + 1,
+      navigationCommitted: false,
+    };
     cancelAnimation(shellScale);
     if (reduceMotion) {
       shellScale.value = 1;
@@ -429,37 +543,100 @@ export function BottomNavBar() {
     });
   }, [reduceMotion, shellMotion.pressDuration, shellMotion.pressedScale, shellScale]);
 
+  const handleNavigationPressOut = useCallback(() => {
+    const pressSequence = pressAttemptRef.current.sequence;
+    cancelledPressTimerRef.current = setTimeout(() => {
+      cancelledPressTimerRef.current = null;
+      if (!mountedRef.current) return;
+      if (pressAttemptRef.current.sequence !== pressSequence) return;
+      if (!shouldReleaseBottomNavigationCancelledPress(
+        pressAttemptRef.current.navigationCommitted,
+        transitionRef.current,
+      )) return;
+
+      releaseShell();
+    }, 0);
+  }, [releaseShell]);
+
   const navigateTo = useCallback((item: BottomNavigationItem) => {
+    pressAttemptRef.current.navigationCommitted = true;
+    if (transitionRef.current.phase !== 'resting' && transitionRef.current.to === item.id) {
+      router.navigate(item.path as never);
+      return;
+    }
+
+    const wasTravelling = transitionRef.current.phase !== 'resting';
     const nextState = startBottomNavigationTransition(transitionRef.current, item.id);
     transitionRef.current = nextState;
     setMotionState(nextState);
+    setOutgoingFollowsCapsule(wasTravelling);
 
     const sequence = transitionSequenceRef.current + 1;
     transitionSequenceRef.current = sequence;
     latestTransitionRef.current = { destination: item.id, sequence };
 
-    if (nextState.phase === 'travelling') fillOpacity.value = 0;
+    if (nextState.phase === 'travelling' && !reduceMotion) fillOpacity.value = 0;
+    if (nextState.phase === 'travelling') {
+      pendingTransitionRef.current = { destination: item.id, sequence };
+    }
     router.navigate(item.path as never);
 
-    if (nextState.phase === 'travelling') {
-      beginCapsuleTransition(item.id, sequence);
-      return;
-    }
+    if (nextState.phase === 'travelling') return;
 
-    if (reduceMotion) {
-      shellScale.value = 1;
-    } else {
-      shellScale.value = withSpring(1, {
-        duration: shellMotion.releaseDuration,
-        dampingRatio: shellMotion.releaseDampingRatio,
-      });
-    }
+    releaseShell();
   }, [
-    beginCapsuleTransition,
     fillOpacity,
     reduceMotion,
-    shellMotion.releaseDampingRatio,
-    shellMotion.releaseDuration,
+    releaseShell,
+  ]);
+
+  useLayoutEffect(() => {
+    const pending = pendingTransitionRef.current;
+    if (!pending || motionState.phase === 'resting') return;
+    if (pending.destination !== motionState.to) return;
+    if (latestTransitionRef.current.sequence !== pending.sequence) return;
+
+    pendingTransitionRef.current = null;
+    beginCapsuleTransition(pending.destination, pending.sequence);
+  }, [beginCapsuleTransition, motionState]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      pendingTransitionRef.current = null;
+      if (cancelledPressTimerRef.current) {
+        clearTimeout(cancelledPressTimerRef.current);
+        cancelledPressTimerRef.current = null;
+      }
+
+      incomingLabelOpacity.stopAnimation();
+      incomingLabelScale.stopAnimation();
+      incomingLabelTranslateX.stopAnimation();
+      outgoingLabelOpacity.stopAnimation();
+      outgoingLabelScale.stopAnimation();
+      outgoingLabelTranslateX.stopAnimation();
+      cancelAnimation(shellScale);
+      cancelAnimation(capsuleX);
+      cancelAnimation(capsuleWidth);
+      cancelAnimation(fillOpacity);
+      cancelAnimation(outgoingFillOpacity);
+      cancelAnimation(incomingContentOpacity);
+      cancelAnimation(outgoingContentOpacity);
+    };
+  }, [
+    capsuleWidth,
+    capsuleX,
+    fillOpacity,
+    incomingContentOpacity,
+    incomingLabelOpacity,
+    incomingLabelScale,
+    incomingLabelTranslateX,
+    outgoingContentOpacity,
+    outgoingFillOpacity,
+    outgoingLabelOpacity,
+    outgoingLabelScale,
+    outgoingLabelTranslateX,
     shellScale,
   ]);
 
@@ -467,6 +644,7 @@ export function BottomNavBar() {
     if (transitionRef.current.to === activeId) return;
 
     const frame = getBottomNavigationCapsuleFrame(activeId);
+    const centerOffset = getBottomNavigationCapsuleCenterOffset(activeId);
     const restingState: NavigationCapsuleState = {
       from: activeId,
       to: activeId,
@@ -478,9 +656,13 @@ export function BottomNavBar() {
       sequence: transitionSequenceRef.current,
     };
     setMotionState(restingState);
-    capsuleX.value = frame.x;
+    setOutgoingFollowsCapsule(false);
+    capsuleX.value = centerOffset;
     capsuleWidth.value = frame.width;
     fillOpacity.value = 1;
+    outgoingFillOpacity.value = 0;
+    incomingContentOpacity.value = 1;
+    outgoingContentOpacity.value = 0;
     shellScale.value = 1;
     incomingLabelOpacity.setValue(1);
     incomingLabelScale.setValue(1);
@@ -491,15 +673,20 @@ export function BottomNavBar() {
     capsuleWidth,
     capsuleX,
     fillOpacity,
+    incomingContentOpacity,
     incomingLabelOpacity,
     incomingLabelScale,
     incomingLabelTranslateX,
     outgoingLabelOpacity,
+    outgoingContentOpacity,
+    outgoingFillOpacity,
     shellScale,
   ]);
 
   const movingToId = motionState.to;
   const outgoingItem = BOTTOM_NAVIGATION_ITEMS.find((item) => item.id === motionState.from);
+  const outgoingFrame = getBottomNavigationCapsuleFrame(motionState.from);
+  const outgoingCenterOffset = getBottomNavigationCapsuleCenterOffset(motionState.from);
   const destinationItem = BOTTOM_NAVIGATION_ITEMS.find((item) => item.id === movingToId)
     ?? BOTTOM_NAVIGATION_ITEMS[1];
 
@@ -556,6 +743,7 @@ export function BottomNavBar() {
                     userId={userId}
                     onPress={() => navigateTo(item)}
                     onPressIn={handleNavigationPressIn}
+                    onPressOut={handleNavigationPressOut}
                   />
                 );
               })}
@@ -567,7 +755,24 @@ export function BottomNavBar() {
                 {
                   position: 'absolute',
                   top: 6,
-                  left: 0,
+                  left: '50%',
+                  width: outgoingFrame.width,
+                  height: selectedItem.height,
+                  borderRadius: selectedItem.borderRadius,
+                  backgroundColor: BOTTOM_NAVIGATION_ACTIVE_FILL,
+                  transform: [{ translateX: outgoingCenterOffset }],
+                },
+                outgoingFillStyle,
+              ]}
+            />
+
+            <Animated.View
+              pointerEvents="none"
+              style={[
+                {
+                  position: 'absolute',
+                  top: 6,
+                  left: '50%',
                   height: selectedItem.height,
                   borderRadius: selectedItem.borderRadius,
                   backgroundColor: BOTTOM_NAVIGATION_ACTIVE_FILL,
@@ -577,11 +782,14 @@ export function BottomNavBar() {
               ]}
             />
 
-            {motionState.phase !== 'resting' && outgoingItem ? (
+            {outgoingItem ? (
               <OutgoingNavigationContent
                 item={outgoingItem}
                 userId={userId}
                 labelStyle={outgoingLabelStyle}
+                containerStyle={outgoingContentStyle}
+                followsCapsule={outgoingFollowsCapsule}
+                capsuleStyle={capsuleGeometryStyle}
               />
             ) : null}
 
@@ -591,10 +799,11 @@ export function BottomNavBar() {
                 {
                   position: 'absolute',
                   top: 0,
-                  left: 0,
+                  left: '50%',
                   height: BOTTOM_NAVIGATION_FIGMA.navigationHeight,
                 },
                 capsuleGeometryStyle,
+                incomingContentStyle,
               ]}
             >
               <PersistentNavigationCapsule

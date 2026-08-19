@@ -42,14 +42,23 @@ export function getBottomNavigationCapsuleFrame(
   return BOTTOM_NAVIGATION_CAPSULE_FRAMES[id];
 }
 
+export function getBottomNavigationCapsuleCenterOffset(
+  id: BottomNavigationItem['id'],
+): number {
+  const frame = getBottomNavigationCapsuleFrame(id);
+  return frame.x - (frame.shellWidth / 2);
+}
+
 export function startBottomNavigationTransition(
   state: NavigationCapsuleState,
   destination: BottomNavigationItem['id'],
 ): NavigationCapsuleState {
+  if (destination === state.to) return state;
+
   return {
-    from: state.phase === 'resting' ? state.to : state.from,
+    from: state.to,
     to: destination,
-    phase: destination === state.to && state.phase === 'resting' ? 'resting' : 'travelling',
+    phase: 'travelling',
   };
 }
 
@@ -63,6 +72,13 @@ export function shouldShowBottomNavigationSelectedFill(
   state: NavigationCapsuleState,
 ): boolean {
   return state.phase === 'resting';
+}
+
+export function shouldReleaseBottomNavigationCancelledPress(
+  navigationCommitted: boolean,
+  state: NavigationCapsuleState,
+): boolean {
+  return !navigationCommitted && state.phase === 'resting';
 }
 
 export const BOTTOM_NAVIGATION_ACTIVE_FILL = 'rgba(15,16,16,0.06)';
@@ -103,6 +119,9 @@ export const BOTTOM_NAVIGATION_FIGMA = {
     enterScale: 0.94,
     enterTranslateX: -6,
     duration: 180,
+  },
+  reducedMotion: {
+    crossfadeDuration: 180,
   },
 } as const;
 
