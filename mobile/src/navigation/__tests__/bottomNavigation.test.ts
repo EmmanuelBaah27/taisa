@@ -59,7 +59,17 @@ describe('bottom navigation', () => {
       throw new Error("Cannot find native module 'ExpoGlassEffect'");
     };
 
-    expect(resolveOptionalGlassModule(missingNativeModule)).toBeNull();
+    expect(resolveOptionalGlassModule(true, missingNativeModule)).toBeNull();
+  });
+
+  test('does not evaluate the optional native glass module until explicitly enabled', () => {
+    const loader = jest.fn(() => ({ GlassView: 'native' }));
+
+    expect(resolveOptionalGlassModule(false, loader)).toBeNull();
+    expect(loader).not.toHaveBeenCalled();
+
+    expect(resolveOptionalGlassModule(true, loader)).toEqual({ GlassView: 'native' });
+    expect(loader).toHaveBeenCalledTimes(1);
   });
 
   test('matches the Figma width for each active navigation state', () => {

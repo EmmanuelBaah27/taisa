@@ -227,7 +227,9 @@ export function resolveGlassAvailability(
   }
 }
 
-export function resolveOptionalGlassModule<T>(loader: () => T): T | null {
+export function resolveOptionalGlassModule<T>(enabled: boolean, loader: () => T): T | null {
+  if (!enabled) return null;
+
   try {
     return loader();
   } catch {

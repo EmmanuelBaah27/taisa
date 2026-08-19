@@ -45,7 +45,9 @@ import { Icon } from './Icon';
 import { NaviiAvatar } from './NaviiAvatar';
 import { PersistentNavigationCapsule } from './PersistentNavigationCapsule';
 
+const nativeGlassEnabled = process.env.EXPO_PUBLIC_NATIVE_GLASS_ENABLED === 'true';
 const glassEffectModule = resolveOptionalGlassModule(
+  nativeGlassEnabled,
   () => require('expo-glass-effect') as typeof import('expo-glass-effect'),
 );
 const NativeGlassView = glassEffectModule?.GlassView;
