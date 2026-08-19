@@ -5,6 +5,10 @@ export const colors = {
   surfaceElevated: '#f9f9f9',
   border: '#e6e6e6',
   borderSubtle: 'rgba(6,7,7,0.08)',
+  secondaryActionSurface: 'rgba(255,255,255,0.18)',
+  secondaryActionBorder: 'rgba(23,23,23,0.06)',
+  secondaryActionIcon: '#0F1010',
+  shadowSubtle: '#000000',
 
   // Primary (lime-500)
   accent: '#cdec1a',

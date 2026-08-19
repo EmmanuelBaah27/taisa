@@ -1,6 +1,13 @@
 export { Button } from './Button';
 export type { ButtonProps, ButtonVariant, ButtonSize } from './Button';
 
+export {
+  SECONDARY_ICON_BUTTON_FIGMA,
+  SECONDARY_ICON_BUTTON_MOTION,
+  SecondaryIconButton,
+} from './SecondaryIconButton';
+export type { SecondaryIconButtonProps } from './SecondaryIconButton';
+
 export { Badge } from './Badge';
 export type { BadgeProps, BadgeColor, BadgeAppearance, BadgeSize } from './Badge';
 

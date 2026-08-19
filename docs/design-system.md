@@ -111,6 +111,7 @@ Never use raw `text-sm font-semibold` combinations — use the composite utiliti
 | Component | Props | Notes |
 |---|---|---|
 | `Button` | `variant`, `size`, `label`, `icon`, `loading`, `disabled` | Six variants; three sizes |
+| `SecondaryIconButton` | `label`, `icon`, `disabled?`, `onPress` | Figma node 414:706 compact secondary action: 56×56 translucent-white circle, 24px Central icon, 6% dark border, and soft 6px shadow. Pressing reuses the bottom-navigation shell rhythm—scale to 1.12 over 70ms, hold 100ms, settle over 90ms—with a non-spatial reduced-motion path. Use for pause, keyboard, close, and similar supporting actions; keep primary or destructive actions in their own visual hierarchy. |
 | `Badge` | `color`, `appearance`, `size`, `icon`, `onDismiss` | Eight colors; three appearances |
 | `Card` | `surface`, `className`, `style` | Two surfaces (default / elevated) |
 | `Input` | `size`, `error`, `...TextInputProps` | Two sizes; error state |

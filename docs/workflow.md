@@ -15,6 +15,7 @@ Claude maintains the Active Work table — Baah never needs to update it.
 | Taisa system architecture | Platform | Review + QA | `docs/reimagine-product-scope` | Baah document review |
 | Current experience consolidation | Platform + Product | Review + QA | `feature/current-experience` | Persistent navigation capsule motion is verified automatically and launched on the paired iPhone; awaiting Baah device QA (including page-title follow-up separately) |
 | Chat card expansion | Product | Review + QA | `feature/chat-card-expansion` | Baah reverse-morph device QA |
+| Secondary icon button | Product | Review + QA | `feature/secondary-icon-button` | Baah device QA |
 
 ---
 
