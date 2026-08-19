@@ -105,10 +105,11 @@ The screen no longer returns a separate full-screen recording page before render
 
 | Command | Result |
 |---|---|
-| `npm test -- --runInBand` | Blocked by the local `better-sqlite3` native binding: 14 suites / 173 tests fail because `better_sqlite3.node` is absent. This is an environment gap, not a pass. |
+| `npm rebuild better-sqlite3` | Pass — rebuilt the native binding for Node 20.20.2 on darwin arm64. |
+| `npm test -- --runInBand` | Pass — 58 suites / 516 tests. |
 | Focused shell suite: `npm test -- --runInBand src/components/ui/__tests__/RecordingPagePrimitives.test.ts src/components/ui/__tests__/ChatSurfaces.test.ts src/components/ui/__tests__/VoiceComposer.test.ts src/navigation/__tests__/localCaptureRoutes.test.ts src/navigation/__tests__/conversationResume.test.ts` | Pass — 5 suites / 49 tests. |
 | `npm run typecheck` | Pass — `tsc --noEmit` exited 0. |
-| `npm run verify:design-system` | Pass — 26 catalog modules. |
+| `npm run verify:design-system` | Pass — 26 catalog modules, including the documented `ActiveRecordingSurface` source module. |
 | `git diff --check` and `git diff --check origin/main...HEAD` | Pass — no output. |
 
 ### Final source review
@@ -131,7 +132,7 @@ The screen no longer returns a separate full-screen recording page before render
 - [ ] Cancel a main/new recording; confirm the Taisa page closes.
 - [ ] Deny or interrupt recorder acquisition; confirm Cancel and Keyboard remain usable while Pause/Resume and Send stay disabled.
 
-Ship remains blocked until the native-binding test environment is repaired or its result is otherwise resolved, and Baah confirms the paired-device checklist.
+Ship remains blocked until Baah confirms the paired-device checklist.
 
 ## Out of scope
 

@@ -35,10 +35,10 @@
 
 **Interfaces:**
 - Produces: `ActiveRecordingContentProps { greeting: string }` and `ActiveRecordingContent`.
-- Produces: `ActiveRecordingActionBarProps` and `ActiveRecordingActionBar` with duration, amplitude, paused state, global/action disabled states, cancel label, bottom inset, and callbacks.
+- Produces: `ActiveRecordingActionBarProps` and `ActiveRecordingActionBar` with duration, amplitude, paused state, global/action disabled states, cancel label, and callbacks. The shared `ChatComposerDock` owns footer geometry.
 - Removes: page-shell responsibility from `ActiveRecordingSurface`; screen code will stop consuming the full-page component in Task 2.
 
-- [ ] **Step 1: Write failing composition tests**
+- [x] **Step 1: Write failing composition tests**
 
 Add tests that call the new presentational functions directly and assert their boundaries:
 
@@ -48,7 +48,6 @@ expect(findElementsByType(content.props.children, RecordingVoiceMark)).toHaveLen
 expect(textContent(content)).toContain('How’s it going?');
 
 const bar = ActiveRecordingActionBar({
-  bottomInset: 34,
   durationSeconds: 4,
   amplitudeLevel: 0.4,
   paused: false,
@@ -68,7 +67,7 @@ expect(actionByLabel(bar, 'Send recording').props.disabled).toBe(true);
 
 Assert that neither component accepts `topInset`, `title`, or `onClose`, and that the content still renders the static `RecordingVoiceMark` while the bar still renders `VoiceReactiveTimestamp`.
 
-- [ ] **Step 2: Run the focused test and verify RED**
+- [x] **Step 2: Run the focused test and verify RED**
 
 Run:
 
@@ -79,7 +78,7 @@ npm test -- --runInBand src/components/ui/__tests__/RecordingPagePrimitives.test
 
 Expected: FAIL because `ActiveRecordingContent` and `ActiveRecordingActionBar` are not exported.
 
-- [ ] **Step 3: Implement the two focused components**
+- [x] **Step 3: Implement the two focused components**
 
 Replace the full-page component boundary with typed presentation units:
 
@@ -103,7 +102,6 @@ export function ActiveRecordingContent({ greeting }: ActiveRecordingContentProps
 Define `ActiveRecordingActionBarProps` with:
 
 ```ts
-bottomInset: number;
 durationSeconds: number;
 amplitudeLevel: number;
 paused: boolean;
@@ -116,17 +114,17 @@ onPauseResume(): void;
 onSend(): void;
 ```
 
-Render the existing control arrangement inside a footer-width container using the same `px-4` horizontal margin and `Math.max(bottomInset, 20) + 20` bottom spacing contract. Apply `recordingActionDisabled` only to Pause/Resume and Send.
+Render the existing control arrangement inside the shared `ChatComposerDock` footer slot. Apply `recordingActionDisabled` only to Pause/Resume and Send.
 
-- [ ] **Step 4: Update exports and Storybook**
+- [x] **Step 4: Update exports and Storybook**
 
 Export both components and prop types from `mobile/src/components/ui/index.ts`. Replace the old full-page story with content and action-bar fixtures for Recording, Paused, and Acquiring states. Keep the 393px device-width decorator so visual comparison remains available.
 
-- [ ] **Step 5: Run the focused test and verify GREEN**
+- [x] **Step 5: Run the focused test and verify GREEN**
 
 Run the Task 1 test command. Expected: PASS, including the existing 56px, static mark, and timestamp glow assertions.
 
-- [ ] **Step 6: Commit Task 1**
+- [x] **Step 6: Commit Task 1**
 
 ```bash
 git add mobile/src/components/ui/ActiveRecordingSurface.tsx \
@@ -150,7 +148,7 @@ git commit -m "refactor(ds): split recording content and action bar"
 - Preserves: `ChatScreenShellProps`, `ChatNavBar`, morph styles, recorder handlers, and cleanup ownership.
 - Produces: one `ChatScreenShell` return path whose content/footer change by state.
 
-- [ ] **Step 1: Write failing shell-unification tests**
+- [x] **Step 1: Write failing shell-unification tests**
 
 Update source-contract tests to prove that recording no longer causes an early full-page return:
 
@@ -164,7 +162,7 @@ expect(chatScreen).not.toMatch(/title="New chat"/);
 
 Extend `ChatSurfaces.test.ts` to assert `ChatScreenShell` owns exactly one `ChatNavBar` and one footer slot independent of which nodes are supplied.
 
-- [ ] **Step 2: Run the shell tests and verify RED**
+- [x] **Step 2: Run the shell tests and verify RED**
 
 Run:
 
@@ -177,7 +175,7 @@ npm test -- --runInBand \
 
 Expected: FAIL because the current screen returns `ActiveRecordingSurface` before `ChatScreenShell`.
 
-- [ ] **Step 3: Build content and footer variables in the screen**
+- [x] **Step 3: Build content and footer variables in the screen**
 
 Replace the early return with explicit rendered-state variables:
 
@@ -216,7 +214,7 @@ return (
 
 Do not change `slideStyle`, `contentStyle`, `close`, `revealContent`, or recorder ownership.
 
-- [ ] **Step 4: Preserve initial content reveal behavior**
+- [x] **Step 4: Preserve initial content reveal behavior**
 
 When recording content is shown without hydrated conversation messages, ensure the existing morph content layer becomes visible without waiting for `ChatConversationSurface.onContentSizeChange`. Use the existing `revealContent()` entry point in a narrowly scoped effect keyed to `showActiveRecordingSurface`:
 
@@ -228,11 +226,11 @@ useEffect(() => {
 
 If `revealContent` is not referentially stable, key only on the boolean and document the intentional hook suppression rather than changing morph behavior.
 
-- [ ] **Step 5: Run the shell tests and verify GREEN**
+- [x] **Step 5: Run the shell tests and verify GREEN**
 
 Run the Task 2 test command. Expected: PASS with a single shell contract and title `Taisa`.
 
-- [ ] **Step 6: Commit Task 2**
+- [x] **Step 6: Commit Task 2**
 
 ```bash
 git add mobile/app/chat/index.tsx \
@@ -256,7 +254,7 @@ git commit -m "refactor: render recording inside chat shell"
 - Produces: `voiceCancelAccessibilityLabel(initialConversationId: string | null): string`.
 - Preserves: `handleCancelVoice`, `stopActiveRecordingAndDiscard`, `discardPendingRecording`, and `handleClose` cleanup behavior.
 
-- [ ] **Step 1: Write failing pure behavior tests**
+- [x] **Step 1: Write failing pure behavior tests**
 
 Add assertions beside `voiceCancelDestination`:
 
@@ -271,7 +269,7 @@ expect(voiceCancelAccessibilityLabel(null))
 
 Update the screen source test to prove the label is passed into `ActiveRecordingActionBar` and `handleCancelVoice` still branches through `voiceCancelDestination`.
 
-- [ ] **Step 2: Run cancellation tests and verify RED**
+- [x] **Step 2: Run cancellation tests and verify RED**
 
 Run:
 
@@ -284,7 +282,7 @@ npm test -- --runInBand \
 
 Expected: FAIL because `voiceCancelAccessibilityLabel` does not exist.
 
-- [ ] **Step 3: Implement the pure label helper**
+- [x] **Step 3: Implement the pure label helper**
 
 Add beside the existing destination function:
 
@@ -304,7 +302,7 @@ cancelLabel={voiceCancelAccessibilityLabel(initialConversationIdRef.current)}
 
 Do not move navigation or cleanup logic into the design-system component.
 
-- [ ] **Step 4: Verify failed-start behavior in both contexts**
+- [x] **Step 4: Verify failed-start behavior in both contexts**
 
 Extend source-contract assertions so the `startListening` catch still calls `handleCancelVoice`, then prove `handleCancelVoice` closes only for the `close` destination and otherwise restores voice mode:
 
@@ -314,11 +312,11 @@ expect(chatScreen).toMatch(/voiceCancelDestination\([^)]+\) === 'close'[\s\S]*ha
 expect(chatScreen).toMatch(/setPhase\('idle'\)[\s\S]*restore-mode/);
 ```
 
-- [ ] **Step 5: Run cancellation tests and verify GREEN**
+- [x] **Step 5: Run cancellation tests and verify GREEN**
 
 Run the Task 3 test command. Expected: PASS for both destination and accessibility contracts.
 
-- [ ] **Step 6: Commit Task 3**
+- [x] **Step 6: Commit Task 3**
 
 ```bash
 git add mobile/app/chat/index.tsx \
@@ -352,7 +350,7 @@ Document that:
 - navigation and cancel destinations remain screen responsibilities;
 - recording action buttons are 56px and acquisition disables only Pause/Resume and Send.
 
-- [ ] **Step 2: Run the complete mobile verification matrix**
+- [x] **Step 2: Run the complete mobile verification matrix**
 
 Run:
 
@@ -412,10 +410,11 @@ Expected: Baah confirms the two states read as one page and both Cancel destinat
 
 | Command | Result |
 |---|---|
-| `npm test -- --runInBand` | Blocked: 14 suites / 173 tests fail because this worktree lacks the local `better-sqlite3` native binding (`better_sqlite3.node`). This is recorded as an environment gap, not a passing suite. |
+| `npm rebuild better-sqlite3` | Pass — rebuilt the native binding for Node 20.20.2 on darwin arm64. |
+| `npm test -- --runInBand` | Pass — 58 suites / 516 tests. |
 | Focused recording/shell/cancellation tests | Pass — 5 suites / 49 tests: `RecordingPagePrimitives`, `ChatSurfaces`, `VoiceComposer`, `localCaptureRoutes`, and `conversationResume`. |
 | `npm run typecheck` | Pass — `tsc --noEmit` exited 0. |
-| `npm run verify:design-system` | Pass — 26 catalog modules. |
+| `npm run verify:design-system` | Pass — 26 catalog modules, including the documented `ActiveRecordingSurface` source module. |
 | `git diff --check` and `git diff --check origin/main...HEAD` | Pass — no output. |
 
 The source review confirms the single `ChatScreenShell` path, constant `Taisa` title, shared footer dock,
