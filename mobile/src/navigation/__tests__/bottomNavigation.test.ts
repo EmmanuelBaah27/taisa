@@ -152,6 +152,7 @@ describe('bottom navigation', () => {
       releaseDuration: 90,
       releaseDampingRatio: 0.78,
       releaseCompletesWithTravel: true,
+      scalesContent: false,
     });
   });
 

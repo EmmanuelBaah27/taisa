@@ -318,6 +318,8 @@ export function BottomNavBar() {
 
   const shellStyle = {
     width: shellWidth,
+  } as unknown as StyleProp<ViewStyle>;
+  const shellMaterialStyle = {
     transform: [{ scale: shellScale }],
   } as unknown as StyleProp<ViewStyle>;
   const capsuleGeometryStyle = {
@@ -1102,27 +1104,60 @@ export function BottomNavBar() {
       >
         <ReactNativeAnimated.View
           className="h-[60px] rounded-[32px]"
-          style={[
-            {
-              shadowColor: '#000000',
-              shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: 0.04,
-              shadowRadius: 28,
-              elevation: 4,
-            },
-            shellStyle,
-          ]}
+          style={shellStyle}
         >
-          <NavigationMaterial>
-            <View
-              style={{
-                width: '100%',
-                height: 58,
-                position: 'relative',
-                zIndex: 2,
-              }}
-            >
-              {BOTTOM_NAVIGATION_ITEMS.map((item, index) => (
+          <ReactNativeAnimated.View
+            pointerEvents="none"
+            style={[
+              {
+                position: 'absolute',
+                inset: 0,
+                shadowColor: '#000000',
+                shadowOffset: { width: 0, height: 0 },
+                shadowOpacity: 0.04,
+                shadowRadius: 28,
+                elevation: 4,
+              },
+              shellMaterialStyle,
+            ]}
+          >
+            <NavigationMaterial>
+              <ReactNativeAnimated.View
+                pointerEvents="none"
+                style={[
+                  {
+                    position: 'absolute',
+                    top: 0,
+                    left: '50%',
+                    height: BOTTOM_NAVIGATION_FIGMA.navigationHeight,
+                  },
+                  capsuleGeometryStyle,
+                ]}
+              >
+                <PersistentNavigationCapsule
+                  label={destinationItem.label}
+                  leadingVisual={(
+                    <NavigationLeadingVisual item={destinationItem} selected userId={userId} />
+                  )}
+                  frame={{ ...destinationFrame, x: 0 }}
+                  phase={motionState.phase}
+                  surfaceOnly
+                  animatedContainerStyle={[{ width: '100%' }]}
+                  animatedFillStyle={selectedFillStyle}
+                />
+              </ReactNativeAnimated.View>
+            </NavigationMaterial>
+          </ReactNativeAnimated.View>
+
+          <View
+            style={{
+              width: '100%',
+              height: 58,
+              position: 'relative',
+              zIndex: 2,
+            }}
+          >
+            {BOTTOM_NAVIGATION_ITEMS.map((item, index) => (
                 <NavigationDestination
                   key={item.id}
                   item={item}
@@ -1144,36 +1179,7 @@ export function BottomNavBar() {
                   onPressOut={handleNavigationPressOut}
                 />
               ))}
-            </View>
-
-            <ReactNativeAnimated.View
-              pointerEvents="none"
-              style={[
-                {
-                  position: 'absolute',
-                  top: 0,
-                  left: '50%',
-                  height: BOTTOM_NAVIGATION_FIGMA.navigationHeight,
-                  zIndex: 1,
-                },
-                capsuleGeometryStyle,
-              ]}
-            >
-              <PersistentNavigationCapsule
-                label={destinationItem.label}
-                leadingVisual={(
-                  <NavigationLeadingVisual item={destinationItem} selected userId={userId} />
-                )}
-                frame={{ ...destinationFrame, x: 0 }}
-                phase={motionState.phase}
-                surfaceOnly
-                animatedContainerStyle={[
-                  { width: '100%' },
-                ]}
-                animatedFillStyle={selectedFillStyle}
-              />
-            </ReactNativeAnimated.View>
-          </NavigationMaterial>
+          </View>
         </ReactNativeAnimated.View>
       </View>
     </View>

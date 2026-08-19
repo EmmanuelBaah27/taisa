@@ -200,6 +200,7 @@ export const BOTTOM_NAVIGATION_FIGMA = {
     releaseDuration: 90,
     releaseDampingRatio: 0.78,
     releaseCompletesWithTravel: true,
+    scalesContent: false,
   },
   capsuleMotion: {
     duration: 260,
