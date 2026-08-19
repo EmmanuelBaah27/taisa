@@ -17,6 +17,7 @@ interface UseVoiceRecorder {
   isPaused: boolean;
   duration: number;
   amplitude: ReturnType<typeof useSharedValue<number>>;
+  amplitudeLevel: number;
   permissionGranted: boolean | null;
   start: () => Promise<void>;
   stop: () => Promise<RecordingResult>;
@@ -30,6 +31,7 @@ export function useVoiceRecorder(): UseVoiceRecorder {
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [duration, setDuration] = useState(0);
+  const [amplitudeLevel, setAmplitudeLevel] = useState(0);
   const [permissionGranted, setPermissionGranted] = useState<boolean | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const unsubMeteringRef = useRef<(() => void) | null>(null);
@@ -61,6 +63,7 @@ export function useVoiceRecorder(): UseVoiceRecorder {
       setIsRecording(true);
       setIsPaused(false);
       setDuration(0);
+      setAmplitudeLevel(0);
     }
     amplitude.value = 0;
     activitySamplesRef.current = [];
@@ -73,6 +76,7 @@ export function useVoiceRecorder(): UseVoiceRecorder {
 
     unsubMeteringRef.current = onMeteringUpdate(amp => {
       amplitude.value = amp;
+      if (mountedRef.current) setAmplitudeLevel(amp);
       activitySamplesRef.current.push(amp);
     });
   }, [permissionGranted]);
@@ -81,6 +85,7 @@ export function useVoiceRecorder(): UseVoiceRecorder {
     if (timerRef.current) clearInterval(timerRef.current);
     unsubMeteringRef.current?.();
     amplitude.value = 0;
+    if (mountedRef.current) setAmplitudeLevel(0);
     const result = await stopRecording();
     const activity = classifyVoiceActivity(activitySamplesRef.current);
     if (mountedRef.current) {
@@ -96,7 +101,10 @@ export function useVoiceRecorder(): UseVoiceRecorder {
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = null;
     amplitude.value = 0;
-    if (mountedRef.current) setIsPaused(true);
+    if (mountedRef.current) {
+      setAmplitudeLevel(0);
+      setIsPaused(true);
+    }
   }, []);
 
   const resume = useCallback(async () => {
@@ -117,6 +125,7 @@ export function useVoiceRecorder(): UseVoiceRecorder {
     isPaused,
     duration,
     amplitude,
+    amplitudeLevel,
     permissionGranted,
     start,
     stop,

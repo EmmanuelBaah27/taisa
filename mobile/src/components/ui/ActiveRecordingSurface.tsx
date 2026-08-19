@@ -6,7 +6,6 @@ import { Icon } from './Icon';
 import { RecordingVoiceMark } from './RecordingVoiceMark';
 import { SecondaryIconButton } from './SecondaryIconButton';
 import { VoiceReactiveTimestamp } from './VoiceReactiveTimestamp';
-import type { SharedValue } from 'react-native-reanimated';
 
 export interface ActiveRecordingSurfaceProps {
   topInset: number;
@@ -14,7 +13,7 @@ export interface ActiveRecordingSurfaceProps {
   title: string;
   greeting: string;
   durationSeconds: number;
-  amplitude: SharedValue<number>;
+  amplitudeLevel: number;
   paused: boolean;
   disabled?: boolean;
   onClose: () => void;
@@ -74,7 +73,7 @@ export function ActiveRecordingSurface(props: ActiveRecordingSurfaceProps) {
 
         <VoiceReactiveTimestamp
           durationSeconds={props.durationSeconds}
-          amplitude={props.amplitude}
+          amplitudeLevel={props.amplitudeLevel}
           paused={props.paused}
         />
 

@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-native';
 import { View } from 'react-native';
-import { makeMutable } from 'react-native-reanimated';
 
 import { VoiceReactiveTimestamp } from './VoiceReactiveTimestamp';
 
@@ -9,7 +8,7 @@ const meta: Meta<typeof VoiceReactiveTimestamp> = {
   component: VoiceReactiveTimestamp,
   args: {
     durationSeconds: 13,
-    amplitude: makeMutable(0.35),
+    amplitudeLevel: 0.35,
     paused: false,
   },
   argTypes: {

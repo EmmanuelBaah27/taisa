@@ -1,4 +1,6 @@
 import React from 'react';
+import fs from 'node:fs';
+import path from 'node:path';
 
 import { Button } from '../Button';
 import {
@@ -7,7 +9,6 @@ import {
 import { ActiveRecordingSurface } from '../ActiveRecordingSurface';
 import { SecondaryIconButton } from '../SecondaryIconButton';
 import { VoiceReactiveTimestamp, VOICE_REACTIVE_TIMESTAMP } from '../VoiceReactiveTimestamp';
-import type { SharedValue } from 'react-native-reanimated';
 
 jest.mock('@shopify/react-native-skia', () => ({
   Canvas: 'Canvas',
@@ -53,14 +54,13 @@ describe('recording page primitives', () => {
   });
 
   test('active surface composes the Figma cancel bar and one primary send action', () => {
-    const amplitude = { value: 0.4 } as SharedValue<number>;
     const surface = ActiveRecordingSurface({
       topInset: 47,
       bottomInset: 34,
       title: 'New chat',
       greeting: 'How’s it going?',
       durationSeconds: 4,
-      amplitude,
+      amplitudeLevel: 0.4,
       paused: false,
       onClose: jest.fn(),
       onCancel: jest.fn(),
@@ -82,7 +82,7 @@ describe('recording page primitives', () => {
     expect(primary).toHaveLength(1);
     expect(primary[0].props).toMatchObject({ label: 'Send recording', size: 'icon-lg' });
     expect(timestamp).toHaveLength(1);
-    expect(timestamp[0].props).toMatchObject({ durationSeconds: 4, amplitude, paused: false });
+    expect(timestamp[0].props).toMatchObject({ durationSeconds: 4, amplitudeLevel: 0.4, paused: false });
   });
 
   test('reactive timestamp keeps its layout geometry while raw amplitude drives a wider canvas', () => {
@@ -93,5 +93,24 @@ describe('recording page primitives', () => {
       canvasHeight: 80,
       rawAmplitude: true,
     });
+  });
+
+  test('reactive timestamp keeps Skia uniforms off the UI worklet runtime', () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, '../VoiceReactiveTimestamp.tsx'),
+      'utf8',
+    );
+
+    expect(source).not.toContain('useDerivedValue');
+    expect(source).not.toContain('SharedValue');
+  });
+
+  test('reactive timestamp uses the slightly wider contained glow envelope', () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, '../VoiceReactiveTimestamp.tsx'),
+      'utf8',
+    );
+
+    expect(source).toContain('float spread = mix(0.020, 0.052, energy);');
   });
 });
