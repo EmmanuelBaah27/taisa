@@ -30,6 +30,7 @@ describe('bottom navigation', () => {
 
     expect(source).not.toMatch(/useAnimatedStyle|useSharedValue/);
     expect(source).not.toContain("from 'react-native-reanimated'");
+    expect(source).not.toContain('destinationLabelWidths');
   });
 
   test('exposes only the approved Home, Chats, and Me destinations', () => {
@@ -193,7 +194,12 @@ describe('bottom navigation', () => {
       enterTranslateX: -8,
       duration: 160,
       transformOrigin: 'left center',
+      reveal: 'opacity-scale',
     });
+  });
+
+  test('lets navigation motion establish before mounting the destination screen', () => {
+    expect(BOTTOM_NAVIGATION_FIGMA.routeMotionLeadDuration).toBe(220);
   });
 
   test('crossfades reduced-motion surfaces and content together', () => {

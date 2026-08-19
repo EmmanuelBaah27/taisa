@@ -212,7 +212,9 @@ export const BOTTOM_NAVIGATION_FIGMA = {
     enterTranslateX: -8,
     duration: 160,
     transformOrigin: 'left center',
+    reveal: 'opacity-scale',
   },
+  routeMotionLeadDuration: 220,
   reducedMotion: {
     crossfadeDuration: 180,
   },

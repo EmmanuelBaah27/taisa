@@ -135,7 +135,7 @@ function NavigationDestination({
   centerOffset,
   itemWidth,
   shellWidth,
-  labelRevealWidth,
+  iconStyle,
   labelStyle,
   userId,
   onPress,
@@ -147,7 +147,7 @@ function NavigationDestination({
   centerOffset: number | ReactNativeAnimated.Value;
   itemWidth: ReactNativeAnimated.Value;
   shellWidth: ReactNativeAnimated.Value;
-  labelRevealWidth: ReactNativeAnimated.Value;
+  iconStyle: StyleProp<ViewStyle>;
   labelStyle: StyleProp<TextStyle>;
   userId: string | null;
   onPress: () => void;
@@ -185,34 +185,32 @@ function NavigationDestination({
           justifyContent: 'center',
         }}
       >
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <ReactNativeAnimated.View style={iconStyle}>
           <NavigationLeadingVisual item={item} selected={selected} userId={userId} />
-          <ReactNativeAnimated.View
-            style={{
-              width: labelRevealWidth,
-              height: BOTTOM_NAVIGATION_FIGMA.selectedItem.lineHeight,
-              overflow: 'hidden',
-            }}
-          >
-            <ReactNativeAnimated.Text
-              numberOfLines={1}
-              className="font-sans-medium text-foreground"
-              style={[
-                {
-                  position: 'absolute',
-                  left: BOTTOM_NAVIGATION_FIGMA.selectedItem.gap,
-                  fontSize: BOTTOM_NAVIGATION_FIGMA.selectedItem.fontSize,
-                  lineHeight: BOTTOM_NAVIGATION_FIGMA.selectedItem.lineHeight,
-                  letterSpacing: BOTTOM_NAVIGATION_FIGMA.selectedItem.letterSpacing,
-                  transformOrigin: BOTTOM_NAVIGATION_FIGMA.labelMotion.transformOrigin,
-                },
-                labelStyle,
-              ]}
-            >
-              {item.label}
-            </ReactNativeAnimated.Text>
-          </ReactNativeAnimated.View>
-        </View>
+        </ReactNativeAnimated.View>
+        <ReactNativeAnimated.Text
+          numberOfLines={1}
+          className="font-sans-medium text-foreground"
+          style={[
+            {
+              position: 'absolute',
+              left: '50%',
+              marginLeft:
+                -(BOTTOM_NAVIGATION_FIGMA.selectedItem.gap
+                  + BOTTOM_NAVIGATION_LABEL_WIDTHS[item.id]) / 2
+                + BOTTOM_NAVIGATION_FIGMA.selectedItem.iconSize / 2
+                + BOTTOM_NAVIGATION_FIGMA.selectedItem.gap,
+              width: BOTTOM_NAVIGATION_LABEL_WIDTHS[item.id],
+              fontSize: BOTTOM_NAVIGATION_FIGMA.selectedItem.fontSize,
+              lineHeight: BOTTOM_NAVIGATION_FIGMA.selectedItem.lineHeight,
+              letterSpacing: BOTTOM_NAVIGATION_FIGMA.selectedItem.letterSpacing,
+              transformOrigin: BOTTOM_NAVIGATION_FIGMA.labelMotion.transformOrigin,
+            },
+            labelStyle,
+          ]}
+        >
+          {item.label}
+        </ReactNativeAnimated.Text>
       </Pressable>
     </ReactNativeAnimated.View>
   );
@@ -242,6 +240,7 @@ export function BottomNavBar() {
   const latestTransitionRef = useRef({ destination: activeId, sequence: 0 });
   const mountedRef = useRef(true);
   const cancelledPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const navigationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pressAttemptRef = useRef<{
     sequence: number;
     navigationCommitted: boolean;
@@ -270,10 +269,11 @@ export function BottomNavBar() {
   const destinationWidths = useRef(
     initialItemFrames.map((frame) => new ReactNativeAnimated.Value(frame.width)),
   ).current;
-  const destinationLabelWidths = useRef(
+  const destinationIconTranslations = useRef(
     BOTTOM_NAVIGATION_ITEMS.map((item) => new ReactNativeAnimated.Value(
       item.id === activeId
-        ? BOTTOM_NAVIGATION_FIGMA.selectedItem.gap + BOTTOM_NAVIGATION_LABEL_WIDTHS[item.id]
+        ? -(BOTTOM_NAVIGATION_FIGMA.selectedItem.gap
+          + BOTTOM_NAVIGATION_LABEL_WIDTHS[item.id]) / 2
         : 0,
     )),
   ).current;
@@ -525,7 +525,7 @@ export function BottomNavBar() {
       shellWidth.stopAnimation();
       destinationOffsets.forEach((offset) => offset.stopAnimation());
       destinationWidths.forEach((width) => width.stopAnimation());
-      destinationLabelWidths.forEach((width) => width.stopAnimation());
+      destinationIconTranslations.forEach((translation) => translation.stopAnimation());
       destinationLabelOpacities.forEach((opacity) => opacity.stopAnimation());
       destinationLabelScales.forEach((scale) => scale.stopAnimation());
       destinationLabelTranslations.forEach((translation) => translation.stopAnimation());
@@ -538,11 +538,10 @@ export function BottomNavBar() {
         destinationWidths[index].setValue(nextItemFrames[index].width);
         const item = BOTTOM_NAVIGATION_ITEMS[index];
         const selected = item.id === destination;
-        destinationLabelWidths[index].setValue(
-          selected
-            ? BOTTOM_NAVIGATION_FIGMA.selectedItem.gap + BOTTOM_NAVIGATION_LABEL_WIDTHS[item.id]
-            : 0,
-        );
+        destinationIconTranslations[index].setValue(selected
+          ? -(BOTTOM_NAVIGATION_FIGMA.selectedItem.gap
+            + BOTTOM_NAVIGATION_LABEL_WIDTHS[item.id]) / 2
+          : 0);
         destinationLabelOpacities[index].setValue(selected ? 1 : 0);
         destinationLabelScales[index].setValue(selected ? 1 : labelMotion.enterScale);
         destinationLabelTranslations[index].setValue(
@@ -570,7 +569,7 @@ export function BottomNavBar() {
     shellWidth.stopAnimation();
     destinationOffsets.forEach((offset) => offset.stopAnimation());
     destinationWidths.forEach((width) => width.stopAnimation());
-    destinationLabelWidths.forEach((width) => width.stopAnimation());
+    destinationIconTranslations.forEach((translation) => translation.stopAnimation());
     destinationLabelOpacities.forEach((opacity) => opacity.stopAnimation());
     destinationLabelScales.forEach((scale) => scale.stopAnimation());
     destinationLabelTranslations.forEach((translation) => translation.stopAnimation());
@@ -604,11 +603,12 @@ export function BottomNavBar() {
         toValue: nextItemFrames[index].width,
         ...coordinatedSpring,
       })),
-      ...destinationLabelWidths.map((width, index) => {
+      ...destinationIconTranslations.map((translation, index) => {
         const item = BOTTOM_NAVIGATION_ITEMS[index];
-        return ReactNativeAnimated.timing(width, {
+        return ReactNativeAnimated.timing(translation, {
           toValue: item.id === destination
-            ? BOTTOM_NAVIGATION_FIGMA.selectedItem.gap + BOTTOM_NAVIGATION_LABEL_WIDTHS[item.id]
+            ? -(BOTTOM_NAVIGATION_FIGMA.selectedItem.gap
+              + BOTTOM_NAVIGATION_LABEL_WIDTHS[item.id]) / 2
             : 0,
           duration: labelMotion.duration,
           easing: Easing.out(Easing.cubic),
@@ -649,7 +649,7 @@ export function BottomNavBar() {
     capsuleX,
     destinationOffsets,
     destinationWidths,
-    destinationLabelWidths,
+    destinationIconTranslations,
     destinationLabelOpacities,
     destinationLabelScales,
     destinationLabelTranslations,
@@ -797,11 +797,12 @@ export function BottomNavBar() {
         toValue: originItemFrames[index].width,
         ...returnSpring,
       })),
-      ...destinationLabelWidths.map((width, index) => {
+      ...destinationIconTranslations.map((translation, index) => {
         const item = BOTTOM_NAVIGATION_ITEMS[index];
-        return ReactNativeAnimated.timing(width, {
+        return ReactNativeAnimated.timing(translation, {
           toValue: item.id === origin
-            ? BOTTOM_NAVIGATION_FIGMA.selectedItem.gap + BOTTOM_NAVIGATION_LABEL_WIDTHS[item.id]
+            ? -(BOTTOM_NAVIGATION_FIGMA.selectedItem.gap
+              + BOTTOM_NAVIGATION_LABEL_WIDTHS[item.id]) / 2
             : 0,
           duration: labelMotion.duration,
           easing: Easing.out(Easing.cubic),
@@ -844,7 +845,7 @@ export function BottomNavBar() {
     capsuleX,
     destinationOffsets,
     destinationWidths,
-    destinationLabelWidths,
+    destinationIconTranslations,
     destinationLabelOpacities,
     destinationLabelScales,
     destinationLabelTranslations,
@@ -873,12 +874,28 @@ export function BottomNavBar() {
 
   const navigateTo = useCallback((item: BottomNavigationItem) => {
     pressAttemptRef.current.navigationCommitted = true;
-    router.navigate(item.path as never);
-    if (transitionRef.current.phase === 'settling') {
-      finishCapsuleTransition(item.id, latestTransitionRef.current.sequence);
+    if (navigationTimerRef.current) clearTimeout(navigationTimerRef.current);
+    const commitNavigation = () => {
+      navigationTimerRef.current = null;
+      if (!mountedRef.current) return;
+      router.navigate(item.path as never);
+      if (transitionRef.current.phase === 'settling') {
+        finishCapsuleTransition(item.id, latestTransitionRef.current.sequence);
+      }
+    };
+
+    if (reduceMotion || transitionRef.current.to === activeId) {
+      commitNavigation();
+      return;
     }
+    navigationTimerRef.current = setTimeout(
+      commitNavigation,
+      BOTTOM_NAVIGATION_FIGMA.routeMotionLeadDuration,
+    );
   }, [
+    activeId,
     finishCapsuleTransition,
+    reduceMotion,
   ]);
 
   useEffect(() => {
@@ -905,6 +922,10 @@ export function BottomNavBar() {
         clearTimeout(cancelledPressTimerRef.current);
         cancelledPressTimerRef.current = null;
       }
+      if (navigationTimerRef.current) {
+        clearTimeout(navigationTimerRef.current);
+        navigationTimerRef.current = null;
+      }
       stopSelectedContentMotion();
       shellScale.stopAnimation();
       capsuleX.stopAnimation();
@@ -912,7 +933,7 @@ export function BottomNavBar() {
       shellWidth.stopAnimation();
       destinationOffsets.forEach((offset) => offset.stopAnimation());
       destinationWidths.forEach((width) => width.stopAnimation());
-      destinationLabelWidths.forEach((width) => width.stopAnimation());
+      destinationIconTranslations.forEach((translation) => translation.stopAnimation());
       destinationLabelOpacities.forEach((opacity) => opacity.stopAnimation());
       destinationLabelScales.forEach((scale) => scale.stopAnimation());
       destinationLabelTranslations.forEach((translation) => translation.stopAnimation());
@@ -923,7 +944,7 @@ export function BottomNavBar() {
     capsuleX,
     destinationOffsets,
     destinationWidths,
-    destinationLabelWidths,
+    destinationIconTranslations,
     destinationLabelOpacities,
     destinationLabelScales,
     destinationLabelTranslations,
@@ -968,11 +989,10 @@ export function BottomNavBar() {
       destinationWidths[index].setValue(activeItemFrames[index].width);
       const item = BOTTOM_NAVIGATION_ITEMS[index];
       const selected = item.id === activeId;
-      destinationLabelWidths[index].setValue(
-        selected
-          ? BOTTOM_NAVIGATION_FIGMA.selectedItem.gap + BOTTOM_NAVIGATION_LABEL_WIDTHS[item.id]
-          : 0,
-      );
+      destinationIconTranslations[index].setValue(selected
+        ? -(BOTTOM_NAVIGATION_FIGMA.selectedItem.gap
+          + BOTTOM_NAVIGATION_LABEL_WIDTHS[item.id]) / 2
+        : 0);
       destinationLabelOpacities[index].setValue(selected ? 1 : 0);
       destinationLabelScales[index].setValue(selected ? 1 : labelMotion.enterScale);
       destinationLabelTranslations[index].setValue(
@@ -996,7 +1016,7 @@ export function BottomNavBar() {
     capsuleX,
     destinationOffsets,
     destinationWidths,
-    destinationLabelWidths,
+    destinationIconTranslations,
     destinationLabelOpacities,
     destinationLabelScales,
     destinationLabelTranslations,
@@ -1062,7 +1082,9 @@ export function BottomNavBar() {
                   centerOffset={destinationOffsets[index]}
                   itemWidth={destinationWidths[index]}
                   shellWidth={shellWidth}
-                  labelRevealWidth={destinationLabelWidths[index]}
+                  iconStyle={{
+                    transform: [{ translateX: destinationIconTranslations[index] }],
+                  }}
                   labelStyle={{
                     opacity: destinationLabelOpacities[index],
                     transform: [
