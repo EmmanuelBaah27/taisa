@@ -2,8 +2,10 @@ import { useCallback } from 'react';
 import { View, Text, ScrollView } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { useScrollContext } from '../../src/contexts/ScrollContext';
+import { usePageHeaderPaddingTop } from '../../src/navigation/pageSafeArea';
 
 export default function GoalsScreen() {
+  const pageHeaderPaddingTop = usePageHeaderPaddingTop();
   const { reportScroll } = useScrollContext();
 
   useFocusEffect(useCallback(() => {
@@ -12,7 +14,7 @@ export default function GoalsScreen() {
 
   return (
     <View className="flex-1 bg-background">
-      <Text className="text-foreground text-H1 px-5 pt-3 pb-3">Goals</Text>
+      <Text className="text-foreground text-H1 px-5 pb-3" style={{ paddingTop: pageHeaderPaddingTop }}>Goals</Text>
       <ScrollView
         className="flex-1"
         onScroll={(e) => reportScroll(e.nativeEvent.contentOffset.y)}

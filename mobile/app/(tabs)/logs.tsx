@@ -6,11 +6,13 @@ import { ChatListRow } from '../../src/components/ui';
 import { colors } from '../../src/constants/theme';
 import { useScrollContext } from '../../src/contexts/ScrollContext';
 import { chatConversationRoute } from '../../src/navigation/chatConversationRoute';
+import { usePageHeaderPaddingTop } from '../../src/navigation/pageSafeArea';
 import { useThreadStore } from '../../src/stores/threadStore';
 import { useUIStore } from '../../src/stores/uiStore';
 import { getChatPreview, groupChatsByDate } from '../../src/utils/chatPresentation';
 
 export default function LogsScreen() {
+  const pageHeaderPaddingTop = usePageHeaderPaddingTop();
   const { threads, isLoadingThreads, error, fetchThreads } = useThreadStore();
   const { reportScroll } = useScrollContext();
   const viewport = useWindowDimensions();
@@ -49,7 +51,12 @@ export default function LogsScreen() {
 
   return (
     <View className="flex-1 bg-background">
-      <Text className="px-4 pb-3 pt-3 text-foreground text-H1">Chats</Text>
+      <Text
+        className="px-4 pb-3 text-foreground text-H1"
+        style={{ paddingTop: pageHeaderPaddingTop }}
+      >
+        Chats
+      </Text>
       <ScrollView
         ref={scrollRef}
         className="flex-1"
