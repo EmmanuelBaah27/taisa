@@ -343,10 +343,8 @@ export function BottomNavBar() {
       easing: Easing.bezier(0.23, 1, 0.32, 1),
       useNativeDriver: true,
     }).start();
-    releaseShell();
   }, [
     reduceMotion,
-    releaseShell,
     selectedFillOpacity,
     shellScale,
     surfaceTimeline,
@@ -547,12 +545,20 @@ export function BottomNavBar() {
     if (reduceMotion) {
       shellScale.setValue(1);
     } else {
-      ReactNativeAnimated.timing(shellScale, {
-        toValue: shellMotion.pressedScale,
-        duration: shellMotion.pressDuration,
-        easing: Easing.in(Easing.cubic),
-        useNativeDriver: false,
-      }).start();
+      ReactNativeAnimated.sequence([
+        ReactNativeAnimated.timing(shellScale, {
+          toValue: shellMotion.pressedScale,
+          duration: shellMotion.pressDuration,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: false,
+        }),
+        ReactNativeAnimated.timing(shellScale, {
+          toValue: 1,
+          duration: shellMotion.releaseDuration,
+          easing: Easing.bezier(0.77, 0, 0.175, 1),
+          useNativeDriver: false,
+        }),
+      ]).start();
     }
 
     if (transitionRef.current.to === item.id) {
@@ -588,6 +594,7 @@ export function BottomNavBar() {
     selectedFillOpacity,
     shellMotion.pressDuration,
     shellMotion.pressedScale,
+    shellMotion.releaseDuration,
     shellScale,
     startCapsuleTransition,
     surfaceTimeline,
@@ -689,12 +696,9 @@ export function BottomNavBar() {
     router.navigate(item.path as never);
     if (transitionRef.current.phase === 'settling') {
       finishCapsuleTransition(item.id, latestTransitionRef.current.sequence);
-    } else if (transitionRef.current.phase === 'resting') {
-      releaseShell();
     }
   }, [
     finishCapsuleTransition,
-    releaseShell,
   ]);
 
   useEffect(() => {

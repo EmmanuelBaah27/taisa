@@ -22,7 +22,7 @@ This replaces the navigation's internal selected-state rendering model while pre
 5. One persistent capsule springs horizontally from its current position to the destination frame.
 6. The old label fades, scales down slightly, and moves toward its icon.
 7. The destination label begins near the destination icon at `scale 0.94`, `translateX -6`, and low opacity, then moves and scales into its final position.
-8. After the capsule settles, the 6% black fill fades back in and the entire navigation pill springs to `1.00`.
+8. The navigation pill begins returning to `1.00` while capsule travel is still running so their endings align; after capsule settlement, the 6% black fill fades back in.
 
 ### Interruption
 

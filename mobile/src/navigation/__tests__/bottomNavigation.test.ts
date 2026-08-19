@@ -145,8 +145,9 @@ describe('bottom navigation', () => {
     expect(BOTTOM_NAVIGATION_FIGMA.shellMotion).toEqual({
       pressedScale: 1.12,
       pressDuration: 90,
-      releaseDuration: 320,
+      releaseDuration: 220,
       releaseDampingRatio: 0.78,
+      releaseOverlapsTravel: true,
     });
   });
 

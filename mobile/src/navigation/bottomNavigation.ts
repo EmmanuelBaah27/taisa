@@ -178,8 +178,9 @@ export const BOTTOM_NAVIGATION_FIGMA = {
   shellMotion: {
     pressedScale: 1.12,
     pressDuration: 90,
-    releaseDuration: 320,
+    releaseDuration: 220,
     releaseDampingRatio: 0.78,
+    releaseOverlapsTravel: true,
   },
   capsuleMotion: {
     stiffness: 260,

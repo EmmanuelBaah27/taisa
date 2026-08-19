@@ -38,6 +38,8 @@ Correction removes the outgoing selected-content layer entirely. One persistent 
 
 Follow-up device video showed the fixed inactive icon centers crossing the selected capsule and the incoming label scaling around its own center. Inactive destinations now animate to state-specific safe positions on the capsule spring; both origin and destination stable icons remain hidden until the handoff settles. The incoming label uses an icon-facing left transform origin, scaling and easing outward from the icon over 160ms.
 
+The next device review exposed a remaining sequential pause: the capsule completed before the 320ms shell-size reset began. Shell feedback now peaks at 1.12 in 90ms and immediately returns over 220ms while capsule travel is still running, aligning the two endings instead of chaining them.
+
 Final polish replaces the white-on-white sheen with a neutral hairline/shadow clear-glass base, animates the 6% grey as a separate stale-safe overlay, coordinates the 240↔220 shell width with capsule motion, and permits only the old label—not a second icon or selected capsule—to overlap during handoff. Reduced Motion uses one 180ms label/fill crossfade with no spatial or scale movement. Paired-iPhone recheck remains required.
 
 Clean-Metro iOS QA then reproduced a Fabric mount crash in Reanimated 4.1.1 while `useAnimatedStyle` mutated a frozen hook ref. `BottomNavBar` no longer imports or mounts Reanimated: React Native Animated owns shell scale/width, capsule X/width, fill opacity, and content handoff, with native-driver use limited to scale/opacity/translation and layout width animations explicitly JS-driven. A source guard blocks the crashing hooks from returning. Paired-iPhone recheck remains required.

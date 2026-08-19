@@ -21,6 +21,7 @@ Use the managed development build for native checks; Expo Go is not valid for SQ
 ### Persistent navigation capsule motion — 2026-08-19
 
 - [ ] On touch-down, the entire glass pill scales uniformly to 1.12; the selected capsule does not compound that scale, and neither stretches or squashes.
+- [ ] Pill-size restoration overlaps capsule travel so both settle together without a midpoint pause.
 - [ ] Capsule is plain glass during travel and restores 6% grey only after settlement.
 - [ ] Capsule visibly moves Home ↔ Chats ↔ Me while route content changes immediately.
 - [ ] Destination label emerges from its icon with no duplicate outgoing icon or label.

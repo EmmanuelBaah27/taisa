@@ -226,8 +226,9 @@ git commit -m "feat(ds): add persistent navigation capsule"
 expect(BOTTOM_NAVIGATION_FIGMA.shellMotion).toEqual({
   pressedScale: 1.12,
   pressDuration: 90,
-  releaseDuration: 320,
+  releaseDuration: 220,
   releaseDampingRatio: 0.78,
+  releaseOverlapsTravel: true,
 });
 expect(BOTTOM_NAVIGATION_FIGMA.labelMotion).toEqual({
   enterScale: 0.94,
@@ -266,13 +267,13 @@ shellScale.value = reduceMotion ? 1 : withTiming(1.12, {
 });
 ```
 
-Do not release on `onPressOut`; release only after the latest capsule spring settles.
+Do not release on `onPressOut`; begin the 220ms return immediately after the 90ms press peak so it overlaps the capsule spring.
 
 - [ ] **Step 5: Animate capsule position and resting width**
 
 ```ts
 capsuleX.value = withSpring(frame.x, {
-  duration: 320,
+  duration: 220,
   dampingRatio: 0.78,
 }, (finished) => {
   if (finished) runOnJS(finishCapsuleTransition)(destination);
@@ -283,7 +284,7 @@ capsuleWidth.value = withTiming(frame.width, {
 });
 ```
 
-`finishCapsuleTransition` compares the completed destination to the latest transition ref. Ignore stale completions. The valid completion settles state, restores grey fill, and springs `shellScale` to `1.00`.
+`finishCapsuleTransition` compares the completed destination to the latest transition ref. Ignore stale completions. The valid completion settles state and restores grey fill; `shellScale` is already returning to `1.00` concurrently with travel.
 
 - [ ] **Step 6: Animate label handoff from the icon**
 
