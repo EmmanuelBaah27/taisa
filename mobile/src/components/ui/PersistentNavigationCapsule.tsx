@@ -21,6 +21,7 @@ export interface PersistentNavigationCapsuleProps {
   animatedLabelStyle?: StyleProp<TextStyle>;
   outgoingLabel?: 'Home' | 'Chats' | 'Me';
   animatedOutgoingLabelStyle?: StyleProp<TextStyle>;
+  surfaceOnly?: boolean;
 }
 
 const SELECTED = BOTTOM_NAVIGATION_FIGMA.selectedItem;
@@ -36,6 +37,7 @@ export function PersistentNavigationCapsule({
   animatedLabelStyle,
   outgoingLabel,
   animatedOutgoingLabelStyle,
+  surfaceOnly = false,
 }: PersistentNavigationCapsuleProps) {
   const travellingSurfaceStyle = phase === 'resting'
     ? undefined
@@ -79,7 +81,8 @@ export function PersistentNavigationCapsule({
           animatedFillStyle,
         ]}
       />
-      <Animated.View
+      {surfaceOnly ? null : (
+        <Animated.View
         style={[
           {
             flexDirection: 'row',
@@ -105,8 +108,9 @@ export function PersistentNavigationCapsule({
         >
           {label}
         </Animated.Text>
-      </Animated.View>
-      {outgoingLabel ? (
+        </Animated.View>
+      )}
+      {!surfaceOnly && outgoingLabel ? (
         <Animated.Text
           numberOfLines={1}
           className="absolute font-sans-medium text-foreground"

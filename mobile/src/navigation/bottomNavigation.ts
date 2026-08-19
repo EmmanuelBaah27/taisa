@@ -65,6 +65,24 @@ export function getBottomNavigationDestinationOffsets(
   return [-76, -16, 60];
 }
 
+export function getBottomNavigationItemFrames(
+  activeId: BottomNavigationItem['id'],
+): readonly [{ x: number; width: number }, { x: number; width: number }, { x: number; width: number }] {
+  if (activeId === 'index') {
+    return [{ x: 6, width: 108 }, { x: 118, width: 56 }, { x: 178, width: 56 }];
+  }
+  if (activeId === 'logs') {
+    return [{ x: 6, width: 56 }, { x: 66, width: 108 }, { x: 178, width: 56 }];
+  }
+  return [{ x: 6, width: 56 }, { x: 66, width: 56 }, { x: 126, width: 88 }];
+}
+
+export const BOTTOM_NAVIGATION_LABEL_WIDTHS = {
+  index: 44,
+  logs: 44,
+  you: 24,
+} as const;
+
 export function startBottomNavigationTransition(
   state: NavigationCapsuleState,
   destination: BottomNavigationItem['id'],
@@ -98,14 +116,13 @@ export function shouldReleaseBottomNavigationCancelledPress(
 }
 
 export function getBottomNavigationRenderPolicy(
-  state: NavigationCapsuleState,
+  _state: NavigationCapsuleState,
 ) {
   return {
-    selectedContentLayers: 1 as const,
-    selectedIconLayers: 1 as const,
-    outgoingLabelLayers: state.phase === 'resting' ? 0 as const : 1 as const,
-    outgoingLabelHasIndependentOpacity: true as const,
-    hiddenStableDestination: state.to,
+    persistentTabContentLayers: 3 as const,
+    selectedSurfaceContentLayers: 0 as const,
+    hiddenTabIcons: 0 as const,
+    labelsOwnTheirTabIdentity: true as const,
   };
 }
 

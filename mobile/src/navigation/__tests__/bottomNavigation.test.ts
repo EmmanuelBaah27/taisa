@@ -11,6 +11,7 @@ import {
   getBottomNavigationSurfaceTimeline,
   getBottomNavigationTransitionStartPolicy,
   getBottomNavigationLayout,
+  getBottomNavigationItemFrames,
   getBottomNavigationStateLayout,
   resolveGlassAvailability,
   resolveOptionalGlassModule,
@@ -174,6 +175,18 @@ describe('bottom navigation', () => {
     expect(getBottomNavigationDestinationOffsets('you')).toEqual([-76, -16, 60]);
   });
 
+  test('keeps each tab identity in a persistent destination frame', () => {
+    expect(getBottomNavigationItemFrames('index')).toEqual([
+      { x: 6, width: 108 }, { x: 118, width: 56 }, { x: 178, width: 56 },
+    ]);
+    expect(getBottomNavigationItemFrames('logs')).toEqual([
+      { x: 6, width: 56 }, { x: 66, width: 108 }, { x: 178, width: 56 },
+    ]);
+    expect(getBottomNavigationItemFrames('you')).toEqual([
+      { x: 6, width: 56 }, { x: 66, width: 56 }, { x: 126, width: 88 },
+    ]);
+  });
+
   test('moves the selected label outward from its destination icon', () => {
     expect(BOTTOM_NAVIGATION_FIGMA.labelMotion).toEqual({
       enterScale: 0.84,
@@ -229,23 +242,21 @@ describe('bottom navigation', () => {
     expect(shouldReleaseBottomNavigationCancelledPress(false, travelling)).toBe(false);
   });
 
-  test('renders exactly one selected content layer and hides its stable destination', () => {
+  test('keeps all tab identities persistent above a content-free selected surface', () => {
     const resting = { from: 'logs', to: 'logs', phase: 'resting' } as const;
     const travelling = { from: 'logs', to: 'you', phase: 'travelling' } as const;
 
     expect(getBottomNavigationRenderPolicy(resting)).toEqual({
-      selectedContentLayers: 1,
-      selectedIconLayers: 1,
-      outgoingLabelLayers: 0,
-      outgoingLabelHasIndependentOpacity: true,
-      hiddenStableDestination: 'logs',
+      persistentTabContentLayers: 3,
+      selectedSurfaceContentLayers: 0,
+      hiddenTabIcons: 0,
+      labelsOwnTheirTabIdentity: true,
     });
     expect(getBottomNavigationRenderPolicy(travelling)).toEqual({
-      selectedContentLayers: 1,
-      selectedIconLayers: 1,
-      outgoingLabelLayers: 1,
-      outgoingLabelHasIndependentOpacity: true,
-      hiddenStableDestination: 'you',
+      persistentTabContentLayers: 3,
+      selectedSurfaceContentLayers: 0,
+      hiddenTabIcons: 0,
+      labelsOwnTheirTabIdentity: true,
     });
   });
 

@@ -6,7 +6,7 @@
 
 **Goal:** Replace remounted tab selections with one persistent capsule that moves immediately on touch-down while the entire glass navigation pill scales uniformly to `1.12` without compounded capsule scaling.
 
-**Architecture:** Keep three stable accessible destination targets beneath one absolute selected-capsule layer. `BottomNavBar` owns route-aware Reanimated values; pure frame and phase functions remain in the navigation model, and visual primitives remain business-free.
+**Architecture:** Keep three persistent accessible destination identities above one content-free absolute selected-capsule layer. Each destination owns its icon, animated frame, and clipped label reveal. `BottomNavBar` owns route-aware React Native Animated values; pure frame and phase functions remain in the navigation model, and visual primitives remain business-free.
 
 **Tech Stack:** Expo SDK 54, React Native 0.81, Expo Router 6, Reanimated 4, NativeWind 4, TypeScript 5.9, Jest 29, Storybook React Native 10.
 
@@ -241,7 +241,7 @@ expect(BOTTOM_NAVIGATION_FIGMA.labelMotion).toEqual({
 
 Run the navigation test. Expected: FAIL because current shell motion uses unequal axes and no label token exists.
 
-- [ ] **Step 3: Render stable destinations under one capsule**
+- [ ] **Step 3: Render persistent destinations above one surface-only capsule**
 
 Keep all three accessible inactive tap targets present. Position `PersistentNavigationCapsule` absolutely above them. Every target calls:
 
@@ -288,7 +288,7 @@ capsuleWidth.value = withTiming(frame.width, {
 
 - [ ] **Step 6: Animate label handoff from the icon**
 
-Keep outgoing/incoming content layers only during travel. Incoming label begins at opacity 0, scale 0.94, and translateX -6, then reaches resting values in 180ms. Outgoing label uses the inverse motion toward its icon. Do not animate font size or padding.
+Keep every destination icon mounted. Expand the destination tab's own clipped label from its icon-facing edge while collapsing the origin tab's label toward its own icon. The capsule carries no icon or label. Do not animate font size or padding.
 
 - [ ] **Step 7: Add reduced-motion behavior**
 

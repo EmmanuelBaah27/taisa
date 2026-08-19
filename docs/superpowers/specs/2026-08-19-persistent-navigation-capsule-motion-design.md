@@ -53,8 +53,8 @@ Selected content remains a horizontal 24px icon, 8px gap, and Inter Medium 16/24
 
 `BottomNavBar` will own one persistent animated capsule and the navigation-level motion state. It remains mounted across tab route changes.
 
-- **Stable destination layer:** three accessible tap targets and inactive visuals remain present beneath the capsule.
-- **Persistent capsule layer:** one absolutely positioned selected surface moves between measured destination frames.
+- **Persistent destination layer:** three accessible tab identities remain continuously visible above the capsule; each owns its icon, frame, and label reveal.
+- **Persistent capsule layer:** one content-free, absolutely positioned selected surface moves between measured destination frames beneath the tabs.
 - **Selected content layer:** old and new icon-label content overlap only during the controlled transition; opacity, translation, and uniform scale create the handoff.
 - **Glass shell layer:** the existing native glass/material fallback remains unchanged visually and receives only a uniform scale transform.
 

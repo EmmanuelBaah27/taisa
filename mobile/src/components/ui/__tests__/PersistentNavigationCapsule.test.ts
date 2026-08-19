@@ -127,4 +127,17 @@ describe('PersistentNavigationCapsule', () => {
 
     expect(capsule.props.style).toContainEqual({ left: 66, width: 108 });
   });
+
+  test('can render as a background-only selection surface', () => {
+    const capsule = PersistentNavigationCapsule({
+      label: 'Chats',
+      leadingVisual: null,
+      frame: getBottomNavigationCapsuleFrame('logs'),
+      phase: 'travelling',
+      surfaceOnly: true,
+    }) as CapsuleElement;
+
+    expect(capsule.props.children[1]).toBeNull();
+    expect(capsule.props.children[2]).toBeNull();
+  });
 });
