@@ -31,7 +31,6 @@ import {
   type ChatPresentation,
 } from '../../src/navigation/chatConversationRoute';
 import {
-  RecordingGlow,
   VoiceComposer,
   ChatComposerDock,
   ChatConversationSurface,
@@ -812,10 +811,6 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
         onResolveProposal={(proposalId, choice) => { void resolveClarification(proposalId, choice); }}
         onReact={(responseId, reaction) => { void handleReaction(responseId, reaction); }}
         onShareExample={(responseId) => { void handleShareExample(responseId); }}
-      />
-      <RecordingGlow
-        amplitude={recorder.amplitude}
-        visible={composer.mode === 'voice' && composer.voice === 'recording'}
       />
     </ChatScreenShell>
   );
