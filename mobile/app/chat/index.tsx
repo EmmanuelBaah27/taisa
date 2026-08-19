@@ -766,6 +766,7 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
             text={transcriptionOutcome === 'streaming' ? provisionalTranscript : draft}
             hasVoiceDraft={composer.voice !== 'none'}
             submissionFailed={composer.submissionFailed}
+            recordingStartFailed={recordingStartFailed}
             textFocusRequest={composer.textFocusRequest}
             disabled={isBusy}
             transcribing={transcriptionOutcome === 'streaming'}

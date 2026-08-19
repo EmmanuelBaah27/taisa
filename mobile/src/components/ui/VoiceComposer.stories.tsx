@@ -21,6 +21,7 @@ function Preview({ mode, voiceState, hasVoiceDraft, text }: {
       text={text}
       hasVoiceDraft={hasVoiceDraft}
       submissionFailed={false}
+      recordingStartFailed={false}
       textFocusRequest={0}
       onChangeText={() => undefined}
       onSwitchToText={() => undefined}
