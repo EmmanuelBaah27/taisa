@@ -20,6 +20,7 @@ import Animated, {
 import {
   BOTTOM_NAVIGATION_ITEMS,
   getBottomNavigationLayout,
+  resolveGlassAvailability,
   type BottomNavigationItem,
 } from '../../navigation/bottomNavigation';
 import { useCareerStore } from '../../stores/careerStore';
@@ -28,8 +29,7 @@ import { NaviiAvatar } from './NaviiAvatar';
 
 const supportsNativeGlass =
   Platform.OS === 'ios'
-  && isGlassEffectAPIAvailable()
-  && isLiquidGlassAvailable();
+  && resolveGlassAvailability(isGlassEffectAPIAvailable, isLiquidGlassAvailable);
 
 function NavigationMaterial({ children }: { children: React.ReactNode }) {
   if (supportsNativeGlass) {

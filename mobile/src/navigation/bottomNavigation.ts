@@ -40,3 +40,14 @@ export function getBottomNavigationLayout(safeAreaBottom: number) {
     fadeHeight: BOTTOM_NAVIGATION_FIGMA.fadeHeight,
   };
 }
+
+export function resolveGlassAvailability(
+  isAPIAvailable: () => boolean,
+  isLiquidGlassAvailable: () => boolean,
+): boolean {
+  try {
+    return isAPIAvailable() && isLiquidGlassAvailable();
+  } catch {
+    return false;
+  }
+}

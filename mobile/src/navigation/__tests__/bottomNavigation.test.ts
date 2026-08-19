@@ -1,6 +1,7 @@
 import {
   BOTTOM_NAVIGATION_ITEMS,
   getBottomNavigationLayout,
+  resolveGlassAvailability,
 } from '../bottomNavigation';
 
 describe('bottom navigation', () => {
@@ -30,5 +31,13 @@ describe('bottom navigation', () => {
       fadeBottom: 30,
       fadeHeight: 90,
     });
+  });
+
+  test('falls back safely when a linked glass module is unavailable at runtime', () => {
+    const missingNativeModule = () => {
+      throw new Error("Cannot find native module 'ExpoGlassEffect'");
+    };
+
+    expect(resolveGlassAvailability(missingNativeModule, () => true)).toBe(false);
   });
 });

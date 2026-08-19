@@ -13,3 +13,9 @@ The review build exposed the obsolete five-destination top navigation. Baah appr
 Next gate: managed-device QA of layout, glass rendering, safe-area behavior, navigation, and record entry.
 
 Code verification: 50 Jest suites / 438 tests passed, TypeScript passed, and the design-system catalog verifier passed. Native glass and final optical alignment remain device-QA items.
+
+## 2026-08-19 — native glass registration failure
+
+The rebuilt iPhone binary compiled and linked `ExpoGlassEffect`, but Expo's runtime module registry still reported `Cannot find native module 'ExpoGlassEffect'`. The navigation availability boundary must catch that runtime failure and use the documented material-blur fallback instead of preventing the app shell from loading.
+
+Correction verified in code: the availability boundary now converts a missing native module into the material-blur fallback; 50 Jest suites / 439 tests, TypeScript, and the design-system verifier pass. Baah device retry remains the visual QA gate.
