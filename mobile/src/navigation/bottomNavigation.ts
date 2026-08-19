@@ -81,6 +81,17 @@ export function shouldReleaseBottomNavigationCancelledPress(
   return !navigationCommitted && state.phase === 'resting';
 }
 
+export function getBottomNavigationContentHandoffPolicy(
+  state: NavigationCapsuleState,
+  reduceMotion: boolean,
+) {
+  const preserveIncomingValues = state.phase !== 'resting';
+  return {
+    preserveIncomingValues,
+    outgoingFollowsCapsule: preserveIncomingValues && !reduceMotion,
+  };
+}
+
 export const BOTTOM_NAVIGATION_ACTIVE_FILL = 'rgba(15,16,16,0.06)';
 
 export const BOTTOM_NAVIGATION_FIGMA = {

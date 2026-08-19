@@ -2,6 +2,7 @@ import {
   BOTTOM_NAVIGATION_ITEMS,
   BOTTOM_NAVIGATION_ACTIVE_FILL,
   BOTTOM_NAVIGATION_FIGMA,
+  getBottomNavigationContentHandoffPolicy,
   getBottomNavigationCapsuleFrame,
   getBottomNavigationCapsuleCenterOffset,
   getBottomNavigationLayout,
@@ -158,6 +159,24 @@ describe('bottom navigation', () => {
     expect(shouldReleaseBottomNavigationCancelledPress(false, resting)).toBe(true);
     expect(shouldReleaseBottomNavigationCancelledPress(true, resting)).toBe(false);
     expect(shouldReleaseBottomNavigationCancelledPress(false, travelling)).toBe(false);
+  });
+
+  test('preserves retargeted content values but never moves outgoing reduced-motion content', () => {
+    const resting = { from: 'logs', to: 'logs', phase: 'resting' } as const;
+    const travelling = { from: 'logs', to: 'you', phase: 'travelling' } as const;
+
+    expect(getBottomNavigationContentHandoffPolicy(resting, false)).toEqual({
+      preserveIncomingValues: false,
+      outgoingFollowsCapsule: false,
+    });
+    expect(getBottomNavigationContentHandoffPolicy(travelling, false)).toEqual({
+      preserveIncomingValues: true,
+      outgoingFollowsCapsule: true,
+    });
+    expect(getBottomNavigationContentHandoffPolicy(travelling, true)).toEqual({
+      preserveIncomingValues: true,
+      outgoingFollowsCapsule: false,
+    });
   });
 
 });

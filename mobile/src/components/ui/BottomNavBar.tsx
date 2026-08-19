@@ -39,6 +39,7 @@ import {
   BOTTOM_NAVIGATION_ACTIVE_FILL,
   BOTTOM_NAVIGATION_ITEMS,
   BOTTOM_NAVIGATION_FIGMA,
+  getBottomNavigationContentHandoffPolicy,
   getBottomNavigationCapsuleCenterOffset,
   getBottomNavigationCapsuleFrame,
   getBottomNavigationLayout,
@@ -69,6 +70,34 @@ const materialStyle: ViewStyle = {
 
 const selectedItem = BOTTOM_NAVIGATION_FIGMA.selectedItem;
 const inactiveItem = BOTTOM_NAVIGATION_FIGMA.inactiveItem;
+
+interface NavigationContentMotion {
+  opacity: ReactNativeAnimated.Value;
+  scale: ReactNativeAnimated.Value;
+  translateX: ReactNativeAnimated.Value;
+}
+
+function createNavigationContentMotion({
+  opacity,
+  scale,
+  translateX,
+}: {
+  opacity: number;
+  scale: number;
+  translateX: number;
+}): NavigationContentMotion {
+  return {
+    opacity: new ReactNativeAnimated.Value(opacity),
+    scale: new ReactNativeAnimated.Value(scale),
+    translateX: new ReactNativeAnimated.Value(translateX),
+  };
+}
+
+function stopNavigationContentMotion(motion: NavigationContentMotion) {
+  motion.opacity.stopAnimation();
+  motion.scale.stopAnimation();
+  motion.translateX.stopAnimation();
+}
 
 function NavigationMaterial({
   children,
@@ -181,14 +210,14 @@ function OutgoingNavigationContent({
   item,
   userId,
   labelStyle,
-  containerStyle,
+  contentStyle,
   followsCapsule,
   capsuleStyle,
 }: {
   item: BottomNavigationItem;
   userId: string | null;
   labelStyle: StyleProp<TextStyle>;
-  containerStyle: StyleProp<ViewStyle>;
+  contentStyle: StyleProp<ViewStyle>;
   followsCapsule: boolean;
   capsuleStyle: StyleProp<ViewStyle>;
 }) {
@@ -208,40 +237,49 @@ function OutgoingNavigationContent({
           transform: [{ translateX: centerOffset }],
         },
         followsCapsule ? capsuleStyle : undefined,
-        containerStyle,
       ]}
     >
-      <View
-        style={{
-          position: 'absolute',
-          top: 6,
-          left: 0,
-          width: frame.width,
-          height: selectedItem.height,
-          alignItems: 'center',
-          justifyContent: 'center',
-          paddingHorizontal: selectedItem.paddingHorizontal,
-          paddingVertical: selectedItem.paddingVertical,
-        }}
+      <ReactNativeAnimated.View
+        style={[
+          {
+            position: 'absolute',
+            inset: 0,
+          },
+          contentStyle,
+        ]}
       >
-        <View className="flex-row items-center" style={{ gap: selectedItem.gap }}>
-          <NavigationLeadingVisual item={item} selected userId={userId} />
-          <ReactNativeAnimated.Text
-            numberOfLines={1}
-            className="font-sans-medium text-foreground"
-            style={[
-              {
-                fontSize: selectedItem.fontSize,
-                lineHeight: selectedItem.lineHeight,
-                letterSpacing: selectedItem.letterSpacing,
-              },
-              labelStyle,
-            ]}
-          >
-            {item.label}
-          </ReactNativeAnimated.Text>
+        <View
+          style={{
+            position: 'absolute',
+            top: 6,
+            left: 0,
+            width: frame.width,
+            height: selectedItem.height,
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingHorizontal: selectedItem.paddingHorizontal,
+            paddingVertical: selectedItem.paddingVertical,
+          }}
+        >
+          <View className="flex-row items-center" style={{ gap: selectedItem.gap }}>
+            <NavigationLeadingVisual item={item} selected userId={userId} />
+            <ReactNativeAnimated.Text
+              numberOfLines={1}
+              className="font-sans-medium text-foreground"
+              style={[
+                {
+                  fontSize: selectedItem.fontSize,
+                  lineHeight: selectedItem.lineHeight,
+                  letterSpacing: selectedItem.letterSpacing,
+                },
+                labelStyle,
+              ]}
+            >
+              {item.label}
+            </ReactNativeAnimated.Text>
+          </View>
         </View>
-      </View>
+      </ReactNativeAnimated.View>
     </Animated.View>
   );
 }
@@ -288,15 +326,22 @@ export function BottomNavBar() {
   const capsuleWidth = useSharedValue(initialFrame.width);
   const fillOpacity = useSharedValue(1);
   const outgoingFillOpacity = useSharedValue(0);
-  const incomingContentOpacity = useSharedValue(1);
-  const outgoingContentOpacity = useSharedValue(0);
-
-  const incomingLabelOpacity = useRef(new ReactNativeAnimated.Value(1)).current;
-  const incomingLabelScale = useRef(new ReactNativeAnimated.Value(1)).current;
-  const incomingLabelTranslateX = useRef(new ReactNativeAnimated.Value(0)).current;
-  const outgoingLabelOpacity = useRef(new ReactNativeAnimated.Value(0)).current;
-  const outgoingLabelScale = useRef(new ReactNativeAnimated.Value(1)).current;
-  const outgoingLabelTranslateX = useRef(new ReactNativeAnimated.Value(0)).current;
+  const incomingContentMotionRef = useRef<NavigationContentMotion | null>(null);
+  const outgoingContentMotionRef = useRef<NavigationContentMotion | null>(null);
+  if (!incomingContentMotionRef.current) {
+    incomingContentMotionRef.current = createNavigationContentMotion({
+      opacity: 1,
+      scale: 1,
+      translateX: 0,
+    });
+  }
+  if (!outgoingContentMotionRef.current) {
+    outgoingContentMotionRef.current = createNavigationContentMotion({
+      opacity: 0,
+      scale: 1,
+      translateX: 0,
+    });
+  }
 
   const shellStyle = useAnimatedStyle(() => ({
     transform: [{ scale: shellScale.value }],
@@ -311,25 +356,26 @@ export function BottomNavBar() {
   const outgoingFillStyle = useAnimatedStyle(() => ({
     opacity: outgoingFillOpacity.value,
   }));
-  const incomingContentStyle = useAnimatedStyle(() => ({
-    opacity: incomingContentOpacity.value,
-  }));
-  const outgoingContentStyle = useAnimatedStyle(() => ({
-    opacity: outgoingContentOpacity.value,
-  }));
+
+  const incomingContentMotion = incomingContentMotionRef.current;
+  const outgoingContentMotion = outgoingContentMotionRef.current;
+  const incomingContentStyle = {
+    opacity: incomingContentMotion.opacity,
+  } as unknown as StyleProp<ViewStyle>;
+  const outgoingContentStyle = {
+    opacity: outgoingContentMotion.opacity,
+  } as unknown as StyleProp<ViewStyle>;
 
   const incomingLabelStyle = {
-    opacity: incomingLabelOpacity,
     transform: [
-      { scale: incomingLabelScale },
-      { translateX: incomingLabelTranslateX },
+      { scale: incomingContentMotion.scale },
+      { translateX: incomingContentMotion.translateX },
     ],
   } as unknown as StyleProp<TextStyle>;
   const outgoingLabelStyle = {
-    opacity: outgoingLabelOpacity,
     transform: [
-      { scale: outgoingLabelScale },
-      { translateX: outgoingLabelTranslateX },
+      { scale: outgoingContentMotion.scale },
+      { translateX: outgoingContentMotion.translateX },
     ],
   } as unknown as StyleProp<TextStyle>;
 
@@ -364,12 +410,15 @@ export function BottomNavBar() {
     transitionRef.current = settledState;
     setMotionState(settledState);
     setOutgoingFollowsCapsule(false);
-    outgoingLabelOpacity.setValue(0);
-    outgoingContentOpacity.value = 0;
+    if (outgoingContentMotionRef.current) {
+      outgoingContentMotionRef.current.opacity.setValue(0);
+    }
     outgoingFillOpacity.value = 0;
 
     if (reduceMotion) {
-      incomingContentOpacity.value = 1;
+      if (incomingContentMotionRef.current) {
+        incomingContentMotionRef.current.opacity.setValue(1);
+      }
       fillOpacity.value = 1;
       shellScale.value = 1;
       return;
@@ -382,87 +431,93 @@ export function BottomNavBar() {
     releaseShell();
   }, [
     fillOpacity,
-    incomingContentOpacity,
-    outgoingContentOpacity,
     outgoingFillOpacity,
-    outgoingLabelOpacity,
     reduceMotion,
     releaseShell,
     shellScale,
   ]);
 
-  const beginLabelHandoff = useCallback(() => {
-    incomingLabelOpacity.stopAnimation();
-    incomingLabelScale.stopAnimation();
-    incomingLabelTranslateX.stopAnimation();
-    outgoingLabelOpacity.stopAnimation();
-    outgoingLabelScale.stopAnimation();
-    outgoingLabelTranslateX.stopAnimation();
+  const prepareContentHandoff = useCallback((preserveIncomingValues: boolean) => {
+    const currentIncoming = incomingContentMotionRef.current;
+    const previousOutgoing = outgoingContentMotionRef.current;
+    if (!currentIncoming || !previousOutgoing) return;
 
+    stopNavigationContentMotion(previousOutgoing);
+    stopNavigationContentMotion(currentIncoming);
+    if (!preserveIncomingValues) {
+      currentIncoming.opacity.setValue(1);
+      currentIncoming.scale.setValue(1);
+      currentIncoming.translateX.setValue(0);
+    }
     if (reduceMotion) {
-      incomingLabelOpacity.setValue(1);
-      incomingLabelScale.setValue(1);
-      incomingLabelTranslateX.setValue(0);
-      outgoingLabelOpacity.setValue(1);
-      outgoingLabelScale.setValue(1);
-      outgoingLabelTranslateX.setValue(0);
-      return;
+      currentIncoming.scale.setValue(1);
+      currentIncoming.translateX.setValue(0);
     }
 
-    incomingLabelOpacity.setValue(0);
-    incomingLabelScale.setValue(labelMotion.enterScale);
-    incomingLabelTranslateX.setValue(labelMotion.enterTranslateX);
-    outgoingLabelOpacity.setValue(1);
-    outgoingLabelScale.setValue(1);
-    outgoingLabelTranslateX.setValue(0);
+    outgoingContentMotionRef.current = currentIncoming;
+    incomingContentMotionRef.current = createNavigationContentMotion({
+      opacity: 0,
+      scale: reduceMotion ? 1 : labelMotion.enterScale,
+      translateX: reduceMotion ? 0 : labelMotion.enterTranslateX,
+    });
+  }, [labelMotion.enterScale, labelMotion.enterTranslateX, reduceMotion]);
 
-    const incoming = ReactNativeAnimated.parallel([
-      ReactNativeAnimated.timing(incomingLabelOpacity, {
+  const beginContentHandoff = useCallback((
+    destination: BottomNavigationItem['id'],
+    sequence: number,
+  ) => {
+    const incoming = incomingContentMotionRef.current;
+    const outgoing = outgoingContentMotionRef.current;
+    if (!incoming || !outgoing) return;
+
+    const duration = reduceMotion
+      ? reducedMotion.crossfadeDuration
+      : labelMotion.duration;
+    const incomingAnimation = ReactNativeAnimated.parallel([
+      ReactNativeAnimated.timing(incoming.opacity, {
         toValue: 1,
-        duration: labelMotion.duration,
+        duration,
         useNativeDriver: true,
       }),
-      ReactNativeAnimated.timing(incomingLabelScale, {
+      ReactNativeAnimated.timing(incoming.scale, {
         toValue: 1,
-        duration: labelMotion.duration,
+        duration,
         useNativeDriver: true,
       }),
-      ReactNativeAnimated.timing(incomingLabelTranslateX, {
+      ReactNativeAnimated.timing(incoming.translateX, {
         toValue: 0,
-        duration: labelMotion.duration,
+        duration,
         useNativeDriver: true,
       }),
     ]);
     ReactNativeAnimated.parallel([
-      ReactNativeAnimated.timing(outgoingLabelOpacity, {
+      ReactNativeAnimated.timing(outgoing.opacity, {
         toValue: 0,
-        duration: labelMotion.duration,
+        duration,
         useNativeDriver: true,
       }),
-      ReactNativeAnimated.timing(outgoingLabelScale, {
-        toValue: labelMotion.enterScale,
-        duration: labelMotion.duration,
+      ReactNativeAnimated.timing(outgoing.scale, {
+        toValue: reduceMotion ? 1 : labelMotion.enterScale,
+        duration,
         useNativeDriver: true,
       }),
-      ReactNativeAnimated.timing(outgoingLabelTranslateX, {
-        toValue: labelMotion.enterTranslateX,
-        duration: labelMotion.duration,
+      ReactNativeAnimated.timing(outgoing.translateX, {
+        toValue: reduceMotion ? 0 : labelMotion.enterTranslateX,
+        duration,
         useNativeDriver: true,
       }),
     ]).start();
 
-    incoming.start();
+    incomingAnimation.start(({ finished }) => {
+      if (finished && reduceMotion) finishCapsuleTransition(destination, sequence);
+    });
   }, [
-    incomingLabelOpacity,
-    incomingLabelScale,
-    incomingLabelTranslateX,
+    finishCapsuleTransition,
     labelMotion.duration,
     labelMotion.enterScale,
     labelMotion.enterTranslateX,
-    outgoingLabelOpacity,
-    outgoingLabelScale,
-    outgoingLabelTranslateX,
     reduceMotion,
+    reducedMotion.crossfadeDuration,
   ]);
 
   const beginCapsuleTransition = useCallback((
@@ -471,13 +526,13 @@ export function BottomNavBar() {
   ) => {
     const frame = getBottomNavigationCapsuleFrame(destination);
     const centerOffset = getBottomNavigationCapsuleCenterOffset(destination);
-    beginLabelHandoff();
+    beginContentHandoff(destination, sequence);
 
     if (reduceMotion) {
-      outgoingFillOpacity.value = 1;
-      outgoingContentOpacity.value = 1;
+      cancelAnimation(fillOpacity);
+      cancelAnimation(outgoingFillOpacity);
+      outgoingFillOpacity.value = fillOpacity.value;
       fillOpacity.value = 0;
-      incomingContentOpacity.value = 0;
       capsuleX.value = centerOffset;
       capsuleWidth.value = frame.width;
       shellScale.value = 1;
@@ -487,17 +542,11 @@ export function BottomNavBar() {
         easing: Easing.out(Easing.quad),
       };
       outgoingFillOpacity.value = withTiming(0, crossfade);
-      outgoingContentOpacity.value = withTiming(0, crossfade);
       fillOpacity.value = withTiming(1, crossfade);
-      incomingContentOpacity.value = withTiming(1, crossfade, (finished) => {
-        if (finished) runOnJS(finishCapsuleTransition)(destination, sequence);
-      });
       return;
     }
 
     outgoingFillOpacity.value = 0;
-    outgoingContentOpacity.value = 1;
-    incomingContentOpacity.value = 1;
     capsuleWidth.value = withTiming(frame.width, {
       duration: 220,
       easing: Easing.bezier(0.77, 0, 0.175, 1),
@@ -509,13 +558,11 @@ export function BottomNavBar() {
       if (finished) runOnJS(finishCapsuleTransition)(destination, sequence);
     });
   }, [
-    beginLabelHandoff,
+    beginContentHandoff,
     capsuleWidth,
     capsuleX,
     fillOpacity,
     finishCapsuleTransition,
-    incomingContentOpacity,
-    outgoingContentOpacity,
     outgoingFillOpacity,
     reduceMotion,
     reducedMotion.crossfadeDuration,
@@ -560,16 +607,22 @@ export function BottomNavBar() {
 
   const navigateTo = useCallback((item: BottomNavigationItem) => {
     pressAttemptRef.current.navigationCommitted = true;
-    if (transitionRef.current.phase !== 'resting' && transitionRef.current.to === item.id) {
+    if (transitionRef.current.to === item.id) {
       router.navigate(item.path as never);
+      if (transitionRef.current.phase === 'resting') releaseShell();
       return;
     }
 
-    const wasTravelling = transitionRef.current.phase !== 'resting';
-    const nextState = startBottomNavigationTransition(transitionRef.current, item.id);
+    const previousState = transitionRef.current;
+    const handoffPolicy = getBottomNavigationContentHandoffPolicy(
+      previousState,
+      Boolean(reduceMotion),
+    );
+    prepareContentHandoff(handoffPolicy.preserveIncomingValues);
+    const nextState = startBottomNavigationTransition(previousState, item.id);
     transitionRef.current = nextState;
     setMotionState(nextState);
-    setOutgoingFollowsCapsule(wasTravelling);
+    setOutgoingFollowsCapsule(handoffPolicy.outgoingFollowsCapsule);
 
     const sequence = transitionSequenceRef.current + 1;
     transitionSequenceRef.current = sequence;
@@ -586,6 +639,7 @@ export function BottomNavBar() {
     releaseShell();
   }, [
     fillOpacity,
+    prepareContentHandoff,
     reduceMotion,
     releaseShell,
   ]);
@@ -610,33 +664,23 @@ export function BottomNavBar() {
         cancelledPressTimerRef.current = null;
       }
 
-      incomingLabelOpacity.stopAnimation();
-      incomingLabelScale.stopAnimation();
-      incomingLabelTranslateX.stopAnimation();
-      outgoingLabelOpacity.stopAnimation();
-      outgoingLabelScale.stopAnimation();
-      outgoingLabelTranslateX.stopAnimation();
+      if (incomingContentMotionRef.current) {
+        stopNavigationContentMotion(incomingContentMotionRef.current);
+      }
+      if (outgoingContentMotionRef.current) {
+        stopNavigationContentMotion(outgoingContentMotionRef.current);
+      }
       cancelAnimation(shellScale);
       cancelAnimation(capsuleX);
       cancelAnimation(capsuleWidth);
       cancelAnimation(fillOpacity);
       cancelAnimation(outgoingFillOpacity);
-      cancelAnimation(incomingContentOpacity);
-      cancelAnimation(outgoingContentOpacity);
     };
   }, [
     capsuleWidth,
     capsuleX,
     fillOpacity,
-    incomingContentOpacity,
-    incomingLabelOpacity,
-    incomingLabelScale,
-    incomingLabelTranslateX,
-    outgoingContentOpacity,
     outgoingFillOpacity,
-    outgoingLabelOpacity,
-    outgoingLabelScale,
-    outgoingLabelTranslateX,
     shellScale,
   ]);
 
@@ -661,24 +705,28 @@ export function BottomNavBar() {
     capsuleWidth.value = frame.width;
     fillOpacity.value = 1;
     outgoingFillOpacity.value = 0;
-    incomingContentOpacity.value = 1;
-    outgoingContentOpacity.value = 0;
     shellScale.value = 1;
-    incomingLabelOpacity.setValue(1);
-    incomingLabelScale.setValue(1);
-    incomingLabelTranslateX.setValue(0);
-    outgoingLabelOpacity.setValue(0);
+    if (incomingContentMotionRef.current) {
+      stopNavigationContentMotion(incomingContentMotionRef.current);
+    }
+    if (outgoingContentMotionRef.current) {
+      stopNavigationContentMotion(outgoingContentMotionRef.current);
+    }
+    incomingContentMotionRef.current = createNavigationContentMotion({
+      opacity: 1,
+      scale: 1,
+      translateX: 0,
+    });
+    outgoingContentMotionRef.current = createNavigationContentMotion({
+      opacity: 0,
+      scale: 1,
+      translateX: 0,
+    });
   }, [
     activeId,
     capsuleWidth,
     capsuleX,
     fillOpacity,
-    incomingContentOpacity,
-    incomingLabelOpacity,
-    incomingLabelScale,
-    incomingLabelTranslateX,
-    outgoingLabelOpacity,
-    outgoingContentOpacity,
     outgoingFillOpacity,
     shellScale,
   ]);
@@ -787,7 +835,7 @@ export function BottomNavBar() {
                 item={outgoingItem}
                 userId={userId}
                 labelStyle={outgoingLabelStyle}
-                containerStyle={outgoingContentStyle}
+                contentStyle={outgoingContentStyle}
                 followsCapsule={outgoingFollowsCapsule}
                 capsuleStyle={capsuleGeometryStyle}
               />
@@ -803,7 +851,6 @@ export function BottomNavBar() {
                   height: BOTTOM_NAVIGATION_FIGMA.navigationHeight,
                 },
                 capsuleGeometryStyle,
-                incomingContentStyle,
               ]}
             >
               <PersistentNavigationCapsule
@@ -813,7 +860,10 @@ export function BottomNavBar() {
                 )}
                 frame={{ ...destinationFrame, x: 0 }}
                 phase={motionState.phase}
-                animatedContainerStyle={{ backgroundColor: 'transparent' }}
+                animatedContainerStyle={[
+                  { backgroundColor: 'transparent' },
+                  incomingContentStyle,
+                ]}
                 animatedLabelStyle={incomingLabelStyle}
               />
             </Animated.View>
