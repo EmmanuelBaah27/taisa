@@ -10,6 +10,7 @@ import {
   getBottomNavigationLayout,
   getBottomNavigationStateLayout,
   resolveGlassAvailability,
+  resolveOptionalGlassModule,
   settleBottomNavigationTransition,
   shouldReleaseBottomNavigationCancelledPress,
   shouldShowBottomNavigationSelectedFill,
@@ -51,6 +52,14 @@ describe('bottom navigation', () => {
     };
 
     expect(resolveGlassAvailability(missingNativeModule, () => true)).toBe(false);
+  });
+
+  test('does not crash the app shell when the optional glass module fails to load', () => {
+    const missingNativeModule = () => {
+      throw new Error("Cannot find native module 'ExpoGlassEffect'");
+    };
+
+    expect(resolveOptionalGlassModule(missingNativeModule)).toBeNull();
   });
 
   test('matches the Figma width for each active navigation state', () => {

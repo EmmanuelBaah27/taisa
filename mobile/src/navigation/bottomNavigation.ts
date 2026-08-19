@@ -226,3 +226,11 @@ export function resolveGlassAvailability(
     return false;
   }
 }
+
+export function resolveOptionalGlassModule<T>(loader: () => T): T | null {
+  try {
+    return loader();
+  } catch {
+    return null;
+  }
+}

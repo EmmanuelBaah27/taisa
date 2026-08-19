@@ -9,11 +9,6 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
-import {
-  GlassView,
-  isGlassEffectAPIAvailable,
-  isLiquidGlassAvailable,
-} from 'expo-glass-effect';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -38,6 +33,7 @@ import {
   getBottomNavigationSurfaceTimeline,
   getBottomNavigationStateLayout,
   resolveGlassAvailability,
+  resolveOptionalGlassModule,
   settleBottomNavigationTransition,
   shouldReleaseBottomNavigationCancelledPress,
   startBottomNavigationTransition,
@@ -49,9 +45,18 @@ import { Icon } from './Icon';
 import { NaviiAvatar } from './NaviiAvatar';
 import { PersistentNavigationCapsule } from './PersistentNavigationCapsule';
 
+const glassEffectModule = resolveOptionalGlassModule(
+  () => require('expo-glass-effect') as typeof import('expo-glass-effect'),
+);
+const NativeGlassView = glassEffectModule?.GlassView;
+
 const supportsNativeGlass =
   Platform.OS === 'ios'
-  && resolveGlassAvailability(isGlassEffectAPIAvailable, isLiquidGlassAvailable);
+  && glassEffectModule !== null
+  && resolveGlassAvailability(
+    glassEffectModule.isGlassEffectAPIAvailable,
+    glassEffectModule.isLiquidGlassAvailable,
+  );
 
 const materialStyle: ViewStyle = {
   width: '100%',
@@ -69,16 +74,16 @@ function NavigationMaterial({
 }: {
   children: ReactNode;
 }) {
-  if (supportsNativeGlass) {
+  if (supportsNativeGlass && NativeGlassView) {
     return (
-      <GlassView
+      <NativeGlassView
         glassEffectStyle="regular"
         tintColor="rgba(255,255,255,0.10)"
         colorScheme="light"
         style={materialStyle}
       >
         {children}
-      </GlassView>
+      </NativeGlassView>
     );
   }
 
