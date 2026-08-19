@@ -81,7 +81,6 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
   const insets = useSafeAreaInsets();
   const routeParams = useLocalSearchParams<{
     conversationId?: string | string[];
-    title?: string | string[];
     cardX?: string | string[];
     cardY?: string | string[];
     cardWidth?: string | string[];

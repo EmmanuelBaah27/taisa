@@ -84,12 +84,35 @@ describe('durable conversation resume navigation', () => {
       frame: { x: 16, y: 140, width: 361, height: 72 },
       listScrollY: 248.5,
       viewport: { width: 393, height: 852 },
-    }, 'Navigating a career change'))
+    }))
       .toEqual({
         pathname: '/chat',
         params: {
           conversationId: 'conversation/with private work',
-          title: 'Navigating a career change',
+          cardX: '16',
+          cardY: '140',
+          cardWidth: '361',
+          cardHeight: '72',
+          listScrollY: '248.5',
+          sourceViewportWidth: '393',
+          sourceViewportHeight: '852',
+        },
+      });
+  });
+
+  test('the chat route contract rejects a serialized conversation title', () => {
+    const source = {
+      frame: { x: 16, y: 140, width: 361, height: 72 },
+      listScrollY: 248.5,
+      viewport: { width: 393, height: 852 },
+    };
+
+    // @ts-expect-error Conversation titles do not belong in the chat route.
+    expect(chatConversationRoute('conversation/with private work', source, 'Private title'))
+      .toEqual({
+        pathname: '/chat',
+        params: {
+          conversationId: 'conversation/with private work',
           cardX: '16',
           cardY: '140',
           cardWidth: '361',

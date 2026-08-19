@@ -102,7 +102,6 @@ export default function LogsScreen() {
                     router.push(chatConversationRoute(
                       chat.id,
                       source,
-                      chat.title || 'Untitled chat',
                     ));
                   }}
                 />

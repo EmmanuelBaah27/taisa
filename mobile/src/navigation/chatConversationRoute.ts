@@ -19,9 +19,8 @@ export function resolveInitialChatConversationId(
 export function chatConversationRoute(
   conversationId: string,
   source?: ChatCardSource | null,
-  title?: string,
 ) {
-  const context = title ? { conversationId, title } : { conversationId };
+  const context = { conversationId };
   return {
     pathname: '/chat' as const,
     params: source ? {

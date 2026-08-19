@@ -16,6 +16,7 @@ Claude maintains the Active Work table — Baah never needs to update it.
 | Current experience consolidation | Platform + Product | Review + QA | `feature/current-experience` | Persistent navigation capsule motion is verified automatically and launched on the paired iPhone; awaiting Baah device QA (including page-title follow-up separately) |
 | Secondary icon button | Product | Review + QA | `feature/secondary-icon-button` | Baah device QA |
 | Recording page | Product | Review + QA | `feature/secondary-icon-button` | Baah device QA |
+| Shared chat and recording shell | Product | Review + QA | `refactor/shared-chat-recording-shell` | Baah paired-device QA |
 
 ---
 
