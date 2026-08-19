@@ -1,5 +1,7 @@
 # Persistent Navigation Capsule Motion Implementation Plan
 
+**Status:** Complete — awaiting Baah device QA
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Replace remounted tab selections with one persistent capsule that moves between destinations while the entire glass navigation pill scales uniformly to `1.12`.
@@ -320,7 +322,7 @@ git commit -m "feat: animate persistent navigation capsule"
 **Interfaces:**
 - Produces: automated evidence and explicit Baah device-QA checklist; no Ship claim.
 
-- [ ] **Step 1: Run complete verification**
+- [x] **Step 1: Run complete verification**
 
 From `mobile/`:
 
@@ -338,11 +340,11 @@ bash scripts/audit-current-experience.sh
 git diff --check
 ```
 
-- [ ] **Step 2: Relaunch the paired iPhone**
+- [x] **Step 2: Relaunch the paired iPhone**
 
 Verify Metro, then relaunch `com.taisa.app` on `CB2D8D19-B858-55E5-A24E-3BC7AD31441D`. Process launch alone is not visual proof.
 
-- [ ] **Step 3: Record the exact device checklist**
+- [x] **Step 3: Record the exact device checklist**
 
 ```markdown
 - [ ] Entire glass pill scales uniformly to 1.12; it never stretches or squashes.
@@ -353,7 +355,7 @@ Verify Metro, then relaunch `com.taisa.app` on `CB2D8D19-B858-55E5-A24E-3BC7AD31
 - [ ] Reduced Motion removes spatial/scale motion and preserves short crossfades.
 ```
 
-- [ ] **Step 4: Update status and commit evidence**
+- [x] **Step 4: Update status and commit evidence**
 
 After automated checks pass, set Active Work to `Review + QA` and this plan to `Complete — awaiting Baah device QA`.
 
@@ -362,6 +364,6 @@ git add docs/features/current-experience-consolidation-qa.md docs/workflow.md do
 git commit -m "docs: record persistent navigation motion verification"
 ```
 
-- [ ] **Step 5: Stop at device QA**
+- [x] **Step 5: Stop at device QA**
 
 Present the running build. Do not push, open a PR, merge, or clean branches until Baah explicitly approves Ship.
