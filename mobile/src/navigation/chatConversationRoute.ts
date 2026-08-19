@@ -52,6 +52,12 @@ export function voiceCancelDestination(
   return initialConversationId === null ? 'close' : 'reply';
 }
 
+export function voiceCancelAccessibilityLabel(initialConversationId: string | null): string {
+  return voiceCancelDestination(initialConversationId) === 'reply'
+    ? 'Cancel recording and return to chat'
+    : 'Cancel recording and close';
+}
+
 export function startFreshCapture(actions: {
   clearActiveConversation(): void;
   openCapture(): void;

@@ -11,6 +11,7 @@ import {
   resolveInitialChatConversationId,
   selectConversationMessages,
   startFreshCapture,
+  voiceCancelAccessibilityLabel,
   voiceCancelDestination,
 } from '../chatConversationRoute';
 
@@ -65,6 +66,9 @@ describe('durable conversation resume navigation', () => {
   test('voice cancel returns an existing chat to reply and closes a fresh capture', () => {
     expect(voiceCancelDestination('conversation-from-history')).toBe('reply');
     expect(voiceCancelDestination(null)).toBe('close');
+    expect(voiceCancelAccessibilityLabel('conversation-from-history'))
+      .toBe('Cancel recording and return to chat');
+    expect(voiceCancelAccessibilityLabel(null)).toBe('Cancel recording and close');
   });
 
   test('the resume route carries the durable SQLite conversation ID', () => {

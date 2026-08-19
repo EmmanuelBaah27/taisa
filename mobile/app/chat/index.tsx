@@ -28,6 +28,7 @@ import {
   resolveInitialChatConversationId,
   selectConversationMessages,
   returnFromRoutedChat,
+  voiceCancelAccessibilityLabel,
   voiceCancelDestination,
   type ChatPresentation,
 } from '../../src/navigation/chatConversationRoute';
@@ -865,7 +866,7 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
           paused={composer.voice === 'paused'}
           disabled={composer.submitting || isBusy}
           recordingActionDisabled={recorderAcquiring}
-          cancelLabel="Cancel recording and close"
+          cancelLabel={voiceCancelAccessibilityLabel(initialConversationIdRef.current)}
           onCancel={() => { void handleCancelVoice(); }}
           onKeyboard={() => { void handleSwitchToText(); }}
           onPauseResume={() => {

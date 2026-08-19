@@ -121,6 +121,7 @@ describe('local-first capture navigation', () => {
     expect(chatScreen).not.toMatch(/title="New chat"/);
     expect(chatScreen).toMatch(/messages\.length === 0[\s\S]*composer\.voice === 'recording'[\s\S]*composer\.voice === 'paused'/);
     expect(chatScreen).toMatch(/onClose=\{handleClose\}/);
+    expect(chatScreen).toMatch(/cancelLabel=\{voiceCancelAccessibilityLabel\(initialConversationIdRef\.current\)\}/);
     expect(chatScreen).toMatch(/onCancel=\{\(\) => \{ void handleCancelVoice\(\); \}\}/);
     expect(chatScreen).toMatch(/onKeyboard=\{\(\) => \{ void handleSwitchToText\(\); \}\}/);
     expect(chatScreen).toMatch(/onPauseResume=\{[\s\S]*handleResumeVoice[\s\S]*handlePauseVoice/);
@@ -151,6 +152,16 @@ describe('local-first capture navigation', () => {
       'utf8',
     );
     expect(chatScreen).toMatch(/catch \{[\s\S]*recordingStartGuardRef\.current\.complete\(startAttempt\)[\s\S]*await handleCancelVoice\(\)/);
+  });
+
+  test('voice cancellation preserves reply and close destinations through recorder cleanup', () => {
+    const chatScreen = fs.readFileSync(
+      path.resolve(__dirname, '../../../app/chat/index.tsx'),
+      'utf8',
+    );
+
+    expect(chatScreen).toMatch(/voiceCancelDestination\([^)]+\) === 'close'[\s\S]*handleClose\(\)/);
+    expect(chatScreen).toMatch(/setPhase\('idle'\)[\s\S]*restore-mode/);
   });
 
   test('the composer remains visible above the iOS keyboard and clears after a successful retry', () => {
