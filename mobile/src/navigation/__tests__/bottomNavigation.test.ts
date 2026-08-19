@@ -18,6 +18,16 @@ import {
 } from '../bottomNavigation';
 
 describe('bottom navigation', () => {
+  test('does not mount Reanimated hooks that crash under iOS Fabric', () => {
+    const source = readFileSync(
+      resolve(__dirname, '../../components/ui/BottomNavBar.tsx'),
+      'utf8',
+    );
+
+    expect(source).not.toMatch(/useAnimatedStyle|useSharedValue/);
+    expect(source).not.toContain("from 'react-native-reanimated'");
+  });
+
   test('exposes only the approved Home, Chats, and Me destinations', () => {
     expect(BOTTOM_NAVIGATION_ITEMS).toEqual([
       { id: 'index', label: 'Home', path: '/', icon: 'IconHomeLine' },
@@ -237,3 +247,5 @@ describe('bottom navigation', () => {
   });
 
 });
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';

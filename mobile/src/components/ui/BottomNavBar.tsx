@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import {
+  AccessibilityInfo,
   Animated as ReactNativeAnimated,
+  Easing,
   Platform,
   Pressable,
   View,
@@ -12,16 +14,6 @@ import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, {
-  Easing,
-  cancelAnimation,
-  runOnJS,
-  useAnimatedStyle,
-  useReducedMotion,
-  useSharedValue,
-  withSpring,
-  withTiming,
-} from 'react-native-reanimated';
 
 import {
   BOTTOM_NAVIGATION_ITEMS,
@@ -205,17 +197,19 @@ export function BottomNavBar() {
   const destinationFrame = getBottomNavigationCapsuleFrame(motionState.to);
   const renderPolicy = getBottomNavigationRenderPolicy(motionState);
 
-  const reduceMotion = useReducedMotion();
+  const [reduceMotion, setReduceMotion] = useState(false);
   const shellMotion = BOTTOM_NAVIGATION_FIGMA.shellMotion;
   const capsuleMotion = BOTTOM_NAVIGATION_FIGMA.capsuleMotion;
   const labelMotion = BOTTOM_NAVIGATION_FIGMA.labelMotion;
   const reducedMotion = BOTTOM_NAVIGATION_FIGMA.reducedMotion;
   const surfaceTimeline = getBottomNavigationSurfaceTimeline(reduceMotion);
-  const shellScale = useSharedValue(1);
-  const shellWidth = useSharedValue(initialFrame.shellWidth);
-  const capsuleX = useSharedValue(getBottomNavigationCapsuleCenterOffset(activeId));
-  const capsuleWidth = useSharedValue(initialFrame.width);
-  const selectedFillOpacity = useSharedValue(1);
+  const shellScale = useRef(new ReactNativeAnimated.Value(1)).current;
+  const shellWidth = useRef(new ReactNativeAnimated.Value(initialFrame.shellWidth)).current;
+  const capsuleX = useRef(
+    new ReactNativeAnimated.Value(getBottomNavigationCapsuleCenterOffset(activeId)),
+  ).current;
+  const capsuleWidth = useRef(new ReactNativeAnimated.Value(initialFrame.width)).current;
+  const selectedFillOpacity = useRef(new ReactNativeAnimated.Value(1)).current;
 
   const selectedContentOpacity = useRef(new ReactNativeAnimated.Value(1)).current;
   const selectedLabelOpacity = useRef(new ReactNativeAnimated.Value(1)).current;
@@ -225,14 +219,14 @@ export function BottomNavBar() {
   const outgoingLabelScale = useRef(new ReactNativeAnimated.Value(1)).current;
   const outgoingLabelTranslateX = useRef(new ReactNativeAnimated.Value(0)).current;
 
-  const shellStyle = useAnimatedStyle(() => ({
-    width: shellWidth.value,
-    transform: [{ scale: shellScale.value }],
-  }));
-  const capsuleGeometryStyle = useAnimatedStyle(() => ({
-    width: capsuleWidth.value,
-    transform: [{ translateX: capsuleX.value }],
-  }));
+  const shellStyle = {
+    width: shellWidth,
+    transform: [{ scale: shellScale }],
+  } as unknown as StyleProp<ViewStyle>;
+  const capsuleGeometryStyle = {
+    width: capsuleWidth,
+    transform: [{ translateX: capsuleX }],
+  } as unknown as StyleProp<ViewStyle>;
   const selectedContentStyle = {
     opacity: selectedContentOpacity,
   } as unknown as StyleProp<ViewStyle>;
@@ -243,9 +237,9 @@ export function BottomNavBar() {
       { translateX: selectedLabelTranslateX },
     ],
   } as unknown as StyleProp<TextStyle>;
-  const selectedFillStyle = useAnimatedStyle(() => ({
-    opacity: selectedFillOpacity.value,
-  }));
+  const selectedFillStyle = {
+    opacity: selectedFillOpacity,
+  } as unknown as StyleProp<ViewStyle>;
   const outgoingLabelStyle = {
     opacity: outgoingLabelOpacity,
     transform: [
@@ -273,19 +267,20 @@ export function BottomNavBar() {
   ]);
 
   const releaseShell = useCallback(() => {
-    cancelAnimation(shellScale);
+    shellScale.stopAnimation();
     if (reduceMotion) {
-      shellScale.value = 1;
+      shellScale.setValue(1);
       return;
     }
 
-    shellScale.value = withSpring(1, {
+    ReactNativeAnimated.timing(shellScale, {
+      toValue: 1,
       duration: shellMotion.releaseDuration,
-      dampingRatio: shellMotion.releaseDampingRatio,
-    });
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
   }, [
     reduceMotion,
-    shellMotion.releaseDampingRatio,
     shellMotion.releaseDuration,
     shellScale,
   ]);
@@ -305,15 +300,18 @@ export function BottomNavBar() {
     setOutgoingLabel(null);
 
     if (reduceMotion) {
-      selectedFillOpacity.value = 1;
-      shellScale.value = 1;
+      selectedFillOpacity.setValue(1);
+      shellScale.setValue(1);
       return;
     }
 
-    selectedFillOpacity.value = withTiming(1, {
+    selectedFillOpacity.stopAnimation();
+    ReactNativeAnimated.timing(selectedFillOpacity, {
+      toValue: 1,
       duration: surfaceTimeline.fillRestoreDuration,
       easing: Easing.bezier(0.23, 1, 0.32, 1),
-    });
+      useNativeDriver: true,
+    }).start();
     releaseShell();
   }, [
     reduceMotion,
@@ -419,37 +417,56 @@ export function BottomNavBar() {
     startSelectedContentMotion(destination, sequence);
 
     if (reduceMotion) {
-      cancelAnimation(capsuleX);
-      cancelAnimation(capsuleWidth);
-      cancelAnimation(shellWidth);
-      cancelAnimation(selectedFillOpacity);
-      capsuleX.value = centerOffset;
-      capsuleWidth.value = frame.width;
-      shellWidth.value = frame.shellWidth;
-      shellScale.value = 1;
-      selectedFillOpacity.value = withTiming(0, {
-        duration: reducedMotion.crossfadeDuration / 2,
-      }, (finished) => {
-        if (finished) {
-          selectedFillOpacity.value = withTiming(1, {
-            duration: reducedMotion.crossfadeDuration / 2,
-          });
-        }
-      });
+      capsuleX.stopAnimation();
+      capsuleWidth.stopAnimation();
+      shellWidth.stopAnimation();
+      selectedFillOpacity.stopAnimation();
+      capsuleX.setValue(centerOffset);
+      capsuleWidth.setValue(frame.width);
+      shellWidth.setValue(frame.shellWidth);
+      shellScale.setValue(1);
+      ReactNativeAnimated.sequence([
+        ReactNativeAnimated.timing(selectedFillOpacity, {
+          toValue: 0,
+          duration: reducedMotion.crossfadeDuration / 2,
+          useNativeDriver: true,
+        }),
+        ReactNativeAnimated.timing(selectedFillOpacity, {
+          toValue: 1,
+          duration: reducedMotion.crossfadeDuration / 2,
+          useNativeDriver: true,
+        }),
+      ]).start();
       return;
     }
 
-    const coordinatedSpring = {
+    capsuleX.stopAnimation();
+    capsuleWidth.stopAnimation();
+    shellWidth.stopAnimation();
+    const coordinatedTiming = {
       duration: capsuleMotion.duration,
-      dampingRatio: capsuleMotion.dampingRatio,
+      easing: Easing.bezier(0.23, 1, 0.32, 1),
     };
-    capsuleWidth.value = withSpring(frame.width, coordinatedSpring);
-    shellWidth.value = withSpring(frame.shellWidth, coordinatedSpring);
-    capsuleX.value = withSpring(centerOffset, coordinatedSpring, (finished) => {
-      if (finished) runOnJS(finishCapsuleTransition)(destination, sequence);
+    ReactNativeAnimated.parallel([
+      ReactNativeAnimated.timing(capsuleX, {
+        toValue: centerOffset,
+        ...coordinatedTiming,
+        useNativeDriver: true,
+      }),
+      ReactNativeAnimated.timing(capsuleWidth, {
+        toValue: frame.width,
+        ...coordinatedTiming,
+        useNativeDriver: false,
+      }),
+      ReactNativeAnimated.timing(shellWidth, {
+        toValue: frame.shellWidth,
+        ...coordinatedTiming,
+        useNativeDriver: false,
+      }),
+    ]).start(({ finished }) => {
+      if (finished) finishCapsuleTransition(destination, sequence);
     });
   }, [
-    capsuleMotion.dampingRatio,
     capsuleMotion.duration,
     capsuleWidth,
     capsuleX,
@@ -471,16 +488,18 @@ export function BottomNavBar() {
       sequence: pressAttemptRef.current.sequence + 1,
       navigationCommitted: false,
     };
-    cancelAnimation(shellScale);
+    shellScale.stopAnimation();
     if (reduceMotion) {
-      shellScale.value = 1;
+      shellScale.setValue(1);
       return;
     }
 
-    shellScale.value = withTiming(shellMotion.pressedScale, {
+    ReactNativeAnimated.timing(shellScale, {
+      toValue: shellMotion.pressedScale,
       duration: shellMotion.pressDuration,
       easing: Easing.bezier(0.23, 1, 0.32, 1),
-    });
+      useNativeDriver: true,
+    }).start();
   }, [reduceMotion, shellMotion.pressDuration, shellMotion.pressedScale, shellScale]);
 
   const handleNavigationPressOut = useCallback(() => {
@@ -518,13 +537,15 @@ export function BottomNavBar() {
     transitionSequenceRef.current = sequence;
     latestTransitionRef.current = { destination: item.id, sequence };
 
-    cancelAnimation(selectedFillOpacity);
-    selectedFillOpacity.value = withTiming(0, {
+    selectedFillOpacity.stopAnimation();
+    ReactNativeAnimated.timing(selectedFillOpacity, {
+      toValue: 0,
       duration: reduceMotion
         ? reducedMotion.crossfadeDuration / 2
         : surfaceTimeline.fillFadeOutDuration,
       easing: Easing.bezier(0.23, 1, 0.32, 1),
-    });
+      useNativeDriver: true,
+    }).start();
     startCapsuleTransition(item.id, sequence);
     router.navigate(item.path as never);
   }, [
@@ -537,6 +558,22 @@ export function BottomNavBar() {
   ]);
 
   useEffect(() => {
+    let active = true;
+    AccessibilityInfo.isReduceMotionEnabled().then((enabled) => {
+      if (active) setReduceMotion(enabled);
+    });
+    const subscription = AccessibilityInfo.addEventListener(
+      'reduceMotionChanged',
+      setReduceMotion,
+    );
+
+    return () => {
+      active = false;
+      subscription.remove();
+    };
+  }, []);
+
+  useEffect(() => {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
@@ -545,11 +582,11 @@ export function BottomNavBar() {
         cancelledPressTimerRef.current = null;
       }
       stopSelectedContentMotion();
-      cancelAnimation(shellScale);
-      cancelAnimation(capsuleX);
-      cancelAnimation(capsuleWidth);
-      cancelAnimation(shellWidth);
-      cancelAnimation(selectedFillOpacity);
+      shellScale.stopAnimation();
+      capsuleX.stopAnimation();
+      capsuleWidth.stopAnimation();
+      shellWidth.stopAnimation();
+      selectedFillOpacity.stopAnimation();
     };
   }, [
     capsuleWidth,
@@ -575,15 +612,15 @@ export function BottomNavBar() {
       sequence: transitionSequenceRef.current,
     };
     setMotionState(restingState);
-    cancelAnimation(capsuleX);
-    cancelAnimation(capsuleWidth);
-    cancelAnimation(shellWidth);
-    cancelAnimation(selectedFillOpacity);
-    capsuleX.value = getBottomNavigationCapsuleCenterOffset(activeId);
-    capsuleWidth.value = frame.width;
-    shellWidth.value = frame.shellWidth;
-    selectedFillOpacity.value = 1;
-    shellScale.value = 1;
+    capsuleX.stopAnimation();
+    capsuleWidth.stopAnimation();
+    shellWidth.stopAnimation();
+    selectedFillOpacity.stopAnimation();
+    capsuleX.setValue(getBottomNavigationCapsuleCenterOffset(activeId));
+    capsuleWidth.setValue(frame.width);
+    shellWidth.setValue(frame.shellWidth);
+    selectedFillOpacity.setValue(1);
+    shellScale.setValue(1);
     stopSelectedContentMotion();
     selectedContentOpacity.setValue(1);
     selectedLabelOpacity.setValue(1);
@@ -627,7 +664,7 @@ export function BottomNavBar() {
         className="absolute left-0 right-0 items-center"
         style={{ bottom: layout.navigationBottom }}
       >
-        <Animated.View
+        <ReactNativeAnimated.View
           className="h-[60px] rounded-[32px]"
           style={[
             {
@@ -666,7 +703,7 @@ export function BottomNavBar() {
               ))}
             </View>
 
-            <Animated.View
+            <ReactNativeAnimated.View
               pointerEvents="none"
               style={[
                 {
@@ -694,9 +731,9 @@ export function BottomNavBar() {
                 animatedLabelStyle={selectedLabelStyle}
                 animatedOutgoingLabelStyle={outgoingLabelStyle}
               />
-            </Animated.View>
+            </ReactNativeAnimated.View>
           </NavigationMaterial>
-        </Animated.View>
+        </ReactNativeAnimated.View>
       </View>
     </View>
   );
