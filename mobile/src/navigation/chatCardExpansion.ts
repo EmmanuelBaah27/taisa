@@ -23,6 +23,35 @@ export interface ChatCardInitialTransform {
   scaleY: number;
 }
 
+export const CHAT_CARD_PRESSED_SCALE = 0.97;
+
+export interface ChatCardMotionTimeline {
+  openDuration: number;
+  shellFadeDuration: number;
+  shellInitialOpacity: number;
+  contentRevealDelay: number;
+  contentRevealDuration: number;
+}
+
+export function getChatCardMotionTimeline(reduceMotion: boolean): ChatCardMotionTimeline {
+  if (reduceMotion) {
+    return {
+      openDuration: 0,
+      shellFadeDuration: 0,
+      shellInitialOpacity: 1,
+      contentRevealDelay: 0,
+      contentRevealDuration: 0,
+    };
+  }
+  return {
+    openDuration: 240,
+    shellFadeDuration: 120,
+    shellInitialOpacity: 0.92,
+    contentRevealDelay: 40,
+    contentRevealDuration: 140,
+  };
+}
+
 type RouteValue = string | string[] | undefined;
 
 function parseRouteNumber(value: RouteValue): number {

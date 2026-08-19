@@ -52,7 +52,7 @@ export default function LogsScreen() {
   return (
     <View className="flex-1 bg-background">
       <Text
-        className="px-4 pb-3 text-foreground text-H1"
+        className="px-5 pb-3 text-foreground text-H1"
         style={{ paddingTop: pageHeaderPaddingTop }}
       >
         Chats
@@ -60,7 +60,7 @@ export default function LogsScreen() {
       <ScrollView
         ref={scrollRef}
         className="flex-1"
-        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 140 }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 140 }}
         onScroll={(event) => {
           scrollOffsetRef.current = Math.max(0, event.nativeEvent.contentOffset.y);
           reportScroll(scrollOffsetRef.current);
@@ -84,7 +84,7 @@ export default function LogsScreen() {
         ) : (
           groups.map((group) => (
             <View key={group.key} className="mb-5">
-              <Text className="mb-1 text-muted-foreground text-small-regular">{group.label}</Text>
+              <Text className="text-muted-foreground text-small-regular">{group.label}</Text>
               {group.chats.map((chat) => (
                 <ChatListRow
                   key={chat.id}

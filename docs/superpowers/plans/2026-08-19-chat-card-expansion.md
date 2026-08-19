@@ -10,7 +10,7 @@
 
 **Spec:** `docs/features/chat-card-expansion.md`
 
-**Status:** Review + QA — white-shell reveal implemented and awaiting device QA
+**Status:** Ship approved — pending merge
 
 ## Global Constraints
 

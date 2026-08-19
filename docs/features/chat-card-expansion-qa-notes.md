@@ -27,3 +27,7 @@ Baah reported a pause before the source card text returned after collapse. The o
 The first overlap-fade build terminated when opening a chat because its opacity helper was called synchronously from a Reanimated UI-thread derived value without being compiled as a worklet. The helper is now explicitly a worklet so the calculation stays on the UI thread.
 
 > **BTS:** Reanimated animations run outside the ordinary JavaScript thread. Any helper called from that animation context must be compiled for the UI thread; otherwise the native runtime cannot cross the boundary synchronously and deliberately terminates rather than continuing in a corrupted state.
+
+## 2026-08-19 — Ship approval
+
+Baah approved the final card spacing, eased press feedback, faster overlapping expansion/fade, immediate pre-measurement handoff, reverse morph, and recording-surface corrections for merge.

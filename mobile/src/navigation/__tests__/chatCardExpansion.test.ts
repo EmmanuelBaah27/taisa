@@ -1,4 +1,6 @@
 import {
+  CHAT_CARD_PRESSED_SCALE,
+  getChatCardMotionTimeline,
   getClosingChatShellOpacity,
   getChatCardInitialTransform,
   isChatCardSourceViewportCurrent,
@@ -7,6 +9,17 @@ import {
 } from '../chatCardExpansion';
 
 describe('chat card expansion geometry', () => {
+  test('hands the pressed card into a fast overlapping expansion and fade', () => {
+    expect(CHAT_CARD_PRESSED_SCALE).toBe(0.97);
+    expect(getChatCardMotionTimeline(false)).toEqual({
+      openDuration: 240,
+      shellFadeDuration: 120,
+      shellInitialOpacity: 0.92,
+      contentRevealDelay: 40,
+      contentRevealDuration: 140,
+    });
+  });
+
   test('the closing white shell reveals the real card during the final quarter', () => {
     expect(getClosingChatShellOpacity(0)).toBe(1);
     expect(getClosingChatShellOpacity(0.75)).toBe(1);

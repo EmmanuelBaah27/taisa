@@ -2,7 +2,7 @@
 
 **Track:** Product
 **Tier:** Standard
-**Status:** Review + QA — white-shell reveal awaiting device QA
+**Status:** Ship approved — pending merge
 **Design:** [Figma node 409:4635](https://www.figma.com/design/TlIBdEHicoKUR9RhCFuLPi/-Taisa--UI-Design?node-id=409-4635&m=dev)
 
 ## What is it?
@@ -11,15 +11,15 @@ Make a Chats-list item expand into the canonical conversation view and morph bac
 
 ## Acceptance criteria
 
-- [ ] Selecting a Chats item opens that conversation through `/chat`, not the legacy thread screen.
-- [ ] The opening surface expands from the selected card bounds into the full viewport.
-- [ ] The conversation header, title, message spacing, user bubble, assistant copy, and reply dock match Figma node `409:4635` using Taisa tokens.
-- [ ] Closing a historical chat reverses the expansion into its source card before returning to Chats.
-- [ ] The Chats list preserves its opening scroll position until the reverse morph finishes.
-- [ ] Fresh capture, invalid geometry, and reduced motion close immediately without the legacy downward transition.
-- [ ] Conversation hydration, replies, recording cleanup, safe areas, keyboard behavior, and accessibility remain intact.
-- [ ] Reduced-motion users receive an immediate open and close.
-- [ ] Mobile tests, typecheck, and design-system verification pass before device QA.
+- [x] Selecting a Chats item opens that conversation through `/chat`, not the legacy thread screen.
+- [x] The opening surface expands from the selected card bounds into the full viewport.
+- [x] The conversation header, title, message spacing, user bubble, assistant copy, and reply dock match Figma node `409:4635` using Taisa tokens.
+- [x] Closing a historical chat reverses the expansion into its source card before returning to Chats.
+- [x] The Chats list preserves its opening scroll position until the reverse morph finishes.
+- [x] Fresh capture, invalid geometry, and reduced motion close immediately without the legacy downward transition.
+- [x] Conversation hydration, replies, recording cleanup, safe areas, keyboard behavior, and accessibility remain intact.
+- [x] Reduced-motion users receive an immediate open and close.
+- [x] Mobile tests, typecheck, and design-system verification pass before device QA.
 
 ## Design handoff
 

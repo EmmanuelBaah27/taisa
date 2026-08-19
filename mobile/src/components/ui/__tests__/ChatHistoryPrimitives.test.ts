@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 
-import { ChatListRow } from '../ChatListRow';
+import { CHAT_LIST_ROW_MOTION, ChatListRowSurface } from '../ChatListRow';
 import { ThreadMessage } from '../ThreadMessage';
 
 function descendants(node: React.ReactNode): React.ReactElement<Record<string, any>>[] {
@@ -23,9 +23,17 @@ function textContent(node: React.ReactNode): string {
 }
 
 describe('chat history design-system primitives', () => {
+  test('ChatListRow uses a short eased press without delaying navigation', () => {
+    expect(CHAT_LIST_ROW_MOTION).toEqual({
+      pressedScale: 0.97,
+      pressDuration: 100,
+      releaseDuration: 140,
+    });
+  });
+
   test('ChatListRow exposes one accessible button with title, preview, and press behavior', () => {
     const onOpen = jest.fn();
-    const tree = ChatListRow({
+    const tree = ChatListRowSurface({
       title: 'Discovering your strengths',
       preview: 'How to identify the skills that bring you energy',
       onOpen,
@@ -46,13 +54,16 @@ describe('chat history design-system primitives', () => {
       'How to identify the skills that bring you energy',
     ]));
 
+    expect(button?.props.onPressIn).toEqual(expect.any(Function));
+    button?.props.onPressIn();
     button?.props.onPress();
     expect(onOpen).toHaveBeenCalledWith(null);
+    expect(onOpen).toHaveBeenCalledTimes(1);
   });
 
   test('ChatListRow renders attention text only when explicitly requested', () => {
-    const regular = descendants(ChatListRow({ title: 'Regular', preview: 'Preview', onOpen: jest.fn() }));
-    const flagged = descendants(ChatListRow({
+    const regular = descendants(ChatListRowSurface({ title: 'Regular', preview: 'Preview', onOpen: jest.fn() }));
+    const flagged = descendants(ChatListRowSurface({
       title: 'Flagged',
       preview: 'Preview',
       needsAttention: true,

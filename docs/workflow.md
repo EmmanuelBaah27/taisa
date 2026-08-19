@@ -14,7 +14,7 @@ Claude maintains the Active Work table — Baah never needs to update it.
 | Post-Send streaming transcription | Platform + Product | Review + QA | `feature/local-first-coaching-platform` | Managed-device clear/uncertain/no-speech calibration before Ship approval |
 | Taisa system architecture | Platform | Review + QA | `docs/reimagine-product-scope` | Baah document review |
 | Current experience consolidation | Platform + Product | Review + QA | `feature/current-experience` | Persistent navigation capsule motion is verified automatically and launched on the paired iPhone; awaiting Baah device QA (including page-title follow-up separately) |
-| Chat card expansion | Product | Review + QA | `feature/chat-card-expansion` | Baah white-shell morph device QA |
+| Chat card expansion | Product | Review + QA | `feature/chat-card-expansion` | Ship approved; merge transaction in progress |
 | Secondary icon button | Product | Review + QA | `feature/secondary-icon-button` | Baah device QA |
 | Recording page | Product | Review + QA | `feature/secondary-icon-button` | Baah device QA |
 
