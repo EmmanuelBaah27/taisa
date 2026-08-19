@@ -60,7 +60,7 @@ export default function LogsScreen() {
       <ScrollView
         ref={scrollRef}
         className="flex-1"
-        contentContainerStyle={{ paddingHorizontal: 8, paddingBottom: 140 }}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 140 }}
         onScroll={(event) => {
           scrollOffsetRef.current = Math.max(0, event.nativeEvent.contentOffset.y);
           reportScroll(scrollOffsetRef.current);
