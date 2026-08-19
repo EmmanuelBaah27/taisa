@@ -92,6 +92,7 @@ export function isChatCardSourceViewportCurrent(
 }
 
 export function getClosingChatShellOpacity(progress: number): number {
+  'worklet';
   const normalized = Math.min(Math.max(progress, 0), 1);
   if (normalized <= 0.75) return 1;
   return (1 - normalized) / 0.25;

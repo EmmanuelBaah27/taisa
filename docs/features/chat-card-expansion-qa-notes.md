@@ -21,3 +21,9 @@ Historical chats must also complete their initial non-animated bottom positionin
 ## 2026-08-19 — Source-card text continuity
 
 Baah reported a pause before the source card text returned after collapse. The opaque shell was covering the real card until route dismissal. During the final quarter of closing, the shell now fades from opaque to transparent so the mounted source card text is already visible before the route is removed.
+
+### Device crash correction
+
+The first overlap-fade build terminated when opening a chat because its opacity helper was called synchronously from a Reanimated UI-thread derived value without being compiled as a worklet. The helper is now explicitly a worklet so the calculation stays on the UI thread.
+
+> **BTS:** Reanimated animations run outside the ordinary JavaScript thread. Any helper called from that animation context must be compiled for the UI thread; otherwise the native runtime cannot cross the boundary synchronously and deliberately terminates rather than continuing in a corrupted state.
