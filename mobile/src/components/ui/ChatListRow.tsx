@@ -26,6 +26,16 @@ export const CHAT_LIST_ROW_MOTION = {
   releaseDuration: 140,
 } as const;
 
+export function createOpenOnce(onOpen: ChatListRowProps['onOpen']) {
+  let opened = false;
+  return (frame: ChatCardFrame | null) => {
+    if (opened) return;
+    opened = true;
+    onOpen(frame);
+    setTimeout(() => { opened = false; }, 750);
+  };
+}
+
 interface ChatListRowSurfaceProps extends ChatListRowProps {
   onPressIn?: PressableProps['onPressIn'];
   onPressOut?: PressableProps['onPressOut'];
@@ -110,6 +120,7 @@ export function ChatListRowSurface({
 
 export function ChatListRow(props: ChatListRowProps) {
   const scale = useRef(new Animated.Value(1)).current;
+  const openOnce = useRef(createOpenOnce(props.onOpen)).current;
   const [reduceMotion, setReduceMotion] = useState(false);
 
   useEffect(() => {
@@ -143,6 +154,7 @@ export function ChatListRow(props: ChatListRowProps) {
     <Animated.View style={{ transform: [{ scale }] }}>
       <ChatListRowSurface
         {...props}
+        onOpen={openOnce}
         onPressIn={() => animateScale(
           CHAT_LIST_ROW_MOTION.pressedScale,
           CHAT_LIST_ROW_MOTION.pressDuration,

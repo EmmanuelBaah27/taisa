@@ -202,6 +202,9 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
   );
 
   const recorder = useVoiceRecorder();
+  const recorderAcquiring = (
+    composer.voice === 'recording' || composer.voice === 'paused'
+  ) && pendingRecording === null && !recorder.isRecording;
 
   function discardPendingRecording() {
     if (recordingSubmissionLeaseRef.current !== null) {
@@ -368,6 +371,7 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
   }
 
   async function handlePauseVoice() {
+    if (recorderAcquiring) return;
     try {
       await recorder.pause();
       dispatchComposer({ type: 'pause-voice' });
@@ -463,6 +467,7 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
   }
 
   async function handleComposerSend() {
+    if (recorderAcquiring) return;
     if (isBusy) return;
     dispatchComposer({ type: 'send' });
     if (composer.voice === 'none') {
@@ -825,6 +830,7 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
             amplitudeLevel={recorder.amplitudeLevel}
             paused={composer.voice === 'paused'}
             disabled={composer.submitting || isBusy}
+            recordingActionDisabled={recorderAcquiring}
             onClose={handleClose}
             onCancel={() => { void handleCancelVoice(); }}
             onKeyboard={() => { void handleSwitchToText(); }}
@@ -858,6 +864,7 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
             recordingStartFailed={recordingStartFailed}
             textFocusRequest={composer.textFocusRequest}
             disabled={isBusy}
+            recordingActionDisabled={recorderAcquiring}
             transcribing={transcriptionOutcome === 'streaming'}
             onChangeText={(value) => {
               setDraft(value);

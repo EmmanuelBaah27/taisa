@@ -1,7 +1,11 @@
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 
-import { CHAT_LIST_ROW_MOTION, ChatListRowSurface } from '../ChatListRow';
+import {
+  CHAT_LIST_ROW_MOTION,
+  ChatListRowSurface,
+  createOpenOnce,
+} from '../ChatListRow';
 import { ThreadMessage } from '../ThreadMessage';
 
 function descendants(node: React.ReactNode): React.ReactElement<Record<string, any>>[] {
@@ -29,6 +33,23 @@ describe('chat history design-system primitives', () => {
       pressDuration: 100,
       releaseDuration: 140,
     });
+  });
+
+  test('ChatListRow opens a conversation only once across rapid taps', () => {
+    jest.useFakeTimers();
+    const onOpen = jest.fn();
+    const openOnce = createOpenOnce(onOpen);
+
+    openOnce(null);
+    openOnce({ x: 20, y: 100, width: 353, height: 72 });
+
+    expect(onOpen).toHaveBeenCalledTimes(1);
+    expect(onOpen).toHaveBeenCalledWith(null);
+
+    jest.runAllTimers();
+    openOnce({ x: 20, y: 100, width: 353, height: 72 });
+    expect(onOpen).toHaveBeenCalledTimes(2);
+    jest.useRealTimers();
   });
 
   test('ChatListRow exposes one accessible button with title, preview, and press behavior', () => {
