@@ -324,7 +324,7 @@ export function BottomNavBar() {
 
     if (reduceMotion) {
       selectedContentOpacity.setValue(0);
-      selectedLabelOpacity.setValue(0);
+      selectedLabelOpacity.setValue(1);
       selectedLabelScale.setValue(1);
       selectedLabelTranslateX.setValue(0);
       outgoingLabelOpacity.setValue(1);
@@ -332,11 +332,6 @@ export function BottomNavBar() {
       outgoingLabelTranslateX.setValue(0);
       ReactNativeAnimated.parallel([
         ReactNativeAnimated.timing(selectedContentOpacity, {
-          toValue: 1,
-          duration: reducedMotion.crossfadeDuration,
-          useNativeDriver: true,
-        }),
-        ReactNativeAnimated.timing(selectedLabelOpacity, {
           toValue: 1,
           duration: reducedMotion.crossfadeDuration,
           useNativeDriver: true,

@@ -179,12 +179,14 @@ describe('bottom navigation', () => {
       selectedContentLayers: 1,
       selectedIconLayers: 1,
       outgoingLabelLayers: 0,
+      outgoingLabelHasIndependentOpacity: true,
       hiddenStableDestination: 'logs',
     });
     expect(getBottomNavigationRenderPolicy(travelling)).toEqual({
       selectedContentLayers: 1,
       selectedIconLayers: 1,
       outgoingLabelLayers: 1,
+      outgoingLabelHasIndependentOpacity: true,
       hiddenStableDestination: 'you',
     });
   });

@@ -88,6 +88,7 @@ export function getBottomNavigationRenderPolicy(
     selectedContentLayers: 1 as const,
     selectedIconLayers: 1 as const,
     outgoingLabelLayers: state.phase === 'resting' ? 0 as const : 1 as const,
+    outgoingLabelHasIndependentOpacity: true as const,
     hiddenStableDestination: state.to,
   };
 }

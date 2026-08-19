@@ -37,7 +37,9 @@ export function PersistentNavigationCapsule({
   outgoingLabel,
   animatedOutgoingLabelStyle,
 }: PersistentNavigationCapsuleProps) {
-  void phase;
+  const travellingSurfaceStyle = phase === 'resting'
+    ? undefined
+    : BOTTOM_NAVIGATION_CLEAR_GLASS_SURFACE;
 
   return (
     <Animated.View
@@ -61,7 +63,7 @@ export function PersistentNavigationCapsule({
           borderRadius: SELECTED.borderRadius,
           overflow: 'hidden',
         },
-        BOTTOM_NAVIGATION_CLEAR_GLASS_SURFACE,
+        travellingSurfaceStyle,
         animatedContainerStyle,
       ]}
     >
@@ -73,6 +75,7 @@ export function PersistentNavigationCapsule({
             inset: 0,
             backgroundColor: BOTTOM_NAVIGATION_ACTIVE_FILL,
           },
+          { opacity: phase === 'resting' ? 1 : 0 },
           animatedFillStyle,
         ]}
       />
@@ -87,23 +90,6 @@ export function PersistentNavigationCapsule({
         ]}
       >
         {leadingVisual}
-        {outgoingLabel ? (
-          <Animated.Text
-            numberOfLines={1}
-            className="absolute font-sans-medium text-foreground"
-            style={[
-              {
-                left: SELECTED.iconSize + SELECTED.gap,
-                fontSize: SELECTED.fontSize,
-                lineHeight: SELECTED.lineHeight,
-                letterSpacing: SELECTED.letterSpacing,
-              },
-              animatedOutgoingLabelStyle,
-            ]}
-          >
-            {outgoingLabel}
-          </Animated.Text>
-        ) : null}
         <Animated.Text
           numberOfLines={1}
           className="font-sans-medium text-foreground"
@@ -119,6 +105,24 @@ export function PersistentNavigationCapsule({
           {label}
         </Animated.Text>
       </Animated.View>
+      {outgoingLabel ? (
+        <Animated.Text
+          numberOfLines={1}
+          className="absolute font-sans-medium text-foreground"
+          style={[
+            {
+              top: SELECTED.paddingVertical,
+              left: SELECTED.paddingHorizontal + SELECTED.iconSize + SELECTED.gap,
+              fontSize: SELECTED.fontSize,
+              lineHeight: SELECTED.lineHeight,
+              letterSpacing: SELECTED.letterSpacing,
+            },
+            animatedOutgoingLabelStyle,
+          ]}
+        >
+          {outgoingLabel}
+        </Animated.Text>
+      ) : null}
     </Animated.View>
   );
 }
