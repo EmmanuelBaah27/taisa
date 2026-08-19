@@ -122,16 +122,16 @@ Never use raw `text-sm font-semibold` combinations — use the composite utiliti
 | `VoiceButton` | `onPress?` | State-owning wrapper for the central CTA; fresh entry opens voice mode with one automatic recorder start |
 | `VoiceEntryButton` | `bottomInset`, `hidden`, `onPress` | Presentational 104×56 lime CTA positioned 12px above `BottomNavBar`, with the Figma glow and accessible voice label |
 | `WorkspaceHeader` | `subtitle: string` | Screen-level header; workspace name from `careerStore.profile.currentCompany`; contextual subtitle |
-| `ChatNavBar` | `onClose: () => void` | Chat modal nav bar; caret-down close on left, "Taisa" centred; no right slot |
+| `ChatNavBar` | `title`, `topInset`, `onClose` | Figma chat header: floating 56px caret-down control on the left and truncated conversation title centred independently of side slots |
 | `RecordingGlow` | `amplitude: number` | Amplitude-reactive lime glow anchored to screen bottom; 0 = very faint, 10 = full brightness; uses `expo-linear-gradient` + `Animated` with `useNativeDriver` |
 | `LiveTranscriptionText` | `transcript: string` | Centred text area; shows grey "What's on your mind?" when empty, switches to `text-lime-700` when transcript streams in |
-| `TaisaReplyCard` | `responseId`, `content`, local reaction state and callbacks | Assistant reply bubble with local Helpful / Not helpful controls; sharing is exposed only as a separate preview action after a reaction |
+| `TaisaReplyCard` | `appearance`, `responseId`, `content`, local reaction state and callbacks | Assistant reply with `card` and Figma-aligned unboxed `plain` presentation; local Helpful / Not helpful controls remain available and sharing requires a separate preview action |
 | `ChatListRow` | `title`, `preview`, `needsAttention`, `onPress` | Accessible, borderless Chats index row; attention is explicit and never inferred from message copy |
 | `ThreadMessage` | `role`, `content`, `inputType` | User messages use a neutral right-aligned bubble; assistant messages remain unboxed |
 | `VoiceComposer` | `mode`, `voiceState`, `durationSeconds`, `amplitude`, draft state and callbacks | Bottom-loaded active voice/text composer with a voice-ready Reply control, speech-responsive Pause/Resume cradle, and stable Send position |
 | `VoiceDraftStrip` | `label`, `preview`, `onOpen`, `onDelete` | Compact representation of the inactive input; deletion remains an isolated tap target |
 | `TranscriptCorrectionCard` | `value`, `disabled`, `onChangeText`, `onCancel`, `onSubmit` | Presentational transcript correction editor with Cancel and Update response actions |
-| `ChatScreenShell` | `topInset`, `gesture`, `animatedStyle`, `onClose`, `footer` | Keyboard-safe modal shell, drag handle, navigation, and footer slots |
+| `ChatScreenShell` | `topInset`, `title`, `animatedStyle`, `onClose`, `footer` | Keyboard-safe full-screen shell with entry-only card expansion, floating conversation header, and footer slot; close is immediate and has no reverse motion |
 | `ChatConversationSurface` | messages, active request state, reaction state, error/proposal/transcript callbacks | Scrollable conversation rendering composed from typed chat surfaces |
 | `ChatMessageBubble` | `content`, `editable`, `showCorrectionHint`, `onEdit` | User turn bubble with a semantic transcript-correction action |
 | `PendingTranscriptBubble` | `transcript` | Optimistic voice transcript shown while coaching is pending |
@@ -171,8 +171,13 @@ the calm voice-ready `Reply` state and never enqueue or trigger another automati
 
 ## Chat surfaces
 
-`app/chat/index.tsx` owns conversation state, recorder lifecycle, persistence calls, and gesture
-orchestration. Visual rendering belongs to the exported typed chat surfaces above; the screen does
+`app/chat/index.tsx` owns conversation state, recorder lifecycle, persistence calls, and entry
+animation orchestration. Visual rendering belongs to the exported typed chat surfaces above; the screen does
 not construct React Native visual primitives or define a `StyleSheet`. Static color roles use
 NativeWind semantic utilities. Native APIs that require color values (icons, shadows, gradients)
 use `constants/theme.ts`, including `backgroundTransparent` for the conversation fade.
+
+Chats history opens the canonical chat route with the selected row's measured viewport frame. The
+screen expands from that frame over the shared 380ms ease-out curve, or appears immediately when
+measurement is unavailable or reduced motion is enabled. Closing from either chat or recording is
+always immediate: there is no reverse collapse, slide-down, or drag-to-dismiss transition.

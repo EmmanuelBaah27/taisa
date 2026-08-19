@@ -5,7 +5,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { ChatListRow } from '../../src/components/ui';
 import { colors } from '../../src/constants/theme';
 import { useScrollContext } from '../../src/contexts/ScrollContext';
-import { chatThreadRoute } from '../../src/navigation/chatConversationRoute';
+import { chatConversationRoute } from '../../src/navigation/chatConversationRoute';
 import { useThreadStore } from '../../src/stores/threadStore';
 import { getChatPreview, groupChatsByDate } from '../../src/utils/chatPresentation';
 
@@ -58,7 +58,11 @@ export default function LogsScreen() {
                   key={chat.id}
                   title={chat.title || 'Untitled chat'}
                   preview={getChatPreview(chat)}
-                  onPress={() => router.push(chatThreadRoute(chat.id))}
+                  onOpen={(frame) => router.push(chatConversationRoute(
+                    chat.id,
+                    frame,
+                    chat.title || 'Untitled chat',
+                  ))}
                 />
               ))}
             </View>

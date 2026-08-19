@@ -1,7 +1,31 @@
 import React from 'react';
+import { Text, TouchableOpacity, View } from 'react-native';
 
 import { ChatMessageBubble, PendingProposalCard } from '../ChatSurfaces';
+import { ChatNavBar } from '../ChatNavBar';
 import { TaisaReplyCard } from '../TaisaReplyCard';
+
+jest.mock('react-native-safe-area-context', () => ({
+  useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }),
+}));
+
+function descendants(node: React.ReactNode): React.ReactElement<Record<string, any>>[] {
+  if (!React.isValidElement<{ children?: React.ReactNode }>(node)) return [];
+  return [
+    node as React.ReactElement<Record<string, any>>,
+    ...React.Children.toArray(node.props.children).flatMap(descendants),
+  ];
+}
+
+function textContent(node: React.ReactNode): string {
+  return React.Children.toArray(node).map((child) => (
+    typeof child === 'string' || typeof child === 'number'
+      ? String(child)
+      : React.isValidElement<{ children?: React.ReactNode }>(child)
+        ? textContent(child.props.children)
+        : ''
+  )).join('');
+}
 
 function findElementByLabel(
   node: React.ReactNode,
@@ -24,6 +48,39 @@ function findElementByLabel(
 }
 
 describe('chat design-system surfaces', () => {
+  test('the Figma header uses a floating close control and the conversation title', () => {
+    const header = ChatNavBar({
+      onClose: jest.fn(),
+      title: 'Navigating a career change',
+      topInset: 47,
+    } as never);
+    const nodes = descendants(header);
+    const close = nodes.find((node) => node.type === TouchableOpacity);
+    const labels = nodes.filter((node) => node.type === Text)
+      .map((node) => textContent(node.props.children));
+
+    expect(String(close?.props.className)).toContain('rounded-full');
+    expect(labels).toContain('Navigating a career change');
+  });
+
+  test('the user turn uses the neutral 32px Figma bubble', () => {
+    const nodes = descendants(ChatMessageBubble({ content: 'My message' }));
+    const bubble = nodes.find((node) => node.type === TouchableOpacity);
+
+    expect(String(bubble?.props.className)).toContain('rounded-8');
+    expect(String(bubble?.props.className)).toContain('bg-muted');
+    expect(String(bubble?.props.className)).toContain('px-4 py-4');
+  });
+
+  test('the assistant reply is unboxed base body copy', () => {
+    const nodes = descendants(TaisaReplyCard({ content: 'A reply', appearance: 'plain' }));
+    const root = nodes.find((node) => node.type === View);
+    const body = nodes.find((node) => node.type === Text && textContent(node.props.children) === 'A reply');
+
+    expect(String(root?.props.className)).not.toMatch(/bg-card|border/);
+    expect(String(body?.props.className)).toContain('text-base-regular');
+  });
+
   test('an editable transcript bubble exposes the correction action semantically', () => {
     const onEdit = jest.fn();
     const bubble = ChatMessageBubble({

@@ -118,7 +118,7 @@ export function VoiceComposer(props: VoiceComposerProps) {
         accessibilityRole="button"
         disabled={props.disabled}
         onPress={props.onStartVoice}
-        className="h-14 w-full flex-row items-center justify-center gap-2 rounded-full bg-muted"
+        className="h-14 self-center flex-row items-center justify-center gap-2 rounded-full border border-border-subtle bg-background px-12 shadow-xs"
       >
         <Icon name="IconVoiceMid" size={20} color={colors.textPrimary} />
         <Text className="text-foreground text-base-semibold">Reply</Text>

@@ -5,7 +5,6 @@ import { router } from 'expo-router';
 import { ThreadResumeAction } from '../../components/ThreadResumeAction';
 import {
   chatConversationRoute,
-  chatThreadRoute,
   closeChatPresentation,
   isConversationCacheCurrent,
   returnFromRoutedChat,
@@ -70,11 +69,23 @@ describe('durable conversation resume navigation', () => {
       });
   });
 
-  test('the Chats list opens a thread with the durable SQLite conversation ID', () => {
-    expect(chatThreadRoute('conversation/with private work'))
+  test('the Chats list opens canonical chat with its measured source frame', () => {
+    expect(chatConversationRoute('conversation/with private work', {
+      x: 16,
+      y: 140,
+      width: 361,
+      height: 72,
+    }, 'Navigating a career change'))
       .toEqual({
-        pathname: '/thread/[id]',
-        params: { id: 'conversation/with private work' },
+        pathname: '/chat',
+        params: {
+          conversationId: 'conversation/with private work',
+          title: 'Navigating a career change',
+          cardX: '16',
+          cardY: '140',
+          cardWidth: '361',
+          cardHeight: '72',
+        },
       });
   });
 

@@ -3,6 +3,7 @@ import { colors } from '../../constants/theme';
 import type { ResponseReaction } from '../../repositories/responseFeedbackRepository';
 
 export interface TaisaReplyCardProps {
+  appearance?: 'card' | 'plain';
   responseId?: string;
   content: string;
   reaction?: ResponseReaction | null;
@@ -11,6 +12,7 @@ export interface TaisaReplyCardProps {
 }
 
 export function TaisaReplyCard({
+  appearance = 'card',
   responseId,
   content,
   reaction = null,
@@ -19,11 +21,17 @@ export function TaisaReplyCard({
 }: TaisaReplyCardProps) {
   return (
     <View
-      className="my-1 rounded-3 rounded-tl-sm border border-border bg-card px-3 py-3"
-      style={{ borderLeftWidth: 2, borderLeftColor: colors.accent }}
+      className={appearance === 'plain'
+        ? 'mb-8 w-full'
+        : 'my-1 rounded-3 rounded-tl-sm border border-border bg-card px-3 py-3'}
+      style={appearance === 'plain' ? undefined : { borderLeftWidth: 2, borderLeftColor: colors.accent }}
     >
-      <Text className="mb-1 text-lime-700 text-caption-semibold">Taisa</Text>
-      <Text className="text-muted-foreground text-small-regular">{content}</Text>
+      {appearance === 'card' ? (
+        <Text className="mb-1 text-lime-700 text-caption-semibold">Taisa</Text>
+      ) : null}
+      <Text className={appearance === 'plain'
+        ? 'text-foreground text-base-regular'
+        : 'text-muted-foreground text-small-regular'}>{content}</Text>
       {responseId && onReact ? (
         <View className="mt-3 flex-row items-center gap-2">
           <TouchableOpacity

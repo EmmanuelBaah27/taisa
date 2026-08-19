@@ -1,27 +1,43 @@
+import { createRef } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
 import { colors } from '../../constants/theme';
+import type { ChatCardFrame } from '../../navigation/chatCardExpansion';
 import { Icon } from './Icon';
 
 export interface ChatListRowProps {
   title: string;
   preview: string;
   needsAttention?: boolean;
-  onPress(): void;
+  onOpen(frame: ChatCardFrame | null): void;
 }
 
 export function ChatListRow({
   title,
   preview,
   needsAttention = false,
-  onPress,
+  onOpen,
 }: ChatListRowProps) {
+  const rowRef = createRef<View>();
+
+  function handlePress() {
+    const row = rowRef.current;
+    if (row === null || typeof row.measureInWindow !== 'function') {
+      onOpen(null);
+      return;
+    }
+    row.measureInWindow((x, y, width, height) => {
+      onOpen(width > 0 && height > 0 ? { x, y, width, height } : null);
+    });
+  }
+
   return (
     <Pressable
+      ref={rowRef}
       accessibilityRole="button"
       accessibilityLabel={`${title}. ${preview}`}
       accessibilityHint="Opens this conversation"
-      onPress={onPress}
+      onPress={handlePress}
       className="flex-row items-start gap-4 rounded-2 px-2 py-2 active:bg-muted"
     >
       <View className="h-6 w-6 items-center justify-center">

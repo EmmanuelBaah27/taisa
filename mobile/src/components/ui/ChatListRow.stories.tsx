@@ -12,7 +12,7 @@ const meta: Meta<typeof ChatListRow> = {
     needsAttention: false,
   },
   argTypes: {
-    onPress: { action: 'pressed' },
+    onOpen: { action: 'opened' },
   },
   decorators: [
     (Story) => (

@@ -88,6 +88,21 @@ describe('local-first capture navigation', () => {
     expect(recordingRoute).not.toMatch(/\/analyze(?:[/'"`?]|$)/);
   });
 
+  test('chat and recording close without a downward exit transition', () => {
+    const chatScreen = fs.readFileSync(
+      path.resolve(__dirname, '../../../app/chat/index.tsx'),
+      'utf8',
+    );
+    const rootLayout = fs.readFileSync(
+      path.resolve(__dirname, '../../../app/_layout.tsx'),
+      'utf8',
+    );
+
+    expect(chatScreen).not.toMatch(/Gesture\.Pan|gestureCommitClose|commitClose\(300\)|commitClose\(340\)/);
+    expect(chatScreen).not.toMatch(/close\(\)/);
+    expect(rootLayout).not.toMatch(/slide_from_bottom/);
+  });
+
   test('a microphone start failure offers a keyboard escape instead of retry-only UI', () => {
     const chatScreen = fs.readFileSync(
       path.resolve(__dirname, '../../../app/chat/index.tsx'),

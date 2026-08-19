@@ -1,27 +1,36 @@
 import { View, Text, TouchableOpacity } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Icon } from './Icon';
 import { colors } from '../../constants/theme';
 
 export interface ChatNavBarProps {
+  title: string;
+  topInset: number;
   onClose: () => void;
 }
 
-export function ChatNavBar({ onClose }: ChatNavBarProps) {
-  const insets = useSafeAreaInsets();
-
+export function ChatNavBar({ title, topInset, onClose }: ChatNavBarProps) {
   return (
-    <View
-      className="flex-row items-center px-4 pb-3"
-      style={{ paddingTop: insets.top + 8 }}
+    <LinearGradient
+      colors={[colors.background, colors.backgroundTransparent]}
+      className="relative flex-row items-center justify-between px-4 pb-1 pt-1"
+      style={{ marginTop: topInset }}
     >
-      <TouchableOpacity onPress={onClose} className="w-10 items-start">
-        <Icon name="IconChevronDownMedium" size={20} color={colors.textTertiary} />
+      <TouchableOpacity
+        accessibilityRole="button"
+        accessibilityLabel="Close conversation"
+        onPress={onClose}
+        className="h-14 w-14 items-center justify-center rounded-full border border-border-subtle bg-card shadow-xs"
+      >
+        <Icon name="IconChevronDownMedium" size={24} color={colors.textPrimary} />
       </TouchableOpacity>
-      <Text className="flex-1 text-center text-foreground text-base-medium">
-        Taisa
+      <Text
+        className="absolute left-20 right-20 text-center text-foreground text-small-medium"
+        numberOfLines={1}
+      >
+        {title}
       </Text>
-      <View className="w-10" />
-    </View>
+      <View className="h-14 w-14" />
+    </LinearGradient>
   );
 }

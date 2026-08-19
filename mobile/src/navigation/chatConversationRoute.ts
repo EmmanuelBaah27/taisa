@@ -1,3 +1,5 @@
+import type { ChatCardFrame } from './chatCardExpansion';
+
 export type ChatConversationRouteParam = string | string[] | undefined;
 
 export function resolveInitialChatConversationId(
@@ -14,10 +16,21 @@ export function resolveInitialChatConversationId(
     : activeConversationId;
 }
 
-export function chatConversationRoute(conversationId: string) {
+export function chatConversationRoute(
+  conversationId: string,
+  frame?: ChatCardFrame | null,
+  title?: string,
+) {
+  const context = title ? { conversationId, title } : { conversationId };
   return {
     pathname: '/chat' as const,
-    params: { conversationId },
+    params: frame ? {
+      ...context,
+      cardX: String(frame.x),
+      cardY: String(frame.y),
+      cardWidth: String(frame.width),
+      cardHeight: String(frame.height),
+    } : context,
   };
 }
 

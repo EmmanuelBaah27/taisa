@@ -24,11 +24,11 @@ function textContent(node: React.ReactNode): string {
 
 describe('chat history design-system primitives', () => {
   test('ChatListRow exposes one accessible button with title, preview, and press behavior', () => {
-    const onPress = jest.fn();
+    const onOpen = jest.fn();
     const tree = ChatListRow({
       title: 'Discovering your strengths',
       preview: 'How to identify the skills that bring you energy',
-      onPress,
+      onOpen,
     });
     const nodes = descendants(tree);
     const button = nodes.find((node) => node.type === Pressable);
@@ -47,16 +47,16 @@ describe('chat history design-system primitives', () => {
     ]));
 
     button?.props.onPress();
-    expect(onPress).toHaveBeenCalledTimes(1);
+    expect(onOpen).toHaveBeenCalledWith(null);
   });
 
   test('ChatListRow renders attention text only when explicitly requested', () => {
-    const regular = descendants(ChatListRow({ title: 'Regular', preview: 'Preview', onPress: jest.fn() }));
+    const regular = descendants(ChatListRow({ title: 'Regular', preview: 'Preview', onOpen: jest.fn() }));
     const flagged = descendants(ChatListRow({
       title: 'Flagged',
       preview: 'Preview',
       needsAttention: true,
-      onPress: jest.fn(),
+      onOpen: jest.fn(),
     }));
 
     expect(regular.filter((node) => node.type === Text).map((node) => textContent(node.props.children)))
