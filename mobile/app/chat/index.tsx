@@ -28,6 +28,7 @@ import {
   resolveInitialChatConversationId,
   selectConversationMessages,
   returnFromRoutedChat,
+  voiceCancelDestination,
   type ChatPresentation,
 } from '../../src/navigation/chatConversationRoute';
 import {
@@ -749,6 +750,21 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
     close(commitClose);
   }
 
+  async function handleCancelVoice() {
+    if (voiceCancelDestination(initialConversationIdRef.current) === 'close') {
+      handleClose();
+      return;
+    }
+
+    await stopActiveRecordingAndDiscard();
+    discardPendingRecording();
+    if (!mountedRef.current) return;
+    setPendingRecording(null);
+    setRecordingStartFailed(false);
+    setPhase('idle');
+    dispatchComposer({ type: 'restore-mode', mode: 'voice' });
+  }
+
   return (
     <ChatScreenShell
       topInset={insets.top}
@@ -778,6 +794,7 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
             onStartVoice={handleStartVoiceFromComposer}
             onPause={() => { void handlePauseVoice(); }}
             onResume={() => { void handleResumeVoice(); }}
+            onCancelVoice={() => { void handleCancelVoice(); }}
             onDeleteText={() => {
               setDraft('');
               dispatchComposer({ type: 'delete-text' });

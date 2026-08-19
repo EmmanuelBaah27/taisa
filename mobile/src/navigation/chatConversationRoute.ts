@@ -46,6 +46,12 @@ export function chatThreadRoute(conversationId: string) {
 
 export type ChatPresentation = 'route' | 'overlay';
 
+export function voiceCancelDestination(
+  initialConversationId: string | null,
+): 'reply' | 'close' {
+  return initialConversationId === null ? 'close' : 'reply';
+}
+
 export function startFreshCapture(actions: {
   clearActiveConversation(): void;
   openCapture(): void;

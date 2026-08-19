@@ -29,6 +29,7 @@ function Preview({ mode, voiceState, hasVoiceDraft, text }: {
       onStartVoice={() => undefined}
       onPause={() => undefined}
       onResume={() => undefined}
+      onCancelVoice={() => undefined}
       onDeleteText={() => undefined}
       onDeleteVoice={() => undefined}
       onSend={() => undefined}

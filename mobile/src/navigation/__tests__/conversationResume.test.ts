@@ -11,6 +11,7 @@ import {
   resolveInitialChatConversationId,
   selectConversationMessages,
   startFreshCapture,
+  voiceCancelDestination,
 } from '../chatConversationRoute';
 
 jest.mock('expo-router', () => ({
@@ -59,6 +60,11 @@ describe('durable conversation resume navigation', () => {
     expect(resolveInitialChatConversationId(undefined, 'failed-conversation', true)).toBeNull();
     expect(resolveInitialChatConversationId('history-conversation', 'failed-conversation', false))
       .toBe('history-conversation');
+  });
+
+  test('voice cancel returns an existing chat to reply and closes a fresh capture', () => {
+    expect(voiceCancelDestination('conversation-from-history')).toBe('reply');
+    expect(voiceCancelDestination(null)).toBe('close');
   });
 
   test('the resume route carries the durable SQLite conversation ID', () => {

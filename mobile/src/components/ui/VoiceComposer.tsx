@@ -33,6 +33,7 @@ export interface VoiceComposerProps {
   onStartVoice: () => void;
   onPause: () => void;
   onResume: () => void;
+  onCancelVoice: () => void;
   onDeleteText: () => void;
   onDeleteVoice: () => void;
   onSend: () => void;
@@ -167,16 +168,25 @@ export function VoiceComposer(props: VoiceComposerProps) {
       <View className="flex-row items-center justify-between">
         {paused ? (
           <TouchableOpacity
-            accessibilityLabel="Delete recording"
+            accessibilityLabel="Cancel voice recording"
             accessibilityRole="button"
             disabled={props.disabled}
-            onPress={props.onDeleteVoice}
+            onPress={props.onCancelVoice}
             className="h-14 w-14 items-center justify-center rounded-full border border-border-subtle bg-background shadow-sm"
           >
             <Icon name="IconCrossMedium" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
         ) : (
           <View className="flex-row items-center gap-3">
+            <TouchableOpacity
+              accessibilityLabel="Cancel voice recording"
+              accessibilityRole="button"
+              disabled={props.disabled}
+              onPress={props.onCancelVoice}
+              className="h-14 w-14 items-center justify-center rounded-full border border-border-subtle bg-background shadow-sm"
+            >
+              <Icon name="IconCrossMedium" size={24} color={colors.textPrimary} />
+            </TouchableOpacity>
             <TouchableOpacity
               accessibilityLabel="Switch to keyboard"
               accessibilityRole="button"
@@ -186,11 +196,14 @@ export function VoiceComposer(props: VoiceComposerProps) {
             >
               <Icon name="IconKeyboardUp" size={24} color={colors.textPrimary} />
             </TouchableOpacity>
-            <Text className="w-[60px] text-center text-small-regular text-muted-foreground">
-              {formatDuration(props.durationSeconds)}
-            </Text>
           </View>
         )}
+
+        {!paused ? (
+          <Text className="w-[60px] text-center text-small-regular text-muted-foreground">
+            {formatDuration(props.durationSeconds)}
+          </Text>
+        ) : null}
 
         <View className={paused ? 'flex-row items-center gap-2' : 'flex-row items-center gap-[14px]'}>
           {paused ? (
