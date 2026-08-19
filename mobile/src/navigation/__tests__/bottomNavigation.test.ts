@@ -2,9 +2,10 @@ import {
   BOTTOM_NAVIGATION_ITEMS,
   BOTTOM_NAVIGATION_ACTIVE_FILL,
   BOTTOM_NAVIGATION_FIGMA,
-  getBottomNavigationContentHandoffPolicy,
   getBottomNavigationCapsuleFrame,
   getBottomNavigationCapsuleCenterOffset,
+  getBottomNavigationRenderPolicy,
+  getBottomNavigationTransitionStartPolicy,
   getBottomNavigationLayout,
   getBottomNavigationStateLayout,
   resolveGlassAvailability,
@@ -101,9 +102,16 @@ describe('bottom navigation', () => {
   test('scales the entire glass shell uniformly until the capsule settles', () => {
     expect(BOTTOM_NAVIGATION_FIGMA.shellMotion).toEqual({
       pressedScale: 1.12,
-      pressDuration: 140,
+      pressDuration: 90,
       releaseDuration: 320,
       releaseDampingRatio: 0.78,
+    });
+  });
+
+  test('drives capsule position and width with one coordinated spring contract', () => {
+    expect(BOTTOM_NAVIGATION_FIGMA.capsuleMotion).toEqual({
+      duration: 280,
+      dampingRatio: 0.82,
     });
   });
 
@@ -161,21 +169,24 @@ describe('bottom navigation', () => {
     expect(shouldReleaseBottomNavigationCancelledPress(false, travelling)).toBe(false);
   });
 
-  test('preserves retargeted content values but never moves outgoing reduced-motion content', () => {
+  test('renders exactly one selected content layer and hides its stable destination', () => {
     const resting = { from: 'logs', to: 'logs', phase: 'resting' } as const;
     const travelling = { from: 'logs', to: 'you', phase: 'travelling' } as const;
 
-    expect(getBottomNavigationContentHandoffPolicy(resting, false)).toEqual({
-      preserveIncomingValues: false,
-      outgoingFollowsCapsule: false,
+    expect(getBottomNavigationRenderPolicy(resting)).toEqual({
+      selectedContentLayers: 1,
+      hiddenStableDestination: 'logs',
     });
-    expect(getBottomNavigationContentHandoffPolicy(travelling, false)).toEqual({
-      preserveIncomingValues: true,
-      outgoingFollowsCapsule: true,
+    expect(getBottomNavigationRenderPolicy(travelling)).toEqual({
+      selectedContentLayers: 1,
+      hiddenStableDestination: 'you',
     });
-    expect(getBottomNavigationContentHandoffPolicy(travelling, true)).toEqual({
-      preserveIncomingValues: true,
-      outgoingFollowsCapsule: false,
+  });
+
+  test('starts capsule motion synchronously before routing', () => {
+    expect(getBottomNavigationTransitionStartPolicy()).toEqual({
+      beforeRoute: true,
+      deferred: false,
     });
   });
 

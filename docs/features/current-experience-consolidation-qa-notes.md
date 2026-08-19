@@ -29,3 +29,9 @@ Correction loaded on the connected iPhone. Verification: 50 Jest suites / 440 te
 ## 2026-08-19 — Figma navigation component replacement
 
 Figma node `454:738` defines state-dependent navigation geometry: Home and Chats states are 240×60 with 108px active items; Me is 220×60 with an 88px active item; inactive items are 56×48. Baah explicitly changed the active fill to `rgba(15,16,16,0.06)` for every state. The existing Navii avatar remains the Me identity. The updated component was loaded on the connected iPhone; 50 Jest suites / 441 tests, TypeScript, and the design-system verifier pass. Baah visual QA remains the gate.
+
+## 2026-08-19 — persistent navigation motion overlap
+
+Paired-iPhone QA showed duplicate selected content during travel, delayed shell feedback, a mid-transition pause, and an invisible moving surface. The implementation rendered stable, outgoing, and incoming content simultaneously and advanced label, width, and position on independent 180/220/320ms phases. A transparent child inside the outer glass also had no distinct optical surface.
+
+Correction removes the outgoing selected-content layer entirely. One persistent icon-label capsule starts synchronously before routing; X and width share one 280ms spring; the shell reaches a uniform 1.12 over 90ms; and travel uses a clear sheen/highlight border without nesting native glass. Automated verification passes, but this correction remains **device-QA failed / awaiting paired-iPhone recheck** until Baah confirms the visible result.

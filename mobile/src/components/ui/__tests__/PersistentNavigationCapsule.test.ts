@@ -3,6 +3,7 @@ import { Animated } from 'react-native';
 
 import {
   BOTTOM_NAVIGATION_ACTIVE_FILL,
+  BOTTOM_NAVIGATION_CLEAR_GLASS_SURFACE,
   getBottomNavigationCapsuleFrame,
 } from '../../../navigation/bottomNavigation';
 import { PersistentNavigationCapsule } from '../PersistentNavigationCapsule';
@@ -21,16 +22,22 @@ describe('PersistentNavigationCapsule', () => {
     }) as CapsuleElement;
   }
 
-  test('uses the selected fill only while resting', () => {
+  test('uses grey only at rest and a distinct clear-glass surface while moving', () => {
     const restingCapsule = renderCapsule('resting');
     const travellingCapsule = renderCapsule('travelling');
     const settlingCapsule = renderCapsule('settling');
 
+    expect(BOTTOM_NAVIGATION_CLEAR_GLASS_SURFACE).toEqual({
+      backgroundColor: 'rgba(255,255,255,0.12)',
+      borderColor: 'rgba(255,255,255,0.34)',
+      borderWidth: 1,
+    });
     expect(restingCapsule.props.style).toContainEqual({
       backgroundColor: BOTTOM_NAVIGATION_ACTIVE_FILL,
     });
-    expect(travellingCapsule.props.style).toContainEqual({ backgroundColor: 'transparent' });
-    expect(settlingCapsule.props.style).toContainEqual({ backgroundColor: 'transparent' });
+    expect(travellingCapsule.props.style).toContainEqual(BOTTOM_NAVIGATION_CLEAR_GLASS_SURFACE);
+    expect(settlingCapsule.props.style).toContainEqual(BOTTOM_NAVIGATION_CLEAR_GLASS_SURFACE);
+    expect(travellingCapsule.props.style).not.toContainEqual({ backgroundColor: 'transparent' });
   });
 
   test('uses the loaded Inter Medium font token for its label', () => {

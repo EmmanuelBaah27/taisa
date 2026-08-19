@@ -81,18 +81,28 @@ export function shouldReleaseBottomNavigationCancelledPress(
   return !navigationCommitted && state.phase === 'resting';
 }
 
-export function getBottomNavigationContentHandoffPolicy(
+export function getBottomNavigationRenderPolicy(
   state: NavigationCapsuleState,
-  reduceMotion: boolean,
 ) {
-  const preserveIncomingValues = state.phase !== 'resting';
   return {
-    preserveIncomingValues,
-    outgoingFollowsCapsule: preserveIncomingValues && !reduceMotion,
+    selectedContentLayers: 1 as const,
+    hiddenStableDestination: state.to,
+  };
+}
+
+export function getBottomNavigationTransitionStartPolicy() {
+  return {
+    beforeRoute: true as const,
+    deferred: false as const,
   };
 }
 
 export const BOTTOM_NAVIGATION_ACTIVE_FILL = 'rgba(15,16,16,0.06)';
+export const BOTTOM_NAVIGATION_CLEAR_GLASS_SURFACE = {
+  backgroundColor: 'rgba(255,255,255,0.12)',
+  borderColor: 'rgba(255,255,255,0.34)',
+  borderWidth: 1,
+} as const;
 
 export const BOTTOM_NAVIGATION_FIGMA = {
   navigationHeight: 60,
@@ -122,9 +132,13 @@ export const BOTTOM_NAVIGATION_FIGMA = {
   },
   shellMotion: {
     pressedScale: 1.12,
-    pressDuration: 140,
+    pressDuration: 90,
     releaseDuration: 320,
     releaseDampingRatio: 0.78,
+  },
+  capsuleMotion: {
+    duration: 280,
+    dampingRatio: 0.82,
   },
   labelMotion: {
     enterScale: 0.94,

@@ -23,7 +23,7 @@ Use the managed development build for native checks; Expo Go is not valid for SQ
 - [ ] Entire glass pill scales uniformly to 1.12; it never stretches or squashes.
 - [ ] Capsule is plain glass during travel and restores 6% grey only after settlement.
 - [ ] Capsule visibly moves Home ↔ Chats ↔ Me while route content changes immediately.
-- [ ] Destination label emerges from its icon; old label returns toward its icon.
+- [ ] Destination label emerges from its icon with no duplicate outgoing icon or label.
 - [ ] Rapid retargeting redirects smoothly without grey flashes or scale reset.
 - [ ] Reduced Motion removes spatial/scale motion and preserves short crossfades.
 
@@ -74,6 +74,10 @@ Device QA showed the active Chats icon and label stacked vertically. The active 
 - Taisa (`com.taisa.app`) launched successfully on the paired iPhone 15 Pro (`CB2D8D19-B858-55E5-A24E-3BC7AD31441D`) at 11:50:52 Africa/Accra time.
 
 The process launch confirms the review build was handed to the paired device; it is not visual QA evidence. Complete the checklist above before Ship approval.
+
+### Device failure and correction — 2026-08-19
+
+The first motion build failed paired-iPhone QA: duplicate selected content overlapped during travel, the scale response felt delayed, capsule motion paused between independently timed phases, and the transparent travelling surface visually disappeared inside the outer glass. The corrected build now uses one selected content layer, synchronous pre-route startup, one coordinated X/width spring, 90ms shell feedback, and a tested clear-glass sheen/border. Automated checks pass; every motion checklist item above remains unchecked pending device re-QA.
 
 ## Deferred
 

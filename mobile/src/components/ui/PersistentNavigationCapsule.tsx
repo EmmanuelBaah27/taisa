@@ -4,6 +4,7 @@ import type { StyleProp, TextStyle, ViewStyle } from 'react-native';
 
 import {
   BOTTOM_NAVIGATION_ACTIVE_FILL,
+  BOTTOM_NAVIGATION_CLEAR_GLASS_SURFACE,
   BOTTOM_NAVIGATION_FIGMA,
   type NavigationCapsuleFrame,
   type NavigationCapsulePhase,
@@ -28,8 +29,9 @@ export function PersistentNavigationCapsule({
   animatedContainerStyle,
   animatedLabelStyle,
 }: PersistentNavigationCapsuleProps) {
-  const backgroundColor =
-    phase === 'resting' ? BOTTOM_NAVIGATION_ACTIVE_FILL : 'transparent';
+  const surfaceStyle = phase === 'resting'
+    ? { backgroundColor: BOTTOM_NAVIGATION_ACTIVE_FILL }
+    : BOTTOM_NAVIGATION_CLEAR_GLASS_SURFACE;
 
   return (
     <Animated.View
@@ -52,7 +54,7 @@ export function PersistentNavigationCapsule({
           paddingVertical: SELECTED.paddingVertical,
           borderRadius: SELECTED.borderRadius,
         },
-        { backgroundColor },
+        surfaceStyle,
         animatedContainerStyle,
       ]}
     >
