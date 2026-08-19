@@ -9,6 +9,7 @@ export const colors = {
   secondaryActionBorder: 'rgba(23,23,23,0.06)',
   secondaryActionIcon: '#0F1010',
   shadowSubtle: '#000000',
+  recordingMark: '#666666',
 
   // Primary (lime-500)
   accent: '#cdec1a',

@@ -2,10 +2,10 @@ import { useEffect, useReducer, useRef, useState } from 'react';
 import {
   Alert,
 } from 'react-native';
-import type { ScrollView } from 'react-native-gesture-handler';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAnimatedStyle } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle } from 'react-native-reanimated';
+import type { ScrollView } from 'react-native-gesture-handler';
 import { useVoiceRecorder } from '../../src/hooks/useVoiceRecorder';
 import type { RecordingResult } from '../../src/services/audio';
 import {
@@ -36,6 +36,7 @@ import {
   ChatComposerDock,
   ChatConversationSurface,
   ChatScreenShell,
+  ActiveRecordingSurface,
 } from '../../src/components/ui';
 import {
   createVoiceComposerState,
@@ -333,9 +334,7 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
     } catch {
       const isCurrentAttempt = recordingStartGuardRef.current.complete(startAttempt);
       if (isCurrentAttempt && mountedRef.current && !closingRef.current) {
-        dispatchComposer({ type: 'recording-start-failed' });
-        setRecordingStartFailed(true);
-        setPhase('error');
+        await handleCancelVoice();
       }
     }
   }
@@ -776,6 +775,38 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
     setRecordingStartFailed(false);
     setPhase('idle');
     dispatchComposer({ type: 'restore-mode', mode: 'voice' });
+  }
+
+  const showActiveRecordingSurface = messages.length === 0
+    && initialConversationIdRef.current === null
+    && composer.mode === 'voice'
+    && (composer.voice === 'recording' || composer.voice === 'paused')
+    && !composer.submissionFailed
+    && !composer.submitting
+    && !isBusy;
+
+  if (showActiveRecordingSurface) {
+    return (
+      <Animated.View className="flex-1 bg-background" style={slideStyle}>
+          <ActiveRecordingSurface
+            topInset={insets.top}
+            bottomInset={insets.bottom}
+            title="New chat"
+            greeting="How’s it going?"
+            durationSeconds={recorder.duration}
+            paused={composer.voice === 'paused'}
+            disabled={composer.submitting || isBusy}
+            onClose={handleClose}
+            onCancel={() => { void handleCancelVoice(); }}
+            onKeyboard={() => { void handleSwitchToText(); }}
+            onPauseResume={() => {
+              if (composer.voice === 'paused') void handleResumeVoice();
+              else void handlePauseVoice();
+            }}
+            onSend={() => { void handleComposerSend(); }}
+          />
+      </Animated.View>
+    );
   }
 
   return (

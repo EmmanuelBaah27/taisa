@@ -7,6 +7,9 @@ export {
   SecondaryIconButton,
 } from './SecondaryIconButton';
 export type { SecondaryIconButtonProps } from './SecondaryIconButton';
+export { RecordingVoiceMark } from './RecordingVoiceMark';
+export type { ActiveRecordingSurfaceProps } from './ActiveRecordingSurface';
+export { ActiveRecordingSurface } from './ActiveRecordingSurface';
 
 export { Badge } from './Badge';
 export type { BadgeProps, BadgeColor, BadgeAppearance, BadgeSize } from './Badge';

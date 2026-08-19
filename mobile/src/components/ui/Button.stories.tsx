@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-native';
 import { View } from 'react-native';
 import { Button } from './Button';
+import { Icon } from './Icon';
 
 const meta: Meta<typeof Button> = {
   title: 'Components/Button',
@@ -19,7 +20,7 @@ const meta: Meta<typeof Button> = {
     },
     size: {
       control: 'select',
-      options: ['default', 'sm', 'icon'],
+      options: ['default', 'sm', 'icon', 'icon-lg'],
     },
     loading: { control: 'boolean' },
     disabled: { control: 'boolean' },
@@ -66,6 +67,16 @@ export const TertiaryDestructive: Story = {
 
 export const Small: Story = {
   args: { variant: 'primary', size: 'sm', label: 'Add goal' },
+};
+
+export const LargeIcon: Story = {
+  name: 'Large Icon',
+  args: {
+    variant: 'primary',
+    size: 'icon-lg',
+    label: 'Send recording',
+    icon: <Icon name="IconArrowUp" size={24} color="#0F1010" />,
+  },
 };
 
 export const Loading: Story = {
