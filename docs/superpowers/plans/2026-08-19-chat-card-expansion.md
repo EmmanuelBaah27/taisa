@@ -2,23 +2,24 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Expand a selected Chats row into the Figma conversation view and close chat or recording without an exit transition.
+**Goal:** Expand a selected Chats row into the Figma conversation view, then reverse that morph into the same stable card when the historical chat closes.
 
-**Architecture:** A pure transition module validates and converts the measured list-row frame into an initial full-screen transform. `ChatListRow` measures itself before navigation and passes the frame through route parameters; the canonical chat route consumes it once and animates only entry. Existing chat data and recorder ownership remain in `app/chat/index.tsx`, while design-system surfaces own the Figma presentation.
+**Architecture:** A pure transition module validates the measured list-row frame, list scroll offset, and source viewport. `ChatListRow` measures itself before navigation and the Chats screen passes that source snapshot through route parameters; the canonical chat route uses it for paired entry and exit transforms. The Chats screen restores the captured offset before refreshing, while existing chat data and recorder ownership remain in `app/chat/index.tsx` and design-system surfaces own the Figma presentation.
 
 **Tech Stack:** Expo SDK 54, Expo Router 6, React Native 0.81, TypeScript 5.9, NativeWind 4, React Native Reanimated 4, Jest 29.
 
 **Spec:** `docs/features/chat-card-expansion.md`
 
-**Status:** Review + QA — implementation and automated verification complete; awaiting device QA
+**Status:** Review + QA — reverse morph implemented and awaiting device QA
 
 ## Global Constraints
 
 - Work only on `feature/chat-card-expansion`, based on verified `feature/current-experience` head `c281533`.
 - Reuse semantic design tokens and existing UI primitives; do not add dependencies or raw hex values.
 - Keep conversation, recording, and persistence behavior unchanged.
-- Opening expands from the selected Chats row; closing is immediate with no reverse animation.
-- Reduced motion disables the entry animation.
+- Opening expands from the selected Chats row; closing returns to the same captured row frame before route dismissal.
+- Preserve the captured Chats-list scroll offset until the reverse morph and route dismissal finish.
+- Reduced motion disables both entry and exit animation.
 - Do not add `StyleSheet.create()` to changed UI files.
 
 ---
@@ -56,7 +57,7 @@
 - [ ] **Step 4: Route Chats items through `/chat`** with the conversation ID and serialized frame.
 - [ ] **Step 5: Re-run the focused tests** and expect PASS.
 
-### Task 3: Figma conversation shell and entry-only expansion
+### Task 3: Figma conversation shell and expansion
 
 **Files:**
 - Modify: `mobile/src/components/ui/ChatNavBar.tsx`
@@ -70,7 +71,7 @@
 
 **Interfaces:**
 - Consumes: parsed `ChatCardFrame`, viewport size, reduced-motion preference, and current conversation title.
-- Produces: Figma-aligned `ChatScreenShell` with an optional entry transform and immediate `onClose`.
+- Produces: Figma-aligned `ChatScreenShell` with an optional source transform and safe close handling.
 
 - [ ] **Step 1: Write failing tests** for a title-bearing floating header, neutral 32px user bubble, unboxed assistant content, entry-only animation, no drag-to-dismiss, and no recording stack slide transition.
 - [ ] **Step 2: Run focused Chat surfaces and navigation tests** and confirm the expected failures.
@@ -89,3 +90,19 @@
 - [ ] **Step 2: Run** `cd mobile && npm run typecheck && npm run verify:design-system`.
 - [ ] **Step 3: Run** `git diff --check` and review the changed files for DS compliance, recorder cleanup preservation, and unrelated changes.
 - [ ] **Step 4: Mark the plan Review + QA** and report the exact device checks: card-origin expansion, immediate close from idle chat, immediate close while recording, keyboard avoidance, reduced motion, and conversation resume.
+
+### Task 5: Reverse morph QA revision
+
+**Files:**
+- Modify: `mobile/src/navigation/chatCardExpansion.ts`
+- Modify: `mobile/src/navigation/chatConversationRoute.ts`
+- Modify: `mobile/app/(tabs)/logs.tsx`
+- Modify: `mobile/src/hooks/useMorphTransition.ts`
+- Modify: `mobile/app/chat/index.tsx`
+- Modify: focused navigation tests and `docs/design-system.md`
+
+- [x] Capture and validate the source list scroll offset with the card frame.
+- [x] Preserve and restore the Chats scroll offset before its post-close refresh.
+- [x] Animate the chat surface back to the source transform and pop only after completion.
+- [x] Keep deep-link, fresh-capture, invalid-geometry, and reduced-motion exits immediate.
+- [x] Re-run full mobile and workflow verification before returning to device QA.

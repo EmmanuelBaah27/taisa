@@ -117,7 +117,14 @@ export default function RootLayout() {
         <Stack.Screen name="onboarding/index" />
         <Stack.Screen name="thread/[id]" />
         <Stack.Screen name="recording/index" />
-        <Stack.Screen name="chat/index" />
+        <Stack.Screen
+          name="chat/index"
+          options={{
+            presentation: 'transparentModal',
+            animation: 'none',
+            contentStyle: { backgroundColor: 'transparent' },
+          }}
+        />
       </Stack>
       {privacyState.shielded ? (
         <View

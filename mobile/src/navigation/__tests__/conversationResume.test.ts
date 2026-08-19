@@ -71,10 +71,9 @@ describe('durable conversation resume navigation', () => {
 
   test('the Chats list opens canonical chat with its measured source frame', () => {
     expect(chatConversationRoute('conversation/with private work', {
-      x: 16,
-      y: 140,
-      width: 361,
-      height: 72,
+      frame: { x: 16, y: 140, width: 361, height: 72 },
+      listScrollY: 248.5,
+      viewport: { width: 393, height: 852 },
     }, 'Navigating a career change'))
       .toEqual({
         pathname: '/chat',
@@ -85,6 +84,9 @@ describe('durable conversation resume navigation', () => {
           cardY: '140',
           cardWidth: '361',
           cardHeight: '72',
+          listScrollY: '248.5',
+          sourceViewportWidth: '393',
+          sourceViewportHeight: '852',
         },
       });
   });

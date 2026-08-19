@@ -53,7 +53,7 @@ import {
 import { buildFeedbackPreview } from '../../src/services/feedbackBundle';
 import api from '../../src/services/api';
 import { createFeedbackClient } from '../../src/services/feedbackClient';
-import { parseChatCardFrame } from '../../src/navigation/chatCardExpansion';
+import { parseChatCardSource } from '../../src/navigation/chatCardExpansion';
 
 interface ChatScreenProps {
   presentation?: ChatPresentation;
@@ -83,6 +83,9 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
     cardY?: string | string[];
     cardWidth?: string | string[];
     cardHeight?: string | string[];
+    listScrollY?: string | string[];
+    sourceViewportWidth?: string | string[];
+    sourceViewportHeight?: string | string[];
   }>();
   const routeConversationId = routeParams.conversationId;
   const routeTitle = Array.isArray(routeParams.title) ? routeParams.title[0] : routeParams.title;
@@ -123,8 +126,8 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
     fetchThreads,
   } = useThreadStore();
   const { setChatMorphing, consumeVoiceAutoStart } = useUIStore();
-  const sourceFrame = parseChatCardFrame(routeParams);
-  const { translateX, translateY, scaleX, scaleY, borderRadius, open } = useMorphTransition(sourceFrame);
+  const sourceSnapshot = parseChatCardSource(routeParams);
+  const { translateX, translateY, scaleX, scaleY, borderRadius, open, close } = useMorphTransition(sourceSnapshot);
 
   const slideStyle = useAnimatedStyle(() => ({
     flex: 1,
@@ -259,10 +262,6 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
   }, []);
 
   function commitClose() {
-    if (closingRef.current) return;
-    closingRef.current = true;
-    void stopActiveRecordingAndDiscard().catch(() => {});
-    discardPendingRecording();
     closeChatPresentation(presentation, {
       closeRoute: () => returnFromRoutedChat({
         canGoBack: () => router.canGoBack(),
@@ -504,7 +503,7 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
 
   async function refreshConversation() {
     if (sessionIdRef.current) await fetchThread(sessionIdRef.current);
-    await fetchThreads();
+    if (sourceSnapshot === null) await fetchThreads();
   }
 
   async function handleReaction(responseId: string, reaction: ResponseReaction) {
@@ -740,7 +739,15 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
   }
 
   function handleClose() {
-    commitClose();
+    if (closingRef.current) return;
+    closingRef.current = true;
+    void stopActiveRecordingAndDiscard().catch(() => {});
+    discardPendingRecording();
+    if (sourceSnapshot === null) {
+      commitClose();
+      return;
+    }
+    close(commitClose);
   }
 
   return (

@@ -131,7 +131,7 @@ Never use raw `text-sm font-semibold` combinations — use the composite utiliti
 | `VoiceComposer` | `mode`, `voiceState`, `durationSeconds`, `amplitude`, draft state and callbacks | Bottom-loaded active voice/text composer with a voice-ready Reply control, speech-responsive Pause/Resume cradle, and stable Send position |
 | `VoiceDraftStrip` | `label`, `preview`, `onOpen`, `onDelete` | Compact representation of the inactive input; deletion remains an isolated tap target |
 | `TranscriptCorrectionCard` | `value`, `disabled`, `onChangeText`, `onCancel`, `onSubmit` | Presentational transcript correction editor with Cancel and Update response actions |
-| `ChatScreenShell` | `topInset`, `title`, `animatedStyle`, `onClose`, `footer` | Keyboard-safe full-screen shell with entry-only card expansion, floating conversation header, and footer slot; close is immediate and has no reverse motion |
+| `ChatScreenShell` | `topInset`, `title`, `animatedStyle`, `onClose`, `footer` | Keyboard-safe full-screen shell with bidirectional card expansion, floating conversation header, and footer slot; non-card and reduced-motion exits remain immediate |
 | `ChatConversationSurface` | messages, active request state, reaction state, error/proposal/transcript callbacks | Scrollable conversation rendering composed from typed chat surfaces |
 | `ChatMessageBubble` | `content`, `editable`, `showCorrectionHint`, `onEdit` | User turn bubble with a semantic transcript-correction action |
 | `PendingTranscriptBubble` | `transcript` | Optimistic voice transcript shown while coaching is pending |
@@ -177,7 +177,10 @@ not construct React Native visual primitives or define a `StyleSheet`. Static co
 NativeWind semantic utilities. Native APIs that require color values (icons, shadows, gradients)
 use `constants/theme.ts`, including `backgroundTransparent` for the conversation fade.
 
-Chats history opens the canonical chat route with the selected row's measured viewport frame. The
-screen expands from that frame over the shared 380ms ease-out curve, or appears immediately when
-measurement is unavailable or reduced motion is enabled. Closing from either chat or recording is
-always immediate: there is no reverse collapse, slide-down, or drag-to-dismiss transition.
+Chats history opens the canonical chat route with one source snapshot: the selected row's measured
+viewport frame, the list's exact scroll offset, and the viewport dimensions. The screen expands
+from that frame over the shared 380ms ease-out curve and reverses to it before route dismissal.
+The underlying list stays mounted, does not refresh while the card-backed chat is open, and restores
+its offset before refreshing after return. Missing geometry, changed viewport dimensions, fresh
+capture, and reduced motion use an immediate exit. The legacy slide-down and drag-to-dismiss
+transitions remain removed.

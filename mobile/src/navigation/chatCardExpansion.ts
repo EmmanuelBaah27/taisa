@@ -5,6 +5,12 @@ export interface ChatCardFrame {
   height: number;
 }
 
+export interface ChatCardSource {
+  frame: ChatCardFrame;
+  listScrollY: number;
+  viewport: ChatViewport;
+}
+
 export interface ChatViewport {
   width: number;
   height: number;
@@ -18,6 +24,13 @@ export interface ChatCardInitialTransform {
 }
 
 type RouteValue = string | string[] | undefined;
+
+function parseRouteNumber(value: RouteValue): number {
+  const candidate = Array.isArray(value) ? value[0] : value;
+  return candidate === undefined || candidate.trim().length === 0
+    ? Number.NaN
+    : Number(candidate);
+}
 
 export function parseChatCardFrame(params: {
   cardX?: RouteValue;
@@ -34,6 +47,28 @@ export function parseChatCardFrame(params: {
   return { x, y, width, height };
 }
 
+export function parseChatCardSource(params: {
+  cardX?: RouteValue;
+  cardY?: RouteValue;
+  cardWidth?: RouteValue;
+  cardHeight?: RouteValue;
+  listScrollY?: RouteValue;
+  sourceViewportWidth?: RouteValue;
+  sourceViewportHeight?: RouteValue;
+}): ChatCardSource | null {
+  const frame = parseChatCardFrame(params);
+  const listScrollY = parseRouteNumber(params.listScrollY);
+  const width = parseRouteNumber(params.sourceViewportWidth);
+  const height = parseRouteNumber(params.sourceViewportHeight);
+  if (
+    frame === null ||
+    !Number.isFinite(listScrollY) || listScrollY < 0 ||
+    !Number.isFinite(width) || width <= 0 ||
+    !Number.isFinite(height) || height <= 0
+  ) return null;
+  return { frame, listScrollY, viewport: { width, height } };
+}
+
 export function getChatCardInitialTransform(
   frame: ChatCardFrame,
   viewport: ChatViewport,
@@ -46,4 +81,12 @@ export function getChatCardInitialTransform(
     scaleX: Math.min(frame.width / viewport.width, 1),
     scaleY: Math.min(frame.height / viewport.height, 1),
   };
+}
+
+export function isChatCardSourceViewportCurrent(
+  source: ChatCardSource,
+  viewport: ChatViewport,
+): boolean {
+  return Math.abs(source.viewport.width - viewport.width) <= 1 &&
+    Math.abs(source.viewport.height - viewport.height) <= 1;
 }

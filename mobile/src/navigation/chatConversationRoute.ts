@@ -1,4 +1,4 @@
-import type { ChatCardFrame } from './chatCardExpansion';
+import type { ChatCardSource } from './chatCardExpansion';
 
 export type ChatConversationRouteParam = string | string[] | undefined;
 
@@ -18,18 +18,21 @@ export function resolveInitialChatConversationId(
 
 export function chatConversationRoute(
   conversationId: string,
-  frame?: ChatCardFrame | null,
+  source?: ChatCardSource | null,
   title?: string,
 ) {
   const context = title ? { conversationId, title } : { conversationId };
   return {
     pathname: '/chat' as const,
-    params: frame ? {
+    params: source ? {
       ...context,
-      cardX: String(frame.x),
-      cardY: String(frame.y),
-      cardWidth: String(frame.width),
-      cardHeight: String(frame.height),
+      cardX: String(source.frame.x),
+      cardY: String(source.frame.y),
+      cardWidth: String(source.frame.width),
+      cardHeight: String(source.frame.height),
+      listScrollY: String(source.listScrollY),
+      sourceViewportWidth: String(source.viewport.width),
+      sourceViewportHeight: String(source.viewport.height),
     } : context,
   };
 }
