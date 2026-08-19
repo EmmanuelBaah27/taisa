@@ -241,6 +241,7 @@ export function BottomNavBar() {
   const mountedRef = useRef(true);
   const cancelledPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const navigationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const fillRestoreTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pressAttemptRef = useRef<{
     sequence: number;
     navigationCommitted: boolean;
@@ -402,18 +403,10 @@ export function BottomNavBar() {
       return;
     }
 
-    selectedFillOpacity.stopAnimation();
-    ReactNativeAnimated.timing(selectedFillOpacity, {
-      toValue: 1,
-      duration: surfaceTimeline.fillRestoreDuration,
-      easing: Easing.bezier(0.23, 1, 0.32, 1),
-      useNativeDriver: true,
-    }).start();
   }, [
     reduceMotion,
     selectedFillOpacity,
     shellScale,
-    surfaceTimeline,
   ]);
 
   const startSelectedContentMotion = useCallback((
@@ -573,35 +566,31 @@ export function BottomNavBar() {
     destinationLabelOpacities.forEach((opacity) => opacity.stopAnimation());
     destinationLabelScales.forEach((scale) => scale.stopAnimation());
     destinationLabelTranslations.forEach((translation) => translation.stopAnimation());
-    const coordinatedSpring = {
-      stiffness: capsuleMotion.stiffness,
-      damping: capsuleMotion.damping,
-      mass: capsuleMotion.mass,
-      overshootClamping: false,
-      restDisplacementThreshold: 0.1,
-      restSpeedThreshold: 0.1,
+    const coordinatedTiming = {
+      duration: capsuleMotion.duration,
+      easing: Easing.bezier(...capsuleMotion.easing),
       useNativeDriver: false,
     };
     ReactNativeAnimated.parallel([
-      ReactNativeAnimated.spring(capsuleX, {
+      ReactNativeAnimated.timing(capsuleX, {
         toValue: centerOffset,
-        ...coordinatedSpring,
+        ...coordinatedTiming,
       }),
-      ReactNativeAnimated.spring(capsuleWidth, {
+      ReactNativeAnimated.timing(capsuleWidth, {
         toValue: frame.width,
-        ...coordinatedSpring,
+        ...coordinatedTiming,
       }),
-      ReactNativeAnimated.spring(shellWidth, {
+      ReactNativeAnimated.timing(shellWidth, {
         toValue: frame.shellWidth,
-        ...coordinatedSpring,
+        ...coordinatedTiming,
       }),
-      ...destinationOffsets.map((offset, index) => ReactNativeAnimated.spring(offset, {
+      ...destinationOffsets.map((offset, index) => ReactNativeAnimated.timing(offset, {
         toValue: nextDestinationOffsets[index],
-        ...coordinatedSpring,
+        ...coordinatedTiming,
       })),
-      ...destinationWidths.map((width, index) => ReactNativeAnimated.spring(width, {
+      ...destinationWidths.map((width, index) => ReactNativeAnimated.timing(width, {
         toValue: nextItemFrames[index].width,
-        ...coordinatedSpring,
+        ...coordinatedTiming,
       })),
       ...destinationIconTranslations.map((translation, index) => {
         const item = BOTTOM_NAVIGATION_ITEMS[index];
@@ -642,9 +631,8 @@ export function BottomNavBar() {
       if (finished) finishCapsuleTransition(destination, sequence);
     });
   }, [
-    capsuleMotion.damping,
-    capsuleMotion.mass,
-    capsuleMotion.stiffness,
+    capsuleMotion.duration,
+    capsuleMotion.easing,
     capsuleWidth,
     capsuleX,
     destinationOffsets,
@@ -715,6 +703,7 @@ export function BottomNavBar() {
     latestTransitionRef.current = { destination: item.id, sequence: transitionSequence };
 
     selectedFillOpacity.stopAnimation();
+    if (fillRestoreTimerRef.current) clearTimeout(fillRestoreTimerRef.current);
     ReactNativeAnimated.timing(selectedFillOpacity, {
       toValue: 0,
       duration: reduceMotion
@@ -723,6 +712,21 @@ export function BottomNavBar() {
       easing: Easing.bezier(0.23, 1, 0.32, 1),
       useNativeDriver: true,
     }).start();
+    if (!reduceMotion) {
+      const fillSequence = transitionSequence;
+      fillRestoreTimerRef.current = setTimeout(() => {
+        fillRestoreTimerRef.current = null;
+        if (!mountedRef.current) return;
+        if (latestTransitionRef.current.sequence !== fillSequence) return;
+        selectedFillOpacity.stopAnimation();
+        ReactNativeAnimated.timing(selectedFillOpacity, {
+          toValue: 1,
+          duration: surfaceTimeline.fillRestoreDuration,
+          easing: Easing.bezier(0.23, 1, 0.32, 1),
+          useNativeDriver: true,
+        }).start();
+      }, surfaceTimeline.fillRestoreDelay);
+    }
     startCapsuleTransition(item.id, transitionSequence);
   }, [
     activeId,
@@ -770,32 +774,31 @@ export function BottomNavBar() {
     destinationWidths.forEach((width) => width.stopAnimation());
     selectedFillOpacity.stopAnimation();
     stopSelectedContentMotion();
-    const returnSpring = {
-      stiffness: capsuleMotion.stiffness,
-      damping: capsuleMotion.damping,
-      mass: capsuleMotion.mass,
+    const returnTiming = {
+      duration: capsuleMotion.duration,
+      easing: Easing.bezier(...capsuleMotion.easing),
       useNativeDriver: false,
     };
     ReactNativeAnimated.parallel([
-      ReactNativeAnimated.spring(capsuleX, {
+      ReactNativeAnimated.timing(capsuleX, {
         toValue: getBottomNavigationCapsuleCenterOffset(origin),
-        ...returnSpring,
+        ...returnTiming,
       }),
-      ReactNativeAnimated.spring(capsuleWidth, {
+      ReactNativeAnimated.timing(capsuleWidth, {
         toValue: frame.width,
-        ...returnSpring,
+        ...returnTiming,
       }),
-      ReactNativeAnimated.spring(shellWidth, {
+      ReactNativeAnimated.timing(shellWidth, {
         toValue: frame.shellWidth,
-        ...returnSpring,
+        ...returnTiming,
       }),
-      ...destinationOffsets.map((offset, index) => ReactNativeAnimated.spring(offset, {
+      ...destinationOffsets.map((offset, index) => ReactNativeAnimated.timing(offset, {
         toValue: originDestinationOffsets[index],
-        ...returnSpring,
+        ...returnTiming,
       })),
-      ...destinationWidths.map((width, index) => ReactNativeAnimated.spring(width, {
+      ...destinationWidths.map((width, index) => ReactNativeAnimated.timing(width, {
         toValue: originItemFrames[index].width,
-        ...returnSpring,
+        ...returnTiming,
       })),
       ...destinationIconTranslations.map((translation, index) => {
         const item = BOTTOM_NAVIGATION_ITEMS[index];
@@ -838,9 +841,8 @@ export function BottomNavBar() {
     selectedFillOpacity.setValue(1);
     releaseShell();
   }, [
-    capsuleMotion.damping,
-    capsuleMotion.mass,
-    capsuleMotion.stiffness,
+    capsuleMotion.duration,
+    capsuleMotion.easing,
     capsuleWidth,
     capsuleX,
     destinationOffsets,
@@ -925,6 +927,10 @@ export function BottomNavBar() {
       if (navigationTimerRef.current) {
         clearTimeout(navigationTimerRef.current);
         navigationTimerRef.current = null;
+      }
+      if (fillRestoreTimerRef.current) {
+        clearTimeout(fillRestoreTimerRef.current);
+        fillRestoreTimerRef.current = null;
       }
       stopSelectedContentMotion();
       shellScale.stopAnimation();

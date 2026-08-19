@@ -155,9 +155,8 @@ describe('bottom navigation', () => {
 
   test('does not compound the shell scale with a second capsule scale', () => {
     expect(BOTTOM_NAVIGATION_FIGMA.capsuleMotion).toEqual({
-      stiffness: 260,
-      damping: 26,
-      mass: 0.85,
+      duration: 260,
+      easing: [0.22, 1, 0.36, 1],
       coordinatesShellWidth: true,
       travellingScale: 1,
       expandedHeight: 48,
@@ -199,7 +198,7 @@ describe('bottom navigation', () => {
   });
 
   test('lets navigation motion establish before mounting the destination screen', () => {
-    expect(BOTTOM_NAVIGATION_FIGMA.routeMotionLeadDuration).toBe(220);
+    expect(BOTTOM_NAVIGATION_FIGMA.routeMotionLeadDuration).toBe(260);
   });
 
   test('crossfades reduced-motion surfaces and content together', () => {
@@ -271,8 +270,9 @@ describe('bottom navigation', () => {
     expect(getBottomNavigationSurfaceTimeline(false)).toEqual({
       spatialMotion: true,
       fillFadeOutDuration: 90,
+      fillRestoreDelay: 120,
       fillRestoreDuration: 180,
-      restoreOnValidSettlementOnly: true,
+      restoreCompletesWithSettlement: true,
     });
     expect(getBottomNavigationSurfaceTimeline(true)).toEqual({
       spatialMotion: false,

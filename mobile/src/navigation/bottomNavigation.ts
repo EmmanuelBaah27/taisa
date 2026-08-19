@@ -138,8 +138,9 @@ export function getBottomNavigationSurfaceTimeline(reduceMotion: boolean) {
   return {
     spatialMotion: true as const,
     fillFadeOutDuration: 90,
+    fillRestoreDelay: 120,
     fillRestoreDuration: 180,
-    restoreOnValidSettlementOnly: true as const,
+    restoreCompletesWithSettlement: true as const,
   };
 }
 
@@ -200,9 +201,8 @@ export const BOTTOM_NAVIGATION_FIGMA = {
     releaseOverlapsTravel: true,
   },
   capsuleMotion: {
-    stiffness: 260,
-    damping: 26,
-    mass: 0.85,
+    duration: 260,
+    easing: [0.22, 1, 0.36, 1],
     coordinatesShellWidth: true,
     travellingScale: 1,
     expandedHeight: 48,
@@ -214,7 +214,7 @@ export const BOTTOM_NAVIGATION_FIGMA = {
     transformOrigin: 'left center',
     reveal: 'opacity-scale',
   },
-  routeMotionLeadDuration: 220,
+  routeMotionLeadDuration: 260,
   reducedMotion: {
     crossfadeDuration: 180,
   },
