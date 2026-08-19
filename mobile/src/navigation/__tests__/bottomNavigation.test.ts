@@ -2,6 +2,7 @@ import {
   BOTTOM_NAVIGATION_ITEMS,
   BOTTOM_NAVIGATION_ACTIVE_FILL,
   BOTTOM_NAVIGATION_FIGMA,
+  BOTTOM_NAVIGATION_FALLBACK_GLASS,
   getBottomNavigationCapsuleFrame,
   getBottomNavigationCapsuleCenterOffset,
   getBottomNavigationRenderPolicy,
@@ -102,6 +103,15 @@ describe('bottom navigation', () => {
 
   test('uses the approved six-percent black active fill', () => {
     expect(BOTTOM_NAVIGATION_ACTIVE_FILL).toBe('rgba(15,16,16,0.06)');
+  });
+
+  test('keeps the blur fallback visibly glassy on white screens', () => {
+    expect(BOTTOM_NAVIGATION_FALLBACK_GLASS).toEqual({
+      intensity: 70,
+      tint: 'systemThinMaterialLight',
+      borderColor: 'rgba(15,16,16,0.10)',
+      sheenColors: ['rgba(255,255,255,0.42)', 'rgba(255,255,255,0.06)'],
+    });
   });
 
   test('matches the Figma selected-item geometry', () => {

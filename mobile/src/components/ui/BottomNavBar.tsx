@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   BOTTOM_NAVIGATION_ITEMS,
   BOTTOM_NAVIGATION_FIGMA,
+  BOTTOM_NAVIGATION_FALLBACK_GLASS,
   getBottomNavigationCapsuleCenterOffset,
   getBottomNavigationCapsuleFrame,
   getBottomNavigationLayout,
@@ -58,7 +59,7 @@ const materialStyle: ViewStyle = {
   overflow: 'hidden',
   borderRadius: 32,
   borderWidth: 1,
-  borderColor: 'rgba(23,23,23,0.08)',
+  borderColor: BOTTOM_NAVIGATION_FALLBACK_GLASS.borderColor,
 };
 
 const inactiveItem = BOTTOM_NAVIGATION_FIGMA.inactiveItem;
@@ -83,16 +84,18 @@ function NavigationMaterial({
 
   return (
     <BlurView
-      intensity={45}
-      tint="systemUltraThinMaterialLight"
+      intensity={BOTTOM_NAVIGATION_FALLBACK_GLASS.intensity}
+      tint={BOTTOM_NAVIGATION_FALLBACK_GLASS.tint}
       style={materialStyle}
     >
-      <View
+      <LinearGradient
         pointerEvents="none"
+        colors={[...BOTTOM_NAVIGATION_FALLBACK_GLASS.sheenColors]}
+        start={{ x: 0.15, y: 0 }}
+        end={{ x: 0.85, y: 1 }}
         style={{
           position: 'absolute',
           inset: 0,
-          backgroundColor: 'rgba(255,255,255,0.10)',
         }}
       />
       {children}

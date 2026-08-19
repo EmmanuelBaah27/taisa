@@ -118,6 +118,12 @@ export function getBottomNavigationTransitionStartPolicy() {
 }
 
 export const BOTTOM_NAVIGATION_ACTIVE_FILL = 'rgba(15,16,16,0.06)';
+export const BOTTOM_NAVIGATION_FALLBACK_GLASS = {
+  intensity: 70,
+  tint: 'systemThinMaterialLight',
+  borderColor: 'rgba(15,16,16,0.10)',
+  sheenColors: ['rgba(255,255,255,0.42)', 'rgba(255,255,255,0.06)'],
+} as const;
 export const BOTTOM_NAVIGATION_CLEAR_GLASS_SURFACE = {
   backgroundColor: 'rgba(255,255,255,0.01)',
   borderColor: 'rgba(15,16,16,0.10)',
