@@ -89,8 +89,8 @@ describe('recording page primitives', () => {
     expect(VOICE_REACTIVE_TIMESTAMP).toEqual({
       width: 60,
       height: 56,
-      canvasWidth: 220,
-      canvasHeight: 140,
+      canvasWidth: 120,
+      canvasHeight: 80,
       rawAmplitude: true,
     });
   });
