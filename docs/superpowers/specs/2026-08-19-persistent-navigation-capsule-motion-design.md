@@ -1,6 +1,6 @@
 # Persistent Navigation Capsule Motion Design
 
-**Status:** Approved in chat; awaiting written-spec review  
+**Status:** Approved for implementation planning  
 **Track:** Product + Design System  
 **Branch:** `feature/current-experience`  
 **Figma reference:** node `454:738`
