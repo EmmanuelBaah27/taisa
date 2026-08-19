@@ -60,6 +60,15 @@ describe('voice composer state', () => {
     });
   });
 
+  test('a microphone startup failure rolls the recording controls back to Reply', () => {
+    const starting = reduceVoiceComposer(createVoiceComposerState('voice'), { type: 'start-voice' });
+
+    expect(reduceVoiceComposer(starting, { type: 'recording-start-failed' })).toMatchObject({
+      mode: 'voice',
+      voice: 'ready',
+    });
+  });
+
   test('pause and resume keep the same voice draft', () => {
     const recording = reduceVoiceComposer(createVoiceComposerState(), { type: 'start-voice' });
     const paused = reduceVoiceComposer(recording, { type: 'pause-voice' });

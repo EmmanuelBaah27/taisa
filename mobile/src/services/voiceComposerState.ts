@@ -15,6 +15,7 @@ export interface VoiceComposerState {
 
 export type VoiceComposerAction =
   | { type: 'start-voice' }
+  | { type: 'recording-start-failed' }
   | { type: 'pause-voice' }
   | { type: 'resume-voice' }
   | { type: 'switch-to-text'; activity: VoiceActivitySummary }
@@ -56,6 +57,8 @@ export function reduceVoiceComposer(
   switch (action.type) {
     case 'start-voice':
       return { ...state, mode: 'voice', voice: 'recording', confirmDeleteVoice: false };
+    case 'recording-start-failed':
+      return { ...state, mode: 'voice', voice: 'ready', confirmDeleteVoice: false };
     case 'pause-voice':
       return state.voice === 'recording' ? { ...state, voice: 'paused' } : state;
     case 'resume-voice':

@@ -294,17 +294,29 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
   }
 
   async function startListening() {
-    await recordingCleanupBarrierRef.current.wait();
     if (closingRef.current || !mountedRef.current || recordingStopSessionRef.current !== null) {
       return;
     }
-    const startAttempt = recordingStartGuardRef.current.begin();
-    if (startAttempt === null) return;
     setRecordingStartFailed(false);
     setPhase('listening');
+    dispatchComposer({ type: 'start-voice' });
+
+    await recordingCleanupBarrierRef.current.wait();
+    if (closingRef.current || !mountedRef.current || recordingStopSessionRef.current !== null) {
+      if (mountedRef.current && !closingRef.current) {
+        dispatchComposer({ type: 'recording-start-failed' });
+        setPhase('idle');
+      }
+      return;
+    }
+    const startAttempt = recordingStartGuardRef.current.begin();
+    if (startAttempt === null) {
+      dispatchComposer({ type: 'recording-start-failed' });
+      setPhase('idle');
+      return;
+    }
     try {
       await recorder.start();
-      dispatchComposer({ type: 'start-voice' });
       const session = createRecordingStopSession({
         stop: recorder.stop,
         discard: discardRecording,
@@ -321,6 +333,7 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
     } catch {
       const isCurrentAttempt = recordingStartGuardRef.current.complete(startAttempt);
       if (isCurrentAttempt && mountedRef.current && !closingRef.current) {
+        dispatchComposer({ type: 'recording-start-failed' });
         setRecordingStartFailed(true);
         setPhase('error');
       }
