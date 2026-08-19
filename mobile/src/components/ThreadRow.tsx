@@ -8,6 +8,7 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import type { Thread } from '../stores/threadStore';
+import { ThreadResumeAction } from './ThreadResumeAction';
 
 interface ThreadRowProps {
   thread: Thread;
@@ -58,6 +59,12 @@ export function ThreadRow({ thread }: ThreadRowProps) {
             {thread.lastAssistantMessage}
           </Text>
         )}
+
+        <ThreadResumeAction
+          conversationId={thread.id}
+          pendingRequestStatus={thread.pendingRequestStatus}
+          pendingProposalCount={thread.pendingProposalCount}
+        />
       </Pressable>
     </Animated.View>
   );

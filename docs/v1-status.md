@@ -1,7 +1,39 @@
 # V1 Status — What's Built vs. What's Spec'd
 
 > Read this before planning what to build next. Updated as features ship.
-> Last updated: 2026-04-15
+> Last updated: 2026-08-16
+
+## Current experience integration
+
+`feature/current-experience` is the maintained review line. It combines the verified local-first platform with a repository-backed Chats default, durable conversation routing, the current text/voice input state owners, and the browser-reviewable Inter design system. A normal initialized launch enters the tab shell on Chats; onboarding and fail-closed recovery remain authoritative startup gates.
+
+The older source branches remain preserved until this integration passes device QA, receives explicit Ship approval, and lands on canonical `main`. The Chats-to-thread expanding-card motion is intentionally deferred to a separate Product plan after this baseline ships.
+
+## Current personal-alpha handoff
+
+The code-only personal-alpha platform source is preserved on `feature/local-first-coaching-platform`.
+Device enrollment/authentication, local response feedback, explicit encrypted feedback
+sharing/deletion, Railway packaging, production fail-closed checks, and the standalone iPhone
+release profile are implemented. The next action is not more feature code: it is Baah's explicit
+gate to create/configure/deploy Railway resources. Apple signing and standalone installation remain
+a later separate gate. See `docs/features/personal-alpha-release.md` for exact commits, evidence,
+and continuation instructions.
+
+## Local-first platform build status
+
+The feature branch now has the code-only platform foundation: portable contracts, a provider-neutral
+stateless gateway, cost/privacy guardrails, SQLCipher local schema, repositories, governed memory,
+bounded context, private save/deliberate submission, durable resume, encrypted export/restore,
+deterministic redaction, optional device unlock, app-switcher shielding, and generic notifications.
+
+Automated checks do not prove the native security boundary. SQLCipher, recovery promotion, Face ID,
+app-switcher timing, file export/import, private-save network counts, and restore on a clean test
+installation remain pending Baah's explicit managed-development-build/device gate. The feature is
+not ready to Ship before that evidence exists.
+
+There is no legacy migration system: Baah confirmed there is no backend data to preserve. Legacy
+backend routes remain mounted for rollback during BUILD and have not been retired because recovery
+evidence and route-retirement approval are still pending.
 
 ---
 
@@ -20,8 +52,9 @@ The core loop is functional end-to-end:
 | Goal management | ✅ Built | Manual + AI-suggested goals, milestones, progress % |
 | Trajectory snapshots | ✅ Built | POST `/api/v1/trajectory/generate`, requires 3+ entries |
 | Performance review upload | ✅ Built | Text input → Claude extracts feedback + suggests goals |
-| Daily notifications | ✅ Built | Personalized message from Claude, scheduled via Expo Notifications |
-| Data export | ✅ Built | Share journal as JSON via native Share API |
+| Daily notifications | ✅ Privacy-updated | Generic content-free local copy; no backend personalization call |
+| Legacy JSON share | ✅ Existing | Not a full-fidelity recovery mechanism |
+| Encrypted local recovery | 🧪 Code complete, device pending | Separate-passphrase SQLCipher database export, pending-voice guard, candidate validation, rollback-safe restore; audio files are not bundled |
 
 ---
 
@@ -45,22 +78,23 @@ The product docs (artifacts #001–#005) describe a slightly different product t
 
 These were never built, not re-scoped:
 
-- **No auth** — uses `deviceId` as `userId` via `x-user-id` header. Single user only. No login/logout.
+- **No multi-user account system** — the personal alpha now uses a one-time enrolled-device bearer credential, while the separate installation ID remains only for usage accounting/rate limiting. Public signup, login/logout, and account recovery remain out of scope.
 - **No settings / edit profile screen** — profile is read-only after onboarding. Updates only via API.
 - **No search or filter** — entries, goals, and action items cannot be filtered by date, theme, or status in the UI.
 - **Tab icons are placeholders** — geometric shapes (○ ● △ □) in `(tabs)/_layout.tsx`. No real icons installed.
 - **Notification times hard-coded** — 15:00 and 19:00 in `notifications.ts`. No user preference UI.
-- **No offline support** — all stores call the API directly; no local caching or queue.
+- **Mixed transitional surfaces** — the new chat/thread/career path is local-first, while some old Today/You/legacy screens and backend routes remain mounted until recovery evidence and the separate route-retirement gate.
 - **No milestone detail UI** — milestones exist in the DB and API but are not browsable in the app.
 
 ---
 
 ## What to Build Next (Priority Order)
 
-1. **Chat interface + four-mode agent** — the core product value described in the spec. Currently missing entirely. Requires new backend routes and a new mobile screen.
-2. **Persistent memory layer** — goals, patterns, and open threads as properly structured context injected at session start. Required for the four modes to work well.
-3. **Session summary** — auto-generated after closing a chat session. Closes the loop.
-4. **CV Archive as a first-class surface** — CV Moment entity, dedicated screen, copy-to-clipboard.
-5. **Settings / edit profile** — basic UX hygiene. Needed before sharing with anyone else.
-6. **Real tab icons** — install `lucide-react-native`, replace placeholders in `(tabs)/_layout.tsx`.
-7. **NativeWind migration** — prerequisite for UI rebuild. Must be set up before redesigning any screen. Involves installing NativeWind, migrating `theme.ts` tokens to `tailwind.config.js`, and updating existing screens.
+1. **Private Railway deployment gate** — after Baah approval, create the single-replica service and persistent volume, configure secrets/ceilings, build the container, and deploy.
+2. **Standalone iPhone QA** — install the signed personal-alpha Release build, stop Metro/the Mac, and verify cellular coaching, credential recovery, feedback share/delete, and cost rejection.
+3. **Native privacy and recovery QA** — finish destructive key-loss, raw SQLCipher-file, export/restore, app-lock/shield, and private-submission evidence.
+4. **Explicit route-retirement decision** — only after recovery proof, decide whether to unmount legacy backend user-data routes.
+5. **CV Archive as a first-class surface** — CV Moment entity, dedicated screen, copy-to-clipboard.
+6. **Settings / edit profile** — basic UX hygiene. Needed before sharing with anyone else.
+7. **Real tab icons** — install `lucide-react-native`, replace placeholders in `(tabs)/_layout.tsx`.
+8. **NativeWind migration** — prerequisite for UI rebuild. Must be set up before redesigning any screen. Involves installing NativeWind, migrating `theme.ts` tokens to `tailwind.config.js`, and updating existing screens.

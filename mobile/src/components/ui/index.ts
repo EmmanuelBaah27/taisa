@@ -13,13 +13,46 @@ export type { InputProps, InputSize } from './Input';
 export { Icon } from './Icon';
 export type { IconProps, IconName } from './Icon';
 
-export { TopNavBar } from './TopNavBar';
+export { BottomNavBar } from './BottomNavBar';
+export { SelectedNavigationItem } from './SelectedNavigationItem';
+export type { SelectedNavigationItemProps } from './SelectedNavigationItem';
+export { InactiveNavigationItem } from './InactiveNavigationItem';
+export type { InactiveNavigationItemProps } from './InactiveNavigationItem';
+export { PersistentNavigationCapsule } from './PersistentNavigationCapsule';
+export type { PersistentNavigationCapsuleProps } from './PersistentNavigationCapsule';
 
 export { ChatNavBar } from './ChatNavBar';
 export type { ChatNavBarProps } from './ChatNavBar';
 
 export { RecordingGlow } from './RecordingGlow';
 export type { RecordingGlowProps } from './RecordingGlow';
+export { VoiceComposer } from './VoiceComposer';
+export type { VoiceComposerProps } from './VoiceComposer';
+export { VoiceDraftStrip } from './VoiceDraftStrip';
+export type { VoiceDraftStripProps } from './VoiceDraftStrip';
+export { TranscriptCorrectionCard } from './TranscriptCorrectionCard';
+export type { TranscriptCorrectionCardProps } from './TranscriptCorrectionCard';
+export {
+  ChatComposerDock,
+  ChatConversationSurface,
+  ChatErrorPanel,
+  ChatMessageBubble,
+  ChatProcessingBubble,
+  ChatScreenShell,
+  PendingProposalCard,
+  PendingTranscriptBubble,
+} from './ChatSurfaces';
+export type {
+  ChatComposerDockProps,
+  ChatConversationSurfaceProps,
+  ChatErrorPanelProps,
+  ChatMessageBubbleProps,
+  ChatScreenShellProps,
+  PendingProposalCardProps,
+  PendingTranscriptBubbleProps,
+} from './ChatSurfaces';
+export { VoiceEntryButton } from './VoiceEntryButton';
+export type { VoiceEntryButtonProps } from './VoiceEntryButton';
 
 export { CubeRefractionOverlay } from './CubeRefractionOverlay';
 export type { CubeRefractionOverlayProps } from './CubeRefractionOverlay';
@@ -28,5 +61,12 @@ export { GlowDevSheet } from './GlowDevSheet';
 export type { GlowDevSheetProps } from './GlowDevSheet';
 
 export { TaisaReplyCard } from './TaisaReplyCard';
+export type { TaisaReplyCardProps } from './TaisaReplyCard';
 
 export { NaviiAvatar } from './NaviiAvatar';
+
+export { ChatListRow } from './ChatListRow';
+export type { ChatListRowProps } from './ChatListRow';
+
+export { ThreadMessage } from './ThreadMessage';
+export type { ThreadMessageProps } from './ThreadMessage';

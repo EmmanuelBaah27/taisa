@@ -1,5 +1,10 @@
 import * as Notifications from 'expo-notifications';
-import api from './api';
+
+const GENERIC_REMINDER_CONTENT = {
+  title: 'Taisa',
+  body: 'You have an open Taisa action',
+  data: { screen: 'today' },
+} as const;
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -23,21 +28,8 @@ export async function scheduleDailyReminders(times: string[] = ['15:00', '19:00'
   for (const time of times) {
     const [hour, minute] = time.split(':').map(Number);
 
-    // Fetch a personalized message from the backend
-    let message = "Time to reflect on your day. What happened?";
-    try {
-      const res = await api.post('/notifications/checkin-message');
-      message = res.data.data.message;
-    } catch {
-      // Fall back to generic message
-    }
-
     await Notifications.scheduleNotificationAsync({
-      content: {
-        title: 'Taisa',
-        body: message,
-        data: { screen: 'journal' },
-      },
+      content: GENERIC_REMINDER_CONTENT,
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.DAILY,
         hour,
@@ -51,11 +43,11 @@ export async function cancelAllReminders(): Promise<void> {
   await Notifications.cancelAllScheduledNotificationsAsync();
 }
 
-// Set up deep link handler — routes to journal on notification tap
+// Set up deep link handler. Notification metadata is intentionally content-free.
 export function setupNotificationListener() {
   return Notifications.addNotificationResponseReceivedListener(response => {
     const data = response.notification.request.content.data;
-    if (data?.screen === 'journal') {
+    if (data?.screen === 'today') {
       // Navigation is handled in _layout.tsx via router
     }
   });

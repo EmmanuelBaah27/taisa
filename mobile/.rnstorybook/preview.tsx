@@ -2,13 +2,19 @@ import React from 'react';
 import { View } from 'react-native';
 import '../global.css';
 import type { Preview } from '@storybook/react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 const preview: Preview = {
   decorators: [
     (Story) => (
-      <View style={{ flex: 1, padding: 16, backgroundColor: '#FFFFFF' }}>
-        <Story />
-      </View>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <SafeAreaProvider>
+          <View className="flex-1 bg-background p-4">
+            <Story />
+          </View>
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
     ),
   ],
   parameters: {

@@ -1,21 +1,23 @@
 import axios from 'axios';
-import * as SecureStore from 'expo-secure-store';
+import { getInstallationId } from './installationIdentity';
+import { getDeviceCredential } from './deviceEnrollment';
+import { mobileApiConfig } from './mobileApiConfig';
 
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
+const api = axios.create({ baseURL: mobileApiConfig.baseUrl, timeout: 90000 });
 
-const api = axios.create({ baseURL: BASE_URL, timeout: 90000 });
-
-// Inject user ID header on every request
+// Device installation ID is a rate-limit key, not profile identity or authentication.
 api.interceptors.request.use(async (config) => {
-  const userId = await SecureStore.getItemAsync('userId');
-  if (userId) config.headers['x-user-id'] = userId;
+  config.headers['x-user-id'] = await getInstallationId();
+  const credential = await getDeviceCredential();
+  if (credential !== null) config.headers.Authorization = `Bearer ${credential}`;
   return config;
 });
 
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    console.error('API error:', error.response?.data || error.message);
+    // Request/response bodies and provider messages may contain private work content.
+    // Transport callers convert this into content-free, user-facing errors.
     return Promise.reject(error);
   }
 );

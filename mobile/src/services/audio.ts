@@ -1,13 +1,16 @@
 import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system';
+import type { VoiceActivitySummary } from './voiceActivity';
 
 export interface RecordingResult {
   uri: string;
   durationSeconds: number;
+  activity?: VoiceActivitySummary;
 }
 
 let recording: Audio.Recording | null = null;
 let startTime: number = 0;
+let nativeRecorderTeardown: Promise<void> = Promise.resolve();
 
 export async function requestAudioPermissions(): Promise<boolean> {
   const { granted } = await Audio.requestPermissionsAsync();
@@ -15,6 +18,7 @@ export async function requestAudioPermissions(): Promise<boolean> {
 }
 
 export async function startRecording(): Promise<void> {
+  await nativeRecorderTeardown;
   const granted = await requestAudioPermissions();
   if (!granted) throw new Error('Audio permission denied');
 
@@ -36,18 +40,34 @@ export async function startRecording(): Promise<void> {
 
 export async function stopRecording(): Promise<RecordingResult> {
   if (!recording) throw new Error('No active recording');
+  const ownedRecording = recording;
+  const ownedStartTime = startTime;
+  const teardown = (async () => {
+    try {
+      const status = await ownedRecording.stopAndUnloadAsync();
+      const uri = ownedRecording.getURI();
+      const durationSeconds = status.durationMillis > 0
+        ? status.durationMillis / 1000
+        : (Date.now() - ownedStartTime) / 1000;
+      if (!uri) throw new Error('Recording URI is null');
+      return { uri, durationSeconds };
+    } finally {
+      if (recording === ownedRecording) recording = null;
+      await Audio.setAudioModeAsync({ allowsRecordingIOS: false }).catch(() => {});
+    }
+  })();
+  nativeRecorderTeardown = teardown.then(() => undefined, () => undefined);
+  return teardown;
+}
 
-  await recording.stopAndUnloadAsync();
-  const uri = recording.getURI();
-  const durationSeconds = (Date.now() - startTime) / 1000;
+export async function pauseRecording(): Promise<void> {
+  if (!recording) throw new Error('No active recording');
+  await recording.pauseAsync();
+}
 
-  recording = null;
-
-  await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
-
-  if (!uri) throw new Error('Recording URI is null');
-
-  return { uri, durationSeconds };
+export async function resumeRecording(): Promise<void> {
+  if (!recording) throw new Error('No active recording');
+  await recording.startAsync();
 }
 
 export function isRecording(): boolean {

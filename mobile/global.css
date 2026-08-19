@@ -4,13 +4,13 @@
 
 /* ============================================================
    TAISA DS — BASE FONT
-   Sets Strichpunkt Sans as the default for all elements.
+   Sets Inter as the default for all elements.
    Individual utilities below override with the correct weight variant.
    ============================================================ */
 
 @layer base {
   * {
-    font-family: 'StrichpunktSans';
+    font-family: 'Inter_400Regular';
   }
 }
 
@@ -23,21 +23,21 @@
 @layer utilities {
   /* Headings */
   .text-H1 {
-    font-family: 'StrichpunktSans-Bold';
+    font-family: 'Inter_600SemiBold';
     font-size: 24px;
     line-height: 32px;
     font-weight: 600;
     letter-spacing: -0.48px;
   }
   .text-H2 {
-    font-family: 'StrichpunktSans-Bold';
+    font-family: 'Inter_600SemiBold';
     font-size: 22px;
     line-height: 28px;
     font-weight: 600;
     letter-spacing: -0.44px;
   }
   .text-H3 {
-    font-family: 'StrichpunktSans-Bold';
+    font-family: 'Inter_600SemiBold';
     font-size: 20px;
     line-height: 26px;
     font-weight: 600;
@@ -45,27 +45,28 @@
   }
 
   /* XLarge body */
-  .text-xlg-regular  { font-family: 'StrichpunktSans';        font-size: 18px; line-height: 26px; font-weight: 400; letter-spacing: -0.36px; }
-  .text-xlg-medium   { font-family: 'StrichpunktSans-Medium'; font-size: 18px; line-height: 26px; font-weight: 500; letter-spacing: -0.36px; }
-  .text-xlg-semibold { font-family: 'StrichpunktSans-Bold';   font-size: 18px; line-height: 26px; font-weight: 600; letter-spacing: -0.36px; }
+  .text-xlg-regular  { font-family: 'Inter_400Regular';  font-size: 18px; line-height: 26px; font-weight: 400; letter-spacing: -0.36px; }
+  .text-xlg-medium   { font-family: 'Inter_500Medium';   font-size: 18px; line-height: 26px; font-weight: 500; letter-spacing: -0.36px; }
+  .text-xlg-semibold { font-family: 'Inter_600SemiBold'; font-size: 18px; line-height: 26px; font-weight: 600; letter-spacing: -0.36px; }
 
   /* Large body */
-  .text-lg-regular  { font-family: 'StrichpunktSans';        font-size: 18px; line-height: 26px; font-weight: 400; letter-spacing: -0.12px; }
-  .text-lg-medium   { font-family: 'StrichpunktSans-Medium'; font-size: 18px; line-height: 26px; font-weight: 500; letter-spacing: -0.12px; }
-  .text-lg-semibold { font-family: 'StrichpunktSans-Bold';   font-size: 18px; line-height: 26px; font-weight: 600; letter-spacing: -0.12px; }
+  .text-lg-regular  { font-family: 'Inter_400Regular';  font-size: 18px; line-height: 26px; font-weight: 400; letter-spacing: -0.12px; }
+  .text-lg-medium   { font-family: 'Inter_500Medium';   font-size: 18px; line-height: 26px; font-weight: 500; letter-spacing: -0.12px; }
+  .text-lg-semibold { font-family: 'Inter_600SemiBold'; font-size: 18px; line-height: 26px; font-weight: 600; letter-spacing: -0.12px; }
 
   /* Base UI */
-  .text-base-regular  { font-family: 'StrichpunktSans';        font-size: 16px; line-height: 22px; font-weight: 400; letter-spacing: 0.02px; }
-  .text-base-medium   { font-family: 'StrichpunktSans-Medium'; font-size: 16px; line-height: 22px; font-weight: 500; letter-spacing: 0.02px; }
-  .text-base-semibold { font-family: 'StrichpunktSans-Bold';   font-size: 16px; line-height: 22px; font-weight: 600; letter-spacing: 0.02px; }
+  .text-base-regular  { font-family: 'Inter_400Regular';  font-size: 16px; line-height: 22px; font-weight: 400; letter-spacing: 0.02px; }
+  .text-base-medium   { font-family: 'Inter_500Medium';   font-size: 16px; line-height: 22px; font-weight: 500; letter-spacing: 0.02px; }
+  .text-base-semibold { font-family: 'Inter_600SemiBold'; font-size: 16px; line-height: 22px; font-weight: 600; letter-spacing: 0.02px; }
+  .text-base-bold     { font-family: 'Inter_700Bold';     font-size: 16px; line-height: 22px; font-weight: 700; letter-spacing: 0.02px; }
 
   /* Small */
-  .text-small-regular  { font-family: 'StrichpunktSans';        font-size: 14px; line-height: 20px; font-weight: 400; letter-spacing: 0; }
-  .text-small-medium   { font-family: 'StrichpunktSans-Medium'; font-size: 14px; line-height: 20px; font-weight: 500; letter-spacing: 0; }
-  .text-small-semibold { font-family: 'StrichpunktSans-Bold';   font-size: 14px; line-height: 20px; font-weight: 600; letter-spacing: 0; }
+  .text-small-regular  { font-family: 'Inter_400Regular';  font-size: 14px; line-height: 20px; font-weight: 400; letter-spacing: 0; }
+  .text-small-medium   { font-family: 'Inter_500Medium';   font-size: 14px; line-height: 20px; font-weight: 500; letter-spacing: 0; }
+  .text-small-semibold { font-family: 'Inter_600SemiBold'; font-size: 14px; line-height: 20px; font-weight: 600; letter-spacing: 0; }
 
   /* Caption */
-  .text-caption-regular  { font-family: 'StrichpunktSans';        font-size: 12px; line-height: 16px; font-weight: 400; letter-spacing: 0; }
-  .text-caption-medium   { font-family: 'StrichpunktSans-Medium'; font-size: 12px; line-height: 16px; font-weight: 500; letter-spacing: 0; }
-  .text-caption-semibold { font-family: 'StrichpunktSans-Bold';   font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0; }
+  .text-caption-regular  { font-family: 'Inter_400Regular';  font-size: 12px; line-height: 16px; font-weight: 400; letter-spacing: 0; }
+  .text-caption-medium   { font-family: 'Inter_500Medium';   font-size: 12px; line-height: 16px; font-weight: 500; letter-spacing: 0; }
+  .text-caption-semibold { font-family: 'Inter_600SemiBold'; font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0; }
 }

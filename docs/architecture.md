@@ -1,6 +1,61 @@
 # Architecture
 
-> Read this before touching any code. Explains how the three layers fit together and how Claude is wired in.
+> Read this before touching any code. The local-first coaching platform is in BUILD and is not
+> shipped until its SQLCipher development-build and physical-device checklist passes.
+
+## Current authority boundary
+
+The new coaching path is phone-authoritative. Readable profile, conversations, transcripts,
+goals, actions, evidence, governed memory, context manifests, and cached coaching responses live
+in the SQLCipher database on the iPhone. A deliberate submit sends one bounded context package to
+the gateway; private save, browse, search, edit, confirmation, export, and restore are local.
+
+```text
+iPhone (readable authority)
+  capture → encrypted SQLite → bounded context → explicit submit
+                                         │
+                                         ▼
+Taisa gateway (transient processing)
+  validate → cost/rate guard → one configured provider call → structured response
+                                         │
+                                         ▼
+iPhone
+  cache response → stage governed deltas → persist only after local policy/user confirmation
+```
+
+The gateway stores only content-free usage/cost reservations. It must not write prompts,
+transcripts, request/response bodies, or coaching text to logs, analytics, crash reports, or
+backend SQLite. The mobile app has no provider credentials.
+
+There is no migration/export endpoint. Baah confirmed that no legacy backend data needs to be
+migrated, so Task 7 was removed. Legacy backend CRUD and AI routes are still mounted as rollback
+compatibility during BUILD; they are not part of the local coaching flow and cannot be retired
+until encrypted recovery passes on device and Baah explicitly approves route retirement.
+
+### Recovery and privacy engine
+
+- Manual backup uses a separate, confirmed passphrase (minimum 12 non-whitespace characters),
+  SQLCipher `ATTACH ... KEY`, and `sqlcipher_export`.
+- The archive contains encrypted database state, not recorded audio files. Export fails closed
+  before creating an artifact if a nonterminal coaching request still references audio; the user
+  must finish or abandon that voice work first.
+- Restore stages the selected file and reads it through a query-only maintenance connection. It
+  verifies format/version, SQLite and foreign-key integrity, exact allowlisted table mappings,
+  required entity counts, a deterministic content hash, and two-way message/evidence search-index
+  alignment.
+- Restore builds a fresh device-key candidate from trusted current migrations and copies only
+  allowlisted rows with bound values; archive-owned schema is never promoted. The active database
+  and Keychain key remain recoverable through a digest-verified rollback copy and durable promotion
+  marker until the promoted candidate reopens and matches the verified fingerprint.
+- Optional LocalAuthentication stores only an enabled/disabled preference. The operating system
+  owns biometric material. Inactive/background UI is covered by a root privacy shield.
+- Notifications use generic content-free copy. Redaction is deterministic and local; its
+  replacement map exists in memory only, and the displayed preview is submitted only after an
+  explicit action.
+
+SQLCipher compilation, parameterized SQLCipher `ATTACH`, filesystem promotion behavior, Face ID,
+app-switcher timing, file sharing/picking, and clean-install recovery still require the gated
+managed iPhone development-build checklist.
 
 ---
 
@@ -25,9 +80,10 @@ taisa/
 
 ---
 
-## Data Flow — Voice to Insight
+## Legacy data flow — voice journal to server insight
 
-The full path a journal entry takes, from tap to stored insight:
+This describes the still-mounted pre-cutover route family. It is retained for rollback and old
+screens during BUILD, not as the authority model for the new local coaching flow:
 
 ```
 1. User taps record button
@@ -39,7 +95,7 @@ The full path a journal entry takes, from tap to stored insight:
    → mobile/src/services/transcription.ts
    → POST /api/v1/transcribe (multipart/form-data)
    → backend/src/routes/transcribe.ts
-   → OpenAI Whisper API (model: whisper-1)
+   → OpenAI streaming transcription (default: gpt-4o-transcribe)
    → returns { transcript: string }
 
 3. Entry created with transcript
@@ -78,7 +134,7 @@ The full path a journal entry takes, from tap to stored insight:
 
 ---
 
-## How the Backend Calls Claude
+## Legacy backend agents
 
 Every AI feature in the backend follows the same three-layer pattern. Understanding this pattern means you can add a new AI feature without guessing.
 
@@ -142,15 +198,22 @@ Both use `claude-sonnet-4-6` with a default max token limit of `4096`.
 
 ---
 
-## How to Add a New AI Feature
+## Adding a new AI feature
 
-Follow this pattern exactly. Use `journalAgent.ts` as your reference implementation.
+New coaching features must use the provider-neutral stateless path:
 
-1. **Add a route** in `backend/src/routes/yourFeature.ts` — receive request, call agent, return response
-2. **Mount the route** in `backend/src/index.ts` — `app.use('/api/v1/yourFeature', yourFeatureRouter)`
-3. **Write the agent** in `backend/src/services/claude/yourFeatureAgent.ts` — load context from DB, call prompt builder, call `callClaudeJson`, persist result
-4. **Write the prompt builder** in `backend/src/prompts/system/yourFeaturePrompt.ts` — pure function, takes data, returns system + user prompt strings
-5. **Add DB writes** in the agent — define what gets stored and where
+1. Extend the portable shared contract and runtime schema.
+2. Assemble bounded readable context on-device.
+3. Validate and meter it in the gateway without backend user-data reads or content logging.
+4. Make exactly one configured provider call.
+5. Return structured proposals; deterministic mobile governance owns persistence.
+
+The route → database-loading agent → prompt → backend-write pattern below is legacy-only and must
+not be copied for new readable-user-data features. It remains solely as historical documentation
+for still-mounted rollback routes.
+
+Legacy-only reference: those pre-cutover routes call backend-data agents and persist their result.
+New readable-user-data features must follow the five stateless coaching steps above instead.
 
 See `docs/api.md` for the request/response patterns. See `docs/agent-persona.md` for the Senior Self prompt engineering guide.
 
@@ -160,9 +223,28 @@ See `docs/api.md` for the request/response patterns. See `docs/agent-persona.md`
 
 | Decision | Why |
 |---|---|
-| SQLite (not Postgres/Mongo) | Local-only in v1. No network dependency. Matches the product spec's principle: validate the memory model with real use before adding infrastructure. |
+| SQLCipher SQLite on iPhone | Single readable authority with a device-only Keychain key. Expo Go cannot validate this native configuration. |
+| Backend SQLite | Legacy CRUD rollback store plus a content-free usage ledger during BUILD; not a destination for new coaching content. |
 | `ts-node-dev` | Hot-reload TypeScript in dev without a build step. No compiled output needed during development. |
-| `deviceId` as `userId` | MVP shortcut. Single user, no login screen. The `x-user-id` header is set automatically by `mobile/src/services/api.ts` via an Axios interceptor. |
+| Installation ID in `x-user-id` | MVP transport shortcut for usage accounting and rate limiting, not authentication or career-data identity. The authoritative local `profile.id` lives in encrypted SQLite; the separate installation ID is set automatically by `mobile/src/services/api.ts`. |
 | Zustand (not Redux) | Lightweight global state for a solo mobile app. Three stores: `journalStore`, `careerStore`, `uiStore`. |
-| Expo managed workflow | Faster iteration, no native build tooling required. Trade-off: some native audio features require a dev build (not Expo Go). |
+| Expo managed workflow | Native configuration stays managed, but SQLCipher and LocalAuthentication require a development build; Expo Go is insufficient. |
 | `callClaudeJson` with fallback | Claude sometimes wraps JSON in markdown code fences. The fallback parser strips them before parsing. |
+
+## Personal-alpha hosted boundary
+
+The personal alpha uses one private, single-replica Node service. The iPhone remains the readable
+career-data authority. The hosted service receives bounded content only when the user deliberately
+submits coaching or transcription, and it does not persist that content. A device credential,
+separate from the installation rate-limit ID, protects `/api/v1` routes.
+
+Three content-free or encrypted operational stores live on one persistent volume:
+
+- usage reservations and receipts;
+- keyed device-credential digests and consumed enrollment codes;
+- explicitly consented feedback envelopes encrypted with AES-256-GCM.
+
+Local Helpful / Not helpful reactions do not cross the network. Sharing requires an editable
+preview and a second explicit confirmation; deletion is scoped to the enrolled device and
+idempotent. SQLite accounting is intentionally single-instance, so horizontal replicas remain
+prohibited until these stores move to shared transactional infrastructure.

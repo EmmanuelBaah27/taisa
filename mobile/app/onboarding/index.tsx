@@ -1,18 +1,29 @@
-import { useState } from 'react';
-import { View, Text, TextInput, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { View, Text, TextInput, ScrollView, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { router } from 'expo-router';
-import { v4 as uuidv4 } from 'uuid';
+import * as Crypto from 'expo-crypto';
 import { useCareerStore } from '../../src/stores/careerStore';
 import { colors } from '../../src/constants/theme';
+import {
+  clearOnboardingDraft,
+  loadOnboardingDraft,
+  saveOnboardingDraft,
+  type OnboardingFormDraft,
+} from '../../src/services/onboardingDraft';
 
 const STAGES = ['early', 'mid', 'senior', 'executive', 'founder'];
 const COACHING_STYLES = ['direct', 'supportive', 'socratic', 'structured'];
 const ACCOUNTABILITY = ['gentle', 'moderate', 'intense'];
 
+export function generateLocalProfileId(): string {
+  return Crypto.randomUUID();
+}
+
 export default function OnboardingScreen() {
   const { initUser, isLoading } = useCareerStore();
   const [step, setStep] = useState(0);
-  const [form, setForm] = useState({
+  const draftHydrated = useRef(false);
+  const [form, setForm] = useState<OnboardingFormDraft>({
     currentRole: '',
     currentCompany: '',
     industry: '',
@@ -25,14 +36,33 @@ export default function OnboardingScreen() {
     accountabilityLevel: 'moderate',
   });
 
+  useEffect(() => {
+    let active = true;
+    void loadOnboardingDraft().then((draft) => {
+      if (active && draft) {
+        setStep(draft.step);
+        setForm(draft.form);
+      }
+      draftHydrated.current = true;
+    });
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    if (draftHydrated.current) {
+      void saveOnboardingDraft({ step, form });
+    }
+  }, [step, form]);
+
   const updateForm = (key: string, value: string) => setForm(f => ({ ...f, [key]: value }));
 
   const handleSubmit = async () => {
-    const deviceId = uuidv4(); // In production, use Device.osBuildId or similar
+    const deviceId = generateLocalProfileId();
     await initUser(deviceId, {
       ...form,
       yearsOfExperience: parseInt(form.yearsOfExperience) || 0,
     } as any);
+    await clearOnboardingDraft();
     router.replace('/(tabs)');
   };
 
@@ -118,18 +148,21 @@ export default function OnboardingScreen() {
   ];
 
   return (
-    <View className="flex-1 bg-background">
+    <KeyboardAvoidingView
+      className="flex-1 bg-background"
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
       <View className="flex-row justify-center gap-2 pt-[60px] mb-6">
         {[0, 1, 2].map(i => (
           <View key={i} className={`w-2 h-2 rounded-full ${step >= i ? 'bg-primary' : 'bg-border'}`} />
         ))}
       </View>
       {steps[step]}
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
-function Field({ label, onChange, ...props }: { label: string; onChange?: (value: string) => void; [key: string]: any }) {
+export function Field({ label, onChange, ...props }: { label: string; onChange?: (value: string) => void; [key: string]: any }) {
   return (
     <View className="mb-6">
       <Text className="text-[13px] font-medium text-muted-foreground mb-2">{label}</Text>
@@ -137,6 +170,7 @@ function Field({ label, onChange, ...props }: { label: string; onChange?: (value
         className={`bg-card rounded-xl border border-border p-4 text-foreground text-[15px] h-12${props.multiline ? ' h-20' : ''}`}
         style={props.multiline ? { textAlignVertical: 'top' } : undefined}
         placeholderTextColor={colors.textTertiary}
+        onChangeText={onChange}
         {...props}
       />
     </View>

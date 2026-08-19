@@ -1,6 +1,7 @@
 import { View, Text, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from './Icon';
+import { colors } from '../../constants/theme';
 
 export interface ChatNavBarProps {
   onClose: () => void;
@@ -15,7 +16,7 @@ export function ChatNavBar({ onClose }: ChatNavBarProps) {
       style={{ paddingTop: insets.top + 8 }}
     >
       <TouchableOpacity onPress={onClose} className="w-10 items-start">
-        <Icon name="IconChevronDownMedium" size={20} color="#898989" />
+        <Icon name="IconChevronDownMedium" size={20} color={colors.textTertiary} />
       </TouchableOpacity>
       <Text className="flex-1 text-center text-foreground text-base-medium">
         Taisa

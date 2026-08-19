@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { getDb } from '../db/connection';
 import { analyzePerformanceReview } from '../services/claude/performanceReviewAgent';
 import { parseAnthropicError } from '../services/claude/client';
+import { logRequestError } from '../middleware/requestContext';
 
 const router = Router();
 
@@ -40,9 +41,12 @@ router.post('/', async (req, res) => {
       },
     });
   } catch (error: any) {
-    console.error('Review analysis error:', error);
-    const { code, message } = parseAnthropicError(error);
-    res.status(500).json({ success: false, error: { code, message } });
+    const { code } = parseAnthropicError(error);
+    logRequestError(req, code, error);
+    res.status(500).json({
+      success: false,
+      error: { code, message: 'Unable to analyze performance review' },
+    });
   }
 });
 

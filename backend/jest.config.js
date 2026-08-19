@@ -4,6 +4,6 @@ module.exports = {
   testEnvironment: 'node',
   testMatch: ['**/__tests__/**/*.test.ts'],
   moduleNameMapper: {
-    '^@taisa/shared$': '<rootDir>/../shared/src/index.ts',
+    '^@taisa/shared$': '<rootDir>/../shared/index.ts',
   },
 };

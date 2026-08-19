@@ -14,6 +14,7 @@ interface JournalStore {
   analyzeEntry: (entryId: string) => Promise<EntryAnalysis>;
   setCurrentEntry: (entry: JournalEntry | null) => void;
   clearError: () => void;
+  clearForAuthorityReplacement: () => void;
 }
 
 export const useJournalStore = create<JournalStore>((set, get) => ({
@@ -53,4 +54,11 @@ export const useJournalStore = create<JournalStore>((set, get) => ({
 
   setCurrentEntry: (entry) => set({ currentEntry: entry, currentAnalysis: null }),
   clearError: () => set({ error: null }),
+  clearForAuthorityReplacement: () => set({
+    entries: [],
+    currentEntry: null,
+    currentAnalysis: null,
+    isLoading: false,
+    error: null,
+  }),
 }));

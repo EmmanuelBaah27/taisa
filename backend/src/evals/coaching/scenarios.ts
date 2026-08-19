@@ -1,0 +1,236 @@
+import type {
+  CoachingRelevance,
+  CoachingRequest,
+  CoachingResponse,
+  CoachingResponseMode,
+  ContextSufficiency,
+  EvidenceItem,
+  MemoryDelta,
+  MemoryItem,
+} from '@taisa/shared';
+
+export const COACHING_EVALUATION_PACK_VERSION = '2026-08-13.v3';
+
+export type CoachingEvaluationCoverage =
+  | 'work-conflict' | 'career-goal' | 'forgotten-goal' | 'conflicting-goal'
+  | 'historical-context' | 'evidence' | 'sensitive-inference' | 'action-evolution' | 'no-memory'
+  | 'missing-referent' | 'outside-scope' | 'adjacent-context' | 'partial-context';
+
+export const GUARDRAIL_SCENARIO_IDS = [
+  'guardrail-missing-video',
+  'guardrail-missing-meeting',
+  'guardrail-workplace-conflict',
+  'guardrail-unrelated-factual',
+  'guardrail-adjacent-fatigue',
+  'guardrail-partial-work',
+] as const;
+
+type ProposalOperation = MemoryDelta['operation'];
+type AllowedProposalOperation = ProposalOperation | 'propose-outcome';
+type ProposedMemory = Extract<MemoryDelta, { operation: 'propose' }>['candidate'];
+
+export interface ExpectedCoachingBehavior {
+  mode: CoachingResponseMode;
+  allowedRelevance: CoachingRelevance[];
+  allowedContextSufficiency: ContextSufficiency[];
+  allowedStances: CoachingResponse['stance'][];
+  requiredStance?: CoachingResponse['stance'];
+  allowedProposalOperations: AllowedProposalOperation[];
+  requiredProposalOperations: ProposalOperation[];
+  requiredProposalTargetIds: string[];
+  allowedTargetIdsByOperation: Record<ProposalOperation, string[]>;
+  forbiddenTargetIdsByOperation: Record<ProposalOperation, string[]>;
+  requireConfirmationForMutations: boolean;
+  requireNoProposals: boolean;
+  noInventedMemory: boolean;
+  allowedProposedMemoryTypes: ProposedMemory['type'][];
+  allowedProposedProvenance: ProposedMemory['provenance'][];
+  requiredProposedMemoryTypes: ProposedMemory['type'][];
+  requiredProposedProvenance: ProposedMemory['provenance'][];
+  continuityRequired: boolean;
+  manualReviewRequired: boolean;
+}
+
+export interface CoachingEvaluationScenario {
+  id: string;
+  synthetic: true;
+  coverage: CoachingEvaluationCoverage[];
+  request: CoachingRequest;
+  expected: ExpectedCoachingBehavior;
+}
+
+const timestamp = '2026-08-09T00:00:00Z';
+
+const syntheticRequestNumbers: Readonly<Record<string, number>> = {
+  'synthetic-01': 1, 'synthetic-02': 2, 'synthetic-03': 3, 'synthetic-04': 4,
+  'synthetic-05': 5, 'synthetic-06': 6, 'synthetic-07': 7, 'synthetic-08': 8,
+  'synthetic-09': 9, 'synthetic-10': 10, 'synthetic-11': 11, 'synthetic-12': 12,
+  'synthetic-13': 13, 'synthetic-14': 14, 'synthetic-15': 15, 'synthetic-16': 16,
+  'synthetic-17': 17, 'synthetic-18': 18, 'synthetic-19': 19, 'synthetic-20': 20,
+  'guardrail-missing-video': 21, 'guardrail-missing-meeting': 22,
+  'guardrail-workplace-conflict': 23, 'guardrail-unrelated-factual': 24,
+  'guardrail-adjacent-fatigue': 25, 'guardrail-partial-work': 26,
+};
+
+function syntheticRequestId(id: string): string {
+  const requestNumber = syntheticRequestNumbers[id];
+  if (!requestNumber) {
+    throw new Error(`Missing synthetic request UUID mapping for ${id}`);
+  }
+  return `20000000-0000-4000-8000-${requestNumber.toString().padStart(12, '0')}`;
+}
+
+function memory(id: string, statement: string): MemoryItem {
+  return { id, type: 'goal', statement, provenance: 'user-confirmed', lifecycle: 'active', confidence: 'established', createdAt: timestamp, confirmedAt: timestamp, lastSupportedAt: timestamp, statusChangedAt: timestamp, sourceMessageIds: [`source-${id}`] };
+}
+
+interface ExpectedDecisionOverrides {
+  mode?: CoachingResponseMode;
+  allowedRelevance?: CoachingRelevance[];
+  allowedContextSufficiency?: ContextSufficiency[];
+  allowedProposalOperations?: AllowedProposalOperation[];
+}
+
+function expected(
+  coverage: CoachingEvaluationCoverage[],
+  memories: MemoryItem[],
+  decision: ExpectedDecisionOverrides = {},
+): ExpectedCoachingBehavior {
+  const knownMemoryIds = memories.map((item) => item.id);
+  const continuityRequired = memories.length > 0 && coverage.some((item) =>
+    ['forgotten-goal', 'conflicting-goal', 'historical-context'].includes(item),
+  );
+  const selectedMode = decision.mode ?? 'coach';
+  const noProposal = selectedMode !== 'coach' || coverage.some((item) => ['no-memory', 'sensitive-inference'].includes(item));
+  const careerGoal = coverage.includes('career-goal');
+  const requiredStance = coverage.includes('conflicting-goal') ? 'challenge'
+    : coverage.includes('sensitive-inference') ? 'mirror'
+      : coverage.includes('action-evolution') ? 'nudge' : undefined;
+  return {
+    mode: selectedMode,
+    allowedRelevance: decision.allowedRelevance ?? ['career-relevant'],
+    allowedContextSufficiency: decision.allowedContextSufficiency ?? ['sufficient', 'partial'],
+    allowedStances: selectedMode === 'coach'
+      ? requiredStance ? [requiredStance] : ['mirror', 'nudge', 'challenge', 'direct']
+      : [null],
+    requiredStance,
+    allowedProposalOperations: decision.allowedProposalOperations ?? ['propose', 'transition', 'support', 'propose-outcome'],
+    requiredProposalOperations: careerGoal ? ['propose'] : continuityRequired ? ['support'] : [],
+    requiredProposalTargetIds: continuityRequired ? memories.map((item) => item.id) : [],
+    allowedTargetIdsByOperation: { support: knownMemoryIds, transition: [], propose: [] },
+    forbiddenTargetIdsByOperation: { support: [], transition: knownMemoryIds, propose: knownMemoryIds },
+    requireConfirmationForMutations: true,
+    requireNoProposals: noProposal,
+    noInventedMemory: noProposal,
+    allowedProposedMemoryTypes: ['goal', 'commitment', 'decision', 'preference', 'career_context', 'development_area', 'evidence', 'pattern'],
+    allowedProposedProvenance: ['user-stated', 'user-confirmed', 'system-observed'],
+    requiredProposedMemoryTypes: careerGoal ? ['goal'] : [],
+    requiredProposedProvenance: careerGoal ? ['user-stated'] : [],
+    continuityRequired,
+    manualReviewRequired: true,
+  };
+}
+
+function scenario(
+  id: string,
+  coverage: CoachingEvaluationCoverage[],
+  input: string,
+  memories: MemoryItem[],
+  decision?: ExpectedDecisionOverrides,
+): CoachingEvaluationScenario {
+  return {
+    id, synthetic: true, coverage,
+    request: {
+      requestId: syntheticRequestId(id), submittedAt: timestamp, input,
+      context: { profile: { currentRole: 'Synthetic product designer', currentCompany: 'Example Studio', careerStage: 'mid', coachingStyle: 'structured', accountabilityLevel: 'moderate', currentFocusArea: '', shortTermGoal: 'Grow scope', longTermGoal: '' }, recentMessages: [], memory: memories, evidence: coverage.includes('evidence') ? [syntheticEvidence] : [] },
+    },
+    expected: expected(coverage, memories, decision),
+  };
+}
+
+const syntheticEvidence: EvidenceItem = {
+  id: 'evidence-synthetic-workshop', statement: 'Facilitated a fictional cross-team workshop.',
+  occurredAt: timestamp, sourceMessageIds: ['source-synthetic-workshop'],
+  goalIds: ['goal-staff'], actionIds: [],
+};
+
+const staffGoal = memory('goal-staff', 'Move toward a staff-level design role');
+const managerGoal = memory('goal-manager', 'Explore people management before the next review');
+const action = memory('action-prototype', 'Prepare a synthetic portfolio prototype');
+
+export const coachingEvaluationScenarios: CoachingEvaluationScenario[] = [
+  scenario('synthetic-01', ['work-conflict'], 'Two teammates disagree about the launch order.', [staffGoal]),
+  scenario('synthetic-02', ['work-conflict'], 'I promised two synthetic teams the same delivery week.', [staffGoal]),
+  scenario('synthetic-03', ['career-goal'], 'I want to test whether a staff path fits me.', [staffGoal]),
+  scenario('synthetic-04', ['career-goal'], 'Help me set a small next step toward broader scope.', [staffGoal]),
+  scenario('synthetic-05', ['forgotten-goal'], 'I had a goal about mentoring; remind me what matters.', [staffGoal]),
+  scenario('synthetic-06', ['forgotten-goal', 'no-memory'], 'I cannot remember the goal I mentioned last month.', []),
+  scenario('synthetic-07', ['conflicting-goal'], 'Management sounds appealing, but I still value craft leadership.', [staffGoal, managerGoal]),
+  scenario('synthetic-08', ['conflicting-goal'], 'I want both a promotion and less responsibility this quarter.', [staffGoal]),
+  scenario('synthetic-09', ['historical-context'], 'Last time I chose a smaller project; should I repeat that?', [staffGoal]),
+  scenario('synthetic-10', ['historical-context'], 'A previous experiment did not work; what should change now?', [action]),
+  scenario('synthetic-11', ['evidence'], 'I led a useful critique with the synthetic research group.', [staffGoal]),
+  scenario('synthetic-12', ['evidence'], 'A colleague said my workshop was clear.', [staffGoal]),
+  scenario('synthetic-13', ['sensitive-inference'], 'I feel tired after a difficult synthetic week.', [staffGoal]),
+  scenario('synthetic-14', ['sensitive-inference'], 'I am worried I am not good enough for leadership.', [staffGoal]),
+  scenario('synthetic-15', ['action-evolution'], 'The prototype action is blocked by a fake dependency.', [action]),
+  scenario('synthetic-16', ['action-evolution'], 'My next step needs to become smaller.', [action]),
+  scenario('synthetic-17', ['no-memory'], 'Help me choose a first experiment for this fictional role.', []),
+  scenario('synthetic-18', ['work-conflict', 'evidence'], 'The synthetic launch review exposed two competing priorities.', [staffGoal]),
+  scenario('synthetic-19', ['career-goal', 'historical-context'], 'I am reconsidering the staff goal after a small success.', [staffGoal]),
+  scenario('synthetic-20', ['conflicting-goal', 'action-evolution'], 'The management experiment conflicts with my portfolio deadline.', [managerGoal, action]),
+  scenario(
+    'guardrail-missing-video',
+    ['missing-referent'],
+    'I cannot use some of this in the video.',
+    [],
+    {
+      mode: 'clarify', allowedRelevance: ['outside-scope'],
+      allowedContextSufficiency: ['insufficient'], allowedProposalOperations: [],
+    },
+  ),
+  scenario(
+    'guardrail-missing-meeting',
+    ['missing-referent'],
+    'That meeting changed everything.',
+    [],
+    {
+      mode: 'clarify', allowedRelevance: ['outside-scope'],
+      allowedContextSufficiency: ['insufficient'], allowedProposalOperations: [],
+    },
+  ),
+  scenario(
+    'guardrail-workplace-conflict',
+    ['work-conflict'],
+    'Priya wanted to delay the launch and Marcus wanted to ship. I chose to delay it. Help me explain that decision to the team.',
+    [],
+    { mode: 'coach', allowedRelevance: ['career-relevant'], allowedContextSufficiency: ['sufficient'] },
+  ),
+  scenario(
+    'guardrail-unrelated-factual',
+    ['outside-scope'],
+    'What is the capital of Finland?',
+    [],
+    {
+      mode: 'redirect', allowedRelevance: ['outside-scope'], allowedContextSufficiency: ['sufficient'],
+      allowedProposalOperations: [],
+    },
+  ),
+  scenario(
+    'guardrail-adjacent-fatigue',
+    ['adjacent-context'],
+    'I am exhausted, and it is affecting whether I accept ownership of tomorrow\'s release decision.',
+    [],
+    { mode: 'coach', allowedRelevance: ['adjacent'], allowedContextSufficiency: ['sufficient', 'partial'] },
+  ),
+  scenario(
+    'guardrail-partial-work',
+    ['partial-context'],
+    'The only confirmed detail is that I have not sent the handoff draft. I do not know why it is delayed. What can I do next?',
+    [],
+    {
+      mode: 'coach', allowedRelevance: ['career-relevant'], allowedContextSufficiency: ['partial'],
+      allowedProposalOperations: ['propose-outcome'],
+    },
+  ),
+];

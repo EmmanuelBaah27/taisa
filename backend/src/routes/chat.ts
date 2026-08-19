@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { startSession, sendMessage, getMessages } from '../services/claude/chatAgent';
 import { getDb } from '../db/connection';
 import { parseAnthropicError } from '../services/claude/client';
+import { logRequestError } from '../middleware/requestContext';
 
 const router = Router();
 
@@ -59,8 +60,8 @@ router.post('/message', async (req, res) => {
     if (error.message === 'Session not found') {
       return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: error.message } });
     }
-    console.error('Chat message error:', error);
     const { code, message } = parseAnthropicError(error);
+    logRequestError(req, code, error);
     res.status(500).json({ success: false, error: { code, message } });
   }
 });

@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+  darkMode: 'class',
   content: [
     './app/**/*.{js,jsx,ts,tsx}',
     './src/**/*.{js,jsx,ts,tsx}',
@@ -209,9 +210,10 @@ module.exports = {
       // in global.css @layer utilities. Raw font-size utilities below are
       // Tailwind defaults — use composite utilities in new components.
       fontFamily: {
-        sans:          ['StrichpunktSans'],
-        'sans-medium': ['StrichpunktSans-Medium'],
-        'sans-bold':   ['StrichpunktSans-Bold'],
+        sans:            ['Inter_400Regular'],
+        'sans-medium':   ['Inter_500Medium'],
+        'sans-semibold': ['Inter_600SemiBold'],
+        'sans-bold':     ['Inter_700Bold'],
       },
 
       // ─── Border radius ───────────────────────────────────────────────────
