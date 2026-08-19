@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Animated, Text, View } from 'react-native';
+import { Animated, View } from 'react-native';
 import type { StyleProp, TextStyle, ViewStyle } from 'react-native';
 
 import {
@@ -64,7 +64,7 @@ export function PersistentNavigationCapsule({
         }}
       >
         {leadingVisual}
-        <Text
+        <Animated.Text
           numberOfLines={1}
           className="font-sans-medium text-foreground"
           style={[
@@ -77,7 +77,7 @@ export function PersistentNavigationCapsule({
           ]}
         >
           {label}
-        </Text>
+        </Animated.Text>
       </View>
     </Animated.View>
   );

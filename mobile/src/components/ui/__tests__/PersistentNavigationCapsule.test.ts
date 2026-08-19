@@ -1,4 +1,5 @@
 import type { ReactElement, ReactNode } from 'react';
+import { Animated } from 'react-native';
 
 import {
   BOTTOM_NAVIGATION_ACTIVE_FILL,
@@ -6,7 +7,7 @@ import {
 } from '../../../navigation/bottomNavigation';
 import { PersistentNavigationCapsule } from '../PersistentNavigationCapsule';
 
-type CapsuleLabel = ReactElement<{ className: string }>;
+type CapsuleLabel = ReactElement<{ className: string; style: unknown }>;
 type CapsuleRow = ReactElement<{ children: [ReactNode, CapsuleLabel] }>;
 type CapsuleElement = ReactElement<{ style: unknown; children: CapsuleRow }>;
 
@@ -38,6 +39,21 @@ describe('PersistentNavigationCapsule', () => {
     const label = contentRow.props.children[1];
 
     expect(label.props.className).toContain('font-sans-medium');
+  });
+
+  test('composes animated styles on an animated label', () => {
+    const animatedLabelStyle = { opacity: 0.4, transform: [{ translateX: -6 }] };
+    const capsule = PersistentNavigationCapsule({
+      label: 'Chats',
+      leadingVisual: null,
+      frame: getBottomNavigationCapsuleFrame('logs'),
+      phase: 'travelling',
+      animatedLabelStyle,
+    }) as CapsuleElement;
+    const label = capsule.props.children.props.children[1];
+
+    expect(label.type).toBe(Animated.Text);
+    expect(label.props.style).toContainEqual(animatedLabelStyle);
   });
 
   test('uses the frame width and horizontal position', () => {
