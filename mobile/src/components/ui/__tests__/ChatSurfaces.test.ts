@@ -146,6 +146,24 @@ describe('chat design-system surfaces', () => {
     expect(onContentSizeChange).toHaveBeenCalledWith(393, 1200);
   });
 
+  test('hands a top-edge downward pull to the sheet gesture without iOS bounce', () => {
+    const dismissGestureRef = { current: undefined };
+    const surface = ChatConversationSurface({
+      scrollRef: { current: null }, messages: [], activeMessageId: null,
+      activeRequestKind: null, transcript: '', phase: 'idle', isBusy: false,
+      error: null, microphoneUnavailable: false, pendingProposals: [], editingTranscript: null,
+      dismissGestureRef,
+      onEditTranscript: jest.fn(), onChangeTranscript: jest.fn(), onSubmitTranscript: jest.fn(),
+      onUseKeyboard: jest.fn(), onDiscardRecording: jest.fn(), onRetry: jest.fn(),
+      onConfirmProposal: jest.fn(), onResolveProposal: jest.fn(),
+    });
+    const scrollView = descendants(surface).find((node) => node.type === ScrollView);
+
+    expect(scrollView?.props.simultaneousHandlers).toBe(dismissGestureRef);
+    expect(scrollView?.props.bounces).toBe(false);
+    expect(scrollView?.props.alwaysBounceVertical).toBe(false);
+  });
+
   test('the Figma header uses a floating close control and the conversation title', () => {
     const header = ChatNavBar({
       onClose: jest.fn(),

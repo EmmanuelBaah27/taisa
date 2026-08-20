@@ -15,7 +15,9 @@ import {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import { Gesture, GestureDetector, type ScrollView } from 'react-native-gesture-handler';
+import {
+  Gesture, GestureDetector, type GestureType, type ScrollView,
+} from 'react-native-gesture-handler';
 import { useVoiceRecorder } from '../../src/hooks/useVoiceRecorder';
 import type { RecordingResult } from '../../src/services/audio';
 import {
@@ -145,6 +147,7 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
   const { setChatMorphing, consumeVoiceAutoStart } = useUIStore();
   const sourceSnapshot = parseChatCardSource(routeParams);
   const conversationAtTop = useSharedValue(true);
+  const sheetPanRef = useRef<GestureType | undefined>(undefined);
   const {
     translateX,
     translateY,
@@ -837,6 +840,7 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
   }
 
   const sheetPanGesture = Gesture.Pan()
+    .withRef(sheetPanRef)
     .activeOffsetY(8)
     .failOffsetX([-24, 24])
     .onUpdate((event) => {
@@ -856,8 +860,6 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
       }
       translateY.value = withSpring(0, { damping: 28, stiffness: 320, overshootClamping: true });
     });
-
-  const sheetGesture = Gesture.Simultaneous(Gesture.Native(), sheetPanGesture);
 
   async function handleCancelVoice() {
     if (voiceCancelDestination(initialConversationIdRef.current) === 'close') {
@@ -906,6 +908,7 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
       pendingProposals={pendingProposals}
       editingTranscript={editingTranscript}
       onScrollAtTopChange={(atTop) => { conversationAtTop.value = atTop; }}
+      dismissGestureRef={sheetPanRef}
       onContentSizeChange={handleConversationContentSizeChange}
       reactions={reactions}
       onEditTranscript={setEditingTranscript}
@@ -977,7 +980,7 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
 
   return (
     <>
-      <GestureDetector gesture={sheetGesture}>
+      <GestureDetector gesture={sheetPanGesture}>
         <View collapsable={false} style={{ flex: 1 }}>
           <ChatScreenShell
             topInset={insets.top}

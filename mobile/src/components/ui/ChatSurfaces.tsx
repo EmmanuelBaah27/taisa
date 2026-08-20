@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ScrollView } from 'react-native-gesture-handler';
+import type { GestureType } from 'react-native-gesture-handler';
 import Animated from 'react-native-reanimated';
 
 import { colors } from '../../constants/theme';
@@ -219,6 +220,7 @@ export interface ChatConversationSurfaceProps {
   editingTranscript: string | null;
   reactions?: Readonly<Record<string, ResponseReaction>>;
   onScrollAtTopChange?: (atTop: boolean) => void;
+  dismissGestureRef?: RefObject<GestureType | undefined>;
   onContentSizeChange?: (width: number, height: number) => void;
   onEditTranscript: (value: string | null) => void;
   onChangeTranscript: (value: string) => void;
@@ -264,6 +266,9 @@ export function ChatConversationSurface(props: ChatConversationSurfaceProps) {
     <View className="flex-1">
       <ScrollView
         ref={props.scrollRef}
+        simultaneousHandlers={props.dismissGestureRef}
+        bounces={false}
+        alwaysBounceVertical={false}
         className="flex-1"
         contentContainerStyle={{ paddingTop: 8, paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}
