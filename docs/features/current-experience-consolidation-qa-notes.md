@@ -52,3 +52,9 @@ Final polish replaces the white-on-white sheen with a neutral hairline/shadow cl
 - Tap-driven page commits must not play a selection haptic; the tactile pulse makes the otherwise smooth capsule settlement feel like a sharp snap.
 
 Clean-Metro iOS QA then reproduced a Fabric mount crash in Reanimated 4.1.1 while `useAnimatedStyle` mutated a frozen hook ref. `BottomNavBar` no longer imports or mounts Reanimated: React Native Animated owns shell scale/width, capsule X/width, fill opacity, and content handoff, with native-driver use limited to scale/opacity/translation and layout width animations explicitly JS-driven. A source guard blocks the crashing hooks from returning. Paired-iPhone recheck remains required.
+
+## 2026-08-20 shadow clipping, tap motion, and coaching failure
+
+- The conversation morph shell kept `overflow: hidden` after its rounded transition reached the full-screen state, clipping elevation on the header control, recording controls, and keyboard composer. Clipping now applies only while the shell is rounded; settled content permits shadow bleed without changing component geometry.
+- Tapped navigation now advances the same continuous progress consumed by the swipe-driven capsule, using an interruptible non-bouncy spring. Page content retains the approved tap crossfade and does not travel through intermediate pages.
+- Live diagnostics confirmed voice transcription completed before coaching failed. The configured Anthropic account returned HTTP 400 because its credit balance was too low. The completed transcript now remains visible with a coaching-specific failure state and retry path; restoring provider service still requires Anthropic credits or a separately approved provider change.

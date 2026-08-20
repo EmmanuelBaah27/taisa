@@ -7,6 +7,7 @@ import {
   ChatComposerDock,
   ChatMessageBubble,
   ChatScreenShell,
+  PendingTranscriptBubble,
   PendingProposalCard,
 } from '../ChatSurfaces';
 import { ChatHeader } from '../ChatHeader';
@@ -76,6 +77,8 @@ describe('chat design-system surfaces', () => {
     expect(animatedLayers.map((node) => node.props.style)).toEqual([shellStyle, contentStyle]);
     const keyboardShell = descendants(shell).find((node) => node.type === KeyboardAvoidingView);
     expect(String(keyboardShell?.props.className)).toContain('bg-background');
+    const morphingShell = animatedLayers[0];
+    expect(String(morphingShell.props.className)).not.toContain('overflow-hidden');
   });
 
   test('the shell owns one navigation bar and one footer slot for every supplied footer', () => {
@@ -147,6 +150,20 @@ describe('chat design-system surfaces', () => {
 
     scrollView?.props.onContentSizeChange?.(393, 1200);
     expect(onContentSizeChange).toHaveBeenCalledWith(393, 1200);
+  });
+
+  test('shows a completed voice transcript when coaching fails afterward', () => {
+    const surface = ChatConversationSurface({
+      scrollRef: { current: null }, messages: [], activeMessageId: 'voice-message',
+      activeRequestKind: 'voice', transcript: 'Transcription succeeded.', phase: 'error',
+      isBusy: false, error: 'Coaching is unavailable.', microphoneUnavailable: false,
+      pendingProposals: [], editingTranscript: null, onContentSizeChange: jest.fn(),
+      onEditTranscript: jest.fn(), onChangeTranscript: jest.fn(), onSubmitTranscript: jest.fn(),
+      onUseKeyboard: jest.fn(), onDiscardRecording: jest.fn(), onRetry: jest.fn(),
+      onConfirmProposal: jest.fn(), onResolveProposal: jest.fn(),
+    });
+
+    expect(descendants(surface).some((node) => node.type === PendingTranscriptBubble)).toBe(true);
   });
 
   test('hands a top-edge downward pull to the sheet gesture without iOS bounce', () => {

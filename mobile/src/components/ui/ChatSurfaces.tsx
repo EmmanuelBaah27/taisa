@@ -47,7 +47,7 @@ export function ChatScreenShell({
       className="flex-1 bg-background"
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-        <Animated.View className="flex-1 overflow-hidden bg-background" style={animatedStyle}>
+        <Animated.View className="flex-1 bg-background" style={animatedStyle}>
           <Animated.View
             testID="chat-page"
             className="flex-1 px-5"
@@ -297,7 +297,7 @@ export function ChatConversationSurface(props: ChatConversationSurfaceProps) {
           )
         ))}
 
-        {props.phase === 'processing' && props.transcript.length > 0 &&
+        {(props.phase === 'processing' || props.phase === 'error') && props.transcript.length > 0 &&
         !props.messages.some((message) => message.id === props.activeMessageId) ? (
           <PendingTranscriptBubble transcript={props.transcript} />
           ) : null}
