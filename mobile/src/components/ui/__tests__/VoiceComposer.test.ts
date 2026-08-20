@@ -76,4 +76,11 @@ describe('VoiceComposer cancellation labels', () => {
     expect(accessibilityLabels(VoiceComposer({ ...baseProps, mode: 'text', voiceState: 'none', text: 'Hello' })))
       .toContain('Send message');
   });
+
+  test('text composer uses the standard visible border token', () => {
+    const composer = VoiceComposer({ ...baseProps, mode: 'text', voiceState: 'none' });
+    const source = JSON.stringify(composer);
+    expect(source).toContain('border-border');
+    expect(source).not.toContain('border-border-subtle');
+  });
 });

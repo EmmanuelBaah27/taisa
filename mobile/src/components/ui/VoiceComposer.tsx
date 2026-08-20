@@ -106,7 +106,7 @@ export function VoiceComposer(props: VoiceComposerProps) {
         {props.transcribing ? (
           <Text className="text-center text-text-tertiary text-caption-regular">Transcribing…</Text>
         ) : null}
-        <View className="min-h-[100px] rounded-[28px] border border-border-subtle bg-background p-3">
+        <View className="min-h-[100px] rounded-[28px] border border-border bg-background p-3">
           <TextInput
             ref={textInputRef}
             value={props.text}
