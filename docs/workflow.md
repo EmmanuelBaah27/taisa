@@ -3,19 +3,9 @@
 How work moves from idea to shipped. Read this at the start of every feature session.
 Claude maintains the Active Work table — Baah never needs to update it.
 
----
-
-## Active work
-
-| Feature | Track | Stage | Branch | Blocked on |
-|---|---|---|---|---|
-| Local-first coaching platform | Platform | Build | `feature/local-first-coaching-platform` | Managed-device recovery/privacy QA is next; paid live provider evaluation remains gated; legacy-route retirement requires later explicit approval |
-| Personal alpha release | Platform + Product | Build | `feature/local-first-coaching-platform` | Code-only build complete at `850b3d6`; next gate is Baah approval to create Railway resources, add billing/secrets, and deploy. Signed iPhone installation follows as a separate gate. |
-| Post-Send streaming transcription | Platform + Product | Review + QA | `feature/local-first-coaching-platform` | Managed-device clear/uncertain/no-speech calibration before Ship approval |
-| Taisa system architecture | Platform | Review + QA | `docs/reimagine-product-scope` | Baah document review |
-| Current experience consolidation | Platform + Product | Review + QA | `feature/current-experience` | Persistent navigation capsule motion is verified automatically and launched on the paired iPhone; awaiting Baah device QA (including page-title follow-up separately) |
-| Secondary icon button | Product | Review + QA | `feature/secondary-icon-button` | Baah device QA |
-| Recording page | Product | Review + QA | `feature/secondary-icon-button` | Baah device QA |
+After this file and the Taisa workflow orchestrator, read `docs/project-memory.md` and
+then load only the accepted decisions, reusable learnings, and canonical domain documents
+relevant to the task.
 
 ---
 
@@ -150,6 +140,33 @@ Run the narrowest relevant check throughout BUILD, then run the complete applica
 
 A feature is not merged until both checks pass.
 
+### Memory promotion and closeout
+
+During Review and again before Ship, classify non-routine context using this routing:
+
+```text
+Feature-specific context -> scope, plan, QA note, or PR
+Reusable evidence -> docs/learnings.md
+Accepted cross-cutting choice -> docs/decisions/
+Current-behavior change -> canonical domain document
+```
+
+Conversational BTS notes are optional and skippable. The memory-promotion check is not:
+it runs even when BTS is skipped. Link between destinations instead of duplicating long
+explanations.
+
+Every Standard and Full scope or plan receives a `Closeout` section during Review with:
+
+- Actual outcome
+- Plan deviations
+- Learnings and decisions
+- Remaining debt
+- Canonical docs updated
+- PR and merge evidence
+
+Quick work records material closeout in its PR description or final commit. Closeout is
+agent-owned housekeeping within the existing approvals; it does not add another gate.
+
 ---
 
 ## DS update rules
@@ -198,6 +215,9 @@ Feature deprioritised mid-pipeline:
 
 | Document | Location | Written by |
 |---|---|---|
+| Project memory index | `docs/project-memory.md` | Claude (links and authority map) |
+| Decision records | `docs/decisions/NNNN-<name>.md` | Baah + Claude (approval rules apply) |
+| Reusable learnings | `docs/learnings.md` | Claude (evidence-backed, append-only) |
 | Roadmap | `docs/roadmap.md` | Both — kept current |
 | Backlog | `docs/backlog.md` | Claude (auto-maintained) |
 | Scope docs | `docs/features/<name>.md` | Claude + Baah |
@@ -206,6 +226,7 @@ Feature deprioritised mid-pipeline:
 | API reference | `docs/api.md` | Claude (updated on every route change) |
 | Workflow | `docs/workflow.md` | Claude (Active Work table) + Baah |
 | QA notes | `docs/features/<name>-qa-notes.md` | Claude (on QA failure) |
+| Work closeout | Standard/Full scope or plan | Claude (completed during Review and Ship) |
 
 **Skills invoked per stage:**
 | Stage | Skill |
