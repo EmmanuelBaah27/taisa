@@ -10,7 +10,7 @@
 
 **Spec:** `docs/superpowers/specs/2026-08-19-project-memory-system-design.md`
 
-**Status:** Awaiting Baah plan approval
+**Status:** Review — awaiting Ship approval
 
 ## Global Constraints
 
@@ -36,11 +36,11 @@
 - Consumes: the source hierarchy and governance rules in the approved spec.
 - Produces: the project-memory entry point, decision-record convention and first accepted decision, plus the append-only learning-log contract.
 
-- [ ] **Step 1: Create the project-memory index**
+- [x] **Step 1: Create the project-memory index**
 
 Write `docs/project-memory.md` with these ordered sections: `Purpose`, `Authority order`, `Start here`, `Decisions`, `Reusable learnings`, and `Work history`. Link the operating files, canonical domain documents, `docs/decisions/README.md`, `docs/learnings.md`, `docs/features/`, and `docs/superpowers/plans/`. State explicitly that canonical domain docs describe present behavior, accepted decisions explain why, and learnings are advisory until promoted.
 
-- [ ] **Step 2: Create the decision-record convention and template**
+- [x] **Step 2: Create the decision-record convention and template**
 
 Write `docs/decisions/README.md` with the filename pattern `NNNN-short-kebab-title.md`, monotonic numbering, statuses `Proposed`, `Accepted`, `Superseded`, and `Rejected`, approval rules, supersession behavior, and this exact template structure:
 
@@ -60,11 +60,11 @@ Write `docs/decisions/README.md` with the filename pattern `NNNN-short-kebab-tit
 ## References
 ```
 
-- [ ] **Step 3: Record the approved repository-native memory decision**
+- [x] **Step 3: Record the approved repository-native memory decision**
 
 Create `docs/decisions/0001-use-repository-native-project-memory.md` with status `Accepted`, date `2026-08-20`, and owners `Baah + the agent`. Contrast repository-native layered memory with chat-history dependence and an external knowledge service; record discoverability, reviewability, offline availability, and canonical-document authority as the drivers. Link the approved spec as evidence.
 
-- [ ] **Step 4: Create the reusable learning log**
+- [x] **Step 4: Create the reusable learning log**
 
 Write `docs/learnings.md` with the stable areas `Product`, `Platform`, `Mobile`, `Backend`, `Design System`, `AI`, `QA`, and `Workflow`; inclusion/exclusion guidance; correction-by-append rules; and an empty table:
 
@@ -75,7 +75,7 @@ Write `docs/learnings.md` with the stable areas `Product`, `Platform`, `Mobile`,
 
 Do not invent or backfill historical learnings.
 
-- [ ] **Step 5: Verify the artifact structure**
+- [x] **Step 5: Verify the artifact structure**
 
 Run:
 
@@ -90,7 +90,7 @@ git diff --check
 
 Expected: every command exits 0; the accepted status appears once; no whitespace errors are reported.
 
-- [ ] **Step 6: Commit the memory artifacts**
+- [x] **Step 6: Commit the memory artifacts**
 
 ```bash
 git add docs/project-memory.md docs/decisions/README.md docs/decisions/0001-use-repository-native-project-memory.md docs/learnings.md
@@ -111,11 +111,11 @@ git commit -m "docs: establish durable project memory"
 - Consumes: `docs/project-memory.md`, `docs/decisions/`, and `docs/learnings.md` from Task 1.
 - Produces: aligned startup, promotion, Review, and Ship rules for all future scoped work.
 
-- [ ] **Step 1: Add the deterministic startup route**
+- [x] **Step 1: Add the deterministic startup route**
 
 Update `AGENTS.md`, `CLAUDE.md`, `docs/workflow.md`, and the orchestrator so scoped work reads `docs/project-memory.md` after the existing operating instructions, then checks only the relevant accepted decisions and learnings. Preserve the existing Git/worktree reconciliation and approval-gate rules.
 
-- [ ] **Step 2: Add the memory-promotion rule**
+- [x] **Step 2: Add the memory-promotion rule**
 
 Document the same classification in `docs/workflow.md` and the orchestrator:
 
@@ -128,15 +128,15 @@ Current-behavior change -> canonical domain document
 
 State that conversational BTS can be skipped while the Review/Ship promotion check remains mandatory.
 
-- [ ] **Step 3: Add Standard and Full closeout requirements**
+- [x] **Step 3: Add Standard and Full closeout requirements**
 
 Require a `Closeout` section during Review with `Actual outcome`, `Plan deviations`, `Learnings and decisions`, `Remaining debt`, `Canonical docs updated`, and `PR and merge evidence`. State that Quick work records material closeout in its PR or final commit and that closeout adds no approval gate.
 
-- [ ] **Step 4: Extend document conventions and ownership**
+- [x] **Step 4: Extend document conventions and ownership**
 
 Add the memory index, decision records, learning log, and closeout ownership to `docs/workflow.md`. State that the agent maintains links and promotion housekeeping within existing Scope, Plan, and Ship approvals.
 
-- [ ] **Step 5: Check the four instruction surfaces for agreement**
+- [x] **Step 5: Check the four instruction surfaces for agreement**
 
 Run:
 
@@ -148,7 +148,7 @@ git diff --check
 
 Expected: all four startup surfaces reference the index; both workflow surfaces contain promotion and closeout rules; no whitespace errors are reported.
 
-- [ ] **Step 6: Commit the workflow integration**
+- [x] **Step 6: Commit the workflow integration**
 
 ```bash
 git add AGENTS.md CLAUDE.md docs/workflow.md .claude/skills/taisa-workflow/SKILL.md
@@ -168,15 +168,15 @@ git commit -m "docs: integrate memory into Taisa workflow"
 - Consumes: the artifacts and workflow rules from Tasks 1 and 2.
 - Produces: automated structural checks, Review-ready status, and closeout evidence for this feature.
 
-- [ ] **Step 1: Add structural assertions to the workflow verifier**
+- [x] **Step 1: Add structural assertions to the workflow verifier**
 
 Extend `scripts/verify-workflow.sh` to fail when any memory artifact is missing, the startup surfaces omit `docs/project-memory.md`, decision `0001` is not accepted, the learning table header is absent, or workflow/orchestrator closeout rules disappear. Use `test -f` and `rg -q`; do not add dependencies.
 
-- [ ] **Step 2: Add a Markdown link verifier**
+- [x] **Step 2: Add a Markdown link verifier**
 
 Add a Bash function to `scripts/verify-workflow.sh` that scans local Markdown links in the new memory artifacts, ignores `http://`, `https://`, and anchor-only targets, strips anchors from repository-relative targets, and fails with the source and unresolved target when the resolved path does not exist.
 
-- [ ] **Step 3: Run the focused verifier and contradiction search**
+- [x] **Step 3: Run the focused verifier and contradiction search**
 
 Run:
 
@@ -188,7 +188,7 @@ git diff --check
 
 Expected: the verifier and diff check exit 0. Search hits, if any, describe explicit non-goals rather than contradictory requirements.
 
-- [ ] **Step 4: Prove the diff is documentation/workflow-only**
+- [x] **Step 4: Prove the diff is documentation/workflow-only**
 
 Run:
 
@@ -199,13 +199,58 @@ git status --short
 
 Expected: only `AGENTS.md`, `CLAUDE.md`, `.claude/skills/taisa-workflow/SKILL.md`, `docs/**`, and `scripts/verify-workflow.sh` appear; no product code, package manifest, lockfile, generated output, or unrelated user file appears.
 
-- [ ] **Step 5: Complete Review closeout and stage the Ship gate**
+- [x] **Step 5: Complete Review closeout and stage the Ship gate**
 
 Set this plan status to `Review — awaiting Ship approval`. Add its `Closeout` section with the actual outcome, deviations, learning/decision links, remaining debt, canonical documents updated, and placeholders limited to `PR URL: pending Ship` and `Merge SHA: pending Ship`. Update the Active Work row to `Review + QA` blocked on `Baah document review and Ship approval`.
 
-- [ ] **Step 6: Commit verification and closeout**
+- [x] **Step 6: Commit verification and closeout**
 
 ```bash
 git add scripts/verify-workflow.sh docs/workflow.md docs/superpowers/plans/2026-08-20-project-memory-system.md
 git commit -m "test: verify project memory workflow"
 ```
+
+## Closeout
+
+### Actual outcome
+
+Taisa now has one repository-native context index, a governed decision-record system,
+an evidence-backed reusable learning log, and aligned startup, Review, closeout, and Ship
+rules. The workflow verifier enforces the new artifacts, accepted initial decision,
+learning-table contract, instruction-surface links, closeout rules, and local Markdown
+links.
+
+### Plan deviations
+
+- No product code, package manifest, lockfile, dependency, external service, or historical
+  learning backfill was added.
+- Executable feature TDD was not applicable to Markdown and workflow configuration. The
+  existing verifier established the clean baseline, and focused structural verification
+  was run after each documentation slice.
+
+### Learnings and decisions
+
+- Accepted decision: [`0001: Use repository-native project memory`](../../decisions/0001-use-repository-native-project-memory.md)
+- No reusable learning was added; the implementation produced no separate evidence-backed
+  finding beyond the approved decision itself.
+
+### Remaining debt
+
+- Linear creation and status updates remain unavailable because no Linear capability is
+  installed in this environment.
+- No historical feature closeouts or learnings were backfilled by design.
+
+### Canonical docs updated
+
+- `AGENTS.md`
+- `CLAUDE.md`
+- `docs/workflow.md`
+- `.claude/skills/taisa-workflow/SKILL.md`
+- `docs/project-memory.md`
+- `docs/decisions/README.md`
+- `docs/learnings.md`
+
+### PR and merge evidence
+
+- PR URL: pending Ship
+- Merge SHA: pending Ship

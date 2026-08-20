@@ -13,7 +13,7 @@ relevant to the task.
 
 | Feature | Track | Stage | Branch | Blocked on |
 |---|---|---|---|---|
-| Project memory system | Platform | Build | `docs/project-memory-system` | the agent implementation + verification |
+| Project memory system | Platform | Review + QA | `docs/project-memory-system` | Baah document review and Ship approval |
 
 ---
 
