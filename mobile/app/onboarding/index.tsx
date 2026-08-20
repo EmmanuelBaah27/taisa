@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 import * as Crypto from 'expo-crypto';
 import { useCareerStore } from '../../src/stores/careerStore';
 import { colors } from '../../src/constants/theme';
-import { LiquidGlassPressable } from '../../src/components/ui';
+import { LiquidGlassPressable } from '../../src/components/ui/LiquidGlassPressable';
 import {
   clearOnboardingDraft,
   loadOnboardingDraft,

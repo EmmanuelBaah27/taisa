@@ -2,7 +2,8 @@ import { useCallback, useRef } from 'react';
 import { ActivityIndicator, SectionList, Text, useWindowDimensions, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 
-import { ChatListRow, LiquidGlassPressable } from '../../src/components/ui';
+import { ChatListRow } from '../../src/components/ui/ChatListRow';
+import { LiquidGlassPressable } from '../../src/components/ui/LiquidGlassPressable';
 import { colors } from '../../src/constants/theme';
 import { useScrollContext } from '../../src/contexts/ScrollContext';
 import type { ChatCardFrame } from '../../src/navigation/chatCardExpansion';

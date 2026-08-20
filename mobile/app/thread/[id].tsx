@@ -5,7 +5,7 @@ import { useThreadStore } from '../../src/stores/threadStore';
 import { TaisaReplyCard } from '../../src/components/ui/TaisaReplyCard';
 import { colors } from '../../src/constants/theme';
 import type { ChatMessage } from '../../src/stores/threadStore';
-import { LiquidGlassPressable } from '../../src/components/ui';
+import { LiquidGlassPressable } from '../../src/components/ui/LiquidGlassPressable';
 
 export default function ThreadScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();

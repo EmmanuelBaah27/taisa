@@ -21,7 +21,7 @@ import {
   type StartupProfileResult,
 } from '../src/services/startupProfile';
 import { CURRENT_INITIAL_STACK } from '../src/navigation/currentExperience';
-import { LiquidGlassPressable } from '../src/components/ui';
+import { LiquidGlassPressable } from '../src/components/ui/LiquidGlassPressable';
 
 SplashScreen.preventAutoHideAsync();
 

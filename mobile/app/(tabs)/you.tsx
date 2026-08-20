@@ -7,7 +7,7 @@ import { ThemeTag } from '../../src/components/ThemeTag';
 import { useScrollContext } from '../../src/contexts/ScrollContext';
 import { colors } from '../../src/constants/theme';
 import { NaviiAvatar } from '../../src/components/ui/NaviiAvatar';
-import { LiquidGlassPressable } from '../../src/components/ui';
+import { LiquidGlassPressable } from '../../src/components/ui/LiquidGlassPressable';
 import {
   ArchiveOperationError,
   exportEncryptedArchive,
