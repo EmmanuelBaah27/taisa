@@ -12,9 +12,11 @@ import { useThreadStore } from '../../src/stores/threadStore';
 import { useUIStore } from '../../src/stores/uiStore';
 import {
   getChatPreview,
+  getChatTitle,
   groupChatsByDate,
   type ChatSummary,
 } from '../../src/utils/chatPresentation';
+
 interface ChatSection {
   key: string;
   label: string;
@@ -57,6 +59,7 @@ export default function ChatsScreen() {
     updatedAt: thread.lastMessageAt,
     lastUserMessage: thread.lastUserMessage,
     lastAssistantMessage: thread.lastAssistantMessage,
+    lastMessage: thread.lastMessage,
   })));
   const sections: ChatSection[] = groups.map((group) => ({
     key: group.key,
@@ -92,14 +95,18 @@ export default function ChatsScreen() {
         stickySectionHeadersEnabled
         keyExtractor={(chat) => chat.id}
         renderSectionHeader={({ section }) => (
-          <Text className="-mx-5 bg-background px-5 py-[2px] text-muted-foreground text-small-regular">
-            {section.label}
-          </Text>
+          <View className="-mx-5 bg-background px-5 py-1">
+            <View className="self-start rounded-full bg-muted px-3 py-1">
+              <Text className="text-muted-foreground text-caption-semibold uppercase">
+                {section.label}
+              </Text>
+            </View>
+          </View>
         )}
         renderSectionFooter={() => <View className="h-5" />}
         renderItem={({ item: chat }) => (
           <ChatListRow
-            title={chat.title || 'Untitled chat'}
+            title={getChatTitle(chat)}
             preview={getChatPreview(chat)}
             onOpen={(frame) => openChat(chat, frame)}
           />

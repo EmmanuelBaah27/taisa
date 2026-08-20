@@ -233,6 +233,27 @@ describe('local-first capture navigation', () => {
     expect(tabLayout).not.toMatch(/<ChatScreen/);
   });
 
+  test('main tabs use the route-authoritative navigator without a hand-written horizontal gesture', () => {
+    const tabLayout = fs.readFileSync(
+      path.resolve(__dirname, '../../../app/(tabs)/_layout.tsx'),
+      'utf8',
+    );
+    const mainNavigator = fs.readFileSync(
+      path.resolve(__dirname, '../InteractiveMainNavigator.tsx'),
+      'utf8',
+    );
+
+    expect(tabLayout).not.toMatch(/pageTranslateX|pageSwipeGesture|exitX/);
+    expect(tabLayout).toMatch(/backgroundColor: PAGE_TRANSITION\.backdropColor/);
+    expect(tabLayout).toMatch(/<InteractiveMainNavigator initialRouteName=\{CURRENT_INITIAL_TAB\}>/);
+    expect(tabLayout).toMatch(/<InteractiveMainNavigator\.Screen name="chats" \/>[\s\S]*name="index"[\s\S]*name="you"/);
+    expect(tabLayout).not.toMatch(/name="logs"|name="insights"|name="goals"/);
+    expect(mainNavigator).toMatch(/useNavigationBuilder<[\s\S]*?>\(TabRouter/);
+    expect(mainNavigator).toMatch(/withLayoutContext/);
+    expect(mainNavigator).toMatch(/className="flex-1 overflow-hidden bg-white"/);
+    expect(mainNavigator).not.toMatch(/react-native-pager-view/);
+  });
+
   test('a microphone failure offers a working keyboard fallback that selects text mode', () => {
     const chatScreen = fs.readFileSync(
       path.resolve(__dirname, '../../../app/chat/index.tsx'),

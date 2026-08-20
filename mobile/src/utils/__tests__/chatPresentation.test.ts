@@ -1,5 +1,6 @@
 import {
   getChatPreview,
+  getChatTitle,
   groupChatsByDate,
   type ChatSummary,
 } from '../chatPresentation';
@@ -43,5 +44,19 @@ describe('chat presentation', () => {
     expect(getChatPreview(summaries[0])).toBe('User note');
     expect(getChatPreview(summaries[1])).toBe('Coach only');
     expect(getChatPreview(summaries[2])).toBe('Open conversation');
+  });
+
+  test('shows the actual latest message regardless of sender when supplied', () => {
+    expect(getChatPreview({ ...summaries[0], lastMessage: 'Newest assistant reply' }))
+      .toBe('Newest assistant reply');
+  });
+
+  test('replaces generic voice-reflection titles with a concise conversation topic', () => {
+    expect(getChatTitle({
+      ...summaries[0],
+      title: 'Voice reflection',
+      lastUserMessage: 'Preparing for the stakeholder review and clarifying the decision',
+    })).toBe('Preparing for the stakeholder review and clarifying…');
+    expect(getChatTitle(summaries[0])).toBe('Older');
   });
 });
