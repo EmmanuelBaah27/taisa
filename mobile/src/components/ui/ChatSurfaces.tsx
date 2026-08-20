@@ -356,7 +356,7 @@ export function ChatComposerDock({ phase, bottomInset, children }: ChatComposerD
   ) : (
     <LinearGradient
       colors={[colors.backgroundTransparent, colors.background]}
-      style={{ paddingTop: 24, paddingBottom: bottomInset + 12 }}
+      style={{ paddingTop: 8, paddingBottom: bottomInset + 12 }}
     >
       {children}
     </LinearGradient>

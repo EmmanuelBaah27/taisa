@@ -4,6 +4,7 @@ import { ScrollView } from 'react-native-gesture-handler';
 
 import {
   ChatConversationSurface,
+  ChatComposerDock,
   ChatMessageBubble,
   ChatScreenShell,
   PendingProposalCard,
@@ -205,6 +206,16 @@ describe('chat design-system surfaces', () => {
     expect(header.props.style).toMatchObject({ paddingTop: 47 });
     expect(fade?.props.style).toMatchObject({ bottom: -20, height: 20 });
     expect(fade?.props.locations).toEqual([0, 1]);
+  });
+
+  test('the composer dock keeps only a small fade inset above the textbox', () => {
+    const dock = ChatComposerDock({
+      phase: 'idle',
+      bottomInset: 34,
+      children: React.createElement(View, { testID: 'textbox' }),
+    });
+
+    expect(dock.props.style).toMatchObject({ paddingTop: 8, paddingBottom: 46 });
   });
 
   test('the assistant reply is unboxed base body copy', () => {
