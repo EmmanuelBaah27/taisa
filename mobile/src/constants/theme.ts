@@ -1,8 +1,6 @@
 export const colors = {
   background: '#ffffff',
   backgroundTransparent: 'rgba(255,255,255,0)',
-  pageHeaderTint: 'rgba(255,255,255,0.62)',
-  pageHeaderFade: 'rgba(255,255,255,0.72)',
   surface: '#ffffff',
   surfaceElevated: '#f9f9f9',
   border: '#e6e6e6',

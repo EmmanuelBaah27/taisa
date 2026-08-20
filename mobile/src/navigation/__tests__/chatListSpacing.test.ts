@@ -16,8 +16,8 @@ describe('Chats list spacing', () => {
   });
 
   test('renders sticky date groups as compact muted badges', () => {
-    expect(source).toContain('className="-mx-5 bg-background px-5 py-1"');
-    expect(source).toContain('className="self-start rounded-full bg-muted px-3 py-1"');
+    expect(source).toContain('className="-mx-5 px-5 py-1"');
+    expect(source).toContain('className="self-start rounded-full border border-neutral-200 bg-background px-3 py-1"');
     expect(source).not.toMatch(/text-caption-semibold uppercase/);
   });
 
@@ -31,9 +31,9 @@ describe('Chats list spacing', () => {
     expect(homeSource).not.toMatch(/text-xs font-bold uppercase tracking-wider mb-3/);
   });
 
-  test('places main-page content beneath the shared translucent headers', () => {
-    expect(homeSource).toContain("getPageHeaderScrollInset(pageHeaderPaddingTop, 'workspace') + 8");
-    expect(source).toContain("getPageHeaderScrollInset(pageHeaderPaddingTop, 'title')");
+  test('places main-page content beneath the shared fixed headers', () => {
+    expect(homeSource).toContain("marginTop: getPageHeaderScrollInset(pageHeaderPaddingTop, 'workspace')");
+    expect(source).toContain("marginTop: getPageHeaderScrollInset(pageHeaderPaddingTop, 'title')");
     expect(source).toContain('<PageHeaderSurface');
   });
 });

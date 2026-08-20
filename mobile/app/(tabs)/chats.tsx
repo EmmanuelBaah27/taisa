@@ -100,17 +100,17 @@ export default function ChatsScreen() {
       <SectionList
         ref={scrollRef}
         className="flex-1"
+        style={{ marginTop: getPageHeaderScrollInset(pageHeaderPaddingTop, 'title') }}
         sections={sections}
         contentContainerStyle={{
           paddingHorizontal: 20,
-          paddingTop: getPageHeaderScrollInset(pageHeaderPaddingTop, 'title'),
           paddingBottom: 140,
         }}
         stickySectionHeadersEnabled
         keyExtractor={(chat) => chat.id}
         renderSectionHeader={({ section }) => (
-          <View className="-mx-5 bg-background px-5 py-1">
-            <View className="self-start rounded-full bg-muted px-3 py-1">
+          <View className="-mx-5 px-5 py-1">
+            <View className="self-start rounded-full border border-neutral-200 bg-background px-3 py-1">
               <Text className="text-muted-foreground text-caption-semibold">
                 {section.label}
               </Text>

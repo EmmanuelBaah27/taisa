@@ -29,11 +29,12 @@ export default function TodayScreen() {
       <WorkspaceHeader subtitle="Progress against goals and work over time" />
       <ScrollView
         className="flex-1"
+        style={{ marginTop: getPageHeaderScrollInset(pageHeaderPaddingTop, 'workspace') }}
         onScroll={(e) => reportScroll(e.nativeEvent.contentOffset.y)}
         scrollEventThrottle={16}
         contentContainerStyle={{
           paddingHorizontal: 20,
-          paddingTop: getPageHeaderScrollInset(pageHeaderPaddingTop, 'workspace') + 8,
+          paddingTop: 8,
           paddingBottom: 120,
         }}
       >

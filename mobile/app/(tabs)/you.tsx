@@ -181,11 +181,12 @@ export default function YouScreen() {
       </PageHeaderSurface>
     <ScrollView
       className="flex-1 bg-background"
+      style={{ marginTop: getPageHeaderScrollInset(pageHeaderPaddingTop, 'title') }}
       onScroll={(e) => reportScroll(e.nativeEvent.contentOffset.y)}
       scrollEventThrottle={16}
       contentContainerStyle={{
         paddingHorizontal: 16,
-        paddingTop: getPageHeaderScrollInset(pageHeaderPaddingTop, 'title') + 8,
+        paddingTop: 8,
         paddingBottom: 120,
       }}
     >
