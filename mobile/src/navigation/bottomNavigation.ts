@@ -222,10 +222,10 @@ export const BOTTOM_NAVIGATION_FIGMA = {
   fadeHeight: 90,
   elevation: {
     color: '#5B5F63',
-    opacity: 0.12,
-    radius: 24,
-    offsetY: 8,
-    elevation: 8,
+    opacity: 0.16,
+    radius: 28,
+    offsetY: 10,
+    elevation: 10,
     casterColor: 'rgba(255,255,255,0.01)',
   },
   selectedItem: {

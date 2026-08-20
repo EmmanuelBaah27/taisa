@@ -62,7 +62,6 @@ const ITEM_WIDTHS = [
 ] as const;
 const CAPSULE_X = [6, 66, 126] as const;
 const CAPSULE_WIDTH = [108, 108, 88] as const;
-const CAPSULE_OPTICAL_OFFSET_Y = 2;
 const PRESS_SPRING = { damping: 24, stiffness: 360, mass: 0.7 } as const;
 
 function NavigationMaterial({ children }: { children: ReactNode }) {
@@ -154,7 +153,7 @@ function SmoothDestination({ item, index, pagePosition, userId, onPress, onPress
   return (
     <Animated.View
       style={[{
-        position: 'absolute', top: 6 + CAPSULE_OPTICAL_OFFSET_Y, height: 48,
+        position: 'absolute', top: 6, height: 48,
       }, frameStyle]}
     >
       <Pressable
@@ -260,7 +259,7 @@ export function BottomNavBar() {
               pointerEvents="none"
               className="absolute rounded-[32px] bg-[rgba(15,16,16,0.06)]"
               style={[
-                { top: 6 + CAPSULE_OPTICAL_OFFSET_Y, height: 48 },
+                { top: 6, height: 48 },
                 capsuleStyle,
               ]}
             />

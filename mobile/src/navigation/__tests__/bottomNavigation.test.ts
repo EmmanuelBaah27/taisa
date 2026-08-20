@@ -210,15 +210,14 @@ describe('bottom navigation', () => {
     expect(source).toContain('return { left, width };');
   });
 
-  test('applies one shared optical vertical correction without resizing the shell or capsule', () => {
+  test('centres selected content and capsule with equal vertical shell padding', () => {
     const source = readFileSync(
       resolve(__dirname, '../../components/ui/BottomNavBar.tsx'),
       'utf8',
     );
 
-    expect(source).toContain('const CAPSULE_OPTICAL_OFFSET_Y = 2');
-    expect(source).toMatch(/top: 6 \+ CAPSULE_OPTICAL_OFFSET_Y, height: 48/);
-    expect(source).toMatch(/top: 6 \+ CAPSULE_OPTICAL_OFFSET_Y[\s\S]*height: 48/);
+    expect(source).not.toContain('CAPSULE_OPTICAL_OFFSET_Y');
+    expect(source.match(/top: 6, height: 48/g)).toHaveLength(2);
   });
 
   test('moves inactive destinations clear of the selected capsule', () => {
@@ -310,13 +309,13 @@ describe('bottom navigation', () => {
     expect(fallback).toHaveBeenCalledTimes(1);
   });
 
-  test('uses a faint neutral elevation instead of a lime navigation glow', () => {
+  test('uses a broad soft neutral elevation instead of a lime navigation glow', () => {
     expect(BOTTOM_NAVIGATION_FIGMA.elevation).toEqual({
       color: '#5B5F63',
-      opacity: 0.12,
-      radius: 24,
-      offsetY: 8,
-      elevation: 8,
+      opacity: 0.16,
+      radius: 28,
+      offsetY: 10,
+      elevation: 10,
       casterColor: 'rgba(255,255,255,0.01)',
     });
   });
