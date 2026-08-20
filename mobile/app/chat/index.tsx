@@ -1,11 +1,19 @@
 import { useEffect, useReducer, useRef, useState } from 'react';
 import {
   Alert,
+  View,
+  useWindowDimensions,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAnimatedStyle } from 'react-native-reanimated';
-import type { ScrollView } from 'react-native-gesture-handler';
+import {
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
+import { Gesture, GestureDetector, type ScrollView } from 'react-native-gesture-handler';
 import { useVoiceRecorder } from '../../src/hooks/useVoiceRecorder';
 import type { RecordingResult } from '../../src/services/audio';
 import {
@@ -56,7 +64,11 @@ import {
 import { buildFeedbackPreview } from '../../src/services/feedbackBundle';
 import api from '../../src/services/api';
 import { createFeedbackClient } from '../../src/services/feedbackClient';
-import { parseChatCardSource } from '../../src/navigation/chatCardExpansion';
+import {
+  parseChatCardSource,
+  shouldDismissChatSheet,
+} from '../../src/navigation/chatCardExpansion';
+import { isRecorderAcquiring } from '../../src/services/recorderAcquisition';
 
 interface ChatScreenProps {
   presentation?: ChatPresentation;
@@ -79,6 +91,7 @@ function promptEditable(title: string, value: string): Promise<string | null> {
 
 export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) {
   const insets = useSafeAreaInsets();
+  const { height: viewportHeight } = useWindowDimensions();
   const routeParams = useLocalSearchParams<{
     conversationId?: string | string[];
     cardX?: string | string[];
@@ -128,6 +141,7 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
   } = useThreadStore();
   const { setChatMorphing, consumeVoiceAutoStart } = useUIStore();
   const sourceSnapshot = parseChatCardSource(routeParams);
+  const conversationAtTop = useSharedValue(true);
   const {
     translateX,
     translateY,
@@ -202,9 +216,11 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
   );
 
   const recorder = useVoiceRecorder();
-  const recorderAcquiring = (
-    composer.voice === 'recording' || composer.voice === 'paused'
-  ) && pendingRecording === null && !recorder.isRecording;
+  const recorderAcquiring = isRecorderAcquiring(
+    composer.voice,
+    pendingRecording !== null,
+    recorder.isRecording,
+  );
 
   function discardPendingRecording() {
     if (recordingSubmissionLeaseRef.current !== null) {
@@ -795,6 +811,37 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
     close(commitClose);
   }
 
+  function handleGestureClose() {
+    if (closingRef.current) return;
+    closingRef.current = true;
+    void stopActiveRecordingAndDiscard().catch(() => {});
+    discardPendingRecording();
+    commitClose();
+  }
+
+  const sheetPanGesture = Gesture.Pan()
+    .activeOffsetY(8)
+    .failOffsetX([-24, 24])
+    .onUpdate((event) => {
+      if (!conversationAtTop.value || event.translationY <= 0) return;
+      translateY.value = event.translationY;
+    })
+    .onEnd((event) => {
+      if (shouldDismissChatSheet({
+        atTop: conversationAtTop.value,
+        translationY: event.translationY,
+        velocityY: event.velocityY,
+      })) {
+        translateY.value = withTiming(viewportHeight, { duration: 220 }, (finished) => {
+          if (finished) runOnJS(handleGestureClose)();
+        });
+        return;
+      }
+      translateY.value = withSpring(0, { damping: 28, stiffness: 320, overshootClamping: true });
+    });
+
+  const sheetGesture = Gesture.Simultaneous(Gesture.Native(), sheetPanGesture);
+
   async function handleCancelVoice() {
     if (voiceCancelDestination(initialConversationIdRef.current) === 'close') {
       handleClose();
@@ -841,6 +888,7 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
       microphoneUnavailable={recordingStartFailed}
       pendingProposals={pendingProposals}
       editingTranscript={editingTranscript}
+      onScrollAtTopChange={(atTop) => { conversationAtTop.value = atTop; }}
       onContentSizeChange={handleConversationContentSizeChange}
       reactions={reactions}
       onEditTranscript={setEditingTranscript}
@@ -911,15 +959,19 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
   );
 
   return (
-    <ChatScreenShell
-      topInset={insets.top}
-      title="Taisa"
-      animatedStyle={slideStyle}
-      contentAnimatedStyle={contentStyle}
-      onClose={handleClose}
-      footer={chatFooter}
-    >
-      {chatContent}
-    </ChatScreenShell>
+    <GestureDetector gesture={sheetGesture}>
+      <View collapsable={false} style={{ flex: 1 }}>
+        <ChatScreenShell
+          topInset={insets.top}
+          title="Taisa"
+          animatedStyle={slideStyle}
+          contentAnimatedStyle={contentStyle}
+          onClose={handleClose}
+          footer={chatFooter}
+        >
+          {chatContent}
+        </ChatScreenShell>
+      </View>
+    </GestureDetector>
   );
 }

@@ -98,7 +98,10 @@ describe('local-first capture navigation', () => {
       'utf8',
     );
 
-    expect(chatScreen).not.toMatch(/Gesture\.Pan|gestureCommitClose|commitClose\(300\)|commitClose\(340\)/);
+    expect(chatScreen).toMatch(/Gesture\.Pan/);
+    expect(chatScreen).toMatch(/onScrollAtTopChange/);
+    expect(chatScreen).toMatch(/shouldDismissChatSheet/);
+    expect(chatScreen).toMatch(/<GestureDetector[\s\S]*<View\s+collapsable=\{false\}[\s\S]*<ChatScreenShell/);
     expect(chatScreen).toMatch(/close\(commitClose\)/);
     expect(chatScreen).toMatch(/if \(sourceSnapshot === null\)[\s\S]*commitClose\(\)/);
     expect(chatScreen).toMatch(/if \(sourceSnapshot === null\) await fetchThreads\(\)/);
@@ -141,7 +144,7 @@ describe('local-first capture navigation', () => {
       'utf8',
     );
 
-    expect(chatScreen).toMatch(/const recorderAcquiring = [\s\S]*!recorder\.isRecording/);
+    expect(chatScreen).toMatch(/const recorderAcquiring = isRecorderAcquiring\([\s\S]*composer\.voice[\s\S]*pendingRecording[\s\S]*recorder\.isRecording/);
     expect(chatScreen).toMatch(/recordingActionDisabled=\{recorderAcquiring\}/);
     expect(chatScreen).toMatch(/async function handleComposerSend\(\) \{[\s\S]*if \(recorderAcquiring\) return;[\s\S]*dispatchComposer\(\{ type: 'send' \}\)/);
     expect(chatScreen).toMatch(/async function handlePauseVoice\(\) \{[\s\S]*if \(recorderAcquiring\) return;/);

@@ -20,6 +20,7 @@ import {
   BOTTOM_NAVIGATION_LABEL_WIDTHS,
   BOTTOM_NAVIGATION_FIGMA,
   BOTTOM_NAVIGATION_FALLBACK_GLASS,
+  commitBottomNavigationRoute,
   getBottomNavigationCapsuleCenterOffset,
   getBottomNavigationCapsuleFrame,
   getBottomNavigationDestinationOffsets,
@@ -237,7 +238,7 @@ export function BottomNavBar() {
     path === '/' ? pathname === '/' || pathname === '/index' : pathname.startsWith(path)
   );
   const activeIndex = BOTTOM_NAVIGATION_ITEMS.findIndex((item) => isActive(item.path));
-  const activeId = BOTTOM_NAVIGATION_ITEMS[activeIndex]?.id ?? 'logs';
+  const activeId = BOTTOM_NAVIGATION_ITEMS[activeIndex]?.id ?? 'index';
   const initialFrame = getBottomNavigationCapsuleFrame(activeId);
   const initialDestinationOffsets = getBottomNavigationDestinationOffsets(activeId);
   const initialItemFrames = getBottomNavigationItemFrames(activeId);
@@ -252,7 +253,6 @@ export function BottomNavBar() {
   const latestTransitionRef = useRef({ destination: activeId, sequence: 0 });
   const mountedRef = useRef(true);
   const cancelledPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const navigationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fillRestoreTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pressAttemptRef = useRef<{
     sequence: number;
@@ -917,28 +917,12 @@ export function BottomNavBar() {
 
   const navigateTo = useCallback((item: BottomNavigationItem) => {
     pressAttemptRef.current.navigationCommitted = true;
-    if (navigationTimerRef.current) clearTimeout(navigationTimerRef.current);
-    const commitNavigation = () => {
-      navigationTimerRef.current = null;
-      if (!mountedRef.current) return;
-      router.navigate(item.path as never);
-      if (transitionRef.current.phase === 'settling') {
-        finishCapsuleTransition(item.id, latestTransitionRef.current.sequence);
-      }
-    };
-
-    if (reduceMotion || transitionRef.current.to === activeId) {
-      commitNavigation();
-      return;
+    commitBottomNavigationRoute(() => router.navigate(item.path as never));
+    if (transitionRef.current.phase === 'settling') {
+      finishCapsuleTransition(item.id, latestTransitionRef.current.sequence);
     }
-    navigationTimerRef.current = setTimeout(
-      commitNavigation,
-      BOTTOM_NAVIGATION_FIGMA.routeMotionLeadDuration,
-    );
   }, [
-    activeId,
     finishCapsuleTransition,
-    reduceMotion,
   ]);
 
   useEffect(() => {
@@ -964,10 +948,6 @@ export function BottomNavBar() {
       if (cancelledPressTimerRef.current) {
         clearTimeout(cancelledPressTimerRef.current);
         cancelledPressTimerRef.current = null;
-      }
-      if (navigationTimerRef.current) {
-        clearTimeout(navigationTimerRef.current);
-        navigationTimerRef.current = null;
       }
       if (fillRestoreTimerRef.current) {
         clearTimeout(fillRestoreTimerRef.current);

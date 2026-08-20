@@ -7,10 +7,10 @@ import {
 import { chatThreadRoute } from '../chatConversationRoute';
 
 describe('current experience navigation', () => {
-  test('initialized launches enter Chats without exposing the legacy Logs label', () => {
-    expect(CURRENT_INITIAL_TAB).toBe('logs');
+  test('initialized launches enter Home in the middle of Chats and Me', () => {
+    expect(CURRENT_INITIAL_TAB).toBe('index');
     expect(CURRENT_INITIAL_STACK).toBe('(tabs)');
-    expect(CURRENT_INITIAL_TAB_PATH).toBe('/logs');
+    expect(CURRENT_INITIAL_TAB_PATH).toBe('/');
     expect(CURRENT_HISTORY_LABEL).toBe('Chats');
     expect(CURRENT_HISTORY_LABEL).not.toBe('Logs');
   });

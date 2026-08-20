@@ -1,4 +1,4 @@
-import type { ReactNode, RefObject } from 'react';
+import { Component, type ReactNode, type RefObject } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -46,7 +46,11 @@ export function ChatScreenShell({
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
         <Animated.View className="flex-1 overflow-hidden bg-background" style={animatedStyle}>
-          <Animated.View className="flex-1" style={contentAnimatedStyle}>
+          <Animated.View
+            testID="chat-page"
+            className="flex-1 px-5"
+            style={contentAnimatedStyle}
+          >
             <ChatNavBar title={title} topInset={topInset} onClose={onClose} />
             {children}
             {footer}
@@ -74,7 +78,8 @@ export function ChatMessageBubble({
       accessibilityLabel={editable ? 'Correct voice transcript' : undefined}
       disabled={!editable}
       onPress={onEdit}
-      className="mb-8 max-w-[336px] self-end rounded-8 bg-muted px-4 py-4"
+      className="mb-8 max-w-[336px] self-end bg-muted px-4 py-4"
+      style={{ borderRadius: 28 }}
     >
       <Text className="text-foreground text-base-regular">{content}</Text>
       {showCorrectionHint ? (
@@ -227,13 +232,40 @@ export interface ChatConversationSurfaceProps {
   onShareExample?: (responseId: string) => void;
 }
 
+interface RevealableTaisaReplyProps {
+  message: ChatMessage;
+  reaction: ResponseReaction | null;
+  onReact?: (responseId: string, reaction: ResponseReaction) => void;
+  onShareExample?: (responseId: string) => void;
+}
+
+class RevealableTaisaReply extends Component<RevealableTaisaReplyProps, { visible: boolean }> {
+  state = { visible: false };
+
+  render() {
+    const { message, reaction, onReact, onShareExample } = this.props;
+    return (
+      <TaisaReplyCard
+        appearance="plain"
+        responseId={message.id}
+        content={message.content}
+        reaction={reaction}
+        onReact={onReact}
+        onShareExample={onShareExample}
+        showRatingOptions={this.state.visible}
+        onShowRatingOptions={() => this.setState({ visible: true })}
+      />
+    );
+  }
+}
+
 export function ChatConversationSurface(props: ChatConversationSurfaceProps) {
   return (
     <View className="flex-1">
       <ScrollView
         ref={props.scrollRef}
         className="flex-1"
-        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 32, paddingBottom: 40 }}
+        contentContainerStyle={{ paddingTop: 12, paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}
         onScroll={(event) => props.onScrollAtTopChange?.(event.nativeEvent.contentOffset.y <= 2)}
         onContentSizeChange={props.onContentSizeChange}
@@ -241,11 +273,9 @@ export function ChatConversationSurface(props: ChatConversationSurfaceProps) {
       >
         {props.messages.filter((message) => message.content.length > 0).map((message) => (
           message.role === 'assistant' ? (
-            <TaisaReplyCard
+            <RevealableTaisaReply
               key={message.id}
-              appearance="plain"
-              responseId={message.id}
-              content={message.content}
+              message={message}
               reaction={props.reactions?.[message.id] ?? null}
               onReact={props.onReact}
               onShareExample={props.onShareExample}
@@ -326,7 +356,7 @@ export function ChatComposerDock({ phase, bottomInset, children }: ChatComposerD
   ) : (
     <LinearGradient
       colors={[colors.backgroundTransparent, colors.background]}
-      style={{ paddingHorizontal: 16, paddingTop: 24, paddingBottom: bottomInset + 12 }}
+      style={{ paddingTop: 24, paddingBottom: bottomInset + 12 }}
     >
       {children}
     </LinearGradient>

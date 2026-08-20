@@ -3,15 +3,18 @@ import {
   BOTTOM_NAVIGATION_ACTIVE_FILL,
   BOTTOM_NAVIGATION_FIGMA,
   BOTTOM_NAVIGATION_FALLBACK_GLASS,
+  commitBottomNavigationRoute,
   getBottomNavigationCapsuleFrame,
   getBottomNavigationCapsuleCenterOffset,
   getBottomNavigationDestinationCenterOffset,
   getBottomNavigationDestinationOffsets,
   getBottomNavigationRenderPolicy,
+  getBottomNavigationPageTransition,
   getBottomNavigationSurfaceTimeline,
   getBottomNavigationTransitionStartPolicy,
   getBottomNavigationLayout,
   getBottomNavigationItemFrames,
+  getAdjacentBottomNavigationDestination,
   getBottomNavigationStateLayout,
   resolveGlassAvailability,
   resolveOptionalGlassModule,
@@ -36,10 +39,17 @@ describe('bottom navigation', () => {
 
   test('exposes only the approved Home, Chats, and Me destinations', () => {
     expect(BOTTOM_NAVIGATION_ITEMS).toEqual([
+      { id: 'chats', label: 'Chats', path: '/chats', icon: 'IconChatBubbles' },
       { id: 'index', label: 'Home', path: '/', icon: 'IconHomeLine' },
-      { id: 'logs', label: 'Chats', path: '/logs', icon: 'IconChatBubbles' },
       { id: 'you', label: 'Me', path: '/you', icon: 'IconPeopleCircle' },
     ]);
+  });
+
+  test('pages horizontally through Chats, Home, and Me without wrapping', () => {
+    expect(getAdjacentBottomNavigationDestination('index', 'right')).toBe('chats');
+    expect(getAdjacentBottomNavigationDestination('index', 'left')).toBe('you');
+    expect(getAdjacentBottomNavigationDestination('chats', 'right')).toBeNull();
+    expect(getAdjacentBottomNavigationDestination('you', 'left')).toBeNull();
   });
 
   test('matches the Figma bottom-control geometry on the reference device', () => {
@@ -91,12 +101,12 @@ describe('bottom navigation', () => {
   test('matches the Figma width for each active navigation state', () => {
     expect(getBottomNavigationStateLayout('index')).toEqual({
       navigationWidth: 240,
-      itemWidths: [108, 56, 56],
+      itemWidths: [56, 108, 56],
       activeContentDirection: 'row',
     });
-    expect(getBottomNavigationStateLayout('logs')).toEqual({
+    expect(getBottomNavigationStateLayout('chats')).toEqual({
       navigationWidth: 240,
-      itemWidths: [56, 108, 56],
+      itemWidths: [108, 56, 56],
       activeContentDirection: 'row',
     });
     expect(getBottomNavigationStateLayout('you')).toEqual({
@@ -169,23 +179,23 @@ describe('bottom navigation', () => {
   });
 
   test('keeps destination hit targets fixed while the capsule moves', () => {
-    expect(getBottomNavigationDestinationCenterOffset('index')).toBe(-60);
-    expect(getBottomNavigationDestinationCenterOffset('logs')).toBe(0);
+    expect(getBottomNavigationDestinationCenterOffset('chats')).toBe(-60);
+    expect(getBottomNavigationDestinationCenterOffset('index')).toBe(0);
     expect(getBottomNavigationDestinationCenterOffset('you')).toBe(60);
   });
 
   test('moves inactive destinations clear of the selected capsule', () => {
-    expect(getBottomNavigationDestinationOffsets('index')).toEqual([-60, 26, 86]);
-    expect(getBottomNavigationDestinationOffsets('logs')).toEqual([-86, 0, 86]);
+    expect(getBottomNavigationDestinationOffsets('chats')).toEqual([-60, 26, 86]);
+    expect(getBottomNavigationDestinationOffsets('index')).toEqual([-86, 0, 86]);
     expect(getBottomNavigationDestinationOffsets('you')).toEqual([-76, -16, 60]);
   });
 
   test('keeps each tab identity in a persistent destination frame', () => {
     expect(getBottomNavigationItemFrames('index')).toEqual([
-      { x: 6, width: 108 }, { x: 118, width: 56 }, { x: 178, width: 56 },
-    ]);
-    expect(getBottomNavigationItemFrames('logs')).toEqual([
       { x: 6, width: 56 }, { x: 66, width: 108 }, { x: 178, width: 56 },
+    ]);
+    expect(getBottomNavigationItemFrames('chats')).toEqual([
+      { x: 6, width: 108 }, { x: 118, width: 56 }, { x: 178, width: 56 },
     ]);
     expect(getBottomNavigationItemFrames('you')).toEqual([
       { x: 6, width: 56 }, { x: 66, width: 56 }, { x: 126, width: 88 },
@@ -204,8 +214,17 @@ describe('bottom navigation', () => {
     });
   });
 
-  test('lets navigation motion establish before mounting the destination screen', () => {
-    expect(BOTTOM_NAVIGATION_FIGMA.routeMotionLeadDuration).toBe(260);
+  test('routes immediately and fades the destination while the capsule is still travelling', () => {
+    const events: string[] = [];
+    commitBottomNavigationRoute(() => events.push('route'));
+    events.push('after-commit');
+
+    expect(events).toEqual(['route', 'after-commit']);
+    expect(getBottomNavigationPageTransition()).toEqual({
+      sceneAnimation: 'fade',
+      backdropColor: '#ffffff',
+    });
+    expect(BOTTOM_NAVIGATION_FIGMA.capsuleMotion.duration).toBe(260);
   });
 
   test('crossfades reduced-motion surfaces and content together', () => {
@@ -215,22 +234,22 @@ describe('bottom navigation', () => {
   });
 
   test('matches the persistent capsule frame for each destination', () => {
-    expect(getBottomNavigationCapsuleFrame('index')).toEqual({ shellWidth: 240, x: 6, width: 108 });
-    expect(getBottomNavigationCapsuleFrame('logs')).toEqual({ shellWidth: 240, x: 66, width: 108 });
+    expect(getBottomNavigationCapsuleFrame('chats')).toEqual({ shellWidth: 240, x: 6, width: 108 });
+    expect(getBottomNavigationCapsuleFrame('index')).toEqual({ shellWidth: 240, x: 66, width: 108 });
     expect(getBottomNavigationCapsuleFrame('you')).toEqual({ shellWidth: 220, x: 126, width: 88 });
   });
 
   test('keeps capsule coordinates stable when the centered shell changes width', () => {
-    expect(getBottomNavigationCapsuleCenterOffset('index')).toBe(-114);
-    expect(getBottomNavigationCapsuleCenterOffset('logs')).toBe(-54);
+    expect(getBottomNavigationCapsuleCenterOffset('chats')).toBe(-114);
+    expect(getBottomNavigationCapsuleCenterOffset('index')).toBe(-54);
     expect(getBottomNavigationCapsuleCenterOffset('you')).toBe(16);
   });
 
   test('models travelling, interruption, settlement, and selected fill visibility', () => {
-    const resting = { from: 'logs', to: 'logs', phase: 'resting' } as const;
+    const resting = { from: 'chats', to: 'chats', phase: 'resting' } as const;
     const travelling = startBottomNavigationTransition(resting, 'you');
 
-    expect(travelling).toEqual({ from: 'logs', to: 'you', phase: 'travelling' });
+    expect(travelling).toEqual({ from: 'chats', to: 'you', phase: 'travelling' });
     expect(shouldShowBottomNavigationSelectedFill(travelling)).toBe(false);
     expect(startBottomNavigationTransition(travelling, 'index')).toEqual({
       from: 'you',
@@ -246,8 +265,8 @@ describe('bottom navigation', () => {
   });
 
   test('releases a cancelled press only when no transition was committed', () => {
-    const resting = { from: 'logs', to: 'logs', phase: 'resting' } as const;
-    const travelling = { from: 'logs', to: 'you', phase: 'travelling' } as const;
+    const resting = { from: 'chats', to: 'chats', phase: 'resting' } as const;
+    const travelling = { from: 'chats', to: 'you', phase: 'travelling' } as const;
 
     expect(shouldReleaseBottomNavigationCancelledPress(false, resting)).toBe(true);
     expect(shouldReleaseBottomNavigationCancelledPress(true, resting)).toBe(false);
@@ -255,8 +274,8 @@ describe('bottom navigation', () => {
   });
 
   test('keeps all tab identities persistent above a content-free selected surface', () => {
-    const resting = { from: 'logs', to: 'logs', phase: 'resting' } as const;
-    const travelling = { from: 'logs', to: 'you', phase: 'travelling' } as const;
+    const resting = { from: 'chats', to: 'chats', phase: 'resting' } as const;
+    const travelling = { from: 'chats', to: 'you', phase: 'travelling' } as const;
 
     expect(getBottomNavigationRenderPolicy(resting)).toEqual({
       persistentTabContentLayers: 3,

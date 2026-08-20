@@ -9,6 +9,8 @@ export interface TaisaReplyCardProps {
   reaction?: ResponseReaction | null;
   onReact?: (responseId: string, reaction: ResponseReaction) => void;
   onShareExample?: (responseId: string) => void;
+  showRatingOptions?: boolean;
+  onShowRatingOptions?: () => void;
 }
 
 export function TaisaReplyCard({
@@ -18,9 +20,16 @@ export function TaisaReplyCard({
   reaction = null,
   onReact,
   onShareExample,
+  showRatingOptions = false,
+  onShowRatingOptions,
 }: TaisaReplyCardProps) {
   return (
-    <View
+    <TouchableOpacity
+      accessibilityLabel={responseId && onReact ? 'Show response rating options' : undefined}
+      disabled={!responseId || !onReact}
+      delayLongPress={350}
+      activeOpacity={1}
+      onLongPress={onShowRatingOptions}
       className={appearance === 'plain'
         ? 'mb-8 w-full'
         : 'my-1 rounded-3 rounded-tl-sm border border-border bg-card px-3 py-3'}
@@ -32,7 +41,7 @@ export function TaisaReplyCard({
       <Text className={appearance === 'plain'
         ? 'text-foreground text-base-regular'
         : 'text-muted-foreground text-small-regular'}>{content}</Text>
-      {responseId && onReact ? (
+      {responseId && onReact && showRatingOptions ? (
         <View className="mt-3 flex-row items-center gap-2">
           <TouchableOpacity
             accessibilityLabel="Mark response helpful"
@@ -59,6 +68,6 @@ export function TaisaReplyCard({
           ) : null}
         </View>
       ) : null}
-    </View>
+    </TouchableOpacity>
   );
 }
