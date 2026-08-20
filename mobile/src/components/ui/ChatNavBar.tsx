@@ -12,9 +12,10 @@ export interface ChatNavBarProps {
 export function ChatNavBar({ title, topInset, onClose }: ChatNavBarProps) {
   return (
     <LinearGradient
-      colors={[colors.background, colors.backgroundTransparent]}
-      className="flex-row items-center pb-1 pt-1"
-      style={{ marginTop: topInset }}
+      colors={[colors.background, colors.background, colors.backgroundTransparent]}
+      locations={[0, 0.72, 1]}
+      className="flex-row items-center pt-1"
+      style={{ marginTop: topInset, marginBottom: -16, paddingBottom: 16 }}
     >
       <TouchableOpacity
         accessibilityRole="button"

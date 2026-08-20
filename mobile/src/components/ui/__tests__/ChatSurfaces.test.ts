@@ -179,7 +179,7 @@ describe('chat design-system surfaces', () => {
     expect(String(bubble?.props.className)).toContain('px-4 py-4');
   });
 
-  test('the conversation starts close to the header', () => {
+  test('the conversation starts beneath the header fade without reserved top spacing', () => {
     const surface = ChatConversationSurface({
       scrollRef: { current: null }, messages: [], activeMessageId: null,
       activeRequestKind: null, transcript: '', phase: 'idle', isBusy: false,
@@ -190,7 +190,14 @@ describe('chat design-system surfaces', () => {
     });
     const scrollView = descendants(surface).find((node) => node.type === ScrollView);
 
-    expect(scrollView?.props.contentContainerStyle).toMatchObject({ paddingTop: 12 });
+    expect(scrollView?.props.contentContainerStyle).toMatchObject({ paddingTop: 0 });
+  });
+
+  test('the title bar fade overlaps the top of the scrolling conversation', () => {
+    const header = ChatNavBar({ onClose: jest.fn(), title: 'Taisa', topInset: 47 });
+
+    expect(header.props.style).toMatchObject({ marginBottom: -16, paddingBottom: 16 });
+    expect(header.props.locations).toEqual([0, 0.72, 1]);
   });
 
   test('the assistant reply is unboxed base body copy', () => {
