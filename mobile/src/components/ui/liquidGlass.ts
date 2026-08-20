@@ -19,7 +19,9 @@ export interface LiquidGlassFallbackTokens {
   borderColor: string;
   sheenColors: readonly [string, string];
   shadowColor: string;
+  shadowOffsetY: number;
   shadowOpacity: number;
+  shadowRadius: number;
 }
 
 export interface LiquidGlassAppearance {
@@ -72,7 +74,9 @@ export function getLiquidGlassAppearance(
       borderColor: FALLBACK_BORDER[tone],
       sheenColors: ['rgba(255,255,255,0.46)', 'rgba(255,255,255,0.06)'],
       shadowColor: colors.shadowSubtle,
-      shadowOpacity: hierarchy === 'prominent' ? 0.10 : 0.05,
+      shadowOffsetY: hierarchy === 'prominent' ? 7 : hierarchy === 'standard' ? 6 : 4,
+      shadowOpacity: hierarchy === 'prominent' ? 0.16 : hierarchy === 'standard' ? 0.12 : 0.08,
+      shadowRadius: hierarchy === 'prominent' ? 18 : hierarchy === 'standard' ? 14 : 10,
     },
   };
 }

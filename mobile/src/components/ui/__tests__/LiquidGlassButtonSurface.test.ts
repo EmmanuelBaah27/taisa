@@ -42,4 +42,18 @@ describe('LiquidGlassButtonSurface', () => {
     expect(source).not.toMatch(/<Pressable|<Touchable/);
     expect(source).not.toMatch(/NativeGlassView[\s\S]{0,300}opacity/);
   });
+
+  test('separates unclipped elevation from the clipped glass material', () => {
+    const source = readFileSync(
+      resolve(__dirname, '../LiquidGlassButtonSurface.tsx'),
+      'utf8',
+    );
+
+    expect(source).toContain("testID={testID ? `${testID}-elevation` : 'liquid-glass-elevation'}");
+    expect(source).toMatch(/shadowRadius: appearance\.fallback\.shadowRadius/);
+    expect(source).toMatch(/shadowOffset: \{ width: 0, height: appearance\.fallback\.shadowOffsetY \}/);
+    expect(source).toMatch(/overflow: 'visible'/);
+    expect(source).toMatch(/NativeGlassView[\s\S]*overflow: 'hidden'/);
+    expect(source).toMatch(/key="fallback-material"[\s\S]*overflow: 'hidden'/);
+  });
 });

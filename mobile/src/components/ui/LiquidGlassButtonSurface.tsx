@@ -126,14 +126,22 @@ export function LiquidGlassButtonSurface({
     reduceTransparency,
   });
   const shapeStyle = getLiquidGlassShapeStyle(shape);
-  const fallbackAnimatedStyle = useAnimatedStyle(() => ({
+  const elevationAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{
       scale: getLiquidGlassPressScale(pressed?.value ?? 0, reduceMotion, disabled),
     }],
   }));
 
-  if (mode === 'native' && NativeGlassView) {
-    return (
+  const elevationStyle: ViewStyle = {
+    overflow: 'visible',
+    backgroundColor: 'rgba(255,255,255,0.01)',
+    shadowColor: appearance.fallback.shadowColor,
+    shadowOffset: { width: 0, height: appearance.fallback.shadowOffsetY },
+    shadowOpacity: appearance.fallback.shadowOpacity,
+    shadowRadius: appearance.fallback.shadowRadius,
+  };
+
+  const material = mode === 'native' && NativeGlassView ? (
       <NativeGlassView
         key="native-interactive"
         testID={testID ?? 'liquid-glass-native'}
@@ -141,16 +149,13 @@ export function LiquidGlassButtonSurface({
         glassEffectStyle={appearance.glassEffectStyle}
         tintColor={appearance.tintColor}
         colorScheme="light"
-        style={[shapeStyle, { overflow: 'hidden' }, style]}
+        style={[shapeStyle, { position: 'absolute', inset: 0, overflow: 'hidden' }]}
       >
         {children}
       </NativeGlassView>
-    );
-  }
-
-  return (
+  ) : (
     <Animated.View
-      key="fallback"
+      key="fallback-material"
       testID={testID ?? 'liquid-glass-fallback'}
       style={[
         shapeStyle,
@@ -159,13 +164,7 @@ export function LiquidGlassButtonSurface({
           borderWidth: 1,
           borderColor: appearance.fallback.borderColor,
           backgroundColor: appearance.fallback.backgroundColor,
-          shadowColor: appearance.fallback.shadowColor,
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: appearance.fallback.shadowOpacity,
-          shadowRadius: hierarchy === 'prominent' ? 12 : 7,
         },
-        style,
-        fallbackAnimatedStyle,
       ]}
     >
       <BlurView
@@ -182,6 +181,15 @@ export function LiquidGlassButtonSurface({
         style={{ position: 'absolute', inset: 0 }}
       />
       {children}
+    </Animated.View>
+  );
+
+  return (
+    <Animated.View
+      testID={testID ? `${testID}-elevation` : 'liquid-glass-elevation'}
+      style={[shapeStyle, elevationStyle, style, elevationAnimatedStyle]}
+    >
+      {material}
     </Animated.View>
   );
 }

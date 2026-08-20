@@ -40,6 +40,24 @@ describe('liquid glass capability and appearance', () => {
     });
   });
 
+  test('gives every hierarchy a deliberate neutral ambient elevation', () => {
+    expect(getLiquidGlassAppearance('prominent', 'neutral').fallback).toMatchObject({
+      shadowOffsetY: 7,
+      shadowOpacity: 0.16,
+      shadowRadius: 18,
+    });
+    expect(getLiquidGlassAppearance('standard', 'neutral').fallback).toMatchObject({
+      shadowOffsetY: 6,
+      shadowOpacity: 0.12,
+      shadowRadius: 14,
+    });
+    expect(getLiquidGlassAppearance('subtle', 'neutral').fallback).toMatchObject({
+      shadowOffsetY: 4,
+      shadowOpacity: 0.08,
+      shadowRadius: 10,
+    });
+  });
+
   test('does not evaluate or crash on an unavailable optional module', () => {
     const loader = jest.fn(() => {
       throw new Error('missing native module');
