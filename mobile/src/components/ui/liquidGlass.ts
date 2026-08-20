@@ -65,16 +65,24 @@ export function getLiquidGlassAppearance(
 ): LiquidGlassAppearance {
   const subtle = hierarchy === 'subtle';
   const neutralSubtle = subtle && tone === 'neutral';
+  const neutralStandard = hierarchy === 'standard' && tone === 'neutral';
+  const backgroundColor = neutralStandard
+    ? 'rgba(255,255,255,0.38)'
+    : neutralSubtle
+      ? 'rgba(255,255,255,0.24)'
+      : FALLBACK_BACKGROUND[tone];
 
   return {
     glassEffectStyle: subtle ? 'clear' : 'regular',
     tintColor: TINTS[tone],
     fallback: {
       blurIntensity: hierarchy === 'prominent' ? 78 : hierarchy === 'standard' ? 68 : 48,
-      backgroundColor: neutralSubtle ? 'rgba(255,255,255,0.24)' : FALLBACK_BACKGROUND[tone],
-      borderColor: FALLBACK_BORDER[tone],
-      sheenColors: ['rgba(255,255,255,0.46)', 'rgba(255,255,255,0.06)'],
-      shadowCasterColor: FALLBACK_BACKGROUND[tone],
+      backgroundColor,
+      borderColor: neutralStandard ? 'rgba(15,16,16,0.14)' : FALLBACK_BORDER[tone],
+      sheenColors: neutralStandard
+        ? ['rgba(255,255,255,0.62)', 'rgba(255,255,255,0.04)']
+        : ['rgba(255,255,255,0.46)', 'rgba(255,255,255,0.06)'],
+      shadowCasterColor: backgroundColor,
       shadowColor: colors.shadowSubtle,
       shadowOffsetY: hierarchy === 'prominent' ? 7 : hierarchy === 'standard' ? 6 : 4,
       shadowOpacity: hierarchy === 'prominent' ? 0.16 : hierarchy === 'standard' ? 0.12 : 0.08,

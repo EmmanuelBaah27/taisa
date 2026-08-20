@@ -47,7 +47,10 @@ describe('liquid glass capability and appearance', () => {
       shadowRadius: 18,
     });
     expect(getLiquidGlassAppearance('standard', 'neutral').fallback).toMatchObject({
-      shadowCasterColor: 'rgba(255,255,255,0.54)',
+      backgroundColor: 'rgba(255,255,255,0.38)',
+      borderColor: 'rgba(15,16,16,0.14)',
+      sheenColors: ['rgba(255,255,255,0.62)', 'rgba(255,255,255,0.04)'],
+      shadowCasterColor: 'rgba(255,255,255,0.38)',
       shadowOffsetY: 6,
       shadowOpacity: 0.12,
       shadowRadius: 14,

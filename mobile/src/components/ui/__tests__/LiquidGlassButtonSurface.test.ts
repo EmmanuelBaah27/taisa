@@ -54,6 +54,7 @@ describe('LiquidGlassButtonSurface', () => {
     expect(source).toMatch(/shadowOffset: \{ width: 0, height: appearance\.fallback\.shadowOffsetY \}/);
     expect(source).toMatch(/overflow: 'visible'/);
     expect(source).toMatch(/NativeGlassView[\s\S]*overflow: 'hidden'/);
+    expect(source).toMatch(/NativeGlassView[\s\S]*borderColor: appearance\.fallback\.borderColor/);
     expect(source).toMatch(/key="fallback-material"[\s\S]*overflow: 'hidden'/);
   });
 });

@@ -6,5 +6,6 @@
 - Closing an ordinary conversation with no unfinished input must not show a destructive confirmation.
 - Destructive confirmation copy must use the format-neutral term “draft”.
 - Returning from Face ID briefly exposes a green frame before the app is ready. The privacy shield must hand off through a stable opaque app background.
+- Secondary neutral buttons technically use glass, but their contour disappears on white surfaces. Reduce the milky fill and strengthen the edge and upper sheen without adding more frost.
 
 Canonical reproduction revision: `preview/taisa` at `ff244bc`.

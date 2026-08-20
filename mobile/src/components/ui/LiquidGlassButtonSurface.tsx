@@ -149,7 +149,13 @@ export function LiquidGlassButtonSurface({
         glassEffectStyle={appearance.glassEffectStyle}
         tintColor={appearance.tintColor}
         colorScheme="light"
-        style={[shapeStyle, { position: 'absolute', inset: 0, overflow: 'hidden' }]}
+        style={[shapeStyle, {
+          position: 'absolute',
+          inset: 0,
+          overflow: 'hidden',
+          borderWidth: 1,
+          borderColor: appearance.fallback.borderColor,
+        }]}
       >
         {children}
       </NativeGlassView>
