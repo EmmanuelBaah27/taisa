@@ -9,14 +9,6 @@ relevant to the task.
 
 ---
 
-## Active work
-
-| Feature | Track | Stage | Branch | Blocked on |
-|---|---|---|---|---|
-| Project memory system | Platform | Review + QA | `docs/project-memory-system` | Baah document review and Ship approval |
-
----
-
 ## Feature tiers
 
 Not every feature needs the full workflow. Claude assesses tier at task start and states it.

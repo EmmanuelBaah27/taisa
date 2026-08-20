@@ -2,8 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import morgan from 'morgan';
-import { getDb } from './db/connection';
+import { closeDb, getDb } from './db/connection';
 
 import rateLimit from 'express-rate-limit';
 
@@ -18,21 +17,49 @@ import trajectoryRouter from './routes/trajectory';
 import notificationsRouter from './routes/notifications';
 import chatRouter from './routes/chat';
 import todayRouter from './routes/today';
+import coachingRouter from './routes/coaching';
+import { getConfiguredProvider } from './services/coaching/provider';
+import { coachingRateLimit } from './middleware/coachingRateLimit';
+import { contentSafeErrorHandler, requestContext } from './middleware/requestContext';
+import { readDeviceAuthConfig, readFeedbackConfig } from './config/deviceAuth';
+import { DeviceCredentialStore } from './auth/deviceCredentials';
+import { createDeviceAuthentication } from './middleware/deviceAuthentication';
+import { createDeviceEnrollmentRouter } from './routes/deviceEnrollment';
+import { FeedbackRepository } from './feedback/feedbackRepository';
+import { createFeedbackRouter } from './routes/feedback';
+import { readProductionConfig } from './config/production';
+import { closeDefaultCostLedger } from './services/usage/costLedger';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const productionConfig = readProductionConfig();
 
 // Middleware
+app.use(requestContext);
 app.use(helmet());
-app.use(cors());
-app.use(morgan('dev'));
+app.use(cors(productionConfig === null ? undefined : { origin: productionConfig.publicOrigin }));
 app.use(express.json({ limit: '10mb' }));
 
 // Init DB on startup
 getDb();
 
-// Rate limiter for AI-heavy routes
-// MVP: limited by IP. TODO: switch to per-userId keyGenerator once auth is added.
+// Validate provider, model, and pricing configuration before accepting traffic.
+getConfiguredProvider();
+
+const deviceAuthConfig = readDeviceAuthConfig();
+let deviceCredentialStore: DeviceCredentialStore | null = null;
+if (deviceAuthConfig.required) {
+  deviceCredentialStore = new DeviceCredentialStore({
+    databasePath: deviceAuthConfig.databasePath,
+    pepper: deviceAuthConfig.pepper,
+  });
+  deviceCredentialStore.registerEnrollmentCode(
+    deviceAuthConfig.enrollmentCode,
+    deviceAuthConfig.enrollmentExpiresAt,
+  );
+}
+
+// Legacy limiter for existing AI-heavy routes.
 const aiRateLimit = rateLimit({
   windowMs: 60 * 1000,
   max: 20,
@@ -41,7 +68,36 @@ const aiRateLimit = rateLimit({
   message: { success: false, error: { code: 'RATE_LIMITED', message: 'Too many requests, please wait a moment.' } },
 });
 
+const enrollmentRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    error: { code: 'RATE_LIMITED', message: 'Too many enrollment attempts, please wait.' },
+  },
+});
+
 // Routes
+if (deviceCredentialStore !== null) {
+  app.use(
+    '/api/v1/device-enrollments',
+    enrollmentRateLimit,
+    createDeviceEnrollmentRouter(deviceCredentialStore),
+  );
+  app.use('/api/v1', createDeviceAuthentication(deviceCredentialStore));
+}
+const feedbackConfig = readFeedbackConfig();
+let feedbackRepository: FeedbackRepository | null = null;
+if (feedbackConfig !== null) {
+  if (deviceCredentialStore === null) throw new Error('Feedback storage requires device authentication');
+  feedbackRepository = new FeedbackRepository({
+    encryptionKeyBase64: feedbackConfig.encryptionKeyBase64,
+    databasePath: feedbackConfig.databasePath,
+  });
+  app.use('/api/v1/feedback-examples', createFeedbackRouter(feedbackRepository));
+}
 app.use('/api/v1/profile', profileRouter);
 app.use('/api/v1/entries', entriesRouter);
 app.use('/api/v1/transcribe', aiRateLimit, transcribeRouter);
@@ -53,6 +109,7 @@ app.use('/api/v1/trajectory', trajectoryRouter);
 app.use('/api/v1/notifications', notificationsRouter);
 app.use('/api/v1/chat', aiRateLimit, chatRouter);
 app.use('/api/v1/today', todayRouter);
+app.use('/api/v1/coaching', coachingRateLimit, coachingRouter);
 
 // Health check
 app.get('/health', (_req, res) => {
@@ -60,13 +117,26 @@ app.get('/health', (_req, res) => {
 });
 
 // Error handler
-app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  console.error(err.stack);
-  res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: err.message } });
-});
+app.use(contentSafeErrorHandler);
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Taisa backend running on http://localhost:${PORT}`);
 });
+
+let shuttingDown = false;
+function shutdown(): void {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  server.close(() => {
+    feedbackRepository?.close();
+    deviceCredentialStore?.close();
+    closeDefaultCostLedger();
+    closeDb();
+    process.exit(0);
+  });
+}
+
+process.once('SIGTERM', shutdown);
+process.once('SIGINT', shutdown);
 
 export default app;

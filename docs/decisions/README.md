@@ -1,47 +1,20 @@
-# Taisa Decision Records
+# Taisa Decision Journal
 
-Decision records preserve why consequential, cross-cutting choices were accepted. They
-supplement canonical domain documentation; they do not replace its description of
-present behavior.
+This journal records product and engineering decisions that are useful both for
+building Taisa and for telling its story later.
 
-## When to create a record
+Add an entry when a decision reveals something meaningful about the product,
+the user, the architecture, or the way Taisa is being built. Routine implementation
+choices belong in plans and pull requests instead.
 
-Create a record when a choice changes architecture or data ownership, establishes a
-cross-feature platform or design-system rule, changes an interface with multiple
-consumers, or creates a durable security, privacy, reliability, or operational
-constraint. Do not create one for routine dependencies, local implementation details,
-or choices contained entirely within one feature plan.
+Each entry should capture:
 
-## Naming and status
+- **Moment** — what happened or what we observed.
+- **Tension** — the competing needs or constraints.
+- **Decision** — what Taisa will do.
+- **Why** — the reasoning and trade-off.
+- **Consequence** — what changes now and what remains open.
+- **Story angle** — why this moment may matter outside the codebase.
 
-- Name records `NNNN-short-kebab-title.md`.
-- Use four-digit numbers that increase monotonically. Never renumber existing records.
-- Valid statuses are `Proposed`, `Accepted`, `Superseded`, and `Rejected`.
-- Baah approves acceptance when a decision changes product scope, architecture
-  invariants, or a breaking shared contract.
-- The agent may record an already-approved decision as `Accepted` when the approval
-  source is linked.
-- Superseding a decision creates a new record and updates the old record with the new
-  status and link. Never rewrite the original reasoning out of history.
-
-## Records
-
-- [0001: Use repository-native project memory](0001-use-repository-native-project-memory.md)
-
-## Template
-
-```markdown
-# NNNN: Decision title
-
-**Status:** Proposed
-**Date:** YYYY-MM-DD
-**Owners:** Baah + the agent
-
-## Context
-## Decision drivers
-## Considered options
-## Decision
-## Consequences
-## Follow-ups
-## References
-```
+Write plainly. Preserve the uncertainty and iteration that led to the decision;
+do not rewrite the story as if the answer was obvious from the beginning.

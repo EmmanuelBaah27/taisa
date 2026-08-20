@@ -16,6 +16,10 @@ export function getDb(): Database.Database {
   return db;
 }
 
+export function closeDb(): void {
+  if (db?.open) db.close();
+}
+
 function initSchema(): void {
   const schemaPath = path.join(__dirname, 'schema.sql');
   const schema = fs.readFileSync(schemaPath, 'utf-8');

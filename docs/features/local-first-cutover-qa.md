@@ -1,0 +1,89 @@
+# Local-First Cutover QA
+
+## Encrypted database development-build gate
+
+- [x] Baah approved running the managed iPhone development-build verification step on 2026-08-12.
+- [x] Installed and launched the SQLCipher-enabled managed development build on Baah's iPhone on 2026-08-12.
+- [x] Create a local record and confirm it persists after force-quit and restart. Verified on Beat's iPhone on 2026-08-14 with `QA persistence 14 Aug`.
+- [ ] Remove the SecureStore database key in a controlled test and confirm Taisa enters the recovery-required state instead of generating a replacement key.
+- [ ] Confirm the SQLite file is unreadable without its SQLCipher key.
+
+Status: physical-device QA in progress. Onboarding, encrypted writes, reload persistence, and
+Face ID unlock were confirmed on 2026-08-12. Destructive key-loss and raw-file encryption checks
+remain intentionally unchecked.
+
+## Private capture and deliberate submission gate
+
+- [ ] With gateway traffic inspection enabled, save private text and confirm there are zero transcription or coaching requests.
+- [ ] Force-quit and reopen; confirm the private text remains in the local conversation.
+- [ ] Submit text once and confirm exactly one coaching request is made with bounded local context.
+- [ ] Rapidly double-tap text submit and voice submit; confirm each local intent creates one request/message and at most one paid call, with the submit controls disabled while busy.
+- [ ] Interrupt a coaching request, retry explicitly, and confirm the same local request/message IDs are reused without duplicate messages.
+- [ ] Stop a voice recording and confirm no upload occurs until **Submit to Taisa** is pressed.
+- [ ] Submit the recording and confirm exactly one transcription request is made.
+- [ ] After Send, confirm provisional transcript text appears progressively in the existing composer; no audio or transcript request may occur before Send.
+- [ ] Say a clear career reflection and confirm the final transcript automatically creates one user message and exactly one coaching response without a review step.
+- [ ] Record silence, steady background noise, and unintelligible speech separately; confirm each produces the no-speech error or editable uncertain text, zero conversation messages, and zero coaching requests.
+- [ ] Legitimately say `Thanks for watching`; when recognition evidence is strong, confirm the phrase is accepted rather than blocked by its words.
+- [ ] For an uncertain result, edit the text in the normal composer and Send; confirm that ordinary text submission creates exactly one coaching response.
+- [ ] Confirm the submitted recording is copied from recorder cache into Taisa's app-owned documents directory before the durable request appears, then force-quit/reopen and retry from that same file.
+- [ ] After a transcript is committed locally, confirm the app-owned recording is queued and removed while the editable transcript remains; a transcription failure must retain that recording for retry.
+- [ ] Press **Record again** and confirm the abandoned recorder-cache file is removed before the new recording begins.
+- [ ] While recording, close the sheet, switch to the keyboard, and unmount the capture screen separately; confirm each path stops once and retires the returned recorder-cache URI without a state-update warning.
+- [ ] Simulate one recorder-cache and one app-owned audio deletion failure, restart Taisa, and confirm the encrypted path-only cleanup queue retries each URI exactly and removes successful rows.
+- [ ] Queue an audio URI still referenced by a retryable coaching request; restart Taisa and confirm cleanup does not delete it until that request is completed or explicitly abandoned.
+- [ ] Confirm there is no mandatory transcript-review or confirmation screen in the normal clear-speech path.
+- [ ] Interrupt transcription and coaching separately; confirm retry reuses the original audio/request IDs and never records or duplicates content.
+- [ ] Confirm a provider proposal remains pending even when provider output claims confirmation is unnecessary.
+- [ ] Confirm the proposal only becomes durable after the user presses the explicit local **Confirm memory** action.
+- [ ] For a conflicting career direction, confirm the clarification question offers **Replace old direction**, **Pause old direction**, and **Keep both**; verify each choice changes only the selected predecessor lifecycle and a generic confirm cannot supersede it.
+- [ ] Force-quit and reopen; confirm user message, assistant response, usage receipt, context manifest, and pending proposal remain complete.
+- [ ] Force-quit during streaming, after an uncertain result, and after a retryable failure; reopen the conversation and confirm request ID, uncertain draft, retry state, and pending proposal controls are restored without treating provisional text as a message.
+- [ ] From conversation history, confirm the pending status/decision count is visible, press **Resume**, and verify the exact SQLite conversation/request/message IDs reopen with no replacement session or provider call.
+- [ ] Resume conversation B after viewing conversation A; confirm no message, transcript, or proposal from A appears while B hydrates, and close returns to history (or home for a cold deep link).
+- [ ] Open the Today card/digest capture CTA and the legacy `/recording` deep link; confirm both enter the local-first chat and no `/entries` or `/analyze` request is reachable.
+- [ ] Inspect gateway/backend telemetry and confirm no request bodies, transcripts, coaching text, or response bodies were logged.
+
+Status: pending explicit Baah approval for a SQLCipher-capable managed development build and physical-device journey. Task 9 stopped before the plan's Step 6 device verification. No Expo prebuild, native iOS run, cloud/EAS build, simulator, physical-device journey, or live provider request was performed.
+
+## Encrypted recovery and device privacy gate
+
+- [ ] Start a voice submission that still references its app-owned recording and attempt export;
+  confirm export is rejected before an artifact is created. Finish or abandon that work, retry,
+  and confirm export can proceed. The backup must never claim to bundle the audio file.
+- [ ] Create an export with a confirmed backup passphrase of at least 12 non-whitespace characters; move the file outside Taisa's app container and verify the file cannot be opened without that passphrase.
+- [ ] Verify export entity counts and content hash cover profile, conversations/messages, goals/milestones, actions/transitions, evidence, memory/items sources/confirmations, coaching requests, usage, and mutation receipts.
+- [ ] Attempt restore with a wrong passphrase, corrupted file, newer schema, and insufficient free space; confirm the active database and Keychain key remain usable and no partial candidate is visible.
+- [ ] Interrupt restore before promotion, during promotion, and after candidate move; relaunch and confirm the durable marker restores the preserved original until a verified promotion commits.
+- [ ] On a controlled test installation, export, remove local app data, restore, and verify representative conversations, completed voice transcripts, goals, actions, evidence, memory sources, pending decisions, usage receipts, and message/evidence search. Confirm no recorded audio file is expected from the database-only archive.
+- [ ] Force-quit and reopen after successful restore; confirm the promoted database reopens with the same counts/hash and local stores do not retain a stale closed handle.
+- [x] Enable device unlock, background/inactivate Taisa, and verify private UI is obscured in the app switcher before returning to an unlock prompt. Verified on Beat's iPhone on 2026-08-14.
+- [x] Cancel unlock and confirm the archive remains shielded; then authenticate successfully and confirm it becomes visible. Cancellation shielding and successful Face ID unlock passed on Beat's iPhone on 2026-08-14; preference storage remains covered by automated repository checks.
+- [ ] Schedule reminders and inspect lock-screen previews; confirm only `Taisa` and `You have an open Taisa action` appear, with no title, company, goal, transcript, or excerpt.
+- [ ] Select overlapping/invalid Unicode redaction ranges and confirm submission is blocked. Preview valid name, organization, project, and metric selections and confirm the exact displayed redacted text—not the replacement map—is sent only after explicit Submit.
+- [ ] Confirm the backup passphrase, replacement map, selected unredacted values, database key, request/response bodies, and SQL/database error details never appear in logs, analytics, crash output, notifications, or backend SQLite.
+
+Status: code-only recovery/privacy implementation and automated tests exist. Task 10 Step 4 physical-device recovery/privacy QA was not run and remains the next Baah approval gate.
+
+## Legacy route retirement gate
+
+- [ ] Complete every encrypted database/recovery check above and retain the pre-cutover backend database as a rollback artifact.
+- [ ] Baah explicitly approves legacy-route retirement after reviewing device evidence.
+- [ ] In a later gated change, unmount legacy profile, entries, analyze, reviews, goals, action-items, trajectory, notifications, chat, and today routes; rerun the full backend/mobile/workflow matrix.
+
+No migration route exists or is needed. Task 10 Step 6 legacy-route retirement was not performed;
+`backend/src/index.ts` is intentionally unchanged until this gate passes.
+
+## Personal-alpha standalone gate
+
+- [ ] Deploy the approved private single-replica service with every SQLite path on its persistent volume.
+- [ ] Exchange the short-lived code once, verify the iPhone credential survives restart, then revoke and re-enroll it.
+- [ ] Install the signed `personal-alpha` Release build and confirm it launches with Metro and the Mac stopped.
+- [ ] On cellular away from the Mac, complete text coaching, voice transcription/coaching, retry, and force-quit recovery.
+- [ ] Rate one response and confirm zero feedback traffic; preview and manually redact one synthetic example, explicitly share it, then delete the encrypted server copy while retaining the local reaction.
+- [ ] Trigger per-request and daily ceilings and confirm rejection occurs before any provider call.
+- [ ] Confirm production logs contain only request IDs, routes, statuses, latency, and allowlisted error categories.
+
+Status: code-only release profiles and hosted-URL validation are implemented. Railway resource
+creation, secrets, deployment, Apple signing/upload, standalone installation, and this device
+journey remain gated and unrun.

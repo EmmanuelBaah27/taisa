@@ -1,5 +1,6 @@
 import { View, Text, TouchableOpacity } from 'react-native';
 import { router } from 'expo-router';
+import { LOCAL_CAPTURE_ROUTE } from '../navigation/localCaptureRoute';
 
 interface DigestItem {
   type: string;
@@ -29,7 +30,7 @@ export function DigestCard({ headline, items }: DigestCardProps) {
       {items.map((item, i) => (
         <TouchableOpacity
           key={i}
-          onPress={() => router.push('/recording')}
+          onPress={() => router.push(LOCAL_CAPTURE_ROUTE)}
           className="flex-row items-start mb-3"
         >
           <View

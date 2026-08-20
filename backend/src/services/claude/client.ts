@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+export const anthropicClient = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 export const MODEL = 'claude-sonnet-4-6';
 export const MOCK_AI = process.env.MOCK_AI === 'true';
@@ -44,7 +44,7 @@ export interface ClaudeCallOptions {
 export async function callClaude(options: ClaudeCallOptions): Promise<string> {
   const { system, userMessage, temperature = 0.3, maxTokens = 4096 } = options;
 
-  const response = await client.messages.create({
+  const response = await anthropicClient.messages.create({
     model: MODEL,
     max_tokens: maxTokens,
     system,
@@ -76,4 +76,4 @@ export async function callClaudeJson<T>(options: ClaudeCallOptions): Promise<T> 
   }
 }
 
-export default client;
+export default anthropicClient;

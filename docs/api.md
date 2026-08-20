@@ -4,9 +4,43 @@
 > Auth: pass `x-user-id` header on every request. Set automatically by `mobile/src/services/api.ts` via Axios interceptor.
 > The only exception is `POST /api/v1/profile/init`, which accepts `deviceId` in the request body instead.
 
+## Current local-first boundary
+
+The mobile client is authoritative for readable user data. Only two content-processing endpoint
+families belong to the new path:
+
+| Route | Status | Persistence boundary |
+|---|---|---|
+| `POST /api/v1/coaching/respond` | Current stateless coaching path | Validates bounded supplied context, makes one configured provider call, returns structured coaching/proposals; stores no readable user content |
+| `POST /api/v1/transcribe` | Current deliberate voice path | Deletes temporary audio in `finally`; stores only content-free usage/cost metadata |
+| `GET /health` | Current operational health | No user data |
+
+The gateway still uses `x-user-id` as a device-keyed installation identifier for transport usage
+accounting and rate limiting, not as authentication and not as the local career-profile ID. The
+authoritative profile ID lives only in the encrypted local database.
+No migration/export endpoint exists. Baah has no backend archive to migrate, and Task 7 was removed.
+
+Profile, entries, analyze, reviews, goals, action-items, trajectory, notifications, chat, and today
+routes remain mounted as legacy rollback compatibility during BUILD. They must not receive new
+local-first coaching writes. Removal is separately gated on verified encrypted device recovery and
+Baah's explicit route-retirement approval; `backend/src/index.ts` intentionally remains unchanged in this
+slice.
+
+### `POST /api/v1/coaching/respond`
+
+Accepts one `CoachingRequest` from `@taisa/shared`, with a 4,000-character input, at most 20 recent
+messages, 50 memory items, and 8 evidence excerpts. Runtime validation is strict. The response is a
+request-bound `CoachingResponse` containing concise coaching text, one stance, governed proposed
+deltas, and a content-free usage receipt. Invalid structured output is recoverable and never causes
+an automatic second paid call.
+
+The gateway does not fetch profile, history, goals, actions, evidence, or memory. It does not write
+the request, response, transcript, prompt, or coaching text. Daily/monthly/per-request cost ceilings
+fail closed before the configured OpenAI or Anthropic adapter is called.
+
 ---
 
-## Route Overview
+## Legacy route overview (mounted pending retirement)
 
 | Route group | Prefix | Claude agent |
 |---|---|---|
@@ -19,6 +53,11 @@
 | Action Items | `/api/v1/action-items` | none |
 | Trajectory | `/api/v1/trajectory` | `trajectoryAnalyst` (direct `callClaudeJson`) |
 | Notifications | `/api/v1/notifications` | `trajectoryAnalyst` check-in prompts (direct `callClaude`) |
+| Chat | `/api/v1/chat` | legacy backend-readable chat |
+| Today | `/api/v1/today` | legacy backend-readable summaries |
+
+Everything below, except the current transcription section, documents the legacy API while it
+remains mounted. It is retained so rollback behavior is explicit rather than silently stale.
 
 ---
 
@@ -258,24 +297,34 @@ Update an entry's edited transcript or status.
 
 ### `POST /api/v1/transcribe`
 
-Transcribe an audio file using OpenAI Whisper (`whisper-1`). Accepts `multipart/form-data`. The temporary file is deleted from disk after transcription regardless of success or failure.
+Transcribe an audio file using a streaming-capable OpenAI transcription model. Accepts `multipart/form-data` and, after all pre-provider validation passes, responds as `application/x-ndjson`. The server measures the uploaded audio and uses that measured duration for duration and cost checks before OpenAI is invoked. Disconnecting the client aborts the provider request and temporary audio is deleted when the stream closes.
 
 **Request** — `multipart/form-data`
 | Field | Type | Notes |
 |---|---|---|
-| `audio` | file | Required. Any format Whisper accepts (m4a, mp3, webm, …) |
-| `durationSeconds` | string/number | Optional. Passed through to the response |
+| `audio` | file | Required. A parseable format accepted by the configured transcription provider, within `TAISA_TRANSCRIPTION_MAX_UPLOAD_BYTES` |
+| `durationSeconds` | string/number | Optional display metadata. A material mismatch with measured duration is rejected; it is never used for cost or ceiling decisions |
 
-**Response** `200`
-```json
-{
-  "success": true,
-  "data": {
-    "transcript": "string",
-    "durationSeconds": "number | null"
-  }
-}
+**Streaming response** `200 application/x-ndjson`
+
+Each line is one JSON event. `sequence` starts at `0` and increases by one. Every successful stream has zero or more deltas followed by exactly one terminal event.
+
+```text
+{"type":"transcript.delta","requestId":"uuid","sequence":0,"delta":"I led "}
+{"type":"transcript.completed","requestId":"uuid","sequence":1,"transcript":"I led the review","durationSeconds":4,"quality":"clear","usage":{"provider":"openai","model":"gpt-4o-transcribe","audioSeconds":4,"estimatedCostUsd":0.0004}}
 ```
+
+Terminal events are:
+
+- `transcript.completed` with `quality: "clear" | "uncertain"`;
+- `transcript.no_speech` when no usable speech was recognized;
+- `transcript.failed` with the fixed code `TRANSCRIPTION_FAILED`.
+
+Provider confidence arrays, provider errors, and raw provider event shapes never cross the gateway. A clear completion can start coaching automatically. An uncertain completion is editable composer text and creates no coaching interaction. No-speech creates neither a conversation message nor a coaching interaction.
+
+Required runtime settings are `TAISA_TRANSCRIPTION_MODEL`, `TAISA_TRANSCRIPTION_MAX_DURATION_SECONDS`, `TAISA_TRANSCRIPTION_MAX_UPLOAD_BYTES`, `TAISA_TRANSCRIPTION_PRICE_USD_PER_MINUTE`, `TAISA_AI_COST_CEILING_PER_REQUEST_USD`, `TAISA_AI_COST_CEILING_DAILY_USD`, and `TAISA_AI_COST_CEILING_MONTHLY_USD`. `TAISA_TRANSCRIPTION_MODEL` must support streaming and log probabilities (`gpt-4o-transcribe` is the deployment default; `whisper-1` is not supported by this route). Missing or invalid settings fail closed with `503 TRANSCRIPTION_CONFIG_ERROR`; upload or duration overflow returns `413`; a caller-duration mismatch returns `422 AUDIO_DURATION_MISMATCH`; a cost ceiling returns `429 COST_LIMIT_EXCEEDED`. These pre-provider failures remain ordinary JSON because streaming has not begun. Only content-free usage receipts, timestamps, and reservations are stored at `TAISA_USAGE_LEDGER_PATH`; transcripts, prompts, responses, and uploaded audio are never stored there.
+
+The SQLite usage ledger provides transactional reservations and restart recovery for the single-instance MVP. Horizontal replicas require a shared accounting store so reservations remain globally atomic. Coaching providers additionally require their `TAISA_<PROVIDER>_MODEL`, input/output price, and `MAX_OUTPUT_TOKENS` settings; the explicit output cap is included in the conservative pre-call reservation.
 
 ---
 
@@ -668,6 +717,9 @@ No request body required.
 
 ## Notifications
 
+This is a legacy endpoint. The mobile scheduler no longer calls it; local notifications always use
+generic content-free copy (`You have an open Taisa action`) and content-free navigation metadata.
+
 ### `POST /api/v1/notifications/checkin-message`
 
 Generate a short, personalized push-notification message using Claude (`buildCheckInSystem` / `buildCheckInUser` from `trajectoryAnalyst` prompts). Max 100 tokens. Falls back to a static string if Claude fails.
@@ -683,6 +735,31 @@ No request body required.
   }
 }
 ```
+
+---
+
+## Private device and feedback endpoints
+
+### `POST /api/v1/device-enrollments`
+
+Exchanges a short-lived, single-use enrollment code for a random device credential. This is the
+only unauthenticated `/api/v1` endpoint when device authentication is enabled. The credential is
+returned once; the service persists only a keyed digest.
+
+### `POST /api/v1/feedback-examples`
+
+Requires `Authorization: Bearer <device credential>`. Accepts one bounded example only after an
+explicit consent timestamp. User text, Taisa's reply, and reviewed context are stored only as an
+AES-256-GCM envelope; lifecycle metadata and ownership remain content-free. Returns an opaque
+receipt ID and is idempotent per device and idempotency ID.
+
+### `DELETE /api/v1/feedback-examples/:receiptId`
+
+Deletes only a feedback envelope owned by the enrolled device. The response is idempotent and
+does not reveal whether another device owns a receipt.
+
+Rating a response does not call either feedback endpoint. Ratings and notes remain local until the
+user previews, edits/redacts, and confirms **Share** separately.
 
 ---
 
@@ -704,13 +781,17 @@ Common codes:
 | HTTP | Code | Meaning |
 |---|---|---|
 | 400 | `MISSING_*` / `NO_FILE` | Required field absent |
-| 401 | `UNAUTHORIZED` | `x-user-id` header missing |
+| 401 | `DEVICE_AUTHENTICATION_REQUIRED` | Valid enrolled device bearer credential missing |
 | 404 | `NOT_FOUND` | Resource not found or not owned by user |
 | 500 | `*_FAILED` / `INTERNAL_ERROR` | Server or Claude error |
 
 ---
 
-## How to Add a New AI Endpoint
+## How to add a new AI endpoint
+
+For new local-first coaching capabilities, extend the shared bounded contract and the stateless
+provider-neutral coaching service. Do not load readable user history from backend SQLite and do not
+persist provider content. The steps below describe the legacy agent pattern only.
 
 Follow these steps in order. Use `analyze` + `journalAgent` as your reference.
 

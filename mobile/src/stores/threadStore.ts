@@ -1,5 +1,22 @@
 import { create } from 'zustand';
-import api from '../services/api';
+import * as Crypto from 'expo-crypto';
+
+import { withTaisaDatabase } from '../db/openDatabase';
+import type { RepositoryConnection } from '../db/types';
+import {
+  getConversation,
+  listConversations,
+  listMessages,
+  listRecentConversationMessages,
+  searchMessages,
+} from '../repositories/conversationRepository';
+import {
+  listCoachingRequestsByConversation,
+  type CoachingRequestStatus,
+} from '../repositories/coachingRequestRepository';
+import { listMemoryConfirmationsByConversation } from '../repositories/memoryConfirmationRepository';
+import { getPrivateCaptureService } from '../services/localPlatform';
+import type { PrivateCaptureService } from '../services/privateCapture';
 
 export interface Thread {
   id: string;
@@ -12,6 +29,8 @@ export interface Thread {
   audioDurationSeconds: number | null;
   lastUserMessage: string | null;
   lastAssistantMessage: string | null;
+  pendingRequestStatus: CoachingRequestStatus | null;
+  pendingProposalCount: number;
 }
 
 export interface ChatMessage {
@@ -29,6 +48,14 @@ export interface ThreadSession {
   lastMessageAt: string;
   isVoice: boolean;
   audioDurationSeconds: number | null;
+  pendingRequestStatus: CoachingRequestStatus | null;
+  pendingProposalCount: number;
+}
+
+interface ThreadStoreDependencies {
+  openDatabase?: () => Promise<RepositoryConnection>;
+  withDatabase?: <T>(work: (database: RepositoryConnection) => Promise<T>) => Promise<T>;
+  getCaptureService(): Promise<PrivateCaptureService>;
 }
 
 interface ThreadStore {
@@ -39,81 +66,228 @@ interface ThreadStore {
   isLoadingMessages: boolean;
   isSending: boolean;
   error: string | null;
-
   fetchThreads: () => Promise<void>;
+  searchThreads: (query: string) => Promise<void>;
   fetchThread: (sessionId: string) => Promise<void>;
   sendMessage: (sessionId: string, content: string) => Promise<void>;
-  clearThread: () => void;
+  clearThread: (sessionId: string) => void;
   clearError: () => void;
+  clearForAuthorityReplacement: () => void;
 }
 
-export const useThreadStore = create<ThreadStore>((set, get) => ({
-  threads: [],
-  currentSession: null,
-  currentMessages: [],
-  isLoadingThreads: false,
-  isLoadingMessages: false,
-  isSending: false,
-  error: null,
+function safeMessage(error: unknown): string {
+  return error instanceof Error && error.name === 'SubmissionFailedError'
+    ? error.message
+    : 'The local conversation could not be updated.';
+}
 
-  fetchThreads: async () => {
-    set({ isLoadingThreads: true, error: null });
-    try {
-      const res = await api.get('/chat/sessions');
-      set({ threads: res.data.data.sessions, isLoadingThreads: false });
-    } catch (e: any) {
-      set({ isLoadingThreads: false, error: e.message });
-    }
+async function summary(database: RepositoryConnection, conversationId: string): Promise<Thread | null> {
+  const conversation = await getConversation(database, conversationId);
+  if (conversation === null) return null;
+  const [recent, requests, confirmations] = await Promise.all([
+    listRecentConversationMessages(database, conversation.id, 20),
+    latestVisibleRequest(database, conversation.id),
+    listMemoryConfirmationsByConversation(database, conversation.id, ['pending', 'confirmed']),
+  ]);
+  return {
+    id: conversation.id,
+    title: conversation.title ?? 'Untitled conversation',
+    entryId: null,
+    startedAt: conversation.createdAt,
+    lastMessageAt: recent[0]?.updatedAt ?? conversation.updatedAt,
+    isLive: conversation.lifecycle === 'active',
+    isVoice: false,
+    audioDurationSeconds: null,
+    lastUserMessage: recent.find((message) => message.role === 'user')?.content ?? null,
+    lastAssistantMessage: recent.find((message) => message.role === 'assistant')?.content ?? null,
+    pendingRequestStatus: requests[0]?.status ?? null,
+    pendingProposalCount: confirmations.length,
+  };
+}
+
+async function latestVisibleRequest(
+  database: RepositoryConnection,
+  conversationId: string,
+) {
+  const actionable = await listCoachingRequestsByConversation(database, conversationId, [
+    'transcription-pending',
+    'transcription-failed',
+    'transcript-confirmation-required',
+    'coaching-pending',
+    'coaching-failed',
+  ], 1);
+  if (actionable.length > 0) return actionable;
+  return listCoachingRequestsByConversation(database, conversationId, ['completed'], 1);
+}
+
+export function createThreadStore(
+  dependencies: ThreadStoreDependencies = {
+    withDatabase: withTaisaDatabase,
+    getCaptureService: getPrivateCaptureService,
   },
+) {
+  let sendInFlight: Promise<void> | null = null;
+  let fetchGeneration = 0;
+  let requestedSessionId: string | null = null;
+  let localIntentSequence = 0;
+  function createLocalIntentId(): string {
+    const generated = Crypto.randomUUID();
+    return typeof generated === 'string' && generated.length > 0
+      ? generated
+      : `local-thread-intent-${localIntentSequence += 1}`;
+  }
+  function withDatabase<T>(
+    work: (database: RepositoryConnection) => Promise<T>,
+  ): Promise<T> {
+    if (dependencies.withDatabase !== undefined) return dependencies.withDatabase(work);
+    if (dependencies.openDatabase !== undefined) return dependencies.openDatabase().then(work);
+    throw new Error('Thread store database boundary is unavailable');
+  }
+  return create<ThreadStore>((set, get) => ({
+    threads: [],
+    currentSession: null,
+    currentMessages: [],
+    isLoadingThreads: false,
+    isLoadingMessages: false,
+    isSending: false,
+    error: null,
 
-  fetchThread: async (sessionId: string) => {
-    set({ isLoadingMessages: true, error: null });
-    try {
-      const res = await api.get(`/chat/session/${sessionId}`);
+    fetchThreads: async () => {
+      set({ isLoadingThreads: true, error: null });
+      try {
+        const threads = await withDatabase(async (database) => {
+          const conversations = await listConversations(database);
+          return (await Promise.all(
+            conversations.map((conversation) => summary(database, conversation.id)),
+          )).filter((item): item is Thread => item !== null);
+        });
+        set({ threads, isLoadingThreads: false });
+      } catch {
+        set({ isLoadingThreads: false, error: 'The local conversation history is unavailable.' });
+      }
+    },
+
+    searchThreads: async (query) => {
+      const normalized = query.trim();
+      if (!normalized) return get().fetchThreads();
+      set({ isLoadingThreads: true, error: null });
+      try {
+        const threads = await withDatabase(async (database) => {
+          const matches = await searchMessages(database, normalized, 50);
+          const ids = [...new Set(matches.map((message) => message.conversationId))];
+          return (await Promise.all(ids.map((id) => summary(database, id))))
+            .filter((item): item is Thread => item !== null);
+        });
+        set({ threads, isLoadingThreads: false });
+      } catch {
+        set({ isLoadingThreads: false, error: 'The local conversation search is unavailable.' });
+      }
+    },
+
+    fetchThread: async (sessionId) => {
+      const generation = fetchGeneration += 1;
+      const replacesVisibleSession = get().currentSession?.id !== sessionId;
+      requestedSessionId = sessionId;
       set({
-        currentSession: res.data.data.session,
-        currentMessages: res.data.data.messages,
-        isLoadingMessages: false,
+        ...(replacesVisibleSession ? { currentSession: null, currentMessages: [] } : {}),
+        isLoadingMessages: true,
+        error: null,
       });
-    } catch (e: any) {
-      set({ isLoadingMessages: false, error: e.message });
-    }
-  },
+      try {
+        const { conversation, messages, requests, confirmations } = await withDatabase(
+          async (database) => {
+            const conversation = await getConversation(database, sessionId);
+            if (conversation === null) throw new Error('missing');
+            const [messages, requests, confirmations] = await Promise.all([
+              listMessages(database, sessionId),
+              latestVisibleRequest(database, sessionId),
+              listMemoryConfirmationsByConversation(database, sessionId, ['pending', 'confirmed']),
+            ]);
+            return { conversation, messages, requests, confirmations };
+          },
+        );
+        if (generation !== fetchGeneration || requestedSessionId !== sessionId) return;
+        set({
+          currentSession: {
+            id: conversation.id,
+            title: conversation.title ?? 'Untitled conversation',
+            entryId: null,
+            startedAt: conversation.createdAt,
+            lastMessageAt: messages.at(-1)?.updatedAt ?? conversation.updatedAt,
+            isVoice: false,
+            audioDurationSeconds: null,
+            pendingRequestStatus: requests[0]?.status ?? null,
+            pendingProposalCount: confirmations.length,
+          },
+          currentMessages: messages.map((message) => ({
+            id: message.id,
+            role: message.role,
+            content: message.content,
+            created_at: message.createdAt,
+          })),
+          isLoadingMessages: false,
+        });
+      } catch {
+        if (generation === fetchGeneration && requestedSessionId === sessionId) {
+          set({ isLoadingMessages: false, error: 'The local conversation is unavailable.' });
+        }
+      }
+    },
 
-  sendMessage: async (sessionId: string, content: string) => {
-    const optimisticMsg: ChatMessage = {
-      id: `temp-${Date.now()}`,
-      role: 'user',
-      content,
-      created_at: new Date().toISOString(),
-    };
-    set(state => ({
-      currentMessages: [...state.currentMessages, optimisticMsg],
-      isSending: true,
-    }));
+    sendMessage: (sessionId, content) => {
+      if (sendInFlight !== null) return sendInFlight;
+      set({ isSending: true, error: null });
+      const promise = (async () => {
+        try {
+          const service = await dependencies.getCaptureService();
+          await service.submitText({
+            conversationId: sessionId,
+            content,
+            intentId: createLocalIntentId(),
+          });
+          if (requestedSessionId === null || requestedSessionId === sessionId) {
+            await get().fetchThread(sessionId);
+          }
+          set({ isSending: false });
+        } catch (error) {
+          if (requestedSessionId === null || requestedSessionId === sessionId) {
+            await get().fetchThread(sessionId);
+          }
+          set({ isSending: false, error: safeMessage(error) });
+        }
+      })().finally(() => {
+        if (sendInFlight === promise) sendInFlight = null;
+      });
+      sendInFlight = promise;
+      return promise;
+    },
 
-    try {
-      const res = await api.post('/chat/message', { sessionId, message: content });
-      const assistantMsg: ChatMessage = {
-        id: `temp-reply-${Date.now()}`,
-        role: 'assistant',
-        content: res.data.data.reply,
-        created_at: new Date().toISOString(),
-      };
-      set(state => ({
-        currentMessages: [...state.currentMessages, assistantMsg],
+    clearThread: (sessionId) => {
+      if (requestedSessionId !== sessionId) return;
+      fetchGeneration += 1;
+      requestedSessionId = null;
+      set({
+        currentSession: null,
+        currentMessages: [],
+        isLoadingMessages: false,
+        error: null,
+      });
+    },
+    clearError: () => set({ error: null }),
+    clearForAuthorityReplacement: () => {
+      fetchGeneration += 1;
+      requestedSessionId = null;
+      set({
+        threads: [],
+        currentSession: null,
+        currentMessages: [],
+        isLoadingThreads: false,
+        isLoadingMessages: false,
         isSending: false,
-      }));
-    } catch (e: any) {
-      const serverMsg = (e as any)?.response?.data?.error?.message;
-      set(state => ({
-        currentMessages: state.currentMessages.filter(m => m.id !== optimisticMsg.id),
-        isSending: false,
-        error: serverMsg ?? e.message,
-      }));
-    }
-  },
+        error: null,
+      });
+    },
+  }));
+}
 
-  clearThread: () => set({ currentSession: null, currentMessages: [] }),
-  clearError: () => set({ error: null }),
-}));
+export const useThreadStore = createThreadStore();

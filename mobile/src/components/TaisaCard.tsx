@@ -1,5 +1,6 @@
 import { View, Text, TouchableOpacity } from 'react-native';
 import { router } from 'expo-router';
+import { LOCAL_CAPTURE_ROUTE } from '../navigation/localCaptureRoute';
 
 interface TaisaCardProps {
   eyebrow: string;
@@ -9,7 +10,7 @@ interface TaisaCardProps {
 }
 
 export function TaisaCard({ eyebrow, body, cta, onPress }: TaisaCardProps) {
-  const handlePress = onPress ?? (() => router.push('/recording'));
+  const handlePress = onPress ?? (() => router.push(LOCAL_CAPTURE_ROUTE));
 
   return (
     <TouchableOpacity

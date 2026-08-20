@@ -15,6 +15,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.taisa.app",
+      "buildNumber": "1",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "Allow Taisa to access the microphone to record your voice."
       }
@@ -37,7 +38,21 @@
         {
           "microphonePermission": "Allow Taisa to access the microphone to record your voice."
         }
-      ]
+      ],
+      [
+        "expo-sqlite",
+        {
+          "useSQLCipher": true
+        }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Allow Taisa to use Face ID to protect your private career archive."
+        }
+      ],
+      "@react-native-community/datetimepicker",
+      "./plugins/withLocalNotificationsOnly"
     ]
   }
 }
