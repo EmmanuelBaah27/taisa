@@ -10,7 +10,13 @@ import {
   AccessibilityInfo, AppState, type NativeScrollEvent, type NativeSyntheticEvent,
   useWindowDimensions, View,
 } from 'react-native';
-import Animated, { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
+import Animated, {
+  runOnJS,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 
 import { VoiceButton as DefaultVoiceButton } from '../components/VoiceButton';
 import { BottomNavBar as DefaultBottomNavBar } from '../components/ui/BottomNavBar';
@@ -56,6 +62,8 @@ export function InteractiveMainNavigatorView({
   const swipeFromIndex = useSharedValue(activeIndex);
   const swipeToIndex = useSharedValue(-1);
   const swipeInteracting = useSharedValue(0);
+  const directTransition = useSharedValue(0);
+  const directPageOpacity = useSharedValue(1);
   const pendingIndexRef = useRef<number | null>(null);
   const [reduceMotion, setReduceMotion] = useState(false);
 
@@ -65,12 +73,14 @@ export function InteractiveMainNavigatorView({
     swipeToIndex.value = -1;
     swipeProgress.value = 0;
     swipeInteracting.value = 0;
+    directTransition.value = 0;
+    directPageOpacity.value = 1;
     if (pendingIndexRef.current === activeIndex) {
       pendingIndexRef.current = null;
       return;
     }
     scrollRef.current?.scrollTo({ x: activeIndex * pageWidth, animated: false });
-  }, [activeIndex, activeIndexValue, pageWidth, swipeFromIndex, swipeInteracting, swipeProgress, swipeToIndex]);
+  }, [activeIndex, activeIndexValue, directPageOpacity, directTransition, pageWidth, swipeFromIndex, swipeInteracting, swipeProgress, swipeToIndex]);
 
   useEffect(() => {
     let mounted = true;
@@ -96,6 +106,7 @@ export function InteractiveMainNavigatorView({
   const pageScrollHandler = useAnimatedScrollHandler({
     onScroll: (event) => {
       'worklet';
+      if (directTransition.value === 1) return;
       const pagePosition = event.contentOffset.x / pageWidth;
       const origin = activeIndexValue.value;
       const delta = pagePosition - origin;
@@ -108,6 +119,7 @@ export function InteractiveMainNavigatorView({
       swipeFromIndex.value = activeIndexValue.value;
     },
   });
+  const directPageStyle = useAnimatedStyle(() => ({ opacity: directPageOpacity.value }));
 
   const dispatchRoute = useCallback((destinationIndex: number) => {
     const destination = state.routes[destinationIndex];
@@ -132,6 +144,10 @@ export function InteractiveMainNavigatorView({
     swipeInteracting.value = 0;
   }, [dispatchRoute, pageWidth, state.index, swipeFromIndex, swipeInteracting, swipeProgress, swipeToIndex]);
 
+  const jumpDirectlyToPage = useCallback((destinationIndex: number) => {
+    scrollRef.current?.scrollTo({ x: destinationIndex * pageWidth, animated: false });
+  }, [pageWidth]);
+
   const navigate = useCallback((destinationId: MainDestinationId) => {
     const destinationIndex = state.routes.findIndex((route) => route.name === destinationId);
     if (destinationIndex < 0 || destinationIndex === state.index) return;
@@ -141,13 +157,26 @@ export function InteractiveMainNavigatorView({
     swipeFromIndex.value = state.index;
     swipeToIndex.value = destinationIndex;
     swipeInteracting.value = 1;
+    const nonAdjacent = Math.abs(destinationIndex - state.index) > 1;
+    if (nonAdjacent && !reduceMotion) {
+      directTransition.value = 1;
+      directPageOpacity.value = withTiming(0, { duration: 90 }, (finished) => {
+        if (!finished) return;
+        runOnJS(jumpDirectlyToPage)(destinationIndex);
+        directPageOpacity.value = withTiming(1, { duration: 170 });
+      });
+      swipeProgress.value = withTiming(1, { duration: 260 }, (finished) => {
+        if (finished) runOnJS(dispatchRoute)(destinationIndex);
+      });
+      return;
+    }
     if (reduceMotion) {
       scrollRef.current?.scrollTo({ x: destinationIndex * pageWidth, animated: false });
       dispatchRoute(destinationIndex);
     } else {
       scrollRef.current?.scrollTo({ x: destinationIndex * pageWidth, animated: true });
     }
-  }, [descriptors, dispatchRoute, pageWidth, reduceMotion, state.index, state.routes, swipeFromIndex, swipeInteracting, swipeToIndex]);
+  }, [descriptors, directPageOpacity, directTransition, dispatchRoute, jumpDirectlyToPage, pageWidth, reduceMotion, state.index, state.routes, swipeFromIndex, swipeInteracting, swipeProgress, swipeToIndex]);
 
   const interactionValue = useMemo(() => ({
     activeIndex, progress: swipeProgress, fromIndex: swipeFromIndex,
@@ -169,7 +198,7 @@ export function InteractiveMainNavigatorView({
           scrollEventThrottle={16}
           scrollEnabled={!reduceMotion}
           showsHorizontalScrollIndicator={false}
-          style={{ flex: 1 }}
+          style={[{ flex: 1 }, directPageStyle]}
           testID="main-scene-pager"
         >
           {state.routes.map((route, routeIndex) => (

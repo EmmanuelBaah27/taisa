@@ -210,6 +210,17 @@ describe('bottom navigation', () => {
     expect(source).toContain('return { left, width };');
   });
 
+  test('applies one shared optical vertical correction without resizing the shell or capsule', () => {
+    const source = readFileSync(
+      resolve(__dirname, '../../components/ui/BottomNavBar.tsx'),
+      'utf8',
+    );
+
+    expect(source).toContain('const CAPSULE_OPTICAL_OFFSET_Y = 2');
+    expect(source).toMatch(/top: 6 \+ CAPSULE_OPTICAL_OFFSET_Y, height: 48/);
+    expect(source).toMatch(/top: 6 \+ CAPSULE_OPTICAL_OFFSET_Y[\s\S]*height: 48/);
+  });
+
   test('moves inactive destinations clear of the selected capsule', () => {
     expect(getBottomNavigationDestinationOffsets('chats')).toEqual([-60, 26, 86]);
     expect(getBottomNavigationDestinationOffsets('index')).toEqual([-86, 0, 86]);

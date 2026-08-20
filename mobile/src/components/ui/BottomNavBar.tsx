@@ -62,6 +62,7 @@ const ITEM_WIDTHS = [
 ] as const;
 const CAPSULE_X = [6, 66, 126] as const;
 const CAPSULE_WIDTH = [108, 108, 88] as const;
+const CAPSULE_OPTICAL_OFFSET_Y = 2;
 const PRESS_SPRING = { damping: 24, stiffness: 360, mass: 0.7 } as const;
 
 function NavigationMaterial({ children }: { children: ReactNode }) {
@@ -152,7 +153,9 @@ function SmoothDestination({ item, index, pagePosition, userId, onPress, onPress
 
   return (
     <Animated.View
-      style={[{ position: 'absolute', top: 6, height: 48 }, frameStyle]}
+      style={[{
+        position: 'absolute', top: 6 + CAPSULE_OPTICAL_OFFSET_Y, height: 48,
+      }, frameStyle]}
     >
       <Pressable
         accessibilityLabel={item.label}
@@ -255,8 +258,11 @@ export function BottomNavBar() {
           <NavigationMaterial>
             <Animated.View
               pointerEvents="none"
-              className="absolute top-[6px] h-12 rounded-[32px] bg-[rgba(15,16,16,0.06)]"
-              style={capsuleStyle}
+              className="absolute rounded-[32px] bg-[rgba(15,16,16,0.06)]"
+              style={[
+                { top: 6 + CAPSULE_OPTICAL_OFFSET_Y, height: 48 },
+                capsuleStyle,
+              ]}
             />
           </NavigationMaterial>
           {BOTTOM_NAVIGATION_ITEMS.map((item, index) => (
