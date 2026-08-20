@@ -21,6 +21,7 @@ import Animated, {
 
 import { VoiceButton as DefaultVoiceButton } from '../components/VoiceButton';
 import { BottomNavBar as DefaultBottomNavBar } from '../components/ui/BottomNavBar';
+import { playInteractionHaptic } from '../services/interactionHaptics';
 import { BOTTOM_NAVIGATION_FIGMA, BOTTOM_NAVIGATION_ITEMS } from './bottomNavigation';
 import type { MainDestinationId } from './interactiveMainNavigation';
 import { MainNavigationInteractionContext } from './MainNavigationInteractionContext';
@@ -126,6 +127,7 @@ export function InteractiveMainNavigatorView({
     const destination = state.routes[destinationIndex];
     if (!destination || !descriptors[destination.key]) return;
     pendingIndexRef.current = destinationIndex;
+    playInteractionHaptic('selection');
     navigation.dispatch(CommonActions.navigate({ name: destination.name, merge: true }));
     AccessibilityInfo.announceForAccessibility(routeLabel(destination.name));
   }, [descriptors, navigation, state.routes]);

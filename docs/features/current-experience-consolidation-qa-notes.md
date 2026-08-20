@@ -53,6 +53,13 @@ Final polish replaces the white-on-white sheen with a neutral hairline/shadow cl
 
 Clean-Metro iOS QA then reproduced a Fabric mount crash in Reanimated 4.1.1 while `useAnimatedStyle` mutated a frozen hook ref. `BottomNavBar` no longer imports or mounts Reanimated: React Native Animated owns shell scale/width, capsule X/width, fill opacity, and content handoff, with native-driver use limited to scale/opacity/translation and layout width animations explicitly JS-driven. A source guard blocks the crashing hooks from returning. Paired-iPhone recheck remains required.
 
+## 2026-08-20 — navigation tactile feedback
+
+- Device QA confirmed that removing the main-navigation selection haptic made the capsule feel emotionally flat.
+- The haptic had been removed because it amplified the earlier tap-animation snap; that motion defect is now corrected.
+- Restore one restrained selection tick only when a new destination settles after either a tap or swipe.
+- Keep the haptic behind the isolated best-effort interaction service so native feedback failures cannot affect navigation or recording.
+
 ## 2026-08-20 shadow clipping, tap motion, and coaching failure
 
 - The conversation morph shell kept `overflow: hidden` after its rounded transition reached the full-screen state, clipping elevation on the header control, recording controls, and keyboard composer. Clipping now applies only while the shell is rounded; settled content permits shadow bleed without changing component geometry.
