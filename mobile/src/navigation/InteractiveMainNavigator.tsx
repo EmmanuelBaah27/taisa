@@ -3,12 +3,14 @@ import {
   type TabNavigationState, TabRouter, type TabRouterOptions, useNavigationBuilder,
 } from '@react-navigation/native';
 import { withLayoutContext } from 'expo-router';
-import { type ComponentType, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AccessibilityInfo, AppState, View } from 'react-native';
-import PagerView, {
-  type PagerViewOnPageScrollEvent, type PagerViewOnPageSelectedEvent,
-} from 'react-native-pager-view';
-import Animated, { useEvent, useHandler, useSharedValue } from 'react-native-reanimated';
+import {
+  type ComponentRef, type ComponentType, useCallback, useEffect, useMemo, useRef, useState,
+} from 'react';
+import {
+  AccessibilityInfo, AppState, type NativeScrollEvent, type NativeSyntheticEvent,
+  useWindowDimensions, View,
+} from 'react-native';
+import Animated, { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
 
 import { VoiceButton as DefaultVoiceButton } from '../components/VoiceButton';
 import { BottomNavBar as DefaultBottomNavBar } from '../components/ui/BottomNavBar';
@@ -37,22 +39,6 @@ export interface InteractiveMainNavigatorViewProps {
   VoiceButton?: ComponentType;
 }
 
-type PageScrollContext = Record<string, never>;
-type PageScrollHandler = (event: PagerViewOnPageScrollEvent['nativeEvent']) => void;
-const AnimatedPagerView = Animated.createAnimatedComponent(PagerView);
-
-function useNativePageScroll(onPageScroll: PageScrollHandler) {
-  const { doDependenciesDiffer } = useHandler<
-    PagerViewOnPageScrollEvent['nativeEvent'], PageScrollContext
-  >(
-    { onPageScroll }, [onPageScroll],
-  );
-  return useEvent<PagerViewOnPageScrollEvent['nativeEvent'], PageScrollContext>((event) => {
-    'worklet';
-    if (event.eventName.endsWith('onPageScroll')) onPageScroll(event);
-  }, ['onPageScroll'], doDependenciesDiffer);
-}
-
 function routeLabel(routeName: string): string {
   return BOTTOM_NAVIGATION_ITEMS.find((item) => item.id === routeName)?.label ?? routeName;
 }
@@ -62,7 +48,8 @@ export function InteractiveMainNavigatorView({
   BottomNavBar = DefaultBottomNavBar,
   VoiceButton = DefaultVoiceButton,
 }: InteractiveMainNavigatorViewProps) {
-  const pagerRef = useRef<PagerView>(null);
+  const scrollRef = useRef<ComponentRef<typeof Animated.ScrollView>>(null);
+  const { width: pageWidth } = useWindowDimensions();
   const activeIndex = state.index;
   const activeIndexValue = useSharedValue(activeIndex);
   const swipeProgress = useSharedValue(0);
@@ -82,8 +69,8 @@ export function InteractiveMainNavigatorView({
       pendingIndexRef.current = null;
       return;
     }
-    pagerRef.current?.setPageWithoutAnimation(activeIndex);
-  }, [activeIndex, activeIndexValue, swipeFromIndex, swipeInteracting, swipeProgress, swipeToIndex]);
+    scrollRef.current?.scrollTo({ x: activeIndex * pageWidth, animated: false });
+  }, [activeIndex, activeIndexValue, pageWidth, swipeFromIndex, swipeInteracting, swipeProgress, swipeToIndex]);
 
   useEffect(() => {
     let mounted = true;
@@ -94,7 +81,7 @@ export function InteractiveMainNavigatorView({
     const appState = AppState.addEventListener('change', (nextState) => {
       if (nextState === 'active') return;
       pendingIndexRef.current = null;
-      pagerRef.current?.setPageWithoutAnimation(activeIndexValue.value);
+      scrollRef.current?.scrollTo({ x: activeIndexValue.value * pageWidth, animated: false });
       swipeProgress.value = 0;
       swipeToIndex.value = -1;
       swipeInteracting.value = 0;
@@ -104,20 +91,23 @@ export function InteractiveMainNavigatorView({
       motion.remove();
       appState.remove();
     };
-  }, [activeIndexValue, swipeInteracting, swipeProgress, swipeToIndex]);
+  }, [activeIndexValue, pageWidth, swipeInteracting, swipeProgress, swipeToIndex]);
 
-  const onPageScroll = useCallback<PageScrollHandler>((event) => {
-    'worklet';
-    const pagePosition = event.position + event.offset;
-    const origin = activeIndexValue.value;
-    const delta = pagePosition - origin;
-    swipeFromIndex.value = origin;
-    swipeToIndex.value = delta < 0 ? origin - 1 : delta > 0 ? origin + 1 : -1;
-    swipeProgress.value = Math.min(Math.abs(delta), 1);
-  }, [activeIndexValue, swipeFromIndex, swipeProgress, swipeToIndex]);
-  const pageScrollHandler = useNativePageScroll(onPageScroll) as unknown as (
-    event: PagerViewOnPageScrollEvent
-  ) => void;
+  const pageScrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      'worklet';
+      const pagePosition = event.contentOffset.x / pageWidth;
+      const origin = activeIndexValue.value;
+      const delta = pagePosition - origin;
+      swipeFromIndex.value = origin;
+      swipeToIndex.value = delta < 0 ? origin - 1 : delta > 0 ? origin + 1 : -1;
+      swipeProgress.value = Math.min(Math.abs(delta), 1);
+    },
+    onBeginDrag: () => {
+      swipeInteracting.value = 1;
+      swipeFromIndex.value = activeIndexValue.value;
+    },
+  });
 
   const dispatchRoute = useCallback((destinationIndex: number) => {
     const destination = state.routes[destinationIndex];
@@ -127,13 +117,13 @@ export function InteractiveMainNavigatorView({
     AccessibilityInfo.announceForAccessibility(routeLabel(destination.name));
   }, [descriptors, navigation, state.routes]);
 
-  const onPageSelected = useCallback((event: PagerViewOnPageSelectedEvent) => {
-    const destinationIndex = event.nativeEvent.position;
+  const onPageSelected = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const destinationIndex = Math.round(event.nativeEvent.contentOffset.x / pageWidth);
     swipeProgress.value = 0;
     swipeToIndex.value = -1;
     swipeInteracting.value = 0;
     if (destinationIndex !== state.index) dispatchRoute(destinationIndex);
-  }, [dispatchRoute, state.index, swipeInteracting, swipeProgress, swipeToIndex]);
+  }, [dispatchRoute, pageWidth, state.index, swipeInteracting, swipeProgress, swipeToIndex]);
 
   const navigate = useCallback((destinationId: MainDestinationId) => {
     const destinationIndex = state.routes.findIndex((route) => route.name === destinationId);
@@ -145,12 +135,12 @@ export function InteractiveMainNavigatorView({
     swipeToIndex.value = destinationIndex;
     swipeInteracting.value = 1;
     if (reduceMotion) {
-      pagerRef.current?.setPageWithoutAnimation(destinationIndex);
+      scrollRef.current?.scrollTo({ x: destinationIndex * pageWidth, animated: false });
       dispatchRoute(destinationIndex);
     } else {
-      pagerRef.current?.setPage(destinationIndex);
+      scrollRef.current?.scrollTo({ x: destinationIndex * pageWidth, animated: true });
     }
-  }, [descriptors, dispatchRoute, reduceMotion, state.index, state.routes, swipeFromIndex, swipeInteracting, swipeToIndex]);
+  }, [descriptors, dispatchRoute, pageWidth, reduceMotion, state.index, state.routes, swipeFromIndex, swipeInteracting, swipeToIndex]);
 
   const interactionValue = useMemo(() => ({
     activeIndex, progress: swipeProgress, fromIndex: swipeFromIndex,
@@ -160,19 +150,18 @@ export function InteractiveMainNavigatorView({
   return (
     <MainNavigationInteractionContext.Provider value={interactionValue}>
       <View className="flex-1" testID="main-navigation-shell">
-        <AnimatedPagerView
-          ref={pagerRef}
-          initialPage={activeIndex}
-          onPageScroll={pageScrollHandler}
-          onPageSelected={onPageSelected}
-          onPageScrollStateChanged={(event) => {
-            const interacting = event.nativeEvent.pageScrollState !== 'idle';
-            swipeInteracting.value = interacting ? 1 : 0;
-            if (interacting) swipeFromIndex.value = state.index;
-          }}
-          orientation="horizontal"
-          overdrag
+        <Animated.ScrollView
+          ref={scrollRef}
+          horizontal
+          pagingEnabled
+          bounces
+          directionalLockEnabled
+          decelerationRate="fast"
+          onMomentumScrollEnd={onPageSelected}
+          onScroll={pageScrollHandler}
+          scrollEventThrottle={16}
           scrollEnabled={!reduceMotion}
+          showsHorizontalScrollIndicator={false}
           style={{ flex: 1 }}
           testID="main-scene-pager"
         >
@@ -182,12 +171,13 @@ export function InteractiveMainNavigatorView({
               collapsable={false}
               accessibilityElementsHidden={routeIndex !== activeIndex}
               importantForAccessibility={routeIndex === activeIndex ? 'auto' : 'no-hide-descendants'}
+              style={{ width: pageWidth }}
               testID={`main-scene-${route.name}`}
             >
               {descriptors[route.key]?.render()}
             </View>
           ))}
-        </AnimatedPagerView>
+        </Animated.ScrollView>
         <BottomNavBar />
         <VoiceButton />
       </View>
