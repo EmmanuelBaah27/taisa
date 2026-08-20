@@ -1,4 +1,5 @@
 import type { IconName } from '../components/ui/Icon';
+import { resolveOptionalLiquidGlassModule } from '../components/ui/liquidGlass';
 
 export interface BottomNavigationItem {
   id: 'chats' | 'index' | 'you';
@@ -331,11 +332,5 @@ export function resolveGlassAvailability(
 }
 
 export function resolveOptionalGlassModule<T>(enabled: boolean, loader: () => T): T | null {
-  if (!enabled) return null;
-
-  try {
-    return loader();
-  } catch {
-    return null;
-  }
+  return resolveOptionalLiquidGlassModule(enabled, loader);
 }
