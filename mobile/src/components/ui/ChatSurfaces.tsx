@@ -265,7 +265,7 @@ export function ChatConversationSurface(props: ChatConversationSurfaceProps) {
       <ScrollView
         ref={props.scrollRef}
         className="flex-1"
-        contentContainerStyle={{ paddingTop: 0, paddingBottom: 40 }}
+        contentContainerStyle={{ paddingTop: 8, paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}
         onScroll={(event) => props.onScrollAtTopChange?.(event.nativeEvent.contentOffset.y <= 2)}
         onContentSizeChange={props.onContentSizeChange}
