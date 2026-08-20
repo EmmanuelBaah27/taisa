@@ -43,10 +43,8 @@ describe('InteractiveMainNavigator', () => {
     );
   });
 
-  test('plays one selection haptic only when a new page commits', () => {
-    expect(source).toContain("playInteractionHaptic('selection')");
-    expect(source).toMatch(/const dispatchRoute[\s\S]*playInteractionHaptic\('selection'\);[\s\S]*navigation\.dispatch/);
-    expect(source).not.toMatch(/if \(destinationIndex !== state\.index\) \{\s*playInteractionHaptic/);
+  test('keeps tap-driven page commits free of haptics', () => {
+    expect(source).not.toContain('playInteractionHaptic');
   });
 
   test('uses the established direct fade timings for tapped destinations', () => {

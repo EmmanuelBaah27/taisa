@@ -49,5 +49,6 @@ Final polish replaces the white-on-white sheen with a neutral hairline/shadow cl
 - Tapping any main navigation item must use the existing direct page crossfade, including adjacent destinations.
 - Horizontal page travel is reserved exclusively for an active drag, where the scene remains attached to the finger.
 - The navigation capsule may continue to settle to the tapped destination while page content crossfades.
+- Tap-driven page commits must not play a selection haptic; the tactile pulse makes the otherwise smooth capsule settlement feel like a sharp snap.
 
 Clean-Metro iOS QA then reproduced a Fabric mount crash in Reanimated 4.1.1 while `useAnimatedStyle` mutated a frozen hook ref. `BottomNavBar` no longer imports or mounts Reanimated: React Native Animated owns shell scale/width, capsule X/width, fill opacity, and content handoff, with native-driver use limited to scale/opacity/translation and layout width animations explicitly JS-driven. A source guard blocks the crashing hooks from returning. Paired-iPhone recheck remains required.
