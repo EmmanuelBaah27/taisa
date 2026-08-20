@@ -1,6 +1,7 @@
 import { useEffect, useReducer, useRef, useState } from 'react';
 import {
   Alert,
+  Keyboard,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -172,6 +173,7 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
   );
   const [draft, setDraft] = useState('');
   const [discardIntent, setDiscardIntent] = useState<'cancel' | 'keyboard' | null>(null);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [composer, dispatchComposer] = useReducer(
     reduceVoiceComposer,
     undefined,
@@ -230,6 +232,12 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
       ),
     );
   }
+
+  useEffect(() => {
+    const show = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
+    const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardVisible(false));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
 
   useEffect(() => {
     if (initialBottomSettledRef.current && messages.length > previousMessageCountRef.current) {
@@ -381,7 +389,9 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
       await recorder.pause();
       dispatchComposer({ type: 'pause-voice' });
     } catch {
-      if (mountedRef.current) setPhase('error');
+      if (mountedRef.current) {
+        Alert.alert('Couldn’t pause recording', 'Keep speaking or try Pause again.');
+      }
     }
   }
 
@@ -858,7 +868,7 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
   );
 
   const chatFooter = (
-    <ChatComposerDock phase={phase} bottomInset={insets.bottom}>
+    <ChatComposerDock phase={phase} bottomInset={keyboardVisible ? 0 : insets.bottom}>
       {showActiveRecordingSurface ? (
         <ActiveRecordingActionBar
           durationSeconds={recorder.duration}

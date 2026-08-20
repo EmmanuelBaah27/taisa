@@ -126,6 +126,8 @@ describe('local-first capture navigation', () => {
     expect(chatScreen).toMatch(/onCancel=\{\(\) => setDiscardIntent\('cancel'\)\}/);
     expect(chatScreen).toMatch(/onKeyboard=\{\(\) => setDiscardIntent\('keyboard'\)\}/);
     expect(chatScreen).toMatch(/<RecordingDiscardSheet[\s\S]*intent=\{discardIntent\}/);
+    expect(chatScreen).toMatch(/bottomInset=\{keyboardVisible \? 0 : insets\.bottom\}/);
+    expect(chatScreen).toMatch(/Couldn’t pause recording/);
     expect(chatScreen).toMatch(/onPauseResume=\{[\s\S]*handleResumeVoice[\s\S]*handlePauseVoice/);
     expect(chatScreen).toMatch(/onSend=\{\(\) => \{ void handleComposerSend\(\); \}\}/);
 
