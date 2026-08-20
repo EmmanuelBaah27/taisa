@@ -52,6 +52,7 @@ export function getLiquidGlassPressScale(
   reduceMotion: boolean,
   disabled: boolean,
 ): number {
+  'worklet';
   if (reduceMotion || disabled) return 1;
   return 1 - (0.03 * Math.max(0, Math.min(1, pressed)));
 }

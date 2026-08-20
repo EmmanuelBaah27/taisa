@@ -19,6 +19,17 @@ describe('LiquidGlassButtonSurface', () => {
     expect(getLiquidGlassPressScale(1, false, true)).toBe(1);
   });
 
+  test('keeps the press-scale helper callable from the UI-thread animated style', () => {
+    const source = readFileSync(
+      resolve(__dirname, '../LiquidGlassButtonSurface.tsx'),
+      'utf8',
+    );
+
+    expect(source).toMatch(
+      /function getLiquidGlassPressScale\([\s\S]*?\): number \{\s*'worklet';/,
+    );
+  });
+
   test('mounts one interactive native surface without opacity animation or a nested pressable', () => {
     const source = readFileSync(
       resolve(__dirname, '../LiquidGlassButtonSurface.tsx'),
