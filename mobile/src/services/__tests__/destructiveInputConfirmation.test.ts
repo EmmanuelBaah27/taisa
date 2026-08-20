@@ -5,10 +5,10 @@ import {
 
 describe('destructive input confirmation', () => {
   test.each([
-    ['cancel-recording', 'Discard recording'],
+    ['cancel-recording', 'Discard draft'],
     ['switch-to-keyboard', 'Switch and discard'],
     ['delete-voice-draft', 'Delete recording'],
-    ['discard-voice-submission', 'Discard submission'],
+    ['discard-voice-submission', 'Discard draft'],
   ] as const)('marks %s as the native destructive action', (intent, destructiveLabel) => {
     expect(getDestructiveInputConfirmationOptions(intent)).toMatchObject({
       options: ['Cancel', destructiveLabel],
@@ -16,6 +16,16 @@ describe('destructive input confirmation', () => {
       destructiveButtonIndex: 1,
     });
   });
+
+  test.each(['cancel-recording', 'discard-voice-submission'] as const)(
+    'uses format-neutral draft copy for %s',
+    (intent) => {
+      expect(getDestructiveInputConfirmationOptions(intent)).toMatchObject({
+        title: 'Discard draft?',
+        message: 'Your unfinished draft will be removed.',
+      });
+    },
+  );
 
   test('resolves only the destructive native action as confirmation', async () => {
     const presenter = jest.fn((

@@ -165,7 +165,6 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
     contentTranslateY,
     open,
     revealContent,
-    close,
   } = useMorphTransition(sourceSnapshot);
 
   const slideStyle = useAnimatedStyle(() => ({
@@ -239,7 +238,9 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
     activeRequestKind,
     activeRequestStatus,
   });
-  const hasDestructiveVoiceInput = composer.voice !== 'none'
+  const hasDestructiveDraft = draft.trim().length > 0
+    || composer.voice === 'recording'
+    || composer.voice === 'paused'
     || pendingRecording !== null
     || hasAbandonableVoiceSubmission;
 
@@ -838,21 +839,17 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
     closingRef.current = true;
     void stopActiveRecordingAndDiscard().catch(() => {});
     discardPendingRecording();
-    if (sourceSnapshot === null) {
-      translateY.value = withTiming(
-        viewportHeight,
-        { duration: CHAT_SHEET_DISMISS_DURATION },
-        (finished) => {
-          if (finished) runOnJS(commitClose)();
-        },
-      );
-      return;
-    }
-    close(commitClose);
+    translateY.value = withTiming(
+      viewportHeight,
+      { duration: CHAT_SHEET_DISMISS_DURATION },
+      (finished) => {
+        if (finished) runOnJS(commitClose)();
+      },
+    );
   }
 
   function handleClose() {
-    if (!hasDestructiveVoiceInput) {
+    if (!hasDestructiveDraft) {
       performClose();
       return;
     }
@@ -902,7 +899,7 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
         translationY: event.translationY,
         velocityY: event.velocityY,
       })) {
-        if (hasDestructiveVoiceInput) {
+        if (hasDestructiveDraft) {
           translateY.value = withSpring(0, CHAT_SHEET_RETURN_SPRING, (finished) => {
             if (finished) runOnJS(handleGestureDestructiveClose)();
           });

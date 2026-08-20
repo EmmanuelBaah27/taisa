@@ -41,18 +41,18 @@ export function getDestructiveInputConfirmationOptions(
       };
     case 'discard-voice-submission':
       return {
-        title: 'Discard submission?',
-        message: 'The recording and its unfinished submission will be removed.',
-        options: ['Cancel', 'Discard submission'],
+        title: 'Discard draft?',
+        message: 'Your unfinished draft will be removed.',
+        options: ['Cancel', 'Discard draft'],
         cancelButtonIndex: 0,
         destructiveButtonIndex: 1,
       };
     case 'cancel-recording':
     default:
       return {
-        title: 'Discard recording?',
-        message: 'This recording will not be saved.',
-        options: ['Cancel', 'Discard recording'],
+        title: 'Discard draft?',
+        message: 'Your unfinished draft will be removed.',
+        options: ['Cancel', 'Discard draft'],
         cancelButtonIndex: 0,
         destructiveButtonIndex: 1,
       };

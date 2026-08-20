@@ -114,7 +114,7 @@ export default function RootLayout() {
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#ffffff' }}>
       <StatusBar style="dark" />
       <Stack initialRouteName={CURRENT_INITIAL_STACK} screenOptions={{ headerShown: false, animation: 'none', contentStyle: { backgroundColor: '#ffffff' } }}>
         <Stack.Screen name="(tabs)" />
@@ -133,7 +133,7 @@ export default function RootLayout() {
       {privacyState.shielded ? (
         <View
           className="absolute inset-0 items-center justify-center bg-background px-8"
-          style={{ zIndex: 9999 }}
+          style={{ zIndex: 9999, backgroundColor: '#ffffff' }}
           accessibilityViewIsModal
         >
           <Text className="text-foreground text-xl font-bold">Taisa is private</Text>

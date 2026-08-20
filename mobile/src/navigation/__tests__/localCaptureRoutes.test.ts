@@ -103,14 +103,18 @@ describe('local-first capture navigation', () => {
     expect(chatScreen).toMatch(/shouldDismissChatSheet/);
     expect(chatScreen).toMatch(/getResistedChatSheetTranslation\(event\.translationY\)/);
     expect(chatScreen).toMatch(/CHAT_SHEET_DISMISS_DURATION/);
-    expect(chatScreen).toMatch(/if \(hasDestructiveVoiceInput\)[\s\S]*withSpring\(0, CHAT_SHEET_RETURN_SPRING[\s\S]*handleGestureDestructiveClose/);
+    expect(chatScreen).toMatch(/if \(hasDestructiveDraft\)[\s\S]*withSpring\(0, CHAT_SHEET_RETURN_SPRING[\s\S]*handleGestureDestructiveClose/);
     expect(chatScreen).toMatch(/handleGestureDestructiveClose[\s\S]*requestDestructiveInput\('cancel-recording'/);
     expect(chatScreen).toMatch(/<GestureDetector[\s\S]*<View\s+collapsable=\{false\}[\s\S]*<ChatScreenShell/);
-    expect(chatScreen).toMatch(/close\(commitClose\)/);
+    expect(chatScreen).not.toMatch(/close\(commitClose\)/);
+    expect(chatScreen).toMatch(/function performClose\(\)[\s\S]*withTiming\([\s\S]*viewportHeight[\s\S]*CHAT_SHEET_DISMISS_DURATION/);
+    expect(chatScreen).toMatch(/const hasDestructiveDraft = draft\.trim\(\)\.length > 0[\s\S]*composer\.voice === 'recording'[\s\S]*composer\.voice === 'paused'/);
     expect(chatScreen).toMatch(/if \(sourceSnapshot === null\)[\s\S]*withTiming\([\s\S]*CHAT_SHEET_DISMISS_DURATION[\s\S]*runOnJS\(commitClose\)/);
     expect(chatScreen).toMatch(/if \(sourceSnapshot === null\) await fetchThreads\(\)/);
     expect(rootLayout).not.toMatch(/slide_from_bottom/);
     expect(rootLayout).toMatch(/name="chat\/index"[\s\S]*presentation: 'transparentModal'[\s\S]*animation: 'none'[\s\S]*backgroundColor: 'transparent'/);
+    expect(rootLayout).toMatch(/GestureHandlerRootView style=\{\{ flex: 1, backgroundColor: '#ffffff' \}\}/);
+    expect(rootLayout).toMatch(/privacyState\.shielded[\s\S]*backgroundColor: '#ffffff'/);
   });
 
   test('fresh voice capture stays inside the canonical Taisa shell with existing lifecycle handlers', () => {
