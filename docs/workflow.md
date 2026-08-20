@@ -17,7 +17,7 @@ Claude maintains the Active Work table — Baah never needs to update it.
 | Secondary icon button | Product | Review + QA | `feature/secondary-icon-button` | Baah device QA |
 | Recording page | Product | Review + QA | `feature/secondary-icon-button` | Baah device QA |
 | Shared chat and recording shell | Product | Review + QA | `refactor/shared-chat-recording-shell` | Baah paired-device QA |
-| Glass elevation and keyboard surface | Product | Plan | `fix/glass-elevation-keyboard-surfaces` | Baah plan approval |
+| Glass elevation and keyboard surface | Product | Review + QA | `fix/glass-elevation-keyboard-surfaces` | canonical preview integration + Baah device QA |
 
 ---
 
