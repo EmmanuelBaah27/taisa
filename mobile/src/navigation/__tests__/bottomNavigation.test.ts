@@ -210,14 +210,14 @@ describe('bottom navigation', () => {
     expect(source).toContain('return { left, width };');
   });
 
-  test('centres selected content and capsule with equal vertical shell padding', () => {
+  test('keeps selected content and capsule together with the approved optical lift', () => {
     const source = readFileSync(
       resolve(__dirname, '../../components/ui/BottomNavBar.tsx'),
       'utf8',
     );
 
-    expect(source).not.toContain('CAPSULE_OPTICAL_OFFSET_Y');
-    expect(source.match(/top: 6, height: 48/g)).toHaveLength(2);
+    expect(source).toContain('SELECTED_OPTICAL_TOP = 5');
+    expect(source.match(/top: SELECTED_OPTICAL_TOP, height: 48/g)).toHaveLength(2);
   });
 
   test('moves inactive destinations clear of the selected capsule', () => {

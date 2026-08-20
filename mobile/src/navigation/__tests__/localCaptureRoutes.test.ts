@@ -107,7 +107,7 @@ describe('local-first capture navigation', () => {
     expect(chatScreen).toMatch(/handleGestureDestructiveClose[\s\S]*requestDestructiveInput\('cancel-recording'/);
     expect(chatScreen).toMatch(/<GestureDetector[\s\S]*<View\s+collapsable=\{false\}[\s\S]*<ChatScreenShell/);
     expect(chatScreen).not.toMatch(/close\(commitClose\)/);
-    expect(chatScreen).toMatch(/function performClose\(\)[\s\S]*withTiming\([\s\S]*viewportHeight[\s\S]*CHAT_SHEET_DISMISS_DURATION/);
+    expect(chatScreen).toMatch(/function performClose\(withDismissHaptic = true\)[\s\S]*withTiming\([\s\S]*viewportHeight[\s\S]*CHAT_SHEET_DISMISS_DURATION/);
     expect(chatScreen).toMatch(/const hasDestructiveDraft = draft\.trim\(\)\.length > 0[\s\S]*composer\.voice === 'recording'[\s\S]*composer\.voice === 'paused'/);
     expect(chatScreen).toMatch(/if \(sourceSnapshot === null\)[\s\S]*withTiming\([\s\S]*CHAT_SHEET_DISMISS_DURATION[\s\S]*runOnJS\(commitClose\)/);
     expect(chatScreen).toMatch(/if \(sourceSnapshot === null\) await fetchThreads\(\)/);
@@ -178,8 +178,18 @@ describe('local-first capture navigation', () => {
       'utf8',
     );
 
-    expect(chatScreen).toMatch(/voiceCancelDestination\([^)]+\) === 'close'[\s\S]*performClose\(\)/);
+    expect(chatScreen).toMatch(/voiceCancelDestination\([^)]+\) === 'close'[\s\S]*performClose\(false\)/);
     expect(chatScreen).toMatch(/setPhase\('idle'\)[\s\S]*restore-mode/);
+  });
+
+  test('does not confirm an empty text send with tactile feedback', () => {
+    const chatScreen = fs.readFileSync(
+      path.resolve(__dirname, '../../../app/chat/index.tsx'),
+      'utf8',
+    );
+    expect(chatScreen).toMatch(
+      /handleComposerSend\(\)[\s\S]*composer\.voice === 'none' && !draft\.trim\(\)[\s\S]*return;[\s\S]*playInteractionHaptic\('send'\)/,
+    );
   });
 
   test('the composer remains visible above the iOS keyboard and clears after a successful retry', () => {

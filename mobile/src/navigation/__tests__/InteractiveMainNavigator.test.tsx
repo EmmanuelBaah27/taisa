@@ -41,6 +41,12 @@ describe('InteractiveMainNavigator', () => {
     );
   });
 
+  test('plays one selection haptic only when a new page commits', () => {
+    expect(source).toContain("playInteractionHaptic('selection')");
+    expect(source).toMatch(/const dispatchRoute[\s\S]*playInteractionHaptic\('selection'\);[\s\S]*navigation\.dispatch/);
+    expect(source).not.toMatch(/if \(destinationIndex !== state\.index\) \{\s*playInteractionHaptic/);
+  });
+
   test('crossfades a non-adjacent tab directly without scrolling through Home', () => {
     expect(source).toContain('const nonAdjacent = Math.abs(destinationIndex - state.index) > 1');
     expect(source).toMatch(/jumpDirectlyToPage[\s\S]*scrollTo\(\{ x: destinationIndex \* pageWidth, animated: false \}\)/);
