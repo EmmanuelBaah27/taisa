@@ -98,7 +98,10 @@ describe('local-first capture navigation', () => {
       'utf8',
     );
 
-    expect(chatScreen).not.toMatch(/Gesture\.Pan|gestureCommitClose|commitClose\(300\)|commitClose\(340\)/);
+    expect(chatScreen).toMatch(/Gesture\.Pan/);
+    expect(chatScreen).toMatch(/onScrollAtTopChange/);
+    expect(chatScreen).toMatch(/shouldDismissChatSheet/);
+    expect(chatScreen).toMatch(/<GestureDetector[\s\S]*<View\s+collapsable=\{false\}[\s\S]*<ChatScreenShell/);
     expect(chatScreen).toMatch(/close\(commitClose\)/);
     expect(chatScreen).toMatch(/if \(sourceSnapshot === null\)[\s\S]*commitClose\(\)/);
     expect(chatScreen).toMatch(/if \(sourceSnapshot === null\) await fetchThreads\(\)/);

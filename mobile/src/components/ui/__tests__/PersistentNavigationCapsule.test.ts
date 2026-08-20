@@ -17,7 +17,7 @@ describe('PersistentNavigationCapsule', () => {
     return PersistentNavigationCapsule({
       label: 'Chats',
       leadingVisual: null,
-      frame: getBottomNavigationCapsuleFrame('logs'),
+      frame: getBottomNavigationCapsuleFrame('chats'),
       phase,
     }) as CapsuleElement;
   }
@@ -47,7 +47,7 @@ describe('PersistentNavigationCapsule', () => {
     const capsule = PersistentNavigationCapsule({
       label: 'Chats',
       leadingVisual: null,
-      frame: getBottomNavigationCapsuleFrame('logs'),
+      frame: getBottomNavigationCapsuleFrame('chats'),
       phase: 'travelling',
       animatedFillStyle: fillStyle,
     }) as CapsuleElement;
@@ -96,7 +96,7 @@ describe('PersistentNavigationCapsule', () => {
     const capsule = PersistentNavigationCapsule({
       label: 'Chats',
       leadingVisual: null,
-      frame: getBottomNavigationCapsuleFrame('logs'),
+      frame: getBottomNavigationCapsuleFrame('chats'),
       phase: 'travelling',
       animatedLabelStyle,
     }) as CapsuleElement;
@@ -112,7 +112,7 @@ describe('PersistentNavigationCapsule', () => {
     const capsule = PersistentNavigationCapsule({
       label: 'Chats',
       leadingVisual: null,
-      frame: getBottomNavigationCapsuleFrame('logs'),
+      frame: getBottomNavigationCapsuleFrame('chats'),
       phase: 'travelling',
       animatedContentStyle,
     }) as CapsuleElement;
@@ -125,14 +125,14 @@ describe('PersistentNavigationCapsule', () => {
   test('uses the frame width and horizontal position', () => {
     const capsule = renderCapsule('resting');
 
-    expect(capsule.props.style).toContainEqual({ left: 66, width: 108 });
+    expect(capsule.props.style).toContainEqual({ left: 6, width: 108 });
   });
 
   test('can render as a background-only selection surface', () => {
     const capsule = PersistentNavigationCapsule({
       label: 'Chats',
       leadingVisual: null,
-      frame: getBottomNavigationCapsuleFrame('logs'),
+      frame: getBottomNavigationCapsuleFrame('chats'),
       phase: 'travelling',
       surfaceOnly: true,
     }) as CapsuleElement;

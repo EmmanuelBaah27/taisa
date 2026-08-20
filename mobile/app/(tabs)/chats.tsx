@@ -15,14 +15,13 @@ import {
   groupChatsByDate,
   type ChatSummary,
 } from '../../src/utils/chatPresentation';
-
 interface ChatSection {
   key: string;
   label: string;
   data: ChatSummary[];
 }
 
-export default function LogsScreen() {
+export default function ChatsScreen() {
   const pageHeaderPaddingTop = usePageHeaderPaddingTop();
   const { threads, isLoadingThreads, error, fetchThreads } = useThreadStore();
   const { reportScroll } = useScrollContext();
@@ -74,10 +73,7 @@ export default function LogsScreen() {
     if (source !== null) {
       useUIStore.getState().captureChatListReturn(source.listScrollY);
     }
-    router.push(chatConversationRoute(
-      chat.id,
-      source,
-    ));
+    router.push(chatConversationRoute(chat.id, source));
   }
 
   return (

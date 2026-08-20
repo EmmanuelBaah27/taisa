@@ -25,6 +25,27 @@ export interface ChatCardInitialTransform {
 
 export const CHAT_CARD_PRESSED_SCALE = 0.97;
 
+export function getTabSurfaceChatTransition(
+  chatMorphing: boolean,
+): 'spring-open' | 'immediate-close' {
+  return chatMorphing ? 'spring-open' : 'immediate-close';
+}
+
+export interface ChatSheetDismissalInput {
+  atTop: boolean;
+  translationY: number;
+  velocityY: number;
+}
+
+export function shouldDismissChatSheet({
+  atTop,
+  translationY,
+  velocityY,
+}: ChatSheetDismissalInput): boolean {
+  'worklet';
+  return atTop && (translationY > 120 || velocityY > 900);
+}
+
 export interface ChatCardMotionTimeline {
   openDuration: number;
   shellFadeDuration: number;

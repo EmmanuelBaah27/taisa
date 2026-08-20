@@ -20,6 +20,7 @@ import {
   BOTTOM_NAVIGATION_LABEL_WIDTHS,
   BOTTOM_NAVIGATION_FIGMA,
   BOTTOM_NAVIGATION_FALLBACK_GLASS,
+  commitBottomNavigationRoute,
   getBottomNavigationCapsuleCenterOffset,
   getBottomNavigationCapsuleFrame,
   getBottomNavigationDestinationOffsets,
@@ -237,7 +238,7 @@ export function BottomNavBar() {
     path === '/' ? pathname === '/' || pathname === '/index' : pathname.startsWith(path)
   );
   const activeIndex = BOTTOM_NAVIGATION_ITEMS.findIndex((item) => isActive(item.path));
-  const activeId = BOTTOM_NAVIGATION_ITEMS[activeIndex]?.id ?? 'logs';
+  const activeId = BOTTOM_NAVIGATION_ITEMS[activeIndex]?.id ?? 'index';
   const initialFrame = getBottomNavigationCapsuleFrame(activeId);
   const initialDestinationOffsets = getBottomNavigationDestinationOffsets(activeId);
   const initialItemFrames = getBottomNavigationItemFrames(activeId);
@@ -916,7 +917,7 @@ export function BottomNavBar() {
 
   const navigateTo = useCallback((item: BottomNavigationItem) => {
     pressAttemptRef.current.navigationCommitted = true;
-    router.navigate(item.path as never);
+    commitBottomNavigationRoute(() => router.navigate(item.path as never));
     if (transitionRef.current.phase === 'settling') {
       finishCapsuleTransition(item.id, latestTransitionRef.current.sequence);
     }

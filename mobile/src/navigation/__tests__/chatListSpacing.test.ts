@@ -3,7 +3,7 @@ import path from 'node:path';
 
 describe('Chats list spacing', () => {
   const source = fs.readFileSync(
-    path.resolve(__dirname, '../../../app/(tabs)/logs.tsx'),
+    path.resolve(__dirname, '../../../app/(tabs)/chats.tsx'),
     'utf8',
   );
 
