@@ -153,6 +153,19 @@ export function getBottomNavigationSurfaceTimeline(reduceMotion: boolean) {
   };
 }
 
+export function resolveCapsuleInteractiveIndex({
+  fromIndex,
+  toIndex,
+  progress,
+}: {
+  fromIndex: number;
+  toIndex: number | null;
+  progress: number;
+}): number {
+  if (toIndex === null) return fromIndex;
+  return progress > 0.5 ? toIndex : fromIndex;
+}
+
 export function getBottomNavigationTransitionStartPolicy() {
   return {
     startEvent: 'pressIn' as const,
@@ -194,6 +207,13 @@ export const BOTTOM_NAVIGATION_FIGMA = {
   recordGap: 12,
   fadeBottom: 20,
   fadeHeight: 90,
+  elevation: {
+    color: '#5B5F63',
+    opacity: 0.12,
+    radius: 24,
+    offsetY: 8,
+    elevation: 8,
+  },
   selectedItem: {
     height: 48,
     iconSize: 24,

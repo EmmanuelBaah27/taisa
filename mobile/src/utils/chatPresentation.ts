@@ -10,8 +10,23 @@ export interface ChatDateGroup {
   chats: ChatSummary[];
 }
 
+const GENERIC_CHAT_TITLES = new Set(['voice reflection', 'untitled chat', 'untitled conversation']);
+
+function concise(value: string, limit = 51): string {
+  const normalized = value.trim().replace(/\s+/g, ' ');
+  return normalized.length <= limit ? normalized : `${normalized.slice(0, limit).trimEnd()}…`;
+}
+
+export function getChatTitle(summary: ChatSummary): string {
+  const title = summary.title?.trim();
+  if (title && !GENERIC_CHAT_TITLES.has(title.toLowerCase())) return title;
+  const topic = summary.lastUserMessage?.trim() || summary.lastAssistantMessage?.trim();
+  return topic ? concise(topic) : 'Untitled conversation';
+}
+
 export function getChatPreview(summary: ChatSummary): string {
-  return summary.lastUserMessage?.trim()
+  return summary.lastMessage?.trim()
+    || summary.lastUserMessage?.trim()
     || summary.lastAssistantMessage?.trim()
     || 'Open conversation';
 }

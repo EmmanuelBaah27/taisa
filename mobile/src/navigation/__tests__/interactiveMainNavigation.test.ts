@@ -1,10 +1,13 @@
 import {
   getInteractiveSceneWindow,
+  getInteractiveMotionMode,
+  getMainSceneFrames,
   MAIN_EDGE_RESISTANCE,
   MAIN_SWIPE_DISTANCE,
   MAIN_SWIPE_TRACKING,
   MAIN_SWIPE_VELOCITY,
   resolveMainSwipe,
+  resolveInterruption,
 } from '../interactiveMainNavigation';
 
 describe('interactive main navigation policy', () => {
@@ -70,5 +73,23 @@ describe('interactive main navigation policy', () => {
     expect(getInteractiveSceneWindow(['chats', 'index'], 0, -1)).toEqual([0]);
     expect(getInteractiveSceneWindow(['chats', 'index'], 1, 1)).toEqual([1]);
     expect(getInteractiveSceneWindow([], 0, 1)).toEqual([]);
+  });
+
+  test('positions the active and adjacent scenes on one gapless viewport track', () => {
+    expect(getMainSceneFrames(['chats', 'index', 'you'], 1, 1, 390)).toEqual([
+      { index: 1, left: 0 },
+      { index: 2, left: 390 },
+    ]);
+  });
+
+  test('normalizes every interruption that could strand the track between pages', () => {
+    expect(resolveInterruption('background')).toEqual({ cancelGesture: true, normalizeTrack: true });
+    expect(resolveInterruption('dimension-change')).toEqual({ cancelGesture: true, normalizeTrack: true });
+    expect(resolveInterruption('route-replace')).toEqual({ cancelGesture: true, normalizeTrack: true });
+  });
+
+  test('uses spatial paging unless Reduced Motion requests the fade path', () => {
+    expect(getInteractiveMotionMode(true)).toBe('fade');
+    expect(getInteractiveMotionMode(false)).toBe('spatial');
   });
 });

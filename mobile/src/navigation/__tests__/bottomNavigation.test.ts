@@ -18,6 +18,7 @@ import {
   getBottomNavigationStateLayout,
   resolveGlassAvailability,
   resolveOptionalGlassModule,
+  resolveCapsuleInteractiveIndex,
   settleBottomNavigationTransition,
   shouldReleaseBottomNavigationCancelledPress,
   shouldShowBottomNavigationSelectedFill,
@@ -25,14 +26,15 @@ import {
 } from '../bottomNavigation';
 
 describe('bottom navigation', () => {
-  test('does not mount Reanimated hooks that crash under iOS Fabric', () => {
+  test('uses one isolated UI-thread style for interactive capsule tracking', () => {
     const source = readFileSync(
       resolve(__dirname, '../../components/ui/BottomNavBar.tsx'),
       'utf8',
     );
 
-    expect(source).not.toMatch(/useAnimatedStyle|useSharedValue/);
-    expect(source).not.toContain("from 'react-native-reanimated'");
+    expect(source.match(/useAnimatedStyle/g)).toHaveLength(2);
+    expect(source).toContain("from 'react-native-reanimated'");
+    expect(source).toContain('interactiveCapsuleStyle');
     expect(source).not.toContain('destinationLabelWidths');
     expect(source).not.toContain('destinationIconTranslations');
   });
@@ -243,6 +245,22 @@ describe('bottom navigation', () => {
     expect(getBottomNavigationCapsuleCenterOffset('chats')).toBe(-114);
     expect(getBottomNavigationCapsuleCenterOffset('index')).toBe(-54);
     expect(getBottomNavigationCapsuleCenterOffset('you')).toBe(16);
+  });
+
+  test('derives capsule selection from interactive swipe progress without committing early', () => {
+    expect(resolveCapsuleInteractiveIndex({ fromIndex: 1, toIndex: 2, progress: 0.49 })).toBe(1);
+    expect(resolveCapsuleInteractiveIndex({ fromIndex: 1, toIndex: 2, progress: 0.51 })).toBe(2);
+    expect(resolveCapsuleInteractiveIndex({ fromIndex: 1, toIndex: null, progress: 0 })).toBe(1);
+  });
+
+  test('uses a faint neutral elevation instead of a lime navigation glow', () => {
+    expect(BOTTOM_NAVIGATION_FIGMA.elevation).toEqual({
+      color: '#5B5F63',
+      opacity: 0.12,
+      radius: 24,
+      offsetY: 8,
+      elevation: 8,
+    });
   });
 
   test('models travelling, interruption, settlement, and selected fill visibility', () => {

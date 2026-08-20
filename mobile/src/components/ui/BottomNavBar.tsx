@@ -14,6 +14,7 @@ import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Reanimated, { interpolate, useAnimatedStyle } from 'react-native-reanimated';
 
 import {
   BOTTOM_NAVIGATION_ITEMS,
@@ -35,6 +36,7 @@ import {
   type NavigationCapsuleState,
 } from '../../navigation/bottomNavigation';
 import { useCareerStore } from '../../stores/careerStore';
+import { useMainNavigationInteraction } from '../../navigation/MainNavigationInteractionContext';
 import { Icon } from './Icon';
 import { NaviiAvatar } from './NaviiAvatar';
 import { PersistentNavigationCapsule } from './PersistentNavigationCapsule';
@@ -64,6 +66,8 @@ const materialStyle: ViewStyle = {
 };
 
 const inactiveItem = BOTTOM_NAVIGATION_FIGMA.inactiveItem;
+const INTERACTIVE_CAPSULE_WIDTHS = [108, 108, 88] as const;
+const INTERACTIVE_CAPSULE_CENTERS = [-114, -54, 16] as const;
 
 function NavigationMaterial({
   children,
@@ -230,6 +234,7 @@ function NavigationDestination({
 }
 
 export function BottomNavBar() {
+  const mainInteraction = useMainNavigationInteraction();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
   const userId = useCareerStore((state) => state.userId);
@@ -326,6 +331,21 @@ export function BottomNavBar() {
     width: capsuleWidth,
     transform: [{ translateX: capsuleX }],
   } as unknown as StyleProp<ViewStyle>;
+  const interactiveCapsuleStyle = useAnimatedStyle(() => {
+    if (!mainInteraction || mainInteraction.interacting.value === 0) return {};
+    const fromIndex = mainInteraction.fromIndex.value;
+    const toIndex = mainInteraction.toIndex.value;
+    if (toIndex < 0 || toIndex >= BOTTOM_NAVIGATION_ITEMS.length) return {};
+    const fromWidth = INTERACTIVE_CAPSULE_WIDTHS[fromIndex] ?? 108;
+    const toWidth = INTERACTIVE_CAPSULE_WIDTHS[toIndex] ?? fromWidth;
+    const fromCenter = INTERACTIVE_CAPSULE_CENTERS[fromIndex] ?? -54;
+    const toCenter = INTERACTIVE_CAPSULE_CENTERS[toIndex] ?? fromCenter;
+    const progress = mainInteraction.progress.value;
+    return {
+      width: interpolate(progress, [0, 1], [fromWidth, toWidth]),
+      transform: [{ translateX: interpolate(progress, [0, 1], [fromCenter, toCenter]) }],
+    };
+  });
   const selectedContentStyle = {
     opacity: selectedContentOpacity,
   } as unknown as StyleProp<ViewStyle>;
@@ -1092,17 +1112,17 @@ export function BottomNavBar() {
               {
                 position: 'absolute',
                 inset: 0,
-                shadowColor: '#000000',
-                shadowOffset: { width: 0, height: 0 },
-                shadowOpacity: 0.04,
-                shadowRadius: 28,
-                elevation: 4,
+                shadowColor: BOTTOM_NAVIGATION_FIGMA.elevation.color,
+                shadowOffset: { width: 0, height: BOTTOM_NAVIGATION_FIGMA.elevation.offsetY },
+                shadowOpacity: BOTTOM_NAVIGATION_FIGMA.elevation.opacity,
+                shadowRadius: BOTTOM_NAVIGATION_FIGMA.elevation.radius,
+                elevation: BOTTOM_NAVIGATION_FIGMA.elevation.elevation,
               },
               shellMaterialStyle,
             ]}
           >
             <NavigationMaterial>
-              <ReactNativeAnimated.View
+              <Reanimated.View
                 pointerEvents="none"
                 style={[
                   {
@@ -1112,6 +1132,7 @@ export function BottomNavBar() {
                     height: BOTTOM_NAVIGATION_FIGMA.navigationHeight,
                   },
                   capsuleGeometryStyle,
+                  interactiveCapsuleStyle,
                 ]}
               >
                 <PersistentNavigationCapsule
@@ -1125,7 +1146,7 @@ export function BottomNavBar() {
                   animatedContainerStyle={[{ width: '100%' }]}
                   animatedFillStyle={selectedFillStyle}
                 />
-              </ReactNativeAnimated.View>
+              </Reanimated.View>
             </NavigationMaterial>
           </ReactNativeAnimated.View>
 

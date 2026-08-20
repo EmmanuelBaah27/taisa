@@ -29,6 +29,7 @@ export interface Thread {
   audioDurationSeconds: number | null;
   lastUserMessage: string | null;
   lastAssistantMessage: string | null;
+  lastMessage: string | null;
   pendingRequestStatus: CoachingRequestStatus | null;
   pendingProposalCount: number;
 }
@@ -100,6 +101,7 @@ async function summary(database: RepositoryConnection, conversationId: string): 
     audioDurationSeconds: null,
     lastUserMessage: recent.find((message) => message.role === 'user')?.content ?? null,
     lastAssistantMessage: recent.find((message) => message.role === 'assistant')?.content ?? null,
+    lastMessage: recent[0]?.content ?? null,
     pendingRequestStatus: requests[0]?.status ?? null,
     pendingProposalCount: confirmations.length,
   };

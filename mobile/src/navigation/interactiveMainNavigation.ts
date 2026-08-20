@@ -5,6 +5,16 @@ export const MAIN_SWIPE_DISTANCE = 72;
 export const MAIN_SWIPE_VELOCITY = 700;
 export const MAIN_EDGE_RESISTANCE = 0.18;
 
+export type MainNavigationInterruption = 'background' | 'dimension-change' | 'route-replace';
+
+export function getInteractiveMotionMode(reduceMotion: boolean): 'fade' | 'spatial' {
+  return reduceMotion ? 'fade' : 'spatial';
+}
+
+export function resolveInterruption(_reason: MainNavigationInterruption) {
+  return { cancelGesture: true, normalizeTrack: true } as const;
+}
+
 export interface MainSwipeInput {
   activeIndex: number;
   routeCount: number;
@@ -41,6 +51,18 @@ export function getInteractiveSceneWindow(
   return direction === -1
     ? [adjacentIndex, safeActiveIndex]
     : [safeActiveIndex, adjacentIndex];
+}
+
+export function getMainSceneFrames(
+  routeNames: readonly string[],
+  activeIndex: number,
+  direction: -1 | 0 | 1,
+  viewportWidth: number,
+): readonly { index: number; left: number }[] {
+  return getInteractiveSceneWindow(routeNames, activeIndex, direction).map((index) => ({
+    index,
+    left: (index - activeIndex) * viewportWidth,
+  }));
 }
 
 export function resolveMainSwipe({
