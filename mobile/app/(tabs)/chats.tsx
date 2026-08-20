@@ -103,6 +103,7 @@ export default function ChatsScreen() {
         style={{ marginTop: getPageHeaderScrollInset(pageHeaderPaddingTop, 'title') }}
         sections={sections}
         contentContainerStyle={{
+          paddingTop: 12,
           paddingHorizontal: 20,
           paddingBottom: 140,
         }}

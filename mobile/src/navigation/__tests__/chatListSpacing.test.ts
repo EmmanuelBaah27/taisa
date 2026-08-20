@@ -21,6 +21,10 @@ describe('Chats list spacing', () => {
     expect(source).not.toMatch(/text-caption-semibold uppercase/);
   });
 
+  test('clears the first sticky date badge below the header fade', () => {
+    expect(source).toMatch(/contentContainerStyle=\{\{[\s\S]*paddingTop: 12,[\s\S]*paddingHorizontal: 20/);
+  });
+
   test('keeps each date beneath the title until its section is complete', () => {
     expect(source).toContain('<SectionList');
     expect(source).toContain('stickySectionHeadersEnabled');
