@@ -1,10 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/react-native';
-import { ChatNavBar } from './ChatNavBar';
 
-const meta: Meta<typeof ChatNavBar> = {
-  title: 'Patterns/ChatNavBar',
-  component: ChatNavBar,
-  args: { onClose: () => undefined },
+import { ChatHeader } from './ChatHeader';
+
+const meta: Meta<typeof ChatHeader> = {
+  title: 'Patterns/ChatHeader',
+  component: ChatHeader,
+  args: { title: 'Conversation title', topInset: 47, onClose: () => undefined },
   argTypes: { onClose: { action: 'closed' } },
 };
 

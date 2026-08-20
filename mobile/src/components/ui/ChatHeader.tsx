@@ -1,35 +1,34 @@
-import { View, Text, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Icon } from './Icon';
-import { colors } from '../../constants/theme';
+import { Text, View } from 'react-native';
 
-export interface ChatNavBarProps {
+import { colors } from '../../constants/theme';
+import { Icon } from './Icon';
+import { LiquidGlassPressable } from './LiquidGlassPressable';
+
+export interface ChatHeaderProps {
   title: string;
   topInset: number;
   onClose: () => void;
 }
 
-export function ChatNavBar({ title, topInset, onClose }: ChatNavBarProps) {
+export function ChatHeader({ title, topInset, onClose }: ChatHeaderProps) {
   return (
     <View className="z-10 bg-background" style={{ paddingTop: topInset }}>
       <View className="flex-row items-center py-1">
-        <TouchableOpacity
-          accessibilityRole="button"
+        <LiquidGlassPressable
           accessibilityLabel="Close conversation"
+          shape="circle"
           onPress={onClose}
-          className="h-14 w-14 items-center justify-center rounded-full border border-border-subtle bg-card shadow-xs"
+          className="h-14 w-14"
         >
           <Icon name="IconChevronDownMedium" size={24} color={colors.textPrimary} />
-        </TouchableOpacity>
+        </LiquidGlassPressable>
         <View
           testID="chat-title-slot"
           pointerEvents="none"
           className="h-14 flex-1 items-center justify-center"
         >
-          <Text
-            className="text-center text-foreground text-small-medium"
-            numberOfLines={1}
-          >
+          <Text className="text-center text-foreground text-small-medium" numberOfLines={1}>
             {title}
           </Text>
         </View>

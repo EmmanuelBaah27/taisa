@@ -7,6 +7,7 @@ import { ThemeTag } from '../../src/components/ThemeTag';
 import { useScrollContext } from '../../src/contexts/ScrollContext';
 import { colors } from '../../src/constants/theme';
 import { NaviiAvatar } from '../../src/components/ui/NaviiAvatar';
+import { LiquidGlassPressable } from '../../src/components/ui';
 import {
   ArchiveOperationError,
   exportEncryptedArchive,
@@ -263,15 +264,19 @@ export default function YouScreen() {
               returnKeyType="done"
               onSubmitEditing={() => { void enrollThisDevice(); }}
             />
-            <TouchableOpacity
-              className="bg-foreground rounded-lg px-4 py-2"
+            <LiquidGlassPressable
+              accessibilityLabel="Connect this device"
+              hierarchy="prominent"
+              tone="accent"
+              shape="rounded"
+              className="px-4 py-2"
               disabled={enrollmentBusy || !enrollmentCode.trim()}
               onPress={() => { void enrollThisDevice(); }}
             >
               <Text className="text-background text-sm font-semibold">
                 {enrollmentBusy ? 'Connecting…' : 'Connect'}
               </Text>
-            </TouchableOpacity>
+            </LiquidGlassPressable>
           </View>
         ) : null}
       </View>
@@ -393,11 +398,11 @@ function RecoveryModal({
               autoCapitalize="none"
               autoCorrect={false}
             />
-            <TouchableOpacity onPress={() => setPassphraseVisible((visible) => !visible)} className="pl-3 py-3">
+            <LiquidGlassPressable accessibilityLabel={passphraseVisible ? 'Hide passphrase' : 'Show passphrase'} hierarchy="subtle" onPress={() => setPassphraseVisible((visible) => !visible)} className="py-3 pl-3">
               <Text className="text-lime-700 text-xs font-semibold">
                 {passphraseVisible ? 'Hide passphrase' : 'Show passphrase'}
               </Text>
-            </TouchableOpacity>
+            </LiquidGlassPressable>
           </View>
           {exporting ? (
             <TextInput
@@ -412,22 +417,26 @@ function RecoveryModal({
             />
           ) : null}
           <View className="flex-row gap-3">
-            <TouchableOpacity
+            <LiquidGlassPressable
+              accessibilityLabel="Cancel backup operation"
               onPress={onDismiss}
               disabled={busy}
-              className="flex-1 bg-muted rounded-full py-3 items-center"
+              className="flex-1 py-3"
             >
               <Text className="text-muted-foreground text-sm font-semibold">Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
+            </LiquidGlassPressable>
+            <LiquidGlassPressable
+              accessibilityLabel={exporting ? 'Create backup' : 'Restore backup'}
+              hierarchy="prominent"
+              tone="accent"
               onPress={onConfirm}
               disabled={busy}
-              className="flex-1 bg-primary rounded-full py-3 items-center"
+              className="flex-1 py-3"
             >
               <Text className="text-foreground text-sm font-semibold">
                 {busy ? 'Working…' : exporting ? 'Create backup' : 'Restore'}
               </Text>
-            </TouchableOpacity>
+            </LiquidGlassPressable>
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -483,12 +492,12 @@ function EditModal({ visible, title, value, onChangeText, onSave, onDismiss, pla
             autoFocus
           />
           <View className="flex-row gap-3">
-            <TouchableOpacity onPress={onDismiss} className="flex-1 bg-muted rounded-full py-3 items-center">
+            <LiquidGlassPressable accessibilityLabel="Cancel editing" onPress={onDismiss} className="flex-1 py-3">
               <Text className="text-muted-foreground text-sm font-semibold">Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={onSave} className="flex-1 bg-primary rounded-full py-3 items-center">
+            </LiquidGlassPressable>
+            <LiquidGlassPressable accessibilityLabel="Save changes" hierarchy="prominent" tone="accent" onPress={onSave} className="flex-1 py-3">
               <Text className="text-foreground text-sm font-semibold">Save</Text>
-            </TouchableOpacity>
+            </LiquidGlassPressable>
           </View>
         </View>
       </KeyboardAvoidingView>

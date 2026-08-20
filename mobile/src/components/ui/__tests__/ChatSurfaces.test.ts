@@ -9,7 +9,8 @@ import {
   ChatScreenShell,
   PendingProposalCard,
 } from '../ChatSurfaces';
-import { ChatNavBar } from '../ChatNavBar';
+import { ChatHeader } from '../ChatHeader';
+import { LiquidGlassPressable } from '../LiquidGlassPressable';
 import { TaisaReplyCard } from '../TaisaReplyCard';
 
 jest.mock('react-native-safe-area-context', () => ({
@@ -94,14 +95,14 @@ describe('chat design-system surfaces', () => {
       const nodes = descendants(shell);
       const page = nodes.find((node) => node.props.testID === 'chat-page');
 
-      expect(nodes.filter((node) => node.type === ChatNavBar)).toHaveLength(1);
+      expect(nodes.filter((node) => node.type === ChatHeader)).toHaveLength(1);
       expect(nodes.filter((node) => node.props.testID === footer.props.testID)).toHaveLength(1);
       expect(String(page?.props.className)).toContain('px-5');
     }
   });
 
   test('sections inherit horizontal alignment from the page instead of owning section margins', () => {
-    const header = ChatNavBar({ title: 'Taisa', topInset: 47, onClose: jest.fn() });
+    const header = ChatHeader({ title: 'Taisa', topInset: 47, onClose: jest.fn() });
     const surface = ChatConversationSurface({
       scrollRef: { current: null }, messages: [], activeMessageId: null,
       activeRequestKind: null, transcript: '', phase: 'idle', isBusy: false,
@@ -165,22 +166,22 @@ describe('chat design-system surfaces', () => {
   });
 
   test('the Figma header uses a floating close control and the conversation title', () => {
-    const header = ChatNavBar({
+    const header = ChatHeader({
       onClose: jest.fn(),
       title: 'Navigating a career change',
       topInset: 47,
     } as never);
     const nodes = descendants(header);
-    const close = nodes.find((node) => node.type === TouchableOpacity);
+    const close = nodes.find((node) => node.type === LiquidGlassPressable);
     const labels = nodes.filter((node) => node.type === Text)
       .map((node) => textContent(node.props.children));
 
-    expect(String(close?.props.className)).toContain('rounded-full');
+    expect(close?.props.shape).toBe('circle');
     expect(labels).toContain('Navigating a career change');
   });
 
   test('the page title occupies the middle column of the close-button row', () => {
-    const header = ChatNavBar({ onClose: jest.fn(), title: 'Taisa', topInset: 47 });
+    const header = ChatHeader({ onClose: jest.fn(), title: 'Taisa', topInset: 47 });
     const titleSlot = descendants(header).find((node) => node.props.testID === 'chat-title-slot');
     const title = descendants(titleSlot).find((node) => (
       node.type === Text && textContent(node.props.children) === 'Taisa'
@@ -217,7 +218,7 @@ describe('chat design-system surfaces', () => {
   });
 
   test('the title row stays in layout while a separate fade overlays the conversation', () => {
-    const header = ChatNavBar({ onClose: jest.fn(), title: 'Taisa', topInset: 47 });
+    const header = ChatHeader({ onClose: jest.fn(), title: 'Taisa', topInset: 47 });
     const nodes = descendants(header);
     const fade = nodes.find((node) => node.props.testID === 'chat-header-fade');
 

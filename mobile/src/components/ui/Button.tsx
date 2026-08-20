@@ -1,8 +1,7 @@
 import React from 'react';
-import { Pressable, Text, ActivityIndicator, View } from 'react-native';
-import { useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import { Text, ActivityIndicator, View } from 'react-native';
 import { colors } from '../../constants/theme';
-import { LiquidGlassButtonSurface } from './LiquidGlassButtonSurface';
+import { LiquidGlassPressable } from './LiquidGlassPressable';
 import type { LiquidGlassHierarchy, LiquidGlassTone } from './liquidGlass';
 
 export type ButtonVariant =
@@ -92,7 +91,6 @@ export function Button({
   disabled = false,
   onPress,
 }: ButtonProps) {
-  const pressed = useSharedValue(0);
   const isDisabled = disabled || loading;
   const isIconOnly = size === 'icon' || size === 'icon-lg';
   const hasIcon = !!icon && !isIconOnly && !loading;
@@ -142,32 +140,19 @@ export function Button({
   );
 
   return (
-    <Pressable
-      className={containerClass}
-      onPress={onPress}
-      onPressIn={() => { pressed.value = withTiming(1, { duration: 100 }); }}
-      onPressOut={() => { pressed.value = withSpring(0, { damping: 24, stiffness: 360 }); }}
-      disabled={isDisabled}
+    <LiquidGlassPressable
       accessibilityLabel={label}
-      accessibilityRole="button"
-      accessibilityState={{ disabled: isDisabled, busy: loading }}
+      hierarchy={glass.hierarchy}
+      tone={glass.tone}
+      shape="capsule"
+      className={containerClass}
+      contentClassName={['flex-1 flex-row items-center justify-center', hasIcon ? SIZE_ICON_GAP[size] : ''].join(' ')}
+      onPress={onPress ?? (() => undefined)}
+      disabled={isDisabled}
+      busy={loading}
     >
-      <LiquidGlassButtonSurface
-        hierarchy={glass.hierarchy}
-        tone={glass.tone}
-        shape="capsule"
-        disabled={isDisabled}
-        pressed={pressed}
-        style={{ position: 'absolute', inset: 0 }}
-        testID="button-surface"
-      />
-      <View
-        pointerEvents="none"
-        className={['flex-1 flex-row items-center justify-center', hasIcon ? SIZE_ICON_GAP[size] : ''].join(' ')}
-      >
-        {content}
-      </View>
-    </Pressable>
+      {content}
+    </LiquidGlassPressable>
   );
 }
 

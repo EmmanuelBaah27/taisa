@@ -2,7 +2,7 @@ import '../global.css';
 import { useEffect, useState } from 'react';
 import { router, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { AppState, Text, TouchableOpacity, View } from 'react-native';
+import { AppState, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useFonts } from 'expo-font';
 import { Inter_400Regular } from '@expo-google-fonts/inter/400Regular';
@@ -21,6 +21,7 @@ import {
   type StartupProfileResult,
 } from '../src/services/startupProfile';
 import { CURRENT_INITIAL_STACK } from '../src/navigation/currentExperience';
+import { LiquidGlassPressable } from '../src/components/ui';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -94,8 +95,11 @@ export default function RootLayout() {
       <View className="flex-1 items-center justify-center bg-background px-8">
         <Text className="text-foreground text-xl font-bold text-center">{presentation.title}</Text>
         <Text className="text-text-tertiary text-sm text-center mt-3">{presentation.body}</Text>
-        <TouchableOpacity
-          className="bg-primary rounded-full px-6 py-3 mt-6"
+        <LiquidGlassPressable
+          accessibilityLabel="Retry secure recovery"
+          hierarchy="prominent"
+          tone="accent"
+          className="mt-6 px-6 py-3"
           onPress={() => {
             setStartup(null);
             void hydrateStartupProfile({
@@ -104,7 +108,7 @@ export default function RootLayout() {
           }}
         >
           <Text className="text-foreground text-sm font-semibold">Retry securely</Text>
-        </TouchableOpacity>
+        </LiquidGlassPressable>
       </View>
     );
   }
@@ -139,15 +143,18 @@ export default function RootLayout() {
               : 'Your career archive is hidden.'}
           </Text>
           {privacyState.appState === 'active' && privacyState.lockEnabled ? (
-            <TouchableOpacity
-              className="bg-primary rounded-full px-6 py-3 mt-5"
+            <LiquidGlassPressable
+              accessibilityLabel="Unlock Taisa"
+              hierarchy="prominent"
+              tone="accent"
+              className="mt-5 px-6 py-3"
               disabled={privacyState.phase === 'unlocking'}
               onPress={() => { void privacyGuard.unlock(); }}
             >
               <Text className="text-foreground text-sm font-semibold">
                 {privacyState.phase === 'unlocking' ? 'Unlocking…' : 'Unlock Taisa'}
               </Text>
-            </TouchableOpacity>
+            </LiquidGlassPressable>
           ) : null}
         </View>
       ) : null}

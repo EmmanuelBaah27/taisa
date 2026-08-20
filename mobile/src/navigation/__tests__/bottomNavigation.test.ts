@@ -30,7 +30,7 @@ import { navigateWithMainNavigation } from '../MainNavigationInteractionContext'
 describe('bottom navigation', () => {
   test('drives capsule, destinations, icons, and labels from shared UI-thread progress', () => {
     const source = readFileSync(
-      resolve(__dirname, '../../components/ui/SmoothBottomNavBar.tsx'),
+      resolve(__dirname, '../../components/ui/BottomNavBar.tsx'),
       'utf8',
     );
 
@@ -41,6 +41,16 @@ describe('bottom navigation', () => {
     expect(source).toContain("from 'react-native-reanimated'");
     expect(source).not.toContain('ReactNativeAnimated');
     expect(source).not.toContain('useNativeDriver: false');
+  });
+
+  test('lets native Liquid Glass own supported-iOS navigation touch response', () => {
+    const source = readFileSync(
+      resolve(__dirname, '../../components/ui/BottomNavBar.tsx'),
+      'utf8',
+    );
+
+    expect(source).toContain('isInteractive');
+    expect(source).toContain("process.env.EXPO_PUBLIC_NATIVE_GLASS_ENABLED !== 'false'");
   });
 
   test('exposes only the approved Home, Chats, and Me destinations', () => {

@@ -20,6 +20,7 @@ describe('Button liquid glass migration', () => {
     expect(source).toContain("sm:      'h-[32px] px-3'");
     expect(source).toContain("icon:    'h-[40px] w-[40px] p-[10px]'");
     expect(source).toContain("'icon-lg': 'h-[56px] w-[56px] p-4'");
-    expect(source).toContain('<LiquidGlassButtonSurface');
+    expect(source).toContain('<LiquidGlassPressable');
+    expect(source).not.toContain('useSharedValue');
   });
 });

@@ -1,4 +1,5 @@
-import { Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Text, TextInput, View } from 'react-native';
+import { LiquidGlassPressable } from './LiquidGlassPressable';
 
 export interface TranscriptCorrectionCardProps {
   value: string;
@@ -27,12 +28,12 @@ export function TranscriptCorrectionCard({
         className="mb-3 max-h-40 rounded-3 bg-subtle px-3 py-2 text-foreground text-base-regular"
       />
       <View className="flex-row justify-end gap-2">
-        <TouchableOpacity disabled={disabled} onPress={onCancel} className="rounded-full px-4 py-2">
+        <LiquidGlassPressable accessibilityLabel="Cancel transcript correction" hierarchy="subtle" disabled={disabled} onPress={onCancel} className="px-4 py-2">
           <Text className="text-foreground text-small-semibold">Cancel</Text>
-        </TouchableOpacity>
-        <TouchableOpacity disabled={disabled} onPress={onSubmit} className="rounded-full bg-muted px-4 py-2">
+        </LiquidGlassPressable>
+        <LiquidGlassPressable accessibilityLabel="Update response" hierarchy="prominent" tone="accent" disabled={disabled} onPress={onSubmit} className="px-4 py-2">
           <Text className="text-foreground text-small-semibold">Update response</Text>
-        </TouchableOpacity>
+        </LiquidGlassPressable>
       </View>
     </View>
   );

@@ -1,4 +1,5 @@
 import { Text, TouchableOpacity, View } from 'react-native';
+import { LiquidGlassPressable } from './LiquidGlassPressable';
 
 export interface VoiceDraftStripProps {
   label: string;
@@ -14,13 +15,15 @@ export function VoiceDraftStrip({ label, preview, onOpen, onDelete }: VoiceDraft
         <Text className="text-foreground text-caption-semibold uppercase">{label}</Text>
         {preview ? <Text className="text-text-tertiary text-caption-regular" numberOfLines={1}>{preview}</Text> : null}
       </TouchableOpacity>
-      <TouchableOpacity
+      <LiquidGlassPressable
         accessibilityLabel={`Delete ${label.toLowerCase()}`}
-        className="w-10 items-center justify-center border-l border-border"
+        hierarchy="subtle"
+        shape="rounded"
+        className="w-10 border-l border-border"
         onPress={onDelete}
       >
         <Text className="text-text-tertiary text-heading-4-regular">×</Text>
-      </TouchableOpacity>
+      </LiquidGlassPressable>
     </View>
   );
 }

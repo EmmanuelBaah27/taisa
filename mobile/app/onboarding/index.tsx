@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { View, Text, TextInput, ScrollView, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TextInput, ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { router } from 'expo-router';
 import * as Crypto from 'expo-crypto';
 import { useCareerStore } from '../../src/stores/careerStore';
 import { colors } from '../../src/constants/theme';
+import { LiquidGlassPressable } from '../../src/components/ui';
 import {
   clearOnboardingDraft,
   loadOnboardingDraft,
@@ -84,14 +85,16 @@ export default function OnboardingScreen() {
         ))}
       </View>
 
-      <TouchableOpacity
-        className="flex-1 py-4 rounded-full items-center bg-primary"
-        style={{ opacity: form.currentRole && form.industry ? 1 : 0.5 }}
+      <LiquidGlassPressable
+        accessibilityLabel="Continue to goals"
+        hierarchy="prominent"
+        tone="accent"
+        className="flex-1 py-4"
         onPress={() => setStep(1)}
         disabled={!form.currentRole || !form.industry}
       >
         <Text className="text-foreground font-semibold text-[15px]">Continue</Text>
-      </TouchableOpacity>
+      </LiquidGlassPressable>
     </ScrollView>,
 
     // Step 1: Goals
@@ -104,17 +107,19 @@ export default function OnboardingScreen() {
       <Field label="Current focus area" placeholder="e.g. Improving stakeholder communication" value={form.currentFocusArea} onChange={v => updateForm('currentFocusArea', v)} />
 
       <View className="flex-row mt-6">
-        <TouchableOpacity className="flex-1 py-4 rounded-full items-center border border-border mr-2" onPress={() => setStep(0)}>
+        <LiquidGlassPressable accessibilityLabel="Back to career context" className="mr-2 flex-1 py-4" onPress={() => setStep(0)}>
           <Text className="text-muted-foreground text-[15px]">Back</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          className="flex-1 py-4 rounded-full items-center bg-primary"
-          style={{ opacity: form.shortTermGoal ? 1 : 0.5 }}
+        </LiquidGlassPressable>
+        <LiquidGlassPressable
+          accessibilityLabel="Continue to coaching preferences"
+          hierarchy="prominent"
+          tone="accent"
+          className="flex-1 py-4"
           onPress={() => setStep(2)}
           disabled={!form.shortTermGoal}
         >
           <Text className="text-foreground font-semibold text-[15px]">Continue</Text>
-        </TouchableOpacity>
+        </LiquidGlassPressable>
       </View>
     </ScrollView>,
 
@@ -137,12 +142,12 @@ export default function OnboardingScreen() {
       </View>
 
       <View className="flex-row mt-6">
-        <TouchableOpacity className="flex-1 py-4 rounded-full items-center border border-border mr-2" onPress={() => setStep(1)}>
+        <LiquidGlassPressable accessibilityLabel="Back to goals" className="mr-2 flex-1 py-4" onPress={() => setStep(1)}>
           <Text className="text-muted-foreground text-[15px]">Back</Text>
-        </TouchableOpacity>
-        <TouchableOpacity className="flex-1 py-4 rounded-full items-center bg-primary" onPress={handleSubmit} disabled={isLoading}>
+        </LiquidGlassPressable>
+        <LiquidGlassPressable accessibilityLabel="Start journaling" hierarchy="prominent" tone="accent" className="flex-1 py-4" onPress={handleSubmit} disabled={isLoading}>
           {isLoading ? <ActivityIndicator color={colors.textPrimary} /> : <Text className="text-foreground font-semibold text-[15px]">Start journaling</Text>}
-        </TouchableOpacity>
+        </LiquidGlassPressable>
       </View>
     </ScrollView>,
   ];
@@ -179,11 +184,12 @@ export function Field({ label, onChange, ...props }: { label: string; onChange?:
 
 function Pill({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
   return (
-    <TouchableOpacity
+    <LiquidGlassPressable
+      accessibilityLabel={`Select ${label}`}
       onPress={onPress}
-      className={selected
-        ? 'px-4 py-1 rounded-full border-2 border-primary bg-lime-100'
-        : 'px-4 py-1 rounded-full border border-border bg-card'}
+      hierarchy={selected ? 'prominent' : 'standard'}
+      tone={selected ? 'accent' : 'neutral'}
+      className="px-4 py-1"
     >
       <Text className={selected
         ? 'text-[13px] text-primary font-semibold capitalize'
@@ -191,6 +197,6 @@ function Pill({ label, selected, onPress }: { label: string; selected: boolean; 
       >
         {label}
       </Text>
-    </TouchableOpacity>
+    </LiquidGlassPressable>
   );
 }

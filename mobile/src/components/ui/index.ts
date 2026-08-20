@@ -2,6 +2,8 @@ export { Button } from './Button';
 export type { ButtonProps, ButtonVariant, ButtonSize } from './Button';
 export { LiquidGlassButtonSurface } from './LiquidGlassButtonSurface';
 export type { LiquidGlassButtonSurfaceProps } from './LiquidGlassButtonSurface';
+export { LiquidGlassPressable } from './LiquidGlassPressable';
+export type { LiquidGlassPressableProps } from './LiquidGlassPressable';
 export type {
   LiquidGlassHierarchy,
   LiquidGlassShape,
@@ -46,8 +48,8 @@ export type { InactiveNavigationItemProps } from './InactiveNavigationItem';
 export { PersistentNavigationCapsule } from './PersistentNavigationCapsule';
 export type { PersistentNavigationCapsuleProps } from './PersistentNavigationCapsule';
 
-export { ChatNavBar } from './ChatNavBar';
-export type { ChatNavBarProps } from './ChatNavBar';
+export { ChatHeader } from './ChatHeader';
+export type { ChatHeaderProps } from './ChatHeader';
 
 export { RecordingGlow } from './RecordingGlow';
 export type { RecordingGlowProps } from './RecordingGlow';

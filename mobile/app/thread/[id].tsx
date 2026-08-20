@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { View, Text, ScrollView, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useThreadStore } from '../../src/stores/threadStore';
 import { TaisaReplyCard } from '../../src/components/ui/TaisaReplyCard';
 import { colors } from '../../src/constants/theme';
 import type { ChatMessage } from '../../src/stores/threadStore';
+import { LiquidGlassPressable } from '../../src/components/ui';
 
 export default function ThreadScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -54,9 +55,9 @@ export default function ThreadScreen() {
     >
       {/* Header */}
       <View className="flex-row items-center px-4 pt-14 pb-3 border-b border-border-subtle">
-        <TouchableOpacity onPress={() => router.back()} className="mr-3">
+        <LiquidGlassPressable accessibilityLabel="Back" hierarchy="subtle" onPress={() => router.back()} className="mr-3 px-3 py-2">
           <Text className="text-lime-700 text-base">‹ Back</Text>
-        </TouchableOpacity>
+        </LiquidGlassPressable>
         <Text className="text-foreground text-base font-semibold flex-1" numberOfLines={1}>
           {currentSession?.title ?? 'Thread'}
         </Text>
@@ -120,14 +121,17 @@ export default function ThreadScreen() {
           maxLength={2000}
           onSubmitEditing={handleSend}
         />
-        <TouchableOpacity
+        <LiquidGlassPressable
+          accessibilityLabel="Send message"
+          hierarchy="prominent"
+          tone="accent"
+          shape="circle"
           onPress={handleSend}
           disabled={!input.trim() || isSending}
-          className="w-9 h-9 rounded-full bg-primary items-center justify-center"
-          style={{ opacity: !input.trim() || isSending ? 0.4 : 1 }}
+          className="h-9 w-9"
         >
           <Text className="text-foreground text-base">↑</Text>
-        </TouchableOpacity>
+        </LiquidGlassPressable>
       </View>
     </KeyboardAvoidingView>
   );

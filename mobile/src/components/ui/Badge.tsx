@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, Pressable } from 'react-native';
+import { View, Text } from 'react-native';
+import { LiquidGlassPressable } from './LiquidGlassPressable';
 
 export type BadgeColor =
   | 'neutral'
@@ -107,15 +108,16 @@ export function Badge({
       </Text>
 
       {onDismiss && (
-        <Pressable
+        <LiquidGlassPressable
           onPress={onDismiss}
-          className="ml-0.5 items-center justify-center"
+          hierarchy="subtle"
+          shape="circle"
+          className="ml-0.5 h-6 w-6"
           accessibilityLabel="Dismiss"
-          accessibilityRole="button"
           hitSlop={8}
         >
           <Text className={[text, SIZE_TEXT[size]].join(' ')}>×</Text>
-        </Pressable>
+        </LiquidGlassPressable>
       )}
     </View>
   );

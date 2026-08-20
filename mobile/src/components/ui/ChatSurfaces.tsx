@@ -17,7 +17,8 @@ import { colors } from '../../constants/theme';
 import type { ClarificationChoice, PendingProposal } from '../../services/privateCapture';
 import type { ChatPhase } from '../../stores/chatStore';
 import type { ChatMessage } from '../../stores/threadStore';
-import { ChatNavBar } from './ChatNavBar';
+import { ChatHeader } from './ChatHeader';
+import { LiquidGlassPressable } from './LiquidGlassPressable';
 import { TaisaReplyCard } from './TaisaReplyCard';
 import type { ResponseReaction } from '../../repositories/responseFeedbackRepository';
 import { TranscriptCorrectionCard } from './TranscriptCorrectionCard';
@@ -52,7 +53,7 @@ export function ChatScreenShell({
             className="flex-1 px-5"
             style={contentAnimatedStyle}
           >
-            <ChatNavBar title={title} topInset={topInset} onClose={onClose} />
+            <ChatHeader title={title} topInset={topInset} onClose={onClose} />
             {children}
             {footer}
           </Animated.View>
@@ -124,16 +125,16 @@ interface ChatActionProps {
 
 function ChatAction({ label, disabled, emphasized, onPress }: ChatActionProps) {
   return (
-    <TouchableOpacity
+    <LiquidGlassPressable
       accessibilityLabel={label}
       disabled={disabled}
       onPress={onPress}
-      className={emphasized
-        ? 'rounded-full bg-muted px-6 py-3'
-        : 'rounded-full border border-border px-6 py-3'}
+      hierarchy={emphasized ? 'prominent' : 'standard'}
+      tone={emphasized ? 'accent' : 'neutral'}
+      className="px-6 py-3"
     >
       <Text className="text-foreground text-small-semibold">{label}</Text>
-    </TouchableOpacity>
+    </LiquidGlassPressable>
   );
 }
 

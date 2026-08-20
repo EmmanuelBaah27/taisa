@@ -131,7 +131,8 @@ Never use raw `text-sm font-semibold` combinations — use the composite utiliti
 | `VoiceButton` | `onPress?` | State-owning wrapper for the central CTA; fresh entry opens voice mode with one automatic recorder start |
 | `VoiceEntryButton` | `bottomInset`, `hidden`, `onPress` | Presentational 104×56 lime CTA positioned 12px above `BottomNavBar`, with the Figma glow and accessible voice label |
 | `WorkspaceHeader` | `subtitle: string` | Screen-level header; workspace name from `careerStore.profile.currentCompany`; contextual subtitle |
-| `ChatNavBar` | `title`, `topInset`, `onClose` | Figma chat header: floating 56px caret-down control on the left and truncated conversation title centred independently of side slots |
+| `ChatHeader` | `title`, `topInset`, `onClose` | Figma chat header: floating 56px Liquid Glass caret-down control on the left and truncated conversation title centred independently of side slots; it is a conversation header, not a page navigator. |
+| `LiquidGlassPressable` | `accessibilityLabel`, `hierarchy?`, `tone?`, `shape?`, `disabled?`, `className?`, `style?`, `onPress` | Semantic button owner for custom-content controls. Composes one shared glass surface and the standard fallback press contract without nesting Pressables. |
 | `RecordingGlow` | `amplitude: number` | Amplitude-reactive lime glow anchored to screen bottom; 0 = very faint, 10 = full brightness; uses `expo-linear-gradient` + `Animated` with `useNativeDriver` |
 | `LiveTranscriptionText` | `transcript: string` | Centred text area; shows grey "What's on your mind?" when empty, switches to `text-lime-700` when transcript streams in |
 | `TaisaReplyCard` | `appearance`, `responseId`, `content`, local reaction state and callbacks | Assistant reply with `card` and Figma-aligned unboxed `plain` presentation; local Helpful / Not helpful controls remain available and sharing requires a separate preview action |

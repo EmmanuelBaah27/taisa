@@ -1,6 +1,7 @@
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text } from 'react-native';
 import { colors } from '../../constants/theme';
 import type { ResponseReaction } from '../../repositories/responseFeedbackRepository';
+import { LiquidGlassPressable } from './LiquidGlassPressable';
 
 export interface TaisaReplyCardProps {
   appearance?: 'card' | 'plain';
@@ -43,28 +44,31 @@ export function TaisaReplyCard({
         : 'text-muted-foreground text-small-regular'}>{content}</Text>
       {responseId && onReact && showRatingOptions ? (
         <View className="mt-3 flex-row items-center gap-2">
-          <TouchableOpacity
+          <LiquidGlassPressable
             accessibilityLabel="Mark response helpful"
-            className={reaction === 'helpful' ? 'rounded-full bg-muted px-3 py-2' : 'rounded-full px-3 py-2'}
+            hierarchy={reaction === 'helpful' ? 'standard' : 'subtle'}
+            className="px-3 py-2"
             onPress={() => onReact(responseId, 'helpful')}
           >
             <Text className="text-text-tertiary text-caption-semibold">Helpful</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
+          </LiquidGlassPressable>
+          <LiquidGlassPressable
             accessibilityLabel="Mark response unhelpful"
-            className={reaction === 'unhelpful' ? 'rounded-full bg-muted px-3 py-2' : 'rounded-full px-3 py-2'}
+            hierarchy={reaction === 'unhelpful' ? 'standard' : 'subtle'}
+            className="px-3 py-2"
             onPress={() => onReact(responseId, 'unhelpful')}
           >
             <Text className="text-text-tertiary text-caption-semibold">Not helpful</Text>
-          </TouchableOpacity>
+          </LiquidGlassPressable>
           {reaction !== null && onShareExample ? (
-            <TouchableOpacity
+            <LiquidGlassPressable
               accessibilityLabel="Review example before sharing"
-              className="ml-auto rounded-full px-3 py-2"
+              hierarchy="subtle"
+              className="ml-auto px-3 py-2"
               onPress={() => onShareExample(responseId)}
             >
               <Text className="text-text-tertiary text-caption-semibold">Share example</Text>
-            </TouchableOpacity>
+            </LiquidGlassPressable>
           ) : null}
         </View>
       ) : null}

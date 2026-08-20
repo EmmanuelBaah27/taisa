@@ -1,8 +1,8 @@
 import { useCallback, useRef } from 'react';
-import { ActivityIndicator, Pressable, SectionList, Text, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, SectionList, Text, useWindowDimensions, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 
-import { ChatListRow } from '../../src/components/ui';
+import { ChatListRow, LiquidGlassPressable } from '../../src/components/ui';
 import { colors } from '../../src/constants/theme';
 import { useScrollContext } from '../../src/contexts/ScrollContext';
 import type { ChatCardFrame } from '../../src/navigation/chatCardExpansion';
@@ -119,9 +119,9 @@ export default function ChatsScreen() {
         ) : error ? (
           <View className="items-center gap-3 px-4 pt-10">
             <Text className="text-center text-danger text-small-regular">Couldn’t load chats.</Text>
-            <Pressable accessibilityRole="button" onPress={fetchThreads} className="rounded-full bg-muted px-6 py-3">
+            <LiquidGlassPressable accessibilityLabel="Try loading chats again" hierarchy="prominent" tone="accent" onPress={fetchThreads} className="px-6 py-3">
               <Text className="text-foreground text-small-semibold">Try again</Text>
-            </Pressable>
+            </LiquidGlassPressable>
           </View>
         ) : (
           <Text className="pt-10 text-center text-text-tertiary text-small-regular">

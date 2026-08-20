@@ -1,6 +1,6 @@
 // mobile/src/components/ui/GlowDevSheet.tsx
 import { useEffect } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text } from 'react-native';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import Animated, {
   useSharedValue,
@@ -9,6 +9,7 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 import type { GlowDevControls } from '../../hooks/useGlowDevControls';
+import { LiquidGlassPressable } from './LiquidGlassPressable';
 
 const TRACK_WIDTH = 200;
 
@@ -75,22 +76,22 @@ function Segment({ options, value, onChange }: SegmentProps) {
   return (
     <View style={{ flexDirection: 'row', gap: 4 }}>
       {options.map((opt) => (
-        <TouchableOpacity
+        <LiquidGlassPressable
           key={opt}
+          accessibilityLabel={`Use ${opt} glow colors`}
           onPress={() => onChange(opt)}
+          hierarchy={value === opt ? 'prominent' : 'subtle'}
+          tone={value === opt ? 'accent' : 'neutral'}
+          shape="rounded"
           style={{
             width: 36,
             height: 28,
-            borderRadius: 6,
-            backgroundColor: value === opt ? '#c6eb52' : 'rgba(255,255,255,0.1)',
-            alignItems: 'center',
-            justifyContent: 'center',
           }}
         >
           <Text style={{ color: value === opt ? '#060707' : '#ffffff', fontSize: 13, fontWeight: '600' }}>
             {opt}
           </Text>
-        </TouchableOpacity>
+        </LiquidGlassPressable>
       ))}
     </View>
   );
@@ -107,22 +108,22 @@ function Toggle({ value, onChange }: ToggleProps) {
   return (
     <View style={{ flexDirection: 'row', gap: 4 }}>
       {([false, true] as const).map((opt) => (
-        <TouchableOpacity
+        <LiquidGlassPressable
           key={String(opt)}
+          accessibilityLabel={`Turn cube overlay ${opt ? 'on' : 'off'}`}
           onPress={() => onChange(opt)}
+          hierarchy={value === opt ? 'prominent' : 'subtle'}
+          tone={value === opt ? 'accent' : 'neutral'}
+          shape="rounded"
           style={{
             paddingHorizontal: 14,
             height: 28,
-            borderRadius: 6,
-            backgroundColor: value === opt ? '#c6eb52' : 'rgba(255,255,255,0.1)',
-            alignItems: 'center',
-            justifyContent: 'center',
           }}
         >
           <Text style={{ color: value === opt ? '#060707' : '#ffffff', fontSize: 12, fontWeight: '600' }}>
             {opt ? 'on' : 'off'}
           </Text>
-        </TouchableOpacity>
+        </LiquidGlassPressable>
       ))}
     </View>
   );
@@ -200,9 +201,9 @@ export function GlowDevSheet({ controls, visible, onDismiss }: GlowDevSheetProps
         <Text style={{ color: '#ffffff', fontSize: 11, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase', opacity: 0.7 }}>
           Glow Dev Controls
         </Text>
-        <TouchableOpacity onPress={onDismiss} hitSlop={12}>
+        <LiquidGlassPressable accessibilityLabel="Close glow controls" hierarchy="subtle" shape="circle" onPress={onDismiss} hitSlop={12} style={{ width: 28, height: 28 }}>
           <Text style={{ color: 'rgba(255,255,255,0.45)', fontSize: 18, lineHeight: 20 }}>✕</Text>
-        </TouchableOpacity>
+        </LiquidGlassPressable>
       </View>
 
       <Row label="Min amplitude">
