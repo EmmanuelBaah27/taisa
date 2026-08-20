@@ -28,17 +28,19 @@ import {
 import { navigateWithMainNavigation } from '../MainNavigationInteractionContext';
 
 describe('bottom navigation', () => {
-  test('uses one isolated UI-thread style for interactive capsule tracking', () => {
+  test('drives capsule, destinations, icons, and labels from shared UI-thread progress', () => {
     const source = readFileSync(
-      resolve(__dirname, '../../components/ui/BottomNavBar.tsx'),
+      resolve(__dirname, '../../components/ui/SmoothBottomNavBar.tsx'),
       'utf8',
     );
 
-    expect(source.match(/useAnimatedStyle/g)).toHaveLength(2);
+    expect(source).toContain('const pagePosition = useDerivedValue');
+    expect(source).toContain('const capsuleStyle = useAnimatedStyle');
+    expect(source).toContain('const labelStyle = useAnimatedStyle');
+    expect(source).toContain('const selectedIconStyle = useAnimatedStyle');
     expect(source).toContain("from 'react-native-reanimated'");
-    expect(source).toContain('interactiveCapsuleStyle');
-    expect(source).not.toContain('destinationLabelWidths');
-    expect(source).not.toContain('destinationIconTranslations');
+    expect(source).not.toContain('ReactNativeAnimated');
+    expect(source).not.toContain('useNativeDriver: false');
   });
 
   test('exposes only the approved Home, Chats, and Me destinations', () => {
