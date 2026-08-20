@@ -10,7 +10,7 @@
 
 **Spec:** `docs/superpowers/specs/2026-08-20-interactive-main-navigation-design.md`
 
-**Status:** Approved — Build in progress
+**Status:** Review + QA — automated verification passed; awaiting Baah device QA
 
 ## Global Constraints
 
