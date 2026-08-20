@@ -159,8 +159,7 @@ export function InteractiveMainNavigatorView({
     swipeFromIndex.value = state.index;
     swipeToIndex.value = destinationIndex;
     swipeInteracting.value = 1;
-    const nonAdjacent = Math.abs(destinationIndex - state.index) > 1;
-    if (nonAdjacent && !reduceMotion) {
+    if (!reduceMotion) {
       directTransition.value = 1;
       directPageOpacity.value = withTiming(0, { duration: 90 }, (finished) => {
         if (!finished) return;
@@ -172,12 +171,8 @@ export function InteractiveMainNavigatorView({
       });
       return;
     }
-    if (reduceMotion) {
-      scrollRef.current?.scrollTo({ x: destinationIndex * pageWidth, animated: false });
-      dispatchRoute(destinationIndex);
-    } else {
-      scrollRef.current?.scrollTo({ x: destinationIndex * pageWidth, animated: true });
-    }
+    scrollRef.current?.scrollTo({ x: destinationIndex * pageWidth, animated: false });
+    dispatchRoute(destinationIndex);
   }, [descriptors, directPageOpacity, directTransition, dispatchRoute, jumpDirectlyToPage, pageWidth, reduceMotion, state.index, state.routes, swipeFromIndex, swipeInteracting, swipeProgress, swipeToIndex]);
 
   const interactionValue = useMemo(() => ({

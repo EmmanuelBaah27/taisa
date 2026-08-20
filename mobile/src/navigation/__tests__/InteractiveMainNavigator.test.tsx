@@ -29,10 +29,12 @@ describe('InteractiveMainNavigator', () => {
     expect(source).toMatch(/swipeToIndex\.value = delta < 0/);
   });
 
-  test('uses the same native scroll pager for taps and direct route selection', () => {
-    expect(source).toMatch(/scrollRef\.current\?\.scrollTo\(\{[\s\S]*animated: true/);
+  test('crossfades every tapped destination without horizontal page travel', () => {
     expect(source).toMatch(/scrollRef\.current\?\.scrollTo\(\{[\s\S]*animated: false/);
     expect(source).toMatch(/CommonActions\.navigate/);
+    expect(source).not.toContain('const nonAdjacent');
+    expect(source).not.toMatch(/scrollRef\.current\?\.scrollTo\(\{ x: destinationIndex \* pageWidth, animated: true \}\)/);
+    expect(source).toMatch(/const navigate[\s\S]*directTransition\.value = 1[\s\S]*directPageOpacity\.value = withTiming\(0/);
   });
 
   test('holds the destination position until route settlement completes', () => {
@@ -47,10 +49,11 @@ describe('InteractiveMainNavigator', () => {
     expect(source).not.toMatch(/if \(destinationIndex !== state\.index\) \{\s*playInteractionHaptic/);
   });
 
-  test('crossfades a non-adjacent tab directly without scrolling through Home', () => {
-    expect(source).toContain('const nonAdjacent = Math.abs(destinationIndex - state.index) > 1');
+  test('uses the established direct fade timings for tapped destinations', () => {
     expect(source).toMatch(/jumpDirectlyToPage[\s\S]*scrollTo\(\{ x: destinationIndex \* pageWidth, animated: false \}\)/);
     expect(source).toContain('runOnJS(jumpDirectlyToPage)(destinationIndex)');
+    expect(source).toContain('withTiming(0, { duration: 90 }');
+    expect(source).toContain('withTiming(1, { duration: 170 }');
     expect(source).toContain('directTransition.value');
     expect(source).toContain('directPageOpacity.value');
   });

@@ -374,7 +374,7 @@ Expected: FAIL because the interactive resolver/context is absent.
 
 The navigator provides route-derived `fromIndex`, gesture-derived `toIndex`, normalized `progress`, and a `navigate` callback. `BottomNavBar` consumes the context when present and falls back to pathname routing outside the custom navigator.
 
-Capsule taps call the navigator callback immediately. Adjacent taps may use the same scene settlement; non-adjacent taps use the approved overlapping fade and direct tab action.
+Capsule taps call the navigator callback immediately. Every tap uses the approved overlapping fade and direct tab action; horizontal scene settlement is reserved for an active drag.
 
 - [ ] **Step 4: Run tests and commit**
 

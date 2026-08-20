@@ -44,4 +44,10 @@ Frame-by-frame review of the 13:35 recording showed the deeper failure: capsule-
 
 Final polish replaces the white-on-white sheen with a neutral hairline/shadow clear-glass base, animates the 6% grey as a separate stale-safe overlay, coordinates the 240↔220 shell width with capsule motion, and permits only the old label—not a second icon or selected capsule—to overlap during handoff. Reduced Motion uses one 180ms label/fill crossfade with no spatial or scale movement. Paired-iPhone recheck remains required.
 
+## 2026-08-20 tap versus drag transition
+
+- Tapping any main navigation item must use the existing direct page crossfade, including adjacent destinations.
+- Horizontal page travel is reserved exclusively for an active drag, where the scene remains attached to the finger.
+- The navigation capsule may continue to settle to the tapped destination while page content crossfades.
+
 Clean-Metro iOS QA then reproduced a Fabric mount crash in Reanimated 4.1.1 while `useAnimatedStyle` mutated a frozen hook ref. `BottomNavBar` no longer imports or mounts Reanimated: React Native Animated owns shell scale/width, capsule X/width, fill opacity, and content handoff, with native-driver use limited to scale/opacity/translation and layout width animations explicitly JS-driven. A source guard blocks the crashing hooks from returning. Paired-iPhone recheck remains required.
