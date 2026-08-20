@@ -71,6 +71,8 @@ export function resolveMainSwipe({
   translationX,
   velocityX,
 }: MainSwipeInput): MainSwipeResolution {
+  'worklet';
+
   const translationDirection: -1 | 0 | 1 = translationX < 0
     ? 1
     : translationX > 0

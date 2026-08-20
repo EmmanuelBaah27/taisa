@@ -92,4 +92,17 @@ describe('interactive main navigation policy', () => {
     expect(getInteractiveMotionMode(true)).toBe('fade');
     expect(getInteractiveMotionMode(false)).toBe('spatial');
   });
+
+  test('exports the swipe resolver as a Reanimated UI worklet', () => {
+    const worklet = resolveMainSwipe as typeof resolveMainSwipe & {
+      __closure?: Record<string, unknown>;
+      __workletHash?: number;
+    };
+
+    expect(worklet.__workletHash).toEqual(expect.any(Number));
+    expect(worklet.__closure).toMatchObject({
+      MAIN_SWIPE_DISTANCE: 72,
+      MAIN_SWIPE_VELOCITY: 700,
+    });
+  });
 });

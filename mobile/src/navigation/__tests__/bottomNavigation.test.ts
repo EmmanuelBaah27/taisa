@@ -8,6 +8,7 @@ import {
   getBottomNavigationCapsuleCenterOffset,
   getBottomNavigationDestinationCenterOffset,
   getBottomNavigationDestinationOffsets,
+  getBottomNavigationInteractiveCapsuleFrames,
   getBottomNavigationRenderPolicy,
   getBottomNavigationPageTransition,
   getBottomNavigationSurfaceTimeline,
@@ -24,6 +25,7 @@ import {
   shouldShowBottomNavigationSelectedFill,
   startBottomNavigationTransition,
 } from '../bottomNavigation';
+import { navigateWithMainNavigation } from '../MainNavigationInteractionContext';
 
 describe('bottom navigation', () => {
   test('uses one isolated UI-thread style for interactive capsule tracking', () => {
@@ -247,10 +249,32 @@ describe('bottom navigation', () => {
     expect(getBottomNavigationCapsuleCenterOffset('you')).toBe(16);
   });
 
+  test('derives interactive capsule frames from the destination registry geometry', () => {
+    expect(getBottomNavigationInteractiveCapsuleFrames()).toEqual([
+      { id: 'chats', width: 108, centerOffset: -114 },
+      { id: 'index', width: 108, centerOffset: -54 },
+      { id: 'you', width: 88, centerOffset: 16 },
+    ]);
+  });
+
   test('derives capsule selection from interactive swipe progress without committing early', () => {
     expect(resolveCapsuleInteractiveIndex({ fromIndex: 1, toIndex: 2, progress: 0.49 })).toBe(1);
     expect(resolveCapsuleInteractiveIndex({ fromIndex: 1, toIndex: 2, progress: 0.51 })).toBe(2);
     expect(resolveCapsuleInteractiveIndex({ fromIndex: 1, toIndex: null, progress: 0 })).toBe(1);
+  });
+
+  test('prefers the custom navigator and uses the Expo router only as an outside fallback', () => {
+    const navigate = jest.fn();
+    const fallback = jest.fn();
+
+    navigateWithMainNavigation({ navigate }, 'you', fallback);
+
+    expect(navigate).toHaveBeenCalledWith('you');
+    expect(fallback).not.toHaveBeenCalled();
+
+    navigateWithMainNavigation(null, 'chats', fallback);
+
+    expect(fallback).toHaveBeenCalledTimes(1);
   });
 
   test('uses a faint neutral elevation instead of a lime navigation glow', () => {

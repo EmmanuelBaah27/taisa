@@ -25,6 +25,7 @@ import {
   getBottomNavigationCapsuleCenterOffset,
   getBottomNavigationCapsuleFrame,
   getBottomNavigationDestinationOffsets,
+  getBottomNavigationInteractiveCapsuleFrames,
   getBottomNavigationItemFrames,
   getBottomNavigationLayout,
   getBottomNavigationSurfaceTimeline,
@@ -36,7 +37,10 @@ import {
   type NavigationCapsuleState,
 } from '../../navigation/bottomNavigation';
 import { useCareerStore } from '../../stores/careerStore';
-import { useMainNavigationInteraction } from '../../navigation/MainNavigationInteractionContext';
+import {
+  navigateWithMainNavigation,
+  useMainNavigationInteraction,
+} from '../../navigation/MainNavigationInteractionContext';
 import { Icon } from './Icon';
 import { NaviiAvatar } from './NaviiAvatar';
 import { PersistentNavigationCapsule } from './PersistentNavigationCapsule';
@@ -66,8 +70,7 @@ const materialStyle: ViewStyle = {
 };
 
 const inactiveItem = BOTTOM_NAVIGATION_FIGMA.inactiveItem;
-const INTERACTIVE_CAPSULE_WIDTHS = [108, 108, 88] as const;
-const INTERACTIVE_CAPSULE_CENTERS = [-114, -54, 16] as const;
+const INTERACTIVE_CAPSULE_FRAMES = getBottomNavigationInteractiveCapsuleFrames();
 
 function NavigationMaterial({
   children,
@@ -242,7 +245,8 @@ export function BottomNavBar() {
   const isActive = (path: string) => (
     path === '/' ? pathname === '/' || pathname === '/index' : pathname.startsWith(path)
   );
-  const activeIndex = BOTTOM_NAVIGATION_ITEMS.findIndex((item) => isActive(item.path));
+  const pathnameActiveIndex = BOTTOM_NAVIGATION_ITEMS.findIndex((item) => isActive(item.path));
+  const activeIndex = mainInteraction?.activeIndex ?? pathnameActiveIndex;
   const activeId = BOTTOM_NAVIGATION_ITEMS[activeIndex]?.id ?? 'index';
   const initialFrame = getBottomNavigationCapsuleFrame(activeId);
   const initialDestinationOffsets = getBottomNavigationDestinationOffsets(activeId);
@@ -336,10 +340,13 @@ export function BottomNavBar() {
     const fromIndex = mainInteraction.fromIndex.value;
     const toIndex = mainInteraction.toIndex.value;
     if (toIndex < 0 || toIndex >= BOTTOM_NAVIGATION_ITEMS.length) return {};
-    const fromWidth = INTERACTIVE_CAPSULE_WIDTHS[fromIndex] ?? 108;
-    const toWidth = INTERACTIVE_CAPSULE_WIDTHS[toIndex] ?? fromWidth;
-    const fromCenter = INTERACTIVE_CAPSULE_CENTERS[fromIndex] ?? -54;
-    const toCenter = INTERACTIVE_CAPSULE_CENTERS[toIndex] ?? fromCenter;
+    const fromFrame = INTERACTIVE_CAPSULE_FRAMES[fromIndex];
+    const toFrame = INTERACTIVE_CAPSULE_FRAMES[toIndex];
+    if (!fromFrame || !toFrame) return {};
+    const fromWidth = fromFrame.width;
+    const toWidth = toFrame.width;
+    const fromCenter = fromFrame.centerOffset;
+    const toCenter = toFrame.centerOffset;
     const progress = mainInteraction.progress.value;
     return {
       width: interpolate(progress, [0, 1], [fromWidth, toWidth]),
@@ -937,12 +944,17 @@ export function BottomNavBar() {
 
   const navigateTo = useCallback((item: BottomNavigationItem) => {
     pressAttemptRef.current.navigationCommitted = true;
-    commitBottomNavigationRoute(() => router.navigate(item.path as never));
+    commitBottomNavigationRoute(() => navigateWithMainNavigation(
+      mainInteraction,
+      item.id,
+      () => router.navigate(item.path as never),
+    ));
     if (transitionRef.current.phase === 'settling') {
       finishCapsuleTransition(item.id, latestTransitionRef.current.sequence);
     }
   }, [
     finishCapsuleTransition,
+    mainInteraction,
   ]);
 
   useEffect(() => {

@@ -58,6 +58,18 @@ export function getBottomNavigationCapsuleCenterOffset(
   return frame.x - (frame.shellWidth / 2);
 }
 
+export function getBottomNavigationInteractiveCapsuleFrames() {
+  return BOTTOM_NAVIGATION_ITEMS.map((item) => {
+    const frame = getBottomNavigationCapsuleFrame(item.id);
+
+    return {
+      id: item.id,
+      width: frame.width,
+      centerOffset: getBottomNavigationCapsuleCenterOffset(item.id),
+    };
+  });
+}
+
 export function getBottomNavigationDestinationCenterOffset(
   id: BottomNavigationItem['id'],
 ): number {
