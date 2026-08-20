@@ -80,6 +80,7 @@ import {
   confirmDestructiveInput,
   type DestructiveInputIntent,
 } from '../../src/services/destructiveInputConfirmation';
+import { playInteractionHaptic } from '../../src/services/interactionHaptics';
 
 interface ChatScreenProps {
   presentation?: ChatPresentation;
@@ -426,6 +427,7 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
     if (recorderAcquiring) return;
     try {
       await recorder.pause();
+      playInteractionHaptic('selection');
       dispatchComposer({ type: 'pause-voice' });
     } catch {
       if (mountedRef.current) {
@@ -437,6 +439,7 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
   async function handleResumeVoice() {
     try {
       await recorder.resume();
+      playInteractionHaptic('selection');
       dispatchComposer({ type: 'resume-voice' });
     } catch {
       if (mountedRef.current) setPhase('error');
@@ -520,6 +523,8 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
   async function handleComposerSend() {
     if (recorderAcquiring) return;
     if (isBusy) return;
+    if (composer.voice === 'none' && !draft.trim()) return;
+    playInteractionHaptic('send');
     dispatchComposer({ type: 'send' });
     if (composer.voice === 'none') {
       await handleSubmitText();
@@ -834,8 +839,9 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
     } catch {}
   }
 
-  function performClose() {
+  function performClose(withDismissHaptic = true) {
     if (closingRef.current) return;
+    if (withDismissHaptic) playInteractionHaptic('dismiss');
     closingRef.current = true;
     void stopActiveRecordingAndDiscard().catch(() => {});
     discardPendingRecording();
@@ -856,7 +862,7 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
     const intent = hasAbandonableVoiceSubmission
       ? 'discard-voice-submission'
       : 'cancel-recording';
-    void requestDestructiveInput(intent, performClose);
+    void requestDestructiveInput(intent, () => performClose(false));
   }
 
   function completeGestureClose() {
@@ -905,6 +911,7 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
           });
           return;
         }
+        runOnJS(playInteractionHaptic)('dismiss');
         translateY.value = withTiming(
           viewportHeight,
           { duration: CHAT_SHEET_DISMISS_DURATION },
@@ -919,7 +926,7 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
 
   async function handleCancelVoice() {
     if (voiceCancelDestination(initialConversationIdRef.current) === 'close') {
-      performClose();
+      performClose(false);
       return;
     }
 

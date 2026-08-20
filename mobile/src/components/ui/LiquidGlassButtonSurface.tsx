@@ -153,6 +153,7 @@ export function LiquidGlassButtonSurface({
           position: 'absolute',
           inset: 0,
           overflow: 'hidden',
+          alignItems: 'center', justifyContent: 'center',
           borderWidth: 1,
           borderColor: appearance.fallback.borderColor,
         }]}
@@ -167,6 +168,7 @@ export function LiquidGlassButtonSurface({
         shapeStyle,
         {
           overflow: 'hidden',
+          alignItems: 'center', justifyContent: 'center',
           borderWidth: 1,
           borderColor: appearance.fallback.borderColor,
           backgroundColor: appearance.fallback.backgroundColor,

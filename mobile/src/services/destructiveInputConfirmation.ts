@@ -1,5 +1,7 @@
 import { ActionSheetIOS, Alert, Platform } from 'react-native';
 
+import { playInteractionHaptic } from './interactionHaptics';
+
 export type DestructiveInputIntent =
   | 'cancel-recording'
   | 'switch-to-keyboard'
@@ -27,7 +29,7 @@ export function getDestructiveInputConfirmationOptions(
       return {
         title: 'Switch to keyboard?',
         message: 'Your current recording will be discarded.',
-        options: ['Cancel', 'Switch and discard'],
+        options: ['Go back', 'Switch and discard'],
         cancelButtonIndex: 0,
         destructiveButtonIndex: 1,
       };
@@ -35,7 +37,7 @@ export function getDestructiveInputConfirmationOptions(
       return {
         title: 'Delete voice draft?',
         message: 'This recording will be permanently removed.',
-        options: ['Cancel', 'Delete recording'],
+        options: ['Go back', 'Delete recording'],
         cancelButtonIndex: 0,
         destructiveButtonIndex: 1,
       };
@@ -43,7 +45,7 @@ export function getDestructiveInputConfirmationOptions(
       return {
         title: 'Discard draft?',
         message: 'Your unfinished draft will be removed.',
-        options: ['Cancel', 'Discard draft'],
+        options: ['Go back', 'Discard draft'],
         cancelButtonIndex: 0,
         destructiveButtonIndex: 1,
       };
@@ -52,7 +54,7 @@ export function getDestructiveInputConfirmationOptions(
       return {
         title: 'Discard draft?',
         message: 'Your unfinished draft will be removed.',
-        options: ['Cancel', 'Discard draft'],
+        options: ['Go back', 'Discard draft'],
         cancelButtonIndex: 0,
         destructiveButtonIndex: 1,
       };
@@ -67,6 +69,9 @@ export function confirmDestructiveInput(
 
   return new Promise((resolve) => {
     const handleSelection = (buttonIndex: number) => {
+      playInteractionHaptic(
+        buttonIndex === confirmation.destructiveButtonIndex ? 'destructive-confirm' : 'go-back',
+      );
       resolve(buttonIndex === confirmation.destructiveButtonIndex);
     };
 

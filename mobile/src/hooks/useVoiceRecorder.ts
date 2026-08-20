@@ -1,6 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useSharedValue } from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
 import {
   startRecording,
   stopRecording,
@@ -11,6 +10,7 @@ import {
   RecordingResult,
 } from '../services/audio';
 import { classifyVoiceActivity } from '../services/voiceActivity';
+import { playInteractionHaptic } from '../services/interactionHaptics';
 
 interface UseVoiceRecorder {
   isRecording: boolean;
@@ -68,7 +68,7 @@ export function useVoiceRecorder(): UseVoiceRecorder {
     amplitude.value = 0;
     activitySamplesRef.current = [];
     if (!mountedRef.current) return;
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    playInteractionHaptic('record-start');
 
     timerRef.current = setInterval(() => {
       if (mountedRef.current) setDuration(d => d + 1);
@@ -91,7 +91,6 @@ export function useVoiceRecorder(): UseVoiceRecorder {
     if (mountedRef.current) {
       setIsRecording(false);
       setIsPaused(false);
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     }
     return { ...result, activity };
   }, []);

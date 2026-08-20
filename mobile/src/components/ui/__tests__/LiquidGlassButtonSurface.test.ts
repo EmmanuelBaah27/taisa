@@ -57,4 +57,13 @@ describe('LiquidGlassButtonSurface', () => {
     expect(source).toMatch(/NativeGlassView[\s\S]*borderColor: appearance\.fallback\.borderColor/);
     expect(source).toMatch(/key="fallback-material"[\s\S]*overflow: 'hidden'/);
   });
+
+  test('centres children inside both native and fallback glass materials', () => {
+    const source = readFileSync(
+      resolve(__dirname, '../LiquidGlassButtonSurface.tsx'),
+      'utf8',
+    );
+
+    expect(source.match(/alignItems: 'center', justifyContent: 'center'/g)).toHaveLength(2);
+  });
 });
