@@ -4,7 +4,7 @@ import {
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { useAnimatedStyle } from 'react-native-reanimated';
+import { useAnimatedStyle } from 'react-native-reanimated';
 import type { ScrollView } from 'react-native-gesture-handler';
 import { useVoiceRecorder } from '../../src/hooks/useVoiceRecorder';
 import type { RecordingResult } from '../../src/services/audio';
@@ -28,6 +28,7 @@ import {
   resolveInitialChatConversationId,
   selectConversationMessages,
   returnFromRoutedChat,
+  voiceCancelAccessibilityLabel,
   voiceCancelDestination,
   type ChatPresentation,
 } from '../../src/navigation/chatConversationRoute';
@@ -36,7 +37,8 @@ import {
   ChatComposerDock,
   ChatConversationSurface,
   ChatScreenShell,
-  ActiveRecordingSurface,
+  ActiveRecordingActionBar,
+  ActiveRecordingContent,
 } from '../../src/components/ui';
 import {
   createVoiceComposerState,
@@ -79,7 +81,6 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
   const insets = useSafeAreaInsets();
   const routeParams = useLocalSearchParams<{
     conversationId?: string | string[];
-    title?: string | string[];
     cardX?: string | string[];
     cardY?: string | string[];
     cardWidth?: string | string[];
@@ -89,7 +90,6 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
     sourceViewportHeight?: string | string[];
   }>();
   const routeConversationId = routeParams.conversationId;
-  const routeTitle = Array.isArray(routeParams.title) ? routeParams.title[0] : routeParams.title;
   const {
     activeSessionId,
     activeRequestId,
@@ -818,99 +818,108 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
     && !composer.submitting
     && !isBusy;
 
-  if (showActiveRecordingSurface) {
-    return (
-      <Animated.View className="flex-1 bg-background" style={slideStyle}>
-          <ActiveRecordingSurface
-            topInset={insets.top}
-            bottomInset={insets.bottom}
-            title="New chat"
-            greeting="How’s it going?"
-            durationSeconds={recorder.duration}
-            amplitudeLevel={recorder.amplitudeLevel}
-            paused={composer.voice === 'paused'}
-            disabled={composer.submitting || isBusy}
-            recordingActionDisabled={recorderAcquiring}
-            onClose={handleClose}
-            onCancel={() => { void handleCancelVoice(); }}
-            onKeyboard={() => { void handleSwitchToText(); }}
-            onPauseResume={() => {
-              if (composer.voice === 'paused') void handleResumeVoice();
-              else void handlePauseVoice();
-            }}
-            onSend={() => { void handleComposerSend(); }}
-          />
-      </Animated.View>
-    );
-  }
+  useEffect(() => {
+    if (!showActiveRecordingSurface) return;
+    requestAnimationFrame(revealContent);
+    // revealContent intentionally stays out of this dependency list because useMorphTransition
+    // returns a new function each render; the recording-state transition is the reveal trigger.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showActiveRecordingSurface]);
+
+  const chatContent = showActiveRecordingSurface ? (
+    <ActiveRecordingContent greeting="How’s it going?" />
+  ) : (
+    <ChatConversationSurface
+      scrollRef={scrollRef}
+      messages={messages}
+      activeMessageId={activeMessageId}
+      activeRequestKind={activeRequestKind}
+      transcript={transcript}
+      phase={phase}
+      isBusy={isBusy}
+      error={error}
+      microphoneUnavailable={recordingStartFailed}
+      pendingProposals={pendingProposals}
+      editingTranscript={editingTranscript}
+      onContentSizeChange={handleConversationContentSizeChange}
+      reactions={reactions}
+      onEditTranscript={setEditingTranscript}
+      onChangeTranscript={setEditingTranscript}
+      onSubmitTranscript={() => { void handleSaveTranscriptRevision(); }}
+      onUseKeyboard={handleUseKeyboard}
+      onDiscardRecording={handleDiscardFailedRecording}
+      onRetry={recordingStartFailed || activeRequestStatus === 'no-speech' ? startListening : handleRetry}
+      onConfirmProposal={(proposalId) => { void confirmProposal(proposalId); }}
+      onResolveProposal={(proposalId, choice) => { void resolveClarification(proposalId, choice); }}
+      onReact={(responseId, reaction) => { void handleReaction(responseId, reaction); }}
+      onShareExample={(responseId) => { void handleShareExample(responseId); }}
+    />
+  );
+
+  const chatFooter = (
+    <ChatComposerDock phase={phase} bottomInset={insets.bottom}>
+      {showActiveRecordingSurface ? (
+        <ActiveRecordingActionBar
+          durationSeconds={recorder.duration}
+          amplitudeLevel={recorder.amplitudeLevel}
+          paused={composer.voice === 'paused'}
+          disabled={composer.submitting || isBusy}
+          recordingActionDisabled={recorderAcquiring}
+          cancelLabel={voiceCancelAccessibilityLabel(initialConversationIdRef.current)}
+          onCancel={() => { void handleCancelVoice(); }}
+          onKeyboard={() => { void handleSwitchToText(); }}
+          onPauseResume={() => {
+            if (composer.voice === 'paused') void handleResumeVoice();
+            else void handlePauseVoice();
+          }}
+          onSend={() => { void handleComposerSend(); }}
+        />
+      ) : (
+        <VoiceComposer
+          mode={transcriptionOutcome === 'streaming' ? 'text' : composer.mode}
+          voiceState={composer.voice}
+          durationSeconds={pendingRecording?.durationSeconds ?? recorder.duration}
+          amplitude={recorder.amplitude}
+          text={transcriptionOutcome === 'streaming' ? provisionalTranscript : draft}
+          hasVoiceDraft={composer.voice !== 'none'}
+          submissionFailed={composer.submissionFailed}
+          recordingStartFailed={recordingStartFailed}
+          textFocusRequest={composer.textFocusRequest}
+          disabled={isBusy}
+          recordingActionDisabled={recorderAcquiring}
+          transcribing={transcriptionOutcome === 'streaming'}
+          cancelVoiceLabel={voiceCancelAccessibilityLabel(initialConversationIdRef.current)}
+          onChangeText={(value) => {
+            setDraft(value);
+            dispatchComposer({ type: 'set-text', text: value });
+          }}
+          onSwitchToText={() => { void handleSwitchToText(); }}
+          onSwitchToVoice={handleSwitchToVoice}
+          onStartVoice={handleStartVoiceFromComposer}
+          onPause={() => { void handlePauseVoice(); }}
+          onResume={() => { void handleResumeVoice(); }}
+          onCancelVoice={() => { void handleCancelVoice(); }}
+          onDeleteText={() => {
+            setDraft('');
+            dispatchComposer({ type: 'delete-text' });
+          }}
+          onDeleteVoice={handleDeleteVoiceDraft}
+          onSend={() => { void handleComposerSend(); }}
+        />
+      )}
+    </ChatComposerDock>
+  );
 
   return (
     <ChatScreenShell
       topInset={insets.top}
-      title={currentSession?.title ?? routeTitle ?? 'Taisa'}
+      title="Taisa"
       animatedStyle={slideStyle}
       contentAnimatedStyle={contentStyle}
       onClose={handleClose}
-      footer={(
-        <ChatComposerDock phase={phase} bottomInset={insets.bottom}>
-          <VoiceComposer
-            mode={transcriptionOutcome === 'streaming' ? 'text' : composer.mode}
-            voiceState={composer.voice}
-            durationSeconds={pendingRecording?.durationSeconds ?? recorder.duration}
-            amplitude={recorder.amplitude}
-            text={transcriptionOutcome === 'streaming' ? provisionalTranscript : draft}
-            hasVoiceDraft={composer.voice !== 'none'}
-            submissionFailed={composer.submissionFailed}
-            recordingStartFailed={recordingStartFailed}
-            textFocusRequest={composer.textFocusRequest}
-            disabled={isBusy}
-            recordingActionDisabled={recorderAcquiring}
-            transcribing={transcriptionOutcome === 'streaming'}
-            onChangeText={(value) => {
-              setDraft(value);
-              dispatchComposer({ type: 'set-text', text: value });
-            }}
-            onSwitchToText={() => { void handleSwitchToText(); }}
-            onSwitchToVoice={handleSwitchToVoice}
-            onStartVoice={handleStartVoiceFromComposer}
-            onPause={() => { void handlePauseVoice(); }}
-            onResume={() => { void handleResumeVoice(); }}
-            onCancelVoice={() => { void handleCancelVoice(); }}
-            onDeleteText={() => {
-              setDraft('');
-              dispatchComposer({ type: 'delete-text' });
-            }}
-            onDeleteVoice={handleDeleteVoiceDraft}
-            onSend={() => { void handleComposerSend(); }}
-          />
-        </ChatComposerDock>
-      )}
+      footer={chatFooter}
     >
-      <ChatConversationSurface
-        scrollRef={scrollRef}
-        messages={messages}
-        activeMessageId={activeMessageId}
-        activeRequestKind={activeRequestKind}
-        transcript={transcript}
-        phase={phase}
-        isBusy={isBusy}
-        error={error}
-        microphoneUnavailable={recordingStartFailed}
-        pendingProposals={pendingProposals}
-        editingTranscript={editingTranscript}
-        onContentSizeChange={handleConversationContentSizeChange}
-        reactions={reactions}
-        onEditTranscript={setEditingTranscript}
-        onChangeTranscript={setEditingTranscript}
-        onSubmitTranscript={() => { void handleSaveTranscriptRevision(); }}
-        onUseKeyboard={handleUseKeyboard}
-        onDiscardRecording={handleDiscardFailedRecording}
-        onRetry={recordingStartFailed || activeRequestStatus === 'no-speech' ? startListening : handleRetry}
-        onConfirmProposal={(proposalId) => { void confirmProposal(proposalId); }}
-        onResolveProposal={(proposalId, choice) => { void resolveClarification(proposalId, choice); }}
-        onReact={(responseId, reaction) => { void handleReaction(responseId, reaction); }}
-        onShareExample={(responseId) => { void handleShareExample(responseId); }}
-      />
+      {chatContent}
     </ChatScreenShell>
   );
 }

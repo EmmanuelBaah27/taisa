@@ -114,7 +114,9 @@ Never use raw `text-sm font-semibold` combinations — use the composite utiliti
 | `SecondaryIconButton` | `label`, `icon`, `disabled?`, `onPress` | Figma node 414:706 compact secondary action: 56×56 translucent-white circle, 24px Central icon, 6% dark border, and soft 6px shadow. Pressing reuses the bottom-navigation shell rhythm—scale to 1.12 over 70ms, hold 100ms, settle over 90ms—with a non-spatial reduced-motion path. Use for pause, keyboard, close, and similar supporting actions; keep primary or destructive actions in their own visual hierarchy. |
 | `RecordingVoiceMark` | _(none)_ | Static Figma node 463:6 voice identity mark using the exact 32px circle and wave paths. |
 | `VoiceReactiveTimestamp` | `durationSeconds`, `amplitudeLevel`, `paused` | Figma node 409:4850 compact 60×56 timer with a wider edge-faded mustard/purple/green glow driven directly by raw recorder amplitude. Paused state rests at baseline; Skia uniforms remain on the React runtime rather than crossing a Reanimated worklet boundary. |
-| `ActiveRecordingSurface` | `topInset`, `bottomInset`, `title`, `greeting`, `durationSeconds`, `amplitudeLevel`, `paused`, `disabled?`, control callbacks | Business-free Figma recording-start layout: centered title and voice mark, neutral greeting, safe-area-aware controls, three `SecondaryIconButton` actions, and one 56px primary send action. Recording and submission logic remain in the screen owner. |
+| `ActiveRecordingSurface` | source module for `ActiveRecordingContent` and `ActiveRecordingActionBar` | Recording presentation module; it exports the center-only content and controls-only action-bar boundaries, rather than a page-level recording surface. |
+| `ActiveRecordingContent` | `greeting` | Presentational recording center content: the static `RecordingVoiceMark` and greeting only. It has no page shell, title, safe-area, footer, recorder, or navigation responsibility. |
+| `ActiveRecordingActionBar` | `durationSeconds`, `amplitudeLevel`, `paused`, `disabled?`, `recordingActionDisabled?`, `cancelLabel`, callbacks | Controls-only recording action bar for the shared composer dock: Cancel, Keyboard, raw-amplitude timestamp, Pause/Resume, and Send. It owns their arrangement and intrinsic 56px action geometry; `ChatComposerDock` owns the shared footer inset, margins, and bottom spacing. Recorder and navigation state remain in the screen owner. |
 | `Badge` | `color`, `appearance`, `size`, `icon`, `onDismiss` | Eight colors; three appearances |
 | `Card` | `surface`, `className`, `style` | Two surfaces (default / elevated) |
 | `Input` | `size`, `error`, `...TextInputProps` | Two sizes; error state |
@@ -180,6 +182,15 @@ animation orchestration. Visual rendering belongs to the exported typed chat sur
 not construct React Native visual primitives or define a `StyleSheet`. Static color roles use
 NativeWind semantic utilities. Native APIs that require color values (icons, shadows, gradients)
 use `constants/theme.ts`, including `backgroundTransparent` for the conversation fade.
+
+`ChatScreenShell` is the only page-level shell for chat and active/paused recording. It owns the
+single `ChatNavBar` title (`Taisa`), page background, safe-area header, content region, and the
+`ChatComposerDock` footer slot. `ActiveRecordingContent` replaces only the center content and
+`ActiveRecordingActionBar` replaces only the dock content, so shared page, header, and footer
+geometry have one implementation. The screen supplies navigation handlers and the contextual
+Cancel label: an existing chat returns to Reply, while a main/new recording closes the Taisa page.
+During recorder acquisition, Close, Cancel, and Keyboard remain available; only Pause/Resume and
+Send are disabled.
 
 Chats history opens the canonical chat route with one source snapshot: the selected row's measured
 viewport frame, the list's exact scroll offset, and the viewport dimensions. A blank white shell

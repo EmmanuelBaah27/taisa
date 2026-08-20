@@ -106,19 +106,33 @@ describe('local-first capture navigation', () => {
     expect(rootLayout).toMatch(/name="chat\/index"[\s\S]*presentation: 'transparentModal'[\s\S]*animation: 'none'[\s\S]*backgroundColor: 'transparent'/);
   });
 
-  test('fresh voice capture uses the Figma active recording surface with existing lifecycle handlers', () => {
+  test('fresh voice capture stays inside the canonical Taisa shell with existing lifecycle handlers', () => {
     const chatScreen = fs.readFileSync(
       path.resolve(__dirname, '../../../app/chat/index.tsx'),
       'utf8',
     );
 
-    expect(chatScreen).toMatch(/ActiveRecordingSurface/);
+    expect(chatScreen).not.toMatch(/if \(showActiveRecordingSurface\)[\s\S]*return \(/);
+    expect(chatScreen).toMatch(/<ChatScreenShell[\s\S]*title="Taisa"/);
+    expect(chatScreen.match(/<ChatScreenShell/g)).toHaveLength(1);
+    expect(chatScreen).toMatch(/showActiveRecordingSurface[\s\S]*<ActiveRecordingContent/);
+    expect(chatScreen).toMatch(/showActiveRecordingSurface[\s\S]*<ActiveRecordingActionBar/);
+    expect(chatScreen).toMatch(/if \(!showActiveRecordingSurface\) return;[\s\S]*requestAnimationFrame\(revealContent\);[\s\S]*\[showActiveRecordingSurface\]/);
+    expect(chatScreen).not.toMatch(/title="New chat"/);
     expect(chatScreen).toMatch(/messages\.length === 0[\s\S]*composer\.voice === 'recording'[\s\S]*composer\.voice === 'paused'/);
     expect(chatScreen).toMatch(/onClose=\{handleClose\}/);
+    expect(chatScreen).toMatch(/cancelLabel=\{voiceCancelAccessibilityLabel\(initialConversationIdRef\.current\)\}/);
+    expect(chatScreen).toMatch(/<VoiceComposer[\s\S]*cancelVoiceLabel=\{voiceCancelAccessibilityLabel\(initialConversationIdRef\.current\)\}/);
     expect(chatScreen).toMatch(/onCancel=\{\(\) => \{ void handleCancelVoice\(\); \}\}/);
     expect(chatScreen).toMatch(/onKeyboard=\{\(\) => \{ void handleSwitchToText\(\); \}\}/);
     expect(chatScreen).toMatch(/onPauseResume=\{[\s\S]*handleResumeVoice[\s\S]*handlePauseVoice/);
     expect(chatScreen).toMatch(/onSend=\{\(\) => \{ void handleComposerSend\(\); \}\}/);
+
+    const dockStart = chatScreen.indexOf('<ChatComposerDock');
+    const recordingActionBarStart = chatScreen.indexOf('<ActiveRecordingActionBar');
+    const dockEnd = chatScreen.indexOf('</ChatComposerDock>', dockStart);
+    expect(recordingActionBarStart).toBeGreaterThan(dockStart);
+    expect(recordingActionBarStart).toBeLessThan(dockEnd);
   });
 
   test('recording controls stay inert until native recorder acquisition completes', () => {
@@ -139,6 +153,16 @@ describe('local-first capture navigation', () => {
       'utf8',
     );
     expect(chatScreen).toMatch(/catch \{[\s\S]*recordingStartGuardRef\.current\.complete\(startAttempt\)[\s\S]*await handleCancelVoice\(\)/);
+  });
+
+  test('voice cancellation preserves reply and close destinations through recorder cleanup', () => {
+    const chatScreen = fs.readFileSync(
+      path.resolve(__dirname, '../../../app/chat/index.tsx'),
+      'utf8',
+    );
+
+    expect(chatScreen).toMatch(/voiceCancelDestination\([^)]+\) === 'close'[\s\S]*handleClose\(\)/);
+    expect(chatScreen).toMatch(/setPhase\('idle'\)[\s\S]*restore-mode/);
   });
 
   test('the composer remains visible above the iOS keyboard and clears after a successful retry', () => {

@@ -73,6 +73,29 @@ describe('chat design-system surfaces', () => {
     expect(animatedLayers.map((node) => node.props.style)).toEqual([shellStyle, contentStyle]);
   });
 
+  test('the shell owns one navigation bar and one footer slot for every supplied footer', () => {
+    const footers = [
+      React.createElement(View, { testID: 'composer-footer' }),
+      React.createElement(View, { testID: 'recording-footer' }),
+    ];
+
+    for (const footer of footers) {
+      const shell = ChatScreenShell({
+        topInset: 47,
+        title: 'Taisa',
+        animatedStyle: {},
+        contentAnimatedStyle: {},
+        onClose: jest.fn(),
+        children: React.createElement(View, { testID: 'chat-content' }),
+        footer,
+      });
+      const nodes = descendants(shell);
+
+      expect(nodes.filter((node) => node.type === ChatNavBar)).toHaveLength(1);
+      expect(nodes.filter((node) => node.props.testID === footer.props.testID)).toHaveLength(1);
+    }
+  });
+
   test('conversation layout exposes a content-size callback for an immediate initial bottom position', () => {
     const onContentSizeChange = jest.fn();
     const surface = ChatConversationSurface({
