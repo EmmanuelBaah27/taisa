@@ -244,10 +244,15 @@ describe('chat design-system surfaces', () => {
     const header = ChatHeader({ onClose: jest.fn(), title: 'Taisa', topInset: 47 });
     const nodes = descendants(header);
     const fade = nodes.find((node) => node.props.testID === 'chat-header-fade');
+    const directChildren = React.Children.toArray(header.props.children) as React.ReactElement<Record<string, any>>[];
 
     expect(header.props.style).toMatchObject({ paddingTop: 47 });
     expect(fade?.props.style).toMatchObject({ bottom: -20, height: 20 });
     expect(fade?.props.locations).toEqual([0, 1]);
+    expect(directChildren.map((child) => child.props.testID)).toEqual([
+      'chat-header-fade',
+      'chat-header-controls',
+    ]);
   });
 
   test('the composer dock keeps only a small fade inset above the textbox', () => {

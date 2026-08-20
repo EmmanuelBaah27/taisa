@@ -14,6 +14,13 @@ export interface ChatHeaderProps {
 export function ChatHeader({ title, topInset, onClose }: ChatHeaderProps) {
   return (
     <View className="z-10 bg-background" style={{ paddingTop: topInset }}>
+      <LinearGradient
+        testID="chat-header-fade"
+        pointerEvents="none"
+        colors={[colors.background, colors.backgroundTransparent]}
+        locations={[0, 1]}
+        style={{ position: 'absolute', right: 0, bottom: -20, left: 0, height: 20 }}
+      />
       <View testID="chat-header-controls" className="flex-row items-center px-5 py-1">
         <LiquidGlassPressable
           accessibilityLabel="Close conversation"
@@ -34,13 +41,6 @@ export function ChatHeader({ title, topInset, onClose }: ChatHeaderProps) {
         </View>
         <View className="h-14 w-14" />
       </View>
-      <LinearGradient
-        testID="chat-header-fade"
-        pointerEvents="none"
-        colors={[colors.background, colors.backgroundTransparent]}
-        locations={[0, 1]}
-        style={{ position: 'absolute', right: 0, bottom: -20, left: 0, height: 20 }}
-      />
     </View>
   );
 }
