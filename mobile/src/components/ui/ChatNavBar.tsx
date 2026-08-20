@@ -13,7 +13,7 @@ export function ChatNavBar({ title, topInset, onClose }: ChatNavBarProps) {
   return (
     <LinearGradient
       colors={[colors.background, colors.backgroundTransparent]}
-      className="relative flex-row items-center justify-between px-4 pb-1 pt-1"
+      className="flex-row items-center pb-1 pt-1"
       style={{ marginTop: topInset }}
     >
       <TouchableOpacity
@@ -25,7 +25,9 @@ export function ChatNavBar({ title, topInset, onClose }: ChatNavBarProps) {
         <Icon name="IconChevronDownMedium" size={24} color={colors.textPrimary} />
       </TouchableOpacity>
       <Text
-        className="absolute left-20 right-20 text-center text-foreground text-small-medium"
+        testID="chat-title-slot"
+        pointerEvents="none"
+        className="h-14 flex-1 text-center text-foreground text-small-medium leading-[56px]"
         numberOfLines={1}
       >
         {title}

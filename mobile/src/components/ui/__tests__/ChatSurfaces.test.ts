@@ -90,10 +90,28 @@ describe('chat design-system surfaces', () => {
         footer,
       });
       const nodes = descendants(shell);
+      const page = nodes.find((node) => node.props.testID === 'chat-page');
 
       expect(nodes.filter((node) => node.type === ChatNavBar)).toHaveLength(1);
       expect(nodes.filter((node) => node.props.testID === footer.props.testID)).toHaveLength(1);
+      expect(String(page?.props.className)).toContain('px-5');
     }
+  });
+
+  test('sections inherit horizontal alignment from the page instead of owning section margins', () => {
+    const header = ChatNavBar({ title: 'Taisa', topInset: 47, onClose: jest.fn() });
+    const surface = ChatConversationSurface({
+      scrollRef: { current: null }, messages: [], activeMessageId: null,
+      activeRequestKind: null, transcript: '', phase: 'idle', isBusy: false,
+      error: null, microphoneUnavailable: false, pendingProposals: [], editingTranscript: null,
+      onContentSizeChange: jest.fn(), onEditTranscript: jest.fn(), onChangeTranscript: jest.fn(),
+      onSubmitTranscript: jest.fn(), onUseKeyboard: jest.fn(), onDiscardRecording: jest.fn(),
+      onRetry: jest.fn(), onConfirmProposal: jest.fn(), onResolveProposal: jest.fn(),
+    });
+    const scrollView = descendants(surface).find((node) => node.type === ScrollView);
+
+    expect(String(header.props.className)).not.toMatch(/px-/);
+    expect(scrollView?.props.contentContainerStyle).not.toHaveProperty('paddingHorizontal');
   });
 
   test('conversation layout exposes a content-size callback for an immediate initial bottom position', () => {
@@ -139,6 +157,16 @@ describe('chat design-system surfaces', () => {
 
     expect(String(close?.props.className)).toContain('rounded-full');
     expect(labels).toContain('Navigating a career change');
+  });
+
+  test('the page title occupies the middle column of the close-button row', () => {
+    const header = ChatNavBar({ onClose: jest.fn(), title: 'Taisa', topInset: 47 });
+    const titleSlot = descendants(header).find((node) => node.props.testID === 'chat-title-slot');
+
+    expect(titleSlot?.type).toBe(Text);
+    expect(String(titleSlot?.props.className)).toContain('h-14');
+    expect(String(titleSlot?.props.className)).toContain('flex-1');
+    expect(String(titleSlot?.props.className)).toContain('leading-[56px]');
   });
 
   test('the user turn uses the neutral 32px Figma bubble', () => {

@@ -46,7 +46,11 @@ export function ChatScreenShell({
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
         <Animated.View className="flex-1 overflow-hidden bg-background" style={animatedStyle}>
-          <Animated.View className="flex-1" style={contentAnimatedStyle}>
+          <Animated.View
+            testID="chat-page"
+            className="flex-1 px-5"
+            style={contentAnimatedStyle}
+          >
             <ChatNavBar title={title} topInset={topInset} onClose={onClose} />
             {children}
             {footer}
@@ -233,7 +237,7 @@ export function ChatConversationSurface(props: ChatConversationSurfaceProps) {
       <ScrollView
         ref={props.scrollRef}
         className="flex-1"
-        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 32, paddingBottom: 40 }}
+        contentContainerStyle={{ paddingTop: 32, paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}
         onScroll={(event) => props.onScrollAtTopChange?.(event.nativeEvent.contentOffset.y <= 2)}
         onContentSizeChange={props.onContentSizeChange}
@@ -326,7 +330,7 @@ export function ChatComposerDock({ phase, bottomInset, children }: ChatComposerD
   ) : (
     <LinearGradient
       colors={[colors.backgroundTransparent, colors.background]}
-      style={{ paddingHorizontal: 16, paddingTop: 24, paddingBottom: bottomInset + 12 }}
+      style={{ paddingTop: 24, paddingBottom: bottomInset + 12 }}
     >
       {children}
     </LinearGradient>

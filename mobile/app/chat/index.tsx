@@ -57,6 +57,7 @@ import { buildFeedbackPreview } from '../../src/services/feedbackBundle';
 import api from '../../src/services/api';
 import { createFeedbackClient } from '../../src/services/feedbackClient';
 import { parseChatCardSource } from '../../src/navigation/chatCardExpansion';
+import { isRecorderAcquiring } from '../../src/services/recorderAcquisition';
 
 interface ChatScreenProps {
   presentation?: ChatPresentation;
@@ -202,9 +203,11 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
   );
 
   const recorder = useVoiceRecorder();
-  const recorderAcquiring = (
-    composer.voice === 'recording' || composer.voice === 'paused'
-  ) && pendingRecording === null && !recorder.isRecording;
+  const recorderAcquiring = isRecorderAcquiring(
+    composer.voice,
+    pendingRecording !== null,
+    recorder.isRecording,
+  );
 
   function discardPendingRecording() {
     if (recordingSubmissionLeaseRef.current !== null) {
