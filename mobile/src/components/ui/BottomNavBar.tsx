@@ -117,11 +117,10 @@ function LeadingVisual({ item, selected, userId }: {
   );
 }
 
-function SmoothDestination({ item, index, pagePosition, shellWidth, userId, onPress, onPressIn, onPressOut }: {
+function SmoothDestination({ item, index, pagePosition, userId, onPress, onPressIn, onPressOut }: {
   item: BottomNavigationItem;
   index: number;
   pagePosition: SharedValue<number>;
-  shellWidth: SharedValue<number>;
   userId: string | null;
   onPress: () => void;
   onPressIn: () => void;
@@ -134,7 +133,7 @@ function SmoothDestination({ item, index, pagePosition, shellWidth, userId, onPr
     const width = interpolate(pagePosition.value, [0, 1, 2], [
       ITEM_WIDTHS[0][index], ITEM_WIDTHS[1][index], ITEM_WIDTHS[2][index],
     ], Extrapolation.CLAMP);
-    return { left: (240 - shellWidth.value) / 2 + left, width };
+    return { left, width };
   });
   const selection = useDerivedValue(() => Math.max(0, 1 - Math.abs(pagePosition.value - index)));
   const contentStyle = useAnimatedStyle(() => {
@@ -266,7 +265,6 @@ export function BottomNavBar() {
               item={item}
               index={index}
               pagePosition={pagePosition}
-              shellWidth={shellWidth}
               userId={userId}
               onPress={() => navigateWithMainNavigation(
                 interaction, item.id, () => router.navigate(item.path as never),

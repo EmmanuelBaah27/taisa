@@ -4,6 +4,10 @@ import { router, useFocusEffect } from 'expo-router';
 
 import { ChatListRow } from '../../src/components/ui/ChatListRow';
 import { LiquidGlassPressable } from '../../src/components/ui/LiquidGlassPressable';
+import {
+  getPageHeaderScrollInset,
+  PageHeaderSurface,
+} from '../../src/components/ui/PageHeaderSurface';
 import { colors } from '../../src/constants/theme';
 import { useScrollContext } from '../../src/contexts/ScrollContext';
 import type { ChatCardFrame } from '../../src/navigation/chatCardExpansion';
@@ -85,23 +89,29 @@ export default function ChatsScreen() {
 
   return (
     <View className="flex-1 bg-background">
-      <Text
-        className="-mt-px px-5 pb-3 text-foreground text-H1"
-        style={{ paddingTop: pageHeaderPaddingTop }}
-      >
-        Chats
-      </Text>
+      <PageHeaderSurface variant="title">
+        <Text
+          className="-mt-px px-5 pb-3 text-foreground text-H1"
+          style={{ paddingTop: pageHeaderPaddingTop }}
+        >
+          Chats
+        </Text>
+      </PageHeaderSurface>
       <SectionList
         ref={scrollRef}
         className="flex-1"
         sections={sections}
-        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 140 }}
+        contentContainerStyle={{
+          paddingHorizontal: 20,
+          paddingTop: getPageHeaderScrollInset(pageHeaderPaddingTop, 'title'),
+          paddingBottom: 140,
+        }}
         stickySectionHeadersEnabled
         keyExtractor={(chat) => chat.id}
         renderSectionHeader={({ section }) => (
           <View className="-mx-5 bg-background px-5 py-1">
             <View className="self-start rounded-full bg-muted px-3 py-1">
-              <Text className="text-muted-foreground text-caption-semibold uppercase">
+              <Text className="text-muted-foreground text-caption-semibold">
                 {section.label}
               </Text>
             </View>

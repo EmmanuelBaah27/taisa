@@ -41,6 +41,8 @@ export { Icon } from './Icon';
 export type { IconProps, IconName } from './Icon';
 
 export { BottomNavBar } from './BottomNavBar';
+export { PageHeaderSurface, getPageHeaderScrollInset } from './PageHeaderSurface';
+export type { PageHeaderSurfaceProps, PageHeaderVariant } from './PageHeaderSurface';
 export { SelectedNavigationItem } from './SelectedNavigationItem';
 export type { SelectedNavigationItemProps } from './SelectedNavigationItem';
 export { InactiveNavigationItem } from './InactiveNavigationItem';

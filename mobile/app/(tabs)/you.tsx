@@ -22,6 +22,10 @@ import {
   getDeviceCredential,
 } from '../../src/services/deviceEnrollment';
 import { usePageHeaderPaddingTop } from '../../src/navigation/pageSafeArea';
+import {
+  getPageHeaderScrollInset,
+  PageHeaderSurface,
+} from '../../src/components/ui/PageHeaderSurface';
 
 interface YouData {
   currentFocus: string;
@@ -172,12 +176,18 @@ export default function YouScreen() {
 
   return (
     <View className="flex-1 bg-background">
-      <Text className="text-foreground text-H1 px-5 pb-3" style={{ paddingTop: pageHeaderPaddingTop }}>You</Text>
+      <PageHeaderSurface variant="title">
+        <Text className="text-foreground text-H1 px-5 pb-3" style={{ paddingTop: pageHeaderPaddingTop }}>You</Text>
+      </PageHeaderSurface>
     <ScrollView
       className="flex-1 bg-background"
       onScroll={(e) => reportScroll(e.nativeEvent.contentOffset.y)}
       scrollEventThrottle={16}
-      contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 120 }}
+      contentContainerStyle={{
+        paddingHorizontal: 16,
+        paddingTop: getPageHeaderScrollInset(pageHeaderPaddingTop, 'title') + 8,
+        paddingBottom: 120,
+      }}
     >
       {/* Avatar row */}
       <View className="items-center mb-6">

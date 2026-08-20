@@ -215,7 +215,7 @@ export const BOTTOM_NAVIGATION_CLEAR_GLASS_SURFACE = {
 
 export const BOTTOM_NAVIGATION_FIGMA = {
   navigationHeight: 60,
-  navigationBottom: 36,
+  navigationBottom: 28,
   referenceSafeAreaBottom: 34,
   recordGap: 12,
   fadeBottom: 20,

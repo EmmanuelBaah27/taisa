@@ -119,11 +119,18 @@ export function InteractiveMainNavigatorView({
 
   const onPageSelected = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const destinationIndex = Math.round(event.nativeEvent.contentOffset.x / pageWidth);
+    if (destinationIndex !== state.index) {
+      swipeFromIndex.value = destinationIndex;
+      swipeToIndex.value = destinationIndex;
+      swipeProgress.value = 0;
+      swipeInteracting.value = 1;
+      dispatchRoute(destinationIndex);
+      return;
+    }
     swipeProgress.value = 0;
     swipeToIndex.value = -1;
     swipeInteracting.value = 0;
-    if (destinationIndex !== state.index) dispatchRoute(destinationIndex);
-  }, [dispatchRoute, pageWidth, state.index, swipeInteracting, swipeProgress, swipeToIndex]);
+  }, [dispatchRoute, pageWidth, state.index, swipeFromIndex, swipeInteracting, swipeProgress, swipeToIndex]);
 
   const navigate = useCallback((destinationId: MainDestinationId) => {
     const destinationIndex = state.routes.findIndex((route) => route.name === destinationId);

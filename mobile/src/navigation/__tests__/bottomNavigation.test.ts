@@ -70,9 +70,9 @@ describe('bottom navigation', () => {
 
   test('matches the Figma bottom-control geometry on the reference device', () => {
     expect(getBottomNavigationLayout(34)).toEqual({
-      navigationBottom: 36,
+      navigationBottom: 28,
       navigationHeight: 60,
-      recordBottom: 108,
+      recordBottom: 100,
       fadeBottom: 20,
       fadeHeight: 90,
     });
@@ -80,9 +80,9 @@ describe('bottom navigation', () => {
 
   test('preserves the Figma spacing above larger safe areas', () => {
     expect(getBottomNavigationLayout(44)).toEqual({
-      navigationBottom: 46,
+      navigationBottom: 38,
       navigationHeight: 60,
-      recordBottom: 118,
+      recordBottom: 110,
       fadeBottom: 30,
       fadeHeight: 90,
     });
@@ -198,6 +198,16 @@ describe('bottom navigation', () => {
     expect(getBottomNavigationDestinationCenterOffset('chats')).toBe(-60);
     expect(getBottomNavigationDestinationCenterOffset('index')).toBe(0);
     expect(getBottomNavigationDestinationCenterOffset('you')).toBe(60);
+  });
+
+  test('keeps destination frames and capsule in the same shell coordinate space', () => {
+    const source = readFileSync(
+      resolve(__dirname, '../../components/ui/BottomNavBar.tsx'),
+      'utf8',
+    );
+
+    expect(source).not.toContain('(240 - shellWidth.value) / 2 + left');
+    expect(source).toContain('return { left, width };');
   });
 
   test('moves inactive destinations clear of the selected capsule', () => {

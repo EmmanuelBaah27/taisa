@@ -34,4 +34,10 @@ describe('InteractiveMainNavigator', () => {
     expect(source).toMatch(/scrollRef\.current\?\.scrollTo\(\{[\s\S]*animated: false/);
     expect(source).toMatch(/CommonActions\.navigate/);
   });
+
+  test('holds the destination position until route settlement completes', () => {
+    expect(source).toMatch(
+      /swipeFromIndex\.value = destinationIndex;\s*swipeToIndex\.value = destinationIndex;\s*swipeProgress\.value = 0;\s*swipeInteracting\.value = 1;/,
+    );
+  });
 });
