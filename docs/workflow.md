@@ -124,6 +124,8 @@ dependency stage. If not yet in BUILD:
 ### 5. Review + QA
 **Who:** Claude (`requesting-code-review` + `verification-before-completion`) + Baah (device QA)
 
+**Canonical phone preview:** Only Metro started from `.worktrees/preview-taisa/mobile` on `preview/taisa` may own port `8082` for device QA. Before Beats is asked to device-QA any feature, integrate that feature's committed work into `preview/taisa`; feature worktrees remain isolated implementation environments and are not device-QA targets.
+
 **Verification matrix:**
 
 | Change area | Required checks |
@@ -236,7 +238,7 @@ Claude reads intent, not keywords. Ambiguous → one yes/no question.
 
 ### Canonical branch
 
-`main` is the only permanent branch. It is the GitHub default and the base for every pull request. Platform and Product are workflow tracks, not Git branches; there is no long-lived `develop` branch.
+`main` is the only permanent shipping branch. It is the GitHub default and the base for every pull request. `preview/taisa` is the permanent integration-only branch for combined phone previews; it is never a shipping base and must not be merged to `main` as part of device-QA setup. Platform and Product are workflow tracks, not Git branches; there is no long-lived `develop` branch.
 
 ### Branch naming
 
