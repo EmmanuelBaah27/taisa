@@ -6,6 +6,10 @@ describe('InteractiveMainNavigator', () => {
     path.resolve(__dirname, '../InteractiveMainNavigator.tsx'),
     'utf8',
   );
+  const bottomNavSource = fs.readFileSync(
+    path.resolve(__dirname, '../../components/ui/BottomNavBar.tsx'),
+    'utf8',
+  );
 
   test('uses the built-in native scroll pager while keeping Expo Router authoritative', () => {
     expect(source).toMatch(/useNavigationBuilder<[\s\S]*?>\(TabRouter/);
@@ -54,5 +58,12 @@ describe('InteractiveMainNavigator', () => {
     expect(source).toContain('withTiming(1, { duration: 170 }');
     expect(source).toContain('directTransition.value');
     expect(source).toContain('directPageOpacity.value');
+  });
+
+  test('drives tapped capsule travel through the same continuous progress path as a swipe', () => {
+    expect(source).toContain('withSpring');
+    expect(source).toMatch(/swipeProgress\.value = withSpring\(1/);
+    expect(source).not.toMatch(/swipeProgress\.value = withTiming\(1/);
+    expect(bottomNavSource).toMatch(/pagePosition[\s\S]*interaction\.progress\.value/);
   });
 });

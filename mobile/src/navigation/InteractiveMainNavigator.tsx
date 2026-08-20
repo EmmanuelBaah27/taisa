@@ -15,6 +15,7 @@ import Animated, {
   useAnimatedScrollHandler,
   useAnimatedStyle,
   useSharedValue,
+  withSpring,
   withTiming,
 } from 'react-native-reanimated';
 
@@ -164,7 +165,12 @@ export function InteractiveMainNavigatorView({
         runOnJS(jumpDirectlyToPage)(destinationIndex);
         directPageOpacity.value = withTiming(1, { duration: 170 });
       });
-      swipeProgress.value = withTiming(1, { duration: 260 }, (finished) => {
+      swipeProgress.value = withSpring(1, {
+        damping: 24,
+        stiffness: 240,
+        mass: 0.8,
+        overshootClamping: true,
+      }, (finished) => {
         if (finished) runOnJS(dispatchRoute)(destinationIndex);
       });
       return;

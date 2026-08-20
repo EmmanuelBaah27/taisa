@@ -182,6 +182,14 @@ describe('local-first capture navigation', () => {
     expect(rootLayout).not.toMatch(/if \(fontsLoaded\) SplashScreen\.hideAsync\(\)/);
   });
 
+  test('clips the rounded conversation only while its sheet morph is in progress', () => {
+    const chatScreen = fs.readFileSync(
+      path.resolve(__dirname, '../../../app/chat/index.tsx'),
+      'utf8',
+    );
+    expect(chatScreen).toMatch(/overflow: borderRadius\.value > 0\.5 \? 'hidden' : 'visible'/);
+  });
+
   test('voice cancellation preserves reply and close destinations through recorder cleanup', () => {
     const chatScreen = fs.readFileSync(
       path.resolve(__dirname, '../../../app/chat/index.tsx'),

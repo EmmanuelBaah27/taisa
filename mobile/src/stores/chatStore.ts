@@ -449,9 +449,18 @@ export function createChatStore(
           const requestId = typeof error === 'object' && error !== null && 'requestId' in error
             ? String(error.requestId)
             : null;
+          const requestStatus = failedRequestStatus(error);
+          const restored = requestStatus === 'coaching-failed'
+            ? await (await getCaptureService()).hydrateConversation(conversationId).catch(() => null)
+            : null;
           setIfCurrent(ownership, {
-            activeRequestId: requestId,
-            activeRequestStatus: failedRequestStatus(error),
+            activeRequestId: restored?.requestId ?? requestId,
+            activeRequestKind: restored?.requestKind ?? 'voice',
+            activeMessageId: restored?.messageId ?? null,
+            activeRequestStatus: restored?.requestStatus ?? requestStatus,
+            transcript: restored?.transcript ?? get().transcript,
+            provisionalTranscript: '',
+            transcriptionOutcome: 'none',
             phase: 'error',
             error: safeError(error),
           });
