@@ -1,14 +1,12 @@
 import { useEffect } from 'react';
 import { View } from 'react-native';
-import { Tabs } from 'expo-router';
 import Animated, { cancelAnimation, useSharedValue, useAnimatedStyle, withSpring, interpolate } from 'react-native-reanimated';
-import { BottomNavBar } from '../../src/components/ui/BottomNavBar';
-import { VoiceButton } from '../../src/components/VoiceButton';
 import { ScrollProvider } from '../../src/contexts/ScrollContext';
 import { useUIStore } from '../../src/stores/uiStore';
 import { CURRENT_INITIAL_TAB } from '../../src/navigation/currentExperience';
 import { getBottomNavigationPageTransition } from '../../src/navigation/bottomNavigation';
 import { getTabSurfaceChatTransition } from '../../src/navigation/chatCardExpansion';
+import { InteractiveMainNavigator } from '../../src/navigation/InteractiveMainNavigator';
 
 const SCALE_BACK = { damping: 30, stiffness: 250 };
 const PAGE_TRANSITION = getBottomNavigationPageTransition();
@@ -45,20 +43,11 @@ export default function TabLayout() {
       {/* Dark backdrop shows around the scaled-back tabs content. */}
       <View style={{ flex: 1, backgroundColor: '#111111' }}>
         <Animated.View collapsable={false} style={scaleStyle}>
-          <Tabs
-            initialRouteName={CURRENT_INITIAL_TAB}
-            screenOptions={{
-              headerShown: false,
-              tabBarStyle: { display: 'none' },
-              animation: PAGE_TRANSITION.sceneAnimation,
-            }}
-          >
-            <Tabs.Screen name="chats" />
-            <Tabs.Screen name="index" />
-            <Tabs.Screen name="you" />
-          </Tabs>
-          <BottomNavBar />
-          <VoiceButton />
+          <InteractiveMainNavigator initialRouteName={CURRENT_INITIAL_TAB}>
+            <InteractiveMainNavigator.Screen name="chats" />
+            <InteractiveMainNavigator.Screen name="index" />
+            <InteractiveMainNavigator.Screen name="you" />
+          </InteractiveMainNavigator>
         </Animated.View>
       </View>
     </ScrollProvider>
