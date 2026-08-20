@@ -101,9 +101,13 @@ describe('local-first capture navigation', () => {
     expect(chatScreen).toMatch(/Gesture\.Pan/);
     expect(chatScreen).toMatch(/onScrollAtTopChange/);
     expect(chatScreen).toMatch(/shouldDismissChatSheet/);
+    expect(chatScreen).toMatch(/getResistedChatSheetTranslation\(event\.translationY\)/);
+    expect(chatScreen).toMatch(/CHAT_SHEET_DISMISS_DURATION/);
+    expect(chatScreen).toMatch(/if \(hasDestructiveVoiceInput\)[\s\S]*withSpring\(0, CHAT_SHEET_RETURN_SPRING[\s\S]*handleGestureDestructiveClose/);
+    expect(chatScreen).toMatch(/handleGestureDestructiveClose[\s\S]*requestDestructiveInput\('cancel-recording'/);
     expect(chatScreen).toMatch(/<GestureDetector[\s\S]*<View\s+collapsable=\{false\}[\s\S]*<ChatScreenShell/);
     expect(chatScreen).toMatch(/close\(commitClose\)/);
-    expect(chatScreen).toMatch(/if \(sourceSnapshot === null\)[\s\S]*commitClose\(\)/);
+    expect(chatScreen).toMatch(/if \(sourceSnapshot === null\)[\s\S]*withTiming\([\s\S]*CHAT_SHEET_DISMISS_DURATION[\s\S]*runOnJS\(commitClose\)/);
     expect(chatScreen).toMatch(/if \(sourceSnapshot === null\) await fetchThreads\(\)/);
     expect(rootLayout).not.toMatch(/slide_from_bottom/);
     expect(rootLayout).toMatch(/name="chat\/index"[\s\S]*presentation: 'transparentModal'[\s\S]*animation: 'none'[\s\S]*backgroundColor: 'transparent'/);
@@ -170,7 +174,7 @@ describe('local-first capture navigation', () => {
       'utf8',
     );
 
-    expect(chatScreen).toMatch(/voiceCancelDestination\([^)]+\) === 'close'[\s\S]*handleClose\(\)/);
+    expect(chatScreen).toMatch(/voiceCancelDestination\([^)]+\) === 'close'[\s\S]*performClose\(\)/);
     expect(chatScreen).toMatch(/setPhase\('idle'\)[\s\S]*restore-mode/);
   });
 

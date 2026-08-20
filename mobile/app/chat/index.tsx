@@ -69,6 +69,9 @@ import { buildFeedbackPreview } from '../../src/services/feedbackBundle';
 import api from '../../src/services/api';
 import { createFeedbackClient } from '../../src/services/feedbackClient';
 import {
+  CHAT_SHEET_DISMISS_DURATION,
+  CHAT_SHEET_RETURN_SPRING,
+  getResistedChatSheetTranslation,
   parseChatCardSource,
   shouldDismissChatSheet,
 } from '../../src/navigation/chatCardExpansion';
@@ -231,6 +234,14 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
     pendingRecording !== null,
     recorder.isRecording,
   );
+  const hasAbandonableVoiceSubmission = canAbandonVoiceSubmission({
+    activeRequestId,
+    activeRequestKind,
+    activeRequestStatus,
+  });
+  const hasDestructiveVoiceInput = composer.voice !== 'none'
+    || pendingRecording !== null
+    || hasAbandonableVoiceSubmission;
 
   function discardPendingRecording() {
     if (recordingSubmissionLeaseRef.current !== null) {
@@ -822,24 +833,59 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
     } catch {}
   }
 
-  function handleClose() {
+  function performClose() {
     if (closingRef.current) return;
     closingRef.current = true;
     void stopActiveRecordingAndDiscard().catch(() => {});
     discardPendingRecording();
     if (sourceSnapshot === null) {
-      commitClose();
+      translateY.value = withTiming(
+        viewportHeight,
+        { duration: CHAT_SHEET_DISMISS_DURATION },
+        (finished) => {
+          if (finished) runOnJS(commitClose)();
+        },
+      );
       return;
     }
     close(commitClose);
   }
 
-  function handleGestureClose() {
+  function handleClose() {
+    if (!hasDestructiveVoiceInput) {
+      performClose();
+      return;
+    }
+    const intent = hasAbandonableVoiceSubmission
+      ? 'discard-voice-submission'
+      : 'cancel-recording';
+    void requestDestructiveInput(intent, performClose);
+  }
+
+  function completeGestureClose() {
     if (closingRef.current) return;
     closingRef.current = true;
     void stopActiveRecordingAndDiscard().catch(() => {});
     discardPendingRecording();
     commitClose();
+  }
+
+  function animateGestureClose() {
+    translateY.value = withTiming(
+      viewportHeight,
+      { duration: CHAT_SHEET_DISMISS_DURATION },
+      (finished) => {
+        if (finished) runOnJS(completeGestureClose)();
+      },
+    );
+  }
+
+  function handleGestureDestructiveClose() {
+    if (hasAbandonableVoiceSubmission) {
+      void requestDestructiveInput('discard-voice-submission', animateGestureClose);
+      return;
+    }
+    void requestDestructiveInput('cancel-recording', animateGestureClose);
   }
 
   const sheetPanGesture = Gesture.Pan()
@@ -848,7 +894,7 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
     .failOffsetX([-24, 24])
     .onUpdate((event) => {
       if (!conversationAtTop.value || event.translationY <= 0) return;
-      translateY.value = event.translationY;
+      translateY.value = getResistedChatSheetTranslation(event.translationY);
     })
     .onEnd((event) => {
       if (shouldDismissChatSheet({
@@ -856,17 +902,27 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
         translationY: event.translationY,
         velocityY: event.velocityY,
       })) {
-        translateY.value = withTiming(viewportHeight, { duration: 220 }, (finished) => {
-          if (finished) runOnJS(handleGestureClose)();
-        });
+        if (hasDestructiveVoiceInput) {
+          translateY.value = withSpring(0, CHAT_SHEET_RETURN_SPRING, (finished) => {
+            if (finished) runOnJS(handleGestureDestructiveClose)();
+          });
+          return;
+        }
+        translateY.value = withTiming(
+          viewportHeight,
+          { duration: CHAT_SHEET_DISMISS_DURATION },
+          (finished) => {
+            if (finished) runOnJS(completeGestureClose)();
+          },
+        );
         return;
       }
-      translateY.value = withSpring(0, { damping: 28, stiffness: 320, overshootClamping: true });
+      translateY.value = withSpring(0, CHAT_SHEET_RETURN_SPRING);
     });
 
   async function handleCancelVoice() {
     if (voiceCancelDestination(initialConversationIdRef.current) === 'close') {
-      handleClose();
+      performClose();
       return;
     }
 

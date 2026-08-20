@@ -24,6 +24,18 @@ export interface ChatCardInitialTransform {
 }
 
 export const CHAT_CARD_PRESSED_SCALE = 0.97;
+export const CHAT_SHEET_DRAG_RESISTANCE = 0.55;
+export const CHAT_SHEET_DISMISS_DURATION = 380;
+export const CHAT_SHEET_RETURN_SPRING = {
+  damping: 32,
+  stiffness: 240,
+  overshootClamping: true,
+} as const;
+
+export function getResistedChatSheetTranslation(translationY: number): number {
+  'worklet';
+  return Math.max(translationY, 0) * CHAT_SHEET_DRAG_RESISTANCE;
+}
 
 export function getTabSurfaceChatTransition(
   chatMorphing: boolean,

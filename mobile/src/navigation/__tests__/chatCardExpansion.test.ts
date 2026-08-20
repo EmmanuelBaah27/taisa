@@ -1,5 +1,8 @@
 import {
   CHAT_CARD_PRESSED_SCALE,
+  CHAT_SHEET_DISMISS_DURATION,
+  CHAT_SHEET_RETURN_SPRING,
+  getResistedChatSheetTranslation,
   getChatCardMotionTimeline,
   getClosingChatShellOpacity,
   getChatCardInitialTransform,
@@ -24,6 +27,17 @@ describe('chat card expansion geometry', () => {
 
   test('never dismisses while the conversation is scrolled away from the top', () => {
     expect(shouldDismissChatSheet({ atTop: false, translationY: 300, velocityY: 1400 })).toBe(false);
+  });
+
+  test('adds weight to downward sheet travel and uses a slower damped settlement', () => {
+    expect(getResistedChatSheetTranslation(-20)).toBe(0);
+    expect(getResistedChatSheetTranslation(100)).toBeCloseTo(55);
+    expect(CHAT_SHEET_DISMISS_DURATION).toBeGreaterThanOrEqual(360);
+    expect(CHAT_SHEET_RETURN_SPRING).toMatchObject({
+      damping: 32,
+      stiffness: 240,
+      overshootClamping: true,
+    });
   });
 
   test('hands the pressed card into a fast overlapping expansion and fade', () => {
