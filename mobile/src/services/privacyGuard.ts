@@ -13,6 +13,7 @@ export interface PrivacyGuardState {
 }
 
 export type PrivacyGuardEvent =
+  | { readonly type: 'initialization-started' }
   | { readonly type: 'preference-loaded'; readonly enabled: boolean }
   | { readonly type: 'app-state'; readonly value: GuardedAppState }
   | { readonly type: 'unlock-started' }
@@ -34,6 +35,13 @@ export function transitionPrivacyGuard(
   event: PrivacyGuardEvent,
 ): PrivacyGuardState {
   switch (event.type) {
+    case 'initialization-started':
+      return {
+        ...state,
+        initialized: false,
+        phase: 'initializing',
+        shielded: true,
+      };
     case 'preference-loaded':
       return {
         ...state,
@@ -153,6 +161,7 @@ export function createPrivacyGuard(dependencies: PrivacyGuardDependencies): Priv
       return () => listeners.delete(listener);
     },
     async initialize() {
+      dispatch({ type: 'initialization-started' });
       let enabled: boolean;
       try {
         enabled = await dependencies.preference.getEnabled();

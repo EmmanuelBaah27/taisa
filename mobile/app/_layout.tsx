@@ -39,8 +39,10 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
-    if (fontsLoaded) SplashScreen.hideAsync();
-  }, [fontsLoaded]);
+    if (fontsLoaded && startup !== null && privacyState.initialized) {
+      void SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded, privacyState.initialized, startup]);
 
   useEffect(() => {
     void hydrateStartupProfile({
