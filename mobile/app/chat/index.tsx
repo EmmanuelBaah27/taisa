@@ -39,6 +39,7 @@ import {
   ChatScreenShell,
   ActiveRecordingActionBar,
   ActiveRecordingContent,
+  RecordingDiscardSheet,
 } from '../../src/components/ui';
 import {
   createVoiceComposerState,
@@ -170,6 +171,7 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
     initialConversationIdRef.current === null,
   );
   const [draft, setDraft] = useState('');
+  const [discardIntent, setDiscardIntent] = useState<'cancel' | 'keyboard' | null>(null);
   const [composer, dispatchComposer] = useReducer(
     reduceVoiceComposer,
     undefined,
@@ -393,15 +395,11 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
   }
 
   async function handleSwitchToText() {
-    const activity = recorder.getActivity();
-    if (composer.voice === 'recording' || composer.voice === 'paused') {
-      if (activity !== 'speech') {
-        await stopActiveRecordingAndDiscard();
-      } else if (composer.voice === 'recording') {
-        await recorder.pause();
-      }
-    }
-    dispatchComposer({ type: 'switch-to-text', activity });
+    await stopActiveRecordingAndDiscard();
+    discardPendingRecording();
+    pendingRecordingRef.current = null;
+    if (mountedRef.current) setPendingRecording(null);
+    dispatchComposer({ type: 'restore-mode', mode: 'text' });
     if (sessionIdRef.current !== null) {
       void setPreferredInputMode(sessionIdRef.current, 'text').catch(() => {});
     }
@@ -869,8 +867,8 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
           disabled={composer.submitting || isBusy}
           recordingActionDisabled={recorderAcquiring}
           cancelLabel={voiceCancelAccessibilityLabel(initialConversationIdRef.current)}
-          onCancel={() => { void handleCancelVoice(); }}
-          onKeyboard={() => { void handleSwitchToText(); }}
+          onCancel={() => setDiscardIntent('cancel')}
+          onKeyboard={() => setDiscardIntent('keyboard')}
           onPauseResume={() => {
             if (composer.voice === 'paused') void handleResumeVoice();
             else void handlePauseVoice();
@@ -896,7 +894,7 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
             setDraft(value);
             dispatchComposer({ type: 'set-text', text: value });
           }}
-          onSwitchToText={() => { void handleSwitchToText(); }}
+          onSwitchToText={() => setDiscardIntent('keyboard')}
           onSwitchToVoice={handleSwitchToVoice}
           onStartVoice={handleStartVoiceFromComposer}
           onPause={() => { void handlePauseVoice(); }}
@@ -914,6 +912,7 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
   );
 
   return (
+    <>
     <ChatScreenShell
       topInset={insets.top}
       title="Taisa"
@@ -924,5 +923,17 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
     >
       {chatContent}
     </ChatScreenShell>
+    <RecordingDiscardSheet
+      intent={discardIntent}
+      disabled={isBusy}
+      onGoBack={() => setDiscardIntent(null)}
+      onConfirm={() => {
+        const intent = discardIntent;
+        setDiscardIntent(null);
+        if (intent === 'keyboard') void handleSwitchToText();
+        else void handleCancelVoice();
+      }}
+    />
+    </>
   );
 }

@@ -69,4 +69,11 @@ describe('VoiceComposer cancellation labels', () => {
     expect(accessibilityLabels(VoiceComposer({ ...baseProps, voiceState: 'paused' })))
       .toContain(label);
   });
+
+  test('text composer swaps voice for send only when non-whitespace text exists', () => {
+    expect(accessibilityLabels(VoiceComposer({ ...baseProps, mode: 'text', voiceState: 'none', text: '   ' })))
+      .toContain('Start recording');
+    expect(accessibilityLabels(VoiceComposer({ ...baseProps, mode: 'text', voiceState: 'none', text: 'Hello' })))
+      .toContain('Send message');
+  });
 });

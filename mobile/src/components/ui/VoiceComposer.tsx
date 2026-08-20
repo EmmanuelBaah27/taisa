@@ -100,38 +100,30 @@ export function VoiceComposer(props: VoiceComposerProps) {
   if (props.submissionFailed) return null;
 
   if (props.mode === 'text') {
+    const hasText = props.text.trim().length > 0;
     return (
-      <View className="gap-2">
+      <View>
         {props.transcribing ? (
           <Text className="text-center text-text-tertiary text-caption-regular">Transcribing…</Text>
         ) : null}
-        <TouchableOpacity
-          accessibilityLabel={props.hasVoiceDraft
-            ? `Open voice draft, ${formatDuration(props.durationSeconds)}`
-            : 'Switch to voice and start recording'}
-          disabled={props.disabled}
-          onPress={props.hasVoiceDraft ? props.onSwitchToVoice : props.onStartVoice}
-          className="h-10 self-start flex-row items-center gap-2 rounded-full bg-subtle px-4"
-        >
-          <Icon name="IconVoiceMid" size={18} color={colors.textPrimary} />
-          {props.hasVoiceDraft ? (
-            <Text className="text-foreground text-small-semibold">
-              {formatDuration(props.durationSeconds)}
-            </Text>
-          ) : null}
-        </TouchableOpacity>
-        <View className="min-h-14 flex-row items-end gap-2 rounded-full border border-border bg-background p-1.5 pl-4">
+        <View className="min-h-[100px] rounded-[28px] border border-border-subtle bg-background p-3">
           <TextInput
             ref={textInputRef}
             value={props.text}
             onChangeText={props.onChangeText}
             editable={!props.disabled}
-            placeholder="Write something…"
+            placeholder="Ask follow-up"
             multiline
-            className="max-h-32 min-h-10 flex-1 py-2 text-foreground text-base-regular"
+            className="min-h-6 max-h-[120px] pb-12 text-foreground text-base-regular"
           />
-          <TouchableOpacity disabled={props.disabled} onPress={props.onSend} className="h-10 w-10 items-center justify-center rounded-full bg-muted">
-            <Icon name="IconArrowUp" size={18} color={colors.textPrimary} />
+          <TouchableOpacity
+            accessibilityLabel={hasText ? 'Send message' : 'Start recording'}
+            accessibilityRole="button"
+            disabled={props.disabled}
+            onPress={hasText ? props.onSend : props.onStartVoice}
+            className="absolute bottom-3 right-3 h-10 w-10 items-center justify-center rounded-full bg-primary"
+          >
+            <Icon name={hasText ? 'IconArrowUp' : 'IconVoiceMid'} size={20} color={colors.textPrimary} />
           </TouchableOpacity>
         </View>
       </View>
