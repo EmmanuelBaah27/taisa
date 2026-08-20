@@ -2,6 +2,7 @@ import { useEffect, useReducer, useRef, useState } from 'react';
 import {
   Alert,
   Keyboard,
+  Platform,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -234,8 +235,16 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
   }
 
   useEffect(() => {
-    const show = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
-    const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardVisible(false));
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const show = Keyboard.addListener(showEvent, (event) => {
+      if (Platform.OS === 'ios') Keyboard.scheduleLayoutAnimation(event);
+      setKeyboardVisible(true);
+    });
+    const hide = Keyboard.addListener(hideEvent, (event) => {
+      if (Platform.OS === 'ios') Keyboard.scheduleLayoutAnimation(event);
+      setKeyboardVisible(false);
+    });
     return () => { show.remove(); hide.remove(); };
   }, []);
 
