@@ -24,16 +24,20 @@ export function getInteractionHaptic(role: InteractionHapticRole): InteractionHa
 
 export function playInteractionHaptic(role: InteractionHapticRole): void {
   const feedback = getInteractionHaptic(role);
-  if (feedback.kind === 'selection') {
-    void Haptics.selectionAsync().catch(() => {});
-    return;
+  try {
+    if (feedback.kind === 'selection') {
+      void Haptics.selectionAsync().catch(() => {});
+      return;
+    }
+    if (feedback.kind === 'notification') {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+      return;
+    }
+    const style = feedback.style === 'medium'
+      ? Haptics.ImpactFeedbackStyle.Medium
+      : Haptics.ImpactFeedbackStyle.Light;
+    void Haptics.impactAsync(style).catch(() => {});
+  } catch {
+    // Tactile feedback is optional and must never fail the accepted product action.
   }
-  if (feedback.kind === 'notification') {
-    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
-    return;
-  }
-  const style = feedback.style === 'medium'
-    ? Haptics.ImpactFeedbackStyle.Medium
-    : Haptics.ImpactFeedbackStyle.Light;
-  void Haptics.impactAsync(style).catch(() => {});
 }
