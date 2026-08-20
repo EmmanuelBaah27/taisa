@@ -36,12 +36,13 @@ function textContent(node: React.ReactNode): string {
 function findElementByLabel(
   node: React.ReactNode,
   label: string,
-): React.ReactElement<{ label?: string; onPress?: () => void }> | null {
+): React.ReactElement<{ label?: string; onPress?: () => void; onLongPress?: () => void }> | null {
   for (const child of React.Children.toArray(node)) {
     if (!React.isValidElement<{
       label?: string;
       accessibilityLabel?: string;
       onPress?: () => void;
+      onLongPress?: () => void;
       children?: React.ReactNode;
     }>(child)) {
       continue;
@@ -169,13 +170,27 @@ describe('chat design-system surfaces', () => {
     expect(String(titleSlot?.props.className)).toContain('leading-[56px]');
   });
 
-  test('the user turn uses the neutral 32px Figma bubble', () => {
+  test('the user turn uses a neutral 28px bubble', () => {
     const nodes = descendants(ChatMessageBubble({ content: 'My message' }));
     const bubble = nodes.find((node) => node.type === TouchableOpacity);
 
-    expect(String(bubble?.props.className)).toContain('rounded-8');
+    expect(bubble?.props.style).toMatchObject({ borderRadius: 28 });
     expect(String(bubble?.props.className)).toContain('bg-muted');
     expect(String(bubble?.props.className)).toContain('px-4 py-4');
+  });
+
+  test('the conversation starts close to the header', () => {
+    const surface = ChatConversationSurface({
+      scrollRef: { current: null }, messages: [], activeMessageId: null,
+      activeRequestKind: null, transcript: '', phase: 'idle', isBusy: false,
+      error: null, microphoneUnavailable: false, pendingProposals: [], editingTranscript: null,
+      onContentSizeChange: jest.fn(), onEditTranscript: jest.fn(), onChangeTranscript: jest.fn(),
+      onSubmitTranscript: jest.fn(), onUseKeyboard: jest.fn(), onDiscardRecording: jest.fn(),
+      onRetry: jest.fn(), onConfirmProposal: jest.fn(), onResolveProposal: jest.fn(),
+    });
+    const scrollView = descendants(surface).find((node) => node.type === ScrollView);
+
+    expect(scrollView?.props.contentContainerStyle).toMatchObject({ paddingTop: 12 });
   });
 
   test('the assistant reply is unboxed base body copy', () => {
@@ -227,19 +242,30 @@ describe('chat design-system surfaces', () => {
     ]);
   });
 
-  test('response reactions are local controls and sharing requires a separate review action', () => {
+  test('response reactions are revealed by long-pressing the response', () => {
     const onReact = jest.fn();
     const onShareExample = jest.fn();
+    const onShowRatingOptions = jest.fn();
     const card = TaisaReplyCard({
       responseId: 'response-1',
       content: 'A reply',
       reaction: 'helpful',
       onReact,
       onShareExample,
+      showRatingOptions: false,
+      onShowRatingOptions,
     }) as React.ReactElement<{ children?: React.ReactNode }>;
 
-    findElementByLabel(card.props.children, 'Mark response unhelpful')?.props.onPress?.();
-    findElementByLabel(card.props.children, 'Review example before sharing')?.props.onPress?.();
+    expect(findElementByLabel(card.props.children, 'Mark response unhelpful')).toBeNull();
+    findElementByLabel(card, 'Show response rating options')?.props.onLongPress?.();
+    expect(onShowRatingOptions).toHaveBeenCalledTimes(1);
+
+    const revealedCard = TaisaReplyCard({
+      responseId: 'response-1', content: 'A reply', reaction: 'helpful', onReact, onShareExample,
+      showRatingOptions: true, onShowRatingOptions,
+    }) as React.ReactElement<{ children?: React.ReactNode }>;
+    findElementByLabel(revealedCard.props.children, 'Mark response unhelpful')?.props.onPress?.();
+    findElementByLabel(revealedCard.props.children, 'Review example before sharing')?.props.onPress?.();
     expect(onReact).toHaveBeenCalledWith('response-1', 'unhelpful');
     expect(onShareExample).toHaveBeenCalledWith('response-1');
   });
