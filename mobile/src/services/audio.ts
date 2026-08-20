@@ -11,6 +11,34 @@ export interface RecordingResult {
 let recording: Audio.Recording | null = null;
 let startTime: number = 0;
 let nativeRecorderTeardown: Promise<void> = Promise.resolve();
+const IOS_INSUFFICIENT_AUDIO_PRIORITY = 561017449;
+const AUDIO_SESSION_SETTLE_MS = 250;
+
+function isInsufficientAudioPriority(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const code = (error as Error & { code?: unknown }).code;
+  return code === IOS_INSUFFICIENT_AUDIO_PRIORITY
+    || error.message.includes(String(IOS_INSUFFICIENT_AUDIO_PRIORITY));
+}
+
+function waitForAudioSessionRelease(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, AUDIO_SESSION_SETTLE_MS));
+}
+
+async function configureRecordingAudioSession(): Promise<void> {
+  await Audio.setAudioModeAsync({
+    allowsRecordingIOS: true,
+    playsInSilentModeIOS: true,
+  });
+}
+
+async function createNativeRecording(): Promise<Audio.Recording> {
+  const { recording: rec } = await Audio.Recording.createAsync({
+    ...Audio.RecordingOptionsPresets.HIGH_QUALITY,
+    isMeteringEnabled: true,
+  });
+  return rec;
+}
 
 export async function requestAudioPermissions(): Promise<boolean> {
   const { granted } = await Audio.requestPermissionsAsync();
@@ -22,17 +50,24 @@ export async function startRecording(): Promise<void> {
   const granted = await requestAudioPermissions();
   if (!granted) throw new Error('Audio permission denied');
 
-  await Audio.setAudioModeAsync({
-    allowsRecordingIOS: true,
-    playsInSilentModeIOS: true,
-  });
+  await configureRecordingAudioSession();
 
-  const { recording: rec } = await Audio.Recording.createAsync(
-    {
-      ...Audio.RecordingOptionsPresets.HIGH_QUALITY,
-      isMeteringEnabled: true,
+  let rec: Audio.Recording;
+  try {
+    rec = await createNativeRecording();
+  } catch (error) {
+    await Audio.setAudioModeAsync({ allowsRecordingIOS: false }).catch(() => {});
+    if (!isInsufficientAudioPriority(error)) throw error;
+
+    await waitForAudioSessionRelease();
+    await configureRecordingAudioSession();
+    try {
+      rec = await createNativeRecording();
+    } catch (retryError) {
+      await Audio.setAudioModeAsync({ allowsRecordingIOS: false }).catch(() => {});
+      throw retryError;
     }
-  );
+  }
 
   recording = rec;
   startTime = Date.now();

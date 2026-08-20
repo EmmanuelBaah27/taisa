@@ -44,4 +44,38 @@ describe('native audio recorder ownership', () => {
     await expect(audio.startRecording()).resolves.toBeUndefined();
     expect(mockCreateAsync).toHaveBeenCalledTimes(2);
   });
+
+  test('retries once after iOS releases a higher-priority system audio session', async () => {
+    const recorder = {
+      stopAndUnloadAsync: mockStopAndUnloadAsync,
+      getURI: mockGetURI,
+      setOnRecordingStatusUpdate: jest.fn(),
+      setProgressUpdateInterval: jest.fn(),
+      pauseAsync: jest.fn(),
+      startAsync: jest.fn(),
+    };
+    mockCreateAsync
+      .mockRejectedValueOnce(Object.assign(new Error('Session activation failed'), { code: 561017449 }))
+      .mockResolvedValueOnce({ recording: recorder });
+    const audio = require('../audio') as typeof import('../audio');
+
+    await expect(audio.startRecording()).resolves.toBeUndefined();
+
+    expect(mockCreateAsync).toHaveBeenCalledTimes(2);
+    expect(mockSetAudioModeAsync).toHaveBeenNthCalledWith(2, { allowsRecordingIOS: false });
+    expect(mockSetAudioModeAsync).toHaveBeenNthCalledWith(3, {
+      allowsRecordingIOS: true,
+      playsInSilentModeIOS: true,
+    });
+  });
+
+  test('does not retry unrelated recorder preparation failures', async () => {
+    mockCreateAsync.mockRejectedValueOnce(new Error('Recorder unavailable'));
+    const audio = require('../audio') as typeof import('../audio');
+
+    await expect(audio.startRecording()).rejects.toThrow('Recorder unavailable');
+
+    expect(mockCreateAsync).toHaveBeenCalledTimes(1);
+    expect(mockSetAudioModeAsync).toHaveBeenLastCalledWith({ allowsRecordingIOS: false });
+  });
 });
