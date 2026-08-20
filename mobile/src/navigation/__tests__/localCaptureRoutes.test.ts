@@ -187,9 +187,15 @@ describe('local-first capture navigation', () => {
       path.resolve(__dirname, '../../components/ui/ChatSurfaces.tsx'),
       'utf8',
     );
+    const rootLayout = fs.readFileSync(
+      path.resolve(__dirname, '../../../app/_layout.tsx'),
+      'utf8',
+    );
 
     expect(chatSurfaces).toMatch(/KeyboardAvoidingView/);
+    expect(chatSurfaces).toMatch(/KeyboardAvoidingView[\s\S]*className="flex-1 bg-background"/);
     expect(chatSurfaces).toMatch(/behavior=\{Platform\.OS === 'ios' \? 'padding' : undefined\}/);
+    expect(rootLayout).toMatch(/name="chat\/index"[\s\S]*presentation: 'transparentModal'[\s\S]*backgroundColor: 'transparent'/);
     expect(chatScreen).toMatch(/await retrySubmission\(\);[\s\S]*setDraft\(''\)/);
   });
 

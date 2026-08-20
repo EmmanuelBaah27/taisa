@@ -1,4 +1,6 @@
 import React from 'react';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import type { SharedValue } from 'react-native-reanimated';
 
 import { VoiceComposer, type VoiceComposerProps } from '../VoiceComposer';
@@ -82,5 +84,15 @@ describe('VoiceComposer cancellation labels', () => {
     const source = JSON.stringify(composer);
     expect(source).toContain('border-border');
     expect(source).not.toContain('border-border-subtle');
+  });
+
+  test('text composer keeps its geometry and owns a soft ambient elevation', () => {
+    const source = readFileSync(resolve(__dirname, '../VoiceComposer.tsx'), 'utf8');
+
+    expect(source).toContain('min-h-[100px] rounded-[28px]');
+    expect(source).toContain('shadowColor: colors.shadowSubtle');
+    expect(source).toContain('shadowOffset: { width: 0, height: 8 }');
+    expect(source).toContain('shadowOpacity: 0.12');
+    expect(source).toContain('shadowRadius: 20');
   });
 });

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Text, TouchableOpacity, View } from 'react-native';
+import { KeyboardAvoidingView, Text, TouchableOpacity, View } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 
 import {
@@ -74,6 +74,8 @@ describe('chat design-system surfaces', () => {
     ));
 
     expect(animatedLayers.map((node) => node.props.style)).toEqual([shellStyle, contentStyle]);
+    const keyboardShell = descendants(shell).find((node) => node.type === KeyboardAvoidingView);
+    expect(String(keyboardShell?.props.className)).toContain('bg-background');
   });
 
   test('the shell owns one navigation bar and one footer slot for every supplied footer', () => {
