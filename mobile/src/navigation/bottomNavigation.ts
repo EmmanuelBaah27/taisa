@@ -220,7 +220,7 @@ export const BOTTOM_NAVIGATION_FIGMA = {
     transformOrigin: 'left center',
     reveal: 'opacity-scale',
   },
-  routeMotionLeadDuration: 260,
+  routeMotionLeadDuration: 0,
   reducedMotion: {
     crossfadeDuration: 180,
   },

@@ -252,7 +252,6 @@ export function BottomNavBar() {
   const latestTransitionRef = useRef({ destination: activeId, sequence: 0 });
   const mountedRef = useRef(true);
   const cancelledPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const navigationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fillRestoreTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pressAttemptRef = useRef<{
     sequence: number;
@@ -917,28 +916,12 @@ export function BottomNavBar() {
 
   const navigateTo = useCallback((item: BottomNavigationItem) => {
     pressAttemptRef.current.navigationCommitted = true;
-    if (navigationTimerRef.current) clearTimeout(navigationTimerRef.current);
-    const commitNavigation = () => {
-      navigationTimerRef.current = null;
-      if (!mountedRef.current) return;
-      router.navigate(item.path as never);
-      if (transitionRef.current.phase === 'settling') {
-        finishCapsuleTransition(item.id, latestTransitionRef.current.sequence);
-      }
-    };
-
-    if (reduceMotion || transitionRef.current.to === activeId) {
-      commitNavigation();
-      return;
+    router.navigate(item.path as never);
+    if (transitionRef.current.phase === 'settling') {
+      finishCapsuleTransition(item.id, latestTransitionRef.current.sequence);
     }
-    navigationTimerRef.current = setTimeout(
-      commitNavigation,
-      BOTTOM_NAVIGATION_FIGMA.routeMotionLeadDuration,
-    );
   }, [
-    activeId,
     finishCapsuleTransition,
-    reduceMotion,
   ]);
 
   useEffect(() => {
@@ -964,10 +947,6 @@ export function BottomNavBar() {
       if (cancelledPressTimerRef.current) {
         clearTimeout(cancelledPressTimerRef.current);
         cancelledPressTimerRef.current = null;
-      }
-      if (navigationTimerRef.current) {
-        clearTimeout(navigationTimerRef.current);
-        navigationTimerRef.current = null;
       }
       if (fillRestoreTimerRef.current) {
         clearTimeout(fillRestoreTimerRef.current);

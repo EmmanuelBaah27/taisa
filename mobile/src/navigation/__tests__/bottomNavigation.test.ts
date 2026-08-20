@@ -204,8 +204,8 @@ describe('bottom navigation', () => {
     });
   });
 
-  test('lets navigation motion establish before mounting the destination screen', () => {
-    expect(BOTTOM_NAVIGATION_FIGMA.routeMotionLeadDuration).toBe(260);
+  test('commits navigation immediately while navigation motion continues', () => {
+    expect(BOTTOM_NAVIGATION_FIGMA.routeMotionLeadDuration).toBe(0);
   });
 
   test('crossfades reduced-motion surfaces and content together', () => {
