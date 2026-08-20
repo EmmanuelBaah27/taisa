@@ -1,6 +1,9 @@
 import React from 'react';
 import { Pressable, Text, ActivityIndicator, View } from 'react-native';
+import { useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { colors } from '../../constants/theme';
+import { LiquidGlassButtonSurface } from './LiquidGlassButtonSurface';
+import type { LiquidGlassHierarchy, LiquidGlassTone } from './liquidGlass';
 
 export type ButtonVariant =
   | 'primary'
@@ -28,24 +31,15 @@ export interface ButtonProps {
   onPress?: () => void;
 }
 
-const CONTAINER_BASE = 'flex-row items-center justify-center rounded-full';
-
-const VARIANT_CONTAINER: Record<ButtonVariant, string> = {
-  'primary':               'bg-primary active:bg-primary-hover',
-  'secondary':             'bg-card border border-border active:bg-subtle',
-  'tertiary':              'bg-transparent active:bg-muted',
-  'destructive':           'bg-destructive active:bg-destructive-hover',
-  'secondary-destructive': 'bg-card border border-danger-border active:bg-danger-subtle',
-  'tertiary-destructive':  'bg-transparent active:bg-danger-subtle',
-};
+const CONTAINER_BASE = 'rounded-full';
 
 const VARIANT_CONTAINER_DISABLED: Record<ButtonVariant, string> = {
-  'primary':               'bg-disabled',
-  'secondary':             'bg-card border border-border opacity-50',
-  'tertiary':              'bg-transparent opacity-50',
-  'destructive':           'bg-disabled',
-  'secondary-destructive': 'bg-card border border-border opacity-50',
-  'tertiary-destructive':  'bg-transparent opacity-50',
+  'primary':               '',
+  'secondary':             '',
+  'tertiary':              '',
+  'destructive':           '',
+  'secondary-destructive': '',
+  'tertiary-destructive':  '',
 };
 
 const VARIANT_TEXT: Record<ButtonVariant, string> = {
@@ -98,6 +92,7 @@ export function Button({
   disabled = false,
   onPress,
 }: ButtonProps) {
+  const pressed = useSharedValue(0);
   const isDisabled = disabled || loading;
   const isIconOnly = size === 'icon' || size === 'icon-lg';
   const hasIcon = !!icon && !isIconOnly && !loading;
@@ -105,7 +100,7 @@ export function Button({
 
   const containerClass = [
     CONTAINER_BASE,
-    isDisabled ? VARIANT_CONTAINER_DISABLED[variant] : VARIANT_CONTAINER[variant],
+    isDisabled ? VARIANT_CONTAINER_DISABLED[variant] : '',
     SIZE_CONTAINER[size],
     hasIcon ? SIZE_ICON_GAP[size] : '',
   ]
@@ -118,43 +113,72 @@ export function Button({
   ]
     .filter(Boolean)
     .join(' ');
+  const glass = getButtonLiquidGlassAppearance(variant);
+
+  const content = loading ? (
+    <ActivityIndicator
+      size="small"
+      color={isDisabled ? colors.textTertiary : SPINNER_COLOR[variant]}
+    />
+  ) : (
+    <>
+      {hasIcon && iconPosition === 'left' && (
+        <View style={{ width: iconSize, height: iconSize, alignItems: 'center', justifyContent: 'center' }}>
+          {icon}
+        </View>
+      )}
+      {!isIconOnly && <Text className={textClass}>{label}</Text>}
+      {hasIcon && iconPosition === 'right' && (
+        <View style={{ width: iconSize, height: iconSize, alignItems: 'center', justifyContent: 'center' }}>
+          {icon}
+        </View>
+      )}
+      {isIconOnly && icon && (
+        <View style={{ width: iconSize, height: iconSize, alignItems: 'center', justifyContent: 'center' }}>
+          {icon}
+        </View>
+      )}
+    </>
+  );
 
   return (
     <Pressable
       className={containerClass}
       onPress={onPress}
+      onPressIn={() => { pressed.value = withTiming(1, { duration: 100 }); }}
+      onPressOut={() => { pressed.value = withSpring(0, { damping: 24, stiffness: 360 }); }}
       disabled={isDisabled}
       accessibilityLabel={label}
       accessibilityRole="button"
       accessibilityState={{ disabled: isDisabled, busy: loading }}
     >
-      {loading ? (
-        <ActivityIndicator
-          size="small"
-          color={isDisabled ? colors.textTertiary : SPINNER_COLOR[variant]}
-        />
-      ) : (
-        <>
-          {hasIcon && iconPosition === 'left' && (
-            <View style={{ width: iconSize, height: iconSize, alignItems: 'center', justifyContent: 'center' }}>
-              {icon}
-            </View>
-          )}
-          {!isIconOnly && (
-            <Text className={textClass}>{label}</Text>
-          )}
-          {hasIcon && iconPosition === 'right' && (
-            <View style={{ width: iconSize, height: iconSize, alignItems: 'center', justifyContent: 'center' }}>
-              {icon}
-            </View>
-          )}
-          {isIconOnly && icon && (
-            <View style={{ width: iconSize, height: iconSize, alignItems: 'center', justifyContent: 'center' }}>
-              {icon}
-            </View>
-          )}
-        </>
-      )}
+      <LiquidGlassButtonSurface
+        hierarchy={glass.hierarchy}
+        tone={glass.tone}
+        shape="capsule"
+        disabled={isDisabled}
+        pressed={pressed}
+        style={{ position: 'absolute', inset: 0 }}
+        testID="button-surface"
+      />
+      <View
+        pointerEvents="none"
+        className={['flex-1 flex-row items-center justify-center', hasIcon ? SIZE_ICON_GAP[size] : ''].join(' ')}
+      >
+        {content}
+      </View>
     </Pressable>
   );
+}
+
+export function getButtonLiquidGlassAppearance(variant: ButtonVariant): {
+  hierarchy: LiquidGlassHierarchy;
+  tone: LiquidGlassTone;
+} {
+  if (variant === 'primary') return { hierarchy: 'prominent', tone: 'accent' };
+  if (variant === 'destructive') return { hierarchy: 'prominent', tone: 'destructive' };
+  if (variant === 'secondary') return { hierarchy: 'standard', tone: 'neutral' };
+  if (variant === 'secondary-destructive') return { hierarchy: 'standard', tone: 'destructive' };
+  if (variant === 'tertiary-destructive') return { hierarchy: 'subtle', tone: 'destructive' };
+  return { hierarchy: 'subtle', tone: 'neutral' };
 }

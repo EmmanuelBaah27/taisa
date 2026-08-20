@@ -7,6 +7,7 @@ import {
   SecondaryIconButtonSurface,
 } from '../SecondaryIconButton';
 import { Icon } from '../Icon';
+import { LiquidGlassButtonSurface } from '../LiquidGlassButtonSurface';
 
 describe('SecondaryIconButton', () => {
   test('preserves the exact Figma surface contract', () => {
@@ -25,12 +26,12 @@ describe('SecondaryIconButton', () => {
     });
   });
 
-  test('shares the bottom-navigation fluid scale timing', () => {
+  test('uses the restrained shared fallback press contract', () => {
     expect(SECONDARY_ICON_BUTTON_MOTION).toEqual({
-      pressedScale: 1.12,
-      pressDuration: 70,
-      holdDuration: 100,
-      releaseDuration: 90,
+      pressedScale: 0.97,
+      pressDuration: 100,
+      releaseDamping: 24,
+      releaseStiffness: 360,
     });
   });
 
@@ -45,7 +46,7 @@ describe('SecondaryIconButton', () => {
       accessibilityRole: string;
       accessibilityState: { disabled: boolean };
       disabled: boolean;
-      children: ReactElement<{ name: string; size: number }>;
+      children: ReactElement<{ children: ReactElement<{ name: string; size: number }> }>;
     }>;
 
     expect(surface.type).toBe(Pressable);
@@ -55,8 +56,9 @@ describe('SecondaryIconButton', () => {
       accessibilityState: { disabled: true },
       disabled: true,
     }));
-    expect(surface.props.children.type).toBe(Icon);
-    expect(surface.props.children.props).toEqual(expect.objectContaining({
+    expect(surface.props.children.type).toBe(LiquidGlassButtonSurface);
+    expect(surface.props.children.props.children.type).toBe(Icon);
+    expect(surface.props.children.props.children.props).toEqual(expect.objectContaining({
       name: 'IconPause',
       size: 24,
     }));
