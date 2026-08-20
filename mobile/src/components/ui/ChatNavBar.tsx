@@ -21,14 +21,18 @@ export function ChatNavBar({ title, topInset, onClose }: ChatNavBarProps) {
         >
           <Icon name="IconChevronDownMedium" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text
+        <View
           testID="chat-title-slot"
           pointerEvents="none"
-          className="h-14 flex-1 text-center text-foreground text-small-medium leading-[56px]"
-          numberOfLines={1}
+          className="h-14 flex-1 items-center justify-center"
         >
-          {title}
-        </Text>
+          <Text
+            className="text-center text-foreground text-small-medium"
+            numberOfLines={1}
+          >
+            {title}
+          </Text>
+        </View>
         <View className="h-14 w-14" />
       </View>
       <LinearGradient

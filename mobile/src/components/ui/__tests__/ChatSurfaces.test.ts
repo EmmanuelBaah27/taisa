@@ -163,11 +163,15 @@ describe('chat design-system surfaces', () => {
   test('the page title occupies the middle column of the close-button row', () => {
     const header = ChatNavBar({ onClose: jest.fn(), title: 'Taisa', topInset: 47 });
     const titleSlot = descendants(header).find((node) => node.props.testID === 'chat-title-slot');
+    const title = descendants(titleSlot).find((node) => (
+      node.type === Text && textContent(node.props.children) === 'Taisa'
+    ));
 
-    expect(titleSlot?.type).toBe(Text);
     expect(String(titleSlot?.props.className)).toContain('h-14');
     expect(String(titleSlot?.props.className)).toContain('flex-1');
-    expect(String(titleSlot?.props.className)).toContain('leading-[56px]');
+    expect(String(titleSlot?.props.className)).toContain('items-center');
+    expect(String(titleSlot?.props.className)).toContain('justify-center');
+    expect(String(title?.props.className)).not.toContain('leading-[56px]');
   });
 
   test('the user turn uses a neutral 28px bubble', () => {
