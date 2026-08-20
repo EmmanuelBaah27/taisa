@@ -134,7 +134,7 @@ export function LiquidGlassButtonSurface({
 
   const elevationStyle: ViewStyle = {
     overflow: 'visible',
-    backgroundColor: 'rgba(255,255,255,0.01)',
+    backgroundColor: appearance.fallback.shadowCasterColor,
     shadowColor: appearance.fallback.shadowColor,
     shadowOffset: { width: 0, height: appearance.fallback.shadowOffsetY },
     shadowOpacity: appearance.fallback.shadowOpacity,

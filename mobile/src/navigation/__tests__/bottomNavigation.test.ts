@@ -316,7 +316,7 @@ describe('bottom navigation', () => {
       radius: 28,
       offsetY: 10,
       elevation: 10,
-      casterColor: 'rgba(255,255,255,0.01)',
+      casterColor: 'rgba(255,255,255,0.44)',
     });
   });
 
