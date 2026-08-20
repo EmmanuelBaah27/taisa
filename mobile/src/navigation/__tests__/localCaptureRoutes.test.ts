@@ -174,8 +174,18 @@ describe('local-first capture navigation', () => {
       'utf8',
     );
 
-    expect(chatScreen).toMatch(/voiceCancelDestination\([^)]+\) === 'close'[\s\S]*performClose\(\)/);
+    expect(chatScreen).toMatch(/voiceCancelDestination\([^)]+\) === 'close'[\s\S]*performClose\(false\)/);
     expect(chatScreen).toMatch(/setPhase\('idle'\)[\s\S]*restore-mode/);
+  });
+
+  test('does not confirm an empty text send with tactile feedback', () => {
+    const chatScreen = fs.readFileSync(
+      path.resolve(__dirname, '../../../app/chat/index.tsx'),
+      'utf8',
+    );
+    expect(chatScreen).toMatch(
+      /handleComposerSend\(\)[\s\S]*composer\.voice === 'none' && !draft\.trim\(\)[\s\S]*return;[\s\S]*playInteractionHaptic\('send'\)/,
+    );
   });
 
   test('the composer remains visible above the iOS keyboard and clears after a successful retry', () => {

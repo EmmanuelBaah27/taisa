@@ -11,7 +11,7 @@ describe('destructive input confirmation', () => {
     ['discard-voice-submission', 'Discard submission'],
   ] as const)('marks %s as the native destructive action', (intent, destructiveLabel) => {
     expect(getDestructiveInputConfirmationOptions(intent)).toMatchObject({
-      options: ['Cancel', destructiveLabel],
+      options: ['Go back', destructiveLabel],
       cancelButtonIndex: 0,
       destructiveButtonIndex: 1,
     });

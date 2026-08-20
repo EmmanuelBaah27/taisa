@@ -149,7 +149,10 @@ export function LiquidGlassButtonSurface({
         glassEffectStyle={appearance.glassEffectStyle}
         tintColor={appearance.tintColor}
         colorScheme="light"
-        style={[shapeStyle, { position: 'absolute', inset: 0, overflow: 'hidden' }]}
+        style={[shapeStyle, {
+          position: 'absolute', inset: 0, overflow: 'hidden',
+          alignItems: 'center', justifyContent: 'center',
+        }]}
       >
         {children}
       </NativeGlassView>
@@ -161,6 +164,7 @@ export function LiquidGlassButtonSurface({
         shapeStyle,
         {
           overflow: 'hidden',
+          alignItems: 'center', justifyContent: 'center',
           borderWidth: 1,
           borderColor: appearance.fallback.borderColor,
           backgroundColor: appearance.fallback.backgroundColor,
