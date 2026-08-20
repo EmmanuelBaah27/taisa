@@ -51,7 +51,6 @@ import {
   ChatScreenShell,
   ActiveRecordingActionBar,
   ActiveRecordingContent,
-  RecordingDiscardSheet,
 } from '../../src/components/ui';
 import {
   createVoiceComposerState,
@@ -74,6 +73,10 @@ import {
   shouldDismissChatSheet,
 } from '../../src/navigation/chatCardExpansion';
 import { isRecorderAcquiring } from '../../src/services/recorderAcquisition';
+import {
+  confirmDestructiveInput,
+  type DestructiveInputIntent,
+} from '../../src/services/destructiveInputConfirmation';
 
 interface ChatScreenProps {
   presentation?: ChatPresentation;
@@ -189,7 +192,6 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
     initialConversationIdRef.current === null,
   );
   const [draft, setDraft] = useState('');
-  const [discardIntent, setDiscardIntent] = useState<'cancel' | 'keyboard' | null>(null);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [composer, dispatchComposer] = useReducer(
     reduceVoiceComposer,
@@ -481,25 +483,26 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
     dispatchComposer({ type: 'confirm-delete-voice' });
   }
 
+  async function requestDestructiveInput(
+    intent: DestructiveInputIntent,
+    onConfirm: () => void | Promise<void>,
+  ): Promise<boolean> {
+    const confirmed = await confirmDestructiveInput(intent);
+    if (!confirmed) return false;
+    await onConfirm();
+    return true;
+  }
+
   function handleDeleteVoiceDraft() {
-    Alert.alert(
-      'Delete voice draft?',
-      'This recording will be permanently removed.',
-      [
-        { text: 'Keep it', style: 'cancel', onPress: () => dispatchComposer({ type: 'cancel-delete-voice' }) },
-        {
-          text: 'Delete recording',
-          style: 'destructive',
-          onPress: () => {
-            void confirmVoiceDraftDeletion().catch(() => {
-              dispatchComposer({ type: 'cancel-delete-voice' });
-              if (mountedRef.current) setPhase('error');
-            });
-          },
-        },
-      ],
-    );
     dispatchComposer({ type: 'request-delete-voice' });
+    void requestDestructiveInput('delete-voice-draft', confirmVoiceDraftDeletion)
+      .then((confirmed) => {
+        if (!confirmed) dispatchComposer({ type: 'cancel-delete-voice' });
+      })
+      .catch(() => {
+        dispatchComposer({ type: 'cancel-delete-voice' });
+        if (mountedRef.current) setPhase('error');
+      });
   }
 
   async function handleComposerSend() {
@@ -815,7 +818,7 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
   async function handleDiscardFailedRecording() {
     if (activeRequestKind !== 'voice' || isBusy) return;
     try {
-      await confirmVoiceDraftDeletion();
+      await requestDestructiveInput('discard-voice-submission', confirmVoiceDraftDeletion);
     } catch {}
   }
 
@@ -934,8 +937,12 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
           disabled={composer.submitting || isBusy}
           recordingActionDisabled={recorderAcquiring}
           cancelLabel={voiceCancelAccessibilityLabel(initialConversationIdRef.current)}
-          onCancel={() => setDiscardIntent('cancel')}
-          onKeyboard={() => setDiscardIntent('keyboard')}
+          onCancel={() => {
+            void requestDestructiveInput('cancel-recording', handleCancelVoice);
+          }}
+          onKeyboard={() => {
+            void requestDestructiveInput('switch-to-keyboard', handleSwitchToText);
+          }}
           onPauseResume={() => {
             if (composer.voice === 'paused') void handleResumeVoice();
             else void handlePauseVoice();
@@ -961,12 +968,16 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
             setDraft(value);
             dispatchComposer({ type: 'set-text', text: value });
           }}
-          onSwitchToText={() => setDiscardIntent('keyboard')}
+          onSwitchToText={() => {
+            void requestDestructiveInput('switch-to-keyboard', handleSwitchToText);
+          }}
           onSwitchToVoice={handleSwitchToVoice}
           onStartVoice={handleStartVoiceFromComposer}
           onPause={() => { void handlePauseVoice(); }}
           onResume={() => { void handleResumeVoice(); }}
-          onCancelVoice={() => { void handleCancelVoice(); }}
+          onCancelVoice={() => {
+            void requestDestructiveInput('cancel-recording', handleCancelVoice);
+          }}
           onDeleteText={() => {
             setDraft('');
             dispatchComposer({ type: 'delete-text' });
@@ -979,32 +990,19 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
   );
 
   return (
-    <>
-      <GestureDetector gesture={sheetPanGesture}>
-        <View collapsable={false} style={{ flex: 1 }}>
-          <ChatScreenShell
-            topInset={insets.top}
-            title="Taisa"
-            animatedStyle={slideStyle}
-            contentAnimatedStyle={contentStyle}
-            onClose={handleClose}
-            footer={chatFooter}
-          >
-            {chatContent}
-          </ChatScreenShell>
-        </View>
-      </GestureDetector>
-      <RecordingDiscardSheet
-        intent={discardIntent}
-        disabled={isBusy}
-        onGoBack={() => setDiscardIntent(null)}
-        onConfirm={() => {
-          const intent = discardIntent;
-          setDiscardIntent(null);
-          if (intent === 'keyboard') void handleSwitchToText();
-          else void handleCancelVoice();
-        }}
-      />
-    </>
+    <GestureDetector gesture={sheetPanGesture}>
+      <View collapsable={false} style={{ flex: 1 }}>
+        <ChatScreenShell
+          topInset={insets.top}
+          title="Taisa"
+          animatedStyle={slideStyle}
+          contentAnimatedStyle={contentStyle}
+          onClose={handleClose}
+          footer={chatFooter}
+        >
+          {chatContent}
+        </ChatScreenShell>
+      </View>
+    </GestureDetector>
   );
 }

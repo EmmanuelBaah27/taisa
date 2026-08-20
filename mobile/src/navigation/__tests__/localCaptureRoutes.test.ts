@@ -39,7 +39,7 @@ describe('local-first capture navigation', () => {
     expect(chat).toMatch(/hydrated\.activeRequestStatus === 'transcription-failed'/);
     expect(chat).toMatch(/if \(activeRequestId === null\)/);
     expect(chat).toMatch(/pendingRecordingRef\.current !== null\) await handleComposerSend/);
-    expect(chat).toMatch(/await confirmVoiceDraftDeletion\(\)/);
+    expect(chat).toMatch(/requestDestructiveInput\('discard-voice-submission', confirmVoiceDraftDeletion\)/);
   });
 
   test('the default Taisa card action opens local-first chat capture', () => {
@@ -126,9 +126,11 @@ describe('local-first capture navigation', () => {
     expect(chatScreen).toMatch(/onClose=\{handleClose\}/);
     expect(chatScreen).toMatch(/cancelLabel=\{voiceCancelAccessibilityLabel\(initialConversationIdRef\.current\)\}/);
     expect(chatScreen).toMatch(/<VoiceComposer[\s\S]*cancelVoiceLabel=\{voiceCancelAccessibilityLabel\(initialConversationIdRef\.current\)\}/);
-    expect(chatScreen).toMatch(/onCancel=\{\(\) => setDiscardIntent\('cancel'\)\}/);
-    expect(chatScreen).toMatch(/onKeyboard=\{\(\) => setDiscardIntent\('keyboard'\)\}/);
-    expect(chatScreen).toMatch(/<RecordingDiscardSheet[\s\S]*intent=\{discardIntent\}/);
+    expect(chatScreen).toContain("requestDestructiveInput('cancel-recording'");
+    expect(chatScreen).toContain("requestDestructiveInput('switch-to-keyboard'");
+    expect(chatScreen).toContain("requestDestructiveInput('delete-voice-draft'");
+    expect(chatScreen).toContain("requestDestructiveInput('discard-voice-submission'");
+    expect(chatScreen).not.toContain('<RecordingDiscardSheet');
     expect(chatScreen).toMatch(/bottomInset=\{keyboardVisible \? 0 : insets\.bottom\}/);
     expect(chatScreen).toMatch(/Keyboard\.scheduleLayoutAnimation\(event\)/);
     expect(chatScreen).toMatch(/Couldn’t pause recording/);
@@ -273,7 +275,7 @@ describe('local-first capture navigation', () => {
     );
 
     expect(chatScreen).toMatch(/async function confirmVoiceDraftDeletion\(\)[\s\S]*canAbandonVoiceSubmission\([\s\S]*await abandonVoiceSubmission\(requestId\)[\s\S]*setPendingRecording\(null\)[\s\S]*confirm-delete-voice/);
-    expect(chatScreen).toMatch(/confirmVoiceDraftDeletion\(\)\.catch/);
+    expect(chatScreen).toMatch(/requestDestructiveInput\('delete-voice-draft', confirmVoiceDraftDeletion\)[\s\S]*cancel-delete-voice/);
   });
 
   test('transcript correction is rendered by a typed design-system component', () => {

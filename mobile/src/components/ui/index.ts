@@ -57,8 +57,6 @@ export { RecordingGlow } from './RecordingGlow';
 export type { RecordingGlowProps } from './RecordingGlow';
 export { VoiceComposer } from './VoiceComposer';
 export type { VoiceComposerProps } from './VoiceComposer';
-export { RecordingDiscardSheet } from './RecordingDiscardSheet';
-export type { RecordingDiscardSheetProps } from './RecordingDiscardSheet';
 export { VoiceDraftStrip } from './VoiceDraftStrip';
 export type { VoiceDraftStripProps } from './VoiceDraftStrip';
 export { TranscriptCorrectionCard } from './TranscriptCorrectionCard';

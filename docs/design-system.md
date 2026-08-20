@@ -119,7 +119,6 @@ Never use raw `text-sm font-semibold` combinations — use the composite utiliti
 | `ActiveRecordingSurface` | source module for `ActiveRecordingContent` and `ActiveRecordingActionBar` | Recording presentation module; it exports the center-only content and controls-only action-bar boundaries, rather than a page-level recording surface. |
 | `ActiveRecordingContent` | `greeting` | Presentational recording center content: the static `RecordingVoiceMark` and greeting only. It has no page shell, title, safe-area, footer, recorder, or navigation responsibility. |
 | `ActiveRecordingActionBar` | `durationSeconds`, `amplitudeLevel`, `paused`, `disabled?`, `recordingActionDisabled?`, `cancelLabel`, callbacks | Controls-only recording action bar for the shared composer dock: Cancel, Keyboard, raw-amplitude timestamp, Pause/Resume, and Send. It owns their arrangement and intrinsic 56px action geometry; `ChatComposerDock` owns the shared footer inset, margins, and bottom spacing. Recorder and navigation state remain in the screen owner. |
-| `RecordingDiscardSheet` | `intent`, `disabled?`, callbacks | Figma confirmation sheet for cancelling a recording or discarding it before switching to keyboard. |
 | `Badge` | `color`, `appearance`, `size`, `icon`, `onDismiss` | Eight colors; three appearances |
 | `Card` | `surface`, `className`, `style` | Two surfaces (default / elevated) |
 | `Input` | `size`, `error`, `...TextInputProps` | Two sizes; error state |
