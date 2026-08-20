@@ -14,7 +14,7 @@ export interface ChatHeaderProps {
 export function ChatHeader({ title, topInset, onClose }: ChatHeaderProps) {
   return (
     <View className="z-10 bg-background" style={{ paddingTop: topInset }}>
-      <View className="flex-row items-center py-1">
+      <View testID="chat-header-controls" className="flex-row items-center px-5 py-1">
         <LiquidGlassPressable
           accessibilityLabel="Close conversation"
           shape="circle"

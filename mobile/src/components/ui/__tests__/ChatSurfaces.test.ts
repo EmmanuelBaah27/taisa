@@ -99,15 +99,18 @@ describe('chat design-system surfaces', () => {
       });
       const nodes = descendants(shell);
       const page = nodes.find((node) => node.props.testID === 'chat-page');
+      const contentGutter = nodes.find((node) => node.props.testID === 'chat-content-gutter');
 
       expect(nodes.filter((node) => node.type === ChatHeader)).toHaveLength(1);
       expect(nodes.filter((node) => node.props.testID === footer.props.testID)).toHaveLength(1);
-      expect(String(page?.props.className)).toContain('px-5');
+      expect(String(page?.props.className)).not.toContain('px-5');
+      expect(String(contentGutter?.props.className)).toContain('px-5');
     }
   });
 
-  test('sections inherit horizontal alignment from the page instead of owning section margins', () => {
+  test('full-bleed chrome keeps its horizontal gutter inside the painted background', () => {
     const header = ChatHeader({ title: 'Taisa', topInset: 47, onClose: jest.fn() });
+    const headerControls = descendants(header).find((node) => node.props.testID === 'chat-header-controls');
     const surface = ChatConversationSurface({
       scrollRef: { current: null }, messages: [], activeMessageId: null,
       activeRequestKind: null, transcript: '', phase: 'idle', isBusy: false,
@@ -119,6 +122,7 @@ describe('chat design-system surfaces', () => {
     const scrollView = descendants(surface).find((node) => node.type === ScrollView);
 
     expect(String(header.props.className)).not.toMatch(/px-/);
+    expect(String(headerControls?.props.className)).toContain('px-5');
     expect(scrollView?.props.contentContainerStyle).not.toHaveProperty('paddingHorizontal');
   });
 
@@ -253,7 +257,11 @@ describe('chat design-system surfaces', () => {
       children: React.createElement(View, { testID: 'textbox' }),
     });
 
+    const dockGutter = descendants(dock).find((node) => node.props.testID === 'chat-composer-gutter');
+
     expect(dock.props.style).toMatchObject({ paddingTop: 8, paddingBottom: 46 });
+    expect(String(dock.props.className)).not.toContain('px-5');
+    expect(String(dockGutter?.props.className)).toContain('px-5');
   });
 
   test('the assistant reply is unboxed base body copy', () => {

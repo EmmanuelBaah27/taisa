@@ -50,11 +50,13 @@ export function ChatScreenShell({
         <Animated.View className="flex-1 bg-background" style={animatedStyle}>
           <Animated.View
             testID="chat-page"
-            className="flex-1 px-5"
+            className="flex-1"
             style={contentAnimatedStyle}
           >
             <ChatHeader title={title} topInset={topInset} onClose={onClose} />
-            {children}
+            <View testID="chat-content-gutter" className="flex-1 px-5">
+              {children}
+            </View>
             {footer}
           </Animated.View>
         </Animated.View>
@@ -364,7 +366,9 @@ export function ChatComposerDock({ phase, bottomInset, children }: ChatComposerD
       colors={[colors.backgroundTransparent, colors.background]}
       style={{ paddingTop: 8, paddingBottom: bottomInset + 12 }}
     >
-      {children}
+      <View testID="chat-composer-gutter" className="px-5">
+        {children}
+      </View>
     </LinearGradient>
   );
 }
