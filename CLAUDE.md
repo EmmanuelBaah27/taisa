@@ -38,6 +38,7 @@ The Senior Self persona is NOT yet implemented. The current `journalProcessor.ts
 
 | I need to... | Read |
 |---|---|
+| Reorient across sessions | `docs/project-memory.md` |
 | Understand current build state | `docs/v1-status.md` |
 | Understand system architecture | `docs/architecture.md` |
 | Touch the database | `docs/data-model.md` |
@@ -55,9 +56,12 @@ Load these shared workflow files at the start of every scope, plan, build, revie
 
 1. `docs/workflow.md` — human-readable source of truth
 2. `.claude/skills/taisa-workflow/SKILL.md` — operational orchestrator
-3. `AGENTS.md` — Codex automatic entry point
+3. `docs/project-memory.md` — durable context entry point
+4. `AGENTS.md` — Codex automatic entry point
 
 The orchestrator maps Taisa's stages to the required Superpowers process skills. Baah approves Scope, Plan, and Ship; agents handle routine Active Work, Git/GitHub, verification, documentation, and Linear housekeeping within those approvals.
+After reading the memory index, load only the accepted decisions, reusable learnings, and
+canonical domain documents relevant to the current task.
 
 ---
 
