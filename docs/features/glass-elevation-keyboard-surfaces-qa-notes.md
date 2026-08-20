@@ -10,3 +10,12 @@ hierarchy for accepted recording, send, dismiss, pause/resume, page-selection, a
 The correction passed 71 mobile suites / 601 tests, TypeScript, the 30-module design-system verifier,
 and the button-surface verifier. The next gate is canonical preview publication followed by Baah
 device QA.
+
+## 2026-08-20 — recording dismissed immediately after start
+
+Device QA exposed a synchronous native-haptic failure escaping into the recorder start lifecycle.
+The existing catch interpreted that optional feedback failure as a microphone-start failure and
+closed a fresh recording route. The haptic boundary now absorbs both synchronous native throws and
+asynchronous rejections; tactile feedback can no longer fail the product action. A regression test
+reproduces the native throw. Verification passes 71 mobile suites / 604 tests, TypeScript, the
+design-system verifier, and the button-surface verifier.
