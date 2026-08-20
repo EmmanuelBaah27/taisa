@@ -173,6 +173,15 @@ describe('local-first capture navigation', () => {
     expect(chatScreen).not.toMatch(/catch \(error\) \{[\s\S]*await handleCancelVoice\(\)/);
   });
 
+  test('keeps the native splash visible until the privacy shield is initialized', () => {
+    const rootLayout = fs.readFileSync(
+      path.resolve(__dirname, '../../../app/_layout.tsx'),
+      'utf8',
+    );
+    expect(rootLayout).toMatch(/if \(fontsLoaded && startup !== null && privacyState\.initialized\) \{[\s\S]*SplashScreen\.hideAsync\(\)/);
+    expect(rootLayout).not.toMatch(/if \(fontsLoaded\) SplashScreen\.hideAsync\(\)/);
+  });
+
   test('voice cancellation preserves reply and close destinations through recorder cleanup', () => {
     const chatScreen = fs.readFileSync(
       path.resolve(__dirname, '../../../app/chat/index.tsx'),
