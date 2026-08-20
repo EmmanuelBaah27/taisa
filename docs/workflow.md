@@ -9,7 +9,7 @@ Claude maintains the Active Work table — Baah never needs to update it.
 
 | Feature | Track | Stage | Branch | Blocked on |
 |---|---|---|---|---|
-| — | — | — | — | — |
+| Project memory system | Platform | Plan | `docs/project-memory-system` | Baah plan approval |
 
 ---
 

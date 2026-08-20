@@ -1,6 +1,6 @@
 # Taisa Project Memory System Design
 
-**Status:** Proposed — awaiting Baah review
+**Status:** Approved by Baah — 2026-08-20
 
 ## Purpose
 
