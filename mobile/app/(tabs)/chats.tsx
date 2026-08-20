@@ -60,6 +60,9 @@ export default function ChatsScreen() {
     lastUserMessage: thread.lastUserMessage,
     lastAssistantMessage: thread.lastAssistantMessage,
     lastMessage: thread.lastMessage,
+    recoveryState: thread.pendingRequestStatus === 'transcription-failed'
+      ? 'transcription-failed-recording-available' as const
+      : undefined,
   })));
   const sections: ChatSection[] = groups.map((group) => ({
     key: group.key,

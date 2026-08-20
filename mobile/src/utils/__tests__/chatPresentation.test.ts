@@ -2,6 +2,7 @@ import {
   getChatPreview,
   getChatTitle,
   groupChatsByDate,
+  isVisibleChatSummary,
   type ChatSummary,
 } from '../chatPresentation';
 
@@ -35,7 +36,6 @@ describe('chat presentation', () => {
 
     expect(groups.map((group) => group.label)).toEqual([
       'Today, 13 Aug 2026',
-      'Tue, 11 Aug 2026',
     ]);
     expect(groups[0].chats.map((chat) => chat.id)).toEqual(['newer', 'older']);
   });
@@ -58,5 +58,17 @@ describe('chat presentation', () => {
       lastUserMessage: 'Preparing for the stakeholder review and clarifying the decision',
     })).toBe('Preparing for the stakeholder review and clarifying…');
     expect(getChatTitle(summaries[0])).toBe('Older');
+  });
+
+  test('presents a retained failed transcription as a recoverable recording row', () => {
+    const failed: ChatSummary = {
+      ...summaries[2],
+      recoveryState: 'transcription-failed-recording-available',
+    };
+
+    expect(getChatTitle(failed)).toBe('Transcription failed');
+    expect(getChatPreview(failed)).toBe('Recording saved · Tap to retry');
+    expect(isVisibleChatSummary(failed)).toBe(true);
+    expect(isVisibleChatSummary(summaries[2])).toBe(false);
   });
 });
