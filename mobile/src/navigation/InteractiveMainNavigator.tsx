@@ -11,17 +11,17 @@ import {
   useWindowDimensions, View,
 } from 'react-native';
 import Animated, {
+  Easing,
   runOnJS,
   useAnimatedScrollHandler,
   useAnimatedStyle,
   useSharedValue,
-  withSpring,
   withTiming,
 } from 'react-native-reanimated';
 
 import { VoiceButton as DefaultVoiceButton } from '../components/VoiceButton';
 import { BottomNavBar as DefaultBottomNavBar } from '../components/ui/BottomNavBar';
-import { BOTTOM_NAVIGATION_ITEMS } from './bottomNavigation';
+import { BOTTOM_NAVIGATION_FIGMA, BOTTOM_NAVIGATION_ITEMS } from './bottomNavigation';
 import type { MainDestinationId } from './interactiveMainNavigation';
 import { MainNavigationInteractionContext } from './MainNavigationInteractionContext';
 
@@ -165,11 +165,9 @@ export function InteractiveMainNavigatorView({
         runOnJS(jumpDirectlyToPage)(destinationIndex);
         directPageOpacity.value = withTiming(1, { duration: 170 });
       });
-      swipeProgress.value = withSpring(1, {
-        damping: 24,
-        stiffness: 240,
-        mass: 0.8,
-        overshootClamping: true,
+      swipeProgress.value = withTiming(1, {
+        duration: BOTTOM_NAVIGATION_FIGMA.capsuleMotion.duration,
+        easing: Easing.bezier(...BOTTOM_NAVIGATION_FIGMA.capsuleMotion.easing),
       }, (finished) => {
         if (finished) runOnJS(dispatchRoute)(destinationIndex);
       });

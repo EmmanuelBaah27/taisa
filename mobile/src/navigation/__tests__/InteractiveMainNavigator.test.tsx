@@ -60,10 +60,10 @@ describe('InteractiveMainNavigator', () => {
     expect(source).toContain('directPageOpacity.value');
   });
 
-  test('drives tapped capsule travel through the same continuous progress path as a swipe', () => {
-    expect(source).toContain('withSpring');
-    expect(source).toMatch(/swipeProgress\.value = withSpring\(1/);
-    expect(source).not.toMatch(/swipeProgress\.value = withTiming\(1/);
+  test('settles tapped capsule travel on the same measured cadence as a released swipe', () => {
+    expect(source).toContain('Easing.bezier');
+    expect(source).toMatch(/swipeProgress\.value = withTiming\(1/);
+    expect(source).toContain('duration: BOTTOM_NAVIGATION_FIGMA.capsuleMotion.duration');
     expect(bottomNavSource).toMatch(/pagePosition[\s\S]*interaction\.progress\.value/);
   });
 });
