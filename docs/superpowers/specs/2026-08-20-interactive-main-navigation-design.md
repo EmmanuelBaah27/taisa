@@ -85,11 +85,15 @@ For three destinations, both neighbors may be kept warm when memory allows. At f
 
 During an eligible swipe:
 
-1. The active page follows the finger.
-2. The adjacent page is already present immediately beyond the viewport and enters at the same rate.
+1. The active page follows the finger immediately with approximately 98% tracking, creating barely perceptible weight without visible lag.
+2. The adjacent page is already present immediately beyond the viewport and remains spatially locked to the active page with no gap, parallax, or independent fade.
 3. The background behind both scenes remains the standard page backdrop, never the dark chat-sheet backdrop.
-4. A successful swipe settles in under 300 ms.
-5. A cancelled swipe returns without bounce.
+4. Direction reversals preserve a trace of momentum so the track feels viscous rather than mechanically attached, while remaining responsive.
+5. A successful swipe settles in under 300 ms with an overshoot-clamped spring.
+6. A cancelled swipe returns without bounce.
+7. Stronger resistance appears only when pulling beyond the Chats or You boundary.
+
+The viscosity must be felt as subtle weight, not seen as delayed response. There is no activation pause after horizontal intent is established, no decorative scaling, and no opacity transition during an interactive swipe.
 
 The dark backdrop remains reserved for the intentional full-screen chat sheet scale-back effect.
 
@@ -128,6 +132,8 @@ Automated coverage must include:
 - Only the active and relevant adjacent scenes render during a gesture.
 - Vertical intent does not activate horizontal paging.
 - Distance and velocity thresholds commit exactly one adjacent route.
+- Interactive tracking stays spatially locked without gaps, parallax, or opacity changes.
+- Settlement and cancellation never overshoot or bounce.
 - Cancelled and interrupted gestures normalize translation.
 - Deep links select the correct route and scene index.
 - Bottom capsule state follows router state and rolls back on cancellation.
