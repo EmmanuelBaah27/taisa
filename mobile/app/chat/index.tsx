@@ -415,10 +415,13 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
         recordingStopSessionRef.current = null;
         await session.stopAndDiscard();
       }
-    } catch {
+    } catch (error) {
       const isCurrentAttempt = recordingStartGuardRef.current.complete(startAttempt);
       if (isCurrentAttempt && mountedRef.current && !closingRef.current) {
-        await handleCancelVoice();
+        console.warn('Recording start failed', error);
+        dispatchComposer({ type: 'recording-start-failed' });
+        setRecordingStartFailed(true);
+        setPhase('idle');
       }
     }
   }

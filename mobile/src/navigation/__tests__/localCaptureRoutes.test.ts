@@ -164,12 +164,13 @@ describe('local-first capture navigation', () => {
     expect(chatScreen).toMatch(/async function handlePauseVoice\(\) \{[\s\S]*if \(recorderAcquiring\) return;/);
   });
 
-  test('a microphone start failure closes the active recording process', () => {
+  test('a microphone start failure stays open and exposes recovery instead of dismissing', () => {
     const chatScreen = fs.readFileSync(
       path.resolve(__dirname, '../../../app/chat/index.tsx'),
       'utf8',
     );
-    expect(chatScreen).toMatch(/catch \{[\s\S]*recordingStartGuardRef\.current\.complete\(startAttempt\)[\s\S]*await handleCancelVoice\(\)/);
+    expect(chatScreen).toMatch(/catch \(error\) \{[\s\S]*recordingStartGuardRef\.current\.complete\(startAttempt\)[\s\S]*recording-start-failed[\s\S]*setRecordingStartFailed\(true\)[\s\S]*setPhase\('idle'\)/);
+    expect(chatScreen).not.toMatch(/catch \(error\) \{[\s\S]*await handleCancelVoice\(\)/);
   });
 
   test('voice cancellation preserves reply and close destinations through recorder cleanup', () => {
