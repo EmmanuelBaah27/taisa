@@ -1,5 +1,12 @@
 export { Button } from './Button';
 export type { ButtonProps, ButtonVariant, ButtonSize } from './Button';
+export { LiquidGlassButtonSurface } from './LiquidGlassButtonSurface';
+export type { LiquidGlassButtonSurfaceProps } from './LiquidGlassButtonSurface';
+export type {
+  LiquidGlassHierarchy,
+  LiquidGlassShape,
+  LiquidGlassTone,
+} from './liquidGlass';
 
 export {
   SECONDARY_ICON_BUTTON_FIGMA,
