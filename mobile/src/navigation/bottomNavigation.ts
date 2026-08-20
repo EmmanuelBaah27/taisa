@@ -225,6 +225,7 @@ export const BOTTOM_NAVIGATION_FIGMA = {
     radius: 24,
     offsetY: 8,
     elevation: 8,
+    casterColor: 'rgba(255,255,255,0.01)',
   },
   selectedItem: {
     height: 48,

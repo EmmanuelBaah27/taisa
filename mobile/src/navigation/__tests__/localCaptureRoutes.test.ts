@@ -250,8 +250,9 @@ describe('local-first capture navigation', () => {
     expect(tabLayout).not.toMatch(/name="logs"|name="insights"|name="goals"/);
     expect(mainNavigator).toMatch(/useNavigationBuilder<[\s\S]*?>\(TabRouter/);
     expect(mainNavigator).toMatch(/withLayoutContext/);
-    expect(mainNavigator).toMatch(/className="flex-1 overflow-hidden bg-white"/);
-    expect(mainNavigator).not.toMatch(/react-native-pager-view/);
+    expect(mainNavigator).toMatch(/from 'react-native-pager-view'/);
+    expect(mainNavigator).toMatch(/<AnimatedPagerView/);
+    expect(mainNavigator).toMatch(/<\/AnimatedPagerView>\s*<BottomNavBar \/>\s*<VoiceButton \/>/);
   });
 
   test('a microphone failure offers a working keyboard fallback that selects text mode', () => {

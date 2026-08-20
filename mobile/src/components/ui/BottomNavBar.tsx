@@ -1124,6 +1124,8 @@ export function BottomNavBar() {
               {
                 position: 'absolute',
                 inset: 0,
+                borderRadius: 32,
+                backgroundColor: BOTTOM_NAVIGATION_FIGMA.elevation.casterColor,
                 shadowColor: BOTTOM_NAVIGATION_FIGMA.elevation.color,
                 shadowOffset: { width: 0, height: BOTTOM_NAVIGATION_FIGMA.elevation.offsetY },
                 shadowOpacity: BOTTOM_NAVIGATION_FIGMA.elevation.opacity,
