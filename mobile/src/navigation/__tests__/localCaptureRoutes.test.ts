@@ -229,6 +229,19 @@ describe('local-first capture navigation', () => {
     expect(tabLayout).not.toMatch(/<ChatScreen/);
   });
 
+  test('main tabs use Expo Router fades without a hand-written horizontal gesture', () => {
+    const tabLayout = fs.readFileSync(
+      path.resolve(__dirname, '../../../app/(tabs)/_layout.tsx'),
+      'utf8',
+    );
+
+    expect(tabLayout).not.toMatch(/pageTranslateX|pageSwipeGesture|exitX/);
+    expect(tabLayout).toMatch(/animation: PAGE_TRANSITION\.sceneAnimation/);
+    expect(tabLayout).toMatch(/backgroundColor: PAGE_TRANSITION\.backdropColor/);
+    expect(tabLayout).toMatch(/<Tabs\.Screen name="chats" \/>[\s\S]*name="index"[\s\S]*name="you"/);
+    expect(tabLayout).not.toMatch(/name="logs"|name="insights"|name="goals"/);
+  });
+
   test('a microphone failure offers a working keyboard fallback that selects text mode', () => {
     const chatScreen = fs.readFileSync(
       path.resolve(__dirname, '../../../app/chat/index.tsx'),
