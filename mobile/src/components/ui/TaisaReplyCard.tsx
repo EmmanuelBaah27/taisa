@@ -1,4 +1,4 @@
-import { View, Text } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { colors } from '../../constants/theme';
 import type { ResponseReaction } from '../../repositories/responseFeedbackRepository';
 import { LiquidGlassPressable } from './LiquidGlassPressable';
