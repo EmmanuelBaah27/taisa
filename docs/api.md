@@ -11,7 +11,7 @@ families belong to the new path:
 
 | Route | Status | Persistence boundary |
 |---|---|---|
-| `POST /api/v1/coaching/respond` | Current stateless coaching path | Validates bounded supplied context, makes one configured provider call, returns structured coaching/proposals; stores no readable user content |
+| `POST /api/v1/coaching/respond` | Current stateless coaching path | Validates bounded supplied context, calls the configured primary and optionally one alternate provider, returns structured coaching/proposals; stores no readable user content |
 | `POST /api/v1/transcribe` | Current deliberate voice path | Deletes temporary audio in `finally`; stores only content-free usage/cost metadata |
 | `GET /health` | Current operational health | No user data |
 
@@ -36,7 +36,18 @@ an automatic second paid call.
 
 The gateway does not fetch profile, history, goals, actions, evidence, or memory. It does not write
 the request, response, transcript, prompt, or coaching text. Daily/monthly/per-request cost ceilings
-fail closed before the configured OpenAI or Anthropic adapter is called.
+fail closed before the configured OpenAI or Anthropic adapter is called. Both providers' complete
+credential/model/pricing configuration is mandatory. `TAISA_COACHING_PROVIDER` selects the primary;
+the other provider is the automatic fallback. The ledger reserves their combined conservative
+maximum before either call against `$0.05` per request, `$1` per UTC day, and `$10` per UTC month.
+
+The gateway makes at most one fallback call. It does so only after a primary network/timeout
+failure, HTTP `408`, `409`, `429`, or `5xx`, or a recognized provider rate-limit, overload,
+authentication, permission, billing, or unavailable error. Request validation, local
+configuration, cost rejection, policy/safety rejection, other invalid provider requests, invalid
+structured output, and unknown errors do not trigger fallback. If both attempts fail, the public
+error remains content-free. A successful response's existing `usage.provider` identifies which
+adapter produced it; the request and response schema examples are unchanged.
 
 ---
 
