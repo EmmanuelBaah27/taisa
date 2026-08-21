@@ -12,6 +12,7 @@ import {
   estimateConfiguredCoachingUsage,
   requestCoaching,
 } from '../services/coaching/coachingGateway';
+import { classifyOperationalProviderFailure } from '../services/coaching/providerFailure';
 import { buildSeniorSelfPrompt } from '../prompts/system/seniorSelf';
 
 jest.mock('../db/connection', () => {
@@ -689,4 +690,29 @@ test('an off-topic current turn with career profile and history receives a struc
     stance: null, proposals: [],
   });
   expect(provider.respond).toHaveBeenCalledTimes(1);
+});
+
+test.each([
+  [{ status: 408 }, 'timeout'],
+  [{ status: 409 }, 'unavailable'],
+  [{ status: 429, type: 'rate_limit_error' }, 'rate_limit'],
+  [{ status: 503, type: 'provider_error' }, 'unavailable'],
+  [{ type: 'overloaded_error' }, 'overloaded'],
+  [{ type: 'authentication_error' }, 'authentication'],
+  [{ type: 'permission_error' }, 'permission'],
+  [{ type: 'billing_error' }, 'billing'],
+  [{ code: 'ETIMEDOUT' }, 'timeout'],
+  [{ code: 'ECONNRESET' }, 'network'],
+])('classifies an allowlisted operational failure', (error, expected) => {
+  expect(classifyOperationalProviderFailure(error)).toBe(expected);
+});
+
+test.each([
+  { status: 400, type: 'invalid_request_error' },
+  { status: 403, type: 'safety_error' },
+  { type: 'content_policy_error' },
+  { code: 'UNKNOWN_PRIVATE_CODE' },
+  new Error('message text is never classification input'),
+])('fails closed for non-operational or unknown errors', (error) => {
+  expect(classifyOperationalProviderFailure(error)).toBeNull();
 });
