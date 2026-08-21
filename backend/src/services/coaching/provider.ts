@@ -51,7 +51,7 @@ function requirePositiveInteger(environment: CoachingEnvironment, name: string):
   return value;
 }
 
-function readProviderConfig(
+export function readProviderConfig(
   environment: CoachingEnvironment,
   provider: CoachingProviderId,
 ): CoachingProviderConfig {
@@ -74,14 +74,34 @@ function readProviderConfig(
   };
 }
 
-export function getConfiguredProviderSettings(
-  environment: CoachingEnvironment = process.env,
-): { providerId: CoachingProviderId; config: CoachingProviderConfig } {
-  const configured = environment.TAISA_COACHING_PROVIDER?.trim();
+function requireProviderId(value: string | undefined): CoachingProviderId {
+  const configured = value?.trim();
   if (configured !== 'openai' && configured !== 'anthropic') {
     throw new Error('TAISA_COACHING_PROVIDER must be configured as openai or anthropic');
   }
-  return { providerId: configured, config: readProviderConfig(environment, configured) };
+  return configured;
+}
+
+export function getConfiguredProviderPairSettings(
+  environment: CoachingEnvironment = process.env,
+) {
+  const primaryId = requireProviderId(environment.TAISA_COACHING_PROVIDER);
+  const fallbackId: CoachingProviderId = primaryId === 'openai' ? 'anthropic' : 'openai';
+  return {
+    primaryId,
+    fallbackId,
+    configs: {
+      openai: readProviderConfig(environment, 'openai'),
+      anthropic: readProviderConfig(environment, 'anthropic'),
+    },
+  };
+}
+
+export function getConfiguredProviderSettings(
+  environment: CoachingEnvironment = process.env,
+): { providerId: CoachingProviderId; config: CoachingProviderConfig } {
+  const providerId = requireProviderId(environment.TAISA_COACHING_PROVIDER);
+  return { providerId, config: readProviderConfig(environment, providerId) };
 }
 
 export function getConfiguredProvider(
