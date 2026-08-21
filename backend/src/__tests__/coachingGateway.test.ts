@@ -4,6 +4,7 @@ import {
   ContentFreeFallbackError,
   ContentFreeFallbackInvalidOutputError,
   getConfiguredFallbackProvider,
+  type FallbackCoachingProvider,
 } from '../services/coaching/fallbackProvider';
 import { createOpenAIProvider } from '../services/coaching/openaiProvider';
 import { createAnthropicProvider } from '../services/coaching/anthropicProvider';
@@ -14,7 +15,7 @@ import {
 import type { CoachingRequest } from '@taisa/shared';
 import { CoachingResponsePayloadSchema } from '../schemas/coaching';
 import {
-  estimateConfiguredCoachingUsage,
+  estimateConfiguredCoachingAttempts,
   requestCoaching,
 } from '../services/coaching/coachingGateway';
 import { classifyOperationalProviderFailure } from '../services/coaching/providerFailure';
@@ -784,26 +785,35 @@ test.each([
 });
 
 test('conservatively estimates configured coaching input bytes and capped output tokens', () => {
-  const environment = {
-    TAISA_COACHING_PROVIDER: 'openai',
-    TAISA_OPENAI_MODEL: 'openai-mock',
-    TAISA_OPENAI_INPUT_PRICE_USD_PER_MILLION_TOKENS: '2',
-    TAISA_OPENAI_OUTPUT_PRICE_USD_PER_MILLION_TOKENS: '8',
-    TAISA_OPENAI_MAX_OUTPUT_TOKENS: '2048',
-    TAISA_OPENAI_STRUCTURED_OUTPUT_INPUT_TOKEN_OVERHEAD: '512',
-  };
+  const configuredEnvironment = environment('openai');
   const prompt = buildSeniorSelfPrompt(requestFixture);
   const conservativeInputTokens =
     Buffer.byteLength(prompt.systemPrompt, 'utf8') + Buffer.byteLength(prompt.userPrompt, 'utf8');
 
-  expect(estimateConfiguredCoachingUsage(requestFixture, environment)).toEqual({
-    provider: 'openai',
-    model: 'openai-mock',
-    inputTokens: conservativeInputTokens + 512,
-    outputTokens: 2048,
-    estimatedCostUsd:
-      ((conservativeInputTokens + 512) * 2 + 2048 * 8) / 1_000_000,
-  });
+  expect(estimateConfiguredCoachingAttempts(requestFixture, configuredEnvironment)).toEqual([
+    {
+      attemptId: 'primary',
+      receipt: {
+        provider: 'openai',
+        model: 'openai-mock',
+        inputTokens: conservativeInputTokens + 512,
+        outputTokens: 2048,
+        estimatedCostUsd:
+          ((conservativeInputTokens + 512) * 2 + 2048 * 8) / 1_000_000,
+      },
+    },
+    {
+      attemptId: 'fallback',
+      receipt: {
+        provider: 'anthropic',
+        model: 'anthropic-mock',
+        inputTokens: conservativeInputTokens + 512,
+        outputTokens: 1024,
+        estimatedCostUsd:
+          ((conservativeInputTokens + 512) * 3 + 1024 * 15) / 1_000_000,
+      },
+    },
+  ]);
 });
 
 test('fails closed when selected provider structured-output overhead is not configured', () => {
@@ -820,21 +830,27 @@ test('fails closed when selected provider structured-output overhead is not conf
 });
 
 test('invalid structured output is recoverable and never triggers a retry', async () => {
-  const selected: CoachingProvider = {
-    id: 'openai',
+  const observer = attemptObserver();
+  const selected: FallbackCoachingProvider = {
+    primaryId: 'openai' as const,
+    fallbackId: 'anthropic' as const,
+    estimateMaximumAttempts: jest.fn(),
     respond: jest.fn().mockResolvedValue({
-      payload: { reply: '', stance: 'invented', proposals: [] },
-      usage: {
-        provider: 'openai',
-        model: 'openai-mock',
-        inputTokens: 10,
-        outputTokens: 4,
-        estimatedCostUsd: 0.000052,
+      result: {
+        payload: { reply: '', stance: 'invented', proposals: [] },
+        usage: {
+          provider: 'openai',
+          model: 'openai-mock',
+          inputTokens: 10,
+          outputTokens: 4,
+          estimatedCostUsd: 0.000052,
+        },
       },
+      attempts: [{ attemptId: 'primary', providerId: 'openai' }],
     }),
   };
 
-  await expect(requestCoaching(requestFixture, selected)).rejects.toMatchObject({
+  await expect(requestCoaching(requestFixture, selected, observer)).rejects.toMatchObject({
     code: 'INVALID_COACHING_OUTPUT',
     recoverable: true,
   });
@@ -953,33 +969,42 @@ test('an off-topic current turn with career profile and history receives a struc
       evidence: requestFixture.context.evidence,
     },
   };
-  const provider: CoachingProvider = {
-    id: 'openai',
+  const observer = attemptObserver();
+  const provider: FallbackCoachingProvider = {
+    primaryId: 'openai' as const,
+    fallbackId: 'anthropic' as const,
+    estimateMaximumAttempts: jest.fn(),
     respond: jest.fn(async (prompt) => {
       expect(JSON.parse(prompt.userPrompt)).toEqual(offTopicRequest);
       return {
-        payload: {
-          mode: 'redirect' as const,
-          relevance: 'outside-scope' as const,
-          contextSufficiency: 'sufficient' as const,
-          reply: 'I can help when this connects to your work or career.',
-          stance: null,
-          proposals: [],
+        result: {
+          payload: {
+            mode: 'redirect' as const,
+            relevance: 'outside-scope' as const,
+            contextSufficiency: 'sufficient' as const,
+            reply: 'I can help when this connects to your work or career.',
+            stance: null,
+            proposals: [],
+          },
+          usage: {
+            provider: 'openai' as const, model: 'fixture', inputTokens: 10, outputTokens: 4,
+            estimatedCostUsd: 0.000052,
+          },
         },
-        usage: {
-          provider: 'openai' as const, model: 'fixture', inputTokens: 10, outputTokens: 4,
-          estimatedCostUsd: 0.000052,
-        },
+        attempts: [{ attemptId: 'primary' as const, providerId: 'openai' as const }],
       };
     }),
   };
 
-  const response = await requestCoaching(offTopicRequest, provider);
+  const execution = await requestCoaching(offTopicRequest, provider, observer);
 
-  expect(response).toMatchObject({
+  expect(execution.response).toMatchObject({
     mode: 'redirect', relevance: 'outside-scope', contextSufficiency: 'sufficient',
     stance: null, proposals: [],
   });
+  expect(execution.attempts).toEqual([
+    { attemptId: 'primary', providerId: 'openai' },
+  ]);
   expect(provider.respond).toHaveBeenCalledTimes(1);
 });
 

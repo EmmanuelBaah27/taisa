@@ -1,20 +1,26 @@
 import { Router } from 'express';
 import { CoachingRequestSchema } from '../schemas/coaching';
 import {
-  estimateConfiguredCoachingUsage,
+  estimateConfiguredCoachingAttempts,
   requestCoaching,
 } from '../services/coaching/coachingGateway';
+import { ContentFreeFallbackError } from '../services/coaching/fallbackProvider';
 import {
   CostConfigurationError,
   CostLimitError,
-  UsageExceedsReservationError,
   readCostCeilings,
-  reserveUsage,
+  reserveAttempts,
 } from '../services/usage/costLedger';
 
 const router = Router();
 
 function operationalFailureCode(error: unknown): string {
+  if (error instanceof ContentFreeFallbackError) {
+    const attempts = error.attempts.map(({ attemptId, failureClass }) =>
+      `${attemptId}_${failureClass ?? 'unknown'}`.toUpperCase(),
+    );
+    return `COACHING_FAILED_${attempts.join('_')}`;
+  }
   const value = error as {
     status?: unknown;
     type?: unknown;
@@ -43,22 +49,13 @@ router.post('/respond', async (req, res) => {
     });
   }
 
-  let reservation: ReturnType<typeof reserveUsage> | undefined;
+  let reservation: ReturnType<typeof reserveAttempts> | undefined;
   try {
     const ceilings = readCostCeilings();
-    const estimatedUsage = estimateConfiguredCoachingUsage(parsed.data);
-    reservation = reserveUsage(estimatedUsage, ceilings);
-    reservation.beginProviderInvocation();
-    const response = await requestCoaching(parsed.data);
-    try {
-      reservation.commit(response.usage);
-    } catch (error) {
-      if (!(error instanceof UsageExceedsReservationError)) throw error;
-      // The provider charge is already durably recorded. Returning 500 here discards a valid,
-      // paid response and makes a retry charge again; retain a content-free operational signal.
-      console.warn('[Taisa diagnostic] COACHING_USAGE_EXCEEDED_RESERVATION');
-    }
-    return res.json({ success: true, data: response });
+    const estimatedAttempts = estimateConfiguredCoachingAttempts(parsed.data);
+    reservation = reserveAttempts(estimatedAttempts, ceilings);
+    const execution = await requestCoaching(parsed.data, undefined, reservation);
+    return res.json({ success: true, data: execution.response });
   } catch (error: any) {
     if (error instanceof CostLimitError) {
       return res.status(429).json({

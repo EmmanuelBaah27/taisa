@@ -6,28 +6,55 @@ jest.mock('../db/connection', () => {
 });
 
 jest.mock('../services/coaching/coachingGateway', () => ({
-  estimateConfiguredCoachingUsage: jest.fn().mockReturnValue({
-    provider: 'openai',
-    model: 'mock',
-    inputTokens: 100,
-    outputTokens: 100,
-    estimatedCostUsd: 0.04,
-  }),
-  requestCoaching: jest.fn().mockResolvedValue({
-    requestId: '11111111-1111-4111-8111-111111111111',
-    mode: 'coach',
-    relevance: 'career-relevant',
-    contextSufficiency: 'sufficient',
-    reply: 'What changed?',
-    stance: 'nudge',
-    proposals: [],
-    usage: {
-      provider: 'anthropic',
-      model: 'mock',
-      inputTokens: 5,
-      outputTokens: 3,
-      estimatedCostUsd: 0,
+  estimateConfiguredCoachingAttempts: jest.fn().mockReturnValue([
+    {
+      attemptId: 'primary',
+      receipt: {
+        provider: 'openai',
+        model: 'openai-mock',
+        inputTokens: 100,
+        outputTokens: 100,
+        estimatedCostUsd: 0.03,
+      },
     },
+    {
+      attemptId: 'fallback',
+      receipt: {
+        provider: 'anthropic',
+        model: 'anthropic-mock',
+        inputTokens: 100,
+        outputTokens: 100,
+        estimatedCostUsd: 0.02,
+      },
+    },
+  ]),
+  requestCoaching: jest.fn().mockImplementation(async (_request, _provider, observer) => {
+    const response = {
+      requestId: '11111111-1111-4111-8111-111111111111',
+      mode: 'coach',
+      relevance: 'career-relevant',
+      contextSufficiency: 'sufficient',
+      reply: 'What changed?',
+      stance: 'nudge',
+      proposals: [],
+      usage: {
+        provider: 'openai',
+        model: 'openai-mock',
+        inputTokens: 5,
+        outputTokens: 3,
+        estimatedCostUsd: 0.01,
+      },
+    };
+    observer.beginAttempt('primary');
+    observer.settleAttempt({ attemptId: 'primary', receipt: response.usage });
+    return {
+      response,
+      attempts: [{
+        attemptId: 'primary',
+        providerId: 'openai',
+        result: { payload: response, usage: response.usage },
+      }],
+    };
   }),
 }));
 
@@ -40,10 +67,9 @@ jest.mock('../services/usage/costLedger', () => {
       dailyUsd: 1,
       monthlyUsd: 10,
     }),
-    reserveUsage: jest.fn().mockReturnValue({
-      beginProviderInvocation: jest.fn(),
-      commit: jest.fn(),
-      consumeEstimate: jest.fn(),
+    reserveAttempts: jest.fn().mockReturnValue({
+      beginAttempt: jest.fn(),
+      settleAttempt: jest.fn(),
       release: jest.fn(),
     }),
     recordUsage: jest.fn(),
@@ -123,38 +149,70 @@ test('accepts supplied context without loading backend user data', async () => {
     stance: 'nudge',
     proposals: [],
   });
-  expect(jest.requireMock('../services/coaching/coachingGateway').requestCoaching).toHaveBeenCalledWith(validRequest);
+  const gateway = jest.requireMock('../services/coaching/coachingGateway');
   const usageLedger = jest.requireMock('../services/usage/costLedger');
-  expect(usageLedger.reserveUsage).toHaveBeenCalledWith(
+  const reservation = usageLedger.reserveAttempts.mock.results[0].value;
+  expect(gateway.requestCoaching).toHaveBeenCalledWith(validRequest, undefined, reservation);
+  expect(usageLedger.reserveAttempts).toHaveBeenCalledWith(
+    gateway.estimateConfiguredCoachingAttempts.mock.results[0].value,
     {
-      provider: 'openai',
-      model: 'mock',
-      inputTokens: 100,
-      outputTokens: 100,
-      estimatedCostUsd: 0.04,
-    },
-    {
-    perRequestUsd: 0.05,
-    dailyUsd: 1,
-    monthlyUsd: 10,
+      perRequestUsd: 0.05,
+      dailyUsd: 1,
+      monthlyUsd: 10,
     },
   );
-  expect(usageLedger.reserveUsage.mock.invocationCallOrder[0]).toBeLessThan(
-    jest.requireMock('../services/coaching/coachingGateway').requestCoaching.mock.invocationCallOrder[0],
+  expect(usageLedger.reserveAttempts.mock.invocationCallOrder[0]).toBeLessThan(
+    gateway.requestCoaching.mock.invocationCallOrder[0],
   );
-  const reservation = usageLedger.reserveUsage.mock.results[0].value;
-  expect(reservation.beginProviderInvocation).toHaveBeenCalledTimes(1);
-  expect(reservation.commit).toHaveBeenCalledWith(res.body.data.usage);
+  expect(reservation.beginAttempt.mock.calls).toEqual([['primary']]);
+  expect(reservation.settleAttempt.mock.calls).toEqual([[
+    { attemptId: 'primary', receipt: res.body.data.usage },
+  ]]);
+  expect(reservation.beginAttempt).not.toHaveBeenCalledWith('fallback');
+  expect(res.body.data).not.toHaveProperty('attempts');
 });
 
-test('returns an already-paid response when actual usage exceeds its conservative reservation', async () => {
+test('settles failed primary conservatively then commits fallback actual usage', async () => {
+  const gateway = jest.requireMock('../services/coaching/coachingGateway');
   const usageLedger = jest.requireMock('../services/usage/costLedger');
-  const warning = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
-  usageLedger.reserveUsage.mockReturnValueOnce({
-    beginProviderInvocation: jest.fn(),
-    commit: jest.fn(() => { throw new usageLedger.UsageExceedsReservationError(0.001, 0.002); }),
-    consumeEstimate: jest.fn(),
+  const reservation = {
+    beginAttempt: jest.fn(),
+    settleAttempt: jest.fn(),
     release: jest.fn(),
+  };
+  usageLedger.reserveAttempts.mockReturnValueOnce(reservation);
+  gateway.requestCoaching.mockImplementationOnce(async (_request, _provider, observer) => {
+    const fallbackUsage = {
+      provider: 'anthropic',
+      model: 'anthropic-mock',
+      inputTokens: 7,
+      outputTokens: 4,
+      estimatedCostUsd: 0.015,
+    };
+    observer.beginAttempt('primary');
+    observer.settleAttempt({ attemptId: 'primary' });
+    observer.beginAttempt('fallback');
+    observer.settleAttempt({ attemptId: 'fallback', receipt: fallbackUsage });
+    return {
+      response: {
+        requestId: validRequest.requestId,
+        mode: 'coach',
+        relevance: 'career-relevant',
+        contextSufficiency: 'sufficient',
+        reply: 'Fallback response',
+        stance: 'nudge',
+        proposals: [],
+        usage: fallbackUsage,
+      },
+      attempts: [
+        { attemptId: 'primary', providerId: 'openai', failureClass: 'rate_limit' },
+        {
+          attemptId: 'fallback',
+          providerId: 'anthropic',
+          result: { payload: {}, usage: fallbackUsage },
+        },
+      ],
+    };
   });
 
   const res = await request(app)
@@ -163,9 +221,12 @@ test('returns an already-paid response when actual usage exceeds its conservativ
     .send(validRequest);
 
   expect(res.status).toBe(200);
-  expect(res.body.data.reply).toBe('What changed?');
-  expect(warning).toHaveBeenCalledWith('[Taisa diagnostic] COACHING_USAGE_EXCEEDED_RESERVATION');
-  warning.mockRestore();
+  expect(res.body.data.usage.provider).toBe('anthropic');
+  expect(reservation.beginAttempt.mock.calls).toEqual([['primary'], ['fallback']]);
+  expect(reservation.settleAttempt.mock.calls).toEqual([
+    [{ attemptId: 'primary' }],
+    [{ attemptId: 'fallback', receipt: res.body.data.usage }],
+  ]);
 });
 
 test('generic provider failures expose only an allowlisted operational classification', async () => {
@@ -188,9 +249,9 @@ test('generic provider failures expose only an allowlisted operational classific
   expect(JSON.stringify(res.body)).not.toContain('SECRET_PRIVATE_DETAILS');
 });
 
-test('rejects a coaching request at the shared cost ceiling before the provider', async () => {
+test('rejects a coaching request at the combined cost ceiling before either provider', async () => {
   const usageLedger = jest.requireMock('../services/usage/costLedger');
-  usageLedger.reserveUsage.mockImplementationOnce(() => {
+  usageLedger.reserveAttempts.mockImplementationOnce(() => {
     throw new usageLedger.CostLimitError();
   });
 
@@ -204,18 +265,22 @@ test('rejects a coaching request at the shared cost ceiling before the provider'
   expect(jest.requireMock('../services/coaching/coachingGateway').requestCoaching).not.toHaveBeenCalled();
 });
 
-test('rejects a conservative request estimate above the per-request ceiling before provider work', async () => {
+test('rejects combined conservative request estimates above the per-request ceiling', async () => {
   const gateway = jest.requireMock('../services/coaching/coachingGateway');
   const usageLedger = jest.requireMock('../services/usage/costLedger');
-  gateway.estimateConfiguredCoachingUsage.mockReturnValueOnce({
-    provider: 'openai',
-    model: 'mock',
-    inputTokens: 10000,
-    outputTokens: 4096,
-    estimatedCostUsd: 0.06,
-  });
-  usageLedger.reserveUsage.mockImplementationOnce((usage: any, ceilings: any) => {
-    if (usage.estimatedCostUsd > ceilings.perRequestUsd) throw new usageLedger.CostLimitError();
+  gateway.estimateConfiguredCoachingAttempts.mockReturnValueOnce([
+    {
+      attemptId: 'primary',
+      receipt: { provider: 'openai', model: 'mock', estimatedCostUsd: 0.03 },
+    },
+    {
+      attemptId: 'fallback',
+      receipt: { provider: 'anthropic', model: 'mock', estimatedCostUsd: 0.021 },
+    },
+  ]);
+  usageLedger.reserveAttempts.mockImplementationOnce((attempts: any[], ceilings: any) => {
+    const combined = attempts.reduce((total, attempt) => total + attempt.receipt.estimatedCostUsd, 0);
+    if (combined > ceilings.perRequestUsd) throw new usageLedger.CostLimitError();
   });
 
   const res = await request(app)

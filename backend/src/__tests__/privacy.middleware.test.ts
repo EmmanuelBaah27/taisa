@@ -31,19 +31,34 @@ import {
 } from '../services/usage/costLedger';
 
 jest.mock('../services/coaching/coachingGateway', () => ({
-  estimateConfiguredCoachingUsage: jest.fn().mockReturnValue({
-    provider: 'openai',
-    model: 'mock',
-    inputTokens: 1,
-    outputTokens: 1,
-    estimatedCostUsd: 0,
-  }),
-  requestCoaching: jest.fn().mockResolvedValue({
-    requestId: '11111111-1111-4111-8111-111111111111',
-    reply: 'What changed?',
-    stance: 'nudge',
-    proposals: [],
-    usage: { provider: 'openai', model: 'mock', estimatedCostUsd: 0 },
+  estimateConfiguredCoachingAttempts: jest.fn().mockReturnValue([
+    {
+      attemptId: 'primary',
+      receipt: { provider: 'openai', model: 'openai-mock', estimatedCostUsd: 0.03 },
+    },
+    {
+      attemptId: 'fallback',
+      receipt: { provider: 'anthropic', model: 'anthropic-mock', estimatedCostUsd: 0.02 },
+    },
+  ]),
+  requestCoaching: jest.fn().mockImplementation(async (_request, _provider, observer) => {
+    const usage = { provider: 'openai', model: 'openai-mock', estimatedCostUsd: 0.01 };
+    observer.beginAttempt('primary');
+    observer.settleAttempt({ attemptId: 'primary', receipt: usage });
+    return {
+      response: {
+        requestId: '11111111-1111-4111-8111-111111111111',
+        reply: 'What changed?',
+        stance: 'nudge',
+        proposals: [],
+        usage,
+      },
+      attempts: [{
+        attemptId: 'primary',
+        providerId: 'openai',
+        result: { payload: {}, usage },
+      }],
+    };
   }),
 }));
 
@@ -234,6 +249,86 @@ describe('content-free request telemetry', () => {
     expect(output).not.toContain(validRequest.input);
     expect(output).not.toContain(validRequest.context.memory[0].statement);
     expect(output).not.toContain('device-1');
+  });
+
+  test('does not expose either raw provider error when both coaching attempts fail', async () => {
+    const gateway = jest.requireMock('../services/coaching/coachingGateway');
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    const primarySecret = 'PRIMARY_RAW_PROVIDER_SECRET';
+    const fallbackSecret = 'FALLBACK_RAW_PROVIDER_SECRET';
+    gateway.requestCoaching.mockImplementationOnce(async (_request, _provider, observer) => {
+      const { getConfiguredFallbackProvider } = jest.requireActual(
+        '../services/coaching/fallbackProvider',
+      );
+      const usage = (provider: 'openai' | 'anthropic') => ({
+        provider,
+        model: `${provider}-mock`,
+        estimatedCostUsd: 0.01,
+      });
+      const providers = {
+        openai: {
+          estimateMaximumUsage: jest.fn(() => usage('openai')),
+          respond: jest.fn().mockRejectedValue({
+            status: 429,
+            type: 'rate_limit_error',
+            payload: primarySecret,
+          }),
+        },
+        anthropic: {
+          estimateMaximumUsage: jest.fn(() => usage('anthropic')),
+          respond: jest.fn().mockRejectedValue({
+            type: 'overloaded_error',
+            payload: fallbackSecret,
+          }),
+        },
+      };
+      const environment = {
+        TAISA_COACHING_PROVIDER: 'openai',
+        TAISA_OPENAI_MODEL: 'openai-mock',
+        TAISA_OPENAI_INPUT_PRICE_USD_PER_MILLION_TOKENS: '1',
+        TAISA_OPENAI_OUTPUT_PRICE_USD_PER_MILLION_TOKENS: '1',
+        TAISA_OPENAI_MAX_OUTPUT_TOKENS: '100',
+        TAISA_OPENAI_STRUCTURED_OUTPUT_INPUT_TOKEN_OVERHEAD: '10',
+        OPENAI_API_KEY: 'configured-openai-key',
+        TAISA_ANTHROPIC_MODEL: 'anthropic-mock',
+        TAISA_ANTHROPIC_INPUT_PRICE_USD_PER_MILLION_TOKENS: '1',
+        TAISA_ANTHROPIC_OUTPUT_PRICE_USD_PER_MILLION_TOKENS: '1',
+        TAISA_ANTHROPIC_MAX_OUTPUT_TOKENS: '100',
+        TAISA_ANTHROPIC_STRUCTURED_OUTPUT_INPUT_TOKEN_OVERHEAD: '10',
+        ANTHROPIC_API_KEY: 'configured-anthropic-key',
+      };
+      await getConfiguredFallbackProvider(environment, providers).respond(
+        { systemPrompt: 'bounded', userPrompt: 'bounded' },
+        observer,
+      );
+      throw new Error('Expected both providers to fail');
+    });
+
+    const app = express();
+    app.use(requestContext);
+    app.use(express.json());
+    app.use('/api/v1/coaching', coachingRouter);
+
+    const response = await request(app)
+      .post('/api/v1/coaching/respond')
+      .set('x-request-id', '33333333-3333-4333-8333-333333333333')
+      .send(validRequest);
+
+    const publicAndConsoleOutput = [
+      JSON.stringify(response.body),
+      ...logSpy.mock.calls.flat(),
+      ...warnSpy.mock.calls.flat(),
+      ...errorSpy.mock.calls.flat(),
+    ].join(' ');
+    expect(response.status).toBe(500);
+    expect(response.body.error.code).toBe(
+      'COACHING_FAILED_PRIMARY_RATE_LIMIT_FALLBACK_OVERLOADED',
+    );
+    expect(publicAndConsoleOutput).not.toContain(primarySecret);
+    expect(publicAndConsoleOutput).not.toContain(fallbackSecret);
+    warnSpy.mockRestore();
+    errorSpy.mockRestore();
   });
 
   test('replaces a content-shaped request ID before logging it', async () => {
