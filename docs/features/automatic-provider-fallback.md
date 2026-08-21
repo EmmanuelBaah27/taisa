@@ -4,7 +4,7 @@
 
 **Track:** Platform
 
-**Status:** Scope approved; design awaiting written-spec review
+**Status:** Scope and design approved; implementation plan awaiting approval
 
 **Owner:** Baah
 
