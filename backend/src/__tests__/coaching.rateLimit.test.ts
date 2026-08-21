@@ -2,15 +2,30 @@ import express from 'express';
 import request from 'supertest';
 
 jest.mock('../services/coaching/coachingGateway', () => ({
-  estimateConfiguredCoachingUsage: jest.fn().mockReturnValue({
-    provider: 'openai', model: 'mock', inputTokens: 1, outputTokens: 1, estimatedCostUsd: 0,
-  }),
-  requestCoaching: jest.fn().mockResolvedValue({
-    requestId: '11111111-1111-4111-8111-111111111111',
-    reply: 'What changed?',
-    stance: 'nudge',
-    proposals: [],
-    usage: { provider: 'anthropic', model: 'mock', estimatedCostUsd: 0 },
+  estimateConfiguredCoachingAttempts: jest.fn().mockReturnValue([
+    {
+      attemptId: 'primary',
+      receipt: { provider: 'openai', model: 'mock', estimatedCostUsd: 0 },
+    },
+    {
+      attemptId: 'fallback',
+      receipt: { provider: 'anthropic', model: 'mock', estimatedCostUsd: 0 },
+    },
+  ]),
+  requestCoaching: jest.fn().mockImplementation(async (_request, _provider, observer) => {
+    const usage = { provider: 'anthropic', model: 'mock', estimatedCostUsd: 0 };
+    observer.beginAttempt('primary');
+    observer.settleAttempt({ attemptId: 'primary', receipt: usage });
+    return {
+      response: {
+        requestId: '11111111-1111-4111-8111-111111111111',
+        reply: 'What changed?',
+        stance: 'nudge',
+        proposals: [],
+        usage,
+      },
+      attempts: [{ attemptId: 'primary', providerId: 'anthropic' }],
+    };
   }),
 }));
 
@@ -23,8 +38,8 @@ jest.mock('../services/usage/costLedger', () => {
       dailyUsd: 1,
       monthlyUsd: 10,
     }),
-    reserveUsage: jest.fn().mockReturnValue({
-      beginProviderInvocation: jest.fn(), commit: jest.fn(), consumeEstimate: jest.fn(), release: jest.fn(),
+    reserveAttempts: jest.fn().mockReturnValue({
+      beginAttempt: jest.fn(), settleAttempt: jest.fn(), release: jest.fn(),
     }),
     recordUsage: jest.fn(),
   };

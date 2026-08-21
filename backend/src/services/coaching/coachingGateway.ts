@@ -1,14 +1,19 @@
-import type { CoachingRequest, CoachingResponse, UsageReceipt } from '@taisa/shared';
+import type { CoachingRequest, CoachingResponse } from '@taisa/shared';
 import { ZodError } from 'zod';
 import { buildSeniorSelfPrompt } from '../../prompts/system/seniorSelf';
 import { CoachingResponsePayloadSchema } from '../../schemas/coaching';
 import {
+  getConfiguredFallbackProvider,
+  type FallbackCoachingProvider,
+  type ProviderAttemptObserver,
+  type ProviderAttemptOutcome,
+} from './fallbackProvider';
+import type { AttemptEstimate } from '../usage/costLedger';
+import {
   estimateMaximumCoachingUsage,
-  getConfiguredProvider,
-  getConfiguredProviderSettings,
+  getConfiguredProviderPairSettings,
   type CoachingEnvironment,
 } from './provider';
-import type { CoachingProvider } from './provider';
 
 export class RecoverableCoachingError extends Error {
   readonly code = 'INVALID_COACHING_OUTPUT';
@@ -20,28 +25,51 @@ export class RecoverableCoachingError extends Error {
   }
 }
 
-export function estimateConfiguredCoachingUsage(
+export function estimateConfiguredCoachingAttempts(
   request: CoachingRequest,
   environment: CoachingEnvironment = process.env,
-): UsageReceipt {
-  const { providerId, config } = getConfiguredProviderSettings(environment);
+): readonly AttemptEstimate[] {
   const prompt = buildSeniorSelfPrompt(request);
-  return estimateMaximumCoachingUsage(providerId, prompt, config);
+  const { primaryId, fallbackId, configs } = getConfiguredProviderPairSettings(environment);
+  return [
+    {
+      attemptId: 'primary',
+      receipt: estimateMaximumCoachingUsage(primaryId, prompt, configs[primaryId]),
+    },
+    {
+      attemptId: 'fallback',
+      receipt: estimateMaximumCoachingUsage(fallbackId, prompt, configs[fallbackId]),
+    },
+  ];
 }
+
+export interface CoachingExecution {
+  response: CoachingResponse;
+  attempts: readonly ProviderAttemptOutcome[];
+}
+
+const NOOP_ATTEMPT_OBSERVER: ProviderAttemptObserver = {
+  beginAttempt: () => undefined,
+  settleAttempt: () => undefined,
+};
 
 export async function requestCoaching(
   request: CoachingRequest,
-  provider: CoachingProvider = getConfiguredProvider(),
-): Promise<CoachingResponse> {
+  provider: FallbackCoachingProvider = getConfiguredFallbackProvider(),
+  observer: ProviderAttemptObserver = NOOP_ATTEMPT_OBSERVER,
+): Promise<CoachingExecution> {
   const prompt = buildSeniorSelfPrompt(request);
 
   try {
-    const result = await provider.respond(prompt);
-    const payload = CoachingResponsePayloadSchema.parse(result.payload);
+    const execution = await provider.respond(prompt, observer);
+    const payload = CoachingResponsePayloadSchema.parse(execution.result.payload);
     return {
-      requestId: request.requestId,
-      ...payload,
-      usage: result.usage,
+      response: {
+        requestId: request.requestId,
+        ...payload,
+        usage: execution.result.usage,
+      },
+      attempts: execution.attempts,
     };
   } catch (error) {
     if (error instanceof ZodError) throw new RecoverableCoachingError();
