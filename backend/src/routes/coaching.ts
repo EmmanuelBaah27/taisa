@@ -16,10 +16,7 @@ const router = Router();
 
 function operationalFailureCode(error: unknown): string {
   if (error instanceof ContentFreeFallbackError) {
-    const attempts = error.attempts.map(({ attemptId, failureClass }) =>
-      `${attemptId}_${failureClass ?? 'unknown'}`.toUpperCase(),
-    );
-    return `COACHING_FAILED_${attempts.join('_')}`;
+    return 'COACHING_FALLBACK_EXHAUSTED';
   }
   const value = error as {
     status?: unknown;

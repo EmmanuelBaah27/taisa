@@ -20,6 +20,7 @@ import {
 } from '../services/coaching/coachingGateway';
 import { classifyOperationalProviderFailure } from '../services/coaching/providerFailure';
 import { buildSeniorSelfPrompt } from '../prompts/system/seniorSelf';
+import { UsageExceedsReservationError } from '../services/usage/costLedger';
 
 jest.mock('../db/connection', () => {
   throw new Error('The stateless coaching gateway must not import the backend database');
@@ -591,6 +592,49 @@ test('observer settlement failure is not misclassified as a provider failure', a
   expect(providers.openai.respond).toHaveBeenCalledTimes(1);
   expect(providers.anthropic.respond).not.toHaveBeenCalled();
   expect(observer.settleAttempt).toHaveBeenCalledTimes(1);
+});
+
+test('primary success survives a durably recorded settlement overrun without fallback', async () => {
+  const providers = providerRegistry();
+  const observer = attemptObserver();
+  const warning = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+  observer.settleAttempt.mockImplementation((settlement) => {
+    if (settlement.receipt) throw new UsageExceedsReservationError(0.001, 0.002);
+  });
+
+  const outcome = await getConfiguredFallbackProvider(
+    environment('openai'), providers,
+  ).respond(providerInput, observer);
+
+  expect(outcome.result.usage.provider).toBe('openai');
+  expect(providers.openai.respond).toHaveBeenCalledTimes(1);
+  expect(providers.anthropic.respond).not.toHaveBeenCalled();
+  expect(warning).toHaveBeenCalledWith(
+    '[Taisa diagnostic] COACHING_USAGE_EXCEEDED_RESERVATION',
+  );
+  warning.mockRestore();
+});
+
+test('fallback success survives a durably recorded settlement overrun without retry', async () => {
+  const providers = providerRegistry();
+  const observer = attemptObserver();
+  const warning = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+  providers.openai.respond = jest.fn().mockRejectedValue({ status: 503 });
+  observer.settleAttempt.mockImplementation((settlement) => {
+    if (settlement.receipt) throw new UsageExceedsReservationError(0.001, 0.002);
+  });
+
+  const outcome = await getConfiguredFallbackProvider(
+    environment('openai'), providers,
+  ).respond(providerInput, observer);
+
+  expect(outcome.result.usage.provider).toBe('anthropic');
+  expect(providers.openai.respond).toHaveBeenCalledTimes(1);
+  expect(providers.anthropic.respond).toHaveBeenCalledTimes(1);
+  expect(warning).toHaveBeenCalledWith(
+    '[Taisa diagnostic] COACHING_USAGE_EXCEEDED_RESERVATION',
+  );
+  warning.mockRestore();
 });
 
 test('both operational failures expose classifications and attempt IDs but no raw errors', async () => {
