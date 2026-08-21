@@ -214,6 +214,132 @@ export function buildManualReviewArtifact(summary: CoachingEvaluationSummary) {
   };
 }
 
+export interface CompletedManualReview {
+  scenarioId: string;
+  manualUsefulness: number;
+  inventedReferent: boolean;
+  inventedEmotion: boolean;
+  inventedParticipantOrPurpose: boolean;
+  clarificationQuestionNeutral: boolean | null;
+  proposalsGroundedInSupportedObservation: boolean | null;
+}
+
+export interface ProviderEvaluationDecision {
+  provider: CoachingProviderId;
+  packVersion: string;
+  automatedPassed: boolean;
+  manualPassed: boolean;
+  passed: boolean;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function assertExactKeys(value: Record<string, unknown>, expectedKeys: readonly string[], label: string): void {
+  const actualKeys = Object.keys(value).sort();
+  const sortedExpectedKeys = [...expectedKeys].sort();
+  if (actualKeys.length !== sortedExpectedKeys.length ||
+      actualKeys.some((key, index) => key !== sortedExpectedKeys[index])) {
+    throw new Error(`${label} has invalid fields`);
+  }
+}
+
+function assertThresholds(value: unknown): void {
+  if (!isRecord(value)) throw new Error('Evaluation thresholds are invalid');
+  assertExactKeys(value, Object.keys(COACHING_EVALUATION_THRESHOLDS), 'Evaluation thresholds');
+  for (const [key, threshold] of Object.entries(COACHING_EVALUATION_THRESHOLDS)) {
+    if (value[key] !== threshold) throw new Error('Evaluation thresholds do not match');
+  }
+}
+
+function parseCompletedReview(value: unknown): CompletedManualReview {
+  if (!isRecord(value)) throw new Error('Completed review is invalid');
+  assertExactKeys(value, [
+    'scenarioId', 'manualUsefulness', 'inventedReferent', 'inventedEmotion',
+    'inventedParticipantOrPurpose', 'clarificationQuestionNeutral',
+    'proposalsGroundedInSupportedObservation',
+  ], 'Completed review');
+  if (typeof value.scenarioId !== 'string' || value.scenarioId.length === 0 ||
+      typeof value.manualUsefulness !== 'number' || !Number.isFinite(value.manualUsefulness) ||
+      value.manualUsefulness < 0 || value.manualUsefulness > 1 ||
+      typeof value.inventedReferent !== 'boolean' || typeof value.inventedEmotion !== 'boolean' ||
+      typeof value.inventedParticipantOrPurpose !== 'boolean' ||
+      (value.clarificationQuestionNeutral !== null && typeof value.clarificationQuestionNeutral !== 'boolean') ||
+      (value.proposalsGroundedInSupportedObservation !== null &&
+        typeof value.proposalsGroundedInSupportedObservation !== 'boolean')) {
+    throw new Error('Completed review has invalid values');
+  }
+  return value as unknown as CompletedManualReview;
+}
+
+export function validateCompletedManualReview(
+  artifact: ReturnType<typeof buildManualReviewArtifact>,
+  reviews: readonly CompletedManualReview[],
+): ProviderEvaluationDecision {
+  if (!isRecord(artifact) ||
+      (artifact.provider !== 'openai' && artifact.provider !== 'anthropic') ||
+      typeof artifact.packVersion !== 'string' || artifact.packVersion.length === 0 ||
+      artifact.syntheticOnly !== true || artifact.manualReviewStatus !== 'required' ||
+      typeof artifact.automatedPassed !== 'boolean' || !Array.isArray(artifact.reviews)) {
+    throw new Error('Manual review artifact is invalid');
+  }
+  assertThresholds(artifact.thresholds);
+  if (!Array.isArray(reviews) || artifact.reviews.length === 0) {
+    throw new Error('Completed reviews are invalid');
+  }
+
+  const artifactReviews = new Map<string, { mode: unknown; proposals: readonly unknown[] }>();
+  for (const artifactReview of artifact.reviews) {
+    if (!isRecord(artifactReview) || typeof artifactReview.scenarioId !== 'string' ||
+        artifactReview.scenarioId.length === 0 || !Array.isArray(artifactReview.proposals) ||
+        artifactReviews.has(artifactReview.scenarioId)) {
+      throw new Error('Manual review artifact scenarios are invalid');
+    }
+    artifactReviews.set(artifactReview.scenarioId, {
+      mode: artifactReview.mode,
+      proposals: artifactReview.proposals,
+    });
+  }
+
+  const completedByScenario = new Map<string, CompletedManualReview>();
+  for (const rawReview of reviews as readonly unknown[]) {
+    const review = parseCompletedReview(rawReview);
+    const artifactReview = artifactReviews.get(review.scenarioId);
+    if (!artifactReview || completedByScenario.has(review.scenarioId)) {
+      throw new Error('Completed reviews must match artifact scenarios exactly once');
+    }
+    const clarificationApplicable = artifactReview.mode === 'clarify';
+    const proposalsApplicable = artifactReview.proposals.length > 0;
+    if ((clarificationApplicable && typeof review.clarificationQuestionNeutral !== 'boolean') ||
+        (!clarificationApplicable && review.clarificationQuestionNeutral !== null) ||
+        (proposalsApplicable && typeof review.proposalsGroundedInSupportedObservation !== 'boolean') ||
+        (!proposalsApplicable && review.proposalsGroundedInSupportedObservation !== null)) {
+      throw new Error('Completed review applicability does not match the artifact response');
+    }
+    completedByScenario.set(review.scenarioId, review);
+  }
+  if (completedByScenario.size !== artifactReviews.size) {
+    throw new Error('Completed reviews must match artifact scenarios exactly once');
+  }
+
+  const completed = [...completedByScenario.values()];
+  const averageUsefulness = completed.reduce((sum, review) => sum + review.manualUsefulness, 0) /
+    completed.length;
+  const manualPassed = averageUsefulness >= COACHING_EVALUATION_THRESHOLDS.manualUsefulnessMinimum &&
+    completed.every((review) => !review.inventedReferent && !review.inventedEmotion &&
+      !review.inventedParticipantOrPurpose && review.clarificationQuestionNeutral !== false &&
+      review.proposalsGroundedInSupportedObservation !== false);
+  const automatedPassed = artifact.automatedPassed;
+  return {
+    provider: artifact.provider,
+    packVersion: artifact.packVersion,
+    automatedPassed,
+    manualPassed,
+    passed: automatedPassed && manualPassed,
+  };
+}
+
 export function parseProviderArgument(argv: string[]): 'openai' | 'anthropic' {
   const providerArgument = argv.find((argument) => argument.startsWith('--provider='));
   const providerId = providerArgument?.slice('--provider='.length);
