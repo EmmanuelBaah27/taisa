@@ -76,8 +76,9 @@ describe('chat design-system surfaces', () => {
 
     expect(animatedLayers.map((node) => node.props.style)).toEqual([shellStyle, contentStyle]);
     const keyboardShell = descendants(shell).find((node) => node.type === KeyboardAvoidingView);
-    expect(String(keyboardShell?.props.className)).toContain('bg-background');
+    expect(String(keyboardShell?.props.className)).not.toContain('bg-background');
     const morphingShell = animatedLayers[0];
+    expect(String(morphingShell.props.className)).toContain('bg-background');
     expect(String(morphingShell.props.className)).not.toContain('overflow-hidden');
   });
 

@@ -44,7 +44,7 @@ export function ChatScreenShell({
 }: ChatScreenShellProps) {
   return (
     <KeyboardAvoidingView
-      className="flex-1 bg-background"
+      className="flex-1"
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
         <Animated.View className="flex-1 bg-background" style={animatedStyle}>
