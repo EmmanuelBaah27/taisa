@@ -3,7 +3,7 @@ import { ZodError } from 'zod';
 import { buildSeniorSelfPrompt } from '../../prompts/system/seniorSelf';
 import { CoachingResponsePayloadSchema } from '../../schemas/coaching';
 import {
-  estimateCostUsd,
+  estimateMaximumCoachingUsage,
   getConfiguredProvider,
   getConfiguredProviderSettings,
   type CoachingEnvironment,
@@ -26,19 +26,7 @@ export function estimateConfiguredCoachingUsage(
 ): UsageReceipt {
   const { providerId, config } = getConfiguredProviderSettings(environment);
   const prompt = buildSeniorSelfPrompt(request);
-  // One token per UTF-8 byte is a deliberately conservative upper bound.
-  const inputTokens =
-    Buffer.byteLength(prompt.systemPrompt, 'utf8') +
-    Buffer.byteLength(prompt.userPrompt, 'utf8') +
-    config.structuredOutputInputTokenOverhead;
-  const outputTokens = config.maxOutputTokens;
-  return {
-    provider: providerId,
-    model: config.model,
-    inputTokens,
-    outputTokens,
-    estimatedCostUsd: estimateCostUsd(inputTokens, outputTokens, config),
-  };
+  return estimateMaximumCoachingUsage(providerId, prompt, config);
 }
 
 export async function requestCoaching(
