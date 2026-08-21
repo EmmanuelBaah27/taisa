@@ -1,4 +1,5 @@
 import path from 'path';
+import { validateCoachingProviderStartupConfiguration } from '../services/coaching/provider';
 
 type Environment = Record<string, string | undefined>;
 
@@ -43,6 +44,7 @@ export function readProductionConfig(environment: Environment = process.env): Pr
     && uniqueDatabasePaths.size === databasePaths.length
     && feedbackKey.length === 32
     && Boolean(environment.OPENAI_API_KEY?.trim())
+    && Boolean(environment.ANTHROPIC_API_KEY?.trim())
     && positiveNumber(environment, 'TAISA_AI_COST_CEILING_PER_REQUEST_USD')
     && positiveNumber(environment, 'TAISA_AI_COST_CEILING_DAILY_USD')
     && positiveNumber(environment, 'TAISA_AI_COST_CEILING_MONTHLY_USD')
@@ -50,5 +52,6 @@ export function readProductionConfig(environment: Environment = process.env): Pr
     && positiveNumber(environment, 'TAISA_TRANSCRIPTION_MAX_UPLOAD_BYTES')
     && positiveNumber(environment, 'TAISA_TRANSCRIPTION_PRICE_USD_PER_MINUTE');
   if (!valid) throw new Error('Production configuration is incomplete');
+  validateCoachingProviderStartupConfiguration(environment);
   return { publicOrigin };
 }

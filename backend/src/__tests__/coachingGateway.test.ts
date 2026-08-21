@@ -1,5 +1,8 @@
 import type { CoachingProvider, ProviderCoachingInput } from '../services/coaching/provider';
-import { getConfiguredProvider } from '../services/coaching/provider';
+import {
+  getConfiguredProvider,
+  validateCoachingProviderStartupConfiguration,
+} from '../services/coaching/provider';
 import {
   ContentFreeFallbackError,
   ContentFreeFallbackInvalidOutputError,
@@ -769,6 +772,30 @@ test.each(
   expect(() => getConfiguredFallbackProvider(configured, providerRegistry())).toThrow(
     `${missingName} must be configured`,
   );
+});
+
+test.each(['OPENAI_API_KEY', 'ANTHROPIC_API_KEY'])(
+  'startup fails before traffic when %s is absent',
+  (missingName) => {
+    const configured = {
+      ...environment('openai'),
+      OPENAI_API_KEY: 'configured-openai-key',
+      ANTHROPIC_API_KEY: 'configured-anthropic-key',
+    } as Record<string, string | undefined>;
+    delete configured[missingName];
+
+    expect(() => validateCoachingProviderStartupConfiguration(configured)).toThrow(
+      `${missingName} must be configured`,
+    );
+  },
+);
+
+test('startup validation accepts both provider configs without constructing adapters', () => {
+  expect(validateCoachingProviderStartupConfiguration({
+    ...environment('anthropic'),
+    OPENAI_API_KEY: 'configured-openai-key',
+    ANTHROPIC_API_KEY: 'configured-anthropic-key',
+  })).toEqual({ primaryId: 'anthropic', fallbackId: 'openai' });
 });
 
 test.each([undefined, '', 'other'])(
