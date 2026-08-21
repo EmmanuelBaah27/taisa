@@ -799,6 +799,10 @@ test('parity requires exactly both providers on the same pack version to pass', 
   expect(() => buildProviderParityDecision(
     openAIPass, { ...anthropicPass, automatedPassed: false, passed: true },
   )).toThrow();
+  expect(() => buildProviderParityDecision(
+    { ...openAIPass, packVersion: 'stale-pack' },
+    { ...anthropicPass, packVersion: 'stale-pack' },
+  )).toThrow();
 });
 
 test.each([
@@ -869,6 +873,23 @@ test('parity CLI fails closed and serializes only thresholds, provider IDs, vers
   for (const marker of ['PRIVATE_PROMPT_MARKER', 'PRIVATE_RESPONSE_MARKER', 'PRIVATE_PROPOSAL_MARKER']) {
     expect(written[0]).not.toContain(marker);
   }
+
+  const staleFiles: Record<string, string> = {
+    openai: JSON.stringify({
+      ...openAIPass, packVersion: 'stale-pack', thresholds: COACHING_EVALUATION_THRESHOLDS,
+    }),
+    anthropic: JSON.stringify({
+      ...anthropicPass, packVersion: 'stale-pack', thresholds: COACHING_EVALUATION_THRESHOLDS,
+    }),
+  };
+  const staleWrite = jest.fn();
+  expect(runParityCli([
+    '--openai-decision=openai', '--anthropic-decision=anthropic', '--parity-output=parity',
+  ], {
+    readFile: (target) => staleFiles[target], writeFile: staleWrite, writeStderr,
+  })).toBe(1);
+  expect(staleWrite).not.toHaveBeenCalled();
+  expect(writeStderr).toHaveBeenLastCalledWith('EVAL_COACHING_PARITY_FAILED\n');
 
   files.anthropic = JSON.stringify({
     ...anthropicPass, manualPassed: false, passed: false, thresholds: COACHING_EVALUATION_THRESHOLDS,
