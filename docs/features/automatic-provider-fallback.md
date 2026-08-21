@@ -4,7 +4,7 @@
 
 **Track:** Platform
 
-**Status:** Scope and design approved; implementation plan awaiting approval
+**Status:** Build complete; Review + QA pending
 
 **Owner:** Baah
 
@@ -22,21 +22,21 @@ when a provider is rate-limited, unavailable, misconfigured, or out of credit.
 
 ## Acceptance criteria
 
-- [ ] `TAISA_COACHING_PROVIDER=openai` uses OpenAI first and Anthropic as the fallback.
-- [ ] `TAISA_COACHING_PROVIDER=anthropic` uses Anthropic first and OpenAI as the fallback.
-- [ ] Taisa falls back at most once and only for an allowlisted operational failure.
-- [ ] Invalid requests, policy or safety rejections, invalid structured output, local
+- [x] `TAISA_COACHING_PROVIDER=openai` uses OpenAI first and Anthropic as the fallback.
+- [x] `TAISA_COACHING_PROVIDER=anthropic` uses Anthropic first and OpenAI as the fallback.
+- [x] Taisa falls back at most once and only for an allowlisted operational failure.
+- [x] Invalid requests, policy or safety rejections, invalid structured output, local
       configuration errors, and cost-limit failures never trigger fallback.
-- [ ] The conservative maximum cost of both possible attempts is checked before either provider
+- [x] The conservative maximum cost of both possible attempts is checked before either provider
       is called.
-- [ ] One complete coaching request cannot exceed `$0.05`; durable daily and monthly ceilings
+- [x] One complete coaching request cannot exceed `$0.05`; durable daily and monthly ceilings
       remain `$1` and `$10`.
-- [ ] Logs and public errors remain content-free and do not expose provider payloads or secrets.
-- [ ] The successful response records the provider that produced it without changing the mobile
+- [x] Logs and public errors remain content-free and do not expose provider payloads or secrets.
+- [x] The successful response records the provider that produced it without changing the mobile
       coaching response contract.
 - [ ] OpenAI and Anthropic must each pass the same automated coaching rubric and manual usefulness,
       grounding, privacy, and safety review before being enabled as either primary or fallback.
-- [ ] Both provider orders and every fallback/no-fallback class are covered without paid provider
+- [x] Both provider orders and every fallback/no-fallback class are covered without paid provider
       calls in the automated test suite.
 - [ ] The verified implementation commit is integrated into and pushed to `preview/taisa`, and the
       persistent QA backend is confirmed to serve that exact revision before device QA.
@@ -57,9 +57,14 @@ evaluation pack, and durable cost ledger.
 
 ## Closeout
 
-- **Actual outcome:** Pending implementation.
-- **Plan deviations:** None recorded.
+- **Actual outcome:** Implemented ordered OpenAI/Anthropic coaching with one allowlisted automatic
+  fallback, an atomic combined request reservation, content-free failure handling, and enforceable
+  per-provider manual review plus parity decisions.
+- **Plan deviations:** Paid provider evaluation was deliberately not run because it requires a
+  separate explicit budget approval.
 - **Learnings and decisions:** See `docs/decisions/0002-automatic-coaching-provider-fallback.md`.
-- **Remaining debt:** Pending implementation and provider-parity review.
-- **Canonical docs updated:** Pending Review.
+- **Remaining debt:** Complete paid OpenAI and Anthropic parity review, integrate the verified
+  revision into `preview/taisa`, confirm the persistent runtime revision, and complete device QA.
+- **Canonical docs updated:** `SETUP.md`, `docs/architecture.md`, and `docs/api.md` document the
+  implemented provider pair, reservation, fallback policy, spend ceilings, and parity workflow.
 - **PR and merge evidence:** Pending Ship.
