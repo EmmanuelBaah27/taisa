@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-21
 
-**Status:** Approved in conversation; awaiting written-spec review
+**Status:** Approved and reviewed; implementation plan pending
 
 **Track:** Platform
 
