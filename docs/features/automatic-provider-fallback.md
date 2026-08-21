@@ -18,7 +18,8 @@ without requiring Baah to ask for a runtime switch.
 
 The provider-neutral coaching adapters already exist, but selecting a provider is currently a
 manual runtime operation. That makes device QA and daily use depend on an agent being available
-when a provider is rate-limited, unavailable, misconfigured, or out of credit.
+when a provider is rate-limited, remotely unavailable, denied by provider authentication or
+permission, or out of credit. Local configuration remains fail-closed and never triggers fallback.
 
 ## Acceptance criteria
 

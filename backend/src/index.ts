@@ -18,7 +18,7 @@ import notificationsRouter from './routes/notifications';
 import chatRouter from './routes/chat';
 import todayRouter from './routes/today';
 import coachingRouter from './routes/coaching';
-import { getConfiguredProvider } from './services/coaching/provider';
+import { validateCoachingProviderStartupConfiguration } from './services/coaching/provider';
 import { coachingRateLimit } from './middleware/coachingRateLimit';
 import { contentSafeErrorHandler, requestContext } from './middleware/requestContext';
 import { readDeviceAuthConfig, readFeedbackConfig } from './config/deviceAuth';
@@ -43,8 +43,9 @@ app.use(express.json({ limit: '10mb' }));
 // Init DB on startup
 getDb();
 
-// Validate provider, model, and pricing configuration before accepting traffic.
-getConfiguredProvider();
+// Validate both provider credentials, models, and pricing configuration without constructing an
+// adapter before accepting traffic.
+validateCoachingProviderStartupConfiguration();
 
 const deviceAuthConfig = readDeviceAuthConfig();
 let deviceCredentialStore: DeviceCredentialStore | null = null;

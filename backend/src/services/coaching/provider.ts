@@ -97,6 +97,15 @@ export function getConfiguredProviderPairSettings(
   };
 }
 
+export function validateCoachingProviderStartupConfiguration(
+  environment: CoachingEnvironment = process.env,
+): { primaryId: CoachingProviderId; fallbackId: CoachingProviderId } {
+  const { primaryId, fallbackId } = getConfiguredProviderPairSettings(environment);
+  requireValue(environment, 'OPENAI_API_KEY');
+  requireValue(environment, 'ANTHROPIC_API_KEY');
+  return { primaryId, fallbackId };
+}
+
 export function getConfiguredProviderSettings(
   environment: CoachingEnvironment = process.env,
 ): { providerId: CoachingProviderId; config: CoachingProviderConfig } {
