@@ -709,7 +709,11 @@ test.each([
 
 test.each([
   { status: 400, type: 'invalid_request_error' },
+  { status: 400, type: 'provider_error' },
   { status: 403, type: 'safety_error' },
+  { status: 503, type: 'content_policy_error' },
+  { status: 503, type: 'invalid_request_error' },
+  { status: 503, type: 'safety_error' },
   { type: 'content_policy_error' },
   { code: 'UNKNOWN_PRIVATE_CODE' },
   new Error('message text is never classification input'),

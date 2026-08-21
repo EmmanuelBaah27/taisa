@@ -23,7 +23,6 @@ const TYPE_CLASSES: Record<string, OperationalFailureClass> = {
   authentication_error: 'authentication',
   permission_error: 'permission',
   billing_error: 'billing',
-  provider_error: 'unavailable',
 };
 
 const NAME_CLASSES: Record<string, OperationalFailureClass> = {
