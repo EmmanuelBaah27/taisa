@@ -1,4 +1,9 @@
 import type { CoachingProvider, ProviderCoachingInput } from '../services/coaching/provider';
+import OpenAI from 'openai';
+import {
+  ContentFilterFinishReasonError as OpenAIContentFilterFinishReasonError,
+} from 'openai/error';
+import Anthropic from '@anthropic-ai/sdk';
 import {
   getConfiguredProvider,
   validateCoachingProviderStartupConfiguration,
@@ -237,6 +242,226 @@ function attemptObserver() {
 function other(providerId: 'openai' | 'anthropic') {
   return providerId === 'openai' ? 'anthropic' as const : 'openai' as const;
 }
+
+function sdkAdapterRejecting(
+  providerId: 'openai' | 'anthropic',
+  failure: unknown,
+): CoachingProvider {
+  if (providerId === 'openai') {
+    return createOpenAIProvider(openAIConfig, {
+      beta: {
+        chat: {
+          completions: {
+            parse: jest.fn().mockRejectedValue(failure),
+          },
+        },
+      },
+    } as any);
+  }
+  return createAnthropicProvider(anthropicConfig, {
+    messages: {
+      create: jest.fn().mockRejectedValue(failure),
+    },
+  } as any);
+}
+
+const sdkHeaders = {} as any;
+const sdkFailureSecret = 'SDK_FAILURE_SECRET';
+
+const sdkOperationalFailureCases = [
+  [
+    'OpenAI connection',
+    'openai',
+    () => new OpenAI.APIConnectionError({
+      message: sdkFailureSecret,
+      cause: new Error(sdkFailureSecret),
+    }),
+    'network',
+  ],
+  [
+    'OpenAI timeout',
+    'openai',
+    () => new OpenAI.APIConnectionTimeoutError({ message: sdkFailureSecret }),
+    'timeout',
+  ],
+  [
+    'OpenAI rate limit',
+    'openai',
+    () => new OpenAI.RateLimitError(429, {
+      message: sdkFailureSecret,
+      type: 'rate_limit_error',
+    }, sdkFailureSecret, sdkHeaders),
+    'rate_limit',
+  ],
+  [
+    'OpenAI authentication',
+    'openai',
+    () => new OpenAI.AuthenticationError(401, {
+      message: sdkFailureSecret,
+      type: 'authentication_error',
+    }, sdkFailureSecret, sdkHeaders),
+    'authentication',
+  ],
+  [
+    'OpenAI permission',
+    'openai',
+    () => new OpenAI.PermissionDeniedError(403, {
+      message: sdkFailureSecret,
+      type: 'permission_error',
+    }, sdkFailureSecret, sdkHeaders),
+    'permission',
+  ],
+  [
+    'OpenAI billing',
+    'openai',
+    () => new OpenAI.BadRequestError(400, {
+      message: sdkFailureSecret,
+      type: 'billing_error',
+    }, sdkFailureSecret, sdkHeaders),
+    'billing',
+  ],
+  [
+    'OpenAI unavailable',
+    'openai',
+    () => new OpenAI.InternalServerError(503, {
+      message: sdkFailureSecret,
+      type: 'server_error',
+    }, sdkFailureSecret, sdkHeaders),
+    'unavailable',
+  ],
+  [
+    'Anthropic connection',
+    'anthropic',
+    () => new Anthropic.APIConnectionError({
+      message: sdkFailureSecret,
+      cause: new Error(sdkFailureSecret),
+    }),
+    'network',
+  ],
+  [
+    'Anthropic timeout',
+    'anthropic',
+    () => new Anthropic.APIConnectionTimeoutError({ message: sdkFailureSecret }),
+    'timeout',
+  ],
+  [
+    'Anthropic rate limit',
+    'anthropic',
+    () => new Anthropic.RateLimitError(429, {
+      type: 'error',
+      error: { type: 'rate_limit_error', message: sdkFailureSecret },
+    }, sdkFailureSecret, sdkHeaders),
+    'rate_limit',
+  ],
+  [
+    'Anthropic authentication',
+    'anthropic',
+    () => new Anthropic.AuthenticationError(401, {
+      type: 'error',
+      error: { type: 'authentication_error', message: sdkFailureSecret },
+    }, sdkFailureSecret, sdkHeaders),
+    'authentication',
+  ],
+  [
+    'Anthropic permission',
+    'anthropic',
+    () => new Anthropic.PermissionDeniedError(403, {
+      type: 'error',
+      error: { type: 'permission_error', message: sdkFailureSecret },
+    }, sdkFailureSecret, sdkHeaders),
+    'permission',
+  ],
+  [
+    'Anthropic billing',
+    'anthropic',
+    () => new Anthropic.BadRequestError(400, {
+      type: 'error',
+      error: { type: 'billing_error', message: sdkFailureSecret },
+    }, sdkFailureSecret, sdkHeaders),
+    'billing',
+  ],
+  [
+    'Anthropic overloaded',
+    'anthropic',
+    () => new Anthropic.InternalServerError(529, {
+      type: 'error',
+      error: { type: 'overloaded_error', message: sdkFailureSecret },
+    }, sdkFailureSecret, sdkHeaders),
+    'overloaded',
+  ],
+  [
+    'Anthropic unavailable',
+    'anthropic',
+    () => new Anthropic.InternalServerError(503, {
+      type: 'error',
+      error: { type: 'api_error', message: sdkFailureSecret },
+    }, sdkFailureSecret, sdkHeaders),
+    'unavailable',
+  ],
+] as const;
+
+const sdkDeniedFailureCases = [
+  [
+    'OpenAI content-filter finish reason',
+    'openai',
+    () => new OpenAIContentFilterFinishReasonError(),
+    'content_policy_error',
+  ],
+  [
+    'OpenAI invalid request',
+    'openai',
+    () => new OpenAI.BadRequestError(400, {
+      message: sdkFailureSecret,
+      type: 'invalid_request_error',
+    }, sdkFailureSecret, sdkHeaders),
+    'invalid_request_error',
+  ],
+  [
+    'OpenAI policy rejection despite server status',
+    'openai',
+    () => new OpenAI.InternalServerError(503, {
+      message: sdkFailureSecret,
+      type: 'content_policy_error',
+    }, sdkFailureSecret, sdkHeaders),
+    'content_policy_error',
+  ],
+  [
+    'OpenAI safety rejection despite server status',
+    'openai',
+    () => new OpenAI.InternalServerError(503, {
+      message: sdkFailureSecret,
+      type: 'safety_error',
+    }, sdkFailureSecret, sdkHeaders),
+    'safety_error',
+  ],
+  [
+    'Anthropic invalid request',
+    'anthropic',
+    () => new Anthropic.BadRequestError(400, {
+      type: 'error',
+      error: { type: 'invalid_request_error', message: sdkFailureSecret },
+    }, sdkFailureSecret, sdkHeaders),
+    'invalid_request_error',
+  ],
+  [
+    'Anthropic policy rejection despite server status',
+    'anthropic',
+    () => new Anthropic.InternalServerError(529, {
+      type: 'error',
+      error: { type: 'content_policy_error', message: sdkFailureSecret },
+    }, sdkFailureSecret, sdkHeaders),
+    'content_policy_error',
+  ],
+  [
+    'Anthropic safety rejection despite server status',
+    'anthropic',
+    () => new Anthropic.InternalServerError(529, {
+      type: 'error',
+      error: { type: 'safety_error', message: sdkFailureSecret },
+    }, sdkFailureSecret, sdkHeaders),
+    'safety_error',
+  ],
+] as const;
 
 const operationalFailures = [
   ['timeout', { status: 408 }, 'timeout'],
@@ -507,6 +732,66 @@ test.each(['openai', 'anthropic'] as const)(
     expect(observer.settleAttempt.mock.calls).toEqual([[
       { attemptId: 'primary', receipt: providerResult(primaryId).usage },
     ]]);
+  },
+);
+
+test.each(sdkOperationalFailureCases)(
+  '%s SDK failure is normalized before one fallback attempt',
+  async (_name, primaryId, failureFactory, expectedFailureClass) => {
+    const adapter = sdkAdapterRejecting(primaryId, failureFactory());
+    let normalizedFailure: unknown;
+    try {
+      await adapter.respond(providerInput);
+    } catch (error) {
+      normalizedFailure = error;
+    }
+    expect(classifyOperationalProviderFailure(normalizedFailure)).toBe(
+      expectedFailureClass,
+    );
+    expect(normalizedFailure).not.toHaveProperty('message');
+    expect(normalizedFailure).not.toHaveProperty('cause');
+    expect(normalizedFailure).not.toHaveProperty('error');
+    expect(normalizedFailure).not.toHaveProperty('headers');
+    expect(JSON.stringify(normalizedFailure)).not.toContain(sdkFailureSecret);
+
+    const providers = providerRegistry();
+    const observer = attemptObserver();
+    providers[primaryId] = sdkAdapterRejecting(primaryId, failureFactory());
+
+    const outcome = await getConfiguredFallbackProvider(
+      environment(primaryId), providers,
+    ).respond(providerInput, observer);
+
+    expect(outcome.result.usage.provider).toBe(other(primaryId));
+    expect(outcome.attempts[0]).toEqual({
+      attemptId: 'primary',
+      providerId: primaryId,
+      failureClass: expectedFailureClass,
+    });
+    expect(JSON.stringify(outcome.attempts)).not.toContain(sdkFailureSecret);
+    expect(providers[other(primaryId)].respond).toHaveBeenCalledTimes(1);
+  },
+);
+
+test.each(sdkDeniedFailureCases)(
+  '%s remains content-free and never invokes fallback',
+  async (_name, primaryId, failureFactory, expectedType) => {
+    const providers = providerRegistry();
+    const observer = attemptObserver();
+    providers[primaryId] = sdkAdapterRejecting(primaryId, failureFactory());
+
+    let thrown: unknown;
+    try {
+      await getConfiguredFallbackProvider(
+        environment(primaryId), providers,
+      ).respond(providerInput, observer);
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toEqual({ type: expectedType });
+    expect(JSON.stringify(thrown)).not.toContain(sdkFailureSecret);
+    expect(providers[other(primaryId)].respond).not.toHaveBeenCalled();
   },
 );
 
