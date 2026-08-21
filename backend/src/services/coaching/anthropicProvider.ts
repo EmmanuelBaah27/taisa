@@ -8,6 +8,7 @@ import type {
   ProviderCoachingInput,
 } from './provider';
 import { estimateCostUsd, estimateMaximumCoachingUsage } from './provider';
+import { normalizeAnthropicSdkFailure } from './providerSdkFailure';
 
 type AnthropicClient = Pick<Anthropic, 'messages'>;
 
@@ -230,27 +231,32 @@ export function createAnthropicProvider(
     id: 'anthropic',
     estimateMaximumUsage: (input) => estimateMaximumCoachingUsage('anthropic', input, config),
     async respond(input: ProviderCoachingInput) {
-      const message = await client.messages.create(
-        {
-          model: config.model,
-          max_tokens: config.maxOutputTokens,
-          system: input.systemPrompt,
-          messages: [{ role: 'user', content: input.userPrompt }],
-          tools: [
-            {
+      let message;
+      try {
+        message = await client.messages.create(
+          {
+            model: config.model,
+            max_tokens: config.maxOutputTokens,
+            system: input.systemPrompt,
+            messages: [{ role: 'user', content: input.userPrompt }],
+            tools: [
+              {
+                name: 'submit_coaching_response',
+                description: 'Return the structured coaching response for this submitted turn.',
+                input_schema: COACHING_RESPONSE_INPUT_SCHEMA,
+              },
+            ],
+            tool_choice: {
+              type: 'tool',
               name: 'submit_coaching_response',
-              description: 'Return the structured coaching response for this submitted turn.',
-              input_schema: COACHING_RESPONSE_INPUT_SCHEMA,
+              disable_parallel_tool_use: true,
             },
-          ],
-          tool_choice: {
-            type: 'tool',
-            name: 'submit_coaching_response',
-            disable_parallel_tool_use: true,
           },
-        },
-        { maxRetries: 0 },
-      );
+          { maxRetries: 0 },
+        );
+      } catch (error) {
+        throw normalizeAnthropicSdkFailure(error);
+      }
 
       const toolUse = message.content.find(
         (block) => block.type === 'tool_use' && block.name === 'submit_coaching_response',
