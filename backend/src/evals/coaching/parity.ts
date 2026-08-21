@@ -1,5 +1,6 @@
 import { readFileSync, writeFileSync } from 'fs';
 import { COACHING_EVALUATION_THRESHOLDS, type ProviderEvaluationDecision } from './run';
+import { COACHING_EVALUATION_PACK_VERSION } from './scenarios';
 
 export type { ProviderEvaluationDecision } from './run';
 
@@ -82,6 +83,10 @@ export function buildProviderParityDecision(
   const normalizedAnthropic = normalizeProviderDecision(anthropic, 'anthropic');
   if (normalizedOpenAI.packVersion !== normalizedAnthropic.packVersion) {
     throw new Error('Provider evaluation pack versions must match');
+  }
+  if (normalizedOpenAI.packVersion !== COACHING_EVALUATION_PACK_VERSION ||
+      normalizedAnthropic.packVersion !== COACHING_EVALUATION_PACK_VERSION) {
+    throw new Error('Provider evaluation pack version must match the current coaching evaluation pack');
   }
   return {
     packVersion: normalizedOpenAI.packVersion,
