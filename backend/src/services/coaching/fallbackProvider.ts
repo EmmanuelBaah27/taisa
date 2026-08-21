@@ -47,13 +47,26 @@ export interface FallbackCoachingProvider {
 
 export interface ContentFreeFailedAttempt {
   attemptId: AttemptEstimate['attemptId'];
-  failureClass?: OperationalFailureClass;
+  failureClass?: OperationalFailureClass | 'invalid_output';
 }
 
 export class ContentFreeFallbackError extends Error {
   constructor(readonly attempts: readonly ContentFreeFailedAttempt[]) {
     super('Both coaching provider attempts failed');
     this.name = 'ContentFreeFallbackError';
+  }
+}
+
+export class ContentFreeFallbackInvalidOutputError extends ContentFreeFallbackError {
+  readonly code = 'INVALID_COACHING_OUTPUT';
+  readonly recoverable = true;
+
+  constructor(primaryFailureClass: OperationalFailureClass) {
+    super([
+      { attemptId: 'primary', failureClass: primaryFailureClass },
+      { attemptId: 'fallback', failureClass: 'invalid_output' },
+    ]);
+    this.name = 'ContentFreeFallbackInvalidOutputError';
   }
 }
 
@@ -158,7 +171,9 @@ export function getConfiguredFallbackProvider(
         });
         return { result: fallbackAttempt.result, attempts };
       }
-      if (fallbackAttempt.error instanceof ZodError) throw fallbackAttempt.error;
+      if (fallbackAttempt.error instanceof ZodError) {
+        throw new ContentFreeFallbackInvalidOutputError(primaryFailureClass);
+      }
       const fallbackFailureClass = classifyOperationalProviderFailure(fallbackAttempt.error);
       throw new ContentFreeFallbackError([
         { attemptId: 'primary', failureClass: primaryFailureClass },
