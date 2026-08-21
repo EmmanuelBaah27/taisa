@@ -580,6 +580,31 @@ describe('content-free usage ledger', () => {
     audioSeconds: 60,
     estimatedCostUsd: 0.006,
   };
+  const attemptEstimates = [
+    {
+      attemptId: 'primary' as const,
+      receipt: { provider: 'openai' as const, model: 'o', estimatedCostUsd: 0.03 },
+    },
+    {
+      attemptId: 'fallback' as const,
+      receipt: { provider: 'anthropic' as const, model: 'a', estimatedCostUsd: 0.02 },
+    },
+  ];
+  const ceilings = { perRequestUsd: 0.05, dailyUsd: 1, monthlyUsd: 10 };
+  const primaryActual: UsageReceipt = {
+    provider: 'openai',
+    model: 'o',
+    inputTokens: 12,
+    outputTokens: 8,
+    estimatedCostUsd: 0.018,
+  };
+  const fallbackActual: UsageReceipt = {
+    provider: 'anthropic',
+    model: 'a',
+    inputTokens: 13,
+    outputTokens: 9,
+    estimatedCostUsd: 0.017,
+  };
 
   test('strips fields outside UsageReceipt before recording', () => {
     const databasePath = createLedgerPath();
@@ -627,6 +652,162 @@ describe('content-free usage ledger', () => {
     ).not.toThrow();
     ledger.close();
     fs.rmSync(databasePath, { force: true });
+  });
+
+  test('reserves both attempt maxima as one request before provider work', () => {
+    const ledger = new CostLedger();
+    const reservation = ledger.reserveAttempts(attemptEstimates, ceilings);
+
+    expect(() =>
+      ledger.reserveUsage(
+        { provider: 'openai', model: 'next', estimatedCostUsd: 0.96 },
+        { perRequestUsd: 1, dailyUsd: 1, monthlyUsd: 10 },
+      ),
+    ).toThrow(CostLimitError);
+
+    reservation.release();
+    ledger.close();
+  });
+
+  test('includes legacy reservations when checking multi-attempt daily and monthly totals', () => {
+    const ledger = new CostLedger();
+    const legacyReservation = ledger.reserveUsage(
+      { provider: 'openai', model: 'legacy', estimatedCostUsd: 0.96 },
+      { perRequestUsd: 1, dailyUsd: 1, monthlyUsd: 1 },
+    );
+
+    expect(() =>
+      ledger.reserveAttempts(attemptEstimates, {
+        perRequestUsd: 0.05,
+        dailyUsd: 1,
+        monthlyUsd: 1,
+      }),
+    ).toThrow(CostLimitError);
+
+    legacyReservation.release();
+    ledger.close();
+  });
+
+  test('rejects the whole request when combined attempt maxima exceed the per-request ceiling', () => {
+    const ledger = new CostLedger();
+
+    expect(() =>
+      ledger.reserveAttempts(
+        [
+          {
+            attemptId: 'primary',
+            receipt: { provider: 'openai', model: 'o', estimatedCostUsd: 0.03 },
+          },
+          {
+            attemptId: 'fallback',
+            receipt: { provider: 'anthropic', model: 'a', estimatedCostUsd: 0.021 },
+          },
+        ],
+        ceilings,
+      ),
+    ).toThrow(CostLimitError);
+    expect(ledger.listUsage()).toEqual([]);
+    ledger.close();
+  });
+
+  test('records actual primary success and no unused fallback estimate', () => {
+    const ledger = new CostLedger();
+    const reservation = ledger.reserveAttempts(attemptEstimates, ceilings);
+
+    reservation.beginAttempt('primary');
+    reservation.settleAttempt({ attemptId: 'primary', receipt: primaryActual });
+    reservation.release();
+
+    expect(ledger.listUsage().map(({ receipt: storedReceipt }) => storedReceipt)).toEqual([
+      primaryActual,
+    ]);
+    ledger.close();
+  });
+
+  test('records failed primary estimate and actual fallback usage separately', () => {
+    const ledger = new CostLedger();
+    const reservation = ledger.reserveAttempts(attemptEstimates, ceilings);
+
+    reservation.beginAttempt('primary');
+    reservation.settleAttempt({ attemptId: 'primary' });
+    reservation.beginAttempt('fallback');
+    reservation.settleAttempt({ attemptId: 'fallback', receipt: fallbackActual });
+    reservation.release();
+
+    expect(ledger.listUsage().map(({ receipt: storedReceipt }) => storedReceipt)).toEqual([
+      attemptEstimates[0].receipt,
+      fallbackActual,
+    ]);
+    ledger.close();
+  });
+
+  test('recovers only the in-flight primary estimate after restart', () => {
+    const databasePath = createLedgerPath();
+    const first = new CostLedger({ databasePath });
+    const reservation = first.reserveAttempts(attemptEstimates, ceilings);
+    reservation.beginAttempt('primary');
+    first.close();
+
+    const restarted = new CostLedger({ databasePath });
+    expect(restarted.listUsage().map(({ receipt: storedReceipt }) => storedReceipt)).toEqual([
+      attemptEstimates[0].receipt,
+    ]);
+    restarted.close();
+    fs.rmSync(databasePath, { force: true });
+  });
+
+  test('recovers both conservative estimates after fallback begins before restart', () => {
+    const databasePath = createLedgerPath();
+    const first = new CostLedger({ databasePath });
+    const reservation = first.reserveAttempts(attemptEstimates, ceilings);
+    reservation.beginAttempt('primary');
+    reservation.settleAttempt({ attemptId: 'primary' });
+    reservation.beginAttempt('fallback');
+    first.close();
+
+    const restarted = new CostLedger({ databasePath });
+    expect(restarted.listUsage().map(({ receipt: storedReceipt }) => storedReceipt)).toEqual([
+      attemptEstimates[0].receipt,
+      attemptEstimates[1].receipt,
+    ]);
+    restarted.close();
+    fs.rmSync(databasePath, { force: true });
+  });
+
+  test('rejects invalid multi-attempt IDs and ordering without recording usage', () => {
+    const ledger = new CostLedger();
+
+    expect(() =>
+      ledger.reserveAttempts(
+        [attemptEstimates[0], { ...attemptEstimates[0] }],
+        ceilings,
+      ),
+    ).toThrow('exactly one primary and one fallback');
+    expect(() =>
+      ledger.reserveAttempts(
+        [
+          attemptEstimates[0],
+          { attemptId: 'unknown' as any, receipt: attemptEstimates[1].receipt },
+        ],
+        ceilings,
+      ),
+    ).toThrow('exactly one primary and one fallback');
+
+    const reservation = ledger.reserveAttempts(attemptEstimates, ceilings);
+    expect(() => reservation.beginAttempt('fallback')).toThrow('primary must begin first');
+    expect(() => reservation.settleAttempt({ attemptId: 'primary' })).toThrow('not in flight');
+    expect(ledger.listUsage()).toEqual([]);
+
+    reservation.beginAttempt('primary');
+    reservation.settleAttempt({ attemptId: 'primary' });
+    expect(() => reservation.beginAttempt('primary')).toThrow('already settled');
+    expect(() => reservation.settleAttempt({ attemptId: 'unknown' as any })).toThrow('Unknown attempt');
+    expect(ledger.listUsage().map(({ receipt: storedReceipt }) => storedReceipt)).toEqual([
+      attemptEstimates[0].receipt,
+    ]);
+
+    reservation.release();
+    ledger.close();
   });
 
   test('keeps successful usage in its reserved UTC day across a day rollover', () => {
