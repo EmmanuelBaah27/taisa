@@ -16,6 +16,7 @@ import {
   runEvaluationCli,
   serializeEvaluationSummary,
   buildManualReviewArtifact,
+  COACHING_EVALUATION_THRESHOLDS,
   type CoachingEvaluationSummary,
 } from '../evals/coaching/run';
 import { CostLedger } from '../services/usage/costLedger';
@@ -23,6 +24,16 @@ import { CoachingRequestSchema } from '../schemas/coaching';
 import { mkdtempSync, readFileSync } from 'fs';
 import os from 'os';
 import path from 'path';
+import {
+  runReviewCli,
+  validateCompletedManualReview,
+  type CompletedManualReview,
+} from '../evals/coaching/review';
+import {
+  buildProviderParityDecision,
+  runParityCli,
+  type ProviderEvaluationDecision,
+} from '../evals/coaching/parity';
 
 const successfulPayload = {
   mode: 'coach' as const,
@@ -624,4 +635,183 @@ test('the command-line parser requires a finite positive evaluation budget', () 
   expect(parseEvaluationBudgetArgument(['--max-cost-usd=0.25'])).toBe(0.25);
   expect(() => parseEvaluationBudgetArgument(['--provider=openai'])).toThrow('explicit --max-cost-usd');
   expect(() => parseEvaluationBudgetArgument(['--max-cost-usd=0'])).toThrow('positive finite number');
+});
+
+function completedReviewArtifact(provider: 'openai' | 'anthropic' = 'openai') {
+  return {
+    packVersion: '2026-08-13.v3', provider, syntheticOnly: true,
+    thresholds: COACHING_EVALUATION_THRESHOLDS, automatedPassed: true,
+    manualReviewStatus: 'required' as const,
+    reviews: [
+      {
+        scenarioId: 'clarify-scenario', coverage: [], syntheticInput: 'Synthetic clarify input.',
+        response: 'Which meeting do you mean?', mode: 'clarify' as const,
+        relevance: 'outside-scope' as const, contextSufficiency: 'insufficient' as const,
+        stance: null, proposals: [], manualUsefulness: null, inventedReferent: null,
+        inventedEmotion: null, inventedParticipantOrPurpose: null,
+        clarificationQuestionNeutral: null, proposalsGroundedInSupportedObservation: null,
+      },
+      {
+        scenarioId: 'proposal-scenario', coverage: [], syntheticInput: 'Synthetic proposal input.',
+        response: 'Draft the handoff.', mode: 'coach' as const,
+        relevance: 'career-relevant' as const, contextSufficiency: 'sufficient' as const,
+        stance: 'nudge' as const, proposals: [{ operation: 'synthetic-proposal' }],
+        manualUsefulness: null, inventedReferent: null, inventedEmotion: null,
+        inventedParticipantOrPurpose: null, clarificationQuestionNeutral: null,
+        proposalsGroundedInSupportedObservation: null,
+      },
+    ],
+  } as unknown as ReturnType<typeof buildManualReviewArtifact>;
+}
+
+const passingCompletedReviews: readonly CompletedManualReview[] = [
+  {
+    scenarioId: 'clarify-scenario', manualUsefulness: 0.8,
+    inventedReferent: false, inventedEmotion: false, inventedParticipantOrPurpose: false,
+    clarificationQuestionNeutral: true, proposalsGroundedInSupportedObservation: null,
+  },
+  {
+    scenarioId: 'proposal-scenario', manualUsefulness: 0.8,
+    inventedReferent: false, inventedEmotion: false, inventedParticipantOrPurpose: false,
+    clarificationQuestionNeutral: null, proposalsGroundedInSupportedObservation: true,
+  },
+];
+
+function reviewsWith(
+  scenarioId: string,
+  change: Partial<CompletedManualReview>,
+): readonly CompletedManualReview[] {
+  return passingCompletedReviews.map((review) => review.scenarioId === scenarioId
+    ? { ...review, ...change }
+    : review);
+}
+
+test('manual provider review passes at the shared usefulness and applicable grounding floor', () => {
+  expect(validateCompletedManualReview(completedReviewArtifact(), passingCompletedReviews)).toEqual({
+    provider: 'openai', packVersion: '2026-08-13.v3',
+    automatedPassed: true, manualPassed: true, passed: true,
+  });
+});
+
+test.each([
+  ['usefulness below 0.8', reviewsWith('clarify-scenario', { manualUsefulness: 0.79 })],
+  ['invented referent', reviewsWith('clarify-scenario', { inventedReferent: true })],
+  ['invented emotion', reviewsWith('clarify-scenario', { inventedEmotion: true })],
+  ['invented participant', reviewsWith('clarify-scenario', { inventedParticipantOrPurpose: true })],
+  ['non-neutral clarification', reviewsWith('clarify-scenario', { clarificationQuestionNeutral: false })],
+  ['ungrounded proposal', reviewsWith('proposal-scenario', { proposalsGroundedInSupportedObservation: false })],
+])('manual provider review fails for %s', (_name, reviews) => {
+  expect(validateCompletedManualReview(completedReviewArtifact(), reviews).passed).toBe(false);
+});
+
+test.each([
+  ['missing scenario', passingCompletedReviews.slice(0, 1)],
+  ['duplicate scenario', [...passingCompletedReviews, passingCompletedReviews[0]]],
+  ['extra scenario', [...passingCompletedReviews, { ...passingCompletedReviews[0], scenarioId: 'extra' }]],
+])('manual provider review rejects %s evidence', (_name, reviews) => {
+  expect(() => validateCompletedManualReview(completedReviewArtifact(), reviews)).toThrow();
+});
+
+test('manual review fields are non-null exactly when the artifact response makes them applicable', () => {
+  expect(() => validateCompletedManualReview(
+    completedReviewArtifact(), reviewsWith('proposal-scenario', { clarificationQuestionNeutral: true }),
+  )).toThrow();
+  expect(() => validateCompletedManualReview(
+    completedReviewArtifact(), reviewsWith('clarify-scenario', { proposalsGroundedInSupportedObservation: true }),
+  )).toThrow();
+  expect(() => validateCompletedManualReview(
+    completedReviewArtifact(), reviewsWith('clarify-scenario', { clarificationQuestionNeutral: null }),
+  )).toThrow();
+  expect(() => validateCompletedManualReview(
+    completedReviewArtifact(), reviewsWith('proposal-scenario', { proposalsGroundedInSupportedObservation: null }),
+  )).toThrow();
+});
+
+const openAIPass: ProviderEvaluationDecision = {
+  provider: 'openai', packVersion: '2026-08-13.v3', automatedPassed: true, manualPassed: true, passed: true,
+};
+const anthropicPass: ProviderEvaluationDecision = {
+  provider: 'anthropic', packVersion: '2026-08-13.v3', automatedPassed: true, manualPassed: true, passed: true,
+};
+
+test('parity requires exactly both providers on the same pack version to pass', () => {
+  expect(buildProviderParityDecision(openAIPass, anthropicPass)).toEqual({
+    packVersion: '2026-08-13.v3', passed: true, providers: [openAIPass, anthropicPass],
+  });
+  expect(buildProviderParityDecision(openAIPass, { ...anthropicPass, passed: false }).passed).toBe(false);
+  expect(() => buildProviderParityDecision(
+    openAIPass, { ...anthropicPass, packVersion: 'other' },
+  )).toThrow('Provider evaluation pack versions must match');
+  expect(() => buildProviderParityDecision(
+    { ...openAIPass, provider: 'anthropic' }, anthropicPass,
+  )).toThrow();
+  expect(() => buildProviderParityDecision(
+    { ...openAIPass, passed: 'yes' as unknown as boolean }, anthropicPass,
+  )).toThrow();
+});
+
+test('review CLI requires exact flags and writes only a content-free passing decision without overwrite', () => {
+  const written: Array<{ target: string; output: string; options: { flag: 'wx' } }> = [];
+  const writeStderr = jest.fn();
+  const files: Record<string, string> = {
+    artifact: JSON.stringify(completedReviewArtifact()),
+    reviews: JSON.stringify(passingCompletedReviews),
+  };
+  const exitCode = runReviewCli([
+    '--artifact=artifact', '--completed-review=reviews', '--decision-output=decision',
+  ], {
+    readFile: (target) => files[target],
+    writeFile: (target, output, options) => written.push({ target, output, options }),
+    writeStderr,
+  });
+
+  expect(exitCode).toBe(0);
+  expect(writeStderr).not.toHaveBeenCalled();
+  expect(written).toHaveLength(1);
+  expect(written[0]).toEqual(expect.objectContaining({ target: 'decision', options: { flag: 'wx' } }));
+  expect(Object.keys(JSON.parse(written[0].output)).sort()).toEqual([
+    'automatedPassed', 'manualPassed', 'packVersion', 'passed', 'provider', 'thresholds',
+  ]);
+  expect(written[0].output).not.toContain('Synthetic');
+
+  expect(runReviewCli([
+    '--artifact=artifact', '--completed-review=reviews', '--completed-review=reviews', '--decision-output=decision',
+  ], { readFile: (target) => files[target], writeFile: jest.fn(), writeStderr })).toBe(1);
+  expect(writeStderr).toHaveBeenLastCalledWith('EVAL_COACHING_REVIEW_FAILED\n');
+
+  files.artifact = JSON.stringify({ ...completedReviewArtifact(), syntheticOnly: false });
+  expect(runReviewCli([
+    '--artifact=artifact', '--completed-review=reviews', '--decision-output=decision',
+  ], { readFile: (target) => files[target], writeFile: jest.fn(), writeStderr })).toBe(1);
+  expect(writeStderr).toHaveBeenLastCalledWith('EVAL_COACHING_REVIEW_FAILED\n');
+});
+
+test('parity CLI fails closed and serializes only thresholds, provider IDs, versions, and booleans', () => {
+  const written: string[] = [];
+  const writeStderr = jest.fn();
+  const files: Record<string, string> = {
+    openai: JSON.stringify({ ...openAIPass, thresholds: COACHING_EVALUATION_THRESHOLDS }),
+    anthropic: JSON.stringify({ ...anthropicPass, thresholds: COACHING_EVALUATION_THRESHOLDS }),
+  };
+
+  expect(runParityCli([
+    '--openai-decision=openai', '--anthropic-decision=anthropic', '--parity-output=parity',
+  ], {
+    readFile: (target) => files[target],
+    writeFile: (_target, output, options) => {
+      expect(options).toEqual({ flag: 'wx' });
+      written.push(output);
+    },
+    writeStderr,
+  })).toBe(0);
+  expect(writeStderr).not.toHaveBeenCalled();
+  expect(Object.keys(JSON.parse(written[0])).sort()).toEqual(['packVersion', 'passed', 'providers', 'thresholds']);
+  expect(written[0]).not.toContain('prompt');
+  expect(written[0]).not.toContain('response');
+
+  files.anthropic = JSON.stringify({ ...anthropicPass, passed: false, thresholds: COACHING_EVALUATION_THRESHOLDS });
+  expect(runParityCli([
+    '--openai-decision=openai', '--anthropic-decision=anthropic', '--parity-output=parity',
+  ], { readFile: (target) => files[target], writeFile: jest.fn(), writeStderr })).toBe(1);
+  expect(writeStderr).toHaveBeenLastCalledWith('EVAL_COACHING_PARITY_FAILED\n');
 });
