@@ -279,7 +279,7 @@ export function validateCompletedManualReview(
 ): ProviderEvaluationDecision {
   if (!isRecord(artifact) ||
       (artifact.provider !== 'openai' && artifact.provider !== 'anthropic') ||
-      typeof artifact.packVersion !== 'string' || artifact.packVersion.length === 0 ||
+      artifact.packVersion !== COACHING_EVALUATION_PACK_VERSION ||
       artifact.syntheticOnly !== true || artifact.manualReviewStatus !== 'required' ||
       typeof artifact.automatedPassed !== 'boolean' || !Array.isArray(artifact.reviews)) {
     throw new Error('Manual review artifact is invalid');
@@ -289,17 +289,21 @@ export function validateCompletedManualReview(
     throw new Error('Completed reviews are invalid');
   }
 
+  const expectedScenarioIds = new Set(coachingEvaluationScenarios.map((scenario) => scenario.id));
   const artifactReviews = new Map<string, { mode: unknown; proposals: readonly unknown[] }>();
   for (const artifactReview of artifact.reviews) {
     if (!isRecord(artifactReview) || typeof artifactReview.scenarioId !== 'string' ||
         artifactReview.scenarioId.length === 0 || !Array.isArray(artifactReview.proposals) ||
-        artifactReviews.has(artifactReview.scenarioId)) {
+        !expectedScenarioIds.has(artifactReview.scenarioId) || artifactReviews.has(artifactReview.scenarioId)) {
       throw new Error('Manual review artifact scenarios are invalid');
     }
     artifactReviews.set(artifactReview.scenarioId, {
       mode: artifactReview.mode,
       proposals: artifactReview.proposals,
     });
+  }
+  if (artifactReviews.size !== expectedScenarioIds.size) {
+    throw new Error('Manual review artifact must contain the current evaluation pack exactly once');
   }
 
   const completedByScenario = new Map<string, CompletedManualReview>();

@@ -26,16 +26,28 @@ function thresholdsMatch(value: unknown): boolean {
     expectedEntries.every(([key, threshold]) => value[key] === threshold);
 }
 
-function parseProviderDecision(value: unknown): ProviderEvaluationDecision {
-  if (!isRecord(value) ||
-      Object.keys(value).sort().join(',') !==
-        'automatedPassed,manualPassed,packVersion,passed,provider,thresholds' ||
+const providerDecisionKeys = [
+  'provider', 'packVersion', 'automatedPassed', 'manualPassed', 'passed',
+] as const;
+
+function hasExactKeys(value: Record<string, unknown>, expectedKeys: readonly string[]): boolean {
+  const actualKeys = Object.keys(value).sort();
+  const sortedExpectedKeys = [...expectedKeys].sort();
+  return actualKeys.length === sortedExpectedKeys.length &&
+    actualKeys.every((key, index) => key === sortedExpectedKeys[index]);
+}
+
+function normalizeProviderDecision(
+  value: unknown,
+  expectedProvider?: ProviderEvaluationDecision['provider'],
+): ProviderEvaluationDecision {
+  if (!isRecord(value) || !hasExactKeys(value, providerDecisionKeys) ||
       (value.provider !== 'openai' && value.provider !== 'anthropic') ||
+      (expectedProvider !== undefined && value.provider !== expectedProvider) ||
       typeof value.packVersion !== 'string' || value.packVersion.length === 0 ||
       typeof value.automatedPassed !== 'boolean' || typeof value.manualPassed !== 'boolean' ||
       typeof value.passed !== 'boolean' ||
-      value.passed !== (value.automatedPassed && value.manualPassed) ||
-      !thresholdsMatch(value.thresholds)) {
+      value.passed !== (value.automatedPassed && value.manualPassed)) {
     throw new Error('Provider evaluation decision is invalid');
   }
   return {
@@ -47,27 +59,34 @@ function parseProviderDecision(value: unknown): ProviderEvaluationDecision {
   };
 }
 
+function parseProviderDecision(value: unknown): ProviderEvaluationDecision {
+  if (!isRecord(value) ||
+      !hasExactKeys(value, [...providerDecisionKeys, 'thresholds']) ||
+      !thresholdsMatch(value.thresholds)) {
+    throw new Error('Provider evaluation decision is invalid');
+  }
+  return normalizeProviderDecision({
+    provider: value.provider,
+    packVersion: value.packVersion,
+    automatedPassed: value.automatedPassed,
+    manualPassed: value.manualPassed,
+    passed: value.passed,
+  });
+}
+
 export function buildProviderParityDecision(
   openai: ProviderEvaluationDecision,
   anthropic: ProviderEvaluationDecision,
 ): { packVersion: string; passed: boolean; providers: readonly ProviderEvaluationDecision[] } {
-  if (openai.provider !== 'openai' || anthropic.provider !== 'anthropic') {
-    throw new Error('Provider evaluations must contain exactly OpenAI and Anthropic');
-  }
-  if (typeof openai.packVersion !== 'string' || openai.packVersion.length === 0 ||
-      typeof anthropic.packVersion !== 'string' || anthropic.packVersion.length === 0 ||
-      typeof openai.automatedPassed !== 'boolean' || typeof openai.manualPassed !== 'boolean' ||
-      typeof openai.passed !== 'boolean' || typeof anthropic.automatedPassed !== 'boolean' ||
-      typeof anthropic.manualPassed !== 'boolean' || typeof anthropic.passed !== 'boolean') {
-    throw new Error('Provider evaluation decisions are invalid');
-  }
-  if (openai.packVersion !== anthropic.packVersion) {
+  const normalizedOpenAI = normalizeProviderDecision(openai, 'openai');
+  const normalizedAnthropic = normalizeProviderDecision(anthropic, 'anthropic');
+  if (normalizedOpenAI.packVersion !== normalizedAnthropic.packVersion) {
     throw new Error('Provider evaluation pack versions must match');
   }
   return {
-    packVersion: openai.packVersion,
-    passed: openai.passed && anthropic.passed,
-    providers: [openai, anthropic],
+    packVersion: normalizedOpenAI.packVersion,
+    passed: normalizedOpenAI.passed && normalizedAnthropic.passed,
+    providers: [normalizedOpenAI, normalizedAnthropic],
   };
 }
 

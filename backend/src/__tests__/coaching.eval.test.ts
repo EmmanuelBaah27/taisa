@@ -5,6 +5,7 @@ import {
 } from '../services/coaching/provider';
 import {
   coachingEvaluationScenarios,
+  COACHING_EVALUATION_PACK_VERSION,
   GUARDRAIL_SCENARIO_IDS,
   type CoachingEvaluationCoverage,
 } from '../evals/coaching/scenarios';
@@ -637,45 +638,51 @@ test('the command-line parser requires a finite positive evaluation budget', () 
   expect(() => parseEvaluationBudgetArgument(['--max-cost-usd=0'])).toThrow('positive finite number');
 });
 
+const proposalReviewScenarioId = coachingEvaluationScenarios[0].id;
+const clarificationReviewScenarioId = coachingEvaluationScenarios.find(
+  (scenario) => scenario.expected.mode === 'clarify',
+)!.id;
+
 function completedReviewArtifact(provider: 'openai' | 'anthropic' = 'openai') {
   return {
-    packVersion: '2026-08-13.v3', provider, syntheticOnly: true,
+    packVersion: COACHING_EVALUATION_PACK_VERSION, provider, syntheticOnly: true,
     thresholds: COACHING_EVALUATION_THRESHOLDS, automatedPassed: true,
     manualReviewStatus: 'required' as const,
-    reviews: [
-      {
-        scenarioId: 'clarify-scenario', coverage: [], syntheticInput: 'Synthetic clarify input.',
-        response: 'Which meeting do you mean?', mode: 'clarify' as const,
-        relevance: 'outside-scope' as const, contextSufficiency: 'insufficient' as const,
-        stance: null, proposals: [], manualUsefulness: null, inventedReferent: null,
-        inventedEmotion: null, inventedParticipantOrPurpose: null,
-        clarificationQuestionNeutral: null, proposalsGroundedInSupportedObservation: null,
-      },
-      {
-        scenarioId: 'proposal-scenario', coverage: [], syntheticInput: 'Synthetic proposal input.',
-        response: 'Draft the handoff.', mode: 'coach' as const,
-        relevance: 'career-relevant' as const, contextSufficiency: 'sufficient' as const,
-        stance: 'nudge' as const, proposals: [{ operation: 'synthetic-proposal' }],
-        manualUsefulness: null, inventedReferent: null, inventedEmotion: null,
-        inventedParticipantOrPurpose: null, clarificationQuestionNeutral: null,
-        proposalsGroundedInSupportedObservation: null,
-      },
-    ],
+    reviews: coachingEvaluationScenarios.map((scenario) => ({
+      scenarioId: scenario.id,
+      coverage: scenario.coverage,
+      syntheticInput: '',
+      response: '',
+      mode: scenario.expected.mode,
+      relevance: null,
+      contextSufficiency: null,
+      stance: null,
+      proposals: scenario.id === proposalReviewScenarioId ? [{}] : [],
+      manualUsefulness: null,
+      inventedReferent: null,
+      inventedEmotion: null,
+      inventedParticipantOrPurpose: null,
+      clarificationQuestionNeutral: null,
+      proposalsGroundedInSupportedObservation: null,
+    })),
   } as unknown as ReturnType<typeof buildManualReviewArtifact>;
 }
 
-const passingCompletedReviews: readonly CompletedManualReview[] = [
-  {
-    scenarioId: 'clarify-scenario', manualUsefulness: 0.8,
-    inventedReferent: false, inventedEmotion: false, inventedParticipantOrPurpose: false,
-    clarificationQuestionNeutral: true, proposalsGroundedInSupportedObservation: null,
-  },
-  {
-    scenarioId: 'proposal-scenario', manualUsefulness: 0.8,
-    inventedReferent: false, inventedEmotion: false, inventedParticipantOrPurpose: false,
-    clarificationQuestionNeutral: null, proposalsGroundedInSupportedObservation: true,
-  },
-];
+function completedReviewsFor(
+  artifact: ReturnType<typeof buildManualReviewArtifact>,
+): readonly CompletedManualReview[] {
+  return artifact.reviews.map((review) => ({
+    scenarioId: review.scenarioId,
+    manualUsefulness: 0.8,
+    inventedReferent: false,
+    inventedEmotion: false,
+    inventedParticipantOrPurpose: false,
+    clarificationQuestionNeutral: review.mode === 'clarify' ? true : null,
+    proposalsGroundedInSupportedObservation: review.proposals.length > 0 ? true : null,
+  }));
+}
+
+const passingCompletedReviews = completedReviewsFor(completedReviewArtifact());
 
 function reviewsWith(
   scenarioId: string,
@@ -694,12 +701,12 @@ test('manual provider review passes at the shared usefulness and applicable grou
 });
 
 test.each([
-  ['usefulness below 0.8', reviewsWith('clarify-scenario', { manualUsefulness: 0.79 })],
-  ['invented referent', reviewsWith('clarify-scenario', { inventedReferent: true })],
-  ['invented emotion', reviewsWith('clarify-scenario', { inventedEmotion: true })],
-  ['invented participant', reviewsWith('clarify-scenario', { inventedParticipantOrPurpose: true })],
-  ['non-neutral clarification', reviewsWith('clarify-scenario', { clarificationQuestionNeutral: false })],
-  ['ungrounded proposal', reviewsWith('proposal-scenario', { proposalsGroundedInSupportedObservation: false })],
+  ['usefulness below 0.8', passingCompletedReviews.map((review) => ({ ...review, manualUsefulness: 0.79 }))],
+  ['invented referent', reviewsWith(clarificationReviewScenarioId, { inventedReferent: true })],
+  ['invented emotion', reviewsWith(clarificationReviewScenarioId, { inventedEmotion: true })],
+  ['invented participant', reviewsWith(clarificationReviewScenarioId, { inventedParticipantOrPurpose: true })],
+  ['non-neutral clarification', reviewsWith(clarificationReviewScenarioId, { clarificationQuestionNeutral: false })],
+  ['ungrounded proposal', reviewsWith(proposalReviewScenarioId, { proposalsGroundedInSupportedObservation: false })],
 ])('manual provider review fails for %s', (_name, reviews) => {
   expect(validateCompletedManualReview(completedReviewArtifact(), reviews).passed).toBe(false);
 });
@@ -712,18 +719,51 @@ test.each([
   expect(() => validateCompletedManualReview(completedReviewArtifact(), reviews)).toThrow();
 });
 
+const canonicalCompletedArtifact = completedReviewArtifact();
+const reducedFabricatedArtifact = {
+  ...canonicalCompletedArtifact,
+  reviews: [{ ...canonicalCompletedArtifact.reviews[0], scenarioId: 'fabricated-only' }],
+} as ReturnType<typeof buildManualReviewArtifact>;
+const missingCurrentScenarioArtifact = {
+  ...canonicalCompletedArtifact,
+  reviews: canonicalCompletedArtifact.reviews.slice(1),
+} as ReturnType<typeof buildManualReviewArtifact>;
+const unexpectedScenarioArtifact = {
+  ...canonicalCompletedArtifact,
+  reviews: [
+    ...canonicalCompletedArtifact.reviews,
+    { ...canonicalCompletedArtifact.reviews[0], scenarioId: 'unexpected-scenario' },
+  ],
+} as ReturnType<typeof buildManualReviewArtifact>;
+const duplicateCurrentScenarioArtifact = {
+  ...canonicalCompletedArtifact,
+  reviews: [...canonicalCompletedArtifact.reviews, canonicalCompletedArtifact.reviews[0]],
+} as ReturnType<typeof buildManualReviewArtifact>;
+
+test.each([
+  ['an arbitrary pack version', {
+    ...canonicalCompletedArtifact, packVersion: 'arbitrary-pack',
+  } as ReturnType<typeof buildManualReviewArtifact>],
+  ['a reduced fabricated artifact', reducedFabricatedArtifact],
+  ['a missing current scenario', missingCurrentScenarioArtifact],
+  ['an unexpected scenario', unexpectedScenarioArtifact],
+  ['a duplicate current scenario', duplicateCurrentScenarioArtifact],
+])('manual provider review rejects %s even when completed evidence matches it', (_name, artifact) => {
+  expect(() => validateCompletedManualReview(artifact, completedReviewsFor(artifact))).toThrow();
+});
+
 test('manual review fields are non-null exactly when the artifact response makes them applicable', () => {
   expect(() => validateCompletedManualReview(
-    completedReviewArtifact(), reviewsWith('proposal-scenario', { clarificationQuestionNeutral: true }),
+    completedReviewArtifact(), reviewsWith(proposalReviewScenarioId, { clarificationQuestionNeutral: true }),
   )).toThrow();
   expect(() => validateCompletedManualReview(
-    completedReviewArtifact(), reviewsWith('clarify-scenario', { proposalsGroundedInSupportedObservation: true }),
+    completedReviewArtifact(), reviewsWith(clarificationReviewScenarioId, { proposalsGroundedInSupportedObservation: true }),
   )).toThrow();
   expect(() => validateCompletedManualReview(
-    completedReviewArtifact(), reviewsWith('clarify-scenario', { clarificationQuestionNeutral: null }),
+    completedReviewArtifact(), reviewsWith(clarificationReviewScenarioId, { clarificationQuestionNeutral: null }),
   )).toThrow();
   expect(() => validateCompletedManualReview(
-    completedReviewArtifact(), reviewsWith('proposal-scenario', { proposalsGroundedInSupportedObservation: null }),
+    completedReviewArtifact(), reviewsWith(proposalReviewScenarioId, { proposalsGroundedInSupportedObservation: null }),
   )).toThrow();
 });
 
@@ -735,10 +775,15 @@ const anthropicPass: ProviderEvaluationDecision = {
 };
 
 test('parity requires exactly both providers on the same pack version to pass', () => {
-  expect(buildProviderParityDecision(openAIPass, anthropicPass)).toEqual({
+  const passingDecision = buildProviderParityDecision(openAIPass, anthropicPass);
+  expect(passingDecision).toEqual({
     packVersion: '2026-08-13.v3', passed: true, providers: [openAIPass, anthropicPass],
   });
-  expect(buildProviderParityDecision(openAIPass, { ...anthropicPass, passed: false }).passed).toBe(false);
+  expect(passingDecision.providers[0]).not.toBe(openAIPass);
+  expect(passingDecision.providers[1]).not.toBe(anthropicPass);
+  expect(buildProviderParityDecision(
+    openAIPass, { ...anthropicPass, manualPassed: false, passed: false },
+  ).passed).toBe(false);
   expect(() => buildProviderParityDecision(
     openAIPass, { ...anthropicPass, packVersion: 'other' },
   )).toThrow('Provider evaluation pack versions must match');
@@ -748,6 +793,21 @@ test('parity requires exactly both providers on the same pack version to pass', 
   expect(() => buildProviderParityDecision(
     { ...openAIPass, passed: 'yes' as unknown as boolean }, anthropicPass,
   )).toThrow();
+  expect(() => buildProviderParityDecision(
+    { ...openAIPass, passed: false }, anthropicPass,
+  )).toThrow();
+  expect(() => buildProviderParityDecision(
+    openAIPass, { ...anthropicPass, automatedPassed: false, passed: true },
+  )).toThrow();
+});
+
+test.each([
+  ['response', 'PRIVATE_RESPONSE_MARKER'],
+  ['prompt', 'PRIVATE_PROMPT_MARKER'],
+  ['proposals', ['PRIVATE_PROPOSAL_MARKER']],
+] as const)('parity rejects provider decisions containing an extra %s field', (field, marker) => {
+  const contaminated = { ...openAIPass, [field]: marker } as unknown as ProviderEvaluationDecision;
+  expect(() => buildProviderParityDecision(contaminated, anthropicPass)).toThrow();
 });
 
 test('review CLI requires exact flags and writes only a content-free passing decision without overwrite', () => {
@@ -806,12 +866,29 @@ test('parity CLI fails closed and serializes only thresholds, provider IDs, vers
   })).toBe(0);
   expect(writeStderr).not.toHaveBeenCalled();
   expect(Object.keys(JSON.parse(written[0])).sort()).toEqual(['packVersion', 'passed', 'providers', 'thresholds']);
-  expect(written[0]).not.toContain('prompt');
-  expect(written[0]).not.toContain('response');
+  for (const marker of ['PRIVATE_PROMPT_MARKER', 'PRIVATE_RESPONSE_MARKER', 'PRIVATE_PROPOSAL_MARKER']) {
+    expect(written[0]).not.toContain(marker);
+  }
 
-  files.anthropic = JSON.stringify({ ...anthropicPass, passed: false, thresholds: COACHING_EVALUATION_THRESHOLDS });
+  files.anthropic = JSON.stringify({
+    ...anthropicPass, manualPassed: false, passed: false, thresholds: COACHING_EVALUATION_THRESHOLDS,
+  });
   expect(runParityCli([
     '--openai-decision=openai', '--anthropic-decision=anthropic', '--parity-output=parity',
   ], { readFile: (target) => files[target], writeFile: jest.fn(), writeStderr })).toBe(1);
   expect(writeStderr).toHaveBeenLastCalledWith('EVAL_COACHING_PARITY_FAILED\n');
+
+  files.openai = JSON.stringify({
+    ...openAIPass,
+    thresholds: COACHING_EVALUATION_THRESHOLDS,
+    response: 'PRIVATE_RESPONSE_MARKER',
+    prompt: 'PRIVATE_PROMPT_MARKER',
+    proposals: ['PRIVATE_PROPOSAL_MARKER'],
+  });
+  const contaminatedWrite = jest.fn();
+  expect(runParityCli([
+    '--openai-decision=openai', '--anthropic-decision=anthropic', '--parity-output=parity',
+  ], { readFile: (target) => files[target], writeFile: contaminatedWrite, writeStderr })).toBe(1);
+  expect(contaminatedWrite).not.toHaveBeenCalled();
+  expect(writeStderr.mock.calls.flat().join('')).not.toContain('PRIVATE_');
 });
