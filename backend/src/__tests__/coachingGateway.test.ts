@@ -2,6 +2,7 @@ import type { CoachingProvider, ProviderCoachingInput } from '../services/coachi
 import { getConfiguredProvider } from '../services/coaching/provider';
 import {
   ContentFreeFallbackError,
+  ContentFreeFallbackInvalidOutputError,
   getConfiguredFallbackProvider,
 } from '../services/coaching/fallbackProvider';
 import { createOpenAIProvider } from '../services/coaching/openaiProvider';
@@ -623,6 +624,52 @@ test('both operational failures expose classifications and attempt IDs but no ra
   expect(JSON.stringify(thrown)).not.toContain('PRIMARY_PROVIDER_SECRET');
   expect(JSON.stringify(thrown)).not.toContain('FALLBACK_PROVIDER_SECRET');
   expect(observer.beginAttempt.mock.calls).toEqual([['primary'], ['fallback']]);
+  expect(observer.settleAttempt.mock.calls).toEqual([
+    [{ attemptId: 'primary' }],
+    [{ attemptId: 'fallback' }],
+  ]);
+});
+
+test('fallback invalid output is recoverable without retaining Zod details or payload content', async () => {
+  const providers = providerRegistry();
+  const observer = attemptObserver();
+  const secret = 'FALLBACK_ZOD_SECRET';
+  const malformedFallback = CoachingResponsePayloadSchema.safeParse({
+    ...coachingPayloadFixture,
+    stance: secret,
+  });
+  if (malformedFallback.success) throw new Error('Expected malformed fallback fixture');
+  expect(JSON.stringify(malformedFallback.error)).toContain(secret);
+  providers.openai.respond = jest.fn().mockRejectedValue({
+    status: 429,
+    type: 'rate_limit_error',
+  });
+  providers.anthropic.respond = jest.fn().mockRejectedValue(malformedFallback.error);
+
+  let thrown: unknown;
+  try {
+    await getConfiguredFallbackProvider(
+      environment('openai'), providers,
+    ).respond(providerInput, observer);
+  } catch (error) {
+    thrown = error;
+  }
+
+  expect(thrown).toBeInstanceOf(ContentFreeFallbackInvalidOutputError);
+  expect(thrown).toMatchObject({
+    code: 'INVALID_COACHING_OUTPUT',
+    recoverable: true,
+    attempts: [
+      { attemptId: 'primary', failureClass: 'rate_limit' },
+      { attemptId: 'fallback', failureClass: 'invalid_output' },
+    ],
+  });
+  expect(thrown).not.toHaveProperty('cause');
+  expect(thrown).not.toHaveProperty('issues');
+  expect(JSON.stringify(thrown)).not.toContain(secret);
+  expect(JSON.stringify(thrown)).not.toContain('stance');
+  expect(providers.openai.respond).toHaveBeenCalledTimes(1);
+  expect(providers.anthropic.respond).toHaveBeenCalledTimes(1);
   expect(observer.settleAttempt.mock.calls).toEqual([
     [{ attemptId: 'primary' }],
     [{ attemptId: 'fallback' }],
