@@ -1,7 +1,8 @@
 import { ZodError } from 'zod';
-import type {
-  AttemptEstimate,
-  AttemptSettlement,
+import {
+  UsageExceedsReservationError,
+  type AttemptEstimate,
+  type AttemptSettlement,
 } from '../usage/costLedger';
 import {
   classifyOperationalProviderFailure,
@@ -114,7 +115,14 @@ async function invokeProviderAttempt(
     observer.settleAttempt({ attemptId });
     return { succeeded: false, error };
   }
-  observer.settleAttempt({ attemptId, receipt: result.usage });
+  try {
+    observer.settleAttempt({ attemptId, receipt: result.usage });
+  } catch (error) {
+    if (!(error instanceof UsageExceedsReservationError)) throw error;
+    // The actual usage is already durable. Losing the valid response would make a retry charge
+    // again, so retain the existing content-free warning and return the paid answer.
+    console.warn('[Taisa diagnostic] COACHING_USAGE_EXCEEDED_RESERVATION');
+  }
   return { succeeded: true, result };
 }
 

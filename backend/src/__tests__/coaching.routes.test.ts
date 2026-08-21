@@ -229,6 +229,101 @@ test('settles failed primary conservatively then commits fallback actual usage',
   ]);
 });
 
+test.each([
+  ['primary', 'openai'],
+  ['fallback', 'anthropic'],
+] as const)(
+  'returns a paid %s success when actual usage exceeds its conservative reservation',
+  async (answeringAttempt, answeringProvider) => {
+    const gateway = jest.requireMock('../services/coaching/coachingGateway');
+    const usageLedger = jest.requireMock('../services/usage/costLedger');
+    const warning = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const reservation = {
+      beginAttempt: jest.fn(),
+      settleAttempt: jest.fn((settlement) => {
+        if (settlement.receipt) {
+          throw new usageLedger.UsageExceedsReservationError(
+            0.001,
+            settlement.receipt.estimatedCostUsd,
+          );
+        }
+      }),
+      release: jest.fn(),
+    };
+    const providerUsage = (provider: 'openai' | 'anthropic') => ({
+      provider,
+      model: `${provider}-mock`,
+      inputTokens: 7,
+      outputTokens: 4,
+      estimatedCostUsd: 0.015,
+    });
+    const providerResult = (provider: 'openai' | 'anthropic') => ({
+      payload: {
+        mode: 'coach' as const,
+        relevance: 'career-relevant' as const,
+        contextSufficiency: 'sufficient' as const,
+        reply: `${provider} response`,
+        stance: 'nudge' as const,
+        proposals: [],
+      },
+      usage: providerUsage(provider),
+    });
+    const providers = {
+      openai: {
+        id: 'openai' as const,
+        estimateMaximumUsage: jest.fn(() => providerUsage('openai')),
+        respond: answeringAttempt === 'primary'
+          ? jest.fn().mockResolvedValue(providerResult('openai'))
+          : jest.fn().mockRejectedValue({ status: 503 }),
+      },
+      anthropic: {
+        id: 'anthropic' as const,
+        estimateMaximumUsage: jest.fn(() => providerUsage('anthropic')),
+        respond: jest.fn().mockResolvedValue(providerResult('anthropic')),
+      },
+    };
+    const environment = {
+      TAISA_COACHING_PROVIDER: 'openai',
+      TAISA_OPENAI_MODEL: 'openai-mock',
+      TAISA_OPENAI_INPUT_PRICE_USD_PER_MILLION_TOKENS: '1',
+      TAISA_OPENAI_OUTPUT_PRICE_USD_PER_MILLION_TOKENS: '1',
+      TAISA_OPENAI_MAX_OUTPUT_TOKENS: '100',
+      TAISA_OPENAI_STRUCTURED_OUTPUT_INPUT_TOKEN_OVERHEAD: '10',
+      TAISA_ANTHROPIC_MODEL: 'anthropic-mock',
+      TAISA_ANTHROPIC_INPUT_PRICE_USD_PER_MILLION_TOKENS: '1',
+      TAISA_ANTHROPIC_OUTPUT_PRICE_USD_PER_MILLION_TOKENS: '1',
+      TAISA_ANTHROPIC_MAX_OUTPUT_TOKENS: '100',
+      TAISA_ANTHROPIC_STRUCTURED_OUTPUT_INPUT_TOKEN_OVERHEAD: '10',
+    };
+    const { getConfiguredFallbackProvider } = jest.requireActual(
+      '../services/coaching/fallbackProvider',
+    );
+    const actualGateway = jest.requireActual('../services/coaching/coachingGateway');
+    const provider = getConfiguredFallbackProvider(environment, providers);
+    usageLedger.reserveAttempts.mockReturnValueOnce(reservation);
+    gateway.requestCoaching.mockImplementationOnce((coachingRequest, _provider, observer) =>
+      actualGateway.requestCoaching(coachingRequest, provider, observer),
+    );
+
+    const res = await request(app)
+      .post('/api/v1/coaching/respond')
+      .set('x-user-id', 'device-1')
+      .send(validRequest);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.usage.provider).toBe(answeringProvider);
+    expect(res.body.data).not.toHaveProperty('attempts');
+    expect(providers.openai.respond).toHaveBeenCalledTimes(1);
+    expect(providers.anthropic.respond).toHaveBeenCalledTimes(
+      answeringAttempt === 'fallback' ? 1 : 0,
+    );
+    expect(warning).toHaveBeenCalledWith(
+      '[Taisa diagnostic] COACHING_USAGE_EXCEEDED_RESERVATION',
+    );
+    warning.mockRestore();
+  },
+);
+
 test('generic provider failures expose only an allowlisted operational classification', async () => {
   const gateway = jest.requireMock('../services/coaching/coachingGateway');
   gateway.requestCoaching.mockRejectedValueOnce(Object.assign(

@@ -322,11 +322,19 @@ describe('content-free request telemetry', () => {
       ...errorSpy.mock.calls.flat(),
     ].join(' ');
     expect(response.status).toBe(500);
-    expect(response.body.error.code).toBe(
-      'COACHING_FAILED_PRIMARY_RATE_LIMIT_FALLBACK_OVERLOADED',
-    );
+    expect(response.body).toEqual({
+      success: false,
+      error: {
+        code: 'COACHING_FALLBACK_EXHAUSTED',
+        message: 'Unable to complete the coaching request',
+      },
+    });
     expect(publicAndConsoleOutput).not.toContain(primarySecret);
     expect(publicAndConsoleOutput).not.toContain(fallbackSecret);
+    expect(publicAndConsoleOutput).not.toContain('PRIMARY_RATE_LIMIT');
+    expect(publicAndConsoleOutput).not.toContain('FALLBACK_OVERLOADED');
+    expect(publicAndConsoleOutput).not.toContain('openai');
+    expect(publicAndConsoleOutput).not.toContain('anthropic');
     warnSpy.mockRestore();
     errorSpy.mockRestore();
   });
