@@ -8,7 +8,7 @@
     "start": "node dist/backend/src/index.js",
     "test": "jest",
     "test:watch": "jest --watch",
-    "eval:coaching": "ts-node src/evals/coaching/run.ts",
+    "eval:coaching": "ts-node -r dotenv/config src/evals/coaching/run.ts",
     "eval:coaching:review": "ts-node src/evals/coaching/review.ts",
     "eval:coaching:parity": "ts-node src/evals/coaching/parity.ts"
   },
