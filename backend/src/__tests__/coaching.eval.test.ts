@@ -22,7 +22,9 @@ import {
 } from '../evals/coaching/run';
 import { CostLedger } from '../services/usage/costLedger';
 import { CoachingRequestSchema } from '../schemas/coaching';
-import { mkdtempSync, readFileSync } from 'fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
+import { spawnSync } from 'child_process';
+import Database from 'better-sqlite3';
 import os from 'os';
 import path from 'path';
 import {
@@ -622,6 +624,70 @@ test('the CLI prints only a fixed error code when factory creation throws sensit
   expect(writeStdout).not.toHaveBeenCalled();
   expect(writeStderr).toHaveBeenCalledWith('EVAL_COACHING_FAILED\n');
   expect(writeStderr.mock.calls.flat().join('')).not.toContain('secret-key=do-not-print');
+});
+
+test('the documented evaluation command loads its provider configuration from an explicit dotenv file', () => {
+  const temporaryDirectory = mkdtempSync(path.join(os.tmpdir(), 'taisa-eval-cli-'));
+  const environmentPath = path.join(temporaryDirectory, '.env');
+  const artifactPath = path.join(temporaryDirectory, 'review.json');
+  const ledgerPath = path.join(temporaryDirectory, 'usage-ledger.sqlite');
+  try {
+    writeFileSync(environmentPath, [
+      'OPENAI_API_KEY=synthetic-never-called',
+      'TAISA_OPENAI_MODEL=synthetic-model',
+      'TAISA_OPENAI_INPUT_PRICE_USD_PER_MILLION_TOKENS=1',
+      'TAISA_OPENAI_OUTPUT_PRICE_USD_PER_MILLION_TOKENS=1',
+      'TAISA_OPENAI_MAX_OUTPUT_TOKENS=1024',
+      'TAISA_OPENAI_STRUCTURED_OUTPUT_INPUT_TOKEN_OVERHEAD=512',
+      `TAISA_USAGE_LEDGER_PATH=${ledgerPath}`,
+      '',
+    ].join('\n'));
+    const environment = { ...process.env };
+    for (const name of Object.keys(environment)) {
+      if (
+        name.startsWith('DOTENV_') || name === 'OPENAI_API_KEY' || name === 'OPENAI_BASE_URL'
+        || name.startsWith('TAISA_OPENAI_') || name === 'TAISA_USAGE_LEDGER_PATH'
+      ) {
+        delete environment[name];
+      }
+    }
+    environment.DOTENV_CONFIG_PATH = environmentPath;
+    environment.OPENAI_BASE_URL = 'http://127.0.0.1:9';
+
+    const result = spawnSync(
+      'npm',
+      [
+        'run', 'eval:coaching', '--workspace=backend', '--',
+        '--provider=openai', '--max-cost-usd=0.000001', `--review-output=${artifactPath}`,
+      ],
+      {
+        cwd: path.resolve(__dirname, '../../..'),
+        encoding: 'utf8',
+        env: environment,
+        timeout: 15_000,
+      },
+    );
+
+    expect(result.error).toBeUndefined();
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('EVAL_COACHING_REVIEW_REQUIRED');
+    expect(result.stderr).not.toContain('EVAL_COACHING_FAILED');
+    expect(existsSync(artifactPath)).toBe(true);
+    const artifact = readFileSync(artifactPath, 'utf8');
+    expect(`${result.stdout}${result.stderr}${artifact}`).not.toContain('synthetic-never-called');
+
+    const database = new Database(ledgerPath, { readonly: true });
+    try {
+      expect(database.prepare('SELECT COUNT(*) AS count FROM usage_receipts').get()).toEqual({ count: 0 });
+      expect(database.prepare('SELECT COUNT(*) AS count FROM cost_reservations').get()).toEqual({ count: 0 });
+      expect(database.prepare('SELECT COUNT(*) AS count FROM cost_request_reservations').get()).toEqual({ count: 0 });
+      expect(database.prepare('SELECT COUNT(*) AS count FROM cost_attempt_reservations').get()).toEqual({ count: 0 });
+    } finally {
+      database.close();
+    }
+  } finally {
+    rmSync(temporaryDirectory, { recursive: true, force: true });
+  }
 });
 
 test('the command-line parser rejects an omitted or unsupported provider choice', () => {
