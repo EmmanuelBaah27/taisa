@@ -1,3 +1,6 @@
+export { Text } from './Text';
+export type { TextColorRole, TextProps } from './Text';
+
 export { Button } from './Button';
 export type { ButtonProps, ButtonVariant, ButtonSize } from './Button';
 export { LiquidGlassButtonSurface } from './LiquidGlassButtonSurface';
