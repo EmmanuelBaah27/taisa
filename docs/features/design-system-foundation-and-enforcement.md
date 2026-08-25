@@ -2,7 +2,7 @@
 
 **Track:** Product
 **Tier:** Full
-**Status:** Scope and design approved; implementation plan awaiting approval
+**Status:** Build — implementation plan approved by Baah on 2026-08-25
 
 ## What is it?
 

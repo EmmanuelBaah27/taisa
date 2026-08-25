@@ -10,7 +10,7 @@
 
 **Spec:** `docs/superpowers/specs/2026-08-25-design-system-foundation-and-enforcement-design.md`
 
-**Status:** Awaiting Baah plan approval
+**Status:** In Progress — approved by Baah on 2026-08-25
 
 ## Global constraints
 
