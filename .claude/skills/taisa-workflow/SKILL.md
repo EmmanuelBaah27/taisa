@@ -265,10 +265,12 @@ Build proceeds. List all failures at end of session. Retry issue creation once b
 
 BUILD fails QA:
 1. Baah notes specific failures in chat
-2. Claude creates `docs/features/<name>-qa-notes.md` with exact failures
-3. Active Work table → back to "In Build"
-4. Fix issues, re-run `verification-before-completion`
+2. Claude creates or updates one Linear issue per distinct failure with the observed preview revision, reproduction context, severity, and acceptance criteria
+3. Active Work table → back to "In Build" for release-blocking failures; non-blocking failures remain prioritized Linear work and require Baah's explicit acceptance at Ship
+4. Fix selected issues, comment verification evidence on their Linear issues, and re-run `verification-before-completion`
 5. Re-raise for QA only after verification passes
+
+QA documents may retain immutable verification history and device checklists, but current bug status, discussion, ownership, and resolution live in Linear.
 
 ---
 

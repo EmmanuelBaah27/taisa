@@ -151,10 +151,12 @@ Run the narrowest relevant check throughout BUILD, then run the complete applica
 - [ ] No business logic inside DS components
 
 **If build fails QA:**
-1. Baah notes specific failures in chat
-2. Claude creates `docs/features/<name>-qa-notes.md`
-3. Active Work table reverts to In Build
-4. Claude fixes, re-runs `verification-before-completion`, re-raises for QA
+1. Baah notes specific failures in chat.
+2. Claude creates or updates one Linear issue per distinct failure, including the observed preview revision, reproduction context, severity, and acceptance criteria; the issue is linked to the feature work.
+3. Active Work reverts to Build for release-blocking failures. Non-blocking failures remain prioritized Linear work and require Baah's explicit acceptance if the feature proceeds to Ship with them unresolved.
+4. Claude fixes selected issues, comments verification evidence on the Linear issue, reruns `verification-before-completion`, and re-raises for QA.
+
+QA documents may retain immutable verification history and device checklists, but they are not the active bug queue. Current status, discussion, ownership, and resolution live in Linear.
 
 A feature is not merged until both checks pass.
 
@@ -243,7 +245,7 @@ Feature deprioritised mid-pipeline:
 | Design system | `docs/design-system.md` | Baah + Claude (DS components) |
 | API reference | `docs/api.md` | Claude (updated on every route change) |
 | Workflow | `docs/workflow.md` | Claude (Active Work table) + Baah |
-| QA notes | `docs/features/<name>-qa-notes.md` | Claude (on QA failure) |
+| QA evidence | `docs/features/<name>-qa.md` | Claude (verification history only; active bugs live in Linear) |
 | Work closeout | Standard/Full scope or plan | Claude (completed during Review and Ship) |
 
 **Skills invoked per stage:**

@@ -2,7 +2,7 @@
 
 **Track:** Platform + Product
 **Tier:** Full
-**Status:** Scope and design approved; implementation plan awaiting approval
+**Status:** Review + QA — consolidated candidate verified; awaiting Baah device QA and Ship approval
 
 ## What is it?
 
