@@ -1,6 +1,7 @@
 import type { WorkRecord } from '@taisa/shared';
 
 import type { RepositoryConnection, RepositoryTransaction } from '../db/types';
+import { requireExactlyOneAffectedRow } from './mutationReceipt';
 
 interface WorkRecordRow {
   id: string;
@@ -61,6 +62,12 @@ function workRecordParams(record: WorkRecord, idempotencyId: string) {
 export interface WorkRepository {
   get(id: string): Promise<WorkRecord | null>;
   insert(transaction: RepositoryTransaction, record: WorkRecord, idempotencyId: string): Promise<void>;
+  moveToWeek(
+    transaction: RepositoryTransaction,
+    id: string,
+    plannedWeek: string | null,
+    event: { id: string; sourceId: string; occurredAt: string; idempotencyId: string },
+  ): Promise<void>;
 }
 
 export function createWorkRepository(database: RepositoryConnection): WorkRepository {
@@ -82,6 +89,46 @@ export function createWorkRepository(database: RepositoryConnection): WorkReposi
            $plannedDay, $sourceId, $revision, $createdAt, $updatedAt,
            $lastConfirmedAt, $idempotencyId)`,
         workRecordParams(record, idempotencyId),
+      );
+    },
+
+    async moveToWeek(transaction, id, plannedWeek, event) {
+      const currentRow = await transaction.getFirstAsync<WorkRecordRow>(
+        `SELECT ${COLUMNS} FROM work_records WHERE id = $id`,
+        { $id: id },
+      );
+      if (currentRow === null) {
+        throw new Error('Cannot move missing work record');
+      }
+
+      const update = await transaction.runAsync(
+        `UPDATE work_records
+         SET planned_week = $plannedWeek, revision = revision + 1, updated_at = $occurredAt
+         WHERE id = $id AND revision = $expectedRevision`,
+        {
+          $id: id,
+          $plannedWeek: plannedWeek,
+          $occurredAt: event.occurredAt,
+          $expectedRevision: currentRow.revision,
+        },
+      );
+      requireExactlyOneAffectedRow(update, 'Work record revision conflict');
+
+      await transaction.runAsync(
+        `INSERT INTO record_events
+          (id, record_id, operation, prior_value_json, resulting_value_json,
+           source_id, occurred_at, idempotency_key)
+         VALUES ($eventId, $recordId, 'move_week', $priorValueJson,
+           $resultingValueJson, $sourceId, $occurredAt, $idempotencyId)`,
+        {
+          $eventId: event.id,
+          $recordId: id,
+          $priorValueJson: JSON.stringify(currentRow.planned_week),
+          $resultingValueJson: JSON.stringify(plannedWeek),
+          $sourceId: event.sourceId,
+          $occurredAt: event.occurredAt,
+          $idempotencyId: event.idempotencyId,
+        },
       );
     },
   };

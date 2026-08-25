@@ -1,7 +1,9 @@
 import type {
   CapabilitySnapshot,
+  Insight,
   LocalNotification,
   ProposalEnvelope,
+  WeeklyPeriod,
   WorkRecord,
 } from '@taisa/shared';
 
@@ -14,6 +16,9 @@ import type {
 } from '../../db/types';
 import { createWorkRepository } from '../workRepository';
 import { createNotificationRepository } from '../notificationRepository';
+import { createBehaviorRepository, type BehaviorEvent } from '../behaviorRepository';
+import { createInsightRepository } from '../insightRepository';
+import { createPeriodRepository } from '../periodRepository';
 import { createProposalRepository } from '../proposalRepository';
 import { createReadinessRepository } from '../readinessRepository';
 
@@ -104,6 +109,35 @@ test('work repository maps records and requires caller transactions for writes',
   await expect(repository.get('task-1')).resolves.toEqual(task);
 });
 
+test('work movement records prior placement in the caller transaction', async () => {
+  const connection = new FakeConnection();
+  connection.rows.set('task-1', {
+    id: 'task-1', kind: 'task', title: 'Send proposal', project_id: null,
+    status: 'open', freshness: 'current', planned_week: '2026-08-24',
+    planned_day: null, source_id: 'conversation-1', revision: 1,
+    created_at: '2026-08-25T08:00:00Z', updated_at: '2026-08-25T08:00:00Z',
+    last_confirmed_at: '2026-08-25T08:00:00Z',
+  });
+  const repository = createWorkRepository(connection);
+
+  await repository.moveToWeek(
+    connection as unknown as RepositoryTransaction,
+    'task-1',
+    '2026-08-31',
+    { id: 'event-1', sourceId: 'user-1', occurredAt: '2026-08-25T09:00:00Z', idempotencyId: 'move-1' },
+  );
+
+  expect(connection.runs).toHaveLength(2);
+  expect(connection.runs[0]).toMatchObject({
+    source: expect.stringContaining('UPDATE work_records'),
+    params: expect.objectContaining({ $plannedWeek: '2026-08-31', $expectedRevision: 1 }),
+  });
+  expect(connection.runs[1]).toMatchObject({
+    source: expect.stringContaining('INSERT INTO record_events'),
+    params: expect.objectContaining({ $priorValueJson: '"2026-08-24"', $resultingValueJson: '"2026-08-31"' }),
+  });
+});
+
 test('proposal repository validates JSON at its boundary', async () => {
   const connection = new FakeConnection();
   const repository = createProposalRepository(connection);
@@ -153,4 +187,53 @@ test('notification repository persists read state separately from disposition', 
   expect(connection.runs.at(-1)?.params).toEqual(expect.objectContaining({
     $readState: 'unread', $disposition: 'snoozed',
   }));
+});
+
+test('insight repository preserves evidence provenance as structured JSON', async () => {
+  const connection = new FakeConnection();
+  const repository = createInsightRepository(connection);
+  const insight: Insight = {
+    id: 'insight-1', kind: 'operational', title: 'Decisions are waiting',
+    body: 'Two decisions remain open.', freshness: 'current',
+    evidence: [{ evidenceId: 'evidence-1', sourceId: 'conversation-1', sourceRevision: 3 }],
+    createdAt: '2026-08-25T08:00:00Z', updatedAt: '2026-08-25T08:00:00Z',
+  };
+
+  await repository.insertInsight(connection as unknown as RepositoryTransaction, insight);
+  expect(connection.runs.at(-1)?.params).toEqual(expect.objectContaining({
+    $freshness: 'current',
+    $evidenceJson: '[{"evidenceId":"evidence-1","sourceId":"conversation-1","sourceRevision":3}]',
+  }));
+});
+
+test('period repository persists review state without moving work records', async () => {
+  const connection = new FakeConnection();
+  const repository = createPeriodRepository(connection);
+  const period: WeeklyPeriod = {
+    id: 'week-2026-08-24', startsOn: '2026-08-24', endsOn: '2026-08-30',
+    state: 'auto_closed_unreviewed', reviewedAt: null, closedAt: '2026-08-31T00:00:00Z',
+  };
+
+  await repository.putPeriod(connection as unknown as RepositoryTransaction, period);
+  expect(connection.runs).toHaveLength(1);
+  expect(connection.runs[0]).toMatchObject({
+    source: expect.stringContaining('INSERT INTO weekly_periods'),
+    params: expect.objectContaining({ $state: 'auto_closed_unreviewed', $reviewedAt: null }),
+  });
+});
+
+test('behavior repository stores bounded metadata with explicit expiry', async () => {
+  const connection = new FakeConnection();
+  const repository = createBehaviorRepository(connection);
+  const event: BehaviorEvent = {
+    id: 'behavior-1', category: 'correction', eventType: 'proposal_rejected',
+    sourceId: 'proposal-1', occurredAt: '2026-08-25T08:00:00Z',
+    expiresAt: '2026-11-23T08:00:00Z',
+  };
+
+  await repository.insertEvent(connection as unknown as RepositoryTransaction, event, 'behavior-insert-1');
+  expect(connection.runs.at(-1)).toMatchObject({
+    source: expect.stringContaining('INSERT INTO behavior_events'),
+    params: expect.objectContaining({ $category: 'correction', $expiresAt: '2026-11-23T08:00:00Z' }),
+  });
 });
