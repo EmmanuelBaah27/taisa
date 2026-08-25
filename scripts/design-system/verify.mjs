@@ -80,7 +80,17 @@ async function componentRegistryFindings(root, registry) {
     }
     if (component.storyRequired) {
       try {
-        await readFile(join(root, component.story), 'utf8');
+        const story = await readFile(join(root, component.story), 'utf8');
+        const productionImport = new RegExp(`import \\{[^}]*\\b${component.name}\\b[^}]*\\} from '\\./${component.name}'`);
+        const componentBinding = new RegExp(`component:\\s*${component.name}\\b`);
+        if (!productionImport.test(story) || !componentBinding.test(story)) {
+          findings.push({
+            file: component.story,
+            line: 1,
+            rule: 'storybook-production-parity',
+            message: `${component.name} story must bind meta.component to the exact production export.`,
+          });
+        }
       } catch {
         findings.push({ file: component.story, line: 1, rule: 'component-story', message: `${component.name} requires Storybook coverage.` });
       }

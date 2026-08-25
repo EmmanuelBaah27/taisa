@@ -15,7 +15,15 @@ const meta: Meta<typeof Text> = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Default: Story = {};
+export const Default: Story = {
+  render: () => (
+    <View className="gap-3 bg-background p-5">
+      <Text role="body">Body — 16px readable default copy</Text>
+      <Text role="label" color="secondary">Label — 14px supporting UI</Text>
+      <Text role="metadata" color="tertiary">Metadata — 12px tertiary detail</Text>
+    </View>
+  ),
+};
 
 export const TypeScale: Story = {
   render: () => (

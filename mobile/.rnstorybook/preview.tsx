@@ -4,6 +4,7 @@ import '../global.css';
 import type { Preview } from '@storybook/react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { colorTokens } from '../src/design-system/tokens';
 
 const preview: Preview = {
   decorators: [
@@ -21,9 +22,9 @@ const preview: Preview = {
     backgrounds: {
       default: 'white',
       values: [
-        { name: 'white', value: '#FFFFFF' },
-        { name: 'subtle', value: '#FAFAFA' },
-        { name: 'dark', value: '#0A0A0F' },
+        { name: 'white', value: colorTokens.surface.app },
+        { name: 'subtle', value: colorTokens.surface.subtle },
+        { name: 'dark', value: colorTokens.surface.inverted },
       ],
     },
     controls: {

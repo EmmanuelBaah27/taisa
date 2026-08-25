@@ -3,6 +3,8 @@
 Living reference for all UI work. Update when a new component is added or a token changes.
 Full token definitions and decision rules: `foundations.md` (root of repo).
 
+Storybook imports and renders these exact production exports. It is not a second implementation and the app never fetches design-system code from Storybook; the app and Storybook both consume the production token registry and component modules in this repository.
+
 ---
 
 ## Status

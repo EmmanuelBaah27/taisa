@@ -18,6 +18,8 @@ The system is not a speculative library project. It establishes the foundations 
 
 Colors and typography originate from one typed token module. NativeWind configuration, semantic components, documentation verification, Storybook examples, and the compliance checker consume or validate against that same definition.
 
+Storybook is a renderer of production design-system exports, never a parallel implementation or runtime source. Stories import the exact component modules shipped to the app, the Storybook canvas consumes the production token facade, and stories may compose states and content but may not recreate or restyle the component contract. Product code does not fetch components or tokens from Storybook; both Product and Storybook consume the same production source.
+
 The token model has two layers:
 
 1. Primitive values exist only inside the token source and support semantic mapping.

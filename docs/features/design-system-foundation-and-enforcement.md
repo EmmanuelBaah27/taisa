@@ -32,6 +32,7 @@ Future Product work will amplify that drift unless the foundations, component bo
 - [ ] Screens can compose the current Taisa experience without selecting raw visual primitives for recurring typography, action, field, surface, feedback, or list-row patterns.
 - [ ] A typed semantic text component is the standard text boundary for Product UI and exposes only approved typography and color roles.
 - [ ] Foundational design-system components define their supported variants, states, accessibility behavior, tokens, exports, documentation, and Storybook coverage.
+- [ ] Storybook renders the exact production component exports and production token values; no story-owned visual replica or separately maintained Storybook token value is accepted.
 - [ ] Existing reusable visual components outside `mobile/src/components/ui/` are either migrated into the design system or explicitly classified as screen-specific composition.
 - [ ] Current product screens are migrated to the approved semantic color, typography, and component boundaries without changing their business behavior.
 - [ ] The canonical preview demonstrates the corrected type hierarchy and readable default body size across the current experience.
