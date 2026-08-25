@@ -2,9 +2,12 @@ import type { CapabilitySnapshot, OperationReceipt, WorkRecord } from '@taisa/sh
 
 import {
   executePermittedOperation,
+  undoOperation,
   OperationGateError,
+  validateOperationRequest,
   type OperationDependencies,
   type OperationRequest,
+  type UndoDependencies,
 } from '../operationGate';
 
 const task: WorkRecord = {
@@ -86,4 +89,75 @@ test('Trial execution emits a visible undoable receipt in one transaction', asyn
   });
   expect(writes).toEqual(['record', 'event', 'receipt', 'outcome']);
   expect(receipts).toHaveLength(1);
+});
+
+test.each<OperationRequest>([
+  request({ operation: 'complete_explicit_task', payload: {} }),
+  request({ operation: 'associate_existing_project', payload: { projectId: 'project-1' } }),
+  request({
+    operation: 'apply_strong_task_conversation_link',
+    payload: { conversationId: 'conversation-2', contribution: 'planning' },
+  }),
+  request({ operation: 'update_explicit_followup_status', payload: { status: 'completed' } }),
+  request({ operation: 'update_explicit_blocker_status', payload: { status: 'resolved' } }),
+  request({ operation: 'update_explicit_project_status', payload: { status: 'paused' } }),
+])('accepts the exact payload for $operation', (candidate) => {
+  expect(() => validateOperationRequest(candidate)).not.toThrow();
+});
+
+test.each<OperationRequest>([
+  request({ operation: 'complete_explicit_task', payload: { status: 'completed' } }),
+  request({ operation: 'associate_existing_project', payload: { projectId: '' } }),
+  request({
+    operation: 'apply_strong_task_conversation_link',
+    payload: { conversationId: 'conversation-2', contribution: 'owner' },
+  }),
+  request({ operation: 'update_explicit_followup_status', payload: { status: 'resolved' } }),
+  request({ operation: 'update_explicit_blocker_status', payload: { status: 'completed' } }),
+  request({
+    operation: 'update_explicit_project_status',
+    payload: { status: 'paused', recordId: 'task-1' },
+  }),
+])('rejects malformed or adjacent payloads for $operation', (candidate) => {
+  expect(() => validateOperationRequest(candidate)).toThrowError(
+    expect.objectContaining({ code: 'INVALID_PAYLOAD' }),
+  );
+});
+
+function undoDependencies(currentRevision: number) {
+  const writes: string[] = [];
+  const original: OperationReceipt = {
+    id: 'operation-1', operation: 'complete_explicit_task', targetId: 'task-1',
+    sourceId: 'conversation-1', priorRevision: 3, resultingRevision: 4,
+    visibility: 'trial', undoable: true, undoneAt: null,
+    createdAt: '2026-08-25T09:00:00Z',
+  };
+  const deps: UndoDependencies = {
+    getReceipt: async () => original,
+    getRecord: async () => ({ ...task, status: 'completed', revision: currentRevision }),
+    getPriorRecord: async () => task,
+    transaction: async (work) => work({
+      restoreRecord: async () => { writes.push('record'); },
+      appendUndoEvent: async () => { writes.push('event'); },
+      markReceiptUndone: async () => { writes.push('receipt'); },
+      recordCorrection: async () => { writes.push('correction'); },
+    }),
+  };
+  return { deps, writes };
+}
+
+test('Undo restores an unchanged target and records a correction atomically', async () => {
+  const { deps, writes } = undoDependencies(4);
+
+  await expect(undoOperation('operation-1', '2026-08-25T10:00:00Z', deps))
+    .resolves.toMatchObject({ priorRevision: 4, resultingRevision: 5, undoable: false });
+  expect(writes).toEqual(['record', 'event', 'receipt', 'correction']);
+});
+
+test('Undo refuses a target changed after the operation and writes nothing', async () => {
+  const { deps, writes } = undoDependencies(5);
+
+  await expect(undoOperation('operation-1', '2026-08-25T10:00:00Z', deps))
+    .rejects.toMatchObject({ code: 'UNDO_CONFLICT' });
+  expect(writes).toEqual([]);
 });
