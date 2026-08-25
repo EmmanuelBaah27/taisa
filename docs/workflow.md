@@ -17,7 +17,6 @@ relevant to the task.
 | Personal alpha release | Platform + Product | Build | `feature/local-first-coaching-platform` | Code-only build complete at `850b3d6`; next gate is Baah approval to create Railway resources, add billing/secrets, and deploy. Signed iPhone installation follows as a separate gate. |
 | Post-Send streaming transcription | Platform + Product | Review + QA | `feature/local-first-coaching-platform` | Managed-device clear/uncertain/no-speech calibration before Ship approval |
 | Taisa system architecture | Platform | Review + QA | `docs/reimagine-product-scope` | Baah document review |
-| Current experience consolidation | Platform + Product | Review + QA | `feature/current-experience` | Persistent navigation capsule motion is verified automatically and launched on the paired iPhone; awaiting Baah device QA (including page-title follow-up separately) |
 | Secondary icon button | Product | Review + QA | `feature/secondary-icon-button` | Baah device QA |
 | Recording page | Product | Review + QA | `feature/secondary-icon-button` | Baah device QA |
 | Shared chat and recording shell | Product | Build | `codex/chat-close-auth-handoff` | Baah paired-device QA after preview integration |

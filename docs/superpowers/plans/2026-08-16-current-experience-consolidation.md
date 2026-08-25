@@ -10,7 +10,7 @@
 
 **Spec:** `docs/superpowers/specs/2026-08-16-current-experience-consolidation-design.md`
 
-**Status:** Complete — consolidated candidate verified; awaiting device QA and Ship approval
+**Status:** Complete — automated verification and Baah preview QA passed; Ship approved
 
 ## Global Constraints
 
@@ -663,7 +663,6 @@ The exact clean canonical preview revision `00398fc13fb7b6f923ac73b910e738340196
 
 ### Remaining debt
 
-- Baah device QA and explicit Ship approval are outstanding.
 - The shared workspace has no standalone build/typecheck script; shared contracts are currently compiled through backend and mobile consumers.
 - A fresh mobile install requires `CENTRAL_LICENSE_KEY`; verification reused the byte-identical dependency tree already installed for canonical preview.
 - Dependency-audit findings remain separate dependency-hygiene work.
@@ -677,4 +676,4 @@ The exact clean canonical preview revision `00398fc13fb7b6f923ac73b910e738340196
 
 ### PR and merge evidence
 
-Pending device QA and Ship approval.
+Baah passed preview QA on verified revision `319afcc69f1b73fba225c42d1990ea7dae13b920` and approved Ship on 2026-08-25. The GitHub pull request and squash-merge SHA are the canonical integration evidence; final values are reported after the transaction completes.
