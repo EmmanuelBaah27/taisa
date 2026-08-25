@@ -1302,6 +1302,46 @@ test('Senior Self applies the approved sufficiency limits before allowing advice
   );
 });
 
+test('Senior Self makes career signals, partial context, and proposal semantics explicit', () => {
+  const { systemPrompt } = buildSeniorSelfPrompt(requestFixture);
+
+  expect(systemPrompt).toContain(
+    'Teammates, launches, promotions, professional roles, projects, portfolios, handoffs, management, and workplace decisions are explicit career signals.',
+  );
+  expect(systemPrompt).toContain(
+    'A personal condition with an explicit effect on a work decision is adjacent, not career-relevant.',
+  );
+  expect(systemPrompt).toContain(
+    'When at least one confirmed work fact supports a useful next step, choose partially sufficient and coach only from that fact.',
+  );
+  expect(systemPrompt).toContain(
+    'Use support only when the current turn directly corroborates an existing memory item.',
+  );
+  expect(systemPrompt).toContain(
+    'For support, copy the exact memory id into targetId and the requestId into sourceMessageId.',
+  );
+  expect(systemPrompt).toContain(
+    'Do not propose a new memory when an existing memory already captures the same goal, action, or fact.',
+  );
+  expect(systemPrompt).toContain(
+    'Use propose-outcome, not propose, for a concrete next action or goal that belongs in a first-class local record.',
+  );
+  expect(systemPrompt).toContain(
+    'Proposals are optional. Use them only when the current turn directly supports a supplied memory or explicitly asks to save a concrete durable outcome.',
+  );
+});
+
+test('Senior Self names conflicts directly and never invents a rationale for a requested explanation', () => {
+  const { systemPrompt } = buildSeniorSelfPrompt(requestFixture);
+
+  expect(systemPrompt).toContain(
+    'An explicit conflict between goals, responsibilities, or stated preferences requires Challenge.',
+  );
+  expect(systemPrompt).toContain(
+    'When asked to explain a decision, use only reasons the user supplied; never manufacture risks, stakeholder views, customer needs, or business outcomes.',
+  );
+});
+
 test('an off-topic current turn with career profile and history receives a structured redirect', async () => {
   const offTopicRequest: CoachingRequest = {
     ...requestFixture,
