@@ -5,10 +5,11 @@
 For every scoped build, fix, plan, review, or ship task:
 
 1. Read `docs/workflow.md` and `.claude/skills/taisa-workflow/SKILL.md` completely.
-2. Inspect the current branch, working tree, worktrees, remote tracking, Active Work, scope docs, and plans.
-3. Reconcile contradictions before modifying product code.
-4. State the work tier, current stage, branch, and next Baah approval gate.
-5. Invoke the Superpowers process skill required by the Taisa orchestrator.
+2. Read `docs/project-memory.md`, then inspect only the accepted decisions, reusable learnings, and canonical domain documents relevant to the task.
+3. Inspect the current branch, working tree, worktrees, remote tracking, Active Work, scope docs, and plans.
+4. Reconcile contradictions before modifying product code.
+5. State the work tier, current stage, branch, and next Baah approval gate.
+6. Invoke the Superpowers process skill required by the Taisa orchestrator.
 
 Read-only questions require orientation but do not create branches or workflow artifacts.
 

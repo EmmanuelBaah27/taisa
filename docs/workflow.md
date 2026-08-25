@@ -3,6 +3,10 @@
 How work moves from idea to shipped. Read this at the start of every feature session.
 Claude maintains the Active Work table — Baah never needs to update it.
 
+After this file and the Taisa workflow orchestrator, read `docs/project-memory.md` and
+then load only the accepted decisions, reusable learnings, and canonical domain documents
+relevant to the task.
+
 ---
 
 ## Active work
@@ -154,6 +158,33 @@ Run the narrowest relevant check throughout BUILD, then run the complete applica
 
 A feature is not merged until both checks pass.
 
+### Memory promotion and closeout
+
+During Review and again before Ship, classify non-routine context using this routing:
+
+```text
+Feature-specific context -> scope, plan, QA note, or PR
+Reusable evidence -> docs/learnings.md
+Accepted cross-cutting choice -> docs/decisions/
+Current-behavior change -> canonical domain document
+```
+
+Conversational BTS notes are optional and skippable. The memory-promotion check is not:
+it runs even when BTS is skipped. Link between destinations instead of duplicating long
+explanations.
+
+Every Standard and Full scope or plan receives a `Closeout` section during Review with:
+
+- Actual outcome
+- Plan deviations
+- Learnings and decisions
+- Remaining debt
+- Canonical docs updated
+- PR and merge evidence
+
+Quick work records material closeout in its PR description or final commit. Closeout is
+agent-owned housekeeping within the existing approvals; it does not add another gate.
+
 ---
 
 ## DS update rules
@@ -202,6 +233,9 @@ Feature deprioritised mid-pipeline:
 
 | Document | Location | Written by |
 |---|---|---|
+| Project memory index | `docs/project-memory.md` | Claude (links and authority map) |
+| Decision records | `docs/decisions/NNNN-<name>.md` | Baah + Claude (approval rules apply) |
+| Reusable learnings | `docs/learnings.md` | Claude (evidence-backed, append-only) |
 | Roadmap | `docs/roadmap.md` | Both — kept current |
 | Backlog | `docs/backlog.md` | Claude (auto-maintained) |
 | Scope docs | `docs/features/<name>.md` | Claude + Baah |
@@ -210,6 +244,7 @@ Feature deprioritised mid-pipeline:
 | API reference | `docs/api.md` | Claude (updated on every route change) |
 | Workflow | `docs/workflow.md` | Claude (Active Work table) + Baah |
 | QA notes | `docs/features/<name>-qa-notes.md` | Claude (on QA failure) |
+| Work closeout | Standard/Full scope or plan | Claude (completed during Review and Ship) |
 
 **Skills invoked per stage:**
 | Stage | Skill |
@@ -239,7 +274,7 @@ Claude reads intent, not keywords. Ambiguous → one yes/no question.
 
 ### Canonical branch
 
-`main` is the only permanent shipping branch. It is the GitHub default and the base for every pull request. `preview/taisa` is the permanent integration-only branch for combined phone previews; it is never a shipping base and must not be merged to `main` as part of device-QA setup. Platform and Product are workflow tracks, not Git branches; there is no long-lived `develop` branch.
+`main` is the only permanent branch and the only shipping branch. It is the GitHub default and the base for every pull request. `preview/taisa` is the integration-only branch for combined phone previews; it is never a shipping base and must not be merged to `main` as part of device-QA setup. Platform and Product are workflow tracks, not Git branches; there is no long-lived `develop` branch.
 
 ### Branch naming
 

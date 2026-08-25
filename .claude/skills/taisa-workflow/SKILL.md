@@ -27,6 +27,11 @@ ls docs/superpowers/plans/       # confirm plan docs exist
 
 Read `docs/workflow.md` completely and cross-reference these results against its Active Work table. If stale or contradictory, understand and reconcile the mismatch before modifying product code. Preserve dirty worktrees and user changes.
 
+Read `docs/project-memory.md`, then load only the accepted decisions, reusable learnings,
+and canonical domain documents relevant to the task. Canonical domain documents describe
+present behavior; accepted decisions explain approved reasoning; unpromoted learnings are
+advisory.
+
 State the tier, current stage, current branch, and next Baah approval gate before proceeding.
 
 ---
@@ -175,6 +180,21 @@ Format:
 Baah: "explain more" → go deeper. "Skip BTS" → drop for the session.
 Never BTS routine actions (commits, file writes, package installs).
 
+Skipping conversational BTS never skips durable memory promotion. During Review and
+again before Ship, run this memory-promotion check:
+
+```text
+Feature-specific context -> scope, plan, QA note, or PR
+Reusable evidence -> docs/learnings.md
+Accepted cross-cutting choice -> docs/decisions/
+Current-behavior change -> canonical domain document
+```
+
+Every Standard and Full scope or plan receives a `Closeout` section during Review with
+`Actual outcome`, `Plan deviations`, `Learnings and decisions`, `Remaining debt`,
+`Canonical docs updated`, and `PR and merge evidence`. Quick work records material
+closeout in its PR description or final commit. Closeout adds no approval gate.
+
 ---
 
 ## 8. Translation rule — design language always
@@ -281,4 +301,6 @@ Baah never updates these — Claude does:
 - `docs/backlog.md` → updated when ideas are mentioned
 - Linear issue status + comments → updated at every gate
 - Plan doc `**Status:**` field → updated when approved
+- Project-memory links and the Review/Ship memory-promotion check
+- Standard and Full closeouts, finalized with PR and merge evidence after Ship
 - Session re-orientation → Claude reads current state, tells Baah where we are
