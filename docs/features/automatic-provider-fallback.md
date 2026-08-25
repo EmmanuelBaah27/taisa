@@ -61,11 +61,14 @@ evaluation pack, and durable cost ledger.
 - **Actual outcome:** Implemented ordered OpenAI/Anthropic coaching with one allowlisted automatic
   fallback, an atomic combined request reservation, content-free failure handling, and enforceable
   per-provider manual review plus parity decisions.
-- **Plan deviations:** Paid provider evaluation was deliberately not run because it requires a
-  separate explicit budget approval.
+- **Plan deviations:** The first separately approved OpenAI evaluation ran for `$0.011621` and
+  failed the automated quality gate. Anthropic was not called. Offline prompt and evaluation-pack
+  remediation is recorded in `docs/features/automatic-provider-fallback-qa-notes.md`.
 - **Learnings and decisions:** See `docs/decisions/0002-automatic-coaching-provider-fallback.md`.
-- **Remaining debt:** Complete paid OpenAI and Anthropic parity review, integrate the verified
-  revision into `preview/taisa`, confirm the persistent runtime revision, and complete device QA.
+- **Remaining debt:** Verify and review the corrected evaluation pack, obtain approval for a new
+  capped OpenAI run, then complete OpenAI and Anthropic manual parity review. Re-integrate the
+  verified remediation revision into `preview/taisa`, reconfirm the persistent runtime, and repeat
+  affected device QA before Ship.
 - **Canonical docs updated:** `SETUP.md`, `docs/architecture.md`, and `docs/api.md` document the
   implemented provider pair, reservation, fallback policy, spend ceilings, and parity workflow.
 - **PR and merge evidence:** Pending Ship.

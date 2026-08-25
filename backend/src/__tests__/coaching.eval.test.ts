@@ -8,6 +8,7 @@ import {
   COACHING_EVALUATION_PACK_VERSION,
   GUARDRAIL_SCENARIO_IDS,
   type CoachingEvaluationCoverage,
+  type CoachingEvaluationScenario,
 } from '../evals/coaching/scenarios';
 import { scoreCoachingResponse } from '../evals/coaching/rubric';
 import {
@@ -134,6 +135,57 @@ test('the guardrail pack specifies response decisions for missing, scoped, adjac
   });
   expect(scenario('guardrail-partial-work')).toMatchObject({
     expected: { mode: 'coach', allowedContextSufficiency: ['partial'], requireNoProposals: false },
+  });
+});
+
+test('the current pack distinguishes grounded outcomes, missing context, and existing-memory continuity', () => {
+  const scenario = (id: string) => coachingEvaluationScenarios.find((candidate) => candidate.id === id)!;
+
+  expect(COACHING_EVALUATION_PACK_VERSION).toBe('2026-08-25.v4');
+  expect(scenario('synthetic-03').expected).toMatchObject({
+    requiredProposalOperations: [], requiredProposedMemoryTypes: [],
+    requiredProposedProvenance: [],
+  });
+  expect(scenario('synthetic-04').expected).toMatchObject({
+    requiredProposalOperations: ['propose-outcome'], requiredProposedMemoryTypes: [],
+    requiredProposedProvenance: [],
+  });
+  expect(scenario('synthetic-05').expected).toMatchObject({
+    mode: 'clarify', allowedContextSufficiency: ['insufficient'],
+    requiredProposalOperations: [], requiredProposalTargetIds: [], requireNoProposals: true,
+  });
+  expect(scenario('synthetic-06').expected).toMatchObject({
+    mode: 'clarify', allowedRelevance: ['career-relevant'],
+    allowedContextSufficiency: ['insufficient'], requireNoProposals: true,
+  });
+  expect(scenario('synthetic-07').expected).toMatchObject({
+    requiredStance: 'challenge', requiredProposalOperations: ['support'],
+    requiredProposalTargetIds: ['goal-staff', 'goal-manager'], continuityRequired: true,
+  });
+  expect(scenario('synthetic-08').expected).toMatchObject({
+    requiredStance: 'challenge', requiredProposalOperations: [],
+    requiredProposalTargetIds: [], continuityRequired: true,
+  });
+  expect(scenario('synthetic-09').request.input).toBe(
+    'A smaller project strengthened my progress toward the staff goal; should I repeat that approach?',
+  );
+  expect(scenario('synthetic-10').request.input).toBe(
+    'The portfolio prototype experiment did not work; what should change now?',
+  );
+  expect(scenario('synthetic-13').expected).toMatchObject({
+    mode: 'redirect', allowedRelevance: ['outside-scope'],
+    allowedContextSufficiency: ['sufficient'], allowedStances: [null], requireNoProposals: true,
+  });
+  expect(scenario('synthetic-17').expected).toMatchObject({
+    mode: 'clarify', allowedRelevance: ['career-relevant'],
+    allowedContextSufficiency: ['insufficient'], allowedStances: [null], requireNoProposals: true,
+  });
+  expect(scenario('synthetic-19').request.input).toBe(
+    'A small success strengthened my commitment to the staff goal; what should I build on?',
+  );
+  expect(scenario('synthetic-19').expected).toMatchObject({
+    requiredProposalOperations: ['support'], requiredProposalTargetIds: ['goal-staff'],
+    requiredProposedMemoryTypes: [], requiredProposedProvenance: [], continuityRequired: true,
   });
 });
 
@@ -450,7 +502,15 @@ test('the rubric rejects an invented propose mutation that supersedes a forbidde
 });
 
 test('the rubric enforces required proposed memory type and provenance', () => {
-  const careerScenario = coachingEvaluationScenarios.find((scenario) => scenario.id === 'synthetic-03')!;
+  const careerScenario: CoachingEvaluationScenario = {
+    ...coachingEvaluationScenarios.find((scenario) => scenario.id === 'synthetic-03')!,
+    expected: {
+      ...coachingEvaluationScenarios.find((scenario) => scenario.id === 'synthetic-03')!.expected,
+      requiredProposalOperations: ['propose'],
+      requiredProposedMemoryTypes: ['goal'],
+      requiredProposedProvenance: ['user-stated'],
+    },
+  };
   const score = scoreCoachingResponse(careerScenario, {
     mode: 'coach',
     relevance: 'career-relevant',
@@ -761,7 +821,7 @@ function reviewsWith(
 
 test('manual provider review passes at the shared usefulness and applicable grounding floor', () => {
   expect(validateCompletedManualReview(completedReviewArtifact(), passingCompletedReviews)).toEqual({
-    provider: 'openai', packVersion: '2026-08-13.v3',
+    provider: 'openai', packVersion: '2026-08-25.v4',
     automatedPassed: true, manualPassed: true, passed: true,
   });
 });
@@ -834,16 +894,16 @@ test('manual review fields are non-null exactly when the artifact response makes
 });
 
 const openAIPass: ProviderEvaluationDecision = {
-  provider: 'openai', packVersion: '2026-08-13.v3', automatedPassed: true, manualPassed: true, passed: true,
+  provider: 'openai', packVersion: '2026-08-25.v4', automatedPassed: true, manualPassed: true, passed: true,
 };
 const anthropicPass: ProviderEvaluationDecision = {
-  provider: 'anthropic', packVersion: '2026-08-13.v3', automatedPassed: true, manualPassed: true, passed: true,
+  provider: 'anthropic', packVersion: '2026-08-25.v4', automatedPassed: true, manualPassed: true, passed: true,
 };
 
 test('parity requires exactly both providers on the same pack version to pass', () => {
   const passingDecision = buildProviderParityDecision(openAIPass, anthropicPass);
   expect(passingDecision).toEqual({
-    packVersion: '2026-08-13.v3', passed: true, providers: [openAIPass, anthropicPass],
+    packVersion: '2026-08-25.v4', passed: true, providers: [openAIPass, anthropicPass],
   });
   expect(passingDecision.providers[0]).not.toBe(openAIPass);
   expect(passingDecision.providers[1]).not.toBe(anthropicPass);
