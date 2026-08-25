@@ -1,0 +1,10 @@
+{
+  "components": [
+    { "name": "Text", "implementation": "mobile/src/components/ui/Text.tsx", "storyRequired": true, "story": "mobile/src/components/ui/Text.stories.tsx" },
+    { "name": "Button", "implementation": "mobile/src/components/ui/Button.tsx", "storyRequired": true, "story": "mobile/src/components/ui/Button.stories.tsx" },
+    { "name": "Input", "implementation": "mobile/src/components/ui/Input.tsx", "storyRequired": true, "story": "mobile/src/components/ui/Input.stories.tsx" },
+    { "name": "Card", "implementation": "mobile/src/components/ui/Card.tsx", "storyRequired": true, "story": "mobile/src/components/ui/Card.stories.tsx" },
+    { "name": "Badge", "implementation": "mobile/src/components/ui/Badge.tsx", "storyRequired": true, "story": "mobile/src/components/ui/Badge.stories.tsx" },
+    { "name": "Icon", "implementation": "mobile/src/components/ui/Icon.tsx", "storyRequired": true, "story": "mobile/src/components/ui/Icon.stories.tsx" }
+  ]
+}

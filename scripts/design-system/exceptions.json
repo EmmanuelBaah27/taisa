@@ -1,0 +1,37 @@
+[
+  {
+    "file": "mobile/src/components/ui/MorphSurface.tsx",
+    "rule": "no-raw-color",
+    "reason": "Native animated material interpolation requires resolved color strings.",
+    "owner": "Taisa Design System",
+    "expires": "2026-09-25"
+  },
+  {
+    "file": "mobile/src/components/ui/liquidGlass.ts",
+    "rule": "no-raw-color",
+    "reason": "Platform material fallbacks require native color values.",
+    "owner": "Taisa Design System",
+    "expires": "2026-09-25"
+  },
+  {
+    "file": "mobile/src/components/ui/BottomNavBar.tsx",
+    "rule": "no-legacy-type",
+    "reason": "Reanimated navigation geometry requires numeric interpolated text values.",
+    "owner": "Taisa Design System",
+    "expires": "2026-09-25"
+  },
+  {
+    "file": "mobile/src/components/ui/__tests__/liquidGlass.test.ts",
+    "rule": "no-raw-color",
+    "reason": "Contract test asserts exact platform fallback output.",
+    "owner": "Taisa Design System",
+    "expires": "2026-09-25"
+  },
+  {
+    "file": "mobile/src/components/ui/__tests__/SecondaryIconButton.test.ts",
+    "rule": "no-raw-color",
+    "reason": "Contract test asserts exact resolved native icon output.",
+    "owner": "Taisa Design System",
+    "expires": "2026-09-25"
+  }
+]

@@ -1,0 +1,1 @@
+export const rawColor = '#ffffff';
