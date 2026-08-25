@@ -401,3 +401,182 @@ export const SCHEMA_V4_STATEMENTS: readonly string[] = [
     ON coaching_requests(audio_uri)
     WHERE audio_uri IS NOT NULL AND status NOT IN ('completed', 'abandoned')`,
 ];
+
+export const SCHEMA_V5_STATEMENTS: readonly string[] = [
+  `CREATE TABLE projects (
+    id TEXT PRIMARY KEY NOT NULL,
+    name TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('active', 'paused', 'completed', 'archived')),
+    source_id TEXT NOT NULL,
+    revision INTEGER NOT NULL CHECK (revision > 0),
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    idempotency_key TEXT UNIQUE
+  )`,
+  `CREATE TABLE work_records (
+    id TEXT PRIMARY KEY NOT NULL,
+    kind TEXT NOT NULL CHECK (kind IN ('task', 'followup', 'blocker', 'decision', 'outcome')),
+    title TEXT NOT NULL,
+    project_id TEXT REFERENCES projects(id) ON DELETE SET NULL,
+    status TEXT NOT NULL CHECK (status IN ('open', 'in_progress', 'blocked', 'completed', 'cancelled')),
+    freshness TEXT NOT NULL CHECK (freshness IN ('current', 'stale', 'contradictory')),
+    planned_week TEXT,
+    planned_day TEXT,
+    source_id TEXT NOT NULL,
+    revision INTEGER NOT NULL CHECK (revision > 0),
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    last_confirmed_at TEXT,
+    idempotency_key TEXT UNIQUE
+  )`,
+  `CREATE TABLE work_relationships (
+    id TEXT PRIMARY KEY NOT NULL,
+    record_id TEXT NOT NULL REFERENCES work_records(id) ON DELETE CASCADE,
+    conversation_id TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+    role TEXT NOT NULL CHECK (role IN ('primary', 'supporting')),
+    contribution TEXT NOT NULL CHECK (contribution IN ('planning', 'status', 'blocker', 'decision', 'outcome', 'evidence')),
+    source_revision INTEGER NOT NULL CHECK (source_revision > 0),
+    created_at TEXT NOT NULL,
+    idempotency_key TEXT UNIQUE
+  )`,
+  `CREATE UNIQUE INDEX work_relationships_primary_unique
+    ON work_relationships(record_id) WHERE role = 'primary'`,
+  `CREATE UNIQUE INDEX work_relationships_pair_unique
+    ON work_relationships(record_id, conversation_id)`,
+  `CREATE TABLE record_events (
+    id TEXT PRIMARY KEY NOT NULL,
+    record_id TEXT NOT NULL REFERENCES work_records(id) ON DELETE CASCADE,
+    operation TEXT NOT NULL,
+    prior_value_json TEXT,
+    resulting_value_json TEXT NOT NULL,
+    source_id TEXT NOT NULL,
+    occurred_at TEXT NOT NULL,
+    idempotency_key TEXT NOT NULL UNIQUE
+  )`,
+  `CREATE TABLE proposals (
+    id TEXT PRIMARY KEY NOT NULL,
+    type TEXT NOT NULL,
+    source_id TEXT NOT NULL,
+    source_revision INTEGER NOT NULL CHECK (source_revision > 0),
+    evidence_ids_json TEXT NOT NULL,
+    evidence_fingerprint TEXT NOT NULL,
+    reasoning TEXT NOT NULL,
+    effect_json TEXT NOT NULL,
+    ambiguity TEXT NOT NULL CHECK (ambiguity IN ('strong', 'ambiguous')),
+    admission TEXT NOT NULL CHECK (admission IN ('pending', 'admitted', 'suppressed')),
+    resolution TEXT NOT NULL CHECK (resolution IN ('unapplied', 'accepted', 'rejected', 'expired')),
+    revalidation TEXT NOT NULL CHECK (revalidation IN ('valid', 'stale', 'conflicted')),
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    idempotency_key TEXT UNIQUE
+  )`,
+  `CREATE INDEX proposals_review_idx
+    ON proposals(admission, resolution, revalidation, updated_at DESC)`,
+  `CREATE INDEX proposals_fingerprint_idx ON proposals(evidence_fingerprint, type)`,
+  `CREATE TABLE insights (
+    id TEXT PRIMARY KEY NOT NULL,
+    kind TEXT NOT NULL CHECK (kind = 'operational'),
+    title TEXT NOT NULL,
+    body TEXT NOT NULL,
+    freshness TEXT NOT NULL CHECK (freshness IN ('current', 'stale', 'contradictory')),
+    evidence_json TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  )`,
+  `CREATE TABLE growth_reflections (
+    id TEXT PRIMARY KEY NOT NULL,
+    title TEXT NOT NULL,
+    body TEXT NOT NULL,
+    state TEXT NOT NULL CHECK (state IN ('proposed', 'confirmed', 'rejected')),
+    evidence_json TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  )`,
+  `CREATE TABLE experiments (
+    id TEXT PRIMARY KEY NOT NULL,
+    title TEXT NOT NULL,
+    hypothesis TEXT NOT NULL,
+    state TEXT NOT NULL CHECK (state IN ('proposed', 'active', 'completed', 'abandoned')),
+    source_reflection_id TEXT REFERENCES growth_reflections(id) ON DELETE SET NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  )`,
+  `CREATE TABLE weekly_periods (
+    id TEXT PRIMARY KEY NOT NULL,
+    starts_on TEXT NOT NULL UNIQUE,
+    ends_on TEXT NOT NULL UNIQUE,
+    state TEXT NOT NULL CHECK (state IN ('open', 'auto_closed_unreviewed', 'reviewed')),
+    reviewed_at TEXT,
+    closed_at TEXT
+  )`,
+  `CREATE TABLE weekly_period_snapshots (
+    id TEXT PRIMARY KEY NOT NULL,
+    period_id TEXT NOT NULL REFERENCES weekly_periods(id) ON DELETE CASCADE,
+    record_ids_json TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  )`,
+  `CREATE TABLE capability_states (
+    operation TEXT PRIMARY KEY NOT NULL CHECK (operation IN (
+      'complete_explicit_task', 'associate_existing_project',
+      'apply_strong_task_conversation_link', 'update_explicit_followup_status',
+      'update_explicit_blocker_status', 'update_explicit_project_status'
+    )),
+    policy_version INTEGER NOT NULL CHECK (policy_version > 0),
+    state TEXT NOT NULL CHECK (state IN ('learning', 'ready', 'permission_granted', 'trial', 'trusted', 'ask_me')),
+    permission_granted_at TEXT,
+    relevant_examples INTEGER NOT NULL DEFAULT 0 CHECK (relevant_examples >= 0),
+    corrections INTEGER NOT NULL DEFAULT 0 CHECK (corrections >= 0),
+    contradictions INTEGER NOT NULL DEFAULT 0 CHECK (contradictions >= 0),
+    latest_evidence_at TEXT,
+    clean_trial_outcomes INTEGER NOT NULL DEFAULT 0 CHECK (clean_trial_outcomes >= 0),
+    updated_at TEXT NOT NULL
+  )`,
+  `CREATE TABLE operation_events (
+    id TEXT PRIMARY KEY NOT NULL,
+    operation TEXT NOT NULL,
+    target_id TEXT NOT NULL,
+    source_id TEXT NOT NULL,
+    prior_revision INTEGER NOT NULL,
+    resulting_revision INTEGER NOT NULL,
+    visibility TEXT NOT NULL CHECK (visibility IN ('trial', 'history')),
+    undoable INTEGER NOT NULL CHECK (undoable IN (0, 1)),
+    undone_at TEXT,
+    created_at TEXT NOT NULL,
+    idempotency_key TEXT NOT NULL UNIQUE
+  )`,
+  `CREATE TABLE behavior_events (
+    id TEXT PRIMARY KEY NOT NULL,
+    category TEXT NOT NULL,
+    event_type TEXT NOT NULL,
+    source_id TEXT,
+    occurred_at TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    idempotency_key TEXT NOT NULL UNIQUE
+  )`,
+  `CREATE TABLE behavior_aggregates (
+    id TEXT PRIMARY KEY NOT NULL,
+    category TEXT NOT NULL,
+    period_start TEXT NOT NULL,
+    period_end TEXT NOT NULL,
+    event_count INTEGER NOT NULL CHECK (event_count >= 0),
+    confirmed_history_id TEXT,
+    UNIQUE(category, period_start, period_end)
+  )`,
+  `CREATE TABLE local_notifications (
+    id TEXT PRIMARY KEY NOT NULL,
+    source_type TEXT NOT NULL CHECK (source_type IN ('work_record', 'proposal', 'insight', 'weekly_review', 'operation')),
+    source_id TEXT NOT NULL,
+    grouping_key TEXT NOT NULL,
+    read_state TEXT NOT NULL CHECK (read_state IN ('unread', 'read')),
+    disposition TEXT NOT NULL CHECK (disposition IN ('active', 'snoozed', 'dismissed')),
+    snoozed_until TEXT,
+    created_at TEXT NOT NULL,
+    idempotency_key TEXT UNIQUE
+  )`,
+  `CREATE INDEX work_records_home_idx
+    ON work_records(planned_week, status, freshness, updated_at DESC)`,
+  `CREATE INDEX record_events_record_idx ON record_events(record_id, occurred_at DESC)`,
+  `CREATE INDEX behavior_events_expiry_idx ON behavior_events(expires_at)`,
+  `CREATE INDEX local_notifications_group_idx
+    ON local_notifications(grouping_key, disposition, read_state, created_at DESC)`,
+];

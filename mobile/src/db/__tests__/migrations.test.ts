@@ -56,6 +56,7 @@ class FakeDatabase implements DatabaseLike {
       || source === 'PRAGMA user_version = 2'
       || source === 'PRAGMA user_version = 3'
       || source === 'PRAGMA user_version = 4'
+      || source === 'PRAGMA user_version = 5'
     ) {
       this.userVersion = Number(source.at(-1));
       return;
@@ -92,8 +93,8 @@ describe('local database migrations', () => {
     await runMigrations(db);
     await runMigrations(db);
 
-    expect(db.userVersion).toBe(4);
-    expect(db.calls.filter((statement) => statement === 'BEGIN IMMEDIATE')).toHaveLength(4);
+    expect(db.userVersion).toBe(5);
+    expect(db.calls.filter((statement) => statement === 'BEGIN IMMEDIATE')).toHaveLength(5);
     expect(
       db.appliedStatements.filter((statement) =>
         statement.includes('CREATE TABLE conversations'),
@@ -107,8 +108,8 @@ describe('local database migrations', () => {
     await runMigrations(db);
     await runMigrations(db);
 
-    expect(db.userVersion).toBe(4);
-    expect(db.calls.filter((statement) => statement === 'BEGIN IMMEDIATE')).toHaveLength(3);
+    expect(db.userVersion).toBe(5);
+    expect(db.calls.filter((statement) => statement === 'BEGIN IMMEDIATE')).toHaveLength(4);
     expect(db.appliedStatements).toContain(
       "ALTER TABLE conversations ADD COLUMN preferred_input_mode TEXT NOT NULL DEFAULT 'text' CHECK (preferred_input_mode IN ('voice', 'text'))",
     );
@@ -215,7 +216,7 @@ describe('local database migrations', () => {
   });
 
   test('refuses to open a database created by a newer app schema', async () => {
-    const db = new FakeDatabase(5);
+    const db = new FakeDatabase(6);
 
     await expect(runMigrations(db)).rejects.toBeInstanceOf(UnsupportedDatabaseVersionError);
     expect(db.calls).not.toContain('BEGIN IMMEDIATE');
@@ -280,7 +281,7 @@ describe('encrypted database opening', () => {
   });
 
   test('validates a non-empty SQLCipher version before reading sqlite_master', async () => {
-    const db = new FakeDatabase(4);
+    const db = new FakeDatabase(5);
 
     await expect(
       openDatabaseWithDependencies({
