@@ -1,4 +1,4 @@
-import { View, Text, Pressable } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { router } from 'expo-router';
 import { formatDistanceToNow } from 'date-fns';
 import Animated, {
@@ -9,6 +9,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import type { Thread } from '../stores/threadStore';
 import { ThreadResumeAction } from './ThreadResumeAction';
+import { Text } from './ui/Text';
 
 interface ThreadRowProps {
   thread: Thread;
@@ -35,27 +36,25 @@ export function ThreadRow({ thread }: ThreadRowProps) {
         {thread.isLive && (
           <View className="flex-row items-center gap-1 mb-1">
             <View className="w-1.5 h-1.5 rounded-full bg-primary" />
-            <Text className="text-lime-700 text-xs font-bold tracking-wider uppercase">Live</Text>
+            <Text role="metadataStrong">Live</Text>
           </View>
         )}
 
         <View className="flex-row justify-between items-center mb-1">
-          <Text className="text-foreground text-sm font-semibold flex-1 mr-2" numberOfLines={1}>
-            {thread.title}
-          </Text>
-          <Text className="text-text-tertiary text-xs">{displayTime}</Text>
+          <View className="flex-1 mr-2"><Text role="labelStrong" numberOfLines={1}>{thread.title}</Text></View>
+          <Text role="metadata" color="tertiary">{displayTime}</Text>
         </View>
 
         {thread.isVoice && thread.lastUserMessage == null ? (
-          <Text className="text-muted-foreground text-xs mb-1">〜〜〜  {formatDuration(thread.audioDurationSeconds ?? 0)} voice</Text>
+          <Text role="metadata" color="secondary">〜〜〜  {formatDuration(thread.audioDurationSeconds ?? 0)} voice</Text>
         ) : (
-          <Text className="text-muted-foreground text-xs mb-1" numberOfLines={1}>
+          <Text role="metadata" color="secondary" numberOfLines={1}>
             {thread.lastUserMessage ?? ''}
           </Text>
         )}
 
         {thread.lastAssistantMessage != null && (
-          <Text className="text-lime-700 text-xs" numberOfLines={2}>
+          <Text role="metadata" numberOfLines={2}>
             {thread.lastAssistantMessage}
           </Text>
         )}

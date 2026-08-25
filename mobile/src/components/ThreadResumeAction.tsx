@@ -1,8 +1,9 @@
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { router } from 'expo-router';
 
 import type { CoachingRequestStatus } from '../repositories/coachingRequestRepository';
 import { chatConversationRoute } from '../navigation/chatConversationRoute';
+import { Text } from './ui/Text';
 
 interface ThreadResumeActionProps {
   conversationId: string;
@@ -39,10 +40,10 @@ export function ThreadResumeAction({
     <View className="flex-row items-center justify-between gap-2 mt-2 pt-2 border-t border-border">
       <View className="flex-1">
         {statusLabel !== null && (
-          <Text className="text-foreground text-xs font-semibold">{statusLabel}</Text>
+          <Text role="metadataStrong">{statusLabel}</Text>
         )}
         {pendingProposalCount > 0 && (
-          <Text className="text-text-tertiary text-xs">
+          <Text role="metadata" color="tertiary">
             {pendingProposalCount} {pendingProposalCount === 1 ? 'decision' : 'decisions'} waiting
           </Text>
         )}
@@ -56,7 +57,7 @@ export function ThreadResumeAction({
         }}
         className="rounded-full border border-border px-3 py-1.5"
       >
-        <Text className="text-foreground text-xs font-semibold">Resume</Text>
+        <Text role="metadataStrong">Resume</Text>
       </Pressable>
     </View>
   );

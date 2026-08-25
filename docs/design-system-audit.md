@@ -38,6 +38,8 @@ This inventory records the violations present at Build start. Test and Storybook
 | Semantic `Text` | New foundation | Yes | Yes | No | No |
 | `Screen`, `Stack`, `Row`, `Section`, `Divider` | Only after two confirmed uses | Conditional | Yes | No | No |
 
+The initial shared-component pass retained existing file locations to avoid mixing navigation/store separation with visual migration. `DigestCard`, `TaisaCard`, `ThreadResumeAction`, `ThreadRow`, and `VoiceButton` remain feature/domain wrappers because they own routing or state. `SearchBar`, `ThemeTag`, and the presentational portion of `WorkspaceHeader` are candidates for a later physical move only when a second active consumer justifies it; all now consume semantic foundations.
+
 ## Technical exceptions
 
 | File | Rule | Native API reason | Owner | Review date |
