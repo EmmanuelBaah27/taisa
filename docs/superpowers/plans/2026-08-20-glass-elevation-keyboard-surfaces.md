@@ -114,4 +114,3 @@
 - [ ] Integrate the verified branch into `preview/taisa`, push `origin/preview/taisa`, fetch, and confirm local/remote SHAs match.
 - [ ] Launch the paired iPhone from the canonical preview Metro runtime and inspect native logs for crashes, Worklets errors, and glass-effect failures.
 - [ ] Hand off the exact revision for Baah device QA; do not claim Ship readiness before that gate passes.
-

@@ -1,7 +1,7 @@
 # Interaction Feedback QA Plan
 
-**Tier:** Standard Product QA revision  
-**Branch:** `fix/glass-elevation-keyboard-surfaces`  
+**Tier:** Standard Product QA revision
+**Branch:** `fix/glass-elevation-keyboard-surfaces`
 **Approved by Baah:** 2026-08-20
 
 ## Scope
