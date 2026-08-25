@@ -1,5 +1,19 @@
 import type { CoachingProvider, ProviderCoachingInput } from '../services/coaching/provider';
-import { getConfiguredProvider } from '../services/coaching/provider';
+import OpenAI from 'openai';
+import {
+  ContentFilterFinishReasonError as OpenAIContentFilterFinishReasonError,
+} from 'openai/error';
+import Anthropic from '@anthropic-ai/sdk';
+import {
+  getConfiguredProvider,
+  validateCoachingProviderStartupConfiguration,
+} from '../services/coaching/provider';
+import {
+  ContentFreeFallbackError,
+  ContentFreeFallbackInvalidOutputError,
+  getConfiguredFallbackProvider,
+  type FallbackCoachingProvider,
+} from '../services/coaching/fallbackProvider';
 import { createOpenAIProvider } from '../services/coaching/openaiProvider';
 import { createAnthropicProvider } from '../services/coaching/anthropicProvider';
 import {
@@ -9,10 +23,12 @@ import {
 import type { CoachingRequest } from '@taisa/shared';
 import { CoachingResponsePayloadSchema } from '../schemas/coaching';
 import {
-  estimateConfiguredCoachingUsage,
+  estimateConfiguredCoachingAttempts,
   requestCoaching,
 } from '../services/coaching/coachingGateway';
+import { classifyOperationalProviderFailure } from '../services/coaching/providerFailure';
 import { buildSeniorSelfPrompt } from '../prompts/system/seniorSelf';
+import { UsageExceedsReservationError } from '../services/usage/costLedger';
 
 jest.mock('../db/connection', () => {
   throw new Error('The stateless coaching gateway must not import the backend database');
@@ -147,6 +163,327 @@ const anthropicConfig = {
   maxOutputTokens: 1024,
   structuredOutputInputTokenOverhead: 512,
 };
+
+function environment(primaryId: 'openai' | 'anthropic') {
+  return {
+    TAISA_COACHING_PROVIDER: primaryId,
+    TAISA_OPENAI_MODEL: openAIConfig.model,
+    TAISA_OPENAI_INPUT_PRICE_USD_PER_MILLION_TOKENS: String(
+      openAIConfig.inputPriceUsdPerMillionTokens,
+    ),
+    TAISA_OPENAI_OUTPUT_PRICE_USD_PER_MILLION_TOKENS: String(
+      openAIConfig.outputPriceUsdPerMillionTokens,
+    ),
+    TAISA_OPENAI_MAX_OUTPUT_TOKENS: String(openAIConfig.maxOutputTokens),
+    TAISA_OPENAI_STRUCTURED_OUTPUT_INPUT_TOKEN_OVERHEAD: String(
+      openAIConfig.structuredOutputInputTokenOverhead,
+    ),
+    TAISA_ANTHROPIC_MODEL: anthropicConfig.model,
+    TAISA_ANTHROPIC_INPUT_PRICE_USD_PER_MILLION_TOKENS: String(
+      anthropicConfig.inputPriceUsdPerMillionTokens,
+    ),
+    TAISA_ANTHROPIC_OUTPUT_PRICE_USD_PER_MILLION_TOKENS: String(
+      anthropicConfig.outputPriceUsdPerMillionTokens,
+    ),
+    TAISA_ANTHROPIC_MAX_OUTPUT_TOKENS: String(anthropicConfig.maxOutputTokens),
+    TAISA_ANTHROPIC_STRUCTURED_OUTPUT_INPUT_TOKEN_OVERHEAD: String(
+      anthropicConfig.structuredOutputInputTokenOverhead,
+    ),
+  };
+}
+
+function providerResult(providerId: 'openai' | 'anthropic') {
+  return {
+    payload: coachingPayloadFixture,
+    usage: {
+      provider: providerId,
+      model: `${providerId}-mock`,
+      inputTokens: 10,
+      outputTokens: 4,
+      estimatedCostUsd: providerId === 'openai' ? 0.000052 : 0.00009,
+    },
+  };
+}
+
+function providerRegistry(): Record<'openai' | 'anthropic', CoachingProvider> {
+  return {
+    openai: {
+      id: 'openai',
+      estimateMaximumUsage: jest.fn().mockReturnValue({
+        provider: 'openai',
+        model: openAIConfig.model,
+        inputTokens: 100,
+        outputTokens: openAIConfig.maxOutputTokens,
+        estimatedCostUsd: 0.02,
+      }),
+      respond: jest.fn().mockResolvedValue(providerResult('openai')),
+    },
+    anthropic: {
+      id: 'anthropic',
+      estimateMaximumUsage: jest.fn().mockReturnValue({
+        provider: 'anthropic',
+        model: anthropicConfig.model,
+        inputTokens: 100,
+        outputTokens: anthropicConfig.maxOutputTokens,
+        estimatedCostUsd: 0.03,
+      }),
+      respond: jest.fn().mockResolvedValue(providerResult('anthropic')),
+    },
+  };
+}
+
+function attemptObserver() {
+  return {
+    beginAttempt: jest.fn(),
+    settleAttempt: jest.fn(),
+  };
+}
+
+function other(providerId: 'openai' | 'anthropic') {
+  return providerId === 'openai' ? 'anthropic' as const : 'openai' as const;
+}
+
+function sdkAdapterRejecting(
+  providerId: 'openai' | 'anthropic',
+  failure: unknown,
+): CoachingProvider {
+  if (providerId === 'openai') {
+    return createOpenAIProvider(openAIConfig, {
+      beta: {
+        chat: {
+          completions: {
+            parse: jest.fn().mockRejectedValue(failure),
+          },
+        },
+      },
+    } as any);
+  }
+  return createAnthropicProvider(anthropicConfig, {
+    messages: {
+      create: jest.fn().mockRejectedValue(failure),
+    },
+  } as any);
+}
+
+const sdkHeaders = {} as any;
+const sdkFailureSecret = 'SDK_FAILURE_SECRET';
+
+const sdkOperationalFailureCases = [
+  [
+    'OpenAI connection',
+    'openai',
+    () => new OpenAI.APIConnectionError({
+      message: sdkFailureSecret,
+      cause: new Error(sdkFailureSecret),
+    }),
+    'network',
+  ],
+  [
+    'OpenAI timeout',
+    'openai',
+    () => new OpenAI.APIConnectionTimeoutError({ message: sdkFailureSecret }),
+    'timeout',
+  ],
+  [
+    'OpenAI rate limit',
+    'openai',
+    () => new OpenAI.RateLimitError(429, {
+      message: sdkFailureSecret,
+      type: 'rate_limit_error',
+    }, sdkFailureSecret, sdkHeaders),
+    'rate_limit',
+  ],
+  [
+    'OpenAI authentication',
+    'openai',
+    () => new OpenAI.AuthenticationError(401, {
+      message: sdkFailureSecret,
+      type: 'authentication_error',
+    }, sdkFailureSecret, sdkHeaders),
+    'authentication',
+  ],
+  [
+    'OpenAI permission',
+    'openai',
+    () => new OpenAI.PermissionDeniedError(403, {
+      message: sdkFailureSecret,
+      type: 'permission_error',
+    }, sdkFailureSecret, sdkHeaders),
+    'permission',
+  ],
+  [
+    'OpenAI billing',
+    'openai',
+    () => new OpenAI.BadRequestError(400, {
+      message: sdkFailureSecret,
+      type: 'billing_error',
+    }, sdkFailureSecret, sdkHeaders),
+    'billing',
+  ],
+  [
+    'OpenAI unavailable',
+    'openai',
+    () => new OpenAI.InternalServerError(503, {
+      message: sdkFailureSecret,
+      type: 'server_error',
+    }, sdkFailureSecret, sdkHeaders),
+    'unavailable',
+  ],
+  [
+    'Anthropic connection',
+    'anthropic',
+    () => new Anthropic.APIConnectionError({
+      message: sdkFailureSecret,
+      cause: new Error(sdkFailureSecret),
+    }),
+    'network',
+  ],
+  [
+    'Anthropic timeout',
+    'anthropic',
+    () => new Anthropic.APIConnectionTimeoutError({ message: sdkFailureSecret }),
+    'timeout',
+  ],
+  [
+    'Anthropic rate limit',
+    'anthropic',
+    () => new Anthropic.RateLimitError(429, {
+      type: 'error',
+      error: { type: 'rate_limit_error', message: sdkFailureSecret },
+    }, sdkFailureSecret, sdkHeaders),
+    'rate_limit',
+  ],
+  [
+    'Anthropic authentication',
+    'anthropic',
+    () => new Anthropic.AuthenticationError(401, {
+      type: 'error',
+      error: { type: 'authentication_error', message: sdkFailureSecret },
+    }, sdkFailureSecret, sdkHeaders),
+    'authentication',
+  ],
+  [
+    'Anthropic permission',
+    'anthropic',
+    () => new Anthropic.PermissionDeniedError(403, {
+      type: 'error',
+      error: { type: 'permission_error', message: sdkFailureSecret },
+    }, sdkFailureSecret, sdkHeaders),
+    'permission',
+  ],
+  [
+    'Anthropic billing',
+    'anthropic',
+    () => new Anthropic.BadRequestError(400, {
+      type: 'error',
+      error: { type: 'billing_error', message: sdkFailureSecret },
+    }, sdkFailureSecret, sdkHeaders),
+    'billing',
+  ],
+  [
+    'Anthropic overloaded',
+    'anthropic',
+    () => new Anthropic.InternalServerError(529, {
+      type: 'error',
+      error: { type: 'overloaded_error', message: sdkFailureSecret },
+    }, sdkFailureSecret, sdkHeaders),
+    'overloaded',
+  ],
+  [
+    'Anthropic unavailable',
+    'anthropic',
+    () => new Anthropic.InternalServerError(503, {
+      type: 'error',
+      error: { type: 'api_error', message: sdkFailureSecret },
+    }, sdkFailureSecret, sdkHeaders),
+    'unavailable',
+  ],
+] as const;
+
+const sdkDeniedFailureCases = [
+  [
+    'OpenAI content-filter finish reason',
+    'openai',
+    () => new OpenAIContentFilterFinishReasonError(),
+    'content_policy_error',
+  ],
+  [
+    'OpenAI invalid request',
+    'openai',
+    () => new OpenAI.BadRequestError(400, {
+      message: sdkFailureSecret,
+      type: 'invalid_request_error',
+    }, sdkFailureSecret, sdkHeaders),
+    'invalid_request_error',
+  ],
+  [
+    'OpenAI policy rejection despite server status',
+    'openai',
+    () => new OpenAI.InternalServerError(503, {
+      message: sdkFailureSecret,
+      type: 'content_policy_error',
+    }, sdkFailureSecret, sdkHeaders),
+    'content_policy_error',
+  ],
+  [
+    'OpenAI safety rejection despite server status',
+    'openai',
+    () => new OpenAI.InternalServerError(503, {
+      message: sdkFailureSecret,
+      type: 'safety_error',
+    }, sdkFailureSecret, sdkHeaders),
+    'safety_error',
+  ],
+  [
+    'Anthropic invalid request',
+    'anthropic',
+    () => new Anthropic.BadRequestError(400, {
+      type: 'error',
+      error: { type: 'invalid_request_error', message: sdkFailureSecret },
+    }, sdkFailureSecret, sdkHeaders),
+    'invalid_request_error',
+  ],
+  [
+    'Anthropic policy rejection despite server status',
+    'anthropic',
+    () => new Anthropic.InternalServerError(529, {
+      type: 'error',
+      error: { type: 'content_policy_error', message: sdkFailureSecret },
+    }, sdkFailureSecret, sdkHeaders),
+    'content_policy_error',
+  ],
+  [
+    'Anthropic safety rejection despite server status',
+    'anthropic',
+    () => new Anthropic.InternalServerError(529, {
+      type: 'error',
+      error: { type: 'safety_error', message: sdkFailureSecret },
+    }, sdkFailureSecret, sdkHeaders),
+    'safety_error',
+  ],
+] as const;
+
+const operationalFailures = [
+  ['timeout', { status: 408 }, 'timeout'],
+  ['conflict', { status: 409 }, 'unavailable'],
+  ['rate limit', { status: 429, type: 'rate_limit_error' }, 'rate_limit'],
+  ['provider unavailable', { status: 503, type: 'provider_error' }, 'unavailable'],
+  ['overloaded', { type: 'overloaded_error' }, 'overloaded'],
+  ['authentication', { type: 'authentication_error' }, 'authentication'],
+  ['permission', { type: 'permission_error' }, 'permission'],
+  ['billing', { type: 'billing_error' }, 'billing'],
+  ['network timeout', { code: 'ETIMEDOUT' }, 'timeout'],
+  ['network reset', { code: 'ECONNRESET' }, 'network'],
+] as const;
+
+const nonOperationalFailures = [
+  { status: 400, type: 'invalid_request_error' },
+  { status: 403, type: 'safety_error' },
+  { type: 'content_policy_error' },
+  { code: 'UNKNOWN_PRIVATE_CODE' },
+  new Error('message text is never classification input'),
+  CoachingResponsePayloadSchema.safeParse({}).error,
+];
 
 test.each(validPayloadFixtures)(
   'the shared schema accepts a valid %s response mode',
@@ -375,64 +712,376 @@ test.each(validPayloadFixtures)(
 );
 
 test.each(['openai', 'anthropic'] as const)(
-  'configuration selects %s and requestCoaching invokes exactly that provider once',
-  async (providerId) => {
-    const providers: Record<'openai' | 'anthropic', CoachingProvider> = {
-      openai: {
-        id: 'openai',
-        respond: jest.fn().mockResolvedValue({
-          payload: coachingPayloadFixture,
-          usage: {
-            provider: 'openai',
-            model: 'openai-mock',
-            inputTokens: 10,
-            outputTokens: 4,
-            estimatedCostUsd: 0.000052,
-          },
-        }),
-      },
-      anthropic: {
-        id: 'anthropic',
-        respond: jest.fn().mockResolvedValue({
-          payload: coachingPayloadFixture,
-          usage: {
-            provider: 'anthropic',
-            model: 'anthropic-mock',
-            inputTokens: 10,
-            outputTokens: 4,
-            estimatedCostUsd: 0.00009,
-          },
-        }),
-      },
-    };
-    const selected = getConfiguredProvider(
-      {
-        TAISA_COACHING_PROVIDER: providerId,
-        TAISA_OPENAI_MODEL: 'openai-mock',
-        TAISA_OPENAI_INPUT_PRICE_USD_PER_MILLION_TOKENS: '2',
-        TAISA_OPENAI_OUTPUT_PRICE_USD_PER_MILLION_TOKENS: '8',
-        TAISA_OPENAI_MAX_OUTPUT_TOKENS: '2048',
-        TAISA_OPENAI_STRUCTURED_OUTPUT_INPUT_TOKEN_OVERHEAD: '512',
-        TAISA_ANTHROPIC_MODEL: 'anthropic-mock',
-        TAISA_ANTHROPIC_INPUT_PRICE_USD_PER_MILLION_TOKENS: '3',
-        TAISA_ANTHROPIC_OUTPUT_PRICE_USD_PER_MILLION_TOKENS: '15',
-        TAISA_ANTHROPIC_MAX_OUTPUT_TOKENS: '1024',
-        TAISA_ANTHROPIC_STRUCTURED_OUTPUT_INPUT_TOKEN_OVERHEAD: '512',
-      },
-      providers,
-    );
+  '%s primary success calls no fallback and reports one settled attempt',
+  async (primaryId) => {
+    const providers = providerRegistry();
+    const observer = attemptObserver();
+    const provider = getConfiguredFallbackProvider(environment(primaryId), providers);
 
-    const response = await requestCoaching(requestFixture, selected);
+    const outcome = await provider.respond(providerInput, observer);
 
-    expect(response).toMatchObject({
-      requestId: requestFixture.requestId,
-      ...coachingPayloadFixture,
-      usage: { provider: providerId },
-    });
-    expect(providers[providerId].respond).toHaveBeenCalledTimes(1);
-    expect(providers[providerId === 'openai' ? 'anthropic' : 'openai'].respond).not.toHaveBeenCalled();
+    expect(outcome.result).toEqual(providerResult(primaryId));
+    expect(outcome.attempts).toEqual([{
+      attemptId: 'primary',
+      providerId: primaryId,
+      result: providerResult(primaryId),
+    }]);
+    expect(providers[primaryId].respond).toHaveBeenCalledTimes(1);
+    expect(providers[other(primaryId)].respond).not.toHaveBeenCalled();
+    expect(observer.beginAttempt.mock.calls).toEqual([['primary']]);
+    expect(observer.settleAttempt.mock.calls).toEqual([[
+      { attemptId: 'primary', receipt: providerResult(primaryId).usage },
+    ]]);
   },
 );
+
+test.each(sdkOperationalFailureCases)(
+  '%s SDK failure is normalized before one fallback attempt',
+  async (_name, primaryId, failureFactory, expectedFailureClass) => {
+    const adapter = sdkAdapterRejecting(primaryId, failureFactory());
+    let normalizedFailure: unknown;
+    try {
+      await adapter.respond(providerInput);
+    } catch (error) {
+      normalizedFailure = error;
+    }
+    expect(classifyOperationalProviderFailure(normalizedFailure)).toBe(
+      expectedFailureClass,
+    );
+    expect(normalizedFailure).not.toHaveProperty('message');
+    expect(normalizedFailure).not.toHaveProperty('cause');
+    expect(normalizedFailure).not.toHaveProperty('error');
+    expect(normalizedFailure).not.toHaveProperty('headers');
+    expect(JSON.stringify(normalizedFailure)).not.toContain(sdkFailureSecret);
+
+    const providers = providerRegistry();
+    const observer = attemptObserver();
+    providers[primaryId] = sdkAdapterRejecting(primaryId, failureFactory());
+
+    const outcome = await getConfiguredFallbackProvider(
+      environment(primaryId), providers,
+    ).respond(providerInput, observer);
+
+    expect(outcome.result.usage.provider).toBe(other(primaryId));
+    expect(outcome.attempts[0]).toEqual({
+      attemptId: 'primary',
+      providerId: primaryId,
+      failureClass: expectedFailureClass,
+    });
+    expect(JSON.stringify(outcome.attempts)).not.toContain(sdkFailureSecret);
+    expect(providers[other(primaryId)].respond).toHaveBeenCalledTimes(1);
+  },
+);
+
+test.each(sdkDeniedFailureCases)(
+  '%s remains content-free and never invokes fallback',
+  async (_name, primaryId, failureFactory, expectedType) => {
+    const providers = providerRegistry();
+    const observer = attemptObserver();
+    providers[primaryId] = sdkAdapterRejecting(primaryId, failureFactory());
+
+    let thrown: unknown;
+    try {
+      await getConfiguredFallbackProvider(
+        environment(primaryId), providers,
+      ).respond(providerInput, observer);
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toEqual({ type: expectedType });
+    expect(JSON.stringify(thrown)).not.toContain(sdkFailureSecret);
+    expect(providers[other(primaryId)].respond).not.toHaveBeenCalled();
+  },
+);
+
+test.each(operationalFailures)(
+  'one %s primary failure invokes the alternate exactly once',
+  async (_name, failure, expectedFailureClass) => {
+    const providers = providerRegistry();
+    const observer = attemptObserver();
+    providers.openai.respond = jest.fn().mockRejectedValue(failure);
+
+    const outcome = await getConfiguredFallbackProvider(
+      environment('openai'), providers,
+    ).respond(providerInput, observer);
+
+    expect(outcome.result.usage.provider).toBe('anthropic');
+    expect(outcome.attempts.map(({ attemptId }) => attemptId)).toEqual([
+      'primary', 'fallback',
+    ]);
+    expect(outcome.attempts[0]).toEqual(expect.objectContaining({
+      attemptId: 'primary',
+      providerId: 'openai',
+      failureClass: expectedFailureClass,
+    }));
+    expect(outcome.attempts[0]).not.toHaveProperty('result');
+    expect(outcome.attempts[1]).toEqual(expect.objectContaining({
+      attemptId: 'fallback',
+      providerId: 'anthropic',
+      result: providerResult('anthropic'),
+    }));
+    expect(providers.openai.respond).toHaveBeenCalledTimes(1);
+    expect(providers.anthropic.respond).toHaveBeenCalledTimes(1);
+    expect(observer.beginAttempt.mock.calls).toEqual([['primary'], ['fallback']]);
+    expect(observer.settleAttempt.mock.calls).toEqual([
+      [{ attemptId: 'primary' }],
+      [{ attemptId: 'fallback', receipt: providerResult('anthropic').usage }],
+    ]);
+  },
+);
+
+test.each(['openai', 'anthropic'] as const)(
+  '%s primary operational failure calls its configured alternate',
+  async (primaryId) => {
+    const providers = providerRegistry();
+    const observer = attemptObserver();
+    providers[primaryId].respond = jest.fn().mockRejectedValue({ status: 503 });
+
+    const outcome = await getConfiguredFallbackProvider(
+      environment(primaryId), providers,
+    ).respond(providerInput, observer);
+
+    expect(outcome.result.usage.provider).toBe(other(primaryId));
+    expect(providers[primaryId].respond).toHaveBeenCalledTimes(1);
+    expect(providers[other(primaryId)].respond).toHaveBeenCalledTimes(1);
+  },
+);
+
+test.each(nonOperationalFailures)(
+  'a non-operational primary failure never invokes fallback',
+  async (failure) => {
+    const providers = providerRegistry();
+    const observer = attemptObserver();
+    providers.openai.respond = jest.fn().mockRejectedValue(failure);
+
+    await expect(getConfiguredFallbackProvider(
+      environment('openai'), providers,
+    ).respond(providerInput, observer)).rejects.toBe(failure);
+
+    expect(providers.anthropic.respond).not.toHaveBeenCalled();
+    expect(observer.beginAttempt.mock.calls).toEqual([['primary']]);
+    expect(observer.settleAttempt.mock.calls).toEqual([[{ attemptId: 'primary' }]]);
+  },
+);
+
+test('observer settlement failure is not misclassified as a provider failure', async () => {
+  const providers = providerRegistry();
+  const settlementFailure = new Error('ledger settlement failed');
+  const observer = attemptObserver();
+  observer.settleAttempt.mockImplementation(() => {
+    throw settlementFailure;
+  });
+
+  await expect(getConfiguredFallbackProvider(
+    environment('openai'), providers,
+  ).respond(providerInput, observer)).rejects.toBe(settlementFailure);
+
+  expect(providers.openai.respond).toHaveBeenCalledTimes(1);
+  expect(providers.anthropic.respond).not.toHaveBeenCalled();
+  expect(observer.settleAttempt).toHaveBeenCalledTimes(1);
+});
+
+test('primary success survives a durably recorded settlement overrun without fallback', async () => {
+  const providers = providerRegistry();
+  const observer = attemptObserver();
+  const warning = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+  observer.settleAttempt.mockImplementation((settlement) => {
+    if (settlement.receipt) throw new UsageExceedsReservationError(0.001, 0.002);
+  });
+
+  const outcome = await getConfiguredFallbackProvider(
+    environment('openai'), providers,
+  ).respond(providerInput, observer);
+
+  expect(outcome.result.usage.provider).toBe('openai');
+  expect(providers.openai.respond).toHaveBeenCalledTimes(1);
+  expect(providers.anthropic.respond).not.toHaveBeenCalled();
+  expect(warning).toHaveBeenCalledWith(
+    '[Taisa diagnostic] COACHING_USAGE_EXCEEDED_RESERVATION',
+  );
+  warning.mockRestore();
+});
+
+test('fallback success survives a durably recorded settlement overrun without retry', async () => {
+  const providers = providerRegistry();
+  const observer = attemptObserver();
+  const warning = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+  providers.openai.respond = jest.fn().mockRejectedValue({ status: 503 });
+  observer.settleAttempt.mockImplementation((settlement) => {
+    if (settlement.receipt) throw new UsageExceedsReservationError(0.001, 0.002);
+  });
+
+  const outcome = await getConfiguredFallbackProvider(
+    environment('openai'), providers,
+  ).respond(providerInput, observer);
+
+  expect(outcome.result.usage.provider).toBe('anthropic');
+  expect(providers.openai.respond).toHaveBeenCalledTimes(1);
+  expect(providers.anthropic.respond).toHaveBeenCalledTimes(1);
+  expect(warning).toHaveBeenCalledWith(
+    '[Taisa diagnostic] COACHING_USAGE_EXCEEDED_RESERVATION',
+  );
+  warning.mockRestore();
+});
+
+test('both operational failures expose classifications and attempt IDs but no raw errors', async () => {
+  const providers = providerRegistry();
+  const observer = attemptObserver();
+  providers.openai.respond = jest.fn().mockRejectedValue({
+    status: 429,
+    type: 'rate_limit_error',
+    payload: 'PRIMARY_PROVIDER_SECRET',
+  });
+  providers.anthropic.respond = jest.fn().mockRejectedValue({
+    type: 'overloaded_error',
+    payload: 'FALLBACK_PROVIDER_SECRET',
+  });
+
+  let thrown: unknown;
+  try {
+    await getConfiguredFallbackProvider(
+      environment('openai'), providers,
+    ).respond(providerInput, observer);
+  } catch (error) {
+    thrown = error;
+  }
+
+  expect(thrown).toBeInstanceOf(ContentFreeFallbackError);
+  expect(thrown).toMatchObject({
+    attempts: [
+      { attemptId: 'primary', failureClass: 'rate_limit' },
+      { attemptId: 'fallback', failureClass: 'overloaded' },
+    ],
+  });
+  expect(JSON.stringify(thrown)).not.toContain('PRIMARY_PROVIDER_SECRET');
+  expect(JSON.stringify(thrown)).not.toContain('FALLBACK_PROVIDER_SECRET');
+  expect(observer.beginAttempt.mock.calls).toEqual([['primary'], ['fallback']]);
+  expect(observer.settleAttempt.mock.calls).toEqual([
+    [{ attemptId: 'primary' }],
+    [{ attemptId: 'fallback' }],
+  ]);
+});
+
+test('fallback invalid output is recoverable without retaining Zod details or payload content', async () => {
+  const providers = providerRegistry();
+  const observer = attemptObserver();
+  const secret = 'FALLBACK_ZOD_SECRET';
+  const malformedFallback = CoachingResponsePayloadSchema.safeParse({
+    ...coachingPayloadFixture,
+    stance: secret,
+  });
+  if (malformedFallback.success) throw new Error('Expected malformed fallback fixture');
+  expect(JSON.stringify(malformedFallback.error)).toContain(secret);
+  providers.openai.respond = jest.fn().mockRejectedValue({
+    status: 429,
+    type: 'rate_limit_error',
+  });
+  providers.anthropic.respond = jest.fn().mockRejectedValue(malformedFallback.error);
+
+  let thrown: unknown;
+  try {
+    await getConfiguredFallbackProvider(
+      environment('openai'), providers,
+    ).respond(providerInput, observer);
+  } catch (error) {
+    thrown = error;
+  }
+
+  expect(thrown).toBeInstanceOf(ContentFreeFallbackInvalidOutputError);
+  expect(thrown).toMatchObject({
+    code: 'INVALID_COACHING_OUTPUT',
+    recoverable: true,
+    attempts: [
+      { attemptId: 'primary', failureClass: 'rate_limit' },
+      { attemptId: 'fallback', failureClass: 'invalid_output' },
+    ],
+  });
+  expect(thrown).not.toHaveProperty('cause');
+  expect(thrown).not.toHaveProperty('issues');
+  expect(JSON.stringify(thrown)).not.toContain(secret);
+  expect(JSON.stringify(thrown)).not.toContain('stance');
+  expect(providers.openai.respond).toHaveBeenCalledTimes(1);
+  expect(providers.anthropic.respond).toHaveBeenCalledTimes(1);
+  expect(observer.settleAttempt.mock.calls).toEqual([
+    [{ attemptId: 'primary' }],
+    [{ attemptId: 'fallback' }],
+  ]);
+});
+
+test.each(['openai', 'anthropic'] as const)(
+  '%s primary retains provider and model identity in ordered maximum estimates',
+  (primaryId) => {
+    const providers = providerRegistry();
+    const estimates = getConfiguredFallbackProvider(
+      environment(primaryId), providers,
+    ).estimateMaximumAttempts(providerInput);
+
+    expect(estimates).toEqual([
+      {
+        attemptId: 'primary',
+        receipt: expect.objectContaining({
+          provider: primaryId,
+          model: `${primaryId}-mock`,
+        }),
+      },
+      {
+        attemptId: 'fallback',
+        receipt: expect.objectContaining({
+          provider: other(primaryId),
+          model: `${other(primaryId)}-mock`,
+        }),
+      },
+    ]);
+  },
+);
+
+test.each(['openai', 'anthropic'] as const)(
+  'maximum estimation fails when the %s estimate is unavailable',
+  (missingId) => {
+    const providers = providerRegistry();
+    providers[missingId].estimateMaximumUsage = undefined;
+
+    expect(() => getConfiguredFallbackProvider(environment('openai'), providers)).toThrow(
+      `${missingId} provider must estimate maximum usage`,
+    );
+  },
+);
+
+test.each(
+  Object.keys(environment('openai')).filter((name) => name !== 'TAISA_COACHING_PROVIDER'),
+)('fallback startup fails when %s is absent', (missingName) => {
+  const configured = { ...environment('openai') } as Record<string, string | undefined>;
+  delete configured[missingName];
+
+  expect(() => getConfiguredFallbackProvider(configured, providerRegistry())).toThrow(
+    `${missingName} must be configured`,
+  );
+});
+
+test.each(['OPENAI_API_KEY', 'ANTHROPIC_API_KEY'])(
+  'startup fails before traffic when %s is absent',
+  (missingName) => {
+    const configured = {
+      ...environment('openai'),
+      OPENAI_API_KEY: 'configured-openai-key',
+      ANTHROPIC_API_KEY: 'configured-anthropic-key',
+    } as Record<string, string | undefined>;
+    delete configured[missingName];
+
+    expect(() => validateCoachingProviderStartupConfiguration(configured)).toThrow(
+      `${missingName} must be configured`,
+    );
+  },
+);
+
+test('startup validation accepts both provider configs without constructing adapters', () => {
+  expect(validateCoachingProviderStartupConfiguration({
+    ...environment('anthropic'),
+    OPENAI_API_KEY: 'configured-openai-key',
+    ANTHROPIC_API_KEY: 'configured-anthropic-key',
+  })).toEqual({ primaryId: 'anthropic', fallbackId: 'openai' });
+});
 
 test.each([undefined, '', 'other'])(
   'missing or invalid provider configuration fails closed (%s)',
@@ -492,26 +1141,35 @@ test.each([
 });
 
 test('conservatively estimates configured coaching input bytes and capped output tokens', () => {
-  const environment = {
-    TAISA_COACHING_PROVIDER: 'openai',
-    TAISA_OPENAI_MODEL: 'openai-mock',
-    TAISA_OPENAI_INPUT_PRICE_USD_PER_MILLION_TOKENS: '2',
-    TAISA_OPENAI_OUTPUT_PRICE_USD_PER_MILLION_TOKENS: '8',
-    TAISA_OPENAI_MAX_OUTPUT_TOKENS: '2048',
-    TAISA_OPENAI_STRUCTURED_OUTPUT_INPUT_TOKEN_OVERHEAD: '512',
-  };
+  const configuredEnvironment = environment('openai');
   const prompt = buildSeniorSelfPrompt(requestFixture);
   const conservativeInputTokens =
     Buffer.byteLength(prompt.systemPrompt, 'utf8') + Buffer.byteLength(prompt.userPrompt, 'utf8');
 
-  expect(estimateConfiguredCoachingUsage(requestFixture, environment)).toEqual({
-    provider: 'openai',
-    model: 'openai-mock',
-    inputTokens: conservativeInputTokens + 512,
-    outputTokens: 2048,
-    estimatedCostUsd:
-      ((conservativeInputTokens + 512) * 2 + 2048 * 8) / 1_000_000,
-  });
+  expect(estimateConfiguredCoachingAttempts(requestFixture, configuredEnvironment)).toEqual([
+    {
+      attemptId: 'primary',
+      receipt: {
+        provider: 'openai',
+        model: 'openai-mock',
+        inputTokens: conservativeInputTokens + 512,
+        outputTokens: 2048,
+        estimatedCostUsd:
+          ((conservativeInputTokens + 512) * 2 + 2048 * 8) / 1_000_000,
+      },
+    },
+    {
+      attemptId: 'fallback',
+      receipt: {
+        provider: 'anthropic',
+        model: 'anthropic-mock',
+        inputTokens: conservativeInputTokens + 512,
+        outputTokens: 1024,
+        estimatedCostUsd:
+          ((conservativeInputTokens + 512) * 3 + 1024 * 15) / 1_000_000,
+      },
+    },
+  ]);
 });
 
 test('fails closed when selected provider structured-output overhead is not configured', () => {
@@ -528,21 +1186,27 @@ test('fails closed when selected provider structured-output overhead is not conf
 });
 
 test('invalid structured output is recoverable and never triggers a retry', async () => {
-  const selected: CoachingProvider = {
-    id: 'openai',
+  const observer = attemptObserver();
+  const selected: FallbackCoachingProvider = {
+    primaryId: 'openai' as const,
+    fallbackId: 'anthropic' as const,
+    estimateMaximumAttempts: jest.fn(),
     respond: jest.fn().mockResolvedValue({
-      payload: { reply: '', stance: 'invented', proposals: [] },
-      usage: {
-        provider: 'openai',
-        model: 'openai-mock',
-        inputTokens: 10,
-        outputTokens: 4,
-        estimatedCostUsd: 0.000052,
+      result: {
+        payload: { reply: '', stance: 'invented', proposals: [] },
+        usage: {
+          provider: 'openai',
+          model: 'openai-mock',
+          inputTokens: 10,
+          outputTokens: 4,
+          estimatedCostUsd: 0.000052,
+        },
       },
+      attempts: [{ attemptId: 'primary', providerId: 'openai' }],
     }),
   };
 
-  await expect(requestCoaching(requestFixture, selected)).rejects.toMatchObject({
+  await expect(requestCoaching(requestFixture, selected, observer)).rejects.toMatchObject({
     code: 'INVALID_COACHING_OUTPUT',
     recoverable: true,
   });
@@ -638,6 +1302,46 @@ test('Senior Self applies the approved sufficiency limits before allowing advice
   );
 });
 
+test('Senior Self makes career signals, partial context, and proposal semantics explicit', () => {
+  const { systemPrompt } = buildSeniorSelfPrompt(requestFixture);
+
+  expect(systemPrompt).toContain(
+    'Teammates, launches, promotions, professional roles, projects, portfolios, handoffs, management, and workplace decisions are explicit career signals.',
+  );
+  expect(systemPrompt).toContain(
+    'A personal condition with an explicit effect on a work decision is adjacent, not career-relevant.',
+  );
+  expect(systemPrompt).toContain(
+    'When at least one confirmed work fact supports a useful next step, choose partially sufficient and coach only from that fact.',
+  );
+  expect(systemPrompt).toContain(
+    'Use support only when the current turn directly corroborates an existing memory item.',
+  );
+  expect(systemPrompt).toContain(
+    'For support, copy the exact memory id into targetId and the requestId into sourceMessageId.',
+  );
+  expect(systemPrompt).toContain(
+    'Do not propose a new memory when an existing memory already captures the same goal, action, or fact.',
+  );
+  expect(systemPrompt).toContain(
+    'Use propose-outcome, not propose, for a concrete next action or goal that belongs in a first-class local record.',
+  );
+  expect(systemPrompt).toContain(
+    'Proposals are optional. Use them only when the current turn directly supports a supplied memory or explicitly asks to save a concrete durable outcome.',
+  );
+});
+
+test('Senior Self names conflicts directly and never invents a rationale for a requested explanation', () => {
+  const { systemPrompt } = buildSeniorSelfPrompt(requestFixture);
+
+  expect(systemPrompt).toContain(
+    'An explicit conflict between goals, responsibilities, or stated preferences requires Challenge.',
+  );
+  expect(systemPrompt).toContain(
+    'When asked to explain a decision, use only reasons the user supplied; never manufacture risks, stakeholder views, customer needs, or business outcomes.',
+  );
+});
+
 test('an off-topic current turn with career profile and history receives a structured redirect', async () => {
   const offTopicRequest: CoachingRequest = {
     ...requestFixture,
@@ -661,32 +1365,70 @@ test('an off-topic current turn with career profile and history receives a struc
       evidence: requestFixture.context.evidence,
     },
   };
-  const provider: CoachingProvider = {
-    id: 'openai',
+  const observer = attemptObserver();
+  const provider: FallbackCoachingProvider = {
+    primaryId: 'openai' as const,
+    fallbackId: 'anthropic' as const,
+    estimateMaximumAttempts: jest.fn(),
     respond: jest.fn(async (prompt) => {
       expect(JSON.parse(prompt.userPrompt)).toEqual(offTopicRequest);
       return {
-        payload: {
-          mode: 'redirect' as const,
-          relevance: 'outside-scope' as const,
-          contextSufficiency: 'sufficient' as const,
-          reply: 'I can help when this connects to your work or career.',
-          stance: null,
-          proposals: [],
+        result: {
+          payload: {
+            mode: 'redirect' as const,
+            relevance: 'outside-scope' as const,
+            contextSufficiency: 'sufficient' as const,
+            reply: 'I can help when this connects to your work or career.',
+            stance: null,
+            proposals: [],
+          },
+          usage: {
+            provider: 'openai' as const, model: 'fixture', inputTokens: 10, outputTokens: 4,
+            estimatedCostUsd: 0.000052,
+          },
         },
-        usage: {
-          provider: 'openai' as const, model: 'fixture', inputTokens: 10, outputTokens: 4,
-          estimatedCostUsd: 0.000052,
-        },
+        attempts: [{ attemptId: 'primary' as const, providerId: 'openai' as const }],
       };
     }),
   };
 
-  const response = await requestCoaching(offTopicRequest, provider);
+  const execution = await requestCoaching(offTopicRequest, provider, observer);
 
-  expect(response).toMatchObject({
+  expect(execution.response).toMatchObject({
     mode: 'redirect', relevance: 'outside-scope', contextSufficiency: 'sufficient',
     stance: null, proposals: [],
   });
+  expect(execution.attempts).toEqual([
+    { attemptId: 'primary', providerId: 'openai' },
+  ]);
   expect(provider.respond).toHaveBeenCalledTimes(1);
+});
+
+test.each([
+  [{ status: 408 }, 'timeout'],
+  [{ status: 409 }, 'unavailable'],
+  [{ status: 429, type: 'rate_limit_error' }, 'rate_limit'],
+  [{ status: 503, type: 'provider_error' }, 'unavailable'],
+  [{ type: 'overloaded_error' }, 'overloaded'],
+  [{ type: 'authentication_error' }, 'authentication'],
+  [{ type: 'permission_error' }, 'permission'],
+  [{ type: 'billing_error' }, 'billing'],
+  [{ code: 'ETIMEDOUT' }, 'timeout'],
+  [{ code: 'ECONNRESET' }, 'network'],
+])('classifies an allowlisted operational failure', (error, expected) => {
+  expect(classifyOperationalProviderFailure(error)).toBe(expected);
+});
+
+test.each([
+  { status: 400, type: 'invalid_request_error' },
+  { status: 400, type: 'provider_error' },
+  { status: 403, type: 'safety_error' },
+  { status: 503, type: 'content_policy_error' },
+  { status: 503, type: 'invalid_request_error' },
+  { status: 503, type: 'safety_error' },
+  { type: 'content_policy_error' },
+  { code: 'UNKNOWN_PRIVATE_CODE' },
+  new Error('message text is never classification input'),
+])('fails closed for non-operational or unknown errors', (error) => {
+  expect(classifyOperationalProviderFailure(error)).toBeNull();
 });

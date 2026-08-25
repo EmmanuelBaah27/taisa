@@ -1,11 +1,23 @@
 import { useEffect, useReducer, useRef, useState } from 'react';
 import {
   Alert,
+  Keyboard,
+  Platform,
+  View,
+  useWindowDimensions,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { useAnimatedStyle } from 'react-native-reanimated';
-import type { ScrollView } from 'react-native-gesture-handler';
+import {
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
+import {
+  Gesture, GestureDetector, type GestureType, type ScrollView,
+} from 'react-native-gesture-handler';
 import { useVoiceRecorder } from '../../src/hooks/useVoiceRecorder';
 import type { RecordingResult } from '../../src/services/audio';
 import {
@@ -28,6 +40,7 @@ import {
   resolveInitialChatConversationId,
   selectConversationMessages,
   returnFromRoutedChat,
+  voiceCancelAccessibilityLabel,
   voiceCancelDestination,
   type ChatPresentation,
 } from '../../src/navigation/chatConversationRoute';
@@ -36,7 +49,8 @@ import {
   ChatComposerDock,
   ChatConversationSurface,
   ChatScreenShell,
-  ActiveRecordingSurface,
+  ActiveRecordingActionBar,
+  ActiveRecordingContent,
 } from '../../src/components/ui';
 import {
   createVoiceComposerState,
@@ -54,7 +68,19 @@ import {
 import { buildFeedbackPreview } from '../../src/services/feedbackBundle';
 import api from '../../src/services/api';
 import { createFeedbackClient } from '../../src/services/feedbackClient';
-import { parseChatCardSource } from '../../src/navigation/chatCardExpansion';
+import {
+  CHAT_SHEET_DISMISS_DURATION,
+  CHAT_SHEET_RETURN_SPRING,
+  getResistedChatSheetTranslation,
+  parseChatCardSource,
+  shouldDismissChatSheet,
+} from '../../src/navigation/chatCardExpansion';
+import { isRecorderAcquiring } from '../../src/services/recorderAcquisition';
+import {
+  confirmDestructiveInput,
+  type DestructiveInputIntent,
+} from '../../src/services/destructiveInputConfirmation';
+import { playInteractionHaptic } from '../../src/services/interactionHaptics';
 
 interface ChatScreenProps {
   presentation?: ChatPresentation;
@@ -77,9 +103,9 @@ function promptEditable(title: string, value: string): Promise<string | null> {
 
 export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) {
   const insets = useSafeAreaInsets();
+  const { height: viewportHeight } = useWindowDimensions();
   const routeParams = useLocalSearchParams<{
     conversationId?: string | string[];
-    title?: string | string[];
     cardX?: string | string[];
     cardY?: string | string[];
     cardWidth?: string | string[];
@@ -89,7 +115,6 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
     sourceViewportHeight?: string | string[];
   }>();
   const routeConversationId = routeParams.conversationId;
-  const routeTitle = Array.isArray(routeParams.title) ? routeParams.title[0] : routeParams.title;
   const {
     activeSessionId,
     activeRequestId,
@@ -128,6 +153,8 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
   } = useThreadStore();
   const { setChatMorphing, consumeVoiceAutoStart } = useUIStore();
   const sourceSnapshot = parseChatCardSource(routeParams);
+  const conversationAtTop = useSharedValue(true);
+  const sheetPanRef = useRef<GestureType | undefined>(undefined);
   const {
     translateX,
     translateY,
@@ -139,12 +166,12 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
     contentTranslateY,
     open,
     revealContent,
-    close,
   } = useMorphTransition(sourceSnapshot);
 
   const slideStyle = useAnimatedStyle(() => ({
     flex: 1,
     borderRadius: borderRadius.value,
+    overflow: borderRadius.value > 0.5 ? 'hidden' : 'visible',
     opacity: shellOpacity.value,
     transform: [
       { translateX: translateX.value },
@@ -169,6 +196,7 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
     initialConversationIdRef.current === null,
   );
   const [draft, setDraft] = useState('');
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [composer, dispatchComposer] = useReducer(
     reduceVoiceComposer,
     undefined,
@@ -202,9 +230,21 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
   );
 
   const recorder = useVoiceRecorder();
-  const recorderAcquiring = (
-    composer.voice === 'recording' || composer.voice === 'paused'
-  ) && pendingRecording === null && !recorder.isRecording;
+  const recorderAcquiring = isRecorderAcquiring(
+    composer.voice,
+    pendingRecording !== null,
+    recorder.isRecording,
+  );
+  const hasAbandonableVoiceSubmission = canAbandonVoiceSubmission({
+    activeRequestId,
+    activeRequestKind,
+    activeRequestStatus,
+  });
+  const hasDestructiveDraft = draft.trim().length > 0
+    || composer.voice === 'recording'
+    || composer.voice === 'paused'
+    || pendingRecording !== null
+    || hasAbandonableVoiceSubmission;
 
   function discardPendingRecording() {
     if (recordingSubmissionLeaseRef.current !== null) {
@@ -225,6 +265,20 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
       ),
     );
   }
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const show = Keyboard.addListener(showEvent, (event) => {
+      if (Platform.OS === 'ios') Keyboard.scheduleLayoutAnimation(event);
+      setKeyboardVisible(true);
+    });
+    const hide = Keyboard.addListener(hideEvent, (event) => {
+      if (Platform.OS === 'ios') Keyboard.scheduleLayoutAnimation(event);
+      setKeyboardVisible(false);
+    });
+    return () => { show.remove(); hide.remove(); };
+  }, []);
 
   useEffect(() => {
     if (initialBottomSettledRef.current && messages.length > previousMessageCountRef.current) {
@@ -362,10 +416,13 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
         recordingStopSessionRef.current = null;
         await session.stopAndDiscard();
       }
-    } catch {
+    } catch (error) {
       const isCurrentAttempt = recordingStartGuardRef.current.complete(startAttempt);
       if (isCurrentAttempt && mountedRef.current && !closingRef.current) {
-        await handleCancelVoice();
+        console.warn('Recording start failed', error);
+        dispatchComposer({ type: 'recording-start-failed' });
+        setRecordingStartFailed(true);
+        setPhase('idle');
       }
     }
   }
@@ -374,15 +431,19 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
     if (recorderAcquiring) return;
     try {
       await recorder.pause();
+      playInteractionHaptic('selection');
       dispatchComposer({ type: 'pause-voice' });
     } catch {
-      if (mountedRef.current) setPhase('error');
+      if (mountedRef.current) {
+        Alert.alert('Couldn’t pause recording', 'Keep speaking or try Pause again.');
+      }
     }
   }
 
   async function handleResumeVoice() {
     try {
       await recorder.resume();
+      playInteractionHaptic('selection');
       dispatchComposer({ type: 'resume-voice' });
     } catch {
       if (mountedRef.current) setPhase('error');
@@ -390,15 +451,11 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
   }
 
   async function handleSwitchToText() {
-    const activity = recorder.getActivity();
-    if (composer.voice === 'recording' || composer.voice === 'paused') {
-      if (activity !== 'speech') {
-        await stopActiveRecordingAndDiscard();
-      } else if (composer.voice === 'recording') {
-        await recorder.pause();
-      }
-    }
-    dispatchComposer({ type: 'switch-to-text', activity });
+    await stopActiveRecordingAndDiscard();
+    discardPendingRecording();
+    pendingRecordingRef.current = null;
+    if (mountedRef.current) setPendingRecording(null);
+    dispatchComposer({ type: 'restore-mode', mode: 'text' });
     if (sessionIdRef.current !== null) {
       void setPreferredInputMode(sessionIdRef.current, 'text').catch(() => {});
     }
@@ -445,30 +502,33 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
     dispatchComposer({ type: 'confirm-delete-voice' });
   }
 
+  async function requestDestructiveInput(
+    intent: DestructiveInputIntent,
+    onConfirm: () => void | Promise<void>,
+  ): Promise<boolean> {
+    const confirmed = await confirmDestructiveInput(intent);
+    if (!confirmed) return false;
+    await onConfirm();
+    return true;
+  }
+
   function handleDeleteVoiceDraft() {
-    Alert.alert(
-      'Delete voice draft?',
-      'This recording will be permanently removed.',
-      [
-        { text: 'Keep it', style: 'cancel', onPress: () => dispatchComposer({ type: 'cancel-delete-voice' }) },
-        {
-          text: 'Delete recording',
-          style: 'destructive',
-          onPress: () => {
-            void confirmVoiceDraftDeletion().catch(() => {
-              dispatchComposer({ type: 'cancel-delete-voice' });
-              if (mountedRef.current) setPhase('error');
-            });
-          },
-        },
-      ],
-    );
     dispatchComposer({ type: 'request-delete-voice' });
+    void requestDestructiveInput('delete-voice-draft', confirmVoiceDraftDeletion)
+      .then((confirmed) => {
+        if (!confirmed) dispatchComposer({ type: 'cancel-delete-voice' });
+      })
+      .catch(() => {
+        dispatchComposer({ type: 'cancel-delete-voice' });
+        if (mountedRef.current) setPhase('error');
+      });
   }
 
   async function handleComposerSend() {
     if (recorderAcquiring) return;
     if (isBusy) return;
+    if (composer.voice === 'none' && !draft.trim()) return;
+    playInteractionHaptic('send');
     dispatchComposer({ type: 'send' });
     if (composer.voice === 'none') {
       await handleSubmitText();
@@ -779,25 +839,98 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
   async function handleDiscardFailedRecording() {
     if (activeRequestKind !== 'voice' || isBusy) return;
     try {
-      await confirmVoiceDraftDeletion();
+      await requestDestructiveInput('discard-voice-submission', confirmVoiceDraftDeletion);
     } catch {}
   }
 
+  function performClose(withDismissHaptic = true) {
+    if (closingRef.current) return;
+    if (withDismissHaptic) playInteractionHaptic('dismiss');
+    closingRef.current = true;
+    void stopActiveRecordingAndDiscard().catch(() => {});
+    discardPendingRecording();
+    translateY.value = withTiming(
+      viewportHeight,
+      { duration: CHAT_SHEET_DISMISS_DURATION },
+      (finished) => {
+        if (finished) runOnJS(commitClose)();
+      },
+    );
+  }
+
   function handleClose() {
+    if (!hasDestructiveDraft) {
+      performClose();
+      return;
+    }
+    const intent = hasAbandonableVoiceSubmission
+      ? 'discard-voice-submission'
+      : 'cancel-recording';
+    void requestDestructiveInput(intent, () => performClose(false));
+  }
+
+  function completeGestureClose() {
     if (closingRef.current) return;
     closingRef.current = true;
     void stopActiveRecordingAndDiscard().catch(() => {});
     discardPendingRecording();
-    if (sourceSnapshot === null) {
-      commitClose();
+    commitClose();
+  }
+
+  function animateGestureClose() {
+    translateY.value = withTiming(
+      viewportHeight,
+      { duration: CHAT_SHEET_DISMISS_DURATION },
+      (finished) => {
+        if (finished) runOnJS(completeGestureClose)();
+      },
+    );
+  }
+
+  function handleGestureDestructiveClose() {
+    if (hasAbandonableVoiceSubmission) {
+      void requestDestructiveInput('discard-voice-submission', animateGestureClose);
       return;
     }
-    close(commitClose);
+    void requestDestructiveInput('cancel-recording', animateGestureClose);
   }
+
+  const sheetPanGesture = Gesture.Pan()
+    .withRef(sheetPanRef)
+    .activeOffsetY(8)
+    .failOffsetX([-24, 24])
+    .onUpdate((event) => {
+      if (!conversationAtTop.value || event.translationY <= 0) return;
+      translateY.value = getResistedChatSheetTranslation(event.translationY);
+    })
+    .onEnd((event) => {
+      if (shouldDismissChatSheet({
+        atTop: conversationAtTop.value,
+        translationY: event.translationY,
+        velocityY: event.velocityY,
+      })) {
+        if (hasDestructiveDraft) {
+          translateY.value = withSpring(0, CHAT_SHEET_RETURN_SPRING, (finished) => {
+            if (finished) runOnJS(handleGestureDestructiveClose)();
+          });
+          return;
+        }
+        runOnJS(playInteractionHaptic)('dismiss');
+        translateY.value = withTiming(
+          viewportHeight,
+          { duration: CHAT_SHEET_DISMISS_DURATION },
+          (finished) => {
+            if (finished) runOnJS(completeGestureClose)();
+          },
+        );
+        return;
+      }
+      translateY.value = withSpring(0, CHAT_SHEET_RETURN_SPRING);
+    });
 
   async function handleCancelVoice() {
     if (voiceCancelDestination(initialConversationIdRef.current) === 'close') {
-      handleClose();
+      performClose(false);
       return;
     }
 
@@ -818,99 +951,122 @@ export default function ChatScreen({ presentation = 'route' }: ChatScreenProps) 
     && !composer.submitting
     && !isBusy;
 
-  if (showActiveRecordingSurface) {
-    return (
-      <Animated.View className="flex-1 bg-background" style={slideStyle}>
-          <ActiveRecordingSurface
-            topInset={insets.top}
-            bottomInset={insets.bottom}
-            title="New chat"
-            greeting="How’s it going?"
-            durationSeconds={recorder.duration}
-            amplitudeLevel={recorder.amplitudeLevel}
-            paused={composer.voice === 'paused'}
-            disabled={composer.submitting || isBusy}
-            recordingActionDisabled={recorderAcquiring}
-            onClose={handleClose}
-            onCancel={() => { void handleCancelVoice(); }}
-            onKeyboard={() => { void handleSwitchToText(); }}
-            onPauseResume={() => {
-              if (composer.voice === 'paused') void handleResumeVoice();
-              else void handlePauseVoice();
-            }}
-            onSend={() => { void handleComposerSend(); }}
-          />
-      </Animated.View>
-    );
-  }
+  useEffect(() => {
+    if (!showActiveRecordingSurface) return;
+    requestAnimationFrame(revealContent);
+    // revealContent intentionally stays out of this dependency list because useMorphTransition
+    // returns a new function each render; the recording-state transition is the reveal trigger.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showActiveRecordingSurface]);
+
+  const chatContent = showActiveRecordingSurface ? (
+    <ActiveRecordingContent greeting="How’s it going?" />
+  ) : (
+    <ChatConversationSurface
+      scrollRef={scrollRef}
+      messages={messages}
+      activeMessageId={activeMessageId}
+      activeRequestKind={activeRequestKind}
+      transcript={transcript}
+      phase={phase}
+      isBusy={isBusy}
+      error={error}
+      microphoneUnavailable={recordingStartFailed}
+      pendingProposals={pendingProposals}
+      editingTranscript={editingTranscript}
+      onScrollAtTopChange={(atTop) => { conversationAtTop.value = atTop; }}
+      dismissGestureRef={sheetPanRef}
+      onContentSizeChange={handleConversationContentSizeChange}
+      reactions={reactions}
+      onEditTranscript={setEditingTranscript}
+      onChangeTranscript={setEditingTranscript}
+      onSubmitTranscript={() => { void handleSaveTranscriptRevision(); }}
+      onUseKeyboard={handleUseKeyboard}
+      onDiscardRecording={handleDiscardFailedRecording}
+      onRetry={recordingStartFailed || activeRequestStatus === 'no-speech' ? startListening : handleRetry}
+      onConfirmProposal={(proposalId) => { void confirmProposal(proposalId); }}
+      onResolveProposal={(proposalId, choice) => { void resolveClarification(proposalId, choice); }}
+      onReact={(responseId, reaction) => { void handleReaction(responseId, reaction); }}
+      onShareExample={(responseId) => { void handleShareExample(responseId); }}
+    />
+  );
+
+  const chatFooter = (
+    <ChatComposerDock phase={phase} bottomInset={keyboardVisible ? 0 : insets.bottom}>
+      {showActiveRecordingSurface ? (
+        <ActiveRecordingActionBar
+          durationSeconds={recorder.duration}
+          amplitudeLevel={recorder.amplitudeLevel}
+          paused={composer.voice === 'paused'}
+          disabled={composer.submitting || isBusy}
+          recordingActionDisabled={recorderAcquiring}
+          cancelLabel={voiceCancelAccessibilityLabel(initialConversationIdRef.current)}
+          onCancel={() => {
+            void requestDestructiveInput('cancel-recording', handleCancelVoice);
+          }}
+          onKeyboard={() => {
+            void requestDestructiveInput('switch-to-keyboard', handleSwitchToText);
+          }}
+          onPauseResume={() => {
+            if (composer.voice === 'paused') void handleResumeVoice();
+            else void handlePauseVoice();
+          }}
+          onSend={() => { void handleComposerSend(); }}
+        />
+      ) : (
+        <VoiceComposer
+          mode={transcriptionOutcome === 'streaming' ? 'text' : composer.mode}
+          voiceState={composer.voice}
+          durationSeconds={pendingRecording?.durationSeconds ?? recorder.duration}
+          amplitude={recorder.amplitude}
+          text={transcriptionOutcome === 'streaming' ? provisionalTranscript : draft}
+          hasVoiceDraft={composer.voice !== 'none'}
+          submissionFailed={composer.submissionFailed}
+          recordingStartFailed={recordingStartFailed}
+          textFocusRequest={composer.textFocusRequest}
+          disabled={isBusy}
+          recordingActionDisabled={recorderAcquiring}
+          transcribing={transcriptionOutcome === 'streaming'}
+          cancelVoiceLabel={voiceCancelAccessibilityLabel(initialConversationIdRef.current)}
+          onChangeText={(value) => {
+            setDraft(value);
+            dispatchComposer({ type: 'set-text', text: value });
+          }}
+          onSwitchToText={() => {
+            void requestDestructiveInput('switch-to-keyboard', handleSwitchToText);
+          }}
+          onSwitchToVoice={handleSwitchToVoice}
+          onStartVoice={handleStartVoiceFromComposer}
+          onPause={() => { void handlePauseVoice(); }}
+          onResume={() => { void handleResumeVoice(); }}
+          onCancelVoice={() => {
+            void requestDestructiveInput('cancel-recording', handleCancelVoice);
+          }}
+          onDeleteText={() => {
+            setDraft('');
+            dispatchComposer({ type: 'delete-text' });
+          }}
+          onDeleteVoice={handleDeleteVoiceDraft}
+          onSend={() => { void handleComposerSend(); }}
+        />
+      )}
+    </ChatComposerDock>
+  );
 
   return (
-    <ChatScreenShell
-      topInset={insets.top}
-      title={currentSession?.title ?? routeTitle ?? 'Taisa'}
-      animatedStyle={slideStyle}
-      contentAnimatedStyle={contentStyle}
-      onClose={handleClose}
-      footer={(
-        <ChatComposerDock phase={phase} bottomInset={insets.bottom}>
-          <VoiceComposer
-            mode={transcriptionOutcome === 'streaming' ? 'text' : composer.mode}
-            voiceState={composer.voice}
-            durationSeconds={pendingRecording?.durationSeconds ?? recorder.duration}
-            amplitude={recorder.amplitude}
-            text={transcriptionOutcome === 'streaming' ? provisionalTranscript : draft}
-            hasVoiceDraft={composer.voice !== 'none'}
-            submissionFailed={composer.submissionFailed}
-            recordingStartFailed={recordingStartFailed}
-            textFocusRequest={composer.textFocusRequest}
-            disabled={isBusy}
-            recordingActionDisabled={recorderAcquiring}
-            transcribing={transcriptionOutcome === 'streaming'}
-            onChangeText={(value) => {
-              setDraft(value);
-              dispatchComposer({ type: 'set-text', text: value });
-            }}
-            onSwitchToText={() => { void handleSwitchToText(); }}
-            onSwitchToVoice={handleSwitchToVoice}
-            onStartVoice={handleStartVoiceFromComposer}
-            onPause={() => { void handlePauseVoice(); }}
-            onResume={() => { void handleResumeVoice(); }}
-            onCancelVoice={() => { void handleCancelVoice(); }}
-            onDeleteText={() => {
-              setDraft('');
-              dispatchComposer({ type: 'delete-text' });
-            }}
-            onDeleteVoice={handleDeleteVoiceDraft}
-            onSend={() => { void handleComposerSend(); }}
-          />
-        </ChatComposerDock>
-      )}
-    >
-      <ChatConversationSurface
-        scrollRef={scrollRef}
-        messages={messages}
-        activeMessageId={activeMessageId}
-        activeRequestKind={activeRequestKind}
-        transcript={transcript}
-        phase={phase}
-        isBusy={isBusy}
-        error={error}
-        microphoneUnavailable={recordingStartFailed}
-        pendingProposals={pendingProposals}
-        editingTranscript={editingTranscript}
-        onContentSizeChange={handleConversationContentSizeChange}
-        reactions={reactions}
-        onEditTranscript={setEditingTranscript}
-        onChangeTranscript={setEditingTranscript}
-        onSubmitTranscript={() => { void handleSaveTranscriptRevision(); }}
-        onUseKeyboard={handleUseKeyboard}
-        onDiscardRecording={handleDiscardFailedRecording}
-        onRetry={recordingStartFailed || activeRequestStatus === 'no-speech' ? startListening : handleRetry}
-        onConfirmProposal={(proposalId) => { void confirmProposal(proposalId); }}
-        onResolveProposal={(proposalId, choice) => { void resolveClarification(proposalId, choice); }}
-        onReact={(responseId, reaction) => { void handleReaction(responseId, reaction); }}
-        onShareExample={(responseId) => { void handleShareExample(responseId); }}
-      />
-    </ChatScreenShell>
+    <GestureDetector gesture={sheetPanGesture}>
+      <View collapsable={false} style={{ flex: 1 }}>
+        <ChatScreenShell
+          topInset={insets.top}
+          title="Taisa"
+          animatedStyle={slideStyle}
+          contentAnimatedStyle={contentStyle}
+          onClose={handleClose}
+          footer={chatFooter}
+        >
+          {chatContent}
+        </ChatScreenShell>
+      </View>
+    </GestureDetector>
   );
 }

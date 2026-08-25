@@ -5,6 +5,33 @@ import {
 } from '../privacyGuard';
 
 describe('privacy guard state machine', () => {
+  test('shields a previously unlocked warm runtime before reloading the lock preference', async () => {
+    let resolvePreference!: (enabled: boolean) => void;
+    const guard = createPrivacyGuard({
+      preference: {
+        getEnabled: () => new Promise<boolean>((resolve) => { resolvePreference = resolve; }),
+        setEnabled: jest.fn(async () => undefined),
+      },
+      authentication: {
+        isAvailable: jest.fn(async () => true),
+        authenticate: jest.fn(async () => true),
+      },
+    });
+
+    await guard.setLockEnabled(false);
+    expect(guard.getState().shielded).toBe(false);
+
+    const initialization = guard.initialize();
+    expect(guard.getState()).toMatchObject({
+      initialized: false,
+      phase: 'initializing',
+      shielded: true,
+    });
+
+    resolvePreference(true);
+    await initialization;
+  });
+
   test('shields immediately when the app becomes inactive or backgrounded', () => {
     const unlocked = {
       ...initialPrivacyGuardState,

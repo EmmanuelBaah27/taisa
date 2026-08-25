@@ -1,5 +1,5 @@
 import { useEffect, useReducer, useRef } from 'react';
-import { Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Text, TextInput, View } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
 import Animated, {
   Easing,
@@ -10,6 +10,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { Icon } from './Icon';
+import { LiquidGlassPressable } from './LiquidGlassPressable';
 import { VoiceDraftStrip } from './VoiceDraftStrip';
 import { colors } from '../../constants/theme';
 import type { VoiceDraftState } from '../../services/voiceComposerState';
@@ -28,6 +29,7 @@ export interface VoiceComposerProps {
   disabled?: boolean;
   recordingActionDisabled?: boolean;
   transcribing?: boolean;
+  cancelVoiceLabel: string;
   onChangeText: (value: string) => void;
   onSwitchToText: () => void;
   onSwitchToVoice: () => void;
@@ -99,39 +101,41 @@ export function VoiceComposer(props: VoiceComposerProps) {
   if (props.submissionFailed) return null;
 
   if (props.mode === 'text') {
+    const hasText = props.text.trim().length > 0;
     return (
-      <View className="gap-2">
+      <View>
         {props.transcribing ? (
           <Text className="text-center text-text-tertiary text-caption-regular">Transcribing…</Text>
         ) : null}
-        <TouchableOpacity
-          accessibilityLabel={props.hasVoiceDraft
-            ? `Open voice draft, ${formatDuration(props.durationSeconds)}`
-            : 'Switch to voice and start recording'}
-          disabled={props.disabled}
-          onPress={props.hasVoiceDraft ? props.onSwitchToVoice : props.onStartVoice}
-          className="h-10 self-start flex-row items-center gap-2 rounded-full bg-subtle px-4"
+        <View
+          className="min-h-[100px] rounded-[28px] border border-border bg-background p-3"
+          style={{
+            shadowColor: colors.shadowSubtle,
+            shadowOffset: { width: 0, height: 8 },
+            shadowOpacity: 0.12,
+            shadowRadius: 20,
+          }}
         >
-          <Icon name="IconVoiceMid" size={18} color={colors.textPrimary} />
-          {props.hasVoiceDraft ? (
-            <Text className="text-foreground text-small-semibold">
-              {formatDuration(props.durationSeconds)}
-            </Text>
-          ) : null}
-        </TouchableOpacity>
-        <View className="min-h-14 flex-row items-end gap-2 rounded-full border border-border bg-background p-1.5 pl-4">
           <TextInput
             ref={textInputRef}
             value={props.text}
             onChangeText={props.onChangeText}
             editable={!props.disabled}
-            placeholder="Write something…"
+            placeholder="Ask follow-up"
             multiline
-            className="max-h-32 min-h-10 flex-1 py-2 text-foreground text-base-regular"
+            className="min-h-6 max-h-[120px] pb-12 text-foreground text-base-regular"
           />
-          <TouchableOpacity disabled={props.disabled} onPress={props.onSend} className="h-10 w-10 items-center justify-center rounded-full bg-muted">
-            <Icon name="IconArrowUp" size={18} color={colors.textPrimary} />
-          </TouchableOpacity>
+          <LiquidGlassPressable
+            accessibilityLabel={hasText ? 'Send message' : 'Start recording'}
+            hierarchy="prominent"
+            tone="accent"
+            shape="circle"
+            disabled={props.disabled}
+            onPress={hasText ? props.onSend : props.onStartVoice}
+            className="absolute bottom-3 right-3 h-10 w-10"
+          >
+            <Icon name={hasText ? 'IconArrowUp' : 'IconVoiceMid'} size={20} color={colors.textPrimary} />
+          </LiquidGlassPressable>
         </View>
       </View>
     );
@@ -144,17 +148,16 @@ export function VoiceComposer(props: VoiceComposerProps) {
         style={replyAnimatedStyle}
         pointerEvents={replyTransition === 'idle' ? 'auto' : 'none'}
       >
-        <TouchableOpacity
+        <LiquidGlassPressable
           accessibilityLabel="Reply by voice, starts recording"
-          accessibilityRole="button"
-          accessibilityState={{ disabled: props.disabled || replyTransition !== 'idle' }}
           disabled={props.disabled || replyTransition !== 'idle'}
           onPress={startVoiceAfterReplyExit}
-          className="h-14 flex-row items-center justify-center gap-2 rounded-full border border-border-subtle bg-background px-12 shadow-xs"
+          className="h-14 px-12"
+          contentClassName="flex-1 flex-row items-center justify-center gap-2"
         >
           <Icon name="IconVoiceMid" size={20} color={colors.textPrimary} />
           <Text className="text-foreground text-base-semibold">Reply</Text>
-        </TouchableOpacity>
+        </LiquidGlassPressable>
       </Animated.View>
     );
   }
@@ -168,35 +171,35 @@ export function VoiceComposer(props: VoiceComposerProps) {
       ) : null}
       <View className="flex-row items-center justify-between">
         {paused ? (
-          <TouchableOpacity
-            accessibilityLabel="Cancel voice recording"
-            accessibilityRole="button"
+          <LiquidGlassPressable
+            accessibilityLabel={props.cancelVoiceLabel}
             disabled={props.disabled}
             onPress={props.onCancelVoice}
-            className="h-14 w-14 items-center justify-center rounded-full border border-border-subtle bg-background shadow-sm"
+            shape="circle"
+            className="h-14 w-14"
           >
             <Icon name="IconCrossMedium" size={24} color={colors.textPrimary} />
-          </TouchableOpacity>
+          </LiquidGlassPressable>
         ) : (
           <View className="flex-row items-center gap-3">
-            <TouchableOpacity
-              accessibilityLabel="Cancel voice recording"
-              accessibilityRole="button"
+            <LiquidGlassPressable
+              accessibilityLabel={props.cancelVoiceLabel}
               disabled={props.disabled}
               onPress={props.onCancelVoice}
-              className="h-14 w-14 items-center justify-center rounded-full border border-border-subtle bg-background shadow-sm"
+              shape="circle"
+              className="h-14 w-14"
             >
               <Icon name="IconCrossMedium" size={24} color={colors.textPrimary} />
-            </TouchableOpacity>
-            <TouchableOpacity
+            </LiquidGlassPressable>
+            <LiquidGlassPressable
               accessibilityLabel="Switch to keyboard"
-              accessibilityRole="button"
               disabled={props.disabled}
               onPress={props.onSwitchToText}
-              className="h-14 w-14 items-center justify-center rounded-full border border-border-subtle bg-background shadow-sm"
+              shape="circle"
+              className="h-14 w-14"
             >
               <Icon name="IconKeyboardUp" size={24} color={colors.textPrimary} />
-            </TouchableOpacity>
+            </LiquidGlassPressable>
           </View>
         )}
 
@@ -208,40 +211,40 @@ export function VoiceComposer(props: VoiceComposerProps) {
 
         <View className={paused ? 'flex-row items-center gap-2' : 'flex-row items-center gap-[14px]'}>
           {paused ? (
-            <TouchableOpacity
+            <LiquidGlassPressable
               accessibilityLabel={`Resume recording, ${formatDuration(props.durationSeconds)}`}
-              accessibilityRole="button"
               disabled={props.disabled || props.recordingActionDisabled}
               onPress={props.onResume}
-              className="h-14 flex-row items-center gap-2 rounded-full border border-border-subtle bg-background px-4 shadow-sm"
+              className="h-14 px-4"
+              contentClassName="flex-1 flex-row items-center justify-center gap-2"
             >
               <Icon name="IconArrowTriangleRight" size={24} color={colors.textPrimary} />
               <Text className="text-foreground text-base-medium">Resume</Text>
               <Text className="text-muted-foreground text-small-regular">{formatDuration(props.durationSeconds)}</Text>
-            </TouchableOpacity>
+            </LiquidGlassPressable>
           ) : (
-            <TouchableOpacity
+            <LiquidGlassPressable
               accessibilityLabel="Pause recording"
-              accessibilityRole="button"
               disabled={props.disabled || props.recordingActionDisabled}
               onPress={props.onPause}
-              className="h-14 w-14 items-center justify-center rounded-full border border-border-subtle bg-background shadow-sm"
+              shape="circle"
+              className="h-14 w-14"
             >
               <Icon name="IconPause" size={24} color={colors.textPrimary} />
-            </TouchableOpacity>
+            </LiquidGlassPressable>
           )}
 
-          <TouchableOpacity
+          <LiquidGlassPressable
             accessibilityLabel="Send recording"
-            accessibilityRole="button"
+            hierarchy="prominent"
+            tone="accent"
+            shape="circle"
             disabled={props.disabled || props.recordingActionDisabled}
             onPress={props.onSend}
-            className={paused
-              ? 'h-14 w-14 items-center justify-center rounded-full bg-primary shadow-sm'
-              : 'h-14 w-14 items-center justify-center rounded-full bg-primary'}
+            className="h-14 w-14"
           >
             <Icon name="IconArrowUp" size={24} color={colors.textPrimary} />
-          </TouchableOpacity>
+          </LiquidGlassPressable>
         </View>
       </View>
     </View>

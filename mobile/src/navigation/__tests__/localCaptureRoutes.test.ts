@@ -39,7 +39,7 @@ describe('local-first capture navigation', () => {
     expect(chat).toMatch(/hydrated\.activeRequestStatus === 'transcription-failed'/);
     expect(chat).toMatch(/if \(activeRequestId === null\)/);
     expect(chat).toMatch(/pendingRecordingRef\.current !== null\) await handleComposerSend/);
-    expect(chat).toMatch(/await confirmVoiceDraftDeletion\(\)/);
+    expect(chat).toMatch(/requestDestructiveInput\('discard-voice-submission', confirmVoiceDraftDeletion\)/);
   });
 
   test('the default Taisa card action opens local-first chat capture', () => {
@@ -98,27 +98,58 @@ describe('local-first capture navigation', () => {
       'utf8',
     );
 
-    expect(chatScreen).not.toMatch(/Gesture\.Pan|gestureCommitClose|commitClose\(300\)|commitClose\(340\)/);
-    expect(chatScreen).toMatch(/close\(commitClose\)/);
-    expect(chatScreen).toMatch(/if \(sourceSnapshot === null\)[\s\S]*commitClose\(\)/);
+    expect(chatScreen).toMatch(/Gesture\.Pan/);
+    expect(chatScreen).toMatch(/onScrollAtTopChange/);
+    expect(chatScreen).toMatch(/shouldDismissChatSheet/);
+    expect(chatScreen).toMatch(/getResistedChatSheetTranslation\(event\.translationY\)/);
+    expect(chatScreen).toMatch(/CHAT_SHEET_DISMISS_DURATION/);
+    expect(chatScreen).toMatch(/if \(hasDestructiveDraft\)[\s\S]*withSpring\(0, CHAT_SHEET_RETURN_SPRING[\s\S]*handleGestureDestructiveClose/);
+    expect(chatScreen).toMatch(/handleGestureDestructiveClose[\s\S]*requestDestructiveInput\('cancel-recording'/);
+    expect(chatScreen).toMatch(/<GestureDetector[\s\S]*<View\s+collapsable=\{false\}[\s\S]*<ChatScreenShell/);
+    expect(chatScreen).not.toMatch(/close\(commitClose\)/);
+    expect(chatScreen).toMatch(/function performClose\(withDismissHaptic = true\)[\s\S]*withTiming\([\s\S]*viewportHeight[\s\S]*CHAT_SHEET_DISMISS_DURATION/);
+    expect(chatScreen).toMatch(/const hasDestructiveDraft = draft\.trim\(\)\.length > 0[\s\S]*composer\.voice === 'recording'[\s\S]*composer\.voice === 'paused'/);
+    expect(chatScreen).toMatch(/if \(sourceSnapshot === null\)[\s\S]*withTiming\([\s\S]*CHAT_SHEET_DISMISS_DURATION[\s\S]*runOnJS\(commitClose\)/);
     expect(chatScreen).toMatch(/if \(sourceSnapshot === null\) await fetchThreads\(\)/);
     expect(rootLayout).not.toMatch(/slide_from_bottom/);
     expect(rootLayout).toMatch(/name="chat\/index"[\s\S]*presentation: 'transparentModal'[\s\S]*animation: 'none'[\s\S]*backgroundColor: 'transparent'/);
+    expect(rootLayout).toMatch(/GestureHandlerRootView style=\{\{ flex: 1, backgroundColor: '#ffffff' \}\}/);
+    expect(rootLayout).toMatch(/privacyState\.shielded[\s\S]*backgroundColor: '#ffffff'/);
   });
 
-  test('fresh voice capture uses the Figma active recording surface with existing lifecycle handlers', () => {
+  test('fresh voice capture stays inside the canonical Taisa shell with existing lifecycle handlers', () => {
     const chatScreen = fs.readFileSync(
       path.resolve(__dirname, '../../../app/chat/index.tsx'),
       'utf8',
     );
 
-    expect(chatScreen).toMatch(/ActiveRecordingSurface/);
+    expect(chatScreen).not.toMatch(/if \(showActiveRecordingSurface\)[\s\S]*return \(/);
+    expect(chatScreen).toMatch(/<ChatScreenShell[\s\S]*title="Taisa"/);
+    expect(chatScreen.match(/<ChatScreenShell/g)).toHaveLength(1);
+    expect(chatScreen).toMatch(/showActiveRecordingSurface[\s\S]*<ActiveRecordingContent/);
+    expect(chatScreen).toMatch(/showActiveRecordingSurface[\s\S]*<ActiveRecordingActionBar/);
+    expect(chatScreen).toMatch(/if \(!showActiveRecordingSurface\) return;[\s\S]*requestAnimationFrame\(revealContent\);[\s\S]*\[showActiveRecordingSurface\]/);
+    expect(chatScreen).not.toMatch(/title="New chat"/);
     expect(chatScreen).toMatch(/messages\.length === 0[\s\S]*composer\.voice === 'recording'[\s\S]*composer\.voice === 'paused'/);
     expect(chatScreen).toMatch(/onClose=\{handleClose\}/);
-    expect(chatScreen).toMatch(/onCancel=\{\(\) => \{ void handleCancelVoice\(\); \}\}/);
-    expect(chatScreen).toMatch(/onKeyboard=\{\(\) => \{ void handleSwitchToText\(\); \}\}/);
+    expect(chatScreen).toMatch(/cancelLabel=\{voiceCancelAccessibilityLabel\(initialConversationIdRef\.current\)\}/);
+    expect(chatScreen).toMatch(/<VoiceComposer[\s\S]*cancelVoiceLabel=\{voiceCancelAccessibilityLabel\(initialConversationIdRef\.current\)\}/);
+    expect(chatScreen).toContain("requestDestructiveInput('cancel-recording'");
+    expect(chatScreen).toContain("requestDestructiveInput('switch-to-keyboard'");
+    expect(chatScreen).toContain("requestDestructiveInput('delete-voice-draft'");
+    expect(chatScreen).toContain("requestDestructiveInput('discard-voice-submission'");
+    expect(chatScreen).not.toContain('<RecordingDiscardSheet');
+    expect(chatScreen).toMatch(/bottomInset=\{keyboardVisible \? 0 : insets\.bottom\}/);
+    expect(chatScreen).toMatch(/Keyboard\.scheduleLayoutAnimation\(event\)/);
+    expect(chatScreen).toMatch(/Couldn’t pause recording/);
     expect(chatScreen).toMatch(/onPauseResume=\{[\s\S]*handleResumeVoice[\s\S]*handlePauseVoice/);
     expect(chatScreen).toMatch(/onSend=\{\(\) => \{ void handleComposerSend\(\); \}\}/);
+
+    const dockStart = chatScreen.indexOf('<ChatComposerDock');
+    const recordingActionBarStart = chatScreen.indexOf('<ActiveRecordingActionBar');
+    const dockEnd = chatScreen.indexOf('</ChatComposerDock>', dockStart);
+    expect(recordingActionBarStart).toBeGreaterThan(dockStart);
+    expect(recordingActionBarStart).toBeLessThan(dockEnd);
   });
 
   test('recording controls stay inert until native recorder acquisition completes', () => {
@@ -127,18 +158,56 @@ describe('local-first capture navigation', () => {
       'utf8',
     );
 
-    expect(chatScreen).toMatch(/const recorderAcquiring = [\s\S]*!recorder\.isRecording/);
+    expect(chatScreen).toMatch(/const recorderAcquiring = isRecorderAcquiring\([\s\S]*composer\.voice[\s\S]*pendingRecording[\s\S]*recorder\.isRecording/);
     expect(chatScreen).toMatch(/recordingActionDisabled=\{recorderAcquiring\}/);
     expect(chatScreen).toMatch(/async function handleComposerSend\(\) \{[\s\S]*if \(recorderAcquiring\) return;[\s\S]*dispatchComposer\(\{ type: 'send' \}\)/);
     expect(chatScreen).toMatch(/async function handlePauseVoice\(\) \{[\s\S]*if \(recorderAcquiring\) return;/);
   });
 
-  test('a microphone start failure closes the active recording process', () => {
+  test('a microphone start failure stays open and exposes recovery instead of dismissing', () => {
     const chatScreen = fs.readFileSync(
       path.resolve(__dirname, '../../../app/chat/index.tsx'),
       'utf8',
     );
-    expect(chatScreen).toMatch(/catch \{[\s\S]*recordingStartGuardRef\.current\.complete\(startAttempt\)[\s\S]*await handleCancelVoice\(\)/);
+    expect(chatScreen).toMatch(/catch \(error\) \{[\s\S]*recordingStartGuardRef\.current\.complete\(startAttempt\)[\s\S]*recording-start-failed[\s\S]*setRecordingStartFailed\(true\)[\s\S]*setPhase\('idle'\)/);
+    expect(chatScreen).not.toMatch(/catch \(error\) \{[\s\S]*await handleCancelVoice\(\)/);
+  });
+
+  test('keeps the native splash visible until the privacy shield is initialized', () => {
+    const rootLayout = fs.readFileSync(
+      path.resolve(__dirname, '../../../app/_layout.tsx'),
+      'utf8',
+    );
+    expect(rootLayout).toMatch(/if \(fontsLoaded && startup !== null && privacyState\.initialized\) \{[\s\S]*SplashScreen\.hideAsync\(\)/);
+    expect(rootLayout).not.toMatch(/if \(fontsLoaded\) SplashScreen\.hideAsync\(\)/);
+  });
+
+  test('clips the rounded conversation only while its sheet morph is in progress', () => {
+    const chatScreen = fs.readFileSync(
+      path.resolve(__dirname, '../../../app/chat/index.tsx'),
+      'utf8',
+    );
+    expect(chatScreen).toMatch(/overflow: borderRadius\.value > 0\.5 \? 'hidden' : 'visible'/);
+  });
+
+  test('voice cancellation preserves reply and close destinations through recorder cleanup', () => {
+    const chatScreen = fs.readFileSync(
+      path.resolve(__dirname, '../../../app/chat/index.tsx'),
+      'utf8',
+    );
+
+    expect(chatScreen).toMatch(/voiceCancelDestination\([^)]+\) === 'close'[\s\S]*performClose\(false\)/);
+    expect(chatScreen).toMatch(/setPhase\('idle'\)[\s\S]*restore-mode/);
+  });
+
+  test('does not confirm an empty text send with tactile feedback', () => {
+    const chatScreen = fs.readFileSync(
+      path.resolve(__dirname, '../../../app/chat/index.tsx'),
+      'utf8',
+    );
+    expect(chatScreen).toMatch(
+      /handleComposerSend\(\)[\s\S]*composer\.voice === 'none' && !draft\.trim\(\)[\s\S]*return;[\s\S]*playInteractionHaptic\('send'\)/,
+    );
   });
 
   test('the composer remains visible above the iOS keyboard and clears after a successful retry', () => {
@@ -150,9 +219,15 @@ describe('local-first capture navigation', () => {
       path.resolve(__dirname, '../../components/ui/ChatSurfaces.tsx'),
       'utf8',
     );
+    const rootLayout = fs.readFileSync(
+      path.resolve(__dirname, '../../../app/_layout.tsx'),
+      'utf8',
+    );
 
     expect(chatSurfaces).toMatch(/KeyboardAvoidingView/);
+    expect(chatSurfaces).toMatch(/KeyboardAvoidingView[\s\S]*className="flex-1 bg-background"/);
     expect(chatSurfaces).toMatch(/behavior=\{Platform\.OS === 'ios' \? 'padding' : undefined\}/);
+    expect(rootLayout).toMatch(/name="chat\/index"[\s\S]*presentation: 'transparentModal'[\s\S]*backgroundColor: 'transparent'/);
     expect(chatScreen).toMatch(/await retrySubmission\(\);[\s\S]*setDraft\(''\)/);
   });
 
@@ -202,6 +277,28 @@ describe('local-first capture navigation', () => {
     expect(tabLayout).not.toMatch(/<ChatScreen/);
   });
 
+  test('main tabs use the route-authoritative navigator without a hand-written horizontal gesture', () => {
+    const tabLayout = fs.readFileSync(
+      path.resolve(__dirname, '../../../app/(tabs)/_layout.tsx'),
+      'utf8',
+    );
+    const mainNavigator = fs.readFileSync(
+      path.resolve(__dirname, '../InteractiveMainNavigator.tsx'),
+      'utf8',
+    );
+
+    expect(tabLayout).not.toMatch(/pageTranslateX|pageSwipeGesture|exitX/);
+    expect(tabLayout).toMatch(/backgroundColor: PAGE_TRANSITION\.backdropColor/);
+    expect(tabLayout).toMatch(/<InteractiveMainNavigator initialRouteName=\{CURRENT_INITIAL_TAB\}>/);
+    expect(tabLayout).toMatch(/<InteractiveMainNavigator\.Screen name="chats" \/>[\s\S]*name="index"[\s\S]*name="you"/);
+    expect(tabLayout).not.toMatch(/name="logs"|name="insights"|name="goals"/);
+    expect(mainNavigator).toMatch(/useNavigationBuilder<[\s\S]*?>\(TabRouter/);
+    expect(mainNavigator).toMatch(/withLayoutContext/);
+    expect(mainNavigator).not.toMatch(/from 'react-native-pager-view'/);
+    expect(mainNavigator).toMatch(/<Animated\.ScrollView/);
+    expect(mainNavigator).toMatch(/<\/Animated\.ScrollView>\s*<BottomNavBar \/>\s*<VoiceButton \/>/);
+  });
+
   test('a microphone failure offers a working keyboard fallback that selects text mode', () => {
     const chatScreen = fs.readFileSync(
       path.resolve(__dirname, '../../../app/chat/index.tsx'),
@@ -220,7 +317,7 @@ describe('local-first capture navigation', () => {
     );
 
     expect(chatScreen).toMatch(/async function confirmVoiceDraftDeletion\(\)[\s\S]*canAbandonVoiceSubmission\([\s\S]*await abandonVoiceSubmission\(requestId\)[\s\S]*setPendingRecording\(null\)[\s\S]*confirm-delete-voice/);
-    expect(chatScreen).toMatch(/confirmVoiceDraftDeletion\(\)\.catch/);
+    expect(chatScreen).toMatch(/requestDestructiveInput\('delete-voice-draft', confirmVoiceDraftDeletion\)[\s\S]*cancel-delete-voice/);
   });
 
   test('transcript correction is rendered by a typed design-system component', () => {

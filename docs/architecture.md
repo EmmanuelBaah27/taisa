@@ -16,7 +16,10 @@ iPhone (readable authority)
                                          │
                                          ▼
 Taisa gateway (transient processing)
-  validate → cost/rate guard → one configured provider call → structured response
+  validate → reserve both maxima → configured primary call
+                                      │ operational allowlist failure only
+                                      ▼
+                                one fallback call → structured response
                                          │
                                          ▼
 iPhone
@@ -26,6 +29,17 @@ iPhone
 The gateway stores only content-free usage/cost reservations. It must not write prompts,
 transcripts, request/response bodies, or coaching text to logs, analytics, crash reports, or
 backend SQLite. The mobile app has no provider credentials.
+
+`TAISA_COACHING_PROVIDER` orders the pair: the selected OpenAI or Anthropic adapter is primary and
+the other is fallback. Both adapters' credentials and complete pricing/model configuration are
+mandatory. Before provider work, the usage ledger atomically reserves both conservative maxima as
+one request against `$0.05` per request, `$1` per UTC day, and `$10` per UTC month. A primary
+success releases the unused fallback reservation. After a primary attempt begins, its actual usage
+or conservative estimate is settled; at most one fallback is then allowed for network/timeout,
+HTTP `408`, `409`, `429`, or `5xx`, or recognized rate-limit, overload, authentication,
+permission, billing, or unavailable failures. Validation, configuration, spend, policy/safety,
+non-allowlisted invalid requests, invalid structured output, and unknown failures do not fall back.
+Provider SDK retries remain disabled.
 
 There is no migration/export endpoint. Baah confirmed that no legacy backend data needs to be
 migrated, so Task 7 was removed. Legacy backend CRUD and AI routes are still mounted as rollback
@@ -205,7 +219,8 @@ New coaching features must use the provider-neutral stateless path:
 1. Extend the portable shared contract and runtime schema.
 2. Assemble bounded readable context on-device.
 3. Validate and meter it in the gateway without backend user-data reads or content logging.
-4. Make exactly one configured provider call.
+4. Reserve the configured pair's combined conservative maximum, call the primary, and make at most
+   one alternate-provider call after an allowlisted operational failure.
 5. Return structured proposals; deterministic mobile governance owns persistence.
 
 The route → database-loading agent → prompt → backend-write pattern below is legacy-only and must
@@ -230,6 +245,7 @@ See `docs/api.md` for the request/response patterns. See `docs/agent-persona.md`
 | Zustand (not Redux) | Lightweight global state for a solo mobile app. Three stores: `journalStore`, `careerStore`, `uiStore`. |
 | Expo managed workflow | Native configuration stays managed, but SQLCipher and LocalAuthentication require a development build; Expo Go is insufficient. |
 | `callClaudeJson` with fallback | Claude sometimes wraps JSON in markdown code fences. The fallback parser strips them before parsing. |
+| One automatic coaching fallback | Keeps coaching available across an operational provider failure without parallel calls; the combined reservation and shared parity gate preserve spend and quality boundaries. |
 
 ## Personal-alpha hosted boundary
 

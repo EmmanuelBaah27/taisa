@@ -182,7 +182,7 @@ describe('provider streaming adapter', () => {
     const events = [];
     for await (const event of streamTranscription(input, provider)) events.push(event);
 
-    expect(events.at(-1)).toMatchObject({
+    expect(events[events.length - 1]).toMatchObject({
       type: 'transcript.completed',
       quality: 'uncertain',
       transcript: 'Possible words',

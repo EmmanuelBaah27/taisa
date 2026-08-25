@@ -9,6 +9,21 @@ relevant to the task.
 
 ---
 
+## Active work
+
+| Feature | Track | Stage | Branch | Blocked on |
+|---|---|---|---|---|
+| Local-first coaching platform | Platform | Build | `feature/local-first-coaching-platform` | Managed-device recovery/privacy QA is next; paid live provider evaluation remains gated; legacy-route retirement requires later explicit approval |
+| Personal alpha release | Platform + Product | Build | `feature/local-first-coaching-platform` | Code-only build complete at `850b3d6`; next gate is Baah approval to create Railway resources, add billing/secrets, and deploy. Signed iPhone installation follows as a separate gate. |
+| Post-Send streaming transcription | Platform + Product | Review + QA | `feature/local-first-coaching-platform` | Managed-device clear/uncertain/no-speech calibration before Ship approval |
+| Taisa system architecture | Platform | Review + QA | `docs/reimagine-product-scope` | Baah document review |
+| Secondary icon button | Product | Review + QA | `feature/secondary-icon-button` | Baah device QA |
+| Recording page | Product | Review + QA | `feature/secondary-icon-button` | Baah device QA |
+| Shared chat and recording shell | Product | Build | `codex/chat-close-auth-handoff` | Baah paired-device QA after preview integration |
+| Glass elevation, alignment, and interaction feedback | Product | Review + QA | `fix/glass-elevation-keyboard-surfaces` | canonical preview integration + Baah device QA |
+
+---
+
 ## Feature tiers
 
 Not every feature needs the full workflow. Claude assesses tier at task start and states it.
@@ -113,6 +128,8 @@ dependency stage. If not yet in BUILD:
 ### 5. Review + QA
 **Who:** Claude (`requesting-code-review` + `verification-before-completion`) + Baah (device QA)
 
+**Canonical phone preview:** Only Metro started from `.worktrees/preview-taisa/mobile` on `preview/taisa` may own port `8082` for device QA. Before Beats is asked to device-QA any feature, integrate that feature's committed work into `preview/taisa`; feature worktrees remain isolated implementation environments and are not device-QA targets.
+
 **Verification matrix:**
 
 | Change area | Required checks |
@@ -133,10 +150,12 @@ Run the narrowest relevant check throughout BUILD, then run the complete applica
 - [ ] No business logic inside DS components
 
 **If build fails QA:**
-1. Baah notes specific failures in chat
-2. Claude creates `docs/features/<name>-qa-notes.md`
-3. Active Work table reverts to In Build
-4. Claude fixes, re-runs `verification-before-completion`, re-raises for QA
+1. Baah notes specific failures in chat.
+2. Claude creates or updates one Linear issue per distinct failure, including the observed preview revision, reproduction context, severity, and acceptance criteria; the issue is linked to the feature work.
+3. Active Work reverts to Build for release-blocking failures. Non-blocking failures remain prioritized Linear work and require Baah's explicit acceptance if the feature proceeds to Ship with them unresolved.
+4. Claude fixes selected issues, comments verification evidence on the Linear issue, reruns `verification-before-completion`, and re-raises for QA.
+
+QA documents may retain immutable verification history and device checklists, but they are not the active bug queue. Current status, discussion, ownership, and resolution live in Linear.
 
 A feature is not merged until both checks pass.
 
@@ -225,7 +244,7 @@ Feature deprioritised mid-pipeline:
 | Design system | `docs/design-system.md` | Baah + Claude (DS components) |
 | API reference | `docs/api.md` | Claude (updated on every route change) |
 | Workflow | `docs/workflow.md` | Claude (Active Work table) + Baah |
-| QA notes | `docs/features/<name>-qa-notes.md` | Claude (on QA failure) |
+| QA evidence | `docs/features/<name>-qa.md` | Claude (verification history only; active bugs live in Linear) |
 | Work closeout | Standard/Full scope or plan | Claude (completed during Review and Ship) |
 
 **Skills invoked per stage:**
@@ -256,7 +275,7 @@ Claude reads intent, not keywords. Ambiguous → one yes/no question.
 
 ### Canonical branch
 
-`main` is the only permanent branch. It is the GitHub default and the base for every pull request. Platform and Product are workflow tracks, not Git branches; there is no long-lived `develop` branch.
+`main` is the only permanent branch and the only shipping branch. It is the GitHub default and the base for every pull request. `preview/taisa` is the integration-only branch for combined phone previews; it is never a shipping base and must not be merged to `main` as part of device-QA setup. Platform and Product are workflow tracks, not Git branches; there is no long-lived `develop` branch.
 
 ### Branch naming
 

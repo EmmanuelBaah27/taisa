@@ -54,6 +54,22 @@ Fires when: Baah has explicitly asked "what should I do" or "what do you think."
 
 ## Part 2 — What's Currently Implemented
 
+The provider-neutral stateless coaching path uses `backend/src/prompts/system/seniorSelf.ts` and
+the portable coaching request/response contract. It decides safety, current-turn relevance,
+context sufficiency, then stance before responding. Explicit work signals remain career-relevant;
+personal context with an explicit effect on work is adjacent; ambiguous referents fail closed;
+and partially sufficient turns may coach only from confirmed facts.
+
+Coaching proposals are governed data suggestions, not prose decoration. The provider may support
+an existing memory only when the current turn directly corroborates it, may propose a first-class
+outcome for a concrete goal or action, and must not duplicate existing memory. Local mobile policy
+replaces provider source identifiers, validates grounding, and owns confirmation and persistence.
+Both configured providers must pass the same current versioned automated and manual evaluation
+before either is release-eligible.
+
+The legacy journal-analysis path described below remains mounted for rollback compatibility and
+is not the authority for new coaching behavior.
+
 The current implementation (`backend/src/prompts/system/journalProcessor.ts`) is a **structured analysis engine**, not the Senior Self persona.
 
 ### What it does

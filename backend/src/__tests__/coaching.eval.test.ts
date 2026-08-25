@@ -5,8 +5,10 @@ import {
 } from '../services/coaching/provider';
 import {
   coachingEvaluationScenarios,
+  COACHING_EVALUATION_PACK_VERSION,
   GUARDRAIL_SCENARIO_IDS,
   type CoachingEvaluationCoverage,
+  type CoachingEvaluationScenario,
 } from '../evals/coaching/scenarios';
 import { scoreCoachingResponse } from '../evals/coaching/rubric';
 import {
@@ -16,13 +18,26 @@ import {
   runEvaluationCli,
   serializeEvaluationSummary,
   buildManualReviewArtifact,
+  COACHING_EVALUATION_THRESHOLDS,
   type CoachingEvaluationSummary,
 } from '../evals/coaching/run';
 import { CostLedger } from '../services/usage/costLedger';
 import { CoachingRequestSchema } from '../schemas/coaching';
-import { mkdtempSync, readFileSync } from 'fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
+import { spawnSync } from 'child_process';
+import Database from 'better-sqlite3';
 import os from 'os';
 import path from 'path';
+import {
+  runReviewCli,
+  validateCompletedManualReview,
+  type CompletedManualReview,
+} from '../evals/coaching/review';
+import {
+  buildProviderParityDecision,
+  runParityCli,
+  type ProviderEvaluationDecision,
+} from '../evals/coaching/parity';
 
 const successfulPayload = {
   mode: 'coach' as const,
@@ -120,6 +135,57 @@ test('the guardrail pack specifies response decisions for missing, scoped, adjac
   });
   expect(scenario('guardrail-partial-work')).toMatchObject({
     expected: { mode: 'coach', allowedContextSufficiency: ['partial'], requireNoProposals: false },
+  });
+});
+
+test('the current pack distinguishes grounded outcomes, missing context, and existing-memory continuity', () => {
+  const scenario = (id: string) => coachingEvaluationScenarios.find((candidate) => candidate.id === id)!;
+
+  expect(COACHING_EVALUATION_PACK_VERSION).toBe('2026-08-25.v4');
+  expect(scenario('synthetic-03').expected).toMatchObject({
+    requiredProposalOperations: [], requiredProposedMemoryTypes: [],
+    requiredProposedProvenance: [],
+  });
+  expect(scenario('synthetic-04').expected).toMatchObject({
+    requiredProposalOperations: ['propose-outcome'], requiredProposedMemoryTypes: [],
+    requiredProposedProvenance: [],
+  });
+  expect(scenario('synthetic-05').expected).toMatchObject({
+    mode: 'clarify', allowedContextSufficiency: ['insufficient'],
+    requiredProposalOperations: [], requiredProposalTargetIds: [], requireNoProposals: true,
+  });
+  expect(scenario('synthetic-06').expected).toMatchObject({
+    mode: 'clarify', allowedRelevance: ['career-relevant'],
+    allowedContextSufficiency: ['insufficient'], requireNoProposals: true,
+  });
+  expect(scenario('synthetic-07').expected).toMatchObject({
+    requiredStance: 'challenge', requiredProposalOperations: ['support'],
+    requiredProposalTargetIds: ['goal-staff', 'goal-manager'], continuityRequired: true,
+  });
+  expect(scenario('synthetic-08').expected).toMatchObject({
+    requiredStance: 'challenge', requiredProposalOperations: [],
+    requiredProposalTargetIds: [], continuityRequired: true,
+  });
+  expect(scenario('synthetic-09').request.input).toBe(
+    'A smaller project strengthened my progress toward the staff goal; should I repeat that approach?',
+  );
+  expect(scenario('synthetic-10').request.input).toBe(
+    'The portfolio prototype experiment did not work; what should change now?',
+  );
+  expect(scenario('synthetic-13').expected).toMatchObject({
+    mode: 'redirect', allowedRelevance: ['outside-scope'],
+    allowedContextSufficiency: ['sufficient'], allowedStances: [null], requireNoProposals: true,
+  });
+  expect(scenario('synthetic-17').expected).toMatchObject({
+    mode: 'clarify', allowedRelevance: ['career-relevant'],
+    allowedContextSufficiency: ['insufficient'], allowedStances: [null], requireNoProposals: true,
+  });
+  expect(scenario('synthetic-19').request.input).toBe(
+    'A small success strengthened my commitment to the staff goal; what should I build on?',
+  );
+  expect(scenario('synthetic-19').expected).toMatchObject({
+    requiredProposalOperations: ['support'], requiredProposalTargetIds: ['goal-staff'],
+    requiredProposedMemoryTypes: [], requiredProposedProvenance: [], continuityRequired: true,
   });
 });
 
@@ -436,7 +502,15 @@ test('the rubric rejects an invented propose mutation that supersedes a forbidde
 });
 
 test('the rubric enforces required proposed memory type and provenance', () => {
-  const careerScenario = coachingEvaluationScenarios.find((scenario) => scenario.id === 'synthetic-03')!;
+  const careerScenario: CoachingEvaluationScenario = {
+    ...coachingEvaluationScenarios.find((scenario) => scenario.id === 'synthetic-03')!,
+    expected: {
+      ...coachingEvaluationScenarios.find((scenario) => scenario.id === 'synthetic-03')!.expected,
+      requiredProposalOperations: ['propose'],
+      requiredProposedMemoryTypes: ['goal'],
+      requiredProposedProvenance: ['user-stated'],
+    },
+  };
   const score = scoreCoachingResponse(careerScenario, {
     mode: 'coach',
     relevance: 'career-relevant',
@@ -612,6 +686,70 @@ test('the CLI prints only a fixed error code when factory creation throws sensit
   expect(writeStderr.mock.calls.flat().join('')).not.toContain('secret-key=do-not-print');
 });
 
+test('the documented evaluation command loads its provider configuration from an explicit dotenv file', () => {
+  const temporaryDirectory = mkdtempSync(path.join(os.tmpdir(), 'taisa-eval-cli-'));
+  const environmentPath = path.join(temporaryDirectory, '.env');
+  const artifactPath = path.join(temporaryDirectory, 'review.json');
+  const ledgerPath = path.join(temporaryDirectory, 'usage-ledger.sqlite');
+  try {
+    writeFileSync(environmentPath, [
+      'OPENAI_API_KEY=synthetic-never-called',
+      'TAISA_OPENAI_MODEL=synthetic-model',
+      'TAISA_OPENAI_INPUT_PRICE_USD_PER_MILLION_TOKENS=1',
+      'TAISA_OPENAI_OUTPUT_PRICE_USD_PER_MILLION_TOKENS=1',
+      'TAISA_OPENAI_MAX_OUTPUT_TOKENS=1024',
+      'TAISA_OPENAI_STRUCTURED_OUTPUT_INPUT_TOKEN_OVERHEAD=512',
+      `TAISA_USAGE_LEDGER_PATH=${ledgerPath}`,
+      '',
+    ].join('\n'));
+    const environment = { ...process.env };
+    for (const name of Object.keys(environment)) {
+      if (
+        name.startsWith('DOTENV_') || name === 'OPENAI_API_KEY' || name === 'OPENAI_BASE_URL'
+        || name.startsWith('TAISA_OPENAI_') || name === 'TAISA_USAGE_LEDGER_PATH'
+      ) {
+        delete environment[name];
+      }
+    }
+    environment.DOTENV_CONFIG_PATH = environmentPath;
+    environment.OPENAI_BASE_URL = 'http://127.0.0.1:9';
+
+    const result = spawnSync(
+      'npm',
+      [
+        'run', 'eval:coaching', '--workspace=backend', '--',
+        '--provider=openai', '--max-cost-usd=0.000001', `--review-output=${artifactPath}`,
+      ],
+      {
+        cwd: path.resolve(__dirname, '../../..'),
+        encoding: 'utf8',
+        env: environment,
+        timeout: 15_000,
+      },
+    );
+
+    expect(result.error).toBeUndefined();
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('EVAL_COACHING_REVIEW_REQUIRED');
+    expect(result.stderr).not.toContain('EVAL_COACHING_FAILED');
+    expect(existsSync(artifactPath)).toBe(true);
+    const artifact = readFileSync(artifactPath, 'utf8');
+    expect(`${result.stdout}${result.stderr}${artifact}`).not.toContain('synthetic-never-called');
+
+    const database = new Database(ledgerPath, { readonly: true });
+    try {
+      expect(database.prepare('SELECT COUNT(*) AS count FROM usage_receipts').get()).toEqual({ count: 0 });
+      expect(database.prepare('SELECT COUNT(*) AS count FROM cost_reservations').get()).toEqual({ count: 0 });
+      expect(database.prepare('SELECT COUNT(*) AS count FROM cost_request_reservations').get()).toEqual({ count: 0 });
+      expect(database.prepare('SELECT COUNT(*) AS count FROM cost_attempt_reservations').get()).toEqual({ count: 0 });
+    } finally {
+      database.close();
+    }
+  } finally {
+    rmSync(temporaryDirectory, { recursive: true, force: true });
+  }
+});
+
 test('the command-line parser rejects an omitted or unsupported provider choice', () => {
   expect(parseProviderArgument(['--provider=openai'])).toBe('openai');
   expect(() => parseProviderArgument([])).toThrow('explicit --provider=openai or --provider=anthropic');
@@ -624,4 +762,280 @@ test('the command-line parser requires a finite positive evaluation budget', () 
   expect(parseEvaluationBudgetArgument(['--max-cost-usd=0.25'])).toBe(0.25);
   expect(() => parseEvaluationBudgetArgument(['--provider=openai'])).toThrow('explicit --max-cost-usd');
   expect(() => parseEvaluationBudgetArgument(['--max-cost-usd=0'])).toThrow('positive finite number');
+});
+
+const proposalReviewScenarioId = coachingEvaluationScenarios[0].id;
+const clarificationReviewScenarioId = coachingEvaluationScenarios.find(
+  (scenario) => scenario.expected.mode === 'clarify',
+)!.id;
+
+function completedReviewArtifact(provider: 'openai' | 'anthropic' = 'openai') {
+  return {
+    packVersion: COACHING_EVALUATION_PACK_VERSION, provider, syntheticOnly: true,
+    thresholds: COACHING_EVALUATION_THRESHOLDS, automatedPassed: true,
+    manualReviewStatus: 'required' as const,
+    reviews: coachingEvaluationScenarios.map((scenario) => ({
+      scenarioId: scenario.id,
+      coverage: scenario.coverage,
+      syntheticInput: '',
+      response: '',
+      mode: scenario.expected.mode,
+      relevance: null,
+      contextSufficiency: null,
+      stance: null,
+      proposals: scenario.id === proposalReviewScenarioId ? [{}] : [],
+      manualUsefulness: null,
+      inventedReferent: null,
+      inventedEmotion: null,
+      inventedParticipantOrPurpose: null,
+      clarificationQuestionNeutral: null,
+      proposalsGroundedInSupportedObservation: null,
+    })),
+  } as unknown as ReturnType<typeof buildManualReviewArtifact>;
+}
+
+function completedReviewsFor(
+  artifact: ReturnType<typeof buildManualReviewArtifact>,
+): readonly CompletedManualReview[] {
+  return artifact.reviews.map((review) => ({
+    scenarioId: review.scenarioId,
+    manualUsefulness: 0.8,
+    inventedReferent: false,
+    inventedEmotion: false,
+    inventedParticipantOrPurpose: false,
+    clarificationQuestionNeutral: review.mode === 'clarify' ? true : null,
+    proposalsGroundedInSupportedObservation: review.proposals.length > 0 ? true : null,
+  }));
+}
+
+const passingCompletedReviews = completedReviewsFor(completedReviewArtifact());
+
+function reviewsWith(
+  scenarioId: string,
+  change: Partial<CompletedManualReview>,
+): readonly CompletedManualReview[] {
+  return passingCompletedReviews.map((review) => review.scenarioId === scenarioId
+    ? { ...review, ...change }
+    : review);
+}
+
+test('manual provider review passes at the shared usefulness and applicable grounding floor', () => {
+  expect(validateCompletedManualReview(completedReviewArtifact(), passingCompletedReviews)).toEqual({
+    provider: 'openai', packVersion: '2026-08-25.v4',
+    automatedPassed: true, manualPassed: true, passed: true,
+  });
+});
+
+test.each([
+  ['usefulness below 0.8', passingCompletedReviews.map((review) => ({ ...review, manualUsefulness: 0.79 }))],
+  ['invented referent', reviewsWith(clarificationReviewScenarioId, { inventedReferent: true })],
+  ['invented emotion', reviewsWith(clarificationReviewScenarioId, { inventedEmotion: true })],
+  ['invented participant', reviewsWith(clarificationReviewScenarioId, { inventedParticipantOrPurpose: true })],
+  ['non-neutral clarification', reviewsWith(clarificationReviewScenarioId, { clarificationQuestionNeutral: false })],
+  ['ungrounded proposal', reviewsWith(proposalReviewScenarioId, { proposalsGroundedInSupportedObservation: false })],
+])('manual provider review fails for %s', (_name, reviews) => {
+  expect(validateCompletedManualReview(completedReviewArtifact(), reviews).passed).toBe(false);
+});
+
+test.each([
+  ['missing scenario', passingCompletedReviews.slice(0, 1)],
+  ['duplicate scenario', [...passingCompletedReviews, passingCompletedReviews[0]]],
+  ['extra scenario', [...passingCompletedReviews, { ...passingCompletedReviews[0], scenarioId: 'extra' }]],
+])('manual provider review rejects %s evidence', (_name, reviews) => {
+  expect(() => validateCompletedManualReview(completedReviewArtifact(), reviews)).toThrow();
+});
+
+const canonicalCompletedArtifact = completedReviewArtifact();
+const reducedFabricatedArtifact = {
+  ...canonicalCompletedArtifact,
+  reviews: [{ ...canonicalCompletedArtifact.reviews[0], scenarioId: 'fabricated-only' }],
+} as ReturnType<typeof buildManualReviewArtifact>;
+const missingCurrentScenarioArtifact = {
+  ...canonicalCompletedArtifact,
+  reviews: canonicalCompletedArtifact.reviews.slice(1),
+} as ReturnType<typeof buildManualReviewArtifact>;
+const unexpectedScenarioArtifact = {
+  ...canonicalCompletedArtifact,
+  reviews: [
+    ...canonicalCompletedArtifact.reviews,
+    { ...canonicalCompletedArtifact.reviews[0], scenarioId: 'unexpected-scenario' },
+  ],
+} as ReturnType<typeof buildManualReviewArtifact>;
+const duplicateCurrentScenarioArtifact = {
+  ...canonicalCompletedArtifact,
+  reviews: [...canonicalCompletedArtifact.reviews, canonicalCompletedArtifact.reviews[0]],
+} as ReturnType<typeof buildManualReviewArtifact>;
+
+test.each([
+  ['an arbitrary pack version', {
+    ...canonicalCompletedArtifact, packVersion: 'arbitrary-pack',
+  } as ReturnType<typeof buildManualReviewArtifact>],
+  ['a reduced fabricated artifact', reducedFabricatedArtifact],
+  ['a missing current scenario', missingCurrentScenarioArtifact],
+  ['an unexpected scenario', unexpectedScenarioArtifact],
+  ['a duplicate current scenario', duplicateCurrentScenarioArtifact],
+])('manual provider review rejects %s even when completed evidence matches it', (_name, artifact) => {
+  expect(() => validateCompletedManualReview(artifact, completedReviewsFor(artifact))).toThrow();
+});
+
+test('manual review fields are non-null exactly when the artifact response makes them applicable', () => {
+  expect(() => validateCompletedManualReview(
+    completedReviewArtifact(), reviewsWith(proposalReviewScenarioId, { clarificationQuestionNeutral: true }),
+  )).toThrow();
+  expect(() => validateCompletedManualReview(
+    completedReviewArtifact(), reviewsWith(clarificationReviewScenarioId, { proposalsGroundedInSupportedObservation: true }),
+  )).toThrow();
+  expect(() => validateCompletedManualReview(
+    completedReviewArtifact(), reviewsWith(clarificationReviewScenarioId, { clarificationQuestionNeutral: null }),
+  )).toThrow();
+  expect(() => validateCompletedManualReview(
+    completedReviewArtifact(), reviewsWith(proposalReviewScenarioId, { proposalsGroundedInSupportedObservation: null }),
+  )).toThrow();
+});
+
+const openAIPass: ProviderEvaluationDecision = {
+  provider: 'openai', packVersion: '2026-08-25.v4', automatedPassed: true, manualPassed: true, passed: true,
+};
+const anthropicPass: ProviderEvaluationDecision = {
+  provider: 'anthropic', packVersion: '2026-08-25.v4', automatedPassed: true, manualPassed: true, passed: true,
+};
+
+test('parity requires exactly both providers on the same pack version to pass', () => {
+  const passingDecision = buildProviderParityDecision(openAIPass, anthropicPass);
+  expect(passingDecision).toEqual({
+    packVersion: '2026-08-25.v4', passed: true, providers: [openAIPass, anthropicPass],
+  });
+  expect(passingDecision.providers[0]).not.toBe(openAIPass);
+  expect(passingDecision.providers[1]).not.toBe(anthropicPass);
+  expect(buildProviderParityDecision(
+    openAIPass, { ...anthropicPass, manualPassed: false, passed: false },
+  ).passed).toBe(false);
+  expect(() => buildProviderParityDecision(
+    openAIPass, { ...anthropicPass, packVersion: 'other' },
+  )).toThrow('Provider evaluation pack versions must match');
+  expect(() => buildProviderParityDecision(
+    { ...openAIPass, provider: 'anthropic' }, anthropicPass,
+  )).toThrow();
+  expect(() => buildProviderParityDecision(
+    { ...openAIPass, passed: 'yes' as unknown as boolean }, anthropicPass,
+  )).toThrow();
+  expect(() => buildProviderParityDecision(
+    { ...openAIPass, passed: false }, anthropicPass,
+  )).toThrow();
+  expect(() => buildProviderParityDecision(
+    openAIPass, { ...anthropicPass, automatedPassed: false, passed: true },
+  )).toThrow();
+  expect(() => buildProviderParityDecision(
+    { ...openAIPass, packVersion: 'stale-pack' },
+    { ...anthropicPass, packVersion: 'stale-pack' },
+  )).toThrow();
+});
+
+test.each([
+  ['response', 'PRIVATE_RESPONSE_MARKER'],
+  ['prompt', 'PRIVATE_PROMPT_MARKER'],
+  ['proposals', ['PRIVATE_PROPOSAL_MARKER']],
+] as const)('parity rejects provider decisions containing an extra %s field', (field, marker) => {
+  const contaminated = { ...openAIPass, [field]: marker } as unknown as ProviderEvaluationDecision;
+  expect(() => buildProviderParityDecision(contaminated, anthropicPass)).toThrow();
+});
+
+test('review CLI requires exact flags and writes only a content-free passing decision without overwrite', () => {
+  const written: Array<{ target: string; output: string; options: { flag: 'wx' } }> = [];
+  const writeStderr = jest.fn();
+  const files: Record<string, string> = {
+    artifact: JSON.stringify(completedReviewArtifact()),
+    reviews: JSON.stringify(passingCompletedReviews),
+  };
+  const exitCode = runReviewCli([
+    '--artifact=artifact', '--completed-review=reviews', '--decision-output=decision',
+  ], {
+    readFile: (target) => files[target],
+    writeFile: (target, output, options) => written.push({ target, output, options }),
+    writeStderr,
+  });
+
+  expect(exitCode).toBe(0);
+  expect(writeStderr).not.toHaveBeenCalled();
+  expect(written).toHaveLength(1);
+  expect(written[0]).toEqual(expect.objectContaining({ target: 'decision', options: { flag: 'wx' } }));
+  expect(Object.keys(JSON.parse(written[0].output)).sort()).toEqual([
+    'automatedPassed', 'manualPassed', 'packVersion', 'passed', 'provider', 'thresholds',
+  ]);
+  expect(written[0].output).not.toContain('Synthetic');
+
+  expect(runReviewCli([
+    '--artifact=artifact', '--completed-review=reviews', '--completed-review=reviews', '--decision-output=decision',
+  ], { readFile: (target) => files[target], writeFile: jest.fn(), writeStderr })).toBe(1);
+  expect(writeStderr).toHaveBeenLastCalledWith('EVAL_COACHING_REVIEW_FAILED\n');
+
+  files.artifact = JSON.stringify({ ...completedReviewArtifact(), syntheticOnly: false });
+  expect(runReviewCli([
+    '--artifact=artifact', '--completed-review=reviews', '--decision-output=decision',
+  ], { readFile: (target) => files[target], writeFile: jest.fn(), writeStderr })).toBe(1);
+  expect(writeStderr).toHaveBeenLastCalledWith('EVAL_COACHING_REVIEW_FAILED\n');
+});
+
+test('parity CLI fails closed and serializes only thresholds, provider IDs, versions, and booleans', () => {
+  const written: string[] = [];
+  const writeStderr = jest.fn();
+  const files: Record<string, string> = {
+    openai: JSON.stringify({ ...openAIPass, thresholds: COACHING_EVALUATION_THRESHOLDS }),
+    anthropic: JSON.stringify({ ...anthropicPass, thresholds: COACHING_EVALUATION_THRESHOLDS }),
+  };
+
+  expect(runParityCli([
+    '--openai-decision=openai', '--anthropic-decision=anthropic', '--parity-output=parity',
+  ], {
+    readFile: (target) => files[target],
+    writeFile: (_target, output, options) => {
+      expect(options).toEqual({ flag: 'wx' });
+      written.push(output);
+    },
+    writeStderr,
+  })).toBe(0);
+  expect(writeStderr).not.toHaveBeenCalled();
+  expect(Object.keys(JSON.parse(written[0])).sort()).toEqual(['packVersion', 'passed', 'providers', 'thresholds']);
+  for (const marker of ['PRIVATE_PROMPT_MARKER', 'PRIVATE_RESPONSE_MARKER', 'PRIVATE_PROPOSAL_MARKER']) {
+    expect(written[0]).not.toContain(marker);
+  }
+
+  const staleFiles: Record<string, string> = {
+    openai: JSON.stringify({
+      ...openAIPass, packVersion: 'stale-pack', thresholds: COACHING_EVALUATION_THRESHOLDS,
+    }),
+    anthropic: JSON.stringify({
+      ...anthropicPass, packVersion: 'stale-pack', thresholds: COACHING_EVALUATION_THRESHOLDS,
+    }),
+  };
+  const staleWrite = jest.fn();
+  expect(runParityCli([
+    '--openai-decision=openai', '--anthropic-decision=anthropic', '--parity-output=parity',
+  ], {
+    readFile: (target) => staleFiles[target], writeFile: staleWrite, writeStderr,
+  })).toBe(1);
+  expect(staleWrite).not.toHaveBeenCalled();
+  expect(writeStderr).toHaveBeenLastCalledWith('EVAL_COACHING_PARITY_FAILED\n');
+
+  files.anthropic = JSON.stringify({
+    ...anthropicPass, manualPassed: false, passed: false, thresholds: COACHING_EVALUATION_THRESHOLDS,
+  });
+  expect(runParityCli([
+    '--openai-decision=openai', '--anthropic-decision=anthropic', '--parity-output=parity',
+  ], { readFile: (target) => files[target], writeFile: jest.fn(), writeStderr })).toBe(1);
+  expect(writeStderr).toHaveBeenLastCalledWith('EVAL_COACHING_PARITY_FAILED\n');
+
+  files.openai = JSON.stringify({
+    ...openAIPass,
+    thresholds: COACHING_EVALUATION_THRESHOLDS,
+    response: 'PRIVATE_RESPONSE_MARKER',
+    prompt: 'PRIVATE_PROMPT_MARKER',
+    proposals: ['PRIVATE_PROPOSAL_MARKER'],
+  });
+  const contaminatedWrite = jest.fn();
+  expect(runParityCli([
+    '--openai-decision=openai', '--anthropic-decision=anthropic', '--parity-output=parity',
+  ], { readFile: (target) => files[target], writeFile: contaminatedWrite, writeStderr })).toBe(1);
+  expect(contaminatedWrite).not.toHaveBeenCalled();
+  expect(writeStderr.mock.calls.flat().join('')).not.toContain('PRIVATE_');
 });

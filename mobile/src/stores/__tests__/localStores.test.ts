@@ -74,6 +74,45 @@ test('a fresh local voice draft does not own a completed voice submission', asyn
   })).toBe(true);
 });
 
+test('a coaching failure preserves the completed voice transcript in visible state', async () => {
+  const service = {
+    submitVoiceAndCoach: jest.fn(async () => {
+      const error = new Error('coaching unavailable') as Error & {
+        requestId: string;
+        phase: 'coaching';
+      };
+      error.requestId = 'voice-request';
+      error.phase = 'coaching';
+      throw error;
+    }),
+    hydrateConversation: jest.fn(async () => ({
+      preferredInputMode: 'voice' as const,
+      requestId: 'voice-request',
+      messageId: 'voice-message',
+      requestKind: 'voice' as const,
+      requestStatus: 'coaching-failed' as const,
+      transcript: 'The transcript completed before coaching failed.',
+      pendingProposals: [],
+    })),
+  } as unknown as PrivateCaptureService;
+  const store = createChatStore(async () => service);
+
+  await expect(store.getState().submitVoice(
+    'conversation-a',
+    'file:///recording.m4a',
+    12,
+  )).rejects.toThrow('coaching unavailable');
+
+  expect(service.hydrateConversation).toHaveBeenCalledWith('conversation-a');
+  expect(store.getState()).toEqual(expect.objectContaining({
+    activeRequestId: 'voice-request',
+    activeRequestStatus: 'coaching-failed',
+    transcript: 'The transcript completed before coaching failed.',
+    provisionalTranscript: '',
+    phase: 'error',
+  }));
+});
+
 test('transcript revision immediately retires stale visible proposals and keeps them cleared on failure', async () => {
   const revision = deferred<Awaited<ReturnType<PrivateCaptureService['reviseSubmittedTranscript']>>>();
   const service = {

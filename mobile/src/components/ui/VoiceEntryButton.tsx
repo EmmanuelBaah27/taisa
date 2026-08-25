@@ -1,14 +1,10 @@
-import { Pressable } from 'react-native';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-  withTiming,
-} from 'react-native-reanimated';
+import { Pressable, View } from 'react-native';
+import { useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 
 import { colors } from '../../constants/theme';
 import { getBottomNavigationLayout } from '../../navigation/bottomNavigation';
 import { Icon } from './Icon';
+import { LiquidGlassButtonSurface } from './LiquidGlassButtonSurface';
 
 export interface VoiceEntryButtonProps {
   bottomInset: number;
@@ -18,25 +14,25 @@ export interface VoiceEntryButtonProps {
 
 export function VoiceEntryButton({ bottomInset, hidden = false, onPress }: VoiceEntryButtonProps) {
   const { recordBottom } = getBottomNavigationLayout(bottomInset);
-  const scale = useSharedValue(1);
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
+  const pressed = useSharedValue(0);
+
+  if (hidden) return null;
 
   return (
-    <Animated.View
+    <View
       className="absolute left-0 right-0 z-50 items-center"
-      pointerEvents={hidden ? 'none' : 'box-none'}
-      style={[{ bottom: recordBottom, opacity: hidden ? 0 : 1 }, animatedStyle]}
+      style={{ bottom: recordBottom }}
+      pointerEvents="box-none"
     >
       <Pressable
         accessibilityLabel="Start a voice conversation"
         accessibilityRole="button"
         onPress={onPress}
-        onPressIn={() => { scale.value = withTiming(0.95, { duration: 80 }); }}
-        onPressOut={() => { scale.value = withSpring(1, { damping: 20, stiffness: 300 }); }}
-        className="bg-primary px-10 py-4"
+        onPressIn={() => { pressed.value = withTiming(1, { duration: 100 }); }}
+        onPressOut={() => { pressed.value = withSpring(0, { damping: 24, stiffness: 360 }); }}
         style={{
+          width: 104,
+          height: 56,
           borderRadius: 32,
           shadowColor: colors.accent,
           shadowOffset: { width: 0, height: 0 },
@@ -45,8 +41,16 @@ export function VoiceEntryButton({ bottomInset, hidden = false, onPress }: Voice
           elevation: 10,
         }}
       >
-        <Icon name="IconVoiceMid" size={24} color={colors.textPrimary} />
+        <LiquidGlassButtonSurface
+          hierarchy="prominent"
+          tone="accent"
+          shape="capsule"
+          pressed={pressed}
+          style={{ width: 104, height: 56, alignItems: 'center', justifyContent: 'center' }}
+        >
+          <Icon name="IconVoiceMid" size={24} color={colors.textPrimary} />
+        </LiquidGlassButtonSurface>
       </Pressable>
-    </Animated.View>
+    </View>
   );
 }

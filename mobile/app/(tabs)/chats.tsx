@@ -1,8 +1,13 @@
 import { useCallback, useRef } from 'react';
-import { ActivityIndicator, Pressable, SectionList, Text, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, SectionList, Text, useWindowDimensions, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 
-import { ChatListRow } from '../../src/components/ui';
+import { ChatListRow } from '../../src/components/ui/ChatListRow';
+import { LiquidGlassPressable } from '../../src/components/ui/LiquidGlassPressable';
+import {
+  getPageHeaderScrollInset,
+  PageHeaderSurface,
+} from '../../src/components/ui/PageHeaderSurface';
 import { colors } from '../../src/constants/theme';
 import { useScrollContext } from '../../src/contexts/ScrollContext';
 import type { ChatCardFrame } from '../../src/navigation/chatCardExpansion';
@@ -12,6 +17,7 @@ import { useThreadStore } from '../../src/stores/threadStore';
 import { useUIStore } from '../../src/stores/uiStore';
 import {
   getChatPreview,
+  getChatTitle,
   groupChatsByDate,
   type ChatSummary,
 } from '../../src/utils/chatPresentation';
@@ -22,7 +28,7 @@ interface ChatSection {
   data: ChatSummary[];
 }
 
-export default function LogsScreen() {
+export default function ChatsScreen() {
   const pageHeaderPaddingTop = usePageHeaderPaddingTop();
   const { threads, isLoadingThreads, error, fetchThreads } = useThreadStore();
   const { reportScroll } = useScrollContext();
@@ -58,6 +64,10 @@ export default function LogsScreen() {
     updatedAt: thread.lastMessageAt,
     lastUserMessage: thread.lastUserMessage,
     lastAssistantMessage: thread.lastAssistantMessage,
+    lastMessage: thread.lastMessage,
+    recoveryState: thread.pendingRequestStatus === 'transcription-failed'
+      ? 'transcription-failed-recording-available' as const
+      : undefined,
   })));
   const sections: ChatSection[] = groups.map((group) => ({
     key: group.key,
@@ -74,37 +84,44 @@ export default function LogsScreen() {
     if (source !== null) {
       useUIStore.getState().captureChatListReturn(source.listScrollY);
     }
-    router.push(chatConversationRoute(
-      chat.id,
-      source,
-      chat.title || 'Untitled chat',
-    ));
+    router.push(chatConversationRoute(chat.id, source));
   }
 
   return (
     <View className="flex-1 bg-background">
-      <Text
-        className="-mt-px px-5 pb-3 text-foreground text-H1"
-        style={{ paddingTop: pageHeaderPaddingTop }}
-      >
-        Chats
-      </Text>
+      <PageHeaderSurface variant="title">
+        <Text
+          className="-mt-px px-5 pb-3 text-foreground text-H1"
+          style={{ paddingTop: pageHeaderPaddingTop }}
+        >
+          Chats
+        </Text>
+      </PageHeaderSurface>
       <SectionList
         ref={scrollRef}
         className="flex-1"
+        style={{ marginTop: getPageHeaderScrollInset(pageHeaderPaddingTop, 'title') }}
         sections={sections}
-        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 140 }}
+        contentContainerStyle={{
+          paddingTop: 12,
+          paddingHorizontal: 20,
+          paddingBottom: 140,
+        }}
         stickySectionHeadersEnabled
         keyExtractor={(chat) => chat.id}
         renderSectionHeader={({ section }) => (
-          <Text className="-mx-5 bg-background px-5 py-[2px] text-muted-foreground text-small-regular">
-            {section.label}
-          </Text>
+          <View className="-mx-5 px-5 py-1">
+            <View className="self-start rounded-full border border-neutral-200 bg-background px-3 py-1">
+              <Text className="text-muted-foreground text-caption-semibold">
+                {section.label}
+              </Text>
+            </View>
+          </View>
         )}
         renderSectionFooter={() => <View className="h-5" />}
         renderItem={({ item: chat }) => (
           <ChatListRow
-            title={chat.title || 'Untitled chat'}
+            title={getChatTitle(chat)}
             preview={getChatPreview(chat)}
             onOpen={(frame) => openChat(chat, frame)}
           />
@@ -114,9 +131,9 @@ export default function LogsScreen() {
         ) : error ? (
           <View className="items-center gap-3 px-4 pt-10">
             <Text className="text-center text-danger text-small-regular">Couldn’t load chats.</Text>
-            <Pressable accessibilityRole="button" onPress={fetchThreads} className="rounded-full bg-muted px-6 py-3">
+            <LiquidGlassPressable accessibilityLabel="Try loading chats again" hierarchy="prominent" tone="accent" onPress={fetchThreads} className="px-6 py-3">
               <Text className="text-foreground text-small-semibold">Try again</Text>
-            </Pressable>
+            </LiquidGlassPressable>
           </View>
         ) : (
           <Text className="pt-10 text-center text-text-tertiary text-small-regular">

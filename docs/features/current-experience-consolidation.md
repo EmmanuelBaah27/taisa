@@ -2,7 +2,7 @@
 
 **Track:** Platform + Product
 **Tier:** Full
-**Status:** Scope and design approved; implementation plan awaiting approval
+**Status:** Ship approved — automated verification and Baah preview QA passed on `319afcc`
 
 ## What is it?
 

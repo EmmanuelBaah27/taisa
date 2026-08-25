@@ -1,4 +1,4 @@
-import type { ReactNode, RefObject } from 'react';
+import { Component, type ReactNode, type RefObject } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -10,13 +10,15 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ScrollView } from 'react-native-gesture-handler';
+import type { GestureType } from 'react-native-gesture-handler';
 import Animated from 'react-native-reanimated';
 
 import { colors } from '../../constants/theme';
 import type { ClarificationChoice, PendingProposal } from '../../services/privateCapture';
 import type { ChatPhase } from '../../stores/chatStore';
 import type { ChatMessage } from '../../stores/threadStore';
-import { ChatNavBar } from './ChatNavBar';
+import { ChatHeader } from './ChatHeader';
+import { LiquidGlassPressable } from './LiquidGlassPressable';
 import { TaisaReplyCard } from './TaisaReplyCard';
 import type { ResponseReaction } from '../../repositories/responseFeedbackRepository';
 import { TranscriptCorrectionCard } from './TranscriptCorrectionCard';
@@ -45,10 +47,16 @@ export function ChatScreenShell({
       className="flex-1"
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-        <Animated.View className="flex-1 overflow-hidden bg-background" style={animatedStyle}>
-          <Animated.View className="flex-1" style={contentAnimatedStyle}>
-            <ChatNavBar title={title} topInset={topInset} onClose={onClose} />
-            {children}
+        <Animated.View className="flex-1 bg-background" style={animatedStyle}>
+          <Animated.View
+            testID="chat-page"
+            className="flex-1"
+            style={contentAnimatedStyle}
+          >
+            <ChatHeader title={title} topInset={topInset} onClose={onClose} />
+            <View testID="chat-content-gutter" className="flex-1 px-5">
+              {children}
+            </View>
             {footer}
           </Animated.View>
         </Animated.View>
@@ -74,7 +82,8 @@ export function ChatMessageBubble({
       accessibilityLabel={editable ? 'Correct voice transcript' : undefined}
       disabled={!editable}
       onPress={onEdit}
-      className="mb-8 max-w-[336px] self-end rounded-8 bg-muted px-4 py-4"
+      className="mb-8 max-w-[336px] self-end bg-muted px-4 py-4"
+      style={{ borderRadius: 28 }}
     >
       <Text className="text-foreground text-base-regular">{content}</Text>
       {showCorrectionHint ? (
@@ -118,16 +127,16 @@ interface ChatActionProps {
 
 function ChatAction({ label, disabled, emphasized, onPress }: ChatActionProps) {
   return (
-    <TouchableOpacity
+    <LiquidGlassPressable
       accessibilityLabel={label}
       disabled={disabled}
       onPress={onPress}
-      className={emphasized
-        ? 'rounded-full bg-muted px-6 py-3'
-        : 'rounded-full border border-border px-6 py-3'}
+      hierarchy={emphasized ? 'prominent' : 'standard'}
+      tone={emphasized ? 'accent' : 'neutral'}
+      className="px-6 py-3"
     >
       <Text className="text-foreground text-small-semibold">{label}</Text>
-    </TouchableOpacity>
+    </LiquidGlassPressable>
   );
 }
 
@@ -214,6 +223,7 @@ export interface ChatConversationSurfaceProps {
   editingTranscript: string | null;
   reactions?: Readonly<Record<string, ResponseReaction>>;
   onScrollAtTopChange?: (atTop: boolean) => void;
+  dismissGestureRef?: RefObject<GestureType | undefined>;
   onContentSizeChange?: (width: number, height: number) => void;
   onEditTranscript: (value: string | null) => void;
   onChangeTranscript: (value: string) => void;
@@ -227,13 +237,43 @@ export interface ChatConversationSurfaceProps {
   onShareExample?: (responseId: string) => void;
 }
 
+interface RevealableTaisaReplyProps {
+  message: ChatMessage;
+  reaction: ResponseReaction | null;
+  onReact?: (responseId: string, reaction: ResponseReaction) => void;
+  onShareExample?: (responseId: string) => void;
+}
+
+class RevealableTaisaReply extends Component<RevealableTaisaReplyProps, { visible: boolean }> {
+  state = { visible: false };
+
+  render() {
+    const { message, reaction, onReact, onShareExample } = this.props;
+    return (
+      <TaisaReplyCard
+        appearance="plain"
+        responseId={message.id}
+        content={message.content}
+        reaction={reaction}
+        onReact={onReact}
+        onShareExample={onShareExample}
+        showRatingOptions={this.state.visible}
+        onShowRatingOptions={() => this.setState({ visible: true })}
+      />
+    );
+  }
+}
+
 export function ChatConversationSurface(props: ChatConversationSurfaceProps) {
   return (
     <View className="flex-1">
       <ScrollView
         ref={props.scrollRef}
+        simultaneousHandlers={props.dismissGestureRef}
+        bounces={false}
+        alwaysBounceVertical={false}
         className="flex-1"
-        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 32, paddingBottom: 40 }}
+        contentContainerStyle={{ paddingTop: 8, paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}
         onScroll={(event) => props.onScrollAtTopChange?.(event.nativeEvent.contentOffset.y <= 2)}
         onContentSizeChange={props.onContentSizeChange}
@@ -241,11 +281,9 @@ export function ChatConversationSurface(props: ChatConversationSurfaceProps) {
       >
         {props.messages.filter((message) => message.content.length > 0).map((message) => (
           message.role === 'assistant' ? (
-            <TaisaReplyCard
+            <RevealableTaisaReply
               key={message.id}
-              appearance="plain"
-              responseId={message.id}
-              content={message.content}
+              message={message}
               reaction={props.reactions?.[message.id] ?? null}
               onReact={props.onReact}
               onShareExample={props.onShareExample}
@@ -261,7 +299,7 @@ export function ChatConversationSurface(props: ChatConversationSurfaceProps) {
           )
         ))}
 
-        {props.phase === 'processing' && props.transcript.length > 0 &&
+        {(props.phase === 'processing' || props.phase === 'error') && props.transcript.length > 0 &&
         !props.messages.some((message) => message.id === props.activeMessageId) ? (
           <PendingTranscriptBubble transcript={props.transcript} />
           ) : null}
@@ -326,9 +364,11 @@ export function ChatComposerDock({ phase, bottomInset, children }: ChatComposerD
   ) : (
     <LinearGradient
       colors={[colors.backgroundTransparent, colors.background]}
-      style={{ paddingHorizontal: 16, paddingTop: 24, paddingBottom: bottomInset + 12 }}
+      style={{ paddingTop: 8, paddingBottom: bottomInset + 12 }}
     >
-      {children}
+      <View testID="chat-composer-gutter" className="px-5">
+        {children}
+      </View>
     </LinearGradient>
   );
 }

@@ -1,14 +1,45 @@
 import {
   CHAT_CARD_PRESSED_SCALE,
+  CHAT_SHEET_DISMISS_DURATION,
+  CHAT_SHEET_RETURN_SPRING,
+  getResistedChatSheetTranslation,
   getChatCardMotionTimeline,
   getClosingChatShellOpacity,
   getChatCardInitialTransform,
+  getTabSurfaceChatTransition,
   isChatCardSourceViewportCurrent,
   parseChatCardFrame,
   parseChatCardSource,
+  shouldDismissChatSheet,
 } from '../chatCardExpansion';
 
 describe('chat card expansion geometry', () => {
+  test('scales the destination page back on open but restores it immediately on close', () => {
+    expect(getTabSurfaceChatTransition(true)).toBe('spring-open');
+    expect(getTabSurfaceChatTransition(false)).toBe('immediate-close');
+  });
+
+  test('dismisses a top-anchored chat sheet by distance or downward velocity', () => {
+    expect(shouldDismissChatSheet({ atTop: true, translationY: 121, velocityY: 0 })).toBe(true);
+    expect(shouldDismissChatSheet({ atTop: true, translationY: 24, velocityY: 901 })).toBe(true);
+    expect(shouldDismissChatSheet({ atTop: true, translationY: 80, velocityY: 300 })).toBe(false);
+  });
+
+  test('never dismisses while the conversation is scrolled away from the top', () => {
+    expect(shouldDismissChatSheet({ atTop: false, translationY: 300, velocityY: 1400 })).toBe(false);
+  });
+
+  test('adds weight to downward sheet travel and uses a slower damped settlement', () => {
+    expect(getResistedChatSheetTranslation(-20)).toBe(0);
+    expect(getResistedChatSheetTranslation(100)).toBeCloseTo(55);
+    expect(CHAT_SHEET_DISMISS_DURATION).toBeGreaterThanOrEqual(360);
+    expect(CHAT_SHEET_RETURN_SPRING).toMatchObject({
+      damping: 32,
+      stiffness: 240,
+      overshootClamping: true,
+    });
+  });
+
   test('hands the pressed card into a fast overlapping expansion and fade', () => {
     expect(CHAT_CARD_PRESSED_SCALE).toBe(0.97);
     expect(getChatCardMotionTimeline(false)).toEqual({

@@ -1,6 +1,7 @@
 import { View, Text, TouchableOpacity } from 'react-native';
 import { colors } from '../../constants/theme';
 import type { ResponseReaction } from '../../repositories/responseFeedbackRepository';
+import { LiquidGlassPressable } from './LiquidGlassPressable';
 
 export interface TaisaReplyCardProps {
   appearance?: 'card' | 'plain';
@@ -9,6 +10,8 @@ export interface TaisaReplyCardProps {
   reaction?: ResponseReaction | null;
   onReact?: (responseId: string, reaction: ResponseReaction) => void;
   onShareExample?: (responseId: string) => void;
+  showRatingOptions?: boolean;
+  onShowRatingOptions?: () => void;
 }
 
 export function TaisaReplyCard({
@@ -18,9 +21,16 @@ export function TaisaReplyCard({
   reaction = null,
   onReact,
   onShareExample,
+  showRatingOptions = false,
+  onShowRatingOptions,
 }: TaisaReplyCardProps) {
   return (
-    <View
+    <TouchableOpacity
+      accessibilityLabel={responseId && onReact ? 'Show response rating options' : undefined}
+      disabled={!responseId || !onReact}
+      delayLongPress={350}
+      activeOpacity={1}
+      onLongPress={onShowRatingOptions}
       className={appearance === 'plain'
         ? 'mb-8 w-full'
         : 'my-1 rounded-3 rounded-tl-sm border border-border bg-card px-3 py-3'}
@@ -32,33 +42,36 @@ export function TaisaReplyCard({
       <Text className={appearance === 'plain'
         ? 'text-foreground text-base-regular'
         : 'text-muted-foreground text-small-regular'}>{content}</Text>
-      {responseId && onReact ? (
+      {responseId && onReact && showRatingOptions ? (
         <View className="mt-3 flex-row items-center gap-2">
-          <TouchableOpacity
+          <LiquidGlassPressable
             accessibilityLabel="Mark response helpful"
-            className={reaction === 'helpful' ? 'rounded-full bg-muted px-3 py-2' : 'rounded-full px-3 py-2'}
+            hierarchy={reaction === 'helpful' ? 'standard' : 'subtle'}
+            className="px-3 py-2"
             onPress={() => onReact(responseId, 'helpful')}
           >
             <Text className="text-text-tertiary text-caption-semibold">Helpful</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
+          </LiquidGlassPressable>
+          <LiquidGlassPressable
             accessibilityLabel="Mark response unhelpful"
-            className={reaction === 'unhelpful' ? 'rounded-full bg-muted px-3 py-2' : 'rounded-full px-3 py-2'}
+            hierarchy={reaction === 'unhelpful' ? 'standard' : 'subtle'}
+            className="px-3 py-2"
             onPress={() => onReact(responseId, 'unhelpful')}
           >
             <Text className="text-text-tertiary text-caption-semibold">Not helpful</Text>
-          </TouchableOpacity>
+          </LiquidGlassPressable>
           {reaction !== null && onShareExample ? (
-            <TouchableOpacity
+            <LiquidGlassPressable
               accessibilityLabel="Review example before sharing"
-              className="ml-auto rounded-full px-3 py-2"
+              hierarchy="subtle"
+              className="ml-auto px-3 py-2"
               onPress={() => onShareExample(responseId)}
             >
               <Text className="text-text-tertiary text-caption-semibold">Share example</Text>
-            </TouchableOpacity>
+            </LiquidGlassPressable>
           ) : null}
         </View>
       ) : null}
-    </View>
+    </TouchableOpacity>
   );
 }

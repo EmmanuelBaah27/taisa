@@ -31,19 +31,34 @@ import {
 } from '../services/usage/costLedger';
 
 jest.mock('../services/coaching/coachingGateway', () => ({
-  estimateConfiguredCoachingUsage: jest.fn().mockReturnValue({
-    provider: 'openai',
-    model: 'mock',
-    inputTokens: 1,
-    outputTokens: 1,
-    estimatedCostUsd: 0,
-  }),
-  requestCoaching: jest.fn().mockResolvedValue({
-    requestId: '11111111-1111-4111-8111-111111111111',
-    reply: 'What changed?',
-    stance: 'nudge',
-    proposals: [],
-    usage: { provider: 'openai', model: 'mock', estimatedCostUsd: 0 },
+  estimateConfiguredCoachingAttempts: jest.fn().mockReturnValue([
+    {
+      attemptId: 'primary',
+      receipt: { provider: 'openai', model: 'openai-mock', estimatedCostUsd: 0.03 },
+    },
+    {
+      attemptId: 'fallback',
+      receipt: { provider: 'anthropic', model: 'anthropic-mock', estimatedCostUsd: 0.02 },
+    },
+  ]),
+  requestCoaching: jest.fn().mockImplementation(async (_request, _provider, observer) => {
+    const usage = { provider: 'openai', model: 'openai-mock', estimatedCostUsd: 0.01 };
+    observer.beginAttempt('primary');
+    observer.settleAttempt({ attemptId: 'primary', receipt: usage });
+    return {
+      response: {
+        requestId: '11111111-1111-4111-8111-111111111111',
+        reply: 'What changed?',
+        stance: 'nudge',
+        proposals: [],
+        usage,
+      },
+      attempts: [{
+        attemptId: 'primary',
+        providerId: 'openai',
+        result: { payload: {}, usage },
+      }],
+    };
   }),
 }));
 
@@ -234,6 +249,94 @@ describe('content-free request telemetry', () => {
     expect(output).not.toContain(validRequest.input);
     expect(output).not.toContain(validRequest.context.memory[0].statement);
     expect(output).not.toContain('device-1');
+  });
+
+  test('does not expose either raw provider error when both coaching attempts fail', async () => {
+    const gateway = jest.requireMock('../services/coaching/coachingGateway');
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    const primarySecret = 'PRIMARY_RAW_PROVIDER_SECRET';
+    const fallbackSecret = 'FALLBACK_RAW_PROVIDER_SECRET';
+    gateway.requestCoaching.mockImplementationOnce(async (_request, _provider, observer) => {
+      const { getConfiguredFallbackProvider } = jest.requireActual(
+        '../services/coaching/fallbackProvider',
+      );
+      const usage = (provider: 'openai' | 'anthropic') => ({
+        provider,
+        model: `${provider}-mock`,
+        estimatedCostUsd: 0.01,
+      });
+      const providers = {
+        openai: {
+          estimateMaximumUsage: jest.fn(() => usage('openai')),
+          respond: jest.fn().mockRejectedValue({
+            status: 429,
+            type: 'rate_limit_error',
+            payload: primarySecret,
+          }),
+        },
+        anthropic: {
+          estimateMaximumUsage: jest.fn(() => usage('anthropic')),
+          respond: jest.fn().mockRejectedValue({
+            type: 'overloaded_error',
+            payload: fallbackSecret,
+          }),
+        },
+      };
+      const environment = {
+        TAISA_COACHING_PROVIDER: 'openai',
+        TAISA_OPENAI_MODEL: 'openai-mock',
+        TAISA_OPENAI_INPUT_PRICE_USD_PER_MILLION_TOKENS: '1',
+        TAISA_OPENAI_OUTPUT_PRICE_USD_PER_MILLION_TOKENS: '1',
+        TAISA_OPENAI_MAX_OUTPUT_TOKENS: '100',
+        TAISA_OPENAI_STRUCTURED_OUTPUT_INPUT_TOKEN_OVERHEAD: '10',
+        OPENAI_API_KEY: 'configured-openai-key',
+        TAISA_ANTHROPIC_MODEL: 'anthropic-mock',
+        TAISA_ANTHROPIC_INPUT_PRICE_USD_PER_MILLION_TOKENS: '1',
+        TAISA_ANTHROPIC_OUTPUT_PRICE_USD_PER_MILLION_TOKENS: '1',
+        TAISA_ANTHROPIC_MAX_OUTPUT_TOKENS: '100',
+        TAISA_ANTHROPIC_STRUCTURED_OUTPUT_INPUT_TOKEN_OVERHEAD: '10',
+        ANTHROPIC_API_KEY: 'configured-anthropic-key',
+      };
+      await getConfiguredFallbackProvider(environment, providers).respond(
+        { systemPrompt: 'bounded', userPrompt: 'bounded' },
+        observer,
+      );
+      throw new Error('Expected both providers to fail');
+    });
+
+    const app = express();
+    app.use(requestContext);
+    app.use(express.json());
+    app.use('/api/v1/coaching', coachingRouter);
+
+    const response = await request(app)
+      .post('/api/v1/coaching/respond')
+      .set('x-request-id', '33333333-3333-4333-8333-333333333333')
+      .send(validRequest);
+
+    const publicAndConsoleOutput = [
+      JSON.stringify(response.body),
+      ...logSpy.mock.calls.flat(),
+      ...warnSpy.mock.calls.flat(),
+      ...errorSpy.mock.calls.flat(),
+    ].join(' ');
+    expect(response.status).toBe(500);
+    expect(response.body).toEqual({
+      success: false,
+      error: {
+        code: 'COACHING_FALLBACK_EXHAUSTED',
+        message: 'Unable to complete the coaching request',
+      },
+    });
+    expect(publicAndConsoleOutput).not.toContain(primarySecret);
+    expect(publicAndConsoleOutput).not.toContain(fallbackSecret);
+    expect(publicAndConsoleOutput).not.toContain('PRIMARY_RATE_LIMIT');
+    expect(publicAndConsoleOutput).not.toContain('FALLBACK_OVERLOADED');
+    expect(publicAndConsoleOutput).not.toContain('openai');
+    expect(publicAndConsoleOutput).not.toContain('anthropic');
+    warnSpy.mockRestore();
+    errorSpy.mockRestore();
   });
 
   test('replaces a content-shaped request ID before logging it', async () => {
@@ -580,6 +683,31 @@ describe('content-free usage ledger', () => {
     audioSeconds: 60,
     estimatedCostUsd: 0.006,
   };
+  const attemptEstimates = [
+    {
+      attemptId: 'primary' as const,
+      receipt: { provider: 'openai' as const, model: 'o', estimatedCostUsd: 0.03 },
+    },
+    {
+      attemptId: 'fallback' as const,
+      receipt: { provider: 'anthropic' as const, model: 'a', estimatedCostUsd: 0.02 },
+    },
+  ];
+  const ceilings = { perRequestUsd: 0.05, dailyUsd: 1, monthlyUsd: 10 };
+  const primaryActual: UsageReceipt = {
+    provider: 'openai',
+    model: 'o',
+    inputTokens: 12,
+    outputTokens: 8,
+    estimatedCostUsd: 0.018,
+  };
+  const fallbackActual: UsageReceipt = {
+    provider: 'anthropic',
+    model: 'a',
+    inputTokens: 13,
+    outputTokens: 9,
+    estimatedCostUsd: 0.017,
+  };
 
   test('strips fields outside UsageReceipt before recording', () => {
     const databasePath = createLedgerPath();
@@ -627,6 +755,162 @@ describe('content-free usage ledger', () => {
     ).not.toThrow();
     ledger.close();
     fs.rmSync(databasePath, { force: true });
+  });
+
+  test('reserves both attempt maxima as one request before provider work', () => {
+    const ledger = new CostLedger();
+    const reservation = ledger.reserveAttempts(attemptEstimates, ceilings);
+
+    expect(() =>
+      ledger.reserveUsage(
+        { provider: 'openai', model: 'next', estimatedCostUsd: 0.96 },
+        { perRequestUsd: 1, dailyUsd: 1, monthlyUsd: 10 },
+      ),
+    ).toThrow(CostLimitError);
+
+    reservation.release();
+    ledger.close();
+  });
+
+  test('includes legacy reservations when checking multi-attempt daily and monthly totals', () => {
+    const ledger = new CostLedger();
+    const legacyReservation = ledger.reserveUsage(
+      { provider: 'openai', model: 'legacy', estimatedCostUsd: 0.96 },
+      { perRequestUsd: 1, dailyUsd: 1, monthlyUsd: 1 },
+    );
+
+    expect(() =>
+      ledger.reserveAttempts(attemptEstimates, {
+        perRequestUsd: 0.05,
+        dailyUsd: 1,
+        monthlyUsd: 1,
+      }),
+    ).toThrow(CostLimitError);
+
+    legacyReservation.release();
+    ledger.close();
+  });
+
+  test('rejects the whole request when combined attempt maxima exceed the per-request ceiling', () => {
+    const ledger = new CostLedger();
+
+    expect(() =>
+      ledger.reserveAttempts(
+        [
+          {
+            attemptId: 'primary',
+            receipt: { provider: 'openai', model: 'o', estimatedCostUsd: 0.03 },
+          },
+          {
+            attemptId: 'fallback',
+            receipt: { provider: 'anthropic', model: 'a', estimatedCostUsd: 0.021 },
+          },
+        ],
+        ceilings,
+      ),
+    ).toThrow(CostLimitError);
+    expect(ledger.listUsage()).toEqual([]);
+    ledger.close();
+  });
+
+  test('records actual primary success and no unused fallback estimate', () => {
+    const ledger = new CostLedger();
+    const reservation = ledger.reserveAttempts(attemptEstimates, ceilings);
+
+    reservation.beginAttempt('primary');
+    reservation.settleAttempt({ attemptId: 'primary', receipt: primaryActual });
+    reservation.release();
+
+    expect(ledger.listUsage().map(({ receipt: storedReceipt }) => storedReceipt)).toEqual([
+      primaryActual,
+    ]);
+    ledger.close();
+  });
+
+  test('records failed primary estimate and actual fallback usage separately', () => {
+    const ledger = new CostLedger();
+    const reservation = ledger.reserveAttempts(attemptEstimates, ceilings);
+
+    reservation.beginAttempt('primary');
+    reservation.settleAttempt({ attemptId: 'primary' });
+    reservation.beginAttempt('fallback');
+    reservation.settleAttempt({ attemptId: 'fallback', receipt: fallbackActual });
+    reservation.release();
+
+    expect(ledger.listUsage().map(({ receipt: storedReceipt }) => storedReceipt)).toEqual([
+      attemptEstimates[0].receipt,
+      fallbackActual,
+    ]);
+    ledger.close();
+  });
+
+  test('recovers only the in-flight primary estimate after restart', () => {
+    const databasePath = createLedgerPath();
+    const first = new CostLedger({ databasePath });
+    const reservation = first.reserveAttempts(attemptEstimates, ceilings);
+    reservation.beginAttempt('primary');
+    first.close();
+
+    const restarted = new CostLedger({ databasePath });
+    expect(restarted.listUsage().map(({ receipt: storedReceipt }) => storedReceipt)).toEqual([
+      attemptEstimates[0].receipt,
+    ]);
+    restarted.close();
+    fs.rmSync(databasePath, { force: true });
+  });
+
+  test('recovers both conservative estimates after fallback begins before restart', () => {
+    const databasePath = createLedgerPath();
+    const first = new CostLedger({ databasePath });
+    const reservation = first.reserveAttempts(attemptEstimates, ceilings);
+    reservation.beginAttempt('primary');
+    reservation.settleAttempt({ attemptId: 'primary' });
+    reservation.beginAttempt('fallback');
+    first.close();
+
+    const restarted = new CostLedger({ databasePath });
+    expect(restarted.listUsage().map(({ receipt: storedReceipt }) => storedReceipt)).toEqual([
+      attemptEstimates[0].receipt,
+      attemptEstimates[1].receipt,
+    ]);
+    restarted.close();
+    fs.rmSync(databasePath, { force: true });
+  });
+
+  test('rejects invalid multi-attempt IDs and ordering without recording usage', () => {
+    const ledger = new CostLedger();
+
+    expect(() =>
+      ledger.reserveAttempts(
+        [attemptEstimates[0], { ...attemptEstimates[0] }],
+        ceilings,
+      ),
+    ).toThrow('exactly one primary and one fallback');
+    expect(() =>
+      ledger.reserveAttempts(
+        [
+          attemptEstimates[0],
+          { attemptId: 'unknown' as any, receipt: attemptEstimates[1].receipt },
+        ],
+        ceilings,
+      ),
+    ).toThrow('exactly one primary and one fallback');
+
+    const reservation = ledger.reserveAttempts(attemptEstimates, ceilings);
+    expect(() => reservation.beginAttempt('fallback')).toThrow('primary must begin first');
+    expect(() => reservation.settleAttempt({ attemptId: 'primary' })).toThrow('not in flight');
+    expect(ledger.listUsage()).toEqual([]);
+
+    reservation.beginAttempt('primary');
+    reservation.settleAttempt({ attemptId: 'primary' });
+    expect(() => reservation.beginAttempt('primary')).toThrow('already settled');
+    expect(() => reservation.settleAttempt({ attemptId: 'unknown' as any })).toThrow('Unknown attempt');
+    expect(ledger.listUsage().map(({ receipt: storedReceipt }) => storedReceipt)).toEqual([
+      attemptEstimates[0].receipt,
+    ]);
+
+    reservation.release();
+    ledger.close();
   });
 
   test('keeps successful usage in its reserved UTC day across a day rollover', () => {

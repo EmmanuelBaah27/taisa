@@ -44,4 +44,26 @@ Frame-by-frame review of the 13:35 recording showed the deeper failure: capsule-
 
 Final polish replaces the white-on-white sheen with a neutral hairline/shadow clear-glass base, animates the 6% grey as a separate stale-safe overlay, coordinates the 240↔220 shell width with capsule motion, and permits only the old label—not a second icon or selected capsule—to overlap during handoff. Reduced Motion uses one 180ms label/fill crossfade with no spatial or scale movement. Paired-iPhone recheck remains required.
 
+## 2026-08-20 tap versus drag transition
+
+- Tapping any main navigation item must use the existing direct page crossfade, including adjacent destinations.
+- Horizontal page travel is reserved exclusively for an active drag, where the scene remains attached to the finger.
+- The navigation capsule may continue to settle to the tapped destination while page content crossfades.
+- Tap-driven page commits must not play a selection haptic; the tactile pulse makes the otherwise smooth capsule settlement feel like a sharp snap.
+
 Clean-Metro iOS QA then reproduced a Fabric mount crash in Reanimated 4.1.1 while `useAnimatedStyle` mutated a frozen hook ref. `BottomNavBar` no longer imports or mounts Reanimated: React Native Animated owns shell scale/width, capsule X/width, fill opacity, and content handoff, with native-driver use limited to scale/opacity/translation and layout width animations explicitly JS-driven. A source guard blocks the crashing hooks from returning. Paired-iPhone recheck remains required.
+
+## 2026-08-20 — navigation tactile feedback
+
+- Device QA confirmed that removing the main-navigation selection haptic made the capsule feel emotionally flat.
+- The haptic had been removed because it amplified the earlier tap-animation snap; that motion defect is now corrected.
+- Restore one restrained selection tick only when a new destination settles after either a tap or swipe.
+- Keep the haptic behind the isolated best-effort interaction service so native feedback failures cannot affect navigation or recording.
+
+## 2026-08-20 shadow clipping, tap motion, and coaching failure
+
+- The conversation morph shell kept `overflow: hidden` after its rounded transition reached the full-screen state, clipping elevation on the header control, recording controls, and keyboard composer. Clipping now applies only while the shell is rounded; settled content permits shadow bleed without changing component geometry.
+- Follow-up device QA showed hard rectangular edges still crossing the close and recording-control shadows. The page-wide horizontal gutter constrained the header fade and composer gradient, and the header fade was painted after the close control, covering the lower shadow. Those backgrounds are now full-bleed and the header fade renders behind its controls, while controls and conversation content retain the same 20px inner gutter.
+- Dismissal QA showed a plain-white stage behind the collapsing sheet. The transparent modal already preserves the underlying tab, but the non-animated keyboard wrapper painted a second full-screen white layer. That wrapper is now transparent; the animated chat sheet remains opaque, revealing the underlying page immediately only where the sheet has moved away.
+- Tapped navigation now advances the same continuous progress consumed by the swipe-driven capsule, using an interruptible non-bouncy spring. Page content retains the approved tap crossfade and does not travel through intermediate pages.
+- Live diagnostics confirmed voice transcription completed before coaching failed. The configured Anthropic account returned HTTP 400 because its credit balance was too low. The completed transcript now remains visible with a coaching-specific failure state and retry path; restoring provider service still requires Anthropic credits or a separately approved provider change.

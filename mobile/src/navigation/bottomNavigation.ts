@@ -1,17 +1,27 @@
 import type { IconName } from '../components/ui/Icon';
+import { resolveOptionalLiquidGlassModule } from '../components/ui/liquidGlass';
 
 export interface BottomNavigationItem {
-  id: 'index' | 'logs' | 'you';
+  id: 'chats' | 'index' | 'you';
   label: 'Home' | 'Chats' | 'Me';
-  path: '/' | '/logs' | '/you';
+  path: '/chats' | '/' | '/you';
   icon: IconName;
 }
 
 export const BOTTOM_NAVIGATION_ITEMS: readonly BottomNavigationItem[] = [
+  { id: 'chats', label: 'Chats', path: '/chats', icon: 'IconChatBubbles' },
   { id: 'index', label: 'Home', path: '/', icon: 'IconHomeLine' },
-  { id: 'logs', label: 'Chats', path: '/logs', icon: 'IconChatBubbles' },
   { id: 'you', label: 'Me', path: '/you', icon: 'IconPeopleCircle' },
 ];
+
+export function getAdjacentBottomNavigationDestination(
+  current: BottomNavigationItem['id'],
+  swipeDirection: 'left' | 'right',
+): BottomNavigationItem['id'] | null {
+  const currentIndex = BOTTOM_NAVIGATION_ITEMS.findIndex((item) => item.id === current);
+  const nextIndex = currentIndex + (swipeDirection === 'left' ? 1 : -1);
+  return BOTTOM_NAVIGATION_ITEMS[nextIndex]?.id ?? null;
+}
 
 export interface NavigationCapsuleFrame {
   shellWidth: number;
@@ -31,8 +41,8 @@ export const BOTTOM_NAVIGATION_CAPSULE_FRAMES: Record<
   BottomNavigationItem['id'],
   NavigationCapsuleFrame
 > = {
-  index: { shellWidth: 240, x: 6, width: 108 },
-  logs: { shellWidth: 240, x: 66, width: 108 },
+  chats: { shellWidth: 240, x: 6, width: 108 },
+  index: { shellWidth: 240, x: 66, width: 108 },
   you: { shellWidth: 220, x: 126, width: 88 },
 };
 
@@ -49,37 +59,49 @@ export function getBottomNavigationCapsuleCenterOffset(
   return frame.x - (frame.shellWidth / 2);
 }
 
+export function getBottomNavigationInteractiveCapsuleFrames() {
+  return BOTTOM_NAVIGATION_ITEMS.map((item) => {
+    const frame = getBottomNavigationCapsuleFrame(item.id);
+
+    return {
+      id: item.id,
+      width: frame.width,
+      centerOffset: getBottomNavigationCapsuleCenterOffset(item.id),
+    };
+  });
+}
+
 export function getBottomNavigationDestinationCenterOffset(
   id: BottomNavigationItem['id'],
 ): number {
-  if (id === 'index') return -60;
-  if (id === 'logs') return 0;
+  if (id === 'chats') return -60;
+  if (id === 'index') return 0;
   return 60;
 }
 
 export function getBottomNavigationDestinationOffsets(
   activeId: BottomNavigationItem['id'],
 ): readonly [number, number, number] {
-  if (activeId === 'index') return [-60, 26, 86];
-  if (activeId === 'logs') return [-86, 0, 86];
+  if (activeId === 'chats') return [-60, 26, 86];
+  if (activeId === 'index') return [-86, 0, 86];
   return [-76, -16, 60];
 }
 
 export function getBottomNavigationItemFrames(
   activeId: BottomNavigationItem['id'],
 ): readonly [{ x: number; width: number }, { x: number; width: number }, { x: number; width: number }] {
-  if (activeId === 'index') {
+  if (activeId === 'chats') {
     return [{ x: 6, width: 108 }, { x: 118, width: 56 }, { x: 178, width: 56 }];
   }
-  if (activeId === 'logs') {
+  if (activeId === 'index') {
     return [{ x: 6, width: 56 }, { x: 66, width: 108 }, { x: 178, width: 56 }];
   }
   return [{ x: 6, width: 56 }, { x: 66, width: 56 }, { x: 126, width: 88 }];
 }
 
 export const BOTTOM_NAVIGATION_LABEL_WIDTHS = {
+  chats: 44,
   index: 44,
-  logs: 44,
   you: 24,
 } as const;
 
@@ -144,6 +166,19 @@ export function getBottomNavigationSurfaceTimeline(reduceMotion: boolean) {
   };
 }
 
+export function resolveCapsuleInteractiveIndex({
+  fromIndex,
+  toIndex,
+  progress,
+}: {
+  fromIndex: number;
+  toIndex: number | null;
+  progress: number;
+}): number {
+  if (toIndex === null) return fromIndex;
+  return progress > 0.5 ? toIndex : fromIndex;
+}
+
 export function getBottomNavigationTransitionStartPolicy() {
   return {
     startEvent: 'pressIn' as const,
@@ -152,6 +187,17 @@ export function getBottomNavigationTransitionStartPolicy() {
     routeEvent: 'press' as const,
     cancelReturnsToOrigin: true as const,
   };
+}
+
+export function getBottomNavigationPageTransition() {
+  return {
+    sceneAnimation: 'fade' as const,
+    backdropColor: '#ffffff' as const,
+  };
+}
+
+export function commitBottomNavigationRoute(navigate: () => void): void {
+  navigate();
 }
 
 export const BOTTOM_NAVIGATION_ACTIVE_FILL = 'rgba(15,16,16,0.06)';
@@ -169,11 +215,19 @@ export const BOTTOM_NAVIGATION_CLEAR_GLASS_SURFACE = {
 
 export const BOTTOM_NAVIGATION_FIGMA = {
   navigationHeight: 60,
-  navigationBottom: 36,
+  navigationBottom: 28,
   referenceSafeAreaBottom: 34,
   recordGap: 12,
   fadeBottom: 20,
   fadeHeight: 90,
+  elevation: {
+    color: '#5B5F63',
+    opacity: 0.16,
+    radius: 28,
+    offsetY: 10,
+    elevation: 10,
+    casterColor: 'rgba(255,255,255,0.44)',
+  },
   selectedItem: {
     height: 48,
     iconSize: 24,
@@ -220,21 +274,20 @@ export const BOTTOM_NAVIGATION_FIGMA = {
     transformOrigin: 'left center',
     reveal: 'opacity-scale',
   },
-  routeMotionLeadDuration: 260,
   reducedMotion: {
     crossfadeDuration: 180,
   },
 } as const;
 
 export function getBottomNavigationStateLayout(activeId: BottomNavigationItem['id']) {
-  if (activeId === 'index') {
+  if (activeId === 'chats') {
     return {
       navigationWidth: 240,
       itemWidths: [108, 56, 56] as const,
       activeContentDirection: 'row' as const,
     };
   }
-  if (activeId === 'logs') {
+  if (activeId === 'index') {
     return {
       navigationWidth: 240,
       itemWidths: [56, 108, 56] as const,
@@ -279,11 +332,5 @@ export function resolveGlassAvailability(
 }
 
 export function resolveOptionalGlassModule<T>(enabled: boolean, loader: () => T): T | null {
-  if (!enabled) return null;
-
-  try {
-    return loader();
-  } catch {
-    return null;
-  }
+  return resolveOptionalLiquidGlassModule(enabled, loader);
 }

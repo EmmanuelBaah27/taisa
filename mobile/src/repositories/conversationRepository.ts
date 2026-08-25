@@ -39,6 +39,7 @@ export interface ChatSummary {
   updatedAt: string;
   lastUserMessage: string | null;
   lastAssistantMessage: string | null;
+  lastMessage?: string | null;
 }
 
 interface ChatSummaryRow {

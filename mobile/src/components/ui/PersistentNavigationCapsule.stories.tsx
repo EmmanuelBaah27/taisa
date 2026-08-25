@@ -59,7 +59,7 @@ export const ChatsTravelling: Story = {
   args: {
     label: 'Chats',
     leadingVisual: icon('IconChatBubbles'),
-    frame: BOTTOM_NAVIGATION_CAPSULE_FRAMES.logs,
+    frame: BOTTOM_NAVIGATION_CAPSULE_FRAMES.chats,
     phase: 'travelling',
   },
 };

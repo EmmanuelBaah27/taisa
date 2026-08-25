@@ -18,8 +18,8 @@ npm start
 For the on-demand browser design-system catalog, run `npm run storybook:web` from the same directory. The `docs/reimagine-product-scope` worktree is documentation-only and is not a mobile runtime. Native SQLCipher, recording, and device-security checks still require the managed development build described below.
 
 ## API Keys Required
-1. **Anthropic API key** — for Claude (career coach AI)
-2. **OpenAI API key** — for Whisper transcription
+1. **OpenAI API key** — for primary coaching and transcription
+2. **Anthropic API key** — for automatic coaching fallback
 
 ## First-Time Setup
 
@@ -46,10 +46,15 @@ TAISA_OPENAI_INPUT_PRICE_USD_PER_MILLION_TOKENS=your-current-price
 TAISA_OPENAI_OUTPUT_PRICE_USD_PER_MILLION_TOKENS=your-current-price
 TAISA_OPENAI_MAX_OUTPUT_TOKENS=your-output-cap
 TAISA_OPENAI_STRUCTURED_OUTPUT_INPUT_TOKEN_OVERHEAD=your-conservative-schema-token-bound
-TAISA_AI_COST_CEILING_PER_REQUEST_USD=your-limit
-TAISA_AI_COST_CEILING_DAILY_USD=your-limit
-TAISA_AI_COST_CEILING_MONTHLY_USD=your-limit
-TAISA_TRANSCRIPTION_MODEL=whisper-1
+TAISA_ANTHROPIC_MODEL=your-approved-model
+TAISA_ANTHROPIC_INPUT_PRICE_USD_PER_MILLION_TOKENS=your-current-price
+TAISA_ANTHROPIC_OUTPUT_PRICE_USD_PER_MILLION_TOKENS=your-current-price
+TAISA_ANTHROPIC_MAX_OUTPUT_TOKENS=your-output-cap
+TAISA_ANTHROPIC_STRUCTURED_OUTPUT_INPUT_TOKEN_OVERHEAD=your-conservative-schema-token-bound
+TAISA_AI_COST_CEILING_PER_REQUEST_USD=0.05
+TAISA_AI_COST_CEILING_DAILY_USD=1
+TAISA_AI_COST_CEILING_MONTHLY_USD=10
+TAISA_TRANSCRIPTION_MODEL=gpt-4o-transcribe
 TAISA_TRANSCRIPTION_MAX_DURATION_SECONDS=300
 TAISA_TRANSCRIPTION_MAX_UPLOAD_BYTES=26214400
 TAISA_TRANSCRIPTION_PRICE_USD_PER_MINUTE=your-current-price
@@ -62,7 +67,15 @@ TAISA_FEEDBACK_ENCRYPTION_KEY=a-base64-encoded-32-byte-key
 TAISA_FEEDBACK_DATABASE_PATH=./taisa-feedback.sqlite
 ```
 
-The selected provider's model, current input/output prices, output cap, and positive structured-output/tool-schema token overhead are all required. The gateway adds the overhead before reserving spend, so set it to a conservative bound from the selected provider's current token accounting. Blank, zero, or invalid required values fail closed at startup or before a provider call. Configure the unselected provider only when switching to it.
+Both providers' keys, models, current input/output prices, output caps, and positive
+structured-output/tool-schema token overhead values are mandatory. `TAISA_COACHING_PROVIDER`
+selects the primary (`openai` by default); the other provider becomes the automatic fallback. The
+gateway adds each provider's overhead to its estimate and atomically reserves the combined
+conservative maximum before either call. It calls the fallback at most once, and only after an
+allowlisted operational failure: network/timeout, HTTP `408`, `409`, `429`, or `5xx`, or a
+recognized provider rate-limit, overload, authentication, permission, billing, or unavailable
+error. Validation, local configuration, spend, policy/safety, other invalid-request, invalid-output,
+and unknown failures never trigger fallback. Blank, zero, or invalid required values fail closed.
 
 Hosted production refuses to start without device authentication. The enrollment code is
 single-use and only credential digests are stored by the service; the issued device token stays in
@@ -187,17 +200,33 @@ Railway project, volume, billing, variables, and first deployment only after Baa
 external action. For rollback, select the last healthy Railway deployment without changing or
 deleting the persistent volume.
 
-After explicit paid-provider approval, run an evaluation with a provider, hard total budget, and
-new local review-artifact path:
+Provider parity is a release gate, not part of ordinary tests. It makes paid provider calls and
+therefore requires a separate explicit budget approval for each provider before running. After
+that approval, run the same current synthetic pack against both providers with separately approved
+hard total budgets and new artifact paths:
 
 ```bash
-npm run eval:coaching --workspace=backend -- --provider=openai --max-cost-usd=1 --review-output=coaching-eval-review.json
+npm run eval:coaching --workspace=backend -- --provider=openai --max-cost-usd=<approved-openai-budget> --review-output=openai-coaching-eval-review.json
+npm run eval:coaching --workspace=backend -- --provider=anthropic --max-cost-usd=<approved-anthropic-budget> --review-output=anthropic-coaching-eval-review.json
 ```
 
 Every attempted scenario is reserved and recorded in the durable usage ledger. Stdout remains
 content-free. The review artifact is marked synthetic-only and contains synthetic replies,
-automated thresholds, and blank manual-usefulness scores. A provider passes only when
-`automatedPassed` is true and at least 80% of replies pass manual usefulness.
+automated thresholds, and blank manual-review fields. Complete one review JSON per provider with
+exactly one result for every current scenario, then produce each provider decision and combine
+them:
+
+```bash
+npm run eval:coaching:review --workspace=backend -- --artifact=openai-coaching-eval-review.json --completed-review=openai-completed-review.json --decision-output=openai-coaching-decision.json
+npm run eval:coaching:review --workspace=backend -- --artifact=anthropic-coaching-eval-review.json --completed-review=anthropic-completed-review.json --decision-output=anthropic-coaching-decision.json
+npm run eval:coaching:parity --workspace=backend -- --openai-decision=openai-coaching-decision.json --anthropic-decision=anthropic-coaching-decision.json --parity-output=coaching-provider-parity.json
+```
+
+The review commands make no provider calls. Each provider must independently pass the same current
+pack and automated thresholds, average manual usefulness of at least `0.8`, and all applicable
+grounding, neutrality, privacy, and safety checks. Parity passes only when both decisions use the
+same current pack version and both pass; model, prompt, schema, rubric, or material pricing changes
+require fresh evidence.
 
 ## Project Structure
 ```

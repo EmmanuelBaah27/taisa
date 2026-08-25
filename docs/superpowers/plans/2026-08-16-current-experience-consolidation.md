@@ -10,7 +10,7 @@
 
 **Spec:** `docs/superpowers/specs/2026-08-16-current-experience-consolidation-design.md`
 
-**Status:** Complete — navigation correction awaiting device QA
+**Status:** Complete — automated verification and Baah preview QA passed; Ship approved
 
 ## Global Constraints
 
@@ -642,3 +642,38 @@ Delete only fully accounted merged branches and disposable clean worktrees. Neve
 ## Follow-on Product slice
 
 After this plan passes device QA and Ship, return to DESIGN for the Chats-to-thread expanding-card interaction. Pull the thread Figma frame and motion annotations, confirm reduced-motion and reverse-navigation behavior, then write a separate Product implementation plan against canonical `main`. That plan may use Reanimated 4, but it must keep `/thread/[id]` authoritative and must not reintroduce parallel chat state into the list screen.
+
+---
+
+## Closeout
+
+### Actual outcome
+
+The exact clean canonical preview revision `00398fc13fb7b6f923ac73b910e738340196a731` became the release-candidate base. Current `origin/main` was merged into `feature/current-experience`, preserving the current Chats/navigation/recording architecture and adding the repository-native project-memory system. The obsolete `logs` route remained deleted and the current `chats` route remained authoritative.
+
+### Plan deviations
+
+- The previously planned responsibility-by-responsibility port had already been performed and accumulated in the canonical preview history. Repeating it would have rebuilt and re-risked 95 integrated commits, so the candidate was branched from the exact preview revision and reconciled with the two main-only commits on an isolated feature branch.
+- Active bugs now live in Linear rather than accumulating in another QA-notes document. Repository QA artifacts remain immutable verification history and device checklists.
+
+### Learnings and decisions
+
+- Preview may supply an exact release-candidate tree after its constituent work has already been reconciled, but it remains an integration/QA branch: the pull request still originates from a feature branch and targets `main`.
+- Known non-blocking bugs may proceed only as explicit Linear issues accepted by Baah. Data loss, privacy/security, startup, storage, destructive behavior, and unverifiable state remain Ship blockers.
+
+### Remaining debt
+
+- The shared workspace has no standalone build/typecheck script; shared contracts are currently compiled through backend and mobile consumers.
+- A fresh mobile install requires `CENTRAL_LICENSE_KEY`; verification reused the byte-identical dependency tree already installed for canonical preview.
+- Dependency-audit findings remain separate dependency-hygiene work.
+
+### Canonical docs updated
+
+- `docs/workflow.md`
+- `docs/features/current-experience-consolidation.md`
+- `docs/superpowers/plans/2026-08-16-current-experience-consolidation.md`
+- Repository-native project memory documents merged from `origin/main`
+
+### PR and merge evidence
+
+Baah passed preview QA on verified revision `319afcc69f1b73fba225c42d1990ea7dae13b920` and approved Ship on 2026-08-25. The GitHub pull request and squash-merge SHA are the canonical integration evidence; final values are reported after the transaction completes.

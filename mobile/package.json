@@ -10,6 +10,7 @@
     "storybook:start": "EXPO_PUBLIC_STORYBOOK=true expo start",
     "storybook:web": "EXPO_PUBLIC_STORYBOOK=true expo start --web",
     "verify:design-system": "node scripts/verify-design-system.mjs",
+    "verify:button-surfaces": "node scripts/verify-button-surfaces.mjs",
     "test": "jest",
     "typecheck": "tsc --noEmit"
   },

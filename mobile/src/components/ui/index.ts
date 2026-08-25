@@ -1,5 +1,14 @@
 export { Button } from './Button';
 export type { ButtonProps, ButtonVariant, ButtonSize } from './Button';
+export { LiquidGlassButtonSurface } from './LiquidGlassButtonSurface';
+export type { LiquidGlassButtonSurfaceProps } from './LiquidGlassButtonSurface';
+export { LiquidGlassPressable } from './LiquidGlassPressable';
+export type { LiquidGlassPressableProps } from './LiquidGlassPressable';
+export type {
+  LiquidGlassHierarchy,
+  LiquidGlassShape,
+  LiquidGlassTone,
+} from './liquidGlass';
 
 export {
   SECONDARY_ICON_BUTTON_FIGMA,
@@ -10,8 +19,14 @@ export type { SecondaryIconButtonProps } from './SecondaryIconButton';
 export { RecordingVoiceMark } from './RecordingVoiceMark';
 export { VoiceReactiveTimestamp, VOICE_REACTIVE_TIMESTAMP } from './VoiceReactiveTimestamp';
 export type { VoiceReactiveTimestampProps } from './VoiceReactiveTimestamp';
-export type { ActiveRecordingSurfaceProps } from './ActiveRecordingSurface';
-export { ActiveRecordingSurface } from './ActiveRecordingSurface';
+export {
+  ActiveRecordingActionBar,
+  ActiveRecordingContent,
+} from './ActiveRecordingSurface';
+export type {
+  ActiveRecordingActionBarProps,
+  ActiveRecordingContentProps,
+} from './ActiveRecordingSurface';
 
 export { Badge } from './Badge';
 export type { BadgeProps, BadgeColor, BadgeAppearance, BadgeSize } from './Badge';
@@ -26,6 +41,8 @@ export { Icon } from './Icon';
 export type { IconProps, IconName } from './Icon';
 
 export { BottomNavBar } from './BottomNavBar';
+export { PageHeaderSurface, getPageHeaderScrollInset } from './PageHeaderSurface';
+export type { PageHeaderSurfaceProps, PageHeaderVariant } from './PageHeaderSurface';
 export { SelectedNavigationItem } from './SelectedNavigationItem';
 export type { SelectedNavigationItemProps } from './SelectedNavigationItem';
 export { InactiveNavigationItem } from './InactiveNavigationItem';
@@ -33,8 +50,8 @@ export type { InactiveNavigationItemProps } from './InactiveNavigationItem';
 export { PersistentNavigationCapsule } from './PersistentNavigationCapsule';
 export type { PersistentNavigationCapsuleProps } from './PersistentNavigationCapsule';
 
-export { ChatNavBar } from './ChatNavBar';
-export type { ChatNavBarProps } from './ChatNavBar';
+export { ChatHeader } from './ChatHeader';
+export type { ChatHeaderProps } from './ChatHeader';
 
 export { RecordingGlow } from './RecordingGlow';
 export type { RecordingGlowProps } from './RecordingGlow';

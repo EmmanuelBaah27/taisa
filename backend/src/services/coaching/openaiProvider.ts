@@ -10,6 +10,7 @@ import type {
   ProviderCoachingInput,
 } from './provider';
 import { estimateCostUsd, estimateMaximumCoachingUsage } from './provider';
+import { normalizeOpenAISdkFailure } from './providerSdkFailure';
 
 type OpenAIClient = Pick<OpenAI, 'beta'>;
 
@@ -91,18 +92,23 @@ export function createOpenAIProvider(
     id: 'openai',
     estimateMaximumUsage: (input) => estimateMaximumCoachingUsage('openai', input, config),
     async respond(input: ProviderCoachingInput) {
-      const completion = await client.beta.chat.completions.parse(
-        {
-          model: config.model,
-          messages: [
-            { role: 'system', content: input.systemPrompt },
-            { role: 'user', content: input.userPrompt },
-          ],
-          response_format: openAIResponseFormat(),
-          max_completion_tokens: config.maxOutputTokens,
-        },
-        { maxRetries: 0 },
-      );
+      let completion;
+      try {
+        completion = await client.beta.chat.completions.parse(
+          {
+            model: config.model,
+            messages: [
+              { role: 'system', content: input.systemPrompt },
+              { role: 'user', content: input.userPrompt },
+            ],
+            response_format: openAIResponseFormat(),
+            max_completion_tokens: config.maxOutputTokens,
+          },
+          { maxRetries: 0 },
+        );
+      } catch (error) {
+        throw normalizeOpenAISdkFailure(error);
+      }
 
       const payload = CoachingResponsePayloadSchema.parse(
         completion.choices[0]?.message.parsed?.response,

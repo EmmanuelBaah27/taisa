@@ -19,9 +19,8 @@ export function resolveInitialChatConversationId(
 export function chatConversationRoute(
   conversationId: string,
   source?: ChatCardSource | null,
-  title?: string,
 ) {
-  const context = title ? { conversationId, title } : { conversationId };
+  const context = { conversationId };
   return {
     pathname: '/chat' as const,
     params: source ? {
@@ -50,6 +49,12 @@ export function voiceCancelDestination(
   initialConversationId: string | null,
 ): 'reply' | 'close' {
   return initialConversationId === null ? 'close' : 'reply';
+}
+
+export function voiceCancelAccessibilityLabel(initialConversationId: string | null): string {
+  return voiceCancelDestination(initialConversationId) === 'reply'
+    ? 'Cancel recording and return to chat'
+    : 'Cancel recording and close';
 }
 
 export function startFreshCapture(actions: {

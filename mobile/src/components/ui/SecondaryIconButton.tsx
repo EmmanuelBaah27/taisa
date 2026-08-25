@@ -1,14 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
 import {
-  AccessibilityInfo,
-  Animated,
-  Easing,
   Pressable,
   type PressableProps,
 } from 'react-native';
+import { useSharedValue, withSpring, withTiming, type SharedValue } from 'react-native-reanimated';
 
 import { colors } from '../../constants/theme';
 import { Icon, type IconName } from './Icon';
+import { LiquidGlassButtonSurface } from './LiquidGlassButtonSurface';
 
 export const SECONDARY_ICON_BUTTON_FIGMA = {
   size: 56,
@@ -25,10 +23,10 @@ export const SECONDARY_ICON_BUTTON_FIGMA = {
 } as const;
 
 export const SECONDARY_ICON_BUTTON_MOTION = {
-  pressedScale: 1.12,
-  pressDuration: 70,
-  holdDuration: 100,
-  releaseDuration: 90,
+  pressedScale: 0.97,
+  pressDuration: 100,
+  releaseDamping: 24,
+  releaseStiffness: 360,
 } as const;
 
 export interface SecondaryIconButtonProps {
@@ -40,6 +38,8 @@ export interface SecondaryIconButtonProps {
 
 interface SecondaryIconButtonSurfaceProps extends SecondaryIconButtonProps {
   onPressIn?: PressableProps['onPressIn'];
+  onPressOut?: PressableProps['onPressOut'];
+  pressed?: SharedValue<number>;
 }
 
 export function SecondaryIconButtonSurface({
@@ -48,6 +48,8 @@ export function SecondaryIconButtonSurface({
   disabled = false,
   onPress,
   onPressIn,
+  onPressOut,
+  pressed,
 }: SecondaryIconButtonSurfaceProps) {
   const visual = SECONDARY_ICON_BUTTON_FIGMA;
 
@@ -60,73 +62,42 @@ export function SecondaryIconButtonSurface({
       hitSlop={4}
       onPress={onPress}
       onPressIn={onPressIn}
+      onPressOut={onPressOut}
       className="items-center justify-center rounded-full"
       style={{
         width: visual.size,
         height: visual.size,
         padding: visual.padding,
         borderRadius: visual.borderRadius,
-        backgroundColor: visual.backgroundColor,
-        borderColor: visual.borderColor,
-        borderWidth: visual.borderWidth,
-        shadowColor: visual.shadowColor,
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: visual.shadowOpacity,
-        shadowRadius: visual.shadowRadius,
-        elevation: visual.elevation,
-        opacity: disabled ? 0.45 : 1,
       }}
     >
-      <Icon name={icon} size={visual.iconSize} color={colors.secondaryActionIcon} />
+      <LiquidGlassButtonSurface
+        hierarchy="standard"
+        tone="neutral"
+        shape="circle"
+        disabled={disabled}
+        pressed={pressed}
+        style={{ width: visual.size, height: visual.size, alignItems: 'center', justifyContent: 'center' }}
+      >
+        <Icon name={icon} size={visual.iconSize} color={colors.secondaryActionIcon} />
+      </LiquidGlassButtonSurface>
     </Pressable>
   );
 }
 
 export function SecondaryIconButton(props: SecondaryIconButtonProps) {
-  const scale = useRef(new Animated.Value(1)).current;
-  const [reduceMotion, setReduceMotion] = useState(false);
-
-  useEffect(() => {
-    let mounted = true;
-    AccessibilityInfo.isReduceMotionEnabled().then((enabled) => {
-      if (mounted) setReduceMotion(enabled);
-    });
-    const subscription = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion);
-
-    return () => {
-      mounted = false;
-      subscription.remove();
-      scale.stopAnimation();
-    };
-  }, [scale]);
+  const pressed = useSharedValue(0);
 
   const handlePressIn: NonNullable<PressableProps['onPressIn']> = () => {
-    scale.stopAnimation();
-    if (reduceMotion || props.disabled) {
-      scale.setValue(1);
-      return;
-    }
-
-    Animated.sequence([
-      Animated.timing(scale, {
-        toValue: SECONDARY_ICON_BUTTON_MOTION.pressedScale,
-        duration: SECONDARY_ICON_BUTTON_MOTION.pressDuration,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.delay(SECONDARY_ICON_BUTTON_MOTION.holdDuration),
-      Animated.timing(scale, {
-        toValue: 1,
-        duration: SECONDARY_ICON_BUTTON_MOTION.releaseDuration,
-        easing: Easing.bezier(0.77, 0, 0.175, 1),
-        useNativeDriver: true,
-      }),
-    ]).start();
+    if (!props.disabled) pressed.value = withTiming(1, { duration: SECONDARY_ICON_BUTTON_MOTION.pressDuration });
   };
 
-  return (
-    <Animated.View style={{ transform: [{ scale }] }}>
-      <SecondaryIconButtonSurface {...props} onPressIn={handlePressIn} />
-    </Animated.View>
-  );
+  const handlePressOut: NonNullable<PressableProps['onPressOut']> = () => {
+    pressed.value = withSpring(0, {
+      damping: SECONDARY_ICON_BUTTON_MOTION.releaseDamping,
+      stiffness: SECONDARY_ICON_BUTTON_MOTION.releaseStiffness,
+    });
+  };
+
+  return <SecondaryIconButtonSurface {...props} pressed={pressed} onPressIn={handlePressIn} onPressOut={handlePressOut} />;
 }
