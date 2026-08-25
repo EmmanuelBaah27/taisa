@@ -1,3 +1,20 @@
+const designSystem = require('./design-system/tokens.json');
+
+const semanticTypography = Object.fromEntries(
+  Object.entries(designSystem.typography).map(([role, token]) => [
+    role,
+    [
+      `${token.fontSize}px`,
+      {
+        lineHeight: `${token.lineHeight}px`,
+        letterSpacing: `${token.letterSpacing}px`,
+        fontWeight: token.fontWeight,
+        fontFamily: token.fontFamily,
+      },
+    ],
+  ]),
+);
+
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   darkMode: 'class',
@@ -215,6 +232,7 @@ module.exports = {
         'sans-semibold': ['Inter_600SemiBold'],
         'sans-bold':     ['Inter_700Bold'],
       },
+      fontSize: semanticTypography,
 
       // ─── Border radius ───────────────────────────────────────────────────
       borderRadius: {
