@@ -1,4 +1,4 @@
-import type { WorkRecord } from '@taisa/shared';
+import type { Project, WorkRecord, WorkRelationship } from '@taisa/shared';
 
 import type { RepositoryConnection, RepositoryTransaction } from '../db/types';
 import { requireExactlyOneAffectedRow } from './mutationReceipt';
@@ -59,9 +59,34 @@ function workRecordParams(record: WorkRecord, idempotencyId: string) {
   };
 }
 
+interface RecordEventRow {
+  id: string;
+  record_id: string;
+  operation: string;
+  prior_value_json: string | null;
+  resulting_value_json: string;
+  source_id: string;
+  occurred_at: string;
+  idempotency_key: string;
+}
+
+export interface RecordEvent {
+  id: string;
+  recordId: string;
+  operation: string;
+  priorValue: unknown;
+  resultingValue: unknown;
+  sourceId: string;
+  occurredAt: string;
+  idempotencyId: string;
+}
+
 export interface WorkRepository {
   get(id: string): Promise<WorkRecord | null>;
   insert(transaction: RepositoryTransaction, record: WorkRecord, idempotencyId: string): Promise<void>;
+  insertProject(transaction: RepositoryTransaction, project: Project, idempotencyId: string): Promise<void>;
+  linkConversation(transaction: RepositoryTransaction, relationship: WorkRelationship, idempotencyId: string): Promise<void>;
+  listEvents(recordId: string): Promise<RecordEvent[]>;
   moveToWeek(
     transaction: RepositoryTransaction,
     id: string,
@@ -90,6 +115,55 @@ export function createWorkRepository(database: RepositoryConnection): WorkReposi
            $lastConfirmedAt, $idempotencyId)`,
         workRecordParams(record, idempotencyId),
       );
+    },
+
+    async insertProject(transaction, project, idempotencyId) {
+      await transaction.runAsync(
+        `INSERT INTO projects
+          (id, name, status, source_id, revision, created_at, updated_at, idempotency_key)
+         VALUES ($id, $name, $status, $sourceId, $revision, $createdAt, $updatedAt, $idempotencyId)`,
+        {
+          $id: project.id, $name: project.name, $status: project.status,
+          $sourceId: project.sourceId, $revision: project.revision,
+          $createdAt: project.createdAt, $updatedAt: project.updatedAt,
+          $idempotencyId: idempotencyId,
+        },
+      );
+    },
+
+    async linkConversation(transaction, relationship, idempotencyId) {
+      await transaction.runAsync(
+        `INSERT INTO work_relationships
+          (id, record_id, conversation_id, role, contribution, source_revision,
+           created_at, idempotency_key)
+         VALUES ($id, $recordId, $conversationId, $role, $contribution,
+           $sourceRevision, $createdAt, $idempotencyId)`,
+        {
+          $id: relationship.id, $recordId: relationship.recordId,
+          $conversationId: relationship.conversationId, $role: relationship.role,
+          $contribution: relationship.contribution, $sourceRevision: relationship.sourceRevision,
+          $createdAt: relationship.createdAt, $idempotencyId: idempotencyId,
+        },
+      );
+    },
+
+    async listEvents(recordId) {
+      const rows = await database.getAllAsync<RecordEventRow>(
+        `SELECT id, record_id, operation, prior_value_json, resulting_value_json,
+           source_id, occurred_at, idempotency_key
+         FROM record_events WHERE record_id = $recordId ORDER BY occurred_at, id`,
+        { $recordId: recordId },
+      );
+      return rows.map((row) => ({
+        id: row.id,
+        recordId: row.record_id,
+        operation: row.operation,
+        priorValue: row.prior_value_json === null ? null : JSON.parse(row.prior_value_json),
+        resultingValue: JSON.parse(row.resulting_value_json),
+        sourceId: row.source_id,
+        occurredAt: row.occurred_at,
+        idempotencyId: row.idempotency_key,
+      }));
     },
 
     async moveToWeek(transaction, id, plannedWeek, event) {

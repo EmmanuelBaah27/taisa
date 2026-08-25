@@ -2,9 +2,11 @@ import type {
   CapabilitySnapshot,
   Insight,
   LocalNotification,
+  Project,
   ProposalEnvelope,
   WeeklyPeriod,
   WorkRecord,
+  WorkRelationship,
 } from '@taisa/shared';
 
 import { SCHEMA_VERSION } from '../../db/migrations';
@@ -25,6 +27,7 @@ import { createReadinessRepository } from '../readinessRepository';
 class FakeConnection implements RepositoryConnection {
   readonly runs: Array<{ source: string; params?: SQLiteBindParams }> = [];
   readonly rows = new Map<string, Record<string, unknown>>();
+  allRows: Record<string, unknown>[] = [];
 
   async execAsync(): Promise<void> {}
 
@@ -39,7 +42,7 @@ class FakeConnection implements RepositoryConnection {
   }
 
   async getAllAsync<T>(): Promise<T[]> {
-    return [];
+    return this.allRows as T[];
   }
 }
 
@@ -138,6 +141,49 @@ test('work movement records prior placement in the caller transaction', async ()
   });
 });
 
+test('work repository persists projects and typed conversation relationships', async () => {
+  const connection = new FakeConnection();
+  const repository = createWorkRepository(connection);
+  const project: Project = {
+    id: 'project-1', name: 'Website Launch', status: 'active', sourceId: 'conversation-1',
+    revision: 1, createdAt: '2026-08-25T08:00:00Z', updatedAt: '2026-08-25T08:00:00Z',
+  };
+  const relationship: WorkRelationship = {
+    id: 'relationship-1', recordId: 'task-1', conversationId: 'conversation-1',
+    role: 'primary', contribution: 'planning', sourceRevision: 2,
+    createdAt: '2026-08-25T08:00:00Z',
+  };
+
+  await repository.insertProject(connection as unknown as RepositoryTransaction, project, 'project-insert-1');
+  await repository.linkConversation(connection as unknown as RepositoryTransaction, relationship, 'link-1');
+
+  expect(connection.runs[0]).toMatchObject({
+    source: expect.stringContaining('INSERT INTO projects'),
+    params: expect.objectContaining({ $id: 'project-1', $revision: 1 }),
+  });
+  expect(connection.runs[1]).toMatchObject({
+    source: expect.stringContaining('INSERT INTO work_relationships'),
+    params: expect.objectContaining({ $role: 'primary', $contribution: 'planning' }),
+  });
+});
+
+test('work repository maps append-only movement history', async () => {
+  const connection = new FakeConnection();
+  connection.allRows = [{
+    id: 'event-1', record_id: 'task-1', operation: 'move_week',
+    prior_value_json: '"2026-08-24"', resulting_value_json: '"2026-08-31"',
+    source_id: 'user-1', occurred_at: '2026-08-25T09:00:00Z',
+    idempotency_key: 'move-1',
+  }];
+  const repository = createWorkRepository(connection);
+
+  await expect(repository.listEvents('task-1')).resolves.toEqual([{
+    id: 'event-1', recordId: 'task-1', operation: 'move_week',
+    priorValue: '2026-08-24', resultingValue: '2026-08-31',
+    sourceId: 'user-1', occurredAt: '2026-08-25T09:00:00Z', idempotencyId: 'move-1',
+  }]);
+});
+
 test('proposal repository validates JSON at its boundary', async () => {
   const connection = new FakeConnection();
   const repository = createProposalRepository(connection);
@@ -155,6 +201,21 @@ test('proposal repository validates JSON at its boundary', async () => {
     $evidenceIdsJson: '["evidence-1"]',
     $effectJson: '{"recordId":"task-1","projectId":"project-1"}',
   }));
+
+  connection.rows.set('proposal-1', {
+    id: 'proposal-1', type: 'project_association', source_id: 'conversation-1',
+    source_revision: 2, evidence_ids_json: '["evidence-1"]', evidence_fingerprint: 'fp-1',
+    reasoning: 'Explicit project name', effect_json: '{"recordId":"task-1","projectId":"project-1"}',
+    ambiguity: 'strong', admission: 'pending', resolution: 'unapplied',
+    revalidation: 'valid', created_at: '2026-08-25T08:00:00Z',
+    updated_at: '2026-08-25T08:00:00Z',
+  });
+  await expect(repository.get('proposal-1')).resolves.toEqual(proposal);
+
+  connection.rows.set('proposal-bad', {
+    ...connection.rows.get('proposal-1'), id: 'proposal-bad', evidence_ids_json: '{"not":"an array"}',
+  });
+  await expect(repository.get('proposal-bad')).rejects.toThrow('Invalid proposal evidence IDs');
 });
 
 test('readiness repository keeps permission and evidence fields independent', async () => {
