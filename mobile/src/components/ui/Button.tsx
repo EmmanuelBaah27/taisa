@@ -1,7 +1,9 @@
 import React from 'react';
-import { Text, ActivityIndicator, View } from 'react-native';
-import { colors } from '../../constants/theme';
+import { ActivityIndicator, View } from 'react-native';
+import { colorTokens } from '../../design-system/tokens';
 import { LiquidGlassPressable } from './LiquidGlassPressable';
+import { Text } from './Text';
+import type { TextColorRole } from './Text';
 import type { LiquidGlassHierarchy, LiquidGlassTone } from './liquidGlass';
 
 export type ButtonVariant =
@@ -41,13 +43,13 @@ const VARIANT_CONTAINER_DISABLED: Record<ButtonVariant, string> = {
   'tertiary-destructive':  '',
 };
 
-const VARIANT_TEXT: Record<ButtonVariant, string> = {
-  'primary':               'text-primary-foreground',
-  'secondary':             'text-foreground',
-  'tertiary':              'text-foreground',
-  'destructive':           'text-destructive-foreground',
-  'secondary-destructive': 'text-danger',
-  'tertiary-destructive':  'text-danger',
+const VARIANT_TEXT: Record<ButtonVariant, TextColorRole> = {
+  'primary':               'primary',
+  'secondary':             'primary',
+  'tertiary':              'primary',
+  'destructive':           'inverted',
+  'secondary-destructive': 'danger',
+  'tertiary-destructive':  'danger',
 };
 
 const SIZE_CONTAINER: Record<ButtonSize, string> = {
@@ -64,21 +66,21 @@ const SIZE_ICON_GAP: Record<ButtonSize, string> = {
   'icon-lg': '',
 };
 
-const SIZE_TEXT: Record<ButtonSize, string> = {
-  default: 'text-base font-semibold',
-  sm:      'text-sm font-semibold',
-  icon:    '',
-  'icon-lg': '',
+const SIZE_TEXT: Record<ButtonSize, 'bodyStrong' | 'labelStrong'> = {
+  default: 'bodyStrong',
+  sm:      'labelStrong',
+  icon:    'bodyStrong',
+  'icon-lg': 'bodyStrong',
 };
 
 // Spinner color is the same as the text color for each variant
 const SPINNER_COLOR: Record<ButtonVariant, string> = {
-  'primary':               colors.textPrimary,        // dark text — lime bg is light
-  'secondary':             colors.textPrimary,
-  'tertiary':              colors.textPrimary,
-  'destructive':           '#ffffff',
-  'secondary-destructive': colors.error,
-  'tertiary-destructive':  colors.error,
+  'primary':               colorTokens.text.primary,
+  'secondary':             colorTokens.text.primary,
+  'tertiary':              colorTokens.text.primary,
+  'destructive':           colorTokens.text.inverted,
+  'secondary-destructive': colorTokens.status.danger,
+  'tertiary-destructive':  colorTokens.status.danger,
 };
 
 export function Button({
@@ -105,18 +107,12 @@ export function Button({
     .filter(Boolean)
     .join(' ');
 
-  const textClass = [
-    isDisabled ? 'text-disabled-foreground' : VARIANT_TEXT[variant],
-    SIZE_TEXT[size],
-  ]
-    .filter(Boolean)
-    .join(' ');
   const glass = getButtonLiquidGlassAppearance(variant);
 
   const content = loading ? (
     <ActivityIndicator
       size="small"
-      color={isDisabled ? colors.textTertiary : SPINNER_COLOR[variant]}
+      color={isDisabled ? colorTokens.text.disabled : SPINNER_COLOR[variant]}
     />
   ) : (
     <>
@@ -125,7 +121,14 @@ export function Button({
           {icon}
         </View>
       )}
-      {!isIconOnly && <Text className={textClass}>{label}</Text>}
+      {!isIconOnly && (
+        <Text
+          role={SIZE_TEXT[size]}
+          color={isDisabled ? 'disabled' : VARIANT_TEXT[variant]}
+        >
+          {label}
+        </Text>
+      )}
       {hasIcon && iconPosition === 'right' && (
         <View style={{ width: iconSize, height: iconSize, alignItems: 'center', justifyContent: 'center' }}>
           {icon}

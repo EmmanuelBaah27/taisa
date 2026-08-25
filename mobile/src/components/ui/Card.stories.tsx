@@ -1,8 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/react-native';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './Card';
 import { Button } from './Button';
 import { Badge } from './Badge';
+import { Text } from './Text';
 
 const meta: Meta<typeof Card> = {
   title: 'Components/Card',
@@ -36,7 +37,7 @@ export const Default: Story = {
         <CardDescription>Tuesday 12 May · 3 mins</CardDescription>
       </CardHeader>
       <CardContent>
-        <Text style={{ color: '#0F0F0F', fontSize: 15 }}>
+        <Text>
           Finished the pitch deck and got positive feedback from the team. Feeling more confident about Thursday.
         </Text>
       </CardContent>
@@ -53,7 +54,7 @@ export const Elevated: Story = {
         <CardDescription>From your last 7 days</CardDescription>
       </CardHeader>
       <CardContent>
-        <Text style={{ color: '#737373', fontSize: 14 }}>
+        <Text color="secondary">
           You've mentioned "confidence" in 4 of your last 7 entries. That's a pattern worth exploring.
         </Text>
       </CardContent>
@@ -76,7 +77,7 @@ export const WithBadge: Story = {
         <CardDescription>Monday 11 May</CardDescription>
       </CardHeader>
       <CardContent>
-        <Text style={{ color: '#0F0F0F', fontSize: 15 }}>
+        <Text>
           Completed the investor deck ahead of schedule. This is CV-worthy.
         </Text>
       </CardContent>
@@ -92,7 +93,7 @@ export const WithFooter: Story = {
         <CardTitle>Action item</CardTitle>
       </CardHeader>
       <CardContent>
-        <Text style={{ color: '#0F0F0F', fontSize: 15 }}>
+        <Text>
           Follow up with Sarah about the design review by Friday.
         </Text>
       </CardContent>

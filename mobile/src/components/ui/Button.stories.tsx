@@ -75,7 +75,7 @@ export const LargeIcon: Story = {
     variant: 'primary',
     size: 'icon-lg',
     label: 'Send recording',
-    icon: <Icon name="IconArrowUp" size={24} color="#0F1010" />,
+    icon: <Icon name="IconArrowUp" size={24} colorRole="primary" />,
   },
 };
 

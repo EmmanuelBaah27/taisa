@@ -41,7 +41,7 @@ export { Input } from './Input';
 export type { InputProps, InputSize } from './Input';
 
 export { Icon } from './Icon';
-export type { IconProps, IconName } from './Icon';
+export type { IconColorRole, IconProps, IconName } from './Icon';
 
 export { BottomNavBar } from './BottomNavBar';
 export { PageHeaderSurface, getPageHeaderScrollInset } from './PageHeaderSurface';
