@@ -5,6 +5,7 @@ import {
   SCHEMA_V2_STATEMENTS,
   SCHEMA_V3_STATEMENTS,
   SCHEMA_V4_STATEMENTS,
+  SCHEMA_V5_STATEMENTS,
 } from '../../db/schema';
 import type {
   ExclusiveTransactionConnection,
@@ -42,6 +43,9 @@ export function createTestDatabase(): TestDatabase {
     database.exec(statement);
   }
   for (const statement of SCHEMA_V4_STATEMENTS) {
+    database.exec(statement);
+  }
+  for (const statement of SCHEMA_V5_STATEMENTS) {
     database.exec(statement);
   }
 
