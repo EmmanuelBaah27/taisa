@@ -1,4 +1,4 @@
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 
 import { colors } from '../../constants/theme';
 import { Button } from './Button';
@@ -6,12 +6,7 @@ import { Icon } from './Icon';
 import { RecordingVoiceMark } from './RecordingVoiceMark';
 import { SecondaryIconButton } from './SecondaryIconButton';
 import { VoiceReactiveTimestamp } from './VoiceReactiveTimestamp';
-
-const GREETING_TEXT_STYLE = {
-  fontSize: 18,
-  lineHeight: 24,
-  letterSpacing: -0.36,
-} as const;
+import { Text } from './Text';
 
 export interface ActiveRecordingContentProps {
   greeting: string;
@@ -21,9 +16,7 @@ export function ActiveRecordingContent({ greeting }: ActiveRecordingContentProps
   return (
     <View className="flex-1 items-center justify-center gap-6">
       <RecordingVoiceMark />
-      <Text className="font-sans text-center text-muted-foreground" style={GREETING_TEXT_STYLE}>
-        {greeting}
-      </Text>
+      <Text role="subheading" color="secondary">{greeting}</Text>
     </View>
   );
 }

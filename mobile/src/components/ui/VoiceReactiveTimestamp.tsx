@@ -1,5 +1,6 @@
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import { Canvas, Fill, Shader, Skia } from '@shopify/react-native-skia';
+import { Text } from './Text';
 
 export const VOICE_REACTIVE_TIMESTAMP = {
   width: 60,
@@ -74,9 +75,7 @@ export function VoiceReactiveTimestamp({
           <Fill><Shader source={EFFECT} uniforms={uniforms} /></Fill>
         </Canvas>
       ) : null}
-      <Text className="text-muted-foreground text-small-regular" style={{ zIndex: 1 }}>
-        {formatDuration(durationSeconds)}
-      </Text>
+      <View style={{ zIndex: 1 }}><Text role="label" color="secondary">{formatDuration(durationSeconds)}</Text></View>
     </View>
   );
 }
