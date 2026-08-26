@@ -152,3 +152,34 @@ test('governance commands remain capability-specific and rehydrate after writes'
   expect(load).toHaveBeenCalledTimes(4);
   expect(store.getState().capabilities[0].state).toBe('ask_me');
 });
+
+test('user task, weekly review, and notification commands rehydrate local state', async () => {
+  const notification = {
+    id: 'notification-1', sourceType: 'work_record', sourceId: record.id, groupingKey: 'work',
+    readState: 'unread', disposition: 'active', snoozedUntil: null,
+    createdAt: '2026-08-25T08:00:00Z',
+  } as const;
+  const load = jest.fn().mockResolvedValue({
+    period, records: [record], insights: [], pendingProposalCount: 0, notifications: [notification],
+  });
+  const createTask = jest.fn().mockResolvedValue(undefined);
+  const reviewWeek = jest.fn().mockResolvedValue(undefined);
+  const updateNotification = jest.fn().mockResolvedValue(undefined);
+  const snoozeNotification = jest.fn().mockResolvedValue(undefined);
+  const store = createHomeStore({ load, createTask, reviewWeek, updateNotification, snoozeNotification });
+  await store.getState().hydrate('2026-08-25T09:00:00Z');
+  expect(store.getState().unreadNotificationCount).toBe(1);
+
+  const input = { id: 'task-new', title: 'New task', sourceId: 'user', plannedWeek: null, now: '2026-08-25T09:05:00Z' };
+  await store.getState().createTask(input);
+  await store.getState().reviewWeek('snapshot-1', '2026-08-25T09:10:00Z');
+  await store.getState().markNotificationRead(notification.id, '2026-08-25T09:15:00Z');
+  await store.getState().dismissNotification(notification.id, '2026-08-25T09:20:00Z');
+  await store.getState().snoozeNotification(notification.id, '2026-08-26T09:00:00Z', '2026-08-25T09:25:00Z');
+
+  expect(createTask).toHaveBeenCalledWith(input);
+  expect(reviewWeek).toHaveBeenCalledWith(period, [record.id], 'snapshot-1', '2026-08-25T09:10:00Z');
+  expect(updateNotification).toHaveBeenNthCalledWith(1, notification.id, 'read', '2026-08-25T09:15:00Z');
+  expect(updateNotification).toHaveBeenNthCalledWith(2, notification.id, 'dismiss', '2026-08-25T09:20:00Z');
+  expect(snoozeNotification).toHaveBeenCalledWith(notification.id, '2026-08-26T09:00:00Z', '2026-08-25T09:25:00Z');
+});

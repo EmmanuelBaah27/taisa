@@ -2,6 +2,7 @@ import type {
   CapabilitySnapshot,
   Insight,
   ProposalEnvelope,
+  LocalNotification,
   WeeklyPeriod,
   WorkRecord,
 } from '@taisa/shared';
@@ -38,13 +39,18 @@ type CapabilityRow = {
   contradictions: number; latest_evidence_at: string | null; clean_trial_outcomes: number;
   updated_at: string;
 };
+type NotificationRow = {
+  id: string; source_type: LocalNotification['sourceType']; source_id: string; grouping_key: string;
+  read_state: LocalNotification['readState']; disposition: LocalNotification['disposition'];
+  snoozed_until: string | null; created_at: string;
+};
 
 export async function loadHomeSnapshot(
   database: RepositoryConnection,
   now: string,
 ): Promise<HomeSnapshot> {
   const derived = deriveWeeklyPeriod(new Date(now));
-  const [periodRow, records, insights, count] = await Promise.all([
+  const [periodRow, records, insights, count, notifications] = await Promise.all([
     database.getFirstAsync<PeriodRow>(
       `SELECT id, starts_on, ends_on, state, reviewed_at, closed_at
        FROM weekly_periods WHERE id = $id`, { $id: derived.id },
@@ -60,6 +66,10 @@ export async function loadHomeSnapshot(
     database.getFirstAsync<{ count: number }>(
       `SELECT COUNT(*) AS count FROM proposals
        WHERE admission = 'pending' AND resolution = 'unapplied'`,
+    ),
+    database.getAllAsync<NotificationRow>(
+      `SELECT id, source_type, source_id, grouping_key, read_state, disposition,
+         snoozed_until, created_at FROM local_notifications ORDER BY created_at DESC, id`,
     ),
   ]);
   const period: WeeklyPeriod = periodRow === null ? derived : {
@@ -79,6 +89,11 @@ export async function loadHomeSnapshot(
       evidence: JSON.parse(row.evidence_json), createdAt: row.created_at, updatedAt: row.updated_at,
     })),
     pendingProposalCount: count?.count ?? 0,
+    notifications: notifications.map((row) => ({
+      id: row.id, sourceType: row.source_type, sourceId: row.source_id,
+      groupingKey: row.grouping_key, readState: row.read_state,
+      disposition: row.disposition, snoozedUntil: row.snoozed_until, createdAt: row.created_at,
+    })),
   };
 }
 
