@@ -1,6 +1,10 @@
 export interface ProposalPayloadRegistry {
   project_association: { recordId: string; projectId: string };
-  task_conversation_link: { recordId: string; conversationId: string };
+  task_conversation_link: {
+    recordId: string;
+    conversationId: string;
+    contribution: 'planning' | 'status' | 'blocker' | 'decision' | 'outcome' | 'evidence';
+  };
   task_completion: { recordId: string };
   followup_status_update: { recordId: string; status: 'open' | 'completed' | 'cancelled' };
   blocker_status_update: { recordId: string; status: 'open' | 'resolved' };

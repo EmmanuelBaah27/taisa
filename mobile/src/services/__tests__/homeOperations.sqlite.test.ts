@@ -4,6 +4,8 @@ import { createHomeOperationService } from '../homeOperations';
 import { createTestDatabase } from '../../repositories/__tests__/testDatabase';
 import { createReadinessRepository } from '../../repositories/readinessRepository';
 import { createWorkRepository } from '../../repositories/workRepository';
+import { createProposalRepository } from '../../repositories/proposalRepository';
+import { createGovernanceActions } from '../governanceActions';
 
 const NOW = '2026-08-26T09:00:00.000Z';
 
@@ -80,5 +82,39 @@ test('failed operation rolls back record, receipt, and readiness outcome togethe
   await expect(database.getFirstAsync<{ count: number }>(
     'SELECT COUNT(*) AS count FROM record_events',
   )).resolves.toEqual({ count: 0 });
+  database.close();
+});
+
+test('user-confirmed proposal applies its effect and resolves atomically without delegated permission', async () => {
+  const database = createTestDatabase();
+  const work = createWorkRepository(database);
+  const readiness = createReadinessRepository(database);
+  const proposals = createProposalRepository(database);
+  const record: WorkRecord = {
+    id: 'task-3', kind: 'task', title: 'Confirm me', projectId: null,
+    status: 'open', freshness: 'current', plannedWeek: null, plannedDay: null,
+    sourceId: 'conversation-1', revision: 1, createdAt: NOW, updatedAt: NOW, lastConfirmedAt: NOW,
+  };
+  await database.withTransaction(async (transaction) => {
+    await work.insert(transaction, record, 'seed-task-3');
+    await readiness.put(transaction, {
+      operation: 'complete_explicit_task', policyVersion: 1, state: 'learning',
+      permissionGrantedAt: null, relevantExamples: 1, corrections: 0, contradictions: 0,
+      latestEvidenceAt: NOW, cleanTrialOutcomes: 0, updatedAt: NOW,
+    });
+    await proposals.insert(transaction, {
+      id: 'proposal-3', type: 'task_completion', sourceId: 'conversation-1', sourceRevision: 1,
+      evidenceIds: ['evidence-1'], evidenceFingerprint: 'fp-3', reasoning: 'User explicitly said done',
+      effect: { recordId: record.id }, ambiguity: 'ambiguous', admission: 'admitted',
+      resolution: 'unapplied', revalidation: 'valid', createdAt: NOW, updatedAt: NOW,
+    }, 'seed-proposal-3');
+  });
+
+  await createGovernanceActions(database).acceptProposal('proposal-3', '2026-08-26T09:05:00.000Z');
+
+  await expect(work.get(record.id)).resolves.toMatchObject({ status: 'completed', revision: 2 });
+  await expect(database.getFirstAsync<{ resolution: string }>(
+    'SELECT resolution FROM proposals WHERE id = $id', { $id: 'proposal-3' },
+  )).resolves.toEqual({ resolution: 'accepted' });
   database.close();
 });

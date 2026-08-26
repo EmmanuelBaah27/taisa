@@ -59,7 +59,11 @@ function proposalSchema<T extends string, E extends z.ZodTypeAny>(type: T, effec
 
 const ProposalSchema = z.discriminatedUnion('type', [
   proposalSchema('project_association', z.object({ recordId: Id, projectId: Id }).strict()),
-  proposalSchema('task_conversation_link', z.object({ recordId: Id, conversationId: Id }).strict()),
+  proposalSchema('task_conversation_link', z.object({
+    recordId: Id,
+    conversationId: Id,
+    contribution: z.enum(['planning', 'status', 'blocker', 'decision', 'outcome', 'evidence']),
+  }).strict()),
   proposalSchema('task_completion', z.object({ recordId: Id }).strict()),
   proposalSchema('followup_status_update', z.object({
     recordId: Id, status: z.enum(['open', 'completed', 'cancelled']),

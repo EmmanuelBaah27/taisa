@@ -58,6 +58,7 @@ function dependencies(snapshot: CapabilitySnapshot, record: WorkRecord = task) {
       appendRecordEvent: async () => { writes.push('event'); },
       appendProjectEvent: async () => { writes.push('project_event'); },
       appendReceipt: async (receipt) => { writes.push('receipt'); receipts.push(receipt); },
+      resolveProposal: async () => { writes.push('proposal'); },
       recordOutcome: async () => { writes.push('outcome'); },
     }),
   };
@@ -89,6 +90,18 @@ test('ambiguous language returns to Ask me before mutation', async () => {
   await expect(executePermittedOperation(request({ ambiguity: 'ambiguous' }), deps))
     .rejects.toMatchObject({ code: 'CONFIRMATION_REQUIRED' });
   expect(writes).toEqual([]);
+});
+
+test('explicit user confirmation applies one proposal without delegated permission', async () => {
+  const snapshot = { ...capability('complete_explicit_task', 'learning'), permissionGrantedAt: null };
+  const { deps, writes } = dependencies(snapshot);
+
+  const receipt = await executePermittedOperation(request({
+    ambiguity: 'ambiguous', authorization: 'user_confirmed', proposalId: 'proposal-1',
+  }), deps);
+
+  expect(receipt.visibility).toBe('history');
+  expect(writes).toEqual(['record', 'event', 'receipt', 'proposal', 'outcome']);
 });
 
 test('Trial execution emits a visible undoable receipt in one transaction', async () => {

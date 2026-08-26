@@ -15,6 +15,8 @@ export interface OperationRequest {
   ambiguity: 'strong' | 'ambiguous';
   requestedAt: string;
   payload?: Readonly<Record<string, unknown>>;
+  authorization?: 'delegated' | 'user_confirmed';
+  proposalId?: string;
 }
 
 export interface OperationTransaction {
@@ -25,6 +27,7 @@ export interface OperationTransaction {
   appendProjectEvent(request: OperationRequest, before: Project, after: Project): Promise<void>;
   appendReceipt(receipt: OperationReceipt): Promise<void>;
   recordOutcome(operation: PermittedOperation, outcome: 'success'): Promise<void>;
+  resolveProposal?(proposalId: string, resolvedAt: string): Promise<void>;
 }
 
 export interface OperationDependencies {
@@ -176,7 +179,9 @@ function operationReceipt(
     sourceId: request.sourceId,
     priorRevision,
     resultingRevision,
-    visibility: snapshot.state === 'trusted' ? 'history' : 'trial',
+    visibility: request.authorization === 'user_confirmed' || snapshot.state === 'trusted'
+      ? 'history'
+      : 'trial',
     undoable: request.operation === 'complete_explicit_task',
     undoneAt: null,
     createdAt: request.requestedAt,
@@ -189,10 +194,11 @@ export async function executePermittedOperation(
 ): Promise<OperationReceipt> {
   validateOperationRequest(request);
   const snapshot = await deps.getCapability(request.operation);
-  if (!canExecute(snapshot, request.operation)) {
+  const userConfirmed = request.authorization === 'user_confirmed';
+  if (!userConfirmed && !canExecute(snapshot, request.operation)) {
     throw new OperationGateError('OPERATION_NOT_PERMITTED');
   }
-  if (request.ambiguity !== 'strong') {
+  if (!userConfirmed && request.ambiguity !== 'strong') {
     throw new OperationGateError('CONFIRMATION_REQUIRED');
   }
 
@@ -204,6 +210,9 @@ export async function executePermittedOperation(
   }
 
   if (snapshot === null) throw new OperationGateError('OPERATION_NOT_PERMITTED');
+  if (request.proposalId !== undefined && request.proposalId.trim().length === 0) {
+    throw new OperationGateError('INVALID_PAYLOAD');
+  }
 
   if (request.operation === 'update_explicit_project_status') {
     const currentProject = await deps.getProject(request.targetId);
@@ -224,6 +233,10 @@ export async function executePermittedOperation(
       await transaction.updateProject(updatedProject);
       await transaction.appendProjectEvent(request, currentProject, updatedProject);
       await transaction.appendReceipt(receipt);
+      if (request.proposalId !== undefined) {
+        if (transaction.resolveProposal === undefined) throw new OperationGateError('INVALID_PAYLOAD');
+        await transaction.resolveProposal(request.proposalId, request.requestedAt);
+      }
       await transaction.recordOutcome(request.operation, 'success');
       return receipt;
     });
@@ -246,6 +259,10 @@ export async function executePermittedOperation(
     }
     await transaction.appendRecordEvent(request, current, updated);
     await transaction.appendReceipt(receipt);
+    if (request.proposalId !== undefined) {
+      if (transaction.resolveProposal === undefined) throw new OperationGateError('INVALID_PAYLOAD');
+      await transaction.resolveProposal(request.proposalId, request.requestedAt);
+    }
     await transaction.recordOutcome(request.operation, 'success');
     return receipt;
   });

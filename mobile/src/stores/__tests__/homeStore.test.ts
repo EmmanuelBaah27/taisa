@@ -137,15 +137,18 @@ test('governance commands remain capability-specific and rehydrate after writes'
   const grant = jest.fn().mockResolvedValue(undefined);
   const revoke = jest.fn().mockResolvedValue(undefined);
   const rejectProposal = jest.fn().mockResolvedValue(undefined);
-  const store = createGovernanceStore({ load, grant, revoke, rejectProposal });
+  const acceptProposal = jest.fn().mockResolvedValue(undefined);
+  const store = createGovernanceStore({ load, grant, revoke, rejectProposal, acceptProposal });
 
   await store.getState().grantAuthority(capability.operation, '2026-08-25T09:00:00Z');
   await store.getState().askMe(capability.operation, '2026-08-25T09:05:00Z');
   await store.getState().rejectProposal(proposal.id, '2026-08-25T09:10:00Z');
+  await store.getState().acceptProposal(proposal.id, '2026-08-25T09:15:00Z');
 
   expect(grant).toHaveBeenCalledWith(capability.operation, '2026-08-25T09:00:00Z');
   expect(revoke).toHaveBeenCalledWith(capability.operation, '2026-08-25T09:05:00Z');
   expect(rejectProposal).toHaveBeenCalledWith(proposal.id, '2026-08-25T09:10:00Z');
-  expect(load).toHaveBeenCalledTimes(3);
+  expect(acceptProposal).toHaveBeenCalledWith(proposal.id, '2026-08-25T09:15:00Z');
+  expect(load).toHaveBeenCalledTimes(4);
   expect(store.getState().capabilities[0].state).toBe('ask_me');
 });

@@ -15,6 +15,7 @@ export interface GovernanceStoreDependencies {
   grant?(operation: PermittedOperation, now: string): Promise<void>;
   revoke?(operation: PermittedOperation, now: string): Promise<void>;
   rejectProposal?(proposalId: string, now: string): Promise<void>;
+  acceptProposal?(proposalId: string, now: string): Promise<void>;
 }
 
 export interface GovernanceStoreState {
@@ -27,6 +28,7 @@ export interface GovernanceStoreState {
   grantAuthority(operation: PermittedOperation, now: string): Promise<void>;
   askMe(operation: PermittedOperation, now: string): Promise<void>;
   rejectProposal(proposalId: string, now: string): Promise<void>;
+  acceptProposal(proposalId: string, now: string): Promise<void>;
   clearError(): void;
   clearForAuthorityReplacement(): void;
 }
@@ -83,6 +85,14 @@ export function createGovernanceStore(dependencies: GovernanceStoreDependencies)
         set({ capabilities: snapshot.capabilities, pendingProposals: snapshot.proposals, hydratedAt: now, error: null });
       } catch { set({ error: 'The proposal could not be reviewed.' }); }
     },
+    acceptProposal: async (proposalId, now) => {
+      if (dependencies.acceptProposal === undefined) return set({ error: 'Proposal acceptance is unavailable.' });
+      try {
+        await dependencies.acceptProposal(proposalId, now);
+        const snapshot = await dependencies.load(now);
+        set({ capabilities: snapshot.capabilities, pendingProposals: snapshot.proposals, hydratedAt: now, error: null });
+      } catch { set({ error: 'The proposal could not be applied.' }); }
+    },
     clearError: () => set({ error: null }),
     clearForAuthorityReplacement: () => {
       generation += 1;
@@ -99,4 +109,5 @@ export const useGovernanceStore = createGovernanceStore({
   grant: (operation, now) => withTaisaDatabase((database) => createGovernanceActions(database).grant(operation, now)),
   revoke: (operation, now) => withTaisaDatabase((database) => createGovernanceActions(database).revoke(operation, now)),
   rejectProposal: (id, now) => withTaisaDatabase((database) => createGovernanceActions(database).rejectProposal(id, now)),
+  acceptProposal: (id, now) => withTaisaDatabase((database) => createGovernanceActions(database).acceptProposal(id, now)),
 });

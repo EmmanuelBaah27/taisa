@@ -153,6 +153,15 @@ function operationTransaction(transaction: RepositoryTransaction, occurredAt: st
           $createdAt: value.createdAt, $key: value.id },
       );
     },
+    async resolveProposal(proposalId, resolvedAt) {
+      const result = await transaction.runAsync(
+        `UPDATE proposals SET resolution = 'accepted', updated_at = $resolvedAt
+         WHERE id = $proposalId AND admission IN ('pending', 'admitted')
+           AND resolution = 'unapplied' AND revalidation = 'valid'`,
+        { $proposalId: proposalId, $resolvedAt: resolvedAt },
+      );
+      if (result.changes !== 1) throw new Error('Proposal is no longer applicable');
+    },
     recordOutcome: (operation) => updateCapabilityOutcome(transaction, operation, 'success', occurredAt),
   };
 }
