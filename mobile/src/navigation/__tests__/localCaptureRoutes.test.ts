@@ -178,7 +178,7 @@ describe('local-first capture navigation', () => {
       path.resolve(__dirname, '../../../app/_layout.tsx'),
       'utf8',
     );
-    expect(rootLayout).toMatch(/if \(fontsLoaded && startup !== null && privacyState\.initialized\) \{[\s\S]*SplashScreen\.hideAsync\(\)/);
+    expect(rootLayout).toMatch(/fontsLoaded && startup !== null && privacyState\.initialized[\s\S]*startup\.status !== 'ready' \|\| platformHydrated[\s\S]*SplashScreen\.hideAsync\(\)/);
     expect(rootLayout).not.toMatch(/if \(fontsLoaded\) SplashScreen\.hideAsync\(\)/);
   });
 
