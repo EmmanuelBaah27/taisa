@@ -145,6 +145,10 @@ dependency stage. If not yet in BUILD:
 Run the narrowest relevant check throughout BUILD, then run the complete applicable row before PR or Ship. Missing test infrastructure is a reported gap, not a passing test. Mobile-facing changes require Baah's device QA unless explicitly classified as non-visual and non-device-sensitive.
 
 **DS compliance check (blocks PR if any fail):**
+- Build — run `npm run verify:design-system` throughout Product implementation and resolve every finding.
+- Review — run `npm run verify:design-system` before requesting code review or opening a PR.
+- Preview — run `npm run verify:design-system` before integrating a candidate into `preview/taisa`.
+- Ship — run `npm run verify:design-system` again on the exact revision proposed for merge.
 - [ ] All visual primitives in screens import from `mobile/src/components/ui/`
 - [ ] No `StyleSheet.create()` in new or changed files
 - [ ] New DS components: typed + exported props, documented in `docs/design-system.md`

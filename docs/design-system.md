@@ -76,9 +76,7 @@ Product copy renders through the semantic `Text` component. Its default is reada
 | `label`, `labelStrong` | 14px | Supporting labels and compact controls |
 | `metadata`, `metadataStrong` | 12px | Timestamps and genuinely tertiary detail |
 
-Legacy composite utilities remain only as migration aliases and must not be introduced in new Product code.
-
-Never use raw `text-sm font-semibold` combinations — use the composite utilities:
+Legacy composite utilities remain only as compatibility aliases outside Product UI and must not be introduced in Product code. Never combine raw size and weight utilities.
 
 | Semantic weight | Inter registration |
 |---|---|
@@ -86,26 +84,6 @@ Never use raw `text-sm font-semibold` combinations — use the composite utiliti
 | Medium (500) | `Inter_500Medium` |
 | Semibold (600) | `Inter_600SemiBold` |
 | Bold (700) | `Inter_700Bold` |
-
-| Class | Size | Weight | Use for |
-|---|---|---|---|
-| `text-H1` | 24px / 32px lh | 600 | Page headings |
-| `text-H2` | 22px / 28px lh | 600 | Section headings |
-| `text-H3` | 20px / 26px lh | 600 | Sub-headings |
-| `text-xlg-regular` | 18px / 26px lh | 400 | Large body |
-| `text-lg-regular` | 18px / 26px lh | 400 | Body |
-| `text-lg-medium` | 18px / 26px lh | 500 | Body emphasis |
-| `text-lg-semibold` | 18px / 26px lh | 600 | Body strong |
-| `text-base-regular` | 16px / 22px lh | 400 | **Base UI — default text size** |
-| `text-base-medium` | 16px / 22px lh | 500 | UI emphasis |
-| `text-base-semibold` | 16px / 22px lh | 600 | UI strong |
-| `text-base-bold` | 16px / 22px lh | 700 | Strong compact emphasis where semibold is insufficient |
-| `text-small-regular` | 14px / 20px lh | 400 | Small labels, metadata |
-| `text-small-medium` | 14px / 20px lh | 500 | Small emphasis |
-| `text-small-semibold` | 14px / 20px lh | 600 | Small strong |
-| `text-caption-regular` | 12px / 16px lh | 400 | Timestamps, micro labels |
-| `text-caption-medium` | 12px / 16px lh | 500 | Caption emphasis |
-| `text-caption-semibold` | 12px / 16px lh | 600 | Caption strong |
 
 ---
 
@@ -171,7 +149,7 @@ Never use raw `text-sm font-semibold` combinations — use the composite utiliti
 | `NaviiAvatar` | `seed`, `size` | Deterministic generated avatar presentation |
 
 **Extraction rule:** pattern appears in 2+ places → extract to `ui/`. Do not extract speculatively.
-**DS compliance:** no `StyleSheet.create()`, no raw hex, import tokens from Tailwind classes only.
+**DS compliance:** no `StyleSheet.create()`, no raw values, and no raw React Native `Text` in Product code. Use semantic component props or NativeWind utilities; use the typed token facade only where a native API requires a resolved value. Every exception is exact, owned, justified, expiring, and checked for continued use.
 ## Voice composer
 
 `VoiceComposer` is the bottom-loaded mixed-input control used by coaching conversations. The
