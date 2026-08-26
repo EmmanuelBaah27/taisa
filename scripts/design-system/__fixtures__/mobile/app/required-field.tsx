@@ -1,5 +1,4 @@
-const RN = require('react-native');
-
 export function RequiredField() {
-  return <RN.Switch />;
+  const Field = require('react-native').Switch;
+  return <Field />;
 }

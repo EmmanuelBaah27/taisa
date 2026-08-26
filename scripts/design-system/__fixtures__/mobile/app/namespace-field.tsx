@@ -1,5 +1,6 @@
 import * as RN from 'react-native';
 
 export function NamespaceField() {
-  return <RN.TextInput />;
+  const { TextInput: Field } = RN;
+  return <Field />;
 }

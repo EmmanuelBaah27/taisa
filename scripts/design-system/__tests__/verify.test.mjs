@@ -31,7 +31,7 @@ for (const [file, rule] of [
 }
 
 test('runtime barrel parser records aliased export names and exact implementations', () => {
-  assert.deepEqual(runtimeComponentExports("export { Foo as Bar, Baz } from './Surface';\nexport type { Props } from './Surface';"), [
+  assert.deepEqual(runtimeComponentExports("export { Foo as /* public */ Bar, Baz, type Props } from './Surface';\nexport type { OtherProps } from './Surface';"), [
     { name: 'Bar', implementation: 'mobile/src/components/ui/Surface.tsx' },
     { name: 'Baz', implementation: 'mobile/src/components/ui/Surface.tsx' },
   ]);

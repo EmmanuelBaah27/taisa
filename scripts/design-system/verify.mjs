@@ -99,11 +99,13 @@ export async function verifyPaths({ root, paths, exceptions = [], today = new Da
 export function runtimeComponentExports(barrel) {
   return [...barrel.matchAll(/export\s+(?!type\s)\{([\s\S]*?)\}\s+from\s+['"]\.\/(.+?)['"]/g)]
     .flatMap((match) => match[1].split(',').map((entry) => {
-      const parts = entry.trim().replace(/^type\s+/, '').split(/\s+as\s+/);
+      const normalized = entry.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/g, '').trim();
+      if (normalized.startsWith('type ')) return null;
+      const parts = normalized.split(/\s+as\s+/);
       const name = parts.at(-1);
       return { name, implementation: `mobile/src/components/ui/${match[2]}.tsx` };
     }))
-    .filter(({ name, implementation }) => /^[A-Z][A-Za-z0-9]*$/.test(name) && /^[A-Z]/.test(implementation.split('/').at(-1)));
+    .filter((entry) => entry && /^[A-Z][A-Za-z0-9]*$/.test(entry.name) && /^[A-Z]/.test(entry.implementation.split('/').at(-1)));
 }
 
 async function componentRegistryFindings(root, registry) {
