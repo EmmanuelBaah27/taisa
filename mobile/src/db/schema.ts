@@ -579,4 +579,19 @@ export const SCHEMA_V5_STATEMENTS: readonly string[] = [
   `CREATE INDEX behavior_events_expiry_idx ON behavior_events(expires_at)`,
   `CREATE INDEX local_notifications_group_idx
     ON local_notifications(grouping_key, disposition, read_state, created_at DESC)`,
+  `INSERT OR IGNORE INTO work_records
+    (id, kind, title, project_id, status, freshness, planned_week, planned_day,
+     source_id, revision, created_at, updated_at, last_confirmed_at, idempotency_key)
+   SELECT id, 'task', title, NULL,
+     CASE lifecycle
+       WHEN 'completed' THEN 'completed'
+       WHEN 'dropped' THEN 'cancelled'
+       WHEN 'archived' THEN 'cancelled'
+       ELSE 'open'
+     END,
+     'current', NULL, CASE WHEN due_at IS NULL THEN NULL ELSE substr(due_at, 1, 10) END,
+     COALESCE(source_message_id, id), 1, created_at, updated_at, status_changed_at,
+     'migrate-action:' || id
+   FROM actions
+   WHERE lifecycle IN ('open', 'completed', 'dropped', 'archived')`,
 ];

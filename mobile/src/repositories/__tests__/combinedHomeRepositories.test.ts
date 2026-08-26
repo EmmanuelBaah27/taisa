@@ -23,6 +23,7 @@ import { createInsightRepository } from '../insightRepository';
 import { createPeriodRepository } from '../periodRepository';
 import { createProposalRepository } from '../proposalRepository';
 import { createReadinessRepository } from '../readinessRepository';
+import { createTestDatabase } from './testDatabase';
 
 class FakeConnection implements RepositoryConnection {
   readonly runs: Array<{ source: string; params?: SQLiteBindParams }> = [];
@@ -88,6 +89,38 @@ test('schema version 5 creates each governed Home table once', () => {
       ),
     ).toBe(true);
   }
+});
+
+test('version 5 migrates confirmed legacy actions into authoritative tasks once', async () => {
+  const database = createTestDatabase(4);
+  await database.runAsync(
+    `INSERT INTO actions
+      (id, goal_id, source_message_id, title, description, lifecycle, priority, due_at,
+       supersedes_id, created_at, updated_at, status_changed_at, idempotency_key)
+     VALUES ('action-1', NULL, NULL, 'Legacy task', NULL, 'completed', NULL,
+       '2026-08-28T09:00:00Z', NULL, '2026-08-25T08:00:00Z',
+       '2026-08-26T08:00:00Z', '2026-08-26T08:00:00Z', 'legacy-action-1')`,
+  );
+  await database.runAsync(
+    `INSERT INTO actions
+      (id, goal_id, source_message_id, title, description, lifecycle, priority, due_at,
+       supersedes_id, created_at, updated_at, status_changed_at, idempotency_key)
+     VALUES ('action-proposed', NULL, NULL, 'Unconfirmed', NULL, 'proposed', NULL,
+       NULL, NULL, '2026-08-25T08:00:00Z', '2026-08-25T08:00:00Z',
+       '2026-08-25T08:00:00Z', 'legacy-action-proposed')`,
+  );
+  for (const statement of SCHEMA_V5_STATEMENTS) await database.execAsync(statement);
+  for (const statement of SCHEMA_V5_STATEMENTS) {
+    if (statement.startsWith('INSERT OR IGNORE INTO work_records')) await database.execAsync(statement);
+  }
+
+  await expect(database.getAllAsync(
+    'SELECT id, kind, status, planned_day, source_id FROM work_records ORDER BY id',
+  )).resolves.toEqual([{
+    id: 'action-1', kind: 'task', status: 'completed', planned_day: '2026-08-28',
+    source_id: 'action-1',
+  }]);
+  database.close();
 });
 
 test('work repository maps records and requires caller transactions for writes', async () => {
