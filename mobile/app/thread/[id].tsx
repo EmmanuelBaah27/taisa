@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import { View, Text, ScrollView, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
+import { View, ScrollView, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useThreadStore } from '../../src/stores/threadStore';
 import { TaisaReplyCard } from '../../src/components/ui/TaisaReplyCard';
 import { colors } from '../../src/constants/theme';
 import type { ChatMessage } from '../../src/stores/threadStore';
 import { LiquidGlassPressable } from '../../src/components/ui/LiquidGlassPressable';
+import { Text } from '../../src/components/ui/Text';
+import { colorTokens } from '../../src/design-system/tokens';
 
 export default function ThreadScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -36,7 +38,7 @@ export default function ThreadScreen() {
   if (isLoadingMessages && !currentSession) {
     return (
       <View className="flex-1 bg-background items-center justify-center">
-        <ActivityIndicator color={colors.accent} />
+        <ActivityIndicator color={colorTokens.action.primary} />
       </View>
     );
   }
@@ -56,11 +58,11 @@ export default function ThreadScreen() {
       {/* Header */}
       <View className="flex-row items-center px-4 pt-14 pb-3 border-b border-border-subtle">
         <LiquidGlassPressable accessibilityLabel="Back" hierarchy="subtle" onPress={() => router.back()} className="mr-3 px-3 py-2">
-          <Text className="text-lime-700 text-base">‹ Back</Text>
+          <Text role="bodyStrong" color="success">‹ Back</Text>
         </LiquidGlassPressable>
-        <Text className="text-foreground text-base font-semibold flex-1" numberOfLines={1}>
-          {currentSession?.title ?? 'Thread'}
-        </Text>
+        <View className="flex-1">
+          <Text role="bodyStrong" numberOfLines={1}>{currentSession?.title ?? 'Thread'}</Text>
+        </View>
       </View>
 
       <ScrollView
@@ -72,12 +74,10 @@ export default function ThreadScreen() {
         {isVoiceEntry && entryMessages.length >= 1 && (
           <View className="mb-4">
             <View className="bg-card rounded-lg px-3 py-2 mb-2">
-              <Text className="text-lime-700 text-xs font-bold mb-1">
-                🎤 Voice{currentSession?.audioDurationSeconds ? ` · ${formatDuration(currentSession.audioDurationSeconds)}` : ''}
-              </Text>
-              <Text className="text-muted-foreground text-sm leading-relaxed">
-                {entryMessages[0]?.content ?? ''}
-              </Text>
+              <View className="mb-1">
+                <Text role="metadataStrong" color="success">🎤 Voice{currentSession?.audioDurationSeconds ? ` · ${formatDuration(currentSession.audioDurationSeconds)}` : ''}</Text>
+              </View>
+              <Text color="secondary">{entryMessages[0]?.content ?? ''}</Text>
             </View>
 
             {entryMessages.length >= 2 && (
@@ -103,7 +103,7 @@ export default function ThreadScreen() {
         {isSending && (
           <View className="items-start mb-2">
             <View className="bg-card rounded-lg px-3 py-2">
-              <Text className="text-text-tertiary text-xs">Taisa is thinking…</Text>
+              <Text role="metadata" color="tertiary">Taisa is thinking…</Text>
             </View>
           </View>
         )}
@@ -116,7 +116,7 @@ export default function ThreadScreen() {
           onChangeText={setInput}
           placeholder="Reply..."
           placeholderTextColor={colors.textTertiary}
-          className="flex-1 bg-card rounded-full px-4 py-2 text-foreground text-sm mr-3"
+          className="flex-1 bg-card rounded-full px-4 py-2 text-foreground text-body mr-3"
           multiline
           maxLength={2000}
           onSubmitEditing={handleSend}
@@ -130,7 +130,7 @@ export default function ThreadScreen() {
           disabled={!input.trim() || isSending}
           className="h-9 w-9"
         >
-          <Text className="text-foreground text-base">↑</Text>
+          <Text role="bodyStrong">↑</Text>
         </LiquidGlassPressable>
       </View>
     </KeyboardAvoidingView>
@@ -142,15 +142,13 @@ function MessageBubble({ message }: { message: ChatMessage }) {
   return (
     <View className={`mb-2 ${isUser ? 'items-end' : 'items-start'}`}>
       {!isUser && (
-        <Text className="text-lime-700 text-xs font-bold mb-1 ml-1">Taisa</Text>
+        <View className="mb-1 ml-1"><Text role="metadataStrong" color="success">Taisa</Text></View>
       )}
       <View
         className={`rounded-xl px-3 py-2 max-w-xs ${isUser ? 'bg-lime-100 rounded-tr-sm' : 'bg-card rounded-tl-sm'}`}
-        style={!isUser ? { borderLeftWidth: 2, borderLeftColor: '#cdec1a' } : undefined}
+        style={!isUser ? { borderLeftWidth: 2, borderLeftColor: colorTokens.action.primary } : undefined}
       >
-        <Text className={`text-sm leading-relaxed ${isUser ? 'text-foreground' : 'text-muted-foreground'}`}>
-          {message.content}
-        </Text>
+        <Text color={isUser ? 'primary' : 'secondary'}>{message.content}</Text>
       </View>
     </View>
   );
