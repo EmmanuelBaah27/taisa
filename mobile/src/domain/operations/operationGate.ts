@@ -2,6 +2,7 @@ import type {
   CapabilitySnapshot,
   OperationReceipt,
   PermittedOperation,
+  Project,
   WorkRecord,
 } from '@taisa/shared';
 
@@ -18,7 +19,10 @@ export interface OperationRequest {
 
 export interface OperationTransaction {
   updateRecord(record: WorkRecord): Promise<void>;
+  updateProject(project: Project): Promise<void>;
+  linkConversation(request: OperationRequest, record: WorkRecord): Promise<void>;
   appendRecordEvent(request: OperationRequest, before: WorkRecord, after: WorkRecord): Promise<void>;
+  appendProjectEvent(request: OperationRequest, before: Project, after: Project): Promise<void>;
   appendReceipt(receipt: OperationReceipt): Promise<void>;
   recordOutcome(operation: PermittedOperation, outcome: 'success'): Promise<void>;
 }
@@ -26,6 +30,7 @@ export interface OperationTransaction {
 export interface OperationDependencies {
   getCapability(operation: PermittedOperation): Promise<CapabilitySnapshot | null>;
   getRecord(id: string): Promise<WorkRecord | null>;
+  getProject(id: string): Promise<Project | null>;
   transaction<T>(work: (transaction: OperationTransaction) => Promise<T>): Promise<T>;
 }
 
@@ -124,15 +129,57 @@ function canExecute(snapshot: CapabilitySnapshot | null, operation: PermittedOpe
 }
 
 function applyRecordOperation(request: OperationRequest, record: WorkRecord): WorkRecord {
-  if (request.operation !== 'complete_explicit_task' || record.kind !== 'task') {
-    throw new OperationGateError('INVALID_TARGET');
+  const payload = payloadObject(request);
+  let changes: Partial<WorkRecord>;
+  switch (request.operation) {
+    case 'complete_explicit_task':
+      if (record.kind !== 'task') throw new OperationGateError('INVALID_TARGET');
+      changes = { status: 'completed', lastConfirmedAt: request.requestedAt };
+      break;
+    case 'associate_existing_project':
+      if (record.kind !== 'task') throw new OperationGateError('INVALID_TARGET');
+      changes = { projectId: payload.projectId as string };
+      break;
+    case 'apply_strong_task_conversation_link':
+      if (record.kind !== 'task') throw new OperationGateError('INVALID_TARGET');
+      changes = {};
+      break;
+    case 'update_explicit_followup_status':
+      if (record.kind !== 'followup') throw new OperationGateError('INVALID_TARGET');
+      changes = { status: payload.status as WorkRecord['status'], lastConfirmedAt: request.requestedAt };
+      break;
+    case 'update_explicit_blocker_status':
+      if (record.kind !== 'blocker') throw new OperationGateError('INVALID_TARGET');
+      changes = { status: payload.status as WorkRecord['status'], lastConfirmedAt: request.requestedAt };
+      break;
+    case 'update_explicit_project_status':
+      throw new OperationGateError('INVALID_TARGET');
   }
   return {
     ...record,
-    status: 'completed',
+    ...changes,
     revision: record.revision + 1,
     updatedAt: request.requestedAt,
-    lastConfirmedAt: request.requestedAt,
+  };
+}
+
+function operationReceipt(
+  request: OperationRequest,
+  snapshot: CapabilitySnapshot,
+  priorRevision: number,
+  resultingRevision: number,
+): OperationReceipt {
+  return {
+    id: request.id,
+    operation: request.operation,
+    targetId: request.targetId,
+    sourceId: request.sourceId,
+    priorRevision,
+    resultingRevision,
+    visibility: snapshot.state === 'trusted' ? 'history' : 'trial',
+    undoable: request.operation === 'complete_explicit_task',
+    undoneAt: null,
+    createdAt: request.requestedAt,
   };
 }
 
@@ -149,6 +196,39 @@ export async function executePermittedOperation(
     throw new OperationGateError('CONFIRMATION_REQUIRED');
   }
 
+  if (request.operation === 'associate_existing_project') {
+    const projectId = payloadObject(request).projectId as string;
+    if (await deps.getProject(projectId) === null) {
+      throw new OperationGateError('TARGET_NOT_FOUND');
+    }
+  }
+
+  if (snapshot === null) throw new OperationGateError('OPERATION_NOT_PERMITTED');
+
+  if (request.operation === 'update_explicit_project_status') {
+    const currentProject = await deps.getProject(request.targetId);
+    if (currentProject === null) throw new OperationGateError('TARGET_NOT_FOUND');
+    if (currentProject.revision !== request.expectedRevision) {
+      throw new OperationGateError('REVISION_CONFLICT');
+    }
+    const updatedProject: Project = {
+      ...currentProject,
+      status: payloadObject(request).status as Project['status'],
+      revision: currentProject.revision + 1,
+      updatedAt: request.requestedAt,
+    };
+    const receipt = operationReceipt(
+      request, snapshot, currentProject.revision, updatedProject.revision,
+    );
+    return deps.transaction(async (transaction) => {
+      await transaction.updateProject(updatedProject);
+      await transaction.appendProjectEvent(request, currentProject, updatedProject);
+      await transaction.appendReceipt(receipt);
+      await transaction.recordOutcome(request.operation, 'success');
+      return receipt;
+    });
+  }
+
   const current = await deps.getRecord(request.targetId);
   if (current === null) {
     throw new OperationGateError('TARGET_NOT_FOUND');
@@ -157,22 +237,13 @@ export async function executePermittedOperation(
     throw new OperationGateError('REVISION_CONFLICT');
   }
   const updated = applyRecordOperation(request, current);
-  const visibility = snapshot?.state === 'trusted' ? 'history' : 'trial';
-  const receipt: OperationReceipt = {
-    id: request.id,
-    operation: request.operation,
-    targetId: request.targetId,
-    sourceId: request.sourceId,
-    priorRevision: current.revision,
-    resultingRevision: updated.revision,
-    visibility,
-    undoable: request.operation === 'complete_explicit_task',
-    undoneAt: null,
-    createdAt: request.requestedAt,
-  };
+  const receipt = operationReceipt(request, snapshot, current.revision, updated.revision);
 
   return deps.transaction(async (transaction) => {
     await transaction.updateRecord(updated);
+    if (request.operation === 'apply_strong_task_conversation_link') {
+      await transaction.linkConversation(request, updated);
+    }
     await transaction.appendRecordEvent(request, current, updated);
     await transaction.appendReceipt(receipt);
     await transaction.recordOutcome(request.operation, 'success');

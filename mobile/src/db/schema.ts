@@ -418,7 +418,7 @@ export const SCHEMA_V5_STATEMENTS: readonly string[] = [
     kind TEXT NOT NULL CHECK (kind IN ('task', 'followup', 'blocker', 'decision', 'outcome')),
     title TEXT NOT NULL,
     project_id TEXT REFERENCES projects(id) ON DELETE SET NULL,
-    status TEXT NOT NULL CHECK (status IN ('open', 'in_progress', 'blocked', 'completed', 'cancelled')),
+    status TEXT NOT NULL CHECK (status IN ('open', 'in_progress', 'blocked', 'resolved', 'completed', 'cancelled')),
     freshness TEXT NOT NULL CHECK (freshness IN ('current', 'stale', 'contradictory')),
     planned_week TEXT,
     planned_day TEXT,

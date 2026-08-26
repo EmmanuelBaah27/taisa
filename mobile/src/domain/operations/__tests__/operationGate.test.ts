@@ -1,4 +1,4 @@
-import type { CapabilitySnapshot, OperationReceipt, WorkRecord } from '@taisa/shared';
+import type { CapabilitySnapshot, OperationReceipt, Project, WorkRecord } from '@taisa/shared';
 
 import {
   executePermittedOperation,
@@ -41,17 +41,27 @@ function request(overrides: Partial<OperationRequest> = {}): OperationRequest {
 function dependencies(snapshot: CapabilitySnapshot, record: WorkRecord = task) {
   const writes: string[] = [];
   const receipts: OperationReceipt[] = [];
+  const recordUpdates: WorkRecord[] = [];
+  const projectUpdates: Project[] = [];
+  const project: Project = {
+    id: 'project-1', name: 'Website Launch', status: 'active', sourceId: 'conversation-1',
+    revision: 2, createdAt: '2026-08-25T08:00:00Z', updatedAt: '2026-08-25T08:00:00Z',
+  };
   const deps: OperationDependencies = {
     getCapability: async () => snapshot,
     getRecord: async () => record,
+    getProject: async () => project,
     transaction: async (work) => work({
-      updateRecord: async () => { writes.push('record'); },
+      updateRecord: async (updated) => { writes.push('record'); recordUpdates.push(updated); },
+      updateProject: async (updated) => { writes.push('project'); projectUpdates.push(updated); },
+      linkConversation: async () => { writes.push('relationship'); },
       appendRecordEvent: async () => { writes.push('event'); },
+      appendProjectEvent: async () => { writes.push('project_event'); },
       appendReceipt: async (receipt) => { writes.push('receipt'); receipts.push(receipt); },
       recordOutcome: async () => { writes.push('outcome'); },
     }),
   };
-  return { deps, writes, receipts };
+  return { deps, writes, receipts, recordUpdates, projectUpdates };
 }
 
 test('permission is exact and cannot authorize an adjacent mutation', async () => {
@@ -89,6 +99,74 @@ test('Trial execution emits a visible undoable receipt in one transaction', asyn
   });
   expect(writes).toEqual(['record', 'event', 'receipt', 'outcome']);
   expect(receipts).toHaveLength(1);
+});
+
+test.each([
+  {
+    operation: 'associate_existing_project' as const,
+    record: task,
+    payload: { projectId: 'project-1' },
+    expected: { projectId: 'project-1', revision: 4 },
+    writes: ['record', 'event', 'receipt', 'outcome'],
+  },
+  {
+    operation: 'apply_strong_task_conversation_link' as const,
+    record: task,
+    payload: { conversationId: 'conversation-2', contribution: 'planning' },
+    expected: { revision: 4 },
+    writes: ['record', 'relationship', 'event', 'receipt', 'outcome'],
+  },
+  {
+    operation: 'update_explicit_followup_status' as const,
+    record: { ...task, kind: 'followup' as const },
+    payload: { status: 'completed' },
+    expected: { status: 'completed', revision: 4 },
+    writes: ['record', 'event', 'receipt', 'outcome'],
+  },
+  {
+    operation: 'update_explicit_blocker_status' as const,
+    record: { ...task, kind: 'blocker' as const },
+    payload: { status: 'resolved' },
+    expected: { status: 'resolved', revision: 4 },
+    writes: ['record', 'event', 'receipt', 'outcome'],
+  },
+])('$operation applies its exact record mutation atomically', async ({
+  operation, record, payload, expected, writes: expectedWrites,
+}) => {
+  const { deps, writes, recordUpdates } = dependencies(capability(operation), record);
+
+  await executePermittedOperation(request({ operation, payload }), deps);
+
+  expect(recordUpdates.at(-1)).toEqual(expect.objectContaining(expected));
+  expect(writes).toEqual(expectedWrites);
+});
+
+test('project status updates the project revision without mutating a work record', async () => {
+  const operation = 'update_explicit_project_status' as const;
+  const { deps, writes, recordUpdates, projectUpdates } = dependencies(capability(operation));
+
+  await executePermittedOperation(request({
+    operation,
+    targetId: 'project-1',
+    expectedRevision: 2,
+    payload: { status: 'paused' },
+  }), deps);
+
+  expect(recordUpdates).toEqual([]);
+  expect(projectUpdates.at(-1)).toEqual(expect.objectContaining({ status: 'paused', revision: 3 }));
+  expect(writes).toEqual(['project', 'project_event', 'receipt', 'outcome']);
+});
+
+test('project association rejects an unknown project before writing', async () => {
+  const operation = 'associate_existing_project' as const;
+  const { deps, writes } = dependencies(capability(operation));
+  deps.getProject = async () => null;
+
+  await expect(executePermittedOperation(request({
+    operation,
+    payload: { projectId: 'missing-project' },
+  }), deps)).rejects.toMatchObject({ code: 'TARGET_NOT_FOUND' });
+  expect(writes).toEqual([]);
 });
 
 test.each<OperationRequest>([

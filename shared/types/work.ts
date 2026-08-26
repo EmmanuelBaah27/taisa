@@ -1,6 +1,7 @@
 export type WorkRecordKind = 'task' | 'followup' | 'blocker' | 'decision' | 'outcome';
 export type WorkFreshness = 'current' | 'stale' | 'contradictory';
-export type WorkStatus = 'open' | 'in_progress' | 'blocked' | 'completed' | 'cancelled';
+export type WorkStatus =
+  | 'open' | 'in_progress' | 'blocked' | 'resolved' | 'completed' | 'cancelled';
 
 export interface Project {
   id: string;
