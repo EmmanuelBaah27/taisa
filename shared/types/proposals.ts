@@ -6,10 +6,10 @@ export interface ProposalPayloadRegistry {
     contribution: 'planning' | 'status' | 'blocker' | 'decision' | 'outcome' | 'evidence';
   };
   task_completion: { recordId: string };
-  followup_status_update: { recordId: string; status: 'open' | 'completed' | 'cancelled' };
-  blocker_status_update: { recordId: string; status: 'open' | 'resolved' };
-  project_status_update: { projectId: string; status: 'active' | 'paused' | 'completed' | 'archived' };
-  work_record: { kind: 'task' | 'followup' | 'blocker' | 'decision' | 'outcome'; title: string; projectId: string | null };
+  followup_status_update: { recordId: string; status: 'waiting' | 'completed' | 'rescheduled' | 'cancelled' };
+  blocker_status_update: { recordId: string; status: 'active' | 'being_resolved' | 'resolved' | 'no_longer_relevant' };
+  project_status_update: { projectId: string; status: 'active' | 'archived' };
+  work_record: { kind: 'task' | 'followup' | 'blocker' | 'decision'; title: string; projectId: string | null };
   insight: { title: string; body: string };
   growth_reflection: { title: string; body: string };
   experiment: { title: string; hypothesis: string };

@@ -37,12 +37,16 @@ async function acceptCreationProposal(
     const insights = createInsightRepository(transaction);
     switch (proposal.type) {
       case 'work_record':
+        const kind = effect.kind as 'task' | 'followup' | 'blocker' | 'decision';
+        const initialStatus = {
+          task: 'open', followup: 'waiting', blocker: 'active', decision: 'current',
+        } as const;
         await createWorkRepository(transaction).insert(transaction, {
-          id: `${proposal.id}:work`, kind: effect.kind as never, title: effect.title as string,
-          projectId: effect.projectId as string | null, status: 'open', freshness: 'current',
+          id: `${proposal.id}:work`, kind, title: effect.title as string,
+          projectId: effect.projectId as string | null, status: initialStatus[kind], freshness: 'current',
           plannedWeek: null, plannedDay: null, sourceId: proposal.source_id, revision: 1,
           createdAt: now, updatedAt: now, lastConfirmedAt: now,
-        }, `${proposal.id}:accept`);
+        } as never, `${proposal.id}:accept`);
         break;
       case 'insight':
         await insights.insertInsight(transaction, {

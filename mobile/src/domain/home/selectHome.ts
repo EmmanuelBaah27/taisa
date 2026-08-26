@@ -25,8 +25,9 @@ function newestFirst<T extends { id: string; updatedAt: string }>(left: T, right
 export function selectHome(input: HomeSelectionInput): HomeView {
   const uniqueRecords = [...new Map(input.records.map((record) => [record.id, record])).values()];
   const actionable = uniqueRecords.filter((record) =>
-    !['completed', 'resolved', 'cancelled'].includes(record.status)
-    && record.freshness !== 'contradictory',
+    !['completed', 'removed', 'cancelled', 'resolved', 'no_longer_relevant', 'superseded', 'reversed']
+      .includes(record.status)
+    && record.freshness !== 'needs_confirmation',
   );
   const thisWeek = actionable
     .filter((record) => record.plannedWeek === input.period.startsOn)

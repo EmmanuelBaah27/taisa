@@ -6,9 +6,11 @@ const Revision = z.number().int().positive();
 
 const RecordSchema = z.object({
   id: Id,
-  kind: z.enum(['task', 'followup', 'blocker', 'decision', 'outcome']),
+  kind: z.enum(['task', 'followup', 'blocker', 'decision']),
   title: z.string().trim().min(1).max(500),
-  status: z.enum(['open', 'in_progress', 'blocked', 'resolved', 'completed', 'cancelled']),
+  status: z.enum(['open', 'completed', 'removed', 'waiting', 'rescheduled', 'cancelled',
+    'active', 'being_resolved', 'resolved', 'no_longer_relevant', 'current', 'reopened',
+    'superseded', 'reversed']),
   revision: Revision,
   projectId: Id.nullable(),
 }).strict();
@@ -75,16 +77,16 @@ const ProposalSchema = z.discriminatedUnion('type', [
   }).strict()),
   proposalSchema('task_completion', z.object({ recordId: Id }).strict()),
   proposalSchema('followup_status_update', z.object({
-    recordId: Id, status: z.enum(['open', 'completed', 'cancelled']),
+    recordId: Id, status: z.enum(['waiting', 'completed', 'rescheduled', 'cancelled']),
   }).strict()),
   proposalSchema('blocker_status_update', z.object({
-    recordId: Id, status: z.enum(['open', 'resolved']),
+    recordId: Id, status: z.enum(['active', 'being_resolved', 'resolved', 'no_longer_relevant']),
   }).strict()),
   proposalSchema('project_status_update', z.object({
-    projectId: Id, status: z.enum(['active', 'paused', 'completed', 'archived']),
+    projectId: Id, status: z.enum(['active', 'archived']),
   }).strict()),
   proposalSchema('work_record', z.object({
-    kind: z.enum(['task', 'followup', 'blocker', 'decision', 'outcome']),
+    kind: z.enum(['task', 'followup', 'blocker', 'decision']),
     title: z.string().trim().min(1).max(500),
     projectId: Id.nullable(),
   }).strict()),

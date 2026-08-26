@@ -1,21 +1,23 @@
-export type WorkRecordKind = 'task' | 'followup' | 'blocker' | 'decision' | 'outcome';
-export type WorkFreshness = 'current' | 'stale' | 'contradictory';
-export type WorkStatus =
-  | 'open' | 'in_progress' | 'blocked' | 'resolved' | 'completed' | 'cancelled';
+export type WorkRecordKind = 'task' | 'followup' | 'blocker' | 'decision';
+export type WorkFreshness = 'current' | 'needs_confirmation' | 'stale';
+export type TaskStatus = 'open' | 'completed' | 'removed';
+export type FollowupStatus = 'waiting' | 'completed' | 'rescheduled' | 'cancelled';
+export type BlockerStatus = 'active' | 'being_resolved' | 'resolved' | 'no_longer_relevant';
+export type DecisionStatus = 'current' | 'reopened' | 'superseded' | 'reversed';
+export type WorkStatus = TaskStatus | FollowupStatus | BlockerStatus | DecisionStatus;
 
 export interface Project {
   id: string;
   name: string;
-  status: 'active' | 'paused' | 'completed' | 'archived';
+  status: 'active' | 'archived';
   sourceId: string;
   revision: number;
   createdAt: string;
   updatedAt: string;
 }
 
-export interface WorkRecord {
+interface WorkRecordBase {
   id: string;
-  kind: WorkRecordKind;
   title: string;
   projectId: string | null;
   status: WorkStatus;
@@ -28,6 +30,12 @@ export interface WorkRecord {
   updatedAt: string;
   lastConfirmedAt: string | null;
 }
+
+export type WorkRecord =
+  | (WorkRecordBase & { kind: 'task'; status: TaskStatus })
+  | (WorkRecordBase & { kind: 'followup'; status: FollowupStatus })
+  | (WorkRecordBase & { kind: 'blocker'; status: BlockerStatus })
+  | (WorkRecordBase & { kind: 'decision'; status: DecisionStatus });
 
 export interface WorkRelationship {
   id: string;

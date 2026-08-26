@@ -10,7 +10,7 @@ import {
   type UndoDependencies,
 } from '../operationGate';
 
-const task: WorkRecord = {
+const task: Extract<WorkRecord, { kind: 'task' }> = {
   id: 'task-1', kind: 'task', title: 'Send proposal', projectId: null,
   status: 'open', freshness: 'current', plannedWeek: null, plannedDay: null,
   sourceId: 'conversation-1', revision: 3,
@@ -131,14 +131,14 @@ test.each([
   },
   {
     operation: 'update_explicit_followup_status' as const,
-    record: { ...task, kind: 'followup' as const },
+    record: { ...task, kind: 'followup' as const, status: 'waiting' as const },
     payload: { status: 'completed' },
     expected: { status: 'completed', revision: 4 },
     writes: ['record', 'event', 'receipt', 'outcome'],
   },
   {
     operation: 'update_explicit_blocker_status' as const,
-    record: { ...task, kind: 'blocker' as const },
+    record: { ...task, kind: 'blocker' as const, status: 'active' as const },
     payload: { status: 'resolved' },
     expected: { status: 'resolved', revision: 4 },
     writes: ['record', 'event', 'receipt', 'outcome'],
@@ -162,11 +162,11 @@ test('project status updates the project revision without mutating a work record
     operation,
     targetId: 'project-1',
     expectedRevision: 2,
-    payload: { status: 'paused' },
+    payload: { status: 'archived' },
   }), deps);
 
   expect(recordUpdates).toEqual([]);
-  expect(projectUpdates.at(-1)).toEqual(expect.objectContaining({ status: 'paused', revision: 3 }));
+  expect(projectUpdates.at(-1)).toEqual(expect.objectContaining({ status: 'archived', revision: 3 }));
   expect(writes).toEqual(['project', 'project_event', 'receipt', 'outcome']);
 });
 
@@ -191,7 +191,7 @@ test.each<OperationRequest>([
   }),
   request({ operation: 'update_explicit_followup_status', payload: { status: 'completed' } }),
   request({ operation: 'update_explicit_blocker_status', payload: { status: 'resolved' } }),
-  request({ operation: 'update_explicit_project_status', payload: { status: 'paused' } }),
+  request({ operation: 'update_explicit_project_status', payload: { status: 'archived' } }),
 ])('accepts the exact payload for $operation', (candidate) => {
   expect(() => validateOperationRequest(candidate)).not.toThrow();
 });

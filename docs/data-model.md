@@ -42,6 +42,12 @@ views and are never durable authority.
 | `behavior_events`, `behavior_aggregates` | Bounded, expiring learning evidence separate from authoritative records |
 | `local_notifications` | Local read state and disposition independent of source-record lifecycle |
 
+Work lifecycles are discriminated and enforced in both shared types and SQLite: tasks use
+open/completed/removed; follow-ups use waiting/completed/rescheduled/cancelled; blockers use
+active/being-resolved/resolved/no-longer-relevant; decisions use
+current/reopened/superseded/reversed. Projects use active/archived. Work freshness is independent:
+current, needs-confirmation, or stale.
+
 `mobile/src/repositories/homeSnapshotRepository.ts` provides bounded local Home/governance read
 projections. Cross-entity writes use one repository transaction. Accepted proposals apply their
 authoritative effect and change proposal resolution in that same transaction; failures roll back

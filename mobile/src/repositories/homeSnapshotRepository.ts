@@ -11,13 +11,8 @@ import type { RepositoryConnection } from '../db/types';
 import { deriveWeeklyPeriod } from '../domain/periods/weeklyPeriod';
 import type { GovernanceSnapshot } from '../stores/governanceStore';
 import type { HomeSnapshot } from '../stores/homeStore';
+import { mapWorkRecord, type WorkRecordRow } from './workRepository';
 
-type WorkRow = {
-  id: string; kind: WorkRecord['kind']; title: string; project_id: string | null;
-  status: WorkRecord['status']; freshness: WorkRecord['freshness']; planned_week: string | null;
-  planned_day: string | null; source_id: string; revision: number; created_at: string;
-  updated_at: string; last_confirmed_at: string | null;
-};
 type InsightRow = {
   id: string; kind: Insight['kind']; title: string; body: string; freshness: Insight['freshness'];
   evidence_json: string; created_at: string; updated_at: string;
@@ -55,7 +50,7 @@ export async function loadHomeSnapshot(
       `SELECT id, starts_on, ends_on, state, reviewed_at, closed_at
        FROM weekly_periods WHERE id = $id`, { $id: derived.id },
     ),
-    database.getAllAsync<WorkRow>(
+    database.getAllAsync<WorkRecordRow>(
       `SELECT id, kind, title, project_id, status, freshness, planned_week, planned_day,
          source_id, revision, created_at, updated_at, last_confirmed_at FROM work_records`,
     ),
@@ -78,12 +73,7 @@ export async function loadHomeSnapshot(
   };
   return {
     period,
-    records: records.map((row) => ({
-      id: row.id, kind: row.kind, title: row.title, projectId: row.project_id,
-      status: row.status, freshness: row.freshness, plannedWeek: row.planned_week,
-      plannedDay: row.planned_day, sourceId: row.source_id, revision: row.revision,
-      createdAt: row.created_at, updatedAt: row.updated_at, lastConfirmedAt: row.last_confirmed_at,
-    })),
+    records: records.map(mapWorkRecord),
     insights: insights.map((row) => ({
       id: row.id, kind: row.kind, title: row.title, body: row.body, freshness: row.freshness,
       evidence: JSON.parse(row.evidence_json), createdAt: row.created_at, updatedAt: row.updated_at,

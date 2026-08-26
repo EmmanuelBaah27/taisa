@@ -101,7 +101,7 @@ export function validateOperationRequest(request: OperationRequest): void {
     case 'update_explicit_followup_status':
       if (
         !hasExactKeys(payload, ['status'])
-        || !['open', 'completed', 'cancelled'].includes(payload.status as string)
+        || !['waiting', 'completed', 'rescheduled', 'cancelled'].includes(payload.status as string)
       ) {
         invalidPayload();
       }
@@ -109,7 +109,7 @@ export function validateOperationRequest(request: OperationRequest): void {
     case 'update_explicit_blocker_status':
       if (
         !hasExactKeys(payload, ['status'])
-        || !['open', 'resolved'].includes(payload.status as string)
+        || !['active', 'being_resolved', 'resolved', 'no_longer_relevant'].includes(payload.status as string)
       ) {
         invalidPayload();
       }
@@ -117,7 +117,7 @@ export function validateOperationRequest(request: OperationRequest): void {
     case 'update_explicit_project_status':
       if (
         !hasExactKeys(payload, ['status'])
-        || !['active', 'paused', 'completed', 'archived'].includes(payload.status as string)
+        || !['active', 'archived'].includes(payload.status as string)
       ) {
         invalidPayload();
       }
@@ -133,37 +133,28 @@ function canExecute(snapshot: CapabilitySnapshot | null, operation: PermittedOpe
 
 function applyRecordOperation(request: OperationRequest, record: WorkRecord): WorkRecord {
   const payload = payloadObject(request);
-  let changes: Partial<WorkRecord>;
+  const common = { revision: record.revision + 1, updatedAt: request.requestedAt };
   switch (request.operation) {
     case 'complete_explicit_task':
       if (record.kind !== 'task') throw new OperationGateError('INVALID_TARGET');
-      changes = { status: 'completed', lastConfirmedAt: request.requestedAt };
-      break;
+      return { ...record, ...common, status: 'completed', lastConfirmedAt: request.requestedAt };
     case 'associate_existing_project':
       if (record.kind !== 'task') throw new OperationGateError('INVALID_TARGET');
-      changes = { projectId: payload.projectId as string };
-      break;
+      return { ...record, ...common, projectId: payload.projectId as string };
     case 'apply_strong_task_conversation_link':
       if (record.kind !== 'task') throw new OperationGateError('INVALID_TARGET');
-      changes = {};
-      break;
+      return { ...record, ...common };
     case 'update_explicit_followup_status':
       if (record.kind !== 'followup') throw new OperationGateError('INVALID_TARGET');
-      changes = { status: payload.status as WorkRecord['status'], lastConfirmedAt: request.requestedAt };
-      break;
+      return { ...record, ...common, status: payload.status as typeof record.status,
+        lastConfirmedAt: request.requestedAt };
     case 'update_explicit_blocker_status':
       if (record.kind !== 'blocker') throw new OperationGateError('INVALID_TARGET');
-      changes = { status: payload.status as WorkRecord['status'], lastConfirmedAt: request.requestedAt };
-      break;
+      return { ...record, ...common, status: payload.status as typeof record.status,
+        lastConfirmedAt: request.requestedAt };
     case 'update_explicit_project_status':
       throw new OperationGateError('INVALID_TARGET');
   }
-  return {
-    ...record,
-    ...changes,
-    revision: record.revision + 1,
-    updatedAt: request.requestedAt,
-  };
 }
 
 function operationReceipt(

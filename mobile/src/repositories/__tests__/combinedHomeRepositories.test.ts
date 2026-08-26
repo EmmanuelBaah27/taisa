@@ -123,6 +123,24 @@ test('version 5 migrates confirmed legacy actions into authoritative tasks once'
   database.close();
 });
 
+test('database rejects cross-kind work lifecycles and non-scoped project states', async () => {
+  const database = createTestDatabase();
+  await expect(database.runAsync(
+    `INSERT INTO work_records
+      (id, kind, title, project_id, status, freshness, planned_week, planned_day,
+       source_id, revision, created_at, updated_at, last_confirmed_at, idempotency_key)
+     VALUES ('followup-invalid', 'followup', 'Wait', NULL, 'open', 'current', NULL, NULL,
+       'source', 1, '2026-08-25T08:00:00Z', '2026-08-25T08:00:00Z', NULL, 'invalid-followup')`,
+  )).rejects.toThrow();
+  await expect(database.runAsync(
+    `INSERT INTO projects
+      (id, name, status, source_id, revision, created_at, updated_at, idempotency_key)
+     VALUES ('project-invalid', 'Invalid', 'paused', 'source', 1,
+       '2026-08-25T08:00:00Z', '2026-08-25T08:00:00Z', 'invalid-project')`,
+  )).rejects.toThrow();
+  database.close();
+});
+
 test('work repository maps records and requires caller transactions for writes', async () => {
   const connection = new FakeConnection();
   const repository = createWorkRepository(connection);

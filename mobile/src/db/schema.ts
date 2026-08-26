@@ -406,7 +406,7 @@ export const SCHEMA_V5_STATEMENTS: readonly string[] = [
   `CREATE TABLE projects (
     id TEXT PRIMARY KEY NOT NULL,
     name TEXT NOT NULL,
-    status TEXT NOT NULL CHECK (status IN ('active', 'paused', 'completed', 'archived')),
+    status TEXT NOT NULL CHECK (status IN ('active', 'archived')),
     source_id TEXT NOT NULL,
     revision INTEGER NOT NULL CHECK (revision > 0),
     created_at TEXT NOT NULL,
@@ -415,11 +415,11 @@ export const SCHEMA_V5_STATEMENTS: readonly string[] = [
   )`,
   `CREATE TABLE work_records (
     id TEXT PRIMARY KEY NOT NULL,
-    kind TEXT NOT NULL CHECK (kind IN ('task', 'followup', 'blocker', 'decision', 'outcome')),
+    kind TEXT NOT NULL CHECK (kind IN ('task', 'followup', 'blocker', 'decision')),
     title TEXT NOT NULL,
     project_id TEXT REFERENCES projects(id) ON DELETE SET NULL,
-    status TEXT NOT NULL CHECK (status IN ('open', 'in_progress', 'blocked', 'resolved', 'completed', 'cancelled')),
-    freshness TEXT NOT NULL CHECK (freshness IN ('current', 'stale', 'contradictory')),
+    status TEXT NOT NULL,
+    freshness TEXT NOT NULL CHECK (freshness IN ('current', 'needs_confirmation', 'stale')),
     planned_week TEXT,
     planned_day TEXT,
     source_id TEXT NOT NULL,
@@ -427,7 +427,13 @@ export const SCHEMA_V5_STATEMENTS: readonly string[] = [
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
     last_confirmed_at TEXT,
-    idempotency_key TEXT UNIQUE
+    idempotency_key TEXT UNIQUE,
+    CHECK (
+      (kind = 'task' AND status IN ('open', 'completed', 'removed')) OR
+      (kind = 'followup' AND status IN ('waiting', 'completed', 'rescheduled', 'cancelled')) OR
+      (kind = 'blocker' AND status IN ('active', 'being_resolved', 'resolved', 'no_longer_relevant')) OR
+      (kind = 'decision' AND status IN ('current', 'reopened', 'superseded', 'reversed'))
+    )
   )`,
   `CREATE TABLE work_relationships (
     id TEXT PRIMARY KEY NOT NULL,
@@ -585,8 +591,8 @@ export const SCHEMA_V5_STATEMENTS: readonly string[] = [
    SELECT id, 'task', title, NULL,
      CASE lifecycle
        WHEN 'completed' THEN 'completed'
-       WHEN 'dropped' THEN 'cancelled'
-       WHEN 'archived' THEN 'cancelled'
+       WHEN 'dropped' THEN 'removed'
+       WHEN 'archived' THEN 'removed'
        ELSE 'open'
      END,
      'current', NULL, CASE WHEN due_at IS NULL THEN NULL ELSE substr(due_at, 1, 10) END,

@@ -3,7 +3,7 @@ import type { Project, WorkRecord, WorkRelationship } from '@taisa/shared';
 import type { RepositoryConnection, RepositoryTransaction } from '../db/types';
 import { requireExactlyOneAffectedRow } from './mutationReceipt';
 
-interface WorkRecordRow {
+export interface WorkRecordRow {
   id: string;
   kind: WorkRecord['kind'];
   title: string;
@@ -22,7 +22,14 @@ interface WorkRecordRow {
 const COLUMNS = `id, kind, title, project_id, status, freshness, planned_week,
   planned_day, source_id, revision, created_at, updated_at, last_confirmed_at`;
 
-function mapWorkRecord(row: WorkRecordRow): WorkRecord {
+export function mapWorkRecord(row: WorkRecordRow): WorkRecord {
+  const allowed: Record<WorkRecord['kind'], readonly string[]> = {
+    task: ['open', 'completed', 'removed'],
+    followup: ['waiting', 'completed', 'rescheduled', 'cancelled'],
+    blocker: ['active', 'being_resolved', 'resolved', 'no_longer_relevant'],
+    decision: ['current', 'reopened', 'superseded', 'reversed'],
+  };
+  if (!allowed[row.kind].includes(row.status)) throw new Error('Invalid work-record lifecycle');
   return {
     id: row.id,
     kind: row.kind,
@@ -37,7 +44,7 @@ function mapWorkRecord(row: WorkRecordRow): WorkRecord {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     lastConfirmedAt: row.last_confirmed_at,
-  };
+  } as WorkRecord;
 }
 
 function workRecordParams(record: WorkRecord, idempotencyId: string) {
