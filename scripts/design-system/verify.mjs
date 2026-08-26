@@ -105,9 +105,18 @@ async function componentRegistryFindings(root, registry) {
     .map((match) => `mobile/src/components/ui/${match[1]}.tsx`)
     .filter((value, index, values) => values.indexOf(value) === index);
   const registeredModules = new Set(registry.components.map((component) => component.implementation));
+  const registeredNames = new Set(registry.components.map((component) => component.name));
   for (const implementation of exportedModules) {
     if (!registeredModules.has(implementation)) {
       findings.push({ file: implementation, line: 1, rule: 'component-registry', message: 'Exported UI module is missing from the component registry.' });
+    }
+  }
+  const exportedComponentNames = [...barrel.matchAll(/export\s+(?!type\s)\{([\s\S]*?)\}\s+from/g)]
+    .flatMap((match) => match[1].split(',').map((name) => name.trim()))
+    .filter((name) => /^[A-Z][A-Za-z0-9]*$/.test(name));
+  for (const name of exportedComponentNames) {
+    if (!registeredNames.has(name)) {
+      findings.push({ file: 'mobile/src/components/ui/index.ts', line: 1, rule: 'component-registry', message: `${name} is missing from the component registry.` });
     }
   }
   for (const component of registry.components) {

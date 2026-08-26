@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import { View, ScrollView, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
+import { View, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useThreadStore } from '../../src/stores/threadStore';
 import { TaisaReplyCard } from '../../src/components/ui/TaisaReplyCard';
-import { colors } from '../../src/constants/theme';
 import type { ChatMessage } from '../../src/stores/threadStore';
 import { LiquidGlassPressable } from '../../src/components/ui/LiquidGlassPressable';
 import { Text } from '../../src/components/ui/Text';
 import { colorTokens } from '../../src/design-system/tokens';
+import { Input } from '../../src/components/ui/Input';
 
 export default function ThreadScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -111,16 +111,15 @@ export default function ThreadScreen() {
 
       {/* Input bar */}
       <View className="flex-row items-center px-4 py-3 border-t border-border-subtle bg-background">
-        <TextInput
+        <View className="flex-1 mr-3"><Input
           value={input}
           onChangeText={setInput}
           placeholder="Reply..."
-          placeholderTextColor={colors.textTertiary}
-          className="flex-1 bg-card rounded-full px-4 py-2 text-foreground text-body mr-3"
+          shape="pill"
           multiline
           maxLength={2000}
           onSubmitEditing={handleSend}
-        />
+        /></View>
         <LiquidGlassPressable
           accessibilityLabel="Send message"
           hierarchy="prominent"

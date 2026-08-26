@@ -29,6 +29,20 @@
     { "name": "TaisaReplyCard", "implementation": "mobile/src/components/ui/TaisaReplyCard.tsx", "storyRequired": false },
     { "name": "NaviiAvatar", "implementation": "mobile/src/components/ui/NaviiAvatar.tsx", "storyRequired": true, "story": "mobile/src/components/ui/NaviiAvatar.stories.tsx" },
     { "name": "ChatListRow", "implementation": "mobile/src/components/ui/ChatListRow.tsx", "storyRequired": true, "story": "mobile/src/components/ui/ChatListRow.stories.tsx" },
-    { "name": "ThreadMessage", "implementation": "mobile/src/components/ui/ThreadMessage.tsx", "storyRequired": true, "story": "mobile/src/components/ui/ThreadMessage.stories.tsx" }
+    { "name": "ThreadMessage", "implementation": "mobile/src/components/ui/ThreadMessage.tsx", "storyRequired": true, "story": "mobile/src/components/ui/ThreadMessage.stories.tsx" },
+    { "name": "Toggle", "implementation": "mobile/src/components/ui/Toggle.tsx", "storyRequired": true, "story": "mobile/src/components/ui/Toggle.stories.tsx" },
+    { "name": "ActiveRecordingContent", "implementation": "mobile/src/components/ui/ActiveRecordingSurface.tsx", "storyRequired": false },
+    { "name": "CardHeader", "implementation": "mobile/src/components/ui/Card.tsx", "storyRequired": false },
+    { "name": "CardTitle", "implementation": "mobile/src/components/ui/Card.tsx", "storyRequired": false },
+    { "name": "CardDescription", "implementation": "mobile/src/components/ui/Card.tsx", "storyRequired": false },
+    { "name": "CardContent", "implementation": "mobile/src/components/ui/Card.tsx", "storyRequired": false },
+    { "name": "CardFooter", "implementation": "mobile/src/components/ui/Card.tsx", "storyRequired": false },
+    { "name": "ChatComposerDock", "implementation": "mobile/src/components/ui/ChatSurfaces.tsx", "storyRequired": false },
+    { "name": "ChatErrorPanel", "implementation": "mobile/src/components/ui/ChatSurfaces.tsx", "storyRequired": false },
+    { "name": "ChatMessageBubble", "implementation": "mobile/src/components/ui/ChatSurfaces.tsx", "storyRequired": false },
+    { "name": "ChatProcessingBubble", "implementation": "mobile/src/components/ui/ChatSurfaces.tsx", "storyRequired": false },
+    { "name": "ChatScreenShell", "implementation": "mobile/src/components/ui/ChatSurfaces.tsx", "storyRequired": false },
+    { "name": "PendingProposalCard", "implementation": "mobile/src/components/ui/ChatSurfaces.tsx", "storyRequired": false },
+    { "name": "PendingTranscriptBubble", "implementation": "mobile/src/components/ui/ChatSurfaces.tsx", "storyRequired": false }
   ]
 }

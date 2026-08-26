@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { View, ScrollView, TextInput, Modal, Share, Switch, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, ScrollView, Modal, Share, KeyboardAvoidingView, Platform } from 'react-native';
 import { File } from 'expo-file-system';
 import { useFocusEffect } from 'expo-router';
 import { useCareerStore } from '../../src/stores/careerStore';
 import { ThemeTag } from '../../src/components/ThemeTag';
 import { useScrollContext } from '../../src/contexts/ScrollContext';
-import { colors } from '../../src/constants/theme';
 import { NaviiAvatar } from '../../src/components/ui/NaviiAvatar';
 import { LiquidGlassPressable } from '../../src/components/ui/LiquidGlassPressable';
 import {
@@ -28,6 +27,8 @@ import {
 } from '../../src/components/ui/PageHeaderSurface';
 import { Text } from '../../src/components/ui/Text';
 import { colorTokens } from '../../src/design-system/tokens';
+import { Input } from '../../src/components/ui/Input';
+import { Toggle } from '../../src/components/ui/Toggle';
 
 interface YouData {
   currentFocus: string;
@@ -271,18 +272,16 @@ export default function YouScreen() {
         </Text></View>
         {!deviceEnrolled ? (
           <View className="flex-row items-center gap-2">
-            <TextInput
-              className="flex-1 bg-background rounded-lg px-3 py-2 text-foreground text-body"
+            <View className="flex-1"><Input
               value={enrollmentCode}
               onChangeText={setEnrollmentCode}
               placeholder="One-time code"
-              placeholderTextColor={colors.textTertiary}
               autoCapitalize="none"
               autoCorrect={false}
               editable={!enrollmentBusy}
               returnKeyType="done"
               onSubmitEditing={() => { void enrollThisDevice(); }}
-            />
+            /></View>
             <LiquidGlassPressable
               accessibilityLabel="Connect this device"
               hierarchy="prominent"
@@ -327,7 +326,8 @@ export default function YouScreen() {
           <Text role="label">Require device unlock</Text>
           <View className="mt-0.5"><Text role="metadata" color="tertiary">Optional Face ID or device authentication</Text></View>
         </View>
-        <Switch
+        <Toggle
+          label="Require device unlock"
           value={privacyState.lockEnabled}
           onValueChange={(enabled) => { void toggleAppLock(enabled); }}
         />
@@ -408,34 +408,28 @@ function RecoveryModal({
               ? 'Use a separate passphrase of at least 12 characters. Taisa does not save this passphrase and cannot recover it.'
               : 'Restoring replaces the phone archive only after the backup passes integrity checks.'}
           </Text></View>
-          <View className="bg-card rounded-xl px-4 mb-3 flex-row items-center">
-            <TextInput
+          <View className="mb-3"><Input
               value={passphrase}
               onChangeText={onChangePassphrase}
               placeholder="Backup passphrase"
-              placeholderTextColor={colors.textTertiary}
-              className="flex-1 py-3 text-foreground text-body"
               secureTextEntry={!passphraseVisible}
               autoCapitalize="none"
               autoCorrect={false}
-            />
-            <LiquidGlassPressable accessibilityLabel={passphraseVisible ? 'Hide passphrase' : 'Show passphrase'} hierarchy="subtle" onPress={() => setPassphraseVisible((visible) => !visible)} className="py-3 pl-3">
+              trailing={<LiquidGlassPressable accessibilityLabel={passphraseVisible ? 'Hide passphrase' : 'Show passphrase'} hierarchy="subtle" onPress={() => setPassphraseVisible((visible) => !visible)} className="py-3 pl-3">
               <Text role="metadataStrong" color="success">
                 {passphraseVisible ? 'Hide passphrase' : 'Show passphrase'}
               </Text>
-            </LiquidGlassPressable>
-          </View>
+            </LiquidGlassPressable>}
+            /></View>
           {exporting ? (
-            <TextInput
+            <View className="mb-4"><Input
               value={confirmation}
               onChangeText={onChangeConfirmation}
               placeholder="Confirm backup passphrase"
-              placeholderTextColor={colors.textTertiary}
-              className="bg-card rounded-xl px-4 py-3 text-foreground text-body mb-4"
               secureTextEntry={!passphraseVisible}
               autoCapitalize="none"
               autoCorrect={false}
-            />
+            /></View>
           ) : null}
           <View className="flex-row gap-3">
             <LiquidGlassPressable
@@ -500,16 +494,14 @@ function EditModal({ visible, title, value, onChangeText, onSave, onDismiss, pla
         <View className="bg-background rounded-t-3xl px-6 pt-4 pb-12">
           <View className="w-8 h-1 bg-border rounded-full self-center mb-4" />
           <View className="mb-4"><Text role="bodyStrong">{title}</Text></View>
-          <TextInput
+          <View className="mb-4"><Input
             value={value}
             onChangeText={onChangeText}
             placeholder={placeholder}
-            placeholderTextColor={colors.textTertiary}
-            className="bg-card rounded-xl px-4 py-3 text-foreground text-body mb-4"
             multiline={multiline}
-            style={multiline ? { minHeight: 80, textAlignVertical: 'top' } : undefined}
+            style={multiline ? { minHeight: 80 } : undefined}
             autoFocus
-          />
+          /></View>
           <View className="flex-row gap-3">
             <LiquidGlassPressable accessibilityLabel="Cancel editing" onPress={onDismiss} className="flex-1 py-3">
               <Text role="labelStrong" color="secondary">Cancel</Text>

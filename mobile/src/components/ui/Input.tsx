@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, type ReactNode } from 'react';
 import { TextInput, View, type TextInputProps, type ViewStyle } from 'react-native';
 import { colorTokens } from '../../design-system/tokens';
 import { Text } from './Text';
 
 export type InputSize = 'default' | 'lg';
+export type InputShape = 'rounded' | 'pill';
 
-export interface InputProps extends Omit<TextInputProps, 'style'> {
+export interface InputProps extends Omit<TextInputProps, 'style' | 'className'> {
   size?: InputSize;
   /** Renders error border */
   error?: boolean;
@@ -13,6 +14,8 @@ export interface InputProps extends Omit<TextInputProps, 'style'> {
   helperText?: string;
   errorMessage?: string;
   style?: ViewStyle;
+  shape?: InputShape;
+  trailing?: ReactNode;
 }
 
 const SIZE_HEIGHT: Record<InputSize, string> = {
@@ -33,6 +36,8 @@ export function Input({
   errorMessage,
   editable = true,
   style,
+  shape = 'rounded',
+  trailing,
   ...props
 }: InputProps) {
   const [focused, setFocused] = useState(false);
@@ -48,7 +53,7 @@ export function Input({
   })();
 
   const containerClass = [
-    'w-full rounded-xl border px-3 flex-row items-center',
+    `w-full ${shape === 'pill' ? 'rounded-full' : 'rounded-xl'} border px-3 flex-row items-center`,
     'bg-card',
     SIZE_HEIGHT[size],
     borderClass,
@@ -63,6 +68,7 @@ export function Input({
       <View className={containerClass} style={style}>
         <TextInput
           className={['flex-1 text-foreground', SIZE_TEXT[size]].join(' ')}
+          style={props.multiline ? { textAlignVertical: 'top' } : undefined}
           placeholderTextColor={colorTokens.text.tertiary}
           editable={!isDisabled}
           onFocus={(e) => {
@@ -75,6 +81,7 @@ export function Input({
           }}
           {...props}
         />
+        {trailing}
       </View>
       {errorMessage ? <Text role="label" color="danger">{errorMessage}</Text> : null}
       {!errorMessage && helperText ? <Text role="label" color="secondary">{helperText}</Text> : null}

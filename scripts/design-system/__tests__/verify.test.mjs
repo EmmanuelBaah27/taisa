@@ -21,6 +21,7 @@ for (const [file, rule] of [
   ['fail/raw-text.tsx', 'semantic-text-only'],
   ['fail/legacy-type.tsx', 'no-legacy-type'],
   ['fail/stylesheet.tsx', 'no-stylesheet-create'],
+  ['mobile/app/raw-field.tsx', 'prohibited-screen-primitives'],
 ]) {
   test(`${file} reports ${rule}`, async () => {
     assert.ok((await rulesFor(file)).includes(rule));

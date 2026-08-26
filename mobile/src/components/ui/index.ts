@@ -39,6 +39,8 @@ export type { CardProps, CardHeaderProps, CardTitleProps, CardDescriptionProps, 
 
 export { Input } from './Input';
 export type { InputProps, InputSize } from './Input';
+export { Toggle } from './Toggle';
+export type { ToggleProps } from './Toggle';
 
 export { Icon } from './Icon';
 export type { IconColorRole, IconProps, IconName } from './Icon';

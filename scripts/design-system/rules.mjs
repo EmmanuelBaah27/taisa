@@ -23,7 +23,7 @@ export const RULES = [
     id: 'prohibited-screen-primitives',
     message: 'Product screens must use design-system action and field primitives.',
     productScreensOnly: true,
-    pattern: /import\s*\{[^}]*(?:Pressable|TouchableOpacity)[^}]*\}\s*from\s*['"]react-native['"]/g,
+    pattern: /import\s*\{[^}]*(?:Pressable|TouchableOpacity|TextInput|Switch)[^}]*\}\s*from\s*['"]react-native['"]/g,
   },
 ];
 
