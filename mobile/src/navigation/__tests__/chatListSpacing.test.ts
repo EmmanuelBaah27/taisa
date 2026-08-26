@@ -12,7 +12,8 @@ describe('Chats list spacing', () => {
   );
 
   test('positions the page title one pixel higher', () => {
-    expect(source).toContain('className="-mt-px px-5 pb-3 text-foreground text-H1"');
+    expect(source).toContain('className="-mt-px px-5 pb-3"');
+    expect(source).toContain('<Text role="heading">Chats</Text>');
   });
 
   test('renders sticky date groups as compact muted badges', () => {

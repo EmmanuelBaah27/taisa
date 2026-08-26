@@ -13,10 +13,21 @@ test('Storybook preview consumes production color tokens', async () => {
   assert.doesNotMatch(preview, /value:\s*'#[0-9A-Fa-f]{3,8}'/);
 });
 
+test('Tailwind and the native theme consume the authoritative token registry without duplicate colors', async () => {
+  const [tailwind, theme] = await Promise.all([
+    readFile(join(root, 'mobile/tailwind.config.js'), 'utf8'),
+    readFile(join(root, 'mobile/src/constants/theme.ts'), 'utf8'),
+  ]);
+  assert.match(tailwind, /require\('\.\/design-system\/tokens\.json'\)/);
+  assert.match(theme, /import \{ colorTokens \} from '\.\.\/design-system\/tokens'/);
+  assert.doesNotMatch(`${tailwind}\n${theme}`, /#[0-9A-Fa-f]{3,8}\b|\brgba?\(/);
+});
+
 for (const component of registry.components.filter((entry) => entry.storyRequired)) {
   test(`${component.name} story renders the exact production export`, async () => {
     const story = await readFile(join(root, component.story), 'utf8');
-    const localImport = new RegExp(`import \\{[^}]*\\b${component.name}\\b[^}]*\\} from '\\./${component.name}'`);
+    const moduleName = component.implementation.split('/').at(-1).replace(/\.tsx$/, '');
+    const localImport = new RegExp(`import \\{[^}]*\\b${component.name}\\b[^}]*\\} from '\\./${moduleName}'`);
     const componentBinding = new RegExp(`component:\\s*${component.name}\\b`);
     assert.match(story, localImport);
     assert.match(story, componentBinding);

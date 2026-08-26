@@ -54,7 +54,7 @@ export function SelectedNavigationItem({
         }}
       >
         {leadingVisual}
-        <Text role="labelStrong" numberOfLines={1}>{label}</Text>
+        <Text role="bodyStrong" numberOfLines={1}>{label}</Text>
       </View>
     </Pressable>
   );

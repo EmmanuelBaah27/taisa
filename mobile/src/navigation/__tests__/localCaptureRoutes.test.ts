@@ -113,8 +113,8 @@ describe('local-first capture navigation', () => {
     expect(chatScreen).toMatch(/if \(sourceSnapshot === null\) await fetchThreads\(\)/);
     expect(rootLayout).not.toMatch(/slide_from_bottom/);
     expect(rootLayout).toMatch(/name="chat\/index"[\s\S]*presentation: 'transparentModal'[\s\S]*animation: 'none'[\s\S]*backgroundColor: 'transparent'/);
-    expect(rootLayout).toMatch(/GestureHandlerRootView style=\{\{ flex: 1, backgroundColor: '#ffffff' \}\}/);
-    expect(rootLayout).toMatch(/privacyState\.shielded[\s\S]*backgroundColor: '#ffffff'/);
+    expect(rootLayout).toMatch(/GestureHandlerRootView style=\{\{ flex: 1, backgroundColor: colorTokens\.surface\.app \}\}/);
+    expect(rootLayout).toMatch(/privacyState\.shielded[\s\S]*backgroundColor: colorTokens\.surface\.app/);
   });
 
   test('fresh voice capture stays inside the canonical Taisa shell with existing lifecycle handlers', () => {

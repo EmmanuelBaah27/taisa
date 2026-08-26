@@ -19,6 +19,12 @@ export const RULES = [
     message: 'Use NativeWind and semantic components instead of StyleSheet.create().',
     pattern: /\bStyleSheet\.create\s*\(/g,
   },
+  {
+    id: 'prohibited-screen-primitives',
+    message: 'Product screens must use design-system action and field primitives.',
+    productScreensOnly: true,
+    pattern: /import\s*\{[^}]*(?:Pressable|TouchableOpacity)[^}]*\}\s*from\s*['"]react-native['"]/g,
+  },
 ];
 
 export const PRODUCT_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx', '.css', '.json']);

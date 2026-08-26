@@ -34,6 +34,19 @@ test('expired exact exception is rejected', async () => {
     reason: 'Fixture proves expiry enforcement',
     owner: 'Taisa Design System',
     expires: '2026-08-24',
+    matches: [{ value: '#fff', count: 1 }],
   }];
   assert.ok((await rulesFor('fail/expired-exception.tsx', { exceptions, today: '2026-08-25' })).includes('exception-expired'));
+});
+
+test('an exception suppresses only its declared value and count', async () => {
+  const exceptions = [{
+    file: 'fail/raw-color.tsx',
+    rule: 'no-raw-color',
+    reason: 'Fixture permits only the first native value',
+    owner: 'Taisa Design System',
+    expires: '2026-09-25',
+    matches: [{ value: '#fff', count: 1 }],
+  }];
+  assert.ok((await rulesFor('fail/raw-color.tsx', { exceptions, today: '2026-08-25' })).includes('no-raw-color'));
 });

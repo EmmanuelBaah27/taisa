@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { View, ScrollView, TouchableOpacity, TextInput, Modal, Share, Switch, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, ScrollView, TextInput, Modal, Share, Switch, KeyboardAvoidingView, Platform } from 'react-native';
 import { File } from 'expo-file-system';
 import { useFocusEffect } from 'expo-router';
 import { useCareerStore } from '../../src/stores/careerStore';
@@ -229,7 +229,10 @@ export default function YouScreen() {
       {/* Career context */}
       <SectionLabel style={{ marginTop: 16 }}>Career context</SectionLabel>
 
-      <TouchableOpacity
+      <LiquidGlassPressable
+        accessibilityLabel="Edit career goals"
+        hierarchy="subtle"
+        shape="rounded"
         className="bg-card rounded-xl px-4 py-3 mb-2 flex-row items-center"
         onPress={() => { setGoalsInput(profile?.longTermGoal ?? ''); setEditingGoals(true); }}
       >
@@ -239,9 +242,12 @@ export default function YouScreen() {
           <View className="mt-0.5"><Text role="metadata" color="tertiary" numberOfLines={2}>{profile?.longTermGoal || 'Tap to add your goals'}</Text></View>
         </View>
         <Text color="tertiary">›</Text>
-      </TouchableOpacity>
+      </LiquidGlassPressable>
 
-      <TouchableOpacity
+      <LiquidGlassPressable
+        accessibilityLabel="Edit role and company"
+        hierarchy="subtle"
+        shape="rounded"
         className="bg-card rounded-xl px-4 py-3 mb-2 flex-row items-center"
         onPress={() => { setRoleInput(`${profile?.currentRole ?? ''}, ${profile?.currentCompany ?? ''}`); setEditingContext(true); }}
       >
@@ -251,7 +257,7 @@ export default function YouScreen() {
           <View className="mt-0.5"><Text role="metadata" color="tertiary">{[profile?.currentRole, profile?.currentCompany].filter(Boolean).join(', ') || 'Tap to add'}</Text></View>
         </View>
         <Text color="tertiary">›</Text>
-      </TouchableOpacity>
+      </LiquidGlassPressable>
 
       {/* Settings */}
       <SectionLabel style={{ marginTop: 16 }}>Settings</SectionLabel>
@@ -294,21 +300,27 @@ export default function YouScreen() {
         ) : null}
       </View>
 
-      <TouchableOpacity
+      <LiquidGlassPressable
+        accessibilityLabel="Export my data"
+        hierarchy="subtle"
+        shape="rounded"
         className="bg-card rounded-xl px-4 py-3 mb-2 flex-row justify-between items-center"
         onPress={() => { setRecoveryMode('export'); setPrivacyNotice(null); }}
       >
         <Text role="label">Export my data</Text>
         <Text color="tertiary">›</Text>
-      </TouchableOpacity>
+      </LiquidGlassPressable>
 
-      <TouchableOpacity
+      <LiquidGlassPressable
+        accessibilityLabel="Restore encrypted backup"
+        hierarchy="subtle"
+        shape="rounded"
         className="bg-card rounded-xl px-4 py-3 mb-2 flex-row justify-between items-center"
         onPress={() => { void chooseArchiveToRestore(); }}
       >
         <Text role="label">Restore encrypted backup</Text>
         <Text color="tertiary">›</Text>
-      </TouchableOpacity>
+      </LiquidGlassPressable>
 
       <View className="bg-card rounded-xl px-4 py-3 mb-2 flex-row justify-between items-center">
         <View className="flex-1 pr-4">

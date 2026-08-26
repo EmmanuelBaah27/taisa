@@ -39,18 +39,26 @@ export const textColorClasses: Record<TextColorRole, string> = {
   info: 'text-info-text',
 };
 
+export type TextAlignment = 'left' | 'center' | 'right';
+export const textAlignmentClasses: Record<TextAlignment, string> = {
+  left: 'text-left',
+  center: 'text-center',
+  right: 'text-right',
+};
+
 export interface TextProps extends Omit<NativeTextProps, 'style' | 'role'> {
   role?: TypographyRole;
   color?: TextColorRole;
+  align?: TextAlignment;
   style?: never;
   className?: never;
 }
 
-export function Text({ role = 'body', color = 'primary', ...props }: TextProps) {
+export function Text({ role = 'body', color = 'primary', align, ...props }: TextProps) {
   return (
     <NativeText
       {...props}
-      className={`${typographyRoleClasses[role]} ${textColorClasses[color]}`}
+      className={[typographyRoleClasses[role], textColorClasses[color], align ? textAlignmentClasses[align] : ''].filter(Boolean).join(' ')}
     />
   );
 }

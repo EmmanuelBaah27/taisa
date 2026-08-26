@@ -4,55 +4,113 @@
     "rule": "no-raw-color",
     "reason": "Native animated material interpolation requires resolved color strings.",
     "owner": "Taisa Design System",
-    "expires": "2026-09-25"
+    "expires": "2026-09-25",
+    "matches": [{ "value": "#cdec1a", "count": 1 }, { "value": "#ffffff", "count": 1 }]
   },
   {
     "file": "mobile/src/components/ui/liquidGlass.ts",
     "rule": "no-raw-color",
     "reason": "Platform material fallbacks require native color values.",
     "owner": "Taisa Design System",
-    "expires": "2026-09-25"
+    "expires": "2026-09-25",
+    "matches": [
+      { "value": "rgba(205,236,26,0.72)", "count": 1 }, { "value": "rgba(198,0,0,0.72)", "count": 1 },
+      { "value": "rgba(255,255,255,0.54)", "count": 1 }, { "value": "rgba(205,236,26,0.82)", "count": 1 },
+      { "value": "rgba(198,0,0,0.82)", "count": 1 }, { "value": "rgba(15,16,16,0.10)", "count": 1 },
+      { "value": "rgba(119,135,0,0.18)", "count": 1 }, { "value": "rgba(120,0,0,0.18)", "count": 1 },
+      { "value": "rgba(255,255,255,0.38)", "count": 1 }, { "value": "rgba(255,255,255,0.24)", "count": 1 },
+      { "value": "rgba(15,16,16,0.14)", "count": 1 }, { "value": "rgba(255,255,255,0.62)", "count": 1 },
+      { "value": "rgba(255,255,255,0.04)", "count": 1 }, { "value": "rgba(255,255,255,0.46)", "count": 1 },
+      { "value": "rgba(255,255,255,0.06)", "count": 1 }
+    ]
   },
   {
     "file": "mobile/src/components/ui/BottomNavBar.tsx",
     "rule": "no-legacy-type",
     "reason": "Reanimated navigation geometry requires numeric interpolated text values.",
     "owner": "Taisa Design System",
-    "expires": "2026-09-25"
+    "expires": "2026-09-25",
+    "matches": [{ "value": "fontSize:", "count": 1 }]
   },
   {
     "file": "mobile/src/components/ui/PersistentNavigationCapsule.tsx",
     "rule": "no-legacy-type",
     "reason": "Reanimated label transitions require numeric typography values sourced from the navigation contract.",
     "owner": "Taisa Design System",
-    "expires": "2026-09-25"
+    "expires": "2026-09-25",
+    "matches": [{ "value": "fontSize:", "count": 2 }]
   },
   {
     "file": "mobile/src/components/ui/__tests__/liquidGlass.test.ts",
     "rule": "no-raw-color",
     "reason": "Contract test asserts exact platform fallback output.",
     "owner": "Taisa Design System",
-    "expires": "2026-09-25"
+    "expires": "2026-09-25",
+    "matches": [
+      { "value": "rgba(205,236,26,0.72)", "count": 1 }, { "value": "rgba(198,0,0,0.72)", "count": 1 },
+      { "value": "rgba(255,255,255,0.38)", "count": 2 }, { "value": "rgba(15,16,16,0.14)", "count": 1 },
+      { "value": "rgba(255,255,255,0.62)", "count": 1 }, { "value": "rgba(255,255,255,0.04)", "count": 1 }
+    ]
   },
   {
     "file": "mobile/src/components/ui/__tests__/SecondaryIconButton.test.ts",
     "rule": "no-raw-color",
     "reason": "Contract test asserts exact resolved native icon output.",
     "owner": "Taisa Design System",
-    "expires": "2026-09-25"
+    "expires": "2026-09-25",
+    "matches": [{ "value": "rgba(255,255,255,0.18)", "count": 1 }, { "value": "rgba(23,23,23,0.06)", "count": 1 }, { "value": "#000000", "count": 1 }]
   },
   {
     "file": "mobile/src/components/ui/__tests__/PersistentNavigationCapsule.test.ts",
     "rule": "no-raw-color",
     "reason": "Contract test verifies exact native animated color output at transition boundaries.",
     "owner": "Taisa Design System",
-    "expires": "2026-09-25"
+    "expires": "2026-09-25",
+    "matches": [{ "value": "rgba(255,255,255,0.04)", "count": 1 }, { "value": "rgba(23,23,23,0.04)", "count": 1 }]
   },
   {
-    "file": "mobile/src/components/ui/Text.test.tsx",
+    "file": "mobile/src/components/ui/__tests__/Text.test.tsx",
     "rule": "no-legacy-type",
     "reason": "Contract test proves semantic roles resolve without legacy utility classes.",
     "owner": "Taisa Design System",
-    "expires": "2026-09-25"
+    "expires": "2026-09-25",
+    "matches": [{ "value": "fontSize:", "count": 1 }, { "value": "font-bold", "count": 1 }]
+  },
+  {
+    "file": "mobile/src/navigation/bottomNavigation.ts",
+    "rule": "no-legacy-type",
+    "reason": "The navigation geometry contract names the semantic typography fields it consumes.",
+    "owner": "Taisa Design System",
+    "expires": "2026-09-25",
+    "matches": [{ "value": "fontSize:", "count": 1 }]
+  },
+  {
+    "file": "mobile/src/navigation/__tests__/bottomNavigation.test.ts",
+    "rule": "no-raw-color",
+    "reason": "Contract test asserts exact resolved native navigation material output.",
+    "owner": "Taisa Design System",
+    "expires": "2026-09-25",
+    "matches": [
+      { "value": "rgba(15,16,16,0.06)", "count": 1 }, { "value": "rgba(15,16,16,0.10)", "count": 1 },
+      { "value": "rgba(255,255,255,0.42)", "count": 1 }, { "value": "rgba(255,255,255,0.06)", "count": 1 },
+      { "value": "#9C9C9C", "count": 1 }, { "value": "#ffffff", "count": 1 }, { "value": "#5B5F63", "count": 1 },
+      { "value": "rgba(255,255,255,0.44)", "count": 1 }
+    ]
+  },
+  {
+    "file": "mobile/src/navigation/__tests__/bottomNavigation.test.ts",
+    "rule": "no-legacy-type",
+    "reason": "Contract test asserts the resolved semantic navigation typography geometry.",
+    "owner": "Taisa Design System",
+    "expires": "2026-09-25",
+    "matches": [{ "value": "fontSize:", "count": 1 }]
+  },
+  {
+    "file": "mobile/src/navigation/__tests__/chatListSpacing.test.ts",
+    "rule": "no-legacy-type",
+    "reason": "Regression test rejects a legacy styling string from historical Product code.",
+    "owner": "Taisa Design System",
+    "expires": "2026-09-25",
+    "matches": [{ "value": "text-xs", "count": 1 }, { "value": "font-bold", "count": 1 }]
   }
 ]

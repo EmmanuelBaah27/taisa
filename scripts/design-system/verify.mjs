@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { access, readFile } from 'node:fs/promises';
 import { dirname, extname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
@@ -18,6 +18,14 @@ function validateException(exception, today) {
       return `exception-invalid: missing ${field}`;
     }
   }
+  if (!Array.isArray(exception.matches) || exception.matches.length === 0) {
+    return 'exception-invalid: matches must declare exact values and counts';
+  }
+  for (const match of exception.matches) {
+    if (typeof match?.value !== 'string' || match.value === '' || !Number.isInteger(match.count) || match.count < 1) {
+      return 'exception-invalid: each match needs a value and positive integer count';
+    }
+  }
   if (/[*?\[\]]/.test(exception.file) || exception.file.endsWith('/')) {
     return 'exception-invalid: file must be an exact path';
   }
@@ -28,6 +36,7 @@ function validateException(exception, today) {
 export async function verifyPaths({ root, paths, exceptions = [], today = new Date().toISOString().slice(0, 10) }) {
   const findings = [];
   const matchedExceptions = new Set();
+  const exceptionMatchCounts = new Map();
   const exceptionProblems = new Map();
 
   exceptions.forEach((exception, index) => {
@@ -39,15 +48,30 @@ export async function verifyPaths({ root, paths, exceptions = [], today = new Da
     if (!PRODUCT_EXTENSIONS.has(extname(file))) continue;
     const contents = await readFile(join(root, file), 'utf8');
     for (const rule of RULES) {
+      if (rule.productScreensOnly && !file.startsWith('mobile/app/')) continue;
       // The semantic Text primitive must wrap React Native's Text. Keep this
       // bootstrap boundary explicit instead of weakening the repository rule.
       if (file === 'mobile/src/components/ui/Text.tsx' && rule.id === 'semantic-text-only') continue;
+      if (file === 'mobile/src/design-system/tokens.ts' && rule.id === 'no-legacy-type') continue;
       for (const match of contents.matchAll(new RegExp(rule.pattern.source, rule.pattern.flags))) {
         const exceptionIndex = exceptions.findIndex((entry) => entry.file === file && entry.rule === rule.id);
         if (exceptionIndex >= 0) {
           matchedExceptions.add(exceptionIndex);
           const problem = exceptionProblems.get(exceptionIndex);
-          if (!problem) continue;
+          if (!problem) {
+            const exception = exceptions[exceptionIndex];
+            const declared = exception.matches.find((entry) => entry.value === match[0]);
+            const key = `${exceptionIndex}:${match[0]}`;
+            const seen = exceptionMatchCounts.get(key) ?? 0;
+            if (declared && seen < declared.count) {
+              exceptionMatchCounts.set(key, seen + 1);
+              continue;
+            }
+          }
+          if (!problem) {
+            findings.push({ file, line: lineFor(contents, match.index ?? 0), rule: rule.id, message: rule.message });
+            continue;
+          }
           findings.push({ file, line: lineFor(contents, match.index ?? 0), rule: problem.split(':')[0], message: problem });
           continue;
         }
@@ -60,6 +84,13 @@ export async function verifyPaths({ root, paths, exceptions = [], today = new Da
     if (!matchedExceptions.has(index) && !exceptionProblems.has(index)) {
       findings.push({ file: exception.file, line: 1, rule: 'exception-unused', message: 'Exception matches no current finding.' });
     }
+    if (matchedExceptions.has(index) && !exceptionProblems.has(index)) {
+      for (const match of exception.matches) {
+        if ((exceptionMatchCounts.get(`${index}:${match.value}`) ?? 0) !== match.count) {
+          findings.push({ file: exception.file, line: 1, rule: 'exception-unused', message: `Exception match is stale: ${match.value}` });
+        }
+      }
+    }
   });
 
   return findings.sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line || a.rule.localeCompare(b.rule));
@@ -69,13 +100,23 @@ async function componentRegistryFindings(root, registry) {
   const findings = [];
   const barrel = await readFile(join(root, 'mobile/src/components/ui/index.ts'), 'utf8');
   const docs = await readFile(join(root, 'docs/design-system.md'), 'utf8');
+  const exportedModules = [...barrel.matchAll(/from ['"]\.\/(.+?)['"]/g)]
+    .filter((match) => /^[A-Z]/.test(match[1]))
+    .map((match) => `mobile/src/components/ui/${match[1]}.tsx`)
+    .filter((value, index, values) => values.indexOf(value) === index);
+  const registeredModules = new Set(registry.components.map((component) => component.implementation));
+  for (const implementation of exportedModules) {
+    if (!registeredModules.has(implementation)) {
+      findings.push({ file: implementation, line: 1, rule: 'component-registry', message: 'Exported UI module is missing from the component registry.' });
+    }
+  }
   for (const component of registry.components) {
     try {
       await readFile(join(root, component.implementation), 'utf8');
     } catch {
       findings.push({ file: component.implementation, line: 1, rule: 'component-implementation', message: 'Registered component implementation is missing.' });
     }
-    if (!barrel.includes(`{ ${component.name}`) && !barrel.includes(`, ${component.name}`)) {
+    if (!new RegExp(`\\b${component.name}\\b`).test(barrel)) {
       findings.push({ file: 'mobile/src/components/ui/index.ts', line: 1, rule: 'component-export', message: `${component.name} is not exported from the UI barrel.` });
     }
     if (!docs.includes(`\`${component.name}\``)) {
@@ -84,7 +125,8 @@ async function componentRegistryFindings(root, registry) {
     if (component.storyRequired) {
       try {
         const story = await readFile(join(root, component.story), 'utf8');
-        const productionImport = new RegExp(`import \\{[^}]*\\b${component.name}\\b[^}]*\\} from '\\./${component.name}'`);
+        const moduleName = component.implementation.split('/').at(-1).replace(/\.tsx$/, '');
+        const productionImport = new RegExp(`import \\{[^}]*\\b${component.name}\\b[^}]*\\} from '\\./${moduleName}'`);
         const componentBinding = new RegExp(`component:\\s*${component.name}\\b`);
         if (!productionImport.test(story) || !componentBinding.test(story)) {
           findings.push({
@@ -103,8 +145,12 @@ async function componentRegistryFindings(root, registry) {
 }
 
 async function repositoryPaths(root) {
-  const output = execFileSync('git', ['ls-files', 'mobile/app', 'mobile/src/components'], { cwd: root, encoding: 'utf8' });
-  return output.split('\n').filter(Boolean).filter((file) => !file.includes('/.rnstorybook/'));
+  const output = execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard', 'mobile/app', 'mobile/src'], { cwd: root, encoding: 'utf8' });
+  const paths = output.split('\n').filter(Boolean).filter((file) => !file.includes('/.rnstorybook/'));
+  const existing = await Promise.all(paths.map(async (file) => {
+    try { await access(join(root, file)); return file; } catch { return null; }
+  }));
+  return existing.filter(Boolean);
 }
 
 export async function verifyRepository(root = repositoryRoot) {

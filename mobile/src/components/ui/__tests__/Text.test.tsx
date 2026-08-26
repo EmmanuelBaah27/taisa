@@ -1,44 +1,27 @@
-import { Text, textColorClasses, typographyRoleClasses } from './Text';
+import { Text, textAlignmentClasses, textColorClasses, typographyRoleClasses } from '../Text';
 
 describe('semantic Text', () => {
   it('defaults to readable body copy and primary text', () => {
     const element = Text({ children: 'Readable by default' });
-
     expect(element.props.className).toBe('text-body text-foreground');
     expect(element.props.allowFontScaling).toBeUndefined();
   });
 
   it('maps every approved typography and color role through closed records', () => {
-    expect(Object.keys(typographyRoleClasses)).toEqual([
-      'display',
-      'heading',
-      'subheading',
-      'body',
-      'bodyStrong',
-      'label',
-      'labelStrong',
-      'metadata',
-      'metadataStrong',
-    ]);
-    expect(Object.keys(textColorClasses)).toEqual([
-      'primary',
-      'secondary',
-      'tertiary',
-      'inverted',
-      'disabled',
-      'success',
-      'warning',
-      'danger',
-      'info',
-    ]);
+    expect(Object.keys(typographyRoleClasses)).toEqual(['display', 'heading', 'subheading', 'body', 'bodyStrong', 'label', 'labelStrong', 'metadata', 'metadataStrong']);
+    expect(Object.keys(textColorClasses)).toEqual(['primary', 'secondary', 'tertiary', 'inverted', 'disabled', 'success', 'warning', 'danger', 'info']);
   });
 
   it('forwards text behavior without disabling accessibility scaling', () => {
     const element = Text({ children: 'Two lines', numberOfLines: 2, selectable: true });
-
     expect(element.props.numberOfLines).toBe(2);
     expect(element.props.selectable).toBe(true);
     expect(element.props.allowFontScaling).toBeUndefined();
+  });
+
+  it('supports only closed semantic alignment choices', () => {
+    expect(textAlignmentClasses).toEqual({ left: 'text-left', center: 'text-center', right: 'text-right' });
+    expect(Text({ children: 'Centered', align: 'center' }).props.className).toBe('text-body text-foreground text-center');
   });
 });
 

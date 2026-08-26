@@ -97,8 +97,8 @@ export default function RootLayout() {
     const presentation = recoveryPresentation(startup.error);
     return (
       <View className="flex-1 items-center justify-center bg-background px-8">
-        <Text role="subheading">{presentation.title}</Text>
-        <View className="mt-3"><Text role="label" color="tertiary">{presentation.body}</Text></View>
+        <Text role="subheading" align="center">{presentation.title}</Text>
+        <View className="mt-3"><Text role="label" color="tertiary" align="center">{presentation.body}</Text></View>
         <LiquidGlassPressable
           accessibilityLabel="Retry secure recovery"
           hierarchy="prominent"
@@ -140,8 +140,8 @@ export default function RootLayout() {
           style={{ zIndex: 9999, backgroundColor: colorTokens.surface.app }}
           accessibilityViewIsModal
         >
-          <Text role="subheading">Taisa is private</Text>
-          <View className="mt-2"><Text role="label" color="tertiary">
+          <Text role="subheading" align="center">Taisa is private</Text>
+          <View className="mt-2"><Text role="label" color="tertiary" align="center">
             {privacyState.appState === 'active'
               ? 'Unlock to view your career archive.'
               : 'Your career archive is hidden.'}

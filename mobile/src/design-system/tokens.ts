@@ -17,6 +17,7 @@ interface ColorContract {
   action: Record<string, string>;
   status: Record<string, string>;
   overlay: Record<string, string>;
+  native: Record<string, string>;
 }
 
 const checkedColors = registry.color satisfies ColorContract;
