@@ -2,7 +2,6 @@ import { Component, type ReactNode, type RefObject } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
-  Text,
   TouchableOpacity,
   View,
   type StyleProp,
@@ -22,6 +21,7 @@ import { LiquidGlassPressable } from './LiquidGlassPressable';
 import { TaisaReplyCard } from './TaisaReplyCard';
 import type { ResponseReaction } from '../../repositories/responseFeedbackRepository';
 import { TranscriptCorrectionCard } from './TranscriptCorrectionCard';
+import { Text } from './Text';
 
 export interface ChatScreenShellProps {
   topInset: number;
@@ -85,9 +85,9 @@ export function ChatMessageBubble({
       className="mb-8 max-w-[336px] self-end bg-muted px-4 py-4"
       style={{ borderRadius: 28 }}
     >
-      <Text className="text-foreground text-base-regular">{content}</Text>
+      <Text>{content}</Text>
       {showCorrectionHint ? (
-        <Text className="mt-1 text-text-tertiary text-caption-regular">Tap to correct transcript</Text>
+        <View className="mt-1"><Text role="metadata" color="tertiary">Tap to correct transcript</Text></View>
       ) : null}
     </TouchableOpacity>
   );
@@ -100,10 +100,8 @@ export interface PendingTranscriptBubbleProps {
 export function PendingTranscriptBubble({ transcript }: PendingTranscriptBubbleProps) {
   return (
     <View className="mb-3 max-w-xs self-end rounded-3 bg-lime-100 px-4 py-3">
-      <Text className="text-foreground text-base-regular">{transcript}</Text>
-      <Text className="mt-1 text-text-tertiary text-caption-regular">
-        Transcribed · you can correct this afterward
-      </Text>
+      <Text>{transcript}</Text>
+      <View className="mt-1"><Text role="metadata" color="tertiary">Transcribed · you can correct this afterward</Text></View>
     </View>
   );
 }
@@ -112,7 +110,7 @@ export function ChatProcessingBubble() {
   return (
     <View className="mb-3 items-start">
       <View className="rounded-3 bg-subtle px-4 py-3">
-        <Text className="text-text-tertiary text-small-regular">Taisa is thinking…</Text>
+        <Text role="label" color="tertiary">Taisa is thinking…</Text>
       </View>
     </View>
   );
@@ -135,7 +133,7 @@ function ChatAction({ label, disabled, emphasized, onPress }: ChatActionProps) {
       tone={emphasized ? 'accent' : 'neutral'}
       className="px-6 py-3"
     >
-      <Text className="text-foreground text-small-semibold">{label}</Text>
+      <Text role="labelStrong">{label}</Text>
     </LiquidGlassPressable>
   );
 }
@@ -153,7 +151,7 @@ export interface ChatErrorPanelProps {
 export function ChatErrorPanel(props: ChatErrorPanelProps) {
   return (
     <View className="items-center py-4">
-      <Text className="mb-3 text-center text-danger text-small-regular">{props.message}</Text>
+      <View className="mb-3"><Text role="label" color="danger">{props.message}</Text></View>
       <View className="flex-row gap-3">
         {props.microphoneUnavailable ? (
           <ChatAction label="Use keyboard" onPress={props.onUseKeyboard} />
@@ -191,11 +189,9 @@ export function PendingProposalCard({
 }: PendingProposalCardProps) {
   return (
     <View className="mb-3 rounded-3 bg-subtle px-4 py-3">
-      <Text className="mb-3 text-foreground text-small-regular">
-        {proposal.kind === 'clarification'
-          ? proposal.question
-          : `Taisa suggests remembering: ${proposal.summary}`}
-      </Text>
+      <View className="mb-3"><Text role="label">{proposal.kind === 'clarification'
+        ? proposal.question
+        : `Taisa suggests remembering: ${proposal.summary}`}</Text></View>
       {proposal.kind === 'clarification' ? (
         <View className="gap-2">
           <ChatAction label="Replace old direction" disabled={disabled} emphasized onPress={() => onResolve(proposal.id, 'replace')} />
@@ -357,7 +353,7 @@ export interface ChatComposerDockProps {
 export function ChatComposerDock({ phase, bottomInset, children }: ChatComposerDockProps) {
   return phase === 'transcribing' || phase === 'processing' ? (
     <View className="h-30 items-center justify-center" style={{ paddingBottom: bottomInset + 12 }}>
-      <Text className="text-text-tertiary text-small-regular">
+      <Text role="label" color="tertiary">
         {phase === 'transcribing' ? 'Transcribing…' : 'Taisa is thinking…'}
       </Text>
     </View>

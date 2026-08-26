@@ -1,7 +1,8 @@
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, TouchableOpacity } from 'react-native';
 import { colors } from '../../constants/theme';
 import type { ResponseReaction } from '../../repositories/responseFeedbackRepository';
 import { LiquidGlassPressable } from './LiquidGlassPressable';
+import { Text } from './Text';
 
 export interface TaisaReplyCardProps {
   appearance?: 'card' | 'plain';
@@ -37,11 +38,9 @@ export function TaisaReplyCard({
       style={appearance === 'plain' ? undefined : { borderLeftWidth: 2, borderLeftColor: colors.accent }}
     >
       {appearance === 'card' ? (
-        <Text className="mb-1 text-lime-700 text-caption-semibold">Taisa</Text>
+        <View className="mb-1"><Text role="metadataStrong" color="success">Taisa</Text></View>
       ) : null}
-      <Text className={appearance === 'plain'
-        ? 'text-foreground text-base-regular'
-        : 'text-muted-foreground text-small-regular'}>{content}</Text>
+      <Text role={appearance === 'plain' ? 'body' : 'label'} color={appearance === 'plain' ? 'primary' : 'secondary'}>{content}</Text>
       {responseId && onReact && showRatingOptions ? (
         <View className="mt-3 flex-row items-center gap-2">
           <LiquidGlassPressable
@@ -50,7 +49,7 @@ export function TaisaReplyCard({
             className="px-3 py-2"
             onPress={() => onReact(responseId, 'helpful')}
           >
-            <Text className="text-text-tertiary text-caption-semibold">Helpful</Text>
+            <Text role="metadataStrong" color="tertiary">Helpful</Text>
           </LiquidGlassPressable>
           <LiquidGlassPressable
             accessibilityLabel="Mark response unhelpful"
@@ -58,7 +57,7 @@ export function TaisaReplyCard({
             className="px-3 py-2"
             onPress={() => onReact(responseId, 'unhelpful')}
           >
-            <Text className="text-text-tertiary text-caption-semibold">Not helpful</Text>
+            <Text role="metadataStrong" color="tertiary">Not helpful</Text>
           </LiquidGlassPressable>
           {reaction !== null && onShareExample ? (
             <LiquidGlassPressable
@@ -67,7 +66,7 @@ export function TaisaReplyCard({
               className="ml-auto px-3 py-2"
               onPress={() => onShareExample(responseId)}
             >
-              <Text className="text-text-tertiary text-caption-semibold">Share example</Text>
+              <Text role="metadataStrong" color="tertiary">Share example</Text>
             </LiquidGlassPressable>
           ) : null}
         </View>

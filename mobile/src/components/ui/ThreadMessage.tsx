@@ -1,4 +1,5 @@
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
+import { Text } from './Text';
 
 export interface ThreadMessageProps {
   role: 'user' | 'assistant';
@@ -10,7 +11,7 @@ export function ThreadMessage({ role, content, inputType = null }: ThreadMessage
   if (role === 'assistant') {
     return (
       <View className="w-full">
-        <Text className="text-foreground text-base-regular">{content}</Text>
+        <Text>{content}</Text>
       </View>
     );
   }
@@ -18,11 +19,9 @@ export function ThreadMessage({ role, content, inputType = null }: ThreadMessage
   return (
     <View className="items-end">
       <View className="max-w-[336px] rounded-8 bg-muted px-4 py-4">
-        <Text className="text-foreground text-base-regular">{content}</Text>
+        <Text>{content}</Text>
         {inputType ? (
-          <Text className="mt-1 text-text-tertiary text-caption-regular">
-            {inputType === 'voice' ? 'Voice' : 'Text'}
-          </Text>
+          <View className="mt-1"><Text role="metadata" color="tertiary">{inputType === 'voice' ? 'Voice' : 'Text'}</Text></View>
         ) : null}
       </View>
     </View>

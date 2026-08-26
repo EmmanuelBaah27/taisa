@@ -1,5 +1,5 @@
 import React from 'react';
-import { KeyboardAvoidingView, Text, TouchableOpacity, View } from 'react-native';
+import { KeyboardAvoidingView, TouchableOpacity, View } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 
 import {
@@ -13,6 +13,7 @@ import {
 import { ChatHeader } from '../ChatHeader';
 import { LiquidGlassPressable } from '../LiquidGlassPressable';
 import { TaisaReplyCard } from '../TaisaReplyCard';
+import { Text } from '../Text';
 
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }),
@@ -276,7 +277,7 @@ describe('chat design-system surfaces', () => {
     const body = nodes.find((node) => node.type === Text && textContent(node.props.children) === 'A reply');
 
     expect(String(root?.props.className)).not.toMatch(/bg-card|border/);
-    expect(String(body?.props.className)).toContain('text-base-regular');
+    expect(body?.props.role).toBe('body');
   });
 
   test('an editable transcript bubble exposes the correction action semantically', () => {

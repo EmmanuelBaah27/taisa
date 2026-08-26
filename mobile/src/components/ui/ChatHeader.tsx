@@ -1,9 +1,10 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 
 import { colors } from '../../constants/theme';
 import { Icon } from './Icon';
 import { LiquidGlassPressable } from './LiquidGlassPressable';
+import { Text } from './Text';
 
 export interface ChatHeaderProps {
   title: string;
@@ -35,7 +36,7 @@ export function ChatHeader({ title, topInset, onClose }: ChatHeaderProps) {
           pointerEvents="none"
           className="h-14 flex-1 items-center justify-center"
         >
-          <Text className="text-center text-foreground text-small-medium" numberOfLines={1}>
+          <Text role="labelStrong" numberOfLines={1}>
             {title}
           </Text>
         </View>
