@@ -3,7 +3,7 @@
 > Open this when touching anything data-related. The local schema below is authoritative for the
 > new coaching path. The backend schema remains mounted only during the gated BUILD transition.
 
-## Authoritative on-device database (schema version 1)
+## Authoritative on-device database (schema version 5)
 
 `mobile/src/db/schema.ts` is the executable source. The file is encrypted by SQLCipher with a
 random 256-bit key stored as `WHEN_UNLOCKED_THIS_DEVICE_ONLY` in iOS Keychain. IDs and timestamps
@@ -24,6 +24,29 @@ triggers are enforced locally.
 | `usage_receipts` | Provider/model/token/audio/cost metadata without readable content |
 | `mutation_receipts` | Idempotency fingerprint for local mutations |
 | `migration_state` | Reserved schema-v1 authority metadata; no legacy import is shipped or required |
+
+### Combined Home authoritative records (schema version 5)
+
+The version-5 migration adds the governed work map without duplicating conversations, messages,
+evidence, or actions. SQL-only repositories own persistence; Zustand stores hydrate serializable
+views and are never durable authority.
+
+| Tables | Ownership |
+|---|---|
+| `projects`, `work_records`, `work_relationships` | Queryable authoritative work and typed conversation links |
+| `record_events`, `operation_events` | Append-only mutation history, Trial/history receipts, and conflict-safe Undo evidence |
+| `proposals` | Typed interpretations with evidence fingerprints, revalidation, and unapplied/accepted/rejected lifecycle |
+| `insights`, `growth_reflections`, `experiments` | Evidence-grounded insight records; proposals become authoritative only after acceptance |
+| `weekly_periods`, `weekly_period_snapshots` | Stable weekly review boundaries and immutable reviewed record sets |
+| `capability_states` | Six independent readiness/permission states; readiness evidence cannot grant authority |
+| `behavior_events`, `behavior_aggregates` | Bounded, expiring learning evidence separate from authoritative records |
+| `local_notifications` | Local read state and disposition independent of source-record lifecycle |
+
+`mobile/src/repositories/homeSnapshotRepository.ts` provides bounded local Home/governance read
+projections. Cross-entity writes use one repository transaction. Accepted proposals apply their
+authoritative effect and change proposal resolution in that same transaction; failures roll back
+both. Direct user task creation, weekly review snapshots, notification controls, delegated
+operations, receipts, and Undo never require backend CRUD.
 | `message_search`, `evidence_search` | External-content FTS5 indexes maintained by triggers |
 
 Readable values in these tables are never replicated into the gateway database. Zustand is view
