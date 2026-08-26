@@ -22,7 +22,10 @@ export function createOrganizationRouter(analyzer: OrganizationAnalyzer): Router
       const result = OrganizationResponseSchema.parse(await analyzer.analyze(parsed.data));
       return response.json({ success: true, data: result });
     } catch (error) {
-      if (error instanceof z.ZodError) {
+      if (
+        error instanceof z.ZodError
+        || (error as { code?: unknown } | null)?.code === 'INVALID_ORGANIZATION_OUTPUT'
+      ) {
         return response.status(502).json({
           success: false,
           error: { code: 'INVALID_ORGANIZATION_OUTPUT', message: 'Invalid organization response' },

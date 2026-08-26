@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import { zodResponseFormat } from 'openai/helpers/zod';
+import { z } from 'zod';
 import {
   CoachingResponsePayloadSchema,
   OpenAICoachingResponseEnvelopeSchema,
@@ -120,6 +121,43 @@ export function createOpenAIProvider(
         payload,
         usage: {
           provider: 'openai',
+          model: config.model,
+          inputTokens,
+          outputTokens,
+          estimatedCostUsd: estimateCostUsd(inputTokens, outputTokens, config),
+        },
+      };
+    },
+    async respondJson<T>(
+      input: ProviderCoachingInput,
+      schema: z.ZodType<T>,
+      schemaName: string,
+    ) {
+      const envelope = z.object({ response: schema }).strict();
+      let completion;
+      try {
+        completion = await client.beta.chat.completions.parse(
+          {
+            model: config.model,
+            messages: [
+              { role: 'system', content: input.systemPrompt },
+              { role: 'user', content: input.userPrompt },
+            ],
+            response_format: zodResponseFormat(envelope, schemaName),
+            max_completion_tokens: config.maxOutputTokens,
+          },
+          { maxRetries: 0 },
+        );
+      } catch (error) {
+        throw normalizeOpenAISdkFailure(error);
+      }
+      const payload = schema.parse(completion.choices[0]?.message.parsed?.response);
+      const inputTokens = completion.usage?.prompt_tokens ?? 0;
+      const outputTokens = completion.usage?.completion_tokens ?? 0;
+      return {
+        payload,
+        usage: {
+          provider: 'openai' as const,
           model: config.model,
           inputTokens,
           outputTokens,
