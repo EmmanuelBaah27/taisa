@@ -3,7 +3,7 @@ import test from 'node:test';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { verifyPaths } from '../verify.mjs';
+import { runtimeComponentExports, verifyPaths } from '../verify.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '__fixtures__');
 
@@ -22,11 +22,20 @@ for (const [file, rule] of [
   ['fail/legacy-type.tsx', 'no-legacy-type'],
   ['fail/stylesheet.tsx', 'no-stylesheet-create'],
   ['mobile/app/raw-field.tsx', 'prohibited-screen-primitives'],
+  ['mobile/app/namespace-field.tsx', 'prohibited-screen-primitives'],
+  ['mobile/app/required-field.tsx', 'prohibited-screen-primitives'],
 ]) {
   test(`${file} reports ${rule}`, async () => {
     assert.ok((await rulesFor(file)).includes(rule));
   });
 }
+
+test('runtime barrel parser records aliased export names and exact implementations', () => {
+  assert.deepEqual(runtimeComponentExports("export { Foo as Bar, Baz } from './Surface';\nexport type { Props } from './Surface';"), [
+    { name: 'Bar', implementation: 'mobile/src/components/ui/Surface.tsx' },
+    { name: 'Baz', implementation: 'mobile/src/components/ui/Surface.tsx' },
+  ]);
+});
 
 test('expired exact exception is rejected', async () => {
   const exceptions = [{

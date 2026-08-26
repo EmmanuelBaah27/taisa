@@ -96,26 +96,33 @@ export async function verifyPaths({ root, paths, exceptions = [], today = new Da
   return findings.sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line || a.rule.localeCompare(b.rule));
 }
 
+export function runtimeComponentExports(barrel) {
+  return [...barrel.matchAll(/export\s+(?!type\s)\{([\s\S]*?)\}\s+from\s+['"]\.\/(.+?)['"]/g)]
+    .flatMap((match) => match[1].split(',').map((entry) => {
+      const parts = entry.trim().replace(/^type\s+/, '').split(/\s+as\s+/);
+      const name = parts.at(-1);
+      return { name, implementation: `mobile/src/components/ui/${match[2]}.tsx` };
+    }))
+    .filter(({ name, implementation }) => /^[A-Z][A-Za-z0-9]*$/.test(name) && /^[A-Z]/.test(implementation.split('/').at(-1)));
+}
+
 async function componentRegistryFindings(root, registry) {
   const findings = [];
   const barrel = await readFile(join(root, 'mobile/src/components/ui/index.ts'), 'utf8');
   const docs = await readFile(join(root, 'docs/design-system.md'), 'utf8');
-  const exportedModules = [...barrel.matchAll(/from ['"]\.\/(.+?)['"]/g)]
-    .filter((match) => /^[A-Z]/.test(match[1]))
-    .map((match) => `mobile/src/components/ui/${match[1]}.tsx`)
+  const runtimeExports = runtimeComponentExports(barrel);
+  const exportedModules = runtimeExports
+    .map(({ implementation }) => implementation)
     .filter((value, index, values) => values.indexOf(value) === index);
   const registeredModules = new Set(registry.components.map((component) => component.implementation));
-  const registeredNames = new Set(registry.components.map((component) => component.name));
+  const registeredExports = new Set(registry.components.map((component) => `${component.name}:${component.implementation}`));
   for (const implementation of exportedModules) {
     if (!registeredModules.has(implementation)) {
       findings.push({ file: implementation, line: 1, rule: 'component-registry', message: 'Exported UI module is missing from the component registry.' });
     }
   }
-  const exportedComponentNames = [...barrel.matchAll(/export\s+(?!type\s)\{([\s\S]*?)\}\s+from/g)]
-    .flatMap((match) => match[1].split(',').map((name) => name.trim()))
-    .filter((name) => /^[A-Z][A-Za-z0-9]*$/.test(name));
-  for (const name of exportedComponentNames) {
-    if (!registeredNames.has(name)) {
+  for (const { name, implementation } of runtimeExports) {
+    if (!registeredExports.has(`${name}:${implementation}`)) {
       findings.push({ file: 'mobile/src/components/ui/index.ts', line: 1, rule: 'component-registry', message: `${name} is missing from the component registry.` });
     }
   }
@@ -125,7 +132,7 @@ async function componentRegistryFindings(root, registry) {
     } catch {
       findings.push({ file: component.implementation, line: 1, rule: 'component-implementation', message: 'Registered component implementation is missing.' });
     }
-    if (!new RegExp(`\\b${component.name}\\b`).test(barrel)) {
+    if (!runtimeExports.some(({ name, implementation }) => name === component.name && implementation === component.implementation)) {
       findings.push({ file: 'mobile/src/components/ui/index.ts', line: 1, rule: 'component-export', message: `${component.name} is not exported from the UI barrel.` });
     }
     if (!docs.includes(`\`${component.name}\``)) {

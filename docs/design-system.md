@@ -115,7 +115,7 @@ Legacy composite utilities remain only as compatibility aliases outside Product 
 | `ActiveRecordingActionBar` | `durationSeconds`, `amplitudeLevel`, `paused`, `disabled?`, `recordingActionDisabled?`, `cancelLabel`, callbacks | Controls-only recording action bar for the shared composer dock: Cancel, Keyboard, raw-amplitude timestamp, Pause/Resume, and Send. It owns their arrangement and intrinsic 56px action geometry; `ChatComposerDock` owns the shared footer inset, margins, and bottom spacing. Recorder and navigation state remain in the screen owner. |
 | `Badge` | `color`, `appearance`, `size`, `icon`, `onDismiss` | Eight colors; three appearances |
 | `Card` | `surface`, `className`, `style` | Two surfaces (default / elevated) |
-| `Input` | `size`, `label`, `helperText`, `errorMessage`, `error`, `...TextInputProps` | Readable semantic input copy with label, helper, error, focus, and disabled states |
+| `Input` | `size`, `shape`, `label`, `helperText`, `errorMessage`, `error`, `trailing`, `...TextInputProps` | Readable semantic input copy with label, helper, error, focus, and disabled states |
 | `Icon` | `name`, `size`, `colorRole` | Product icons use closed semantic colour roles; raw native colour remains deprecated during migration |
 | `Toggle` | `label`, `value`, `disabled`, `onValueChange` | Accessible semantic boolean control with token-derived track and thumb colours |
 | `CardHeader`, `CardTitle`, `CardDescription`, `CardContent`, `CardFooter` | typed composition props | Registered structural exports that compose the production `Card` surface |
