@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-native';
 import { View } from 'react-native';
 import { Button } from './Button';
+import { colorTokens } from '../../design-system/tokens';
 import { Icon } from './Icon';
 
 const meta: Meta<typeof Button> = {
@@ -29,7 +30,7 @@ const meta: Meta<typeof Button> = {
   },
   decorators: [
     (Story) => (
-      <View style={{ padding: 24, alignItems: 'flex-start', gap: 12, backgroundColor: '#FFFFFF' }}>
+      <View style={{ padding: 24, alignItems: 'flex-start', gap: 12, backgroundColor: colorTokens.surface.app }}>
         <Story />
       </View>
     ),

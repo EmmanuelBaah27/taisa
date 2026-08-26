@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-native';
 import { View } from 'react-native';
 
 import { ChatListRow } from './ChatListRow';
+import { colorTokens } from '../../design-system/tokens';
 
 const meta: Meta<typeof ChatListRow> = {
   title: 'Patterns/ChatListRow',
@@ -16,7 +17,7 @@ const meta: Meta<typeof ChatListRow> = {
   },
   decorators: [
     (Story) => (
-      <View style={{ padding: 8, backgroundColor: '#FFFFFF' }}>
+      <View style={{ padding: 8, backgroundColor: colorTokens.surface.app }}>
         <Story />
       </View>
     ),

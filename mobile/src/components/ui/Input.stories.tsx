@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-native';
 import { View } from 'react-native';
 import { Input } from './Input';
+import { colorTokens } from '../../design-system/tokens';
 
 const meta: Meta<typeof Input> = {
   title: 'Components/Input',
@@ -22,7 +23,7 @@ const meta: Meta<typeof Input> = {
   },
   decorators: [
     (Story) => (
-      <View style={{ padding: 24, gap: 8, backgroundColor: '#FFFFFF' }}>
+      <View style={{ padding: 24, gap: 8, backgroundColor: colorTokens.surface.app }}>
         <Story />
       </View>
     ),

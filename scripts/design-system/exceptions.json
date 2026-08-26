@@ -21,6 +21,13 @@
     "expires": "2026-09-25"
   },
   {
+    "file": "mobile/src/components/ui/PersistentNavigationCapsule.tsx",
+    "rule": "no-legacy-type",
+    "reason": "Reanimated label transitions require numeric typography values sourced from the navigation contract.",
+    "owner": "Taisa Design System",
+    "expires": "2026-09-25"
+  },
+  {
     "file": "mobile/src/components/ui/__tests__/liquidGlass.test.ts",
     "rule": "no-raw-color",
     "reason": "Contract test asserts exact platform fallback output.",
@@ -31,6 +38,20 @@
     "file": "mobile/src/components/ui/__tests__/SecondaryIconButton.test.ts",
     "rule": "no-raw-color",
     "reason": "Contract test asserts exact resolved native icon output.",
+    "owner": "Taisa Design System",
+    "expires": "2026-09-25"
+  },
+  {
+    "file": "mobile/src/components/ui/__tests__/PersistentNavigationCapsule.test.ts",
+    "rule": "no-raw-color",
+    "reason": "Contract test verifies exact native animated color output at transition boundaries.",
+    "owner": "Taisa Design System",
+    "expires": "2026-09-25"
+  },
+  {
+    "file": "mobile/src/components/ui/Text.test.tsx",
+    "rule": "no-legacy-type",
+    "reason": "Contract test proves semantic roles resolve without legacy utility classes.",
     "owner": "Taisa Design System",
     "expires": "2026-09-25"
   }

@@ -2,7 +2,7 @@ import '../global.css';
 import { useEffect, useState } from 'react';
 import { router, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { AppState, Text, View } from 'react-native';
+import { AppState, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useFonts } from 'expo-font';
 import { Inter_400Regular } from '@expo-google-fonts/inter/400Regular';
@@ -22,6 +22,8 @@ import {
 } from '../src/services/startupProfile';
 import { CURRENT_INITIAL_STACK } from '../src/navigation/currentExperience';
 import { LiquidGlassPressable } from '../src/components/ui/LiquidGlassPressable';
+import { Text } from '../src/components/ui/Text';
+import { colorTokens } from '../src/design-system/tokens';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -95,8 +97,8 @@ export default function RootLayout() {
     const presentation = recoveryPresentation(startup.error);
     return (
       <View className="flex-1 items-center justify-center bg-background px-8">
-        <Text className="text-foreground text-xl font-bold text-center">{presentation.title}</Text>
-        <Text className="text-text-tertiary text-sm text-center mt-3">{presentation.body}</Text>
+        <Text role="subheading">{presentation.title}</Text>
+        <View className="mt-3"><Text role="label" color="tertiary">{presentation.body}</Text></View>
         <LiquidGlassPressable
           accessibilityLabel="Retry secure recovery"
           hierarchy="prominent"
@@ -109,16 +111,16 @@ export default function RootLayout() {
             }).then(setStartup).catch(() => { setStartup(null); });
           }}
         >
-          <Text className="text-foreground text-sm font-semibold">Retry securely</Text>
+          <Text role="labelStrong">Retry securely</Text>
         </LiquidGlassPressable>
       </View>
     );
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#ffffff' }}>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: colorTokens.surface.app }}>
       <StatusBar style="dark" />
-      <Stack initialRouteName={CURRENT_INITIAL_STACK} screenOptions={{ headerShown: false, animation: 'none', contentStyle: { backgroundColor: '#ffffff' } }}>
+      <Stack initialRouteName={CURRENT_INITIAL_STACK} screenOptions={{ headerShown: false, animation: 'none', contentStyle: { backgroundColor: colorTokens.surface.app } }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="onboarding/index" />
         <Stack.Screen name="thread/[id]" />
@@ -135,15 +137,15 @@ export default function RootLayout() {
       {privacyState.shielded ? (
         <View
           className="absolute inset-0 items-center justify-center bg-background px-8"
-          style={{ zIndex: 9999, backgroundColor: '#ffffff' }}
+          style={{ zIndex: 9999, backgroundColor: colorTokens.surface.app }}
           accessibilityViewIsModal
         >
-          <Text className="text-foreground text-xl font-bold">Taisa is private</Text>
-          <Text className="text-text-tertiary text-sm text-center mt-2">
+          <Text role="subheading">Taisa is private</Text>
+          <View className="mt-2"><Text role="label" color="tertiary">
             {privacyState.appState === 'active'
               ? 'Unlock to view your career archive.'
               : 'Your career archive is hidden.'}
-          </Text>
+          </Text></View>
           {privacyState.appState === 'active' && privacyState.lockEnabled ? (
             <LiquidGlassPressable
               accessibilityLabel="Unlock Taisa"
@@ -153,7 +155,7 @@ export default function RootLayout() {
               disabled={privacyState.phase === 'unlocking'}
               onPress={() => { void privacyGuard.unlock(); }}
             >
-              <Text className="text-foreground text-sm font-semibold">
+              <Text role="labelStrong">
                 {privacyState.phase === 'unlocking' ? 'Unlocking…' : 'Unlock Taisa'}
               </Text>
             </LiquidGlassPressable>

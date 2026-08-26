@@ -1,10 +1,11 @@
 import type { ReactNode } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import {
   BOTTOM_NAVIGATION_ACTIVE_FILL,
   BOTTOM_NAVIGATION_FIGMA,
 } from '../../navigation/bottomNavigation';
+import { Text } from './Text';
 
 export interface SelectedNavigationItemProps {
   label: string;
@@ -53,17 +54,7 @@ export function SelectedNavigationItem({
         }}
       >
         {leadingVisual}
-        <Text
-          numberOfLines={1}
-          className="font-sans-medium text-[#0F1010]"
-          style={{
-            fontSize: SELECTED.fontSize,
-            lineHeight: SELECTED.lineHeight,
-            letterSpacing: SELECTED.letterSpacing,
-          }}
-        >
-          {label}
-        </Text>
+        <Text role="labelStrong" numberOfLines={1}>{label}</Text>
       </View>
     </Pressable>
   );

@@ -3,6 +3,7 @@ import { View } from 'react-native';
 import { Icon } from './Icon';
 import type { IconName } from './Icon';
 import { Text } from './Text';
+import { colorTokens } from '../../design-system/tokens';
 
 const meta: Meta<typeof Icon> = {
   title: 'Foundations/Icons',
@@ -22,7 +23,7 @@ const meta: Meta<typeof Icon> = {
   },
   decorators: [
     (Story) => (
-      <View style={{ padding: 24, backgroundColor: '#FFFFFF' }}>
+      <View style={{ padding: 24, backgroundColor: colorTokens.surface.app }}>
         <Story />
       </View>
     ),
@@ -80,7 +81,7 @@ export const OnDark: Story = {
   name: 'On Dark Background',
   decorators: [
     (Story) => (
-      <View style={{ padding: 24, backgroundColor: '#0A0A0F' }}>
+      <View style={{ padding: 24, backgroundColor: colorTokens.surface.inverted }}>
         <Story />
       </View>
     ),

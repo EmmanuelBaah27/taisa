@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from './Button';
 import { Badge } from './Badge';
 import { Text } from './Text';
+import { colorTokens } from '../../design-system/tokens';
 
 const meta: Meta<typeof Card> = {
   title: 'Components/Card',
@@ -19,7 +20,7 @@ const meta: Meta<typeof Card> = {
   },
   decorators: [
     (Story) => (
-      <View style={{ padding: 24, backgroundColor: '#FAFAFA' }}>
+      <View style={{ padding: 24, backgroundColor: colorTokens.surface.subtle }}>
         <Story />
       </View>
     ),
