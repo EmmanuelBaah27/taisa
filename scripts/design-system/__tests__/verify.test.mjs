@@ -25,6 +25,8 @@ for (const [file, rule] of [
   ['mobile/app/namespace-field.tsx', 'prohibited-screen-primitives'],
   ['mobile/app/required-field.tsx', 'prohibited-screen-primitives'],
   ['mobile/app/dynamic-field.tsx', 'prohibited-screen-primitives'],
+  ['mobile/app/template-field.tsx', 'prohibited-screen-primitives'],
+  ['mobile/app/deep-field.tsx', 'prohibited-screen-primitives'],
 ]) {
   test(`${file} reports ${rule}`, async () => {
     assert.ok((await rulesFor(file)).includes(rule));
