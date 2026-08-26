@@ -12,4 +12,5 @@ export * from './types/proposals';
 export * from './types/insights';
 export * from './types/autonomy';
 export * from './types/attention';
+export * from './types/organization';
 export * from './coachingLimits';
