@@ -1,9 +1,11 @@
-import type { CapabilitySnapshot, PermittedOperation } from '@taisa/shared';
+import type { CapabilitySnapshot, PermittedOperation, ProposalEnvelope } from '@taisa/shared';
 
 import type { ExclusiveTransactionConnection } from '../db/types';
 import { withRepositoryTransaction } from '../db/types';
 import { grantAuthority, revokeAuthority } from '../domain/readiness/readinessPolicy';
 import { createReadinessRepository } from '../repositories/readinessRepository';
+import { createInsightRepository } from '../repositories/insightRepository';
+import { createWorkRepository } from '../repositories/workRepository';
 import { createHomeOperationService } from './homeOperations';
 import type { OperationRequest } from '../domain/operations/operationGate';
 
@@ -14,8 +16,64 @@ type CapabilityRow = {
   updated_at: string;
 };
 type ProposalRow = {
-  id: string; type: string; source_id: string; ambiguity: 'strong' | 'ambiguous'; effect_json: string;
+  id: string; type: ProposalEnvelope['type']; source_id: string; source_revision: number;
+  evidence_ids_json: string; ambiguity: 'strong' | 'ambiguous'; effect_json: string;
 };
+
+async function acceptCreationProposal(
+  database: ExclusiveTransactionConnection,
+  proposal: ProposalRow,
+  effect: Record<string, unknown>,
+  now: string,
+): Promise<boolean> {
+  if (!['work_record', 'insight', 'growth_reflection', 'experiment'].includes(proposal.type)) {
+    return false;
+  }
+  await withRepositoryTransaction(database, async (transaction) => {
+    const evidenceIds = JSON.parse(proposal.evidence_ids_json) as string[];
+    const evidence = evidenceIds.map((evidenceId) => ({
+      evidenceId, sourceId: proposal.source_id, sourceRevision: proposal.source_revision,
+    }));
+    const insights = createInsightRepository(transaction);
+    switch (proposal.type) {
+      case 'work_record':
+        await createWorkRepository(transaction).insert(transaction, {
+          id: `${proposal.id}:work`, kind: effect.kind as never, title: effect.title as string,
+          projectId: effect.projectId as string | null, status: 'open', freshness: 'current',
+          plannedWeek: null, plannedDay: null, sourceId: proposal.source_id, revision: 1,
+          createdAt: now, updatedAt: now, lastConfirmedAt: now,
+        }, `${proposal.id}:accept`);
+        break;
+      case 'insight':
+        await insights.insertInsight(transaction, {
+          id: `${proposal.id}:insight`, kind: 'operational', title: effect.title as string,
+          body: effect.body as string, freshness: 'current', evidence, createdAt: now, updatedAt: now,
+        });
+        break;
+      case 'growth_reflection':
+        await insights.insertReflection(transaction, {
+          id: `${proposal.id}:reflection`, kind: 'growth_reflection', title: effect.title as string,
+          body: effect.body as string, state: 'confirmed', evidence, createdAt: now, updatedAt: now,
+        });
+        break;
+      case 'experiment':
+        await insights.insertExperiment(transaction, {
+          id: `${proposal.id}:experiment`, title: effect.title as string,
+          hypothesis: effect.hypothesis as string, state: 'active', sourceReflectionId: null,
+          createdAt: now, updatedAt: now,
+        });
+        break;
+    }
+    const resolved = await transaction.runAsync(
+      `UPDATE proposals SET resolution = 'accepted', updated_at = $now
+       WHERE id = $id AND admission IN ('pending', 'admitted')
+         AND resolution = 'unapplied' AND revalidation = 'valid'`,
+      { $id: proposal.id, $now: now },
+    );
+    if (resolved.changes !== 1) throw new Error('Proposal is no longer applicable');
+  });
+  return true;
+}
 
 function mapCapability(row: CapabilityRow | null): CapabilitySnapshot | null {
   return row === null ? null : {
@@ -39,13 +97,14 @@ export function createGovernanceActions(database: ExclusiveTransactionConnection
   return {
     async acceptProposal(proposalId: string, now: string): Promise<void> {
       const proposal = await database.getFirstAsync<ProposalRow>(
-        `SELECT id, type, source_id, ambiguity, effect_json FROM proposals
+        `SELECT id, type, source_id, source_revision, evidence_ids_json, ambiguity, effect_json FROM proposals
          WHERE id = $id AND admission IN ('pending', 'admitted')
            AND resolution = 'unapplied' AND revalidation = 'valid'`,
         { $id: proposalId },
       );
       if (proposal === null) throw new Error('Proposal is no longer applicable');
       const effect = JSON.parse(proposal.effect_json) as Record<string, unknown>;
+      if (await acceptCreationProposal(database, proposal, effect, now)) return;
       let operation: OperationRequest['operation'];
       let targetId: string;
       let payload: Record<string, unknown> = {};

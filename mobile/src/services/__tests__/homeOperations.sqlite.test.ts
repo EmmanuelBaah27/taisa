@@ -118,3 +118,69 @@ test('user-confirmed proposal applies its effect and resolves atomically without
   )).resolves.toEqual({ resolution: 'accepted' });
   database.close();
 });
+
+test('accepted creation proposals persist bounded authoritative records', async () => {
+  const database = createTestDatabase();
+  const proposals = createProposalRepository(database);
+  const fixtures = [
+    { id: 'proposal-work', type: 'work_record' as const,
+      effect: { kind: 'task' as const, title: 'New task', projectId: null } },
+    { id: 'proposal-insight', type: 'insight' as const,
+      effect: { title: 'Pattern', body: 'A grounded pattern.' } },
+    { id: 'proposal-reflection', type: 'growth_reflection' as const,
+      effect: { title: 'Growth', body: 'A grounded reflection.' } },
+    { id: 'proposal-experiment', type: 'experiment' as const,
+      effect: { title: 'Try focus', hypothesis: 'Focus improves delivery.' } },
+  ];
+  await database.withTransaction(async (transaction) => {
+    for (const fixture of fixtures) {
+      await proposals.insert(transaction, {
+        ...fixture, sourceId: 'conversation-1', sourceRevision: 2,
+        evidenceIds: ['evidence-1'], evidenceFingerprint: `fp-${fixture.id}`,
+        reasoning: 'User-confirmed proposal', ambiguity: 'strong', admission: 'admitted',
+        resolution: 'unapplied', revalidation: 'valid', createdAt: NOW, updatedAt: NOW,
+      }, `seed-${fixture.id}`);
+    }
+  });
+  const governance = createGovernanceActions(database);
+  for (const fixture of fixtures) await governance.acceptProposal(fixture.id, NOW);
+
+  await expect(database.getFirstAsync<{ count: number }>(
+    `SELECT COUNT(*) AS count FROM proposals WHERE resolution = 'accepted'`,
+  )).resolves.toEqual({ count: 4 });
+  await expect(database.getFirstAsync<{ count: number }>(
+    `SELECT COUNT(*) AS count FROM work_records WHERE id = 'proposal-work:work'`,
+  )).resolves.toEqual({ count: 1 });
+  await expect(database.getFirstAsync<{ count: number }>(
+    `SELECT COUNT(*) AS count FROM insights WHERE id = 'proposal-insight:insight'`,
+  )).resolves.toEqual({ count: 1 });
+  await expect(database.getFirstAsync<{ state: string }>(
+    `SELECT state FROM growth_reflections WHERE id = 'proposal-reflection:reflection'`,
+  )).resolves.toEqual({ state: 'confirmed' });
+  await expect(database.getFirstAsync<{ state: string }>(
+    `SELECT state FROM experiments WHERE id = 'proposal-experiment:experiment'`,
+  )).resolves.toEqual({ state: 'active' });
+  database.close();
+});
+
+test('creation proposal rolls back its authoritative insert when resolution fails', async () => {
+  const database = createTestDatabase();
+  await database.withTransaction((transaction) => createProposalRepository(database).insert(transaction, {
+    id: 'proposal-rollback', type: 'insight', sourceId: 'conversation-1', sourceRevision: 1,
+    evidenceIds: ['evidence-1'], evidenceFingerprint: 'fp-rollback', reasoning: 'Rollback test',
+    effect: { title: 'Must roll back', body: 'No partial insert.' }, ambiguity: 'strong',
+    admission: 'admitted', resolution: 'unapplied', revalidation: 'valid', createdAt: NOW, updatedAt: NOW,
+  }, 'seed-proposal-rollback'));
+  const runAsync = database.runAsync.bind(database);
+  database.runAsync = async (source, params) => {
+    if (source.includes("UPDATE proposals SET resolution = 'accepted'")) throw new Error('resolution failed');
+    return runAsync(source, params);
+  };
+
+  await expect(createGovernanceActions(database).acceptProposal('proposal-rollback', NOW))
+    .rejects.toThrow('resolution failed');
+  await expect(database.getFirstAsync<{ count: number }>(
+    `SELECT COUNT(*) AS count FROM insights WHERE id = 'proposal-rollback:insight'`,
+  )).resolves.toEqual({ count: 0 });
+  database.close();
+});
