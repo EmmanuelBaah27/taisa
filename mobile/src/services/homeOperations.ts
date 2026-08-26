@@ -92,7 +92,7 @@ async function updateCapabilityOutcome(
 function operationTransaction(transaction: RepositoryTransaction, occurredAt: string): OperationTransaction {
   return {
     async updateRecord(record) {
-      await transaction.runAsync(
+      const result = await transaction.runAsync(
         `UPDATE work_records SET title = $title, project_id = $projectId, status = $status,
            freshness = $freshness, planned_week = $plannedWeek, planned_day = $plannedDay,
            revision = $revision, updated_at = $updatedAt, last_confirmed_at = $lastConfirmedAt
@@ -102,14 +102,16 @@ function operationTransaction(transaction: RepositoryTransaction, occurredAt: st
           $revision: record.revision, $updatedAt: record.updatedAt,
           $lastConfirmedAt: record.lastConfirmedAt, $priorRevision: record.revision - 1 },
       );
+      if (result.changes !== 1) throw new Error('REVISION_CONFLICT');
     },
     async updateProject(project) {
-      await transaction.runAsync(
+      const result = await transaction.runAsync(
         `UPDATE projects SET status = $status, revision = $revision, updated_at = $updatedAt
          WHERE id = $id AND revision = $priorRevision`,
         { $id: project.id, $status: project.status, $revision: project.revision,
           $updatedAt: project.updatedAt, $priorRevision: project.revision - 1 },
       );
+      if (result.changes !== 1) throw new Error('REVISION_CONFLICT');
     },
     async linkConversation(request) {
       await transaction.runAsync(

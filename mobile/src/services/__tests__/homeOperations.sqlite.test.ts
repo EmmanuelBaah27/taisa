@@ -85,6 +85,42 @@ test('failed operation rolls back record, receipt, and readiness outcome togethe
   database.close();
 });
 
+test('lost revision race records no receipt, event, proposal resolution, or readiness success', async () => {
+  const database = createTestDatabase();
+  const work = createWorkRepository(database);
+  const readiness = createReadinessRepository(database);
+  const record: WorkRecord = {
+    id: 'task-race', kind: 'task', title: 'Race', projectId: null, status: 'open',
+    freshness: 'current', plannedWeek: null, plannedDay: null, sourceId: 'conversation-1',
+    revision: 1, createdAt: NOW, updatedAt: NOW, lastConfirmedAt: NOW,
+  };
+  await database.withTransaction(async (transaction) => {
+    await work.insert(transaction, record, 'seed-race');
+    await readiness.put(transaction, {
+      operation: 'complete_explicit_task', policyVersion: 1, state: 'trusted',
+      permissionGrantedAt: NOW, relevantExamples: 8, corrections: 0, contradictions: 0,
+      latestEvidenceAt: NOW, cleanTrialOutcomes: 5, updatedAt: NOW,
+    });
+  });
+  const runAsync = database.runAsync.bind(database);
+  database.runAsync = async (source, params) => {
+    if (source.includes('UPDATE work_records SET title')) return { changes: 0, lastInsertRowId: 0 };
+    return runAsync(source, params);
+  };
+
+  await expect(createHomeOperationService(database).execute({
+    id: 'operation-race', operation: 'complete_explicit_task', targetId: record.id,
+    sourceId: record.sourceId, expectedRevision: 1, ambiguity: 'strong', requestedAt: NOW,
+  })).rejects.toThrow('REVISION_CONFLICT');
+  await expect(database.getFirstAsync<{ count: number }>(
+    'SELECT COUNT(*) AS count FROM operation_events',
+  )).resolves.toEqual({ count: 0 });
+  await expect(database.getFirstAsync<{ count: number }>(
+    'SELECT COUNT(*) AS count FROM record_events',
+  )).resolves.toEqual({ count: 0 });
+  database.close();
+});
+
 test('user-confirmed proposal applies its effect and resolves atomically without delegated permission', async () => {
   const database = createTestDatabase();
   const work = createWorkRepository(database);
