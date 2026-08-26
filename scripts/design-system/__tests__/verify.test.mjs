@@ -24,6 +24,7 @@ for (const [file, rule] of [
   ['mobile/app/raw-field.tsx', 'prohibited-screen-primitives'],
   ['mobile/app/namespace-field.tsx', 'prohibited-screen-primitives'],
   ['mobile/app/required-field.tsx', 'prohibited-screen-primitives'],
+  ['mobile/app/dynamic-field.tsx', 'prohibited-screen-primitives'],
 ]) {
   test(`${file} reports ${rule}`, async () => {
     assert.ok((await rulesFor(file)).includes(rule));
@@ -31,10 +32,14 @@ for (const [file, rule] of [
 }
 
 test('runtime barrel parser records aliased export names and exact implementations', () => {
-  assert.deepEqual(runtimeComponentExports("export { Foo as /* public */ Bar, Baz, type Props } from './Surface';\nexport type { OtherProps } from './Surface';"), [
+  assert.deepEqual(runtimeComponentExports("export { Foo as /* public */ Bar, // keep Baz public\n Baz, type Props } from './Surface';\nexport type { OtherProps } from './Surface';"), [
     { name: 'Bar', implementation: 'mobile/src/components/ui/Surface.tsx' },
     { name: 'Baz', implementation: 'mobile/src/components/ui/Surface.tsx' },
   ]);
+});
+
+test('type-only React Native names do not trigger the screen primitive rule', async () => {
+  assert.deepEqual(await rulesFor('mobile/app/field-props.ts'), []);
 });
 
 test('expired exact exception is rejected', async () => {

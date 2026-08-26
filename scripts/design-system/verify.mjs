@@ -98,8 +98,8 @@ export async function verifyPaths({ root, paths, exceptions = [], today = new Da
 
 export function runtimeComponentExports(barrel) {
   return [...barrel.matchAll(/export\s+(?!type\s)\{([\s\S]*?)\}\s+from\s+['"]\.\/(.+?)['"]/g)]
-    .flatMap((match) => match[1].split(',').map((entry) => {
-      const normalized = entry.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/g, '').trim();
+    .flatMap((match) => match[1].replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '').split(',').map((entry) => {
+      const normalized = entry.trim();
       if (normalized.startsWith('type ')) return null;
       const parts = normalized.split(/\s+as\s+/);
       const name = parts.at(-1);
