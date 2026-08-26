@@ -17,7 +17,8 @@ function prompt(request: OrganizationRequest) {
   return {
     systemPrompt: [
       'You organize only the bounded work scope supplied by the user.',
-      'Return proposal envelopes only. Never claim to mutate records.',
+      'Return proposal candidates only. Never assign admission, resolution, revalidation, or timestamps.',
+      'Never claim to mutate records.',
       'Every proposal must cite supplied source and evidence IDs.',
       'Use ambiguity=strong only for explicit language; otherwise use ambiguous.',
     ].join(' '),

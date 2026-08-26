@@ -14,6 +14,7 @@ const validRequest = {
   requestId: '11111111-1111-4111-8111-111111111111',
   submittedAt: '2026-08-26T08:00:00Z',
   scope: 'week',
+  scopeId: null,
   records: [record(1)],
   conversations: [{ id: 'conversation-1', summary: 'Planned Task 1', revision: 2 }],
 };
@@ -46,7 +47,8 @@ test('rejects full-archive fields and task scopes above 20 conversations', async
     .post('/api/v1/organization/analyze')
     .send({
       ...validRequest,
-      scope: 'conversation_task',
+      scope: 'task',
+      scopeId: 'record-1',
       conversations: Array.from({ length: 21 }, (_, index) => ({
         id: `conversation-${index}`, summary: `Summary ${index}`, revision: 1,
       })),
@@ -84,9 +86,7 @@ test('rejects a provider proposal whose effect does not match its type', async (
         id: 'proposal-1', type: 'project_association', sourceId: 'conversation-1',
         sourceRevision: 2, evidenceIds: ['conversation-1'], evidenceFingerprint: 'fp-1',
         reasoning: 'Explicit project reference', effect: { recordId: 'record-1' },
-        ambiguity: 'strong', admission: 'pending', resolution: 'unapplied',
-        revalidation: 'valid', createdAt: validRequest.submittedAt,
-        updatedAt: validRequest.submittedAt,
+        ambiguity: 'strong',
       }],
     } as never),
   };
@@ -95,6 +95,23 @@ test('rejects a provider proposal whose effect does not match its type', async (
     .post('/api/v1/organization/analyze')
     .send(validRequest);
 
+  expect(response.status).toBe(502);
+  expect(response.body.error.code).toBe('INVALID_ORGANIZATION_OUTPUT');
+});
+
+test('rejects provider-authored proposal lifecycle fields', async () => {
+  const analyzer: OrganizationAnalyzer = {
+    analyze: jest.fn().mockResolvedValue({
+      requestId: validRequest.requestId,
+      proposals: [{
+        id: 'candidate-1', type: 'task_completion', sourceId: 'conversation-1',
+        sourceRevision: 2, evidenceIds: ['conversation-1'], reasoning: 'Done',
+        ambiguity: 'strong', effect: { recordId: 'record-1' }, resolution: 'accepted',
+      }],
+    } as never),
+  };
+
+  const response = await request(testApp(analyzer)).post('/api/v1/organization/analyze').send(validRequest);
   expect(response.status).toBe(502);
   expect(response.body.error.code).toBe('INVALID_ORGANIZATION_OUTPUT');
 });

@@ -10,6 +10,7 @@ const request = {
   requestId: '11111111-1111-4111-8111-111111111111',
   submittedAt: '2026-08-26T08:00:00Z',
   scope: 'week',
+  scopeId: null,
   records: [{
     id: 'task-1', kind: 'task', title: 'Send proposal', status: 'open',
     revision: 1, projectId: null,

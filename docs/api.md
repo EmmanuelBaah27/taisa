@@ -30,14 +30,18 @@ Baah's explicit route-retirement approval.
 
 Accepts one strict `OrganizationRequest` from `@taisa/shared`. The request is capped by scope,
 record count, conversation count, title/status/summary lengths, and a caller-generated request ID.
-The response must preserve that request ID and contain only typed `ProposalEnvelope` values. The
+Conversation scope contains exactly the selected conversation, task scope exactly the selected task
+and at most 20 conversations, and week scope at most 30 records and 30 conversations; excess work
+must be narrowed before submission rather than silently truncated. The response must preserve the
+request ID and contain only typed lifecycle-free proposal candidates. The
 provider-neutral gateway makes exactly one schema-aware OpenAI or Anthropic call; it does not read
 backend user tables, persist readable content, or apply proposals. Invalid structured output or
 request correlation returns `INVALID_ORGANIZATION_OUTPUT`. The route is mounted behind the existing
 AI rate limit.
 
 On-device code previews the exact bounded request before submission. Returned proposals enter the
-local proposal-governance path. User acceptance applies the authoritative effect and proposal
+local proposal-governance path, which assigns fingerprints, admission, revalidation, resolution,
+and timestamps. User acceptance applies the authoritative effect and proposal
 resolution atomically; delegated operations additionally require their exact capability permission.
 
 ### `POST /api/v1/coaching/respond`

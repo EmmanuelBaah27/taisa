@@ -22,11 +22,23 @@ const ConversationSchema = z.object({
 export const OrganizationRequestSchema = z.object({
   requestId: z.string().uuid(),
   submittedAt: z.string().datetime(),
-  scope: z.enum(['conversation_task', 'week']),
+  scope: z.enum(['conversation', 'task', 'week']),
+  scopeId: Id.nullable(),
   records: z.array(RecordSchema).max(30),
   conversations: z.array(ConversationSchema).max(30),
 }).strict().superRefine((value, context) => {
-  if (value.scope === 'conversation_task' && value.conversations.length > 20) {
+  if (value.scope === 'conversation' && (
+    value.scopeId === null || value.conversations.length !== 1
+    || value.conversations[0]?.id !== value.scopeId
+  )) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ['scopeId'], message: 'Conversation scope must contain exactly its selected conversation' });
+  }
+  if (value.scope === 'task' && (
+    value.scopeId === null || value.records.length !== 1 || value.records[0]?.id !== value.scopeId
+  )) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ['scopeId'], message: 'Task scope must contain exactly its selected task' });
+  }
+  if (value.scope === 'task' && value.conversations.length > 20) {
     context.addIssue({
       code: z.ZodIssueCode.too_big,
       type: 'array',
@@ -36,6 +48,9 @@ export const OrganizationRequestSchema = z.object({
       message: 'Task organization accepts at most 20 conversations',
     });
   }
+  if (value.scope === 'week' && value.scopeId !== null) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ['scopeId'], message: 'Week scope has no selected entity' });
+  }
 }) as z.ZodType<OrganizationRequest>;
 
 const ProposalCommon = {
@@ -43,14 +58,8 @@ const ProposalCommon = {
   sourceId: Id,
   sourceRevision: Revision,
   evidenceIds: z.array(Id).min(1).max(30),
-  evidenceFingerprint: Id,
   reasoning: z.string().trim().min(1).max(2_000),
   ambiguity: z.enum(['strong', 'ambiguous']),
-  admission: z.enum(['pending', 'admitted', 'suppressed']),
-  resolution: z.enum(['unapplied', 'accepted', 'rejected', 'expired']),
-  revalidation: z.enum(['valid', 'stale', 'conflicted']),
-  createdAt: z.string().datetime(),
-  updatedAt: z.string().datetime(),
 } as const;
 
 function proposalSchema<T extends string, E extends z.ZodTypeAny>(type: T, effect: E) {
