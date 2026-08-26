@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Modal, Share, Switch, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, ScrollView, TouchableOpacity, TextInput, Modal, Share, Switch, KeyboardAvoidingView, Platform } from 'react-native';
 import { File } from 'expo-file-system';
 import { useFocusEffect } from 'expo-router';
 import { useCareerStore } from '../../src/stores/careerStore';
@@ -26,6 +26,8 @@ import {
   getPageHeaderScrollInset,
   PageHeaderSurface,
 } from '../../src/components/ui/PageHeaderSurface';
+import { Text } from '../../src/components/ui/Text';
+import { colorTokens } from '../../src/design-system/tokens';
 
 interface YouData {
   currentFocus: string;
@@ -177,7 +179,7 @@ export default function YouScreen() {
   return (
     <View className="flex-1 bg-background">
       <PageHeaderSurface variant="title">
-        <Text className="text-foreground text-H1 px-5 pb-3" style={{ paddingTop: pageHeaderPaddingTop }}>You</Text>
+        <View className="px-5 pb-3" style={{ paddingTop: pageHeaderPaddingTop }}><Text role="heading">You</Text></View>
       </PageHeaderSurface>
     <ScrollView
       className="flex-1 bg-background"
@@ -196,12 +198,12 @@ export default function YouScreen() {
           <NaviiAvatar seed={userId} size={64} />
         ) : (
           <View className="w-16 h-16 rounded-full bg-accent-muted items-center justify-center"
-            style={{ borderWidth: 1.5, borderColor: 'rgba(205,236,26,0.3)' }}>
-            <Text className="text-lime-700 text-xl font-bold">T</Text>
+            style={{ borderWidth: 1.5, borderColor: colorTokens.border.focus }}>
+            <Text role="subheading" color="success">T</Text>
           </View>
         )}
-        <Text className="text-foreground text-sm font-bold mt-2">Taisa User</Text>
-        <Text className="text-text-tertiary text-xs mt-0.5">{profile?.currentRole ?? 'Your role'} · {sessionCount} session{sessionCount !== 1 ? 's' : ''}</Text>
+        <View className="mt-2"><Text role="labelStrong">Taisa User</Text></View>
+        <View className="mt-0.5"><Text role="metadata" color="tertiary">{profile?.currentRole ?? 'Your role'} · {sessionCount} session{sessionCount !== 1 ? 's' : ''}</Text></View>
       </View>
 
       {/* Taisa's read on you */}
@@ -213,7 +215,7 @@ export default function YouScreen() {
 
       {youData.themes.length > 0 && (
         <View className="bg-card rounded-xl px-4 py-3 mb-2">
-          <Text className="text-lime-700 text-xs font-bold uppercase tracking-wider mb-2">Recurring themes</Text>
+          <View className="mb-2"><Text role="metadataStrong" color="success">Recurring themes</Text></View>
           <View className="flex-row flex-wrap">
             {youData.themes.map(t => <ThemeTag key={t} label={t} />)}
           </View>
@@ -231,40 +233,40 @@ export default function YouScreen() {
         className="bg-card rounded-xl px-4 py-3 mb-2 flex-row items-center"
         onPress={() => { setGoalsInput(profile?.longTermGoal ?? ''); setEditingGoals(true); }}
       >
-        <Text className="text-base mr-3">🎯</Text>
+        <View className="mr-3"><Text>🎯</Text></View>
         <View className="flex-1">
-          <Text className="text-foreground text-sm font-semibold">Goals</Text>
-          <Text className="text-text-tertiary text-xs mt-0.5" numberOfLines={2}>{profile?.longTermGoal || 'Tap to add your goals'}</Text>
+          <Text role="labelStrong">Goals</Text>
+          <View className="mt-0.5"><Text role="metadata" color="tertiary" numberOfLines={2}>{profile?.longTermGoal || 'Tap to add your goals'}</Text></View>
         </View>
-        <Text className="text-text-tertiary text-base">›</Text>
+        <Text color="tertiary">›</Text>
       </TouchableOpacity>
 
       <TouchableOpacity
         className="bg-card rounded-xl px-4 py-3 mb-2 flex-row items-center"
         onPress={() => { setRoleInput(`${profile?.currentRole ?? ''}, ${profile?.currentCompany ?? ''}`); setEditingContext(true); }}
       >
-        <Text className="text-base mr-3">🏢</Text>
+        <View className="mr-3"><Text>🏢</Text></View>
         <View className="flex-1">
-          <Text className="text-foreground text-sm font-semibold">Role & company</Text>
-          <Text className="text-text-tertiary text-xs mt-0.5">{[profile?.currentRole, profile?.currentCompany].filter(Boolean).join(', ') || 'Tap to add'}</Text>
+          <Text role="labelStrong">Role & company</Text>
+          <View className="mt-0.5"><Text role="metadata" color="tertiary">{[profile?.currentRole, profile?.currentCompany].filter(Boolean).join(', ') || 'Tap to add'}</Text></View>
         </View>
-        <Text className="text-text-tertiary text-base">›</Text>
+        <Text color="tertiary">›</Text>
       </TouchableOpacity>
 
       {/* Settings */}
       <SectionLabel style={{ marginTop: 16 }}>Settings</SectionLabel>
 
       <View className="bg-card rounded-xl px-4 py-3 mb-2">
-        <Text className="text-foreground text-sm font-semibold">Private service</Text>
-        <Text className="text-text-tertiary text-xs mt-0.5 mb-3">
+        <Text role="labelStrong">Private service</Text>
+        <View className="mt-0.5 mb-3"><Text role="metadata" color="tertiary">
           {deviceEnrolled
             ? 'This iPhone is securely enrolled.'
             : 'Enter the one-time code from your private Taisa service.'}
-        </Text>
+        </Text></View>
         {!deviceEnrolled ? (
           <View className="flex-row items-center gap-2">
             <TextInput
-              className="flex-1 bg-background rounded-lg px-3 py-2 text-foreground"
+              className="flex-1 bg-background rounded-lg px-3 py-2 text-foreground text-body"
               value={enrollmentCode}
               onChangeText={setEnrollmentCode}
               placeholder="One-time code"
@@ -284,7 +286,7 @@ export default function YouScreen() {
               disabled={enrollmentBusy || !enrollmentCode.trim()}
               onPress={() => { void enrollThisDevice(); }}
             >
-              <Text className="text-background text-sm font-semibold">
+              <Text role="labelStrong">
                 {enrollmentBusy ? 'Connecting…' : 'Connect'}
               </Text>
             </LiquidGlassPressable>
@@ -296,22 +298,22 @@ export default function YouScreen() {
         className="bg-card rounded-xl px-4 py-3 mb-2 flex-row justify-between items-center"
         onPress={() => { setRecoveryMode('export'); setPrivacyNotice(null); }}
       >
-        <Text className="text-foreground text-sm">Export my data</Text>
-        <Text className="text-text-tertiary text-base">›</Text>
+        <Text role="label">Export my data</Text>
+        <Text color="tertiary">›</Text>
       </TouchableOpacity>
 
       <TouchableOpacity
         className="bg-card rounded-xl px-4 py-3 mb-2 flex-row justify-between items-center"
         onPress={() => { void chooseArchiveToRestore(); }}
       >
-        <Text className="text-foreground text-sm">Restore encrypted backup</Text>
-        <Text className="text-text-tertiary text-base">›</Text>
+        <Text role="label">Restore encrypted backup</Text>
+        <Text color="tertiary">›</Text>
       </TouchableOpacity>
 
       <View className="bg-card rounded-xl px-4 py-3 mb-2 flex-row justify-between items-center">
         <View className="flex-1 pr-4">
-          <Text className="text-foreground text-sm">Require device unlock</Text>
-          <Text className="text-text-tertiary text-xs mt-0.5">Optional Face ID or device authentication</Text>
+          <Text role="label">Require device unlock</Text>
+          <View className="mt-0.5"><Text role="metadata" color="tertiary">Optional Face ID or device authentication</Text></View>
         </View>
         <Switch
           value={privacyState.lockEnabled}
@@ -320,9 +322,7 @@ export default function YouScreen() {
       </View>
 
       {privacyNotice ? (
-        <Text className="text-text-tertiary text-xs leading-relaxed px-1 mt-1 mb-2">
-          {privacyNotice}
-        </Text>
+        <View className="px-1 mt-1 mb-2"><Text role="metadata" color="tertiary">{privacyNotice}</Text></View>
       ) : null}
 
       {/* Edit modals */}
@@ -386,31 +386,29 @@ function RecoveryModal({
       <KeyboardAvoidingView
         className="flex-1 justify-end"
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={{ backgroundColor: 'rgba(6,7,7,0.5)' }}
+        style={{ backgroundColor: colorTokens.overlay.scrim }}
       >
         <View className="bg-background rounded-t-3xl px-6 pt-4 pb-12">
           <View className="w-8 h-1 bg-border rounded-full self-center mb-4" />
-          <Text className="text-foreground text-base font-bold mb-2">
-            {exporting ? 'Create encrypted backup' : 'Restore encrypted backup'}
-          </Text>
-          <Text className="text-text-tertiary text-xs leading-relaxed mb-4">
+          <View className="mb-2"><Text role="bodyStrong">{exporting ? 'Create encrypted backup' : 'Restore encrypted backup'}</Text></View>
+          <View className="mb-4"><Text role="metadata" color="tertiary">
             {exporting
               ? 'Use a separate passphrase of at least 12 characters. Taisa does not save this passphrase and cannot recover it.'
               : 'Restoring replaces the phone archive only after the backup passes integrity checks.'}
-          </Text>
+          </Text></View>
           <View className="bg-card rounded-xl px-4 mb-3 flex-row items-center">
             <TextInput
               value={passphrase}
               onChangeText={onChangePassphrase}
               placeholder="Backup passphrase"
               placeholderTextColor={colors.textTertiary}
-              className="flex-1 py-3 text-foreground text-sm"
+              className="flex-1 py-3 text-foreground text-body"
               secureTextEntry={!passphraseVisible}
               autoCapitalize="none"
               autoCorrect={false}
             />
             <LiquidGlassPressable accessibilityLabel={passphraseVisible ? 'Hide passphrase' : 'Show passphrase'} hierarchy="subtle" onPress={() => setPassphraseVisible((visible) => !visible)} className="py-3 pl-3">
-              <Text className="text-lime-700 text-xs font-semibold">
+              <Text role="metadataStrong" color="success">
                 {passphraseVisible ? 'Hide passphrase' : 'Show passphrase'}
               </Text>
             </LiquidGlassPressable>
@@ -421,7 +419,7 @@ function RecoveryModal({
               onChangeText={onChangeConfirmation}
               placeholder="Confirm backup passphrase"
               placeholderTextColor={colors.textTertiary}
-              className="bg-card rounded-xl px-4 py-3 text-foreground text-sm mb-4"
+              className="bg-card rounded-xl px-4 py-3 text-foreground text-body mb-4"
               secureTextEntry={!passphraseVisible}
               autoCapitalize="none"
               autoCorrect={false}
@@ -434,7 +432,7 @@ function RecoveryModal({
               disabled={busy}
               className="flex-1 py-3"
             >
-              <Text className="text-muted-foreground text-sm font-semibold">Cancel</Text>
+              <Text role="labelStrong" color="secondary">Cancel</Text>
             </LiquidGlassPressable>
             <LiquidGlassPressable
               accessibilityLabel={exporting ? 'Create backup' : 'Restore backup'}
@@ -444,7 +442,7 @@ function RecoveryModal({
               disabled={busy}
               className="flex-1 py-3"
             >
-              <Text className="text-foreground text-sm font-semibold">
+              <Text role="labelStrong">
                 {busy ? 'Working…' : exporting ? 'Create backup' : 'Restore'}
               </Text>
             </LiquidGlassPressable>
@@ -457,17 +455,15 @@ function RecoveryModal({
 
 function SectionLabel({ children, style }: { children: React.ReactNode; style?: object }) {
   return (
-    <Text className="text-text-tertiary text-xs font-bold uppercase tracking-wider mb-2" style={style}>
-      {children}
-    </Text>
+    <View className="mb-2" style={style}><Text role="metadataStrong" color="tertiary">{children}</Text></View>
   );
 }
 
 function InfoCard({ label, value }: { label: string; value: string }) {
   return (
     <View className="bg-card rounded-xl px-4 py-3 mb-2">
-      <Text className="text-lime-700 text-xs font-bold uppercase tracking-wider mb-1">{label}</Text>
-      <Text className="text-muted-foreground text-sm leading-relaxed">{value}</Text>
+      <View className="mb-1"><Text role="metadataStrong" color="success">{label}</Text></View>
+      <Text role="label" color="secondary">{value}</Text>
     </View>
   );
 }
@@ -487,27 +483,27 @@ function EditModal({ visible, title, value, onChangeText, onSave, onDismiss, pla
       <KeyboardAvoidingView
         className="flex-1 justify-end"
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={{ backgroundColor: 'rgba(6,7,7,0.5)' }}
+        style={{ backgroundColor: colorTokens.overlay.scrim }}
       >
         <View className="bg-background rounded-t-3xl px-6 pt-4 pb-12">
           <View className="w-8 h-1 bg-border rounded-full self-center mb-4" />
-          <Text className="text-foreground text-base font-bold mb-4">{title}</Text>
+          <View className="mb-4"><Text role="bodyStrong">{title}</Text></View>
           <TextInput
             value={value}
             onChangeText={onChangeText}
             placeholder={placeholder}
             placeholderTextColor={colors.textTertiary}
-            className="bg-card rounded-xl px-4 py-3 text-foreground text-sm mb-4"
+            className="bg-card rounded-xl px-4 py-3 text-foreground text-body mb-4"
             multiline={multiline}
             style={multiline ? { minHeight: 80, textAlignVertical: 'top' } : undefined}
             autoFocus
           />
           <View className="flex-row gap-3">
             <LiquidGlassPressable accessibilityLabel="Cancel editing" onPress={onDismiss} className="flex-1 py-3">
-              <Text className="text-muted-foreground text-sm font-semibold">Cancel</Text>
+              <Text role="labelStrong" color="secondary">Cancel</Text>
             </LiquidGlassPressable>
             <LiquidGlassPressable accessibilityLabel="Save changes" hierarchy="prominent" tone="accent" onPress={onSave} className="flex-1 py-3">
-              <Text className="text-foreground text-sm font-semibold">Save</Text>
+              <Text role="labelStrong">Save</Text>
             </LiquidGlassPressable>
           </View>
         </View>
