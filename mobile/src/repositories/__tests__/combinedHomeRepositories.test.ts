@@ -47,6 +47,16 @@ class FakeConnection implements RepositoryConnection {
   }
 }
 
+async function expectSqlFailure(operation: Promise<unknown>) {
+  let error: unknown = null;
+  try {
+    await operation;
+  } catch (caught) {
+    error = caught;
+  }
+  expect(error).toMatchObject({ code: 'SQLITE_CONSTRAINT_CHECK' });
+}
+
 const task: WorkRecord = {
   id: 'task-1',
   kind: 'task',
@@ -125,25 +135,19 @@ test('version 5 migrates confirmed legacy actions into authoritative tasks once'
 
 test('database rejects cross-kind work lifecycles and non-scoped project states', async () => {
   const database = createTestDatabase();
-  await expect(database.getFirstAsync<{ ignore_check_constraints: number }>(
-    'PRAGMA ignore_check_constraints',
-  )).resolves.toEqual({ ignore_check_constraints: 0 });
-  await expect(database.getFirstAsync<{ sql: string }>(
-    "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'work_records'",
-  )).resolves.toEqual({ sql: expect.stringContaining("kind = 'followup'") });
-  await expect(database.runAsync(
+  await expectSqlFailure(database.runAsync(
     `INSERT INTO work_records
       (id, kind, title, project_id, status, freshness, planned_week, planned_day,
        source_id, revision, created_at, updated_at, last_confirmed_at, idempotency_key)
      VALUES ('followup-invalid', 'followup', 'Wait', NULL, 'open', 'current', NULL, NULL,
        'source', 1, '2026-08-25T08:00:00Z', '2026-08-25T08:00:00Z', NULL, 'invalid-followup')`,
-  )).rejects.toThrow();
-  await expect(database.runAsync(
+  ));
+  await expectSqlFailure(database.runAsync(
     `INSERT INTO projects
       (id, name, status, source_id, revision, created_at, updated_at, idempotency_key)
      VALUES ('project-invalid', 'Invalid', 'paused', 'source', 1,
        '2026-08-25T08:00:00Z', '2026-08-25T08:00:00Z', 'invalid-project')`,
-  )).rejects.toThrow();
+  ));
   database.close();
 });
 
