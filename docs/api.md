@@ -41,7 +41,9 @@ backend user tables, persist readable content, or apply proposals. Invalid struc
 request correlation returns `INVALID_ORGANIZATION_OUTPUT`. The route is mounted behind the existing
 AI rate limit.
 
-On-device code previews the exact bounded request before submission. Returned proposals enter the
+On-device code previews the exact bounded request before submission, then reassembles and requires
+an exact match immediately before transport. Task/week summaries contain only submitted content
+from the declared period. Returned proposals enter the
 local proposal-governance path, which assigns fingerprints, admission, revalidation, resolution,
 and timestamps. Admission rechecks current task, conversation, and relationship state inside its
 local transaction. Strong-link application repeats those checks transactionally. User acceptance applies the authoritative effect and proposal

@@ -63,6 +63,13 @@ const CONVERSATION_SELECT = `SELECT c.id,
     1 + (SELECT COUNT(*) FROM messages m WHERE m.conversation_id = c.id
       AND m.lifecycle IN ('submitted', 'received')) AS revision
   FROM conversations c`;
+const PERIOD_CONVERSATION_SELECT = `SELECT c.id,
+    (SELECT m.content FROM messages m WHERE m.conversation_id = c.id
+      AND m.lifecycle = 'submitted' AND date(m.created_at) BETWEEN $startsOn AND $endsOn
+      ORDER BY m.created_at DESC LIMIT 1) AS summary,
+    1 + (SELECT COUNT(*) FROM messages m WHERE m.conversation_id = c.id
+      AND m.lifecycle IN ('submitted', 'received')) AS revision
+  FROM conversations c`;
 
 function mapOrganizationRecord(row: OrganizationRecordRow): OrganizationRequest['records'][number] {
   return { id: row.id, kind: row.kind, title: row.title, status: row.status,
@@ -105,7 +112,7 @@ export async function assembleOrganizationRequest(
     );
     if (recordRows.length !== 1) throw new OrganizationScopeError('INVALID_ORGANIZATION_SCOPE');
     conversationRows = await database.getAllAsync<OrganizationConversationRow>(
-      `${CONVERSATION_SELECT} WHERE EXISTS (SELECT 1 FROM messages scoped
+      `${PERIOD_CONVERSATION_SELECT} WHERE EXISTS (SELECT 1 FROM messages scoped
         WHERE scoped.conversation_id = c.id AND scoped.lifecycle = 'submitted'
           AND date(scoped.created_at) BETWEEN $startsOn AND $endsOn)
        ORDER BY (SELECT MAX(scoped.created_at) FROM messages scoped
@@ -123,7 +130,7 @@ export async function assembleOrganizationRequest(
        ORDER BY updated_at DESC LIMIT 31`, { $startsOn: period.startsOn },
     );
     conversationRows = await database.getAllAsync<OrganizationConversationRow>(
-      `${CONVERSATION_SELECT} WHERE EXISTS (SELECT 1 FROM messages scoped
+      `${PERIOD_CONVERSATION_SELECT} WHERE EXISTS (SELECT 1 FROM messages scoped
         WHERE scoped.conversation_id = c.id AND scoped.lifecycle = 'submitted'
           AND date(scoped.created_at) BETWEEN $startsOn AND $endsOn)
        ORDER BY (SELECT MAX(scoped.created_at) FROM messages scoped
@@ -138,6 +145,24 @@ export async function assembleOrganizationRequest(
     throw new OrganizationScopeError('ORGANIZATION_SCOPE_TOO_LARGE');
   }
   return { ...selection, records: recordRows.map(mapOrganizationRecord), conversations: conversationRows };
+}
+
+export async function reassembleApprovedOrganizationPreview(
+  database: RepositoryConnection,
+  preview: OrganizationPreview,
+): Promise<OrganizationRequest> {
+  if (!preview.approved) throw new OrganizationScopeError('INVALID_ORGANIZATION_SCOPE');
+  const current = await assembleOrganizationRequest(database, {
+    requestId: preview.request.requestId,
+    submittedAt: preview.request.submittedAt,
+    scope: preview.request.scope,
+    scopeId: preview.request.scopeId,
+    period: preview.request.period,
+  });
+  if (JSON.stringify(current) !== JSON.stringify(preview.request)) {
+    throw new OrganizationScopeError('INVALID_ORGANIZATION_SCOPE');
+  }
+  return current;
 }
 
 function object(value: unknown): Record<string, unknown> | null {
@@ -358,11 +383,15 @@ export async function executeEligibleStrongLinks(
 const submitOrganization = createOrganizationClient(api);
 
 export async function requestOrganization(preview: OrganizationPreview) {
-  const result = await submitOrganization(preview);
+  if (!preview.approved) return { kind: 'cancelled' as const };
+  const request = await withTaisaDatabase((database) => (
+    reassembleApprovedOrganizationPreview(database, preview)
+  ));
+  const result = await submitOrganization({ approved: true, request });
   if (result.kind === 'cancelled') return result;
   const proposals = await withTaisaDatabase(async (database) => {
-    const admitted = await admitOrganizationResponse(database, preview.request, result.response);
-    return executeEligibleStrongLinks(database, admitted, preview.request.submittedAt, preview.request);
+    const admitted = await admitOrganizationResponse(database, request, result.response);
+    return executeEligibleStrongLinks(database, admitted, request.submittedAt, request);
   });
   return { kind: 'admitted' as const, requestId: result.response.requestId, proposals };
 }

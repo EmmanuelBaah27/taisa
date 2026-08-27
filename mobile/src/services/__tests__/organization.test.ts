@@ -2,7 +2,7 @@ import type { OrganizationRequest } from '@taisa/shared';
 
 import {
   admitOrganizationResponse, assembleOrganizationRequest, createOrganizationClient,
-  executeEligibleStrongLinks,
+  executeEligibleStrongLinks, reassembleApprovedOrganizationPreview,
 } from '../organization';
 import { createTestDatabase } from '../../repositories/__tests__/testDatabase';
 import { createWorkRepository } from '../../repositories/workRepository';
@@ -195,14 +195,24 @@ test('week scope is assembled only from open tasks and submitted conversations i
           $createdAt: id === 'in-period' ? '2026-08-26T08:00:00Z' : '2026-08-20T08:00:00Z' },
       );
     }
+    await transaction.runAsync(
+      `INSERT INTO messages
+        (id, conversation_id, role, content, lifecycle, created_at, updated_at)
+       VALUES ('newer-outside-period', 'in-period', 'user', 'private later archive content',
+         'submitted', '2026-09-02T08:00:00Z', '2026-09-02T08:00:00Z')`,
+    );
   });
 
   await expect(assembleOrganizationRequest(database, {
     requestId: organizationRequest.requestId, submittedAt: organizationRequest.submittedAt,
     scope: 'week', scopeId: null, period: { startsOn: '2026-08-24', endsOn: '2026-08-30' },
   })).resolves.toMatchObject({
-    records: [{ id: 'in-week' }], conversations: [{ id: 'in-period' }],
+    records: [{ id: 'in-week' }], conversations: [{ id: 'in-period', summary: 'in-period' }],
   });
+  await expect(reassembleApprovedOrganizationPreview(database, {
+    approved: true,
+    request: { ...organizationRequest, records: [{ ...organizationRequest.records[0], id: 'tampered' }] },
+  })).rejects.toMatchObject({ code: 'INVALID_ORGANIZATION_SCOPE' });
   database.close();
 });
 
