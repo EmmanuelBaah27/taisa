@@ -4,7 +4,7 @@ import { createOrganizationAnalyzer } from '../services/organization/organizatio
 import type { CoachingProvider } from '../services/coaching/provider';
 import { createOpenAIProvider } from '../services/coaching/openaiProvider';
 import { createAnthropicProvider } from '../services/coaching/anthropicProvider';
-import { OrganizationResponseSchema } from '../schemas/organization';
+import { OrganizationRequestSchema, OrganizationResponseSchema } from '../schemas/organization';
 
 const request = {
   requestId: '11111111-1111-4111-8111-111111111111',
@@ -13,9 +13,10 @@ const request = {
   scopeId: null,
   records: [{
     id: 'task-1', kind: 'task', title: 'Send proposal', status: 'open',
-    revision: 1, projectId: null,
+    revision: 1, projectId: null, plannedWeek: '2026-08-24',
   }],
   conversations: [{ id: 'conversation-1', summary: 'Planned the proposal', revision: 2 }],
+  period: { startsOn: '2026-08-24', endsOn: '2026-08-30' },
 } satisfies OrganizationRequest;
 
 test('organization analyzer makes one schema-driven provider call', async () => {
@@ -49,6 +50,26 @@ test('organization analyzer rejects a provider that changes request correlation'
 
   await expect(createOrganizationAnalyzer(provider).analyze(request))
     .rejects.toMatchObject({ code: 'INVALID_ORGANIZATION_OUTPUT' });
+});
+
+test('organization request rejects overbroad records for each deliberate scope', () => {
+  expect(OrganizationRequestSchema.safeParse({
+    ...request, scope: 'conversation', scopeId: 'conversation-1',
+    records: [{ ...request.records[0], status: 'completed' }],
+  }).success).toBe(false);
+  expect(OrganizationRequestSchema.safeParse({
+    ...request, scope: 'task', scopeId: 'task-1',
+    records: [{ ...request.records[0], kind: 'blocker', status: 'active' }],
+  }).success).toBe(false);
+  expect(OrganizationRequestSchema.safeParse({
+    ...request, scope: 'week', scopeId: null,
+    records: [{ ...request.records[0], plannedWeek: '2026-08-17' }],
+    period: { startsOn: '2026-08-24', endsOn: '2026-08-30' },
+  }).success).toBe(false);
+  expect(OrganizationRequestSchema.safeParse({
+    ...request, records: [{ ...request.records[0], plannedWeek: '2026-08-25' }],
+    period: { startsOn: '2026-08-25', endsOn: '2026-08-30' },
+  }).success).toBe(false);
 });
 
 const config = {

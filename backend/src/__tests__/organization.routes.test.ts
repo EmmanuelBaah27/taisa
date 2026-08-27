@@ -6,7 +6,7 @@ import { createOrganizationRouter, type OrganizationAnalyzer } from '../routes/o
 function record(index: number) {
   return {
     id: `record-${index}`, kind: 'task', title: `Task ${index}`, status: 'open',
-    revision: 1, projectId: null,
+    revision: 1, projectId: null, plannedWeek: '2026-08-24',
   };
 }
 
@@ -15,6 +15,7 @@ const validRequest = {
   submittedAt: '2026-08-26T08:00:00Z',
   scope: 'week',
   scopeId: null,
+  period: { startsOn: '2026-08-24', endsOn: '2026-08-30' },
   records: [record(1)],
   conversations: [{ id: 'conversation-1', summary: 'Planned Task 1', revision: 2 }],
 };

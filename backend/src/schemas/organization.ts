@@ -13,6 +13,7 @@ const RecordSchema = z.object({
     'superseded', 'reversed']),
   revision: Revision,
   projectId: Id.nullable(),
+  plannedWeek: z.string().date().nullable(),
 }).strict();
 
 const ConversationSchema = z.object({
@@ -21,22 +22,34 @@ const ConversationSchema = z.object({
   revision: Revision,
 }).strict();
 
+function isMondaySunday(period: { startsOn?: string; endsOn?: string } | null) {
+  if (period === null || period.startsOn === undefined || period.endsOn === undefined) return false;
+  const start = new Date(`${period.startsOn}T00:00:00Z`);
+  const end = new Date(`${period.endsOn}T00:00:00Z`);
+  return start.getUTCDay() === 1 && end.getTime() - start.getTime() === 6 * 86_400_000;
+}
+
 export const OrganizationRequestSchema = z.object({
   requestId: z.string().uuid(),
   submittedAt: z.string().datetime(),
   scope: z.enum(['conversation', 'task', 'week']),
   scopeId: Id.nullable(),
+  period: z.object({ startsOn: z.string().date(), endsOn: z.string().date() }).strict().nullable(),
   records: z.array(RecordSchema).max(30),
   conversations: z.array(ConversationSchema).max(30),
 }).strict().superRefine((value, context) => {
   if (value.scope === 'conversation' && (
     value.scopeId === null || value.conversations.length !== 1
     || value.conversations[0]?.id !== value.scopeId
+    || value.period !== null
+    || value.records.some((record) => record.kind !== 'task' || record.status !== 'open')
   )) {
     context.addIssue({ code: z.ZodIssueCode.custom, path: ['scopeId'], message: 'Conversation scope must contain exactly its selected conversation' });
   }
   if (value.scope === 'task' && (
     value.scopeId === null || value.records.length !== 1 || value.records[0]?.id !== value.scopeId
+    || value.records[0]?.kind !== 'task' || value.records[0]?.status !== 'open'
+    || !isMondaySunday(value.period) || value.records[0]?.plannedWeek !== value.period?.startsOn
   )) {
     context.addIssue({ code: z.ZodIssueCode.custom, path: ['scopeId'], message: 'Task scope must contain exactly its selected task' });
   }
@@ -50,7 +63,11 @@ export const OrganizationRequestSchema = z.object({
       message: 'Task organization accepts at most 20 conversations',
     });
   }
-  if (value.scope === 'week' && value.scopeId !== null) {
+  if (value.scope === 'week' && (
+    value.scopeId !== null || !isMondaySunday(value.period)
+    || value.records.some((record) => record.kind !== 'task' || record.status !== 'open'
+      || record.plannedWeek !== value.period?.startsOn)
+  )) {
     context.addIssue({ code: z.ZodIssueCode.custom, path: ['scopeId'], message: 'Week scope has no selected entity' });
   }
 }) as z.ZodType<OrganizationRequest>;

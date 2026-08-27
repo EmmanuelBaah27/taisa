@@ -10,6 +10,7 @@ import type { ExclusiveTransactionConnection, RepositoryTransaction } from '../d
 import { withRepositoryTransaction } from '../db/types';
 import {
   executePermittedOperation,
+  OperationGateError,
   type OperationDependencies,
   type OperationRequest,
   type OperationTransaction,
@@ -114,17 +115,23 @@ function operationTransaction(transaction: RepositoryTransaction, occurredAt: st
       if (result.changes !== 1) throw new Error('REVISION_CONFLICT');
     },
     async linkConversation(request) {
-      await transaction.runAsync(
+      const result = await transaction.runAsync(
         `INSERT INTO work_relationships
           (id, record_id, conversation_id, role, contribution, source_revision, created_at, idempotency_key)
-         VALUES ($id, $recordId, $conversationId, 'supporting', $contribution,
-           $sourceRevision, $createdAt, $idempotencyId)`,
+         SELECT $id, $recordId, $conversationId, 'supporting', $contribution,
+           $sourceRevision, $createdAt, $idempotencyId
+         FROM conversations c
+         WHERE c.id = $conversationId
+           AND 1 + (SELECT COUNT(*) FROM messages m WHERE m.conversation_id = c.id
+             AND m.lifecycle IN ('submitted', 'received')) = $expectedConversationRevision`,
         { $id: `${request.id}:link`, $recordId: request.targetId,
           $conversationId: request.payload?.conversationId as string,
           $contribution: request.payload?.contribution as string,
           $sourceRevision: request.expectedRevision, $createdAt: request.requestedAt,
+          $expectedConversationRevision: request.payload?.expectedConversationRevision as number,
           $idempotencyId: `${request.id}:link` },
       );
+      if (result.changes !== 1) throw new OperationGateError('REVISION_CONFLICT');
     },
     async appendRecordEvent(request, before, after) {
       await transaction.runAsync(

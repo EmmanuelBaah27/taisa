@@ -90,8 +90,10 @@ export function validateOperationRequest(request: OperationRequest): void {
       return;
     case 'apply_strong_task_conversation_link':
       if (
-        !hasExactKeys(payload, ['conversationId', 'contribution'])
+        !hasExactKeys(payload, ['conversationId', 'contribution', 'expectedConversationRevision'])
         || !nonEmptyString(payload.conversationId)
+        || !Number.isSafeInteger(payload.expectedConversationRevision)
+        || (payload.expectedConversationRevision as number) < 1
         || !['planning', 'status', 'blocker', 'decision', 'outcome', 'evidence']
           .includes(payload.contribution as string)
       ) {

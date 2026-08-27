@@ -125,7 +125,7 @@ test.each([
   {
     operation: 'apply_strong_task_conversation_link' as const,
     record: task,
-    payload: { conversationId: 'conversation-2', contribution: 'planning' },
+    payload: { conversationId: 'conversation-2', contribution: 'planning', expectedConversationRevision: 1 },
     expected: { revision: 4 },
     writes: ['record', 'relationship', 'event', 'receipt', 'outcome'],
   },
@@ -187,7 +187,7 @@ test.each<OperationRequest>([
   request({ operation: 'associate_existing_project', payload: { projectId: 'project-1' } }),
   request({
     operation: 'apply_strong_task_conversation_link',
-    payload: { conversationId: 'conversation-2', contribution: 'planning' },
+    payload: { conversationId: 'conversation-2', contribution: 'planning', expectedConversationRevision: 1 },
   }),
   request({ operation: 'update_explicit_followup_status', payload: { status: 'completed' } }),
   request({ operation: 'update_explicit_blocker_status', payload: { status: 'resolved' } }),
@@ -201,7 +201,7 @@ test.each<OperationRequest>([
   request({ operation: 'associate_existing_project', payload: { projectId: '' } }),
   request({
     operation: 'apply_strong_task_conversation_link',
-    payload: { conversationId: 'conversation-2', contribution: 'owner' },
+    payload: { conversationId: 'conversation-2', contribution: 'owner', expectedConversationRevision: 1 },
   }),
   request({ operation: 'update_explicit_followup_status', payload: { status: 'resolved' } }),
   request({ operation: 'update_explicit_blocker_status', payload: { status: 'completed' } }),

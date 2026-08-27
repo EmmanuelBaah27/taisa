@@ -23,6 +23,7 @@ export interface OrganizationRecord {
   status: WorkStatus;
   revision: number;
   projectId: string | null;
+  plannedWeek: string | null;
 }
 
 export interface OrganizationConversation {
@@ -36,6 +37,7 @@ export interface OrganizationRequest {
   submittedAt: string;
   scope: OrganizationScope;
   scopeId: string | null;
+  period: { startsOn: string; endsOn: string } | null;
   records: OrganizationRecord[];
   conversations: OrganizationConversation[];
 }
