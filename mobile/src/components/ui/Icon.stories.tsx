@@ -1,7 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/react-native';
-import { View, Text } from 'react-native';
+import { View } from 'react-native';
 import { Icon } from './Icon';
 import type { IconName } from './Icon';
+import { Text } from './Text';
+import { colorTokens } from '../../design-system/tokens';
 
 const meta: Meta<typeof Icon> = {
   title: 'Foundations/Icons',
@@ -9,7 +11,7 @@ const meta: Meta<typeof Icon> = {
   args: {
     name: 'IconSparkle',
     size: 20,
-    color: '#0A0A0F',
+    colorRole: 'primary',
   },
   argTypes: {
     name: { control: 'text' },
@@ -17,11 +19,11 @@ const meta: Meta<typeof Icon> = {
       control: 'select',
       options: [12, 16, 20, 24, 32],
     },
-    color: { control: 'color' },
+    colorRole: { control: 'select', options: ['primary', 'secondary', 'tertiary', 'inverted', 'disabled', 'success', 'warning', 'danger', 'info'] },
   },
   decorators: [
     (Story) => (
-      <View style={{ padding: 24, backgroundColor: '#FFFFFF' }}>
+      <View style={{ padding: 24, backgroundColor: colorTokens.surface.app }}>
         <Story />
       </View>
     ),
@@ -39,8 +41,8 @@ export const Sizes: Story = {
     <View style={{ gap: 20 }}>
       {([12, 16, 20, 24, 32] as const).map((size) => (
         <View key={size} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <Icon name="IconSparkle" size={size} color="#0A0A0F" />
-          <Text style={{ fontSize: 13, color: '#555' }}>{size}px</Text>
+          <Icon name="IconSparkle" size={size} colorRole="primary" />
+          <Text role="metadata" color="secondary">{size}px</Text>
         </View>
       ))}
     </View>
@@ -67,8 +69,8 @@ export const Showcase: Story = {
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 20 }}>
       {SAMPLE_ICONS.map((name) => (
         <View key={name} style={{ alignItems: 'center', gap: 6, width: 64 }}>
-          <Icon name={name} size={24} color="#0A0A0F" />
-          <Text style={{ fontSize: 10, color: '#888', textAlign: 'center' }}>{name.replace('Icon', '')}</Text>
+          <Icon name={name} size={24} colorRole="primary" />
+          <Text role="metadata" color="tertiary">{name.replace('Icon', '')}</Text>
         </View>
       ))}
     </View>
@@ -79,7 +81,7 @@ export const OnDark: Story = {
   name: 'On Dark Background',
   decorators: [
     (Story) => (
-      <View style={{ padding: 24, backgroundColor: '#0A0A0F' }}>
+      <View style={{ padding: 24, backgroundColor: colorTokens.surface.inverted }}>
         <Story />
       </View>
     ),
@@ -87,7 +89,7 @@ export const OnDark: Story = {
   render: () => (
     <View style={{ flexDirection: 'row', gap: 20 }}>
       {SAMPLE_ICONS.slice(0, 6).map((name) => (
-        <Icon key={name} name={name} size={24} color="#FFFFFF" />
+        <Icon key={name} name={name} size={24} colorRole="inverted" />
       ))}
     </View>
   ),

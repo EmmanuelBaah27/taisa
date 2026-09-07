@@ -1,7 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react-native';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 
 import { LiquidGlassButtonSurface } from './LiquidGlassButtonSurface';
+import { Text } from './Text';
 
 const meta: Meta<typeof LiquidGlassButtonSurface> = {
   title: 'Components/LiquidGlassButtonSurface',
@@ -34,7 +35,7 @@ export const Playground: Story = {
   render: (args) => (
     <LiquidGlassButtonSurface {...args} style={{ width: 148, height: 48 }}>
       <View className="flex-1 items-center justify-center">
-        <Text className="text-base-semibold text-foreground">Glass action</Text>
+        <Text role="bodyStrong">Glass action</Text>
       </View>
     </LiquidGlassButtonSurface>
   ),
@@ -52,7 +53,7 @@ export const SemanticTones: Story = {
           style={{ width: 148, height: 48 }}
         >
           <View className="flex-1 items-center justify-center">
-            <Text className="text-base-semibold text-foreground">{tone}</Text>
+            <Text role="bodyStrong">{tone}</Text>
           </View>
         </LiquidGlassButtonSurface>
       ))}

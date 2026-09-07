@@ -1,6 +1,7 @@
-import { View, Text, TouchableOpacity } from 'react-native';
+import { Pressable } from 'react-native';
 import { router } from 'expo-router';
 import { LOCAL_CAPTURE_ROUTE } from '../navigation/localCaptureRoute';
+import { Text } from './ui/Text';
 
 interface TaisaCardProps {
   eyebrow: string;
@@ -13,14 +14,13 @@ export function TaisaCard({ eyebrow, body, cta, onPress }: TaisaCardProps) {
   const handlePress = onPress ?? (() => router.push(LOCAL_CAPTURE_ROUTE));
 
   return (
-    <TouchableOpacity
+    <Pressable
       onPress={handlePress}
-      className="bg-card rounded-xl px-4 py-4 mb-4 border border-border"
-      style={{ borderLeftWidth: 2, borderLeftColor: '#cdec1a' }}
+      className="bg-card rounded-xl px-4 py-4 mb-4 border border-border border-l-2 border-l-primary"
     >
-      <Text className="text-lime-700 text-xs font-bold uppercase tracking-wider mb-2">{eyebrow}</Text>
-      <Text className="text-foreground text-sm leading-relaxed mb-3">{body}</Text>
-      <Text className="text-lime-700 text-xs font-semibold">{cta}</Text>
-    </TouchableOpacity>
+      <Text role="metadataStrong">{eyebrow}</Text>
+      <Text>{body}</Text>
+      <Text role="metadataStrong">{cta}</Text>
+    </Pressable>
   );
 }

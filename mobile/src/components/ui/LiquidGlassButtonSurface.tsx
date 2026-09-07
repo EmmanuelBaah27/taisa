@@ -57,13 +57,25 @@ export function getLiquidGlassPressScale(
   return 1 - (0.03 * Math.max(0, Math.min(1, pressed)));
 }
 
+export async function readReduceTransparencyPreference(
+  accessibilityInfo: {
+    isReduceTransparencyEnabled?: () => Promise<boolean>;
+  },
+): Promise<boolean> {
+  try {
+    return await accessibilityInfo.isReduceTransparencyEnabled?.() ?? false;
+  } catch {
+    return false;
+  }
+}
+
 function useAccessibilityPreferences() {
   const [reduceTransparency, setReduceTransparency] = useState(false);
   const [reduceMotion, setReduceMotion] = useState(false);
 
   useEffect(() => {
     let mounted = true;
-    AccessibilityInfo.isReduceTransparencyEnabled().then((value) => {
+    readReduceTransparencyPreference(AccessibilityInfo).then((value) => {
       if (mounted) setReduceTransparency(value);
     });
     AccessibilityInfo.isReduceMotionEnabled().then((value) => {
@@ -167,6 +179,8 @@ export function LiquidGlassButtonSurface({
       style={[
         shapeStyle,
         {
+          position: 'absolute',
+          inset: 0,
           overflow: 'hidden',
           alignItems: 'center', justifyContent: 'center',
           borderWidth: 1,

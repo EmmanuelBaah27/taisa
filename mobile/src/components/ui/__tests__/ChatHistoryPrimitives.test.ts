@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import {
   CHAT_LIST_ROW_MOTION,
@@ -7,6 +7,7 @@ import {
   createOpenOnce,
 } from '../ChatListRow';
 import { ThreadMessage } from '../ThreadMessage';
+import { Text } from '../Text';
 
 function descendants(node: React.ReactNode): React.ReactElement<Record<string, any>>[] {
   if (!React.isValidElement<{ children?: React.ReactNode }>(node)) return [];

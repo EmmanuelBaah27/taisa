@@ -1,5 +1,6 @@
 import type { IconName } from '../components/ui/Icon';
 import { resolveOptionalLiquidGlassModule } from '../components/ui/liquidGlass';
+import { colorTokens, typographyTokens } from '../design-system/tokens';
 
 export interface BottomNavigationItem {
   id: 'chats' | 'index' | 'you';
@@ -192,7 +193,7 @@ export function getBottomNavigationTransitionStartPolicy() {
 export function getBottomNavigationPageTransition() {
   return {
     sceneAnimation: 'fade' as const,
-    backdropColor: '#ffffff' as const,
+    backdropColor: colorTokens.surface.app,
   };
 }
 
@@ -200,16 +201,16 @@ export function commitBottomNavigationRoute(navigate: () => void): void {
   navigate();
 }
 
-export const BOTTOM_NAVIGATION_ACTIVE_FILL = 'rgba(15,16,16,0.06)';
+export const BOTTOM_NAVIGATION_ACTIVE_FILL = colorTokens.native.navigationActive;
 export const BOTTOM_NAVIGATION_FALLBACK_GLASS = {
   intensity: 70,
   tint: 'systemThinMaterialLight',
-  borderColor: 'rgba(15,16,16,0.10)',
-  sheenColors: ['rgba(255,255,255,0.42)', 'rgba(255,255,255,0.06)'],
+  borderColor: colorTokens.native.navigationBorder,
+  sheenColors: [colorTokens.native.navigationSheenStrong, colorTokens.native.navigationSheenLight],
 } as const;
 export const BOTTOM_NAVIGATION_CLEAR_GLASS_SURFACE = {
-  backgroundColor: 'rgba(255,255,255,0.04)',
-  borderColor: 'rgba(23,23,23,0.04)',
+  backgroundColor: colorTokens.native.navigationClear,
+  borderColor: colorTokens.native.navigationClearBorder,
   borderWidth: 1,
 } as const;
 
@@ -221,12 +222,12 @@ export const BOTTOM_NAVIGATION_FIGMA = {
   fadeBottom: 20,
   fadeHeight: 90,
   elevation: {
-    color: '#5B5F63',
+    color: colorTokens.native.navigationShadow,
     opacity: 0.16,
     radius: 28,
     offsetY: 10,
     elevation: 10,
-    casterColor: 'rgba(255,255,255,0.44)',
+    casterColor: colorTokens.native.navigationCaster,
   },
   selectedItem: {
     height: 48,
@@ -235,9 +236,9 @@ export const BOTTOM_NAVIGATION_FIGMA = {
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 32,
-    fontSize: 16,
-    lineHeight: 24,
-    letterSpacing: -0.36,
+    fontSize: typographyTokens.bodyStrong.fontSize,
+    lineHeight: typographyTokens.bodyStrong.lineHeight,
+    letterSpacing: typographyTokens.bodyStrong.letterSpacing,
   },
   inactiveItem: {
     width: 56,
@@ -245,7 +246,7 @@ export const BOTTOM_NAVIGATION_FIGMA = {
     iconSize: 24,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    iconColor: '#9C9C9C',
+    iconColor: colorTokens.native.navigationInactiveIcon,
   },
   shellMotion: {
     pressedScale: 1.12,

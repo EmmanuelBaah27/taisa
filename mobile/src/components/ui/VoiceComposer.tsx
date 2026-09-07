@@ -1,5 +1,5 @@
 import { useEffect, useReducer, useRef } from 'react';
-import { Text, TextInput, View } from 'react-native';
+import { TextInput, View } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
 import Animated, {
   Easing,
@@ -15,6 +15,7 @@ import { VoiceDraftStrip } from './VoiceDraftStrip';
 import { colors } from '../../constants/theme';
 import type { VoiceDraftState } from '../../services/voiceComposerState';
 import { reduceVoiceComposerTransition } from './voiceComposerTransition';
+import { Text } from './Text';
 
 export interface VoiceComposerProps {
   mode: 'voice' | 'text';
@@ -105,7 +106,7 @@ export function VoiceComposer(props: VoiceComposerProps) {
     return (
       <View>
         {props.transcribing ? (
-          <Text className="text-center text-text-tertiary text-caption-regular">Transcribing…</Text>
+          <Text role="metadata" color="tertiary">Transcribing…</Text>
         ) : null}
         <View
           className="min-h-[100px] rounded-[28px] border border-border bg-background p-3"
@@ -123,7 +124,7 @@ export function VoiceComposer(props: VoiceComposerProps) {
             editable={!props.disabled}
             placeholder="Ask follow-up"
             multiline
-            className="min-h-6 max-h-[120px] pb-12 text-foreground text-base-regular"
+            className="min-h-6 max-h-[120px] pb-12 text-foreground text-body"
           />
           <LiquidGlassPressable
             accessibilityLabel={hasText ? 'Send message' : 'Start recording'}
@@ -156,7 +157,7 @@ export function VoiceComposer(props: VoiceComposerProps) {
           contentClassName="flex-1 flex-row items-center justify-center gap-2"
         >
           <Icon name="IconVoiceMid" size={20} color={colors.textPrimary} />
-          <Text className="text-foreground text-base-semibold">Reply</Text>
+          <Text role="bodyStrong">Reply</Text>
         </LiquidGlassPressable>
       </Animated.View>
     );
@@ -204,9 +205,7 @@ export function VoiceComposer(props: VoiceComposerProps) {
         )}
 
         {!paused ? (
-          <Text className="w-[60px] text-center text-small-regular text-muted-foreground">
-            {formatDuration(props.durationSeconds)}
-          </Text>
+          <View className="w-[60px] items-center"><Text role="label" color="secondary">{formatDuration(props.durationSeconds)}</Text></View>
         ) : null}
 
         <View className={paused ? 'flex-row items-center gap-2' : 'flex-row items-center gap-[14px]'}>
@@ -219,8 +218,8 @@ export function VoiceComposer(props: VoiceComposerProps) {
               contentClassName="flex-1 flex-row items-center justify-center gap-2"
             >
               <Icon name="IconArrowTriangleRight" size={24} color={colors.textPrimary} />
-              <Text className="text-foreground text-base-medium">Resume</Text>
-              <Text className="text-muted-foreground text-small-regular">{formatDuration(props.durationSeconds)}</Text>
+              <Text role="bodyStrong">Resume</Text>
+              <Text role="label" color="secondary">{formatDuration(props.durationSeconds)}</Text>
             </LiquidGlassPressable>
           ) : (
             <LiquidGlassPressable

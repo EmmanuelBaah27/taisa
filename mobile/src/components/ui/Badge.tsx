@@ -1,6 +1,8 @@
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View } from 'react-native';
 import { LiquidGlassPressable } from './LiquidGlassPressable';
+import { Text } from './Text';
+import type { TextColorRole } from './Text';
 
 export type BadgeColor =
   | 'neutral'
@@ -26,59 +28,54 @@ export interface BadgeProps {
   children: React.ReactNode;
 }
 
-type ColorStyle = { container: string; text: string };
+type ColorStyle = { container: string; text: TextColorRole };
 
 const COLOR_STYLES: Record<BadgeColor, Record<BadgeAppearance, ColorStyle>> = {
   neutral: {
-    subtle:  { container: 'bg-muted',                               text: 'text-muted-foreground' },
-    muted:   { container: 'bg-disabled',                            text: 'text-muted-foreground' },
-    outline: { container: 'bg-card border border-border-light',     text: 'text-muted-foreground' },
+    subtle:  { container: 'bg-muted',                               text: 'secondary' },
+    muted:   { container: 'bg-disabled',                            text: 'secondary' },
+    outline: { container: 'bg-card border border-border-light',     text: 'secondary' },
   },
   yellow: {
-    subtle:  { container: 'bg-warning-subtle',                      text: 'text-warning-text' },
-    muted:   { container: 'bg-warning-subtle',                      text: 'text-warning-text' },
-    outline: { container: 'bg-card border border-border-light',     text: 'text-warning-text' },
+    subtle:  { container: 'bg-warning-subtle',                      text: 'warning' },
+    muted:   { container: 'bg-warning-subtle',                      text: 'warning' },
+    outline: { container: 'bg-card border border-border-light',     text: 'warning' },
   },
   orange: {
-    subtle:  { container: 'bg-orange-subtle',                       text: 'text-orange-text' },
-    muted:   { container: 'bg-orange-subtle',                       text: 'text-orange-text' },
-    outline: { container: 'bg-card border border-border-light',     text: 'text-orange-text' },
+    subtle:  { container: 'bg-orange-subtle',                       text: 'warning' },
+    muted:   { container: 'bg-orange-subtle',                       text: 'warning' },
+    outline: { container: 'bg-card border border-border-light',     text: 'warning' },
   },
   warning: {
-    subtle:  { container: 'bg-warning-subtle',                      text: 'text-warning-text' },
-    muted:   { container: 'bg-warning-subtle',                      text: 'text-warning-text' },
-    outline: { container: 'bg-card border border-border-light',     text: 'text-warning-text' },
+    subtle:  { container: 'bg-warning-subtle',                      text: 'warning' },
+    muted:   { container: 'bg-warning-subtle',                      text: 'warning' },
+    outline: { container: 'bg-card border border-border-light',     text: 'warning' },
   },
   success: {
-    subtle:  { container: 'bg-success-subtle',                      text: 'text-success-text' },
-    muted:   { container: 'bg-success-subtle',                      text: 'text-success-text' },
-    outline: { container: 'bg-card border border-border-light',     text: 'text-success-text' },
+    subtle:  { container: 'bg-success-subtle',                      text: 'success' },
+    muted:   { container: 'bg-success-subtle',                      text: 'success' },
+    outline: { container: 'bg-card border border-border-light',     text: 'success' },
   },
   info: {
-    subtle:  { container: 'bg-info-subtle',                         text: 'text-info-text' },
-    muted:   { container: 'bg-info-subtle',                         text: 'text-info-text' },
-    outline: { container: 'bg-card border border-border-light',     text: 'text-info-text' },
+    subtle:  { container: 'bg-info-subtle',                         text: 'info' },
+    muted:   { container: 'bg-info-subtle',                         text: 'info' },
+    outline: { container: 'bg-card border border-border-light',     text: 'info' },
   },
   danger: {
-    subtle:  { container: 'bg-danger-subtle',                       text: 'text-danger-text' },
-    muted:   { container: 'bg-danger-subtle',                       text: 'text-danger-text' },
-    outline: { container: 'bg-card border border-danger-border',    text: 'text-danger-text' },
+    subtle:  { container: 'bg-danger-subtle',                       text: 'danger' },
+    muted:   { container: 'bg-danger-subtle',                       text: 'danger' },
+    outline: { container: 'bg-card border border-danger-border',    text: 'danger' },
   },
   accent: {
-    subtle:  { container: 'bg-accent-bg-light',                     text: 'text-accent-fg-light' },
-    muted:   { container: 'bg-accent-bg-light',                     text: 'text-accent-fg-light' },
-    outline: { container: 'bg-card border border-border-light',     text: 'text-accent-fg-light' },
+    subtle:  { container: 'bg-accent-bg-light',                     text: 'info' },
+    muted:   { container: 'bg-accent-bg-light',                     text: 'info' },
+    outline: { container: 'bg-card border border-border-light',     text: 'info' },
   },
 };
 
 const SIZE_CONTAINER: Record<BadgeSize, string> = {
   default: 'py-0.5 px-2',
   sm:      'py-px px-1.5',
-};
-
-const SIZE_TEXT: Record<BadgeSize, string> = {
-  default: 'text-xs font-normal leading-none',
-  sm:      'text-xs font-normal leading-none tabular-nums',
 };
 
 export function Badge({
@@ -103,7 +100,7 @@ export function Badge({
         <View className="items-center justify-center shrink-0">{icon}</View>
       )}
 
-      <Text className={[text, SIZE_TEXT[size]].join(' ')}>
+      <Text role="metadataStrong" color={text}>
         {children}
       </Text>
 
@@ -116,7 +113,7 @@ export function Badge({
           accessibilityLabel="Dismiss"
           hitSlop={8}
         >
-          <Text className={[text, SIZE_TEXT[size]].join(' ')}>×</Text>
+          <Text role="metadataStrong" color={text}>×</Text>
         </LiquidGlassPressable>
       )}
     </View>

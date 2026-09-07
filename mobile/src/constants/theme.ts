@@ -1,51 +1,53 @@
+import { colorTokens } from '../design-system/tokens';
+
 export const colors = {
-  background: '#ffffff',
-  backgroundTransparent: 'rgba(255,255,255,0)',
-  surface: '#ffffff',
-  surfaceElevated: '#f9f9f9',
-  border: '#e6e6e6',
-  borderSubtle: 'rgba(6,7,7,0.08)',
-  secondaryActionSurface: 'rgba(255,255,255,0.18)',
-  secondaryActionBorder: 'rgba(23,23,23,0.06)',
-  secondaryActionIcon: '#0F1010',
-  shadowSubtle: '#000000',
-  recordingMark: '#666666',
+  background: colorTokens.surface.app,
+  backgroundTransparent: colorTokens.native.transparentApp,
+  surface: colorTokens.surface.elevated,
+  surfaceElevated: colorTokens.surface.subtle,
+  border: colorTokens.border.default,
+  borderSubtle: colorTokens.overlay.separator,
+  secondaryActionSurface: colorTokens.native.secondaryActionSurface,
+  secondaryActionBorder: colorTokens.native.secondaryActionBorder,
+  secondaryActionIcon: colorTokens.text.primary,
+  shadowSubtle: colorTokens.native.shadow,
+  recordingMark: colorTokens.native.recordingMark,
 
   // Primary (lime-500)
-  accent: '#cdec1a',
-  accentMuted: '#edfbca',
-  accentGlow: 'rgba(205,236,26,0.3)',
+  accent: colorTokens.action.primary,
+  accentMuted: colorTokens.native.accentMuted,
+  accentGlow: colorTokens.native.accentGlow,
 
   // Semantic
-  positive: '#04851a',
-  positiveMuted: '#e7f9e9',
-  warning: '#e46300',
-  warningMuted: '#fcf2e8',
-  error: '#c60000',
-  errorMuted: '#fff0ea',
-  info: '#0c79e6',
+  positive: colorTokens.status.success,
+  positiveMuted: colorTokens.status.successSurface,
+  warning: colorTokens.status.warning,
+  warningMuted: colorTokens.status.warningSurface,
+  error: colorTokens.status.danger,
+  errorMuted: colorTokens.status.dangerSurface,
+  info: colorTokens.status.info,
 
   // Text
-  textPrimary: '#060707',
-  textSecondary: '#5f646a',
-  textTertiary: '#898989',
-  textAccent: '#778700',
+  textPrimary: colorTokens.text.primary,
+  textSecondary: colorTokens.text.secondary,
+  textTertiary: colorTokens.text.tertiary,
+  textAccent: colorTokens.native.accentText,
 
   // Momentum signals
   momentum: {
-    accelerating: '#04851a',
-    steady: '#0c79e6',
-    stalling: '#e46300',
-    recovering: '#004148',
+    accelerating: colorTokens.status.success,
+    steady: colorTokens.status.info,
+    stalling: colorTokens.status.warning,
+    recovering: colorTokens.native.tealText,
   },
 
   // Sentiment
   sentiment: {
-    'very-positive': '#04851a',
-    positive: '#86e091',
-    neutral: '#0c79e6',
-    challenging: '#e46300',
-    difficult: '#c60000',
+    'very-positive': colorTokens.status.success,
+    positive: colorTokens.native.positiveLight,
+    neutral: colorTokens.status.info,
+    challenging: colorTokens.status.warning,
+    difficult: colorTokens.status.danger,
   },
 };
 

@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { View, Text, ScrollView } from 'react-native';
+import { View, ScrollView } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { useThreadStore } from '../../src/stores/threadStore';
 import { ThreadRow } from '../../src/components/ThreadRow';
@@ -8,6 +8,7 @@ import { useScrollContext } from '../../src/contexts/ScrollContext';
 import { localTodayState } from '../../src/services/todayLocalState';
 import { getPageHeaderScrollInset } from '../../src/components/ui/PageHeaderSurface';
 import { usePageHeaderPaddingTop } from '../../src/navigation/pageSafeArea';
+import { Text } from '../../src/components/ui/Text';
 
 export default function TodayScreen() {
   const { threads, fetchThreads } = useThreadStore();
@@ -40,16 +41,18 @@ export default function TodayScreen() {
       >
         {today.kind === 'empty' ? (
           <View className="bg-card rounded-xl px-4 py-4 mb-4 border border-border">
-            <Text className="text-foreground text-sm font-semibold">{today.title}</Text>
-            <Text className="text-text-tertiary text-xs leading-relaxed mt-2">{today.body}</Text>
+            <Text role="bodyStrong">{today.title}</Text>
+            <View className="mt-2">
+              <Text role="metadata" color="tertiary">{today.body}</Text>
+            </View>
           </View>
         ) : null}
 
         {recentThreads.length > 0 && (
           <>
-            <Text className="text-text-tertiary text-xs font-bold tracking-wider mb-3">
-              Recent
-            </Text>
+            <View className="mb-3">
+              <Text role="metadataStrong" color="tertiary">Recent</Text>
+            </View>
             {recentThreads.map(thread => <ThreadRow key={thread.id} thread={thread} />)}
           </>
         )}

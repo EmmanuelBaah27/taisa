@@ -1,8 +1,9 @@
-import { View, Text, TouchableOpacity } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { useCareerStore } from '../stores/careerStore';
 import { Icon } from './ui/Icon';
 import { usePageHeaderPaddingTop } from '../navigation/pageSafeArea';
 import { PageHeaderSurface } from './ui/PageHeaderSurface';
+import { Text } from './ui/Text';
 
 interface WorkspaceHeaderProps {
   subtitle: string;
@@ -16,11 +17,11 @@ export function WorkspaceHeader({ subtitle }: WorkspaceHeaderProps) {
   return (
     <PageHeaderSurface variant="workspace">
       <View className="px-5 pb-2" style={{ paddingTop: pageHeaderPaddingTop }}>
-        <TouchableOpacity className="flex-row items-center gap-2 mb-1" activeOpacity={0.7}>
-          <Text className="text-foreground text-H1">{name}</Text>
-          <Icon name="IconChevronBottom" size={18} color="#060707" />
-        </TouchableOpacity>
-        <Text className="text-muted-foreground text-base-regular">{subtitle}</Text>
+        <Pressable className="flex-row items-center gap-2 mb-1">
+          <Text role="heading">{name}</Text>
+          <Icon name="IconChevronBottom" size={18} colorRole="primary" />
+        </Pressable>
+        <Text color="secondary">{subtitle}</Text>
       </View>
     </PageHeaderSurface>
   );

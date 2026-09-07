@@ -5,13 +5,13 @@ import {
   Easing,
   Pressable,
   type PressableProps,
-  Text,
   View,
 } from 'react-native';
 
 import { colors } from '../../constants/theme';
 import type { ChatCardFrame } from '../../navigation/chatCardExpansion';
 import { Icon } from './Icon';
+import { Text } from './Text';
 
 export interface ChatListRowProps {
   title: string;
@@ -101,16 +101,16 @@ export function ChatListRowSurface({
         <Icon name="IconChatBubbles" size={24} color={colors.textSecondary} />
       </View>
       <View className="min-w-0 flex-1 gap-1">
-        <Text className="text-foreground text-base-medium" numberOfLines={1}>
+        <Text role="bodyStrong" numberOfLines={1}>
           {title}
         </Text>
-        <Text className="text-muted-foreground text-small-regular" numberOfLines={1}>
+        <Text role="label" color="secondary" numberOfLines={1}>
           {preview}
         </Text>
         {needsAttention ? (
           <View className="flex-row items-center gap-1">
             <Icon name="IconCircleInfo" size={16} color={colors.warning} />
-            <Text className="text-warning-600 text-small-regular">Needs attention</Text>
+            <Text role="label" color="warning">Needs attention</Text>
           </View>
         ) : null}
       </View>

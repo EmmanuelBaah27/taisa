@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 import {
   getLiquidGlassShapeStyle,
   getLiquidGlassPressScale,
+  readReduceTransparencyPreference,
 } from '../LiquidGlassButtonSurface';
 
 describe('LiquidGlassButtonSurface', () => {
@@ -17,6 +18,13 @@ describe('LiquidGlassButtonSurface', () => {
     expect(getLiquidGlassPressScale(1, false, false)).toBe(0.97);
     expect(getLiquidGlassPressScale(1, true, false)).toBe(1);
     expect(getLiquidGlassPressScale(1, false, true)).toBe(1);
+  });
+
+  test('defaults reduced transparency off when the platform API is unavailable', async () => {
+    await expect(readReduceTransparencyPreference({})).resolves.toBe(false);
+    await expect(readReduceTransparencyPreference({
+      isReduceTransparencyEnabled: async () => true,
+    })).resolves.toBe(true);
   });
 
   test('keeps the press-scale helper callable from the UI-thread animated style', () => {
@@ -56,6 +64,7 @@ describe('LiquidGlassButtonSurface', () => {
     expect(source).toMatch(/NativeGlassView[\s\S]*overflow: 'hidden'/);
     expect(source).toMatch(/NativeGlassView[\s\S]*borderColor: appearance\.fallback\.borderColor/);
     expect(source).toMatch(/key="fallback-material"[\s\S]*overflow: 'hidden'/);
+    expect(source).toMatch(/key="fallback-material"[\s\S]*?shapeStyle,\s*\{\s*position: 'absolute',\s*inset: 0/);
   });
 
   test('centres children inside both native and fallback glass materials', () => {

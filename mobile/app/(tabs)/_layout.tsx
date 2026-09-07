@@ -7,6 +7,7 @@ import { CURRENT_INITIAL_TAB } from '../../src/navigation/currentExperience';
 import { getBottomNavigationPageTransition } from '../../src/navigation/bottomNavigation';
 import { getTabSurfaceChatTransition } from '../../src/navigation/chatCardExpansion';
 import { InteractiveMainNavigator } from '../../src/navigation/InteractiveMainNavigator';
+import { colorTokens } from '../../src/design-system/tokens';
 
 const SCALE_BACK = { damping: 30, stiffness: 250 };
 const PAGE_TRANSITION = getBottomNavigationPageTransition();
@@ -41,7 +42,7 @@ export default function TabLayout() {
   return (
     <ScrollProvider>
       {/* Dark backdrop shows around the scaled-back tabs content. */}
-      <View style={{ flex: 1, backgroundColor: '#111111' }}>
+      <View style={{ flex: 1, backgroundColor: colorTokens.surface.inverted }}>
         <Animated.View collapsable={false} style={scaleStyle}>
           <InteractiveMainNavigator initialRouteName={CURRENT_INITIAL_TAB}>
             <InteractiveMainNavigator.Screen name="chats" />

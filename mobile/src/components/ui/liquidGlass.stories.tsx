@@ -1,13 +1,14 @@
 import type { Meta, StoryObj } from '@storybook/react-native';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 
 import { getLiquidGlassAppearance, type LiquidGlassHierarchy, type LiquidGlassTone } from './liquidGlass';
+import { Text } from './Text';
 
 const TokenMatrix = () => (
   <View className="gap-3 bg-background p-6">
     {(['prominent', 'standard', 'subtle'] as LiquidGlassHierarchy[]).map((hierarchy) => (
       <View key={hierarchy} className="gap-2">
-        <Text className="text-small-semibold text-foreground">{hierarchy}</Text>
+        <Text role="labelStrong">{hierarchy}</Text>
         <View className="flex-row gap-2">
           {(['neutral', 'accent', 'destructive'] as LiquidGlassTone[]).map((tone) => {
             const appearance = getLiquidGlassAppearance(hierarchy, tone);
@@ -20,7 +21,7 @@ const TokenMatrix = () => (
                   borderColor: appearance.fallback.borderColor,
                 }}
               >
-                <Text className="text-caption-medium text-foreground">{tone}</Text>
+                <Text role="metadataStrong">{tone}</Text>
               </View>
             );
           })}

@@ -17,6 +17,7 @@ relevant to the task.
 | Personal alpha release | Platform + Product | Build | `feature/local-first-coaching-platform` | Code-only build complete at `850b3d6`; next gate is Baah approval to create Railway resources, add billing/secrets, and deploy. Signed iPhone installation follows as a separate gate. |
 | Post-Send streaming transcription | Platform + Product | Review + QA | `feature/local-first-coaching-platform` | Managed-device clear/uncertain/no-speech calibration before Ship approval |
 | Taisa system architecture | Platform | Review + QA | `docs/reimagine-product-scope` | Baah document review |
+| Design system foundation and enforcement | Product | Build | `feature/design-system-foundation-and-enforcement` | Verified canonical preview and Baah device QA |
 | Secondary icon button | Product | Review + QA | `feature/secondary-icon-button` | Baah device QA |
 | Recording page | Product | Review + QA | `feature/secondary-icon-button` | Baah device QA |
 | Shared chat and recording shell | Product | Build | `codex/chat-close-auth-handoff` | Baah paired-device QA after preview integration |
@@ -144,6 +145,10 @@ dependency stage. If not yet in BUILD:
 Run the narrowest relevant check throughout BUILD, then run the complete applicable row before PR or Ship. Missing test infrastructure is a reported gap, not a passing test. Mobile-facing changes require Baah's device QA unless explicitly classified as non-visual and non-device-sensitive.
 
 **DS compliance check (blocks PR if any fail):**
+- Build — run `npm run verify:design-system` throughout Product implementation and resolve every finding.
+- Review — run `npm run verify:design-system` before requesting code review or opening a PR.
+- Preview — run `npm run verify:design-system` before integrating a candidate into `preview/taisa`.
+- Ship — run `npm run verify:design-system` again on the exact revision proposed for merge.
 - [ ] All visual primitives in screens import from `mobile/src/components/ui/`
 - [ ] No `StyleSheet.create()` in new or changed files
 - [ ] New DS components: typed + exported props, documented in `docs/design-system.md`

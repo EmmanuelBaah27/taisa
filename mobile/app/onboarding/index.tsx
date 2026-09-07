@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { View, Text, TextInput, ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { router } from 'expo-router';
 import * as Crypto from 'expo-crypto';
 import { useCareerStore } from '../../src/stores/careerStore';
-import { colors } from '../../src/constants/theme';
 import { LiquidGlassPressable } from '../../src/components/ui/LiquidGlassPressable';
+import { Text } from '../../src/components/ui/Text';
+import { Input } from '../../src/components/ui/Input';
+import { colorTokens } from '../../src/design-system/tokens';
 import {
   clearOnboardingDraft,
   loadOnboardingDraft,
@@ -70,15 +72,15 @@ export default function OnboardingScreen() {
   const steps = [
     // Step 0: Career context
     <ScrollView key={0} contentContainerClassName="p-6 pb-[60px]">
-      <Text className="text-[30px] font-bold text-foreground mb-2">Tell me about yourself</Text>
-      <Text className="text-[13px] text-muted-foreground mb-8 leading-5">This helps your coach personalize every response.</Text>
+      <View className="mb-2"><Text role="display">Tell me about yourself</Text></View>
+      <View className="mb-8"><Text role="label" color="secondary">This helps your coach personalize every response.</Text></View>
 
       <Field label="Current role" placeholder="e.g. Product Manager" value={form.currentRole} onChange={v => updateForm('currentRole', v)} />
       <Field label="Company (optional)" placeholder="e.g. Acme Corp" value={form.currentCompany} onChange={v => updateForm('currentCompany', v)} />
       <Field label="Industry" placeholder="e.g. FinTech, Healthcare, Media" value={form.industry} onChange={v => updateForm('industry', v)} />
       <Field label="Years of experience" placeholder="5" value={form.yearsOfExperience} onChange={v => updateForm('yearsOfExperience', v)} keyboardType="numeric" />
 
-      <Text className="text-[13px] font-medium text-muted-foreground mb-2">Career stage</Text>
+      <View className="mb-2"><Text role="labelStrong" color="secondary">Career stage</Text></View>
       <View className="flex-row flex-wrap gap-2 mb-8">
         {STAGES.map(s => (
           <Pill key={s} label={s} selected={form.careerStage === s} onPress={() => updateForm('careerStage', s)} />
@@ -93,14 +95,14 @@ export default function OnboardingScreen() {
         onPress={() => setStep(1)}
         disabled={!form.currentRole || !form.industry}
       >
-        <Text className="text-foreground font-semibold text-[15px]">Continue</Text>
+        <Text role="labelStrong">Continue</Text>
       </LiquidGlassPressable>
     </ScrollView>,
 
     // Step 1: Goals
     <ScrollView key={1} contentContainerClassName="p-6 pb-[60px]">
-      <Text className="text-[30px] font-bold text-foreground mb-2">What are you working toward?</Text>
-      <Text className="text-[13px] text-muted-foreground mb-8 leading-5">Your coach uses these to keep your reflections focused.</Text>
+      <View className="mb-2"><Text role="display">What are you working toward?</Text></View>
+      <View className="mb-8"><Text role="label" color="secondary">Your coach uses these to keep your reflections focused.</Text></View>
 
       <Field label="Short-term goal (3-6 months)" placeholder="e.g. Get promoted to Senior PM" value={form.shortTermGoal} onChange={v => updateForm('shortTermGoal', v)} multiline />
       <Field label="Long-term vision (1-3 years)" placeholder="e.g. Lead a product org of 10+" value={form.longTermGoal} onChange={v => updateForm('longTermGoal', v)} multiline />
@@ -108,7 +110,7 @@ export default function OnboardingScreen() {
 
       <View className="flex-row mt-6">
         <LiquidGlassPressable accessibilityLabel="Back to career context" className="mr-2 flex-1 py-4" onPress={() => setStep(0)}>
-          <Text className="text-muted-foreground text-[15px]">Back</Text>
+          <Text role="label" color="secondary">Back</Text>
         </LiquidGlassPressable>
         <LiquidGlassPressable
           accessibilityLabel="Continue to coaching preferences"
@@ -118,23 +120,23 @@ export default function OnboardingScreen() {
           onPress={() => setStep(2)}
           disabled={!form.shortTermGoal}
         >
-          <Text className="text-foreground font-semibold text-[15px]">Continue</Text>
+          <Text role="labelStrong">Continue</Text>
         </LiquidGlassPressable>
       </View>
     </ScrollView>,
 
     // Step 2: Coaching preferences
     <ScrollView key={2} contentContainerClassName="p-6 pb-[60px]">
-      <Text className="text-[30px] font-bold text-foreground mb-2">How should your coach work with you?</Text>
+      <View className="mb-2"><Text role="display">How should your coach work with you?</Text></View>
 
-      <Text className="text-[13px] font-medium text-muted-foreground mb-2">Coaching style</Text>
+      <View className="mb-2"><Text role="labelStrong" color="secondary">Coaching style</Text></View>
       <View className="flex-row flex-wrap gap-2 mb-8">
         {COACHING_STYLES.map(s => (
           <Pill key={s} label={s} selected={form.coachingStyle === s} onPress={() => updateForm('coachingStyle', s)} />
         ))}
       </View>
 
-      <Text className="text-[13px] font-medium text-muted-foreground mb-2">Accountability level</Text>
+      <View className="mb-2"><Text role="labelStrong" color="secondary">Accountability level</Text></View>
       <View className="flex-row flex-wrap gap-2 mb-8">
         {ACCOUNTABILITY.map(a => (
           <Pill key={a} label={a} selected={form.accountabilityLevel === a} onPress={() => updateForm('accountabilityLevel', a)} />
@@ -143,10 +145,10 @@ export default function OnboardingScreen() {
 
       <View className="flex-row mt-6">
         <LiquidGlassPressable accessibilityLabel="Back to goals" className="mr-2 flex-1 py-4" onPress={() => setStep(1)}>
-          <Text className="text-muted-foreground text-[15px]">Back</Text>
+          <Text role="label" color="secondary">Back</Text>
         </LiquidGlassPressable>
         <LiquidGlassPressable accessibilityLabel="Start journaling" hierarchy="prominent" tone="accent" className="flex-1 py-4" onPress={handleSubmit} disabled={isLoading}>
-          {isLoading ? <ActivityIndicator color={colors.textPrimary} /> : <Text className="text-foreground font-semibold text-[15px]">Start journaling</Text>}
+          {isLoading ? <ActivityIndicator color={colorTokens.text.primary} /> : <Text role="labelStrong">Start journaling</Text>}
         </LiquidGlassPressable>
       </View>
     </ScrollView>,
@@ -170,11 +172,10 @@ export default function OnboardingScreen() {
 export function Field({ label, onChange, ...props }: { label: string; onChange?: (value: string) => void; [key: string]: any }) {
   return (
     <View className="mb-6">
-      <Text className="text-[13px] font-medium text-muted-foreground mb-2">{label}</Text>
-      <TextInput
-        className={`bg-card rounded-xl border border-border p-4 text-foreground text-[15px] h-12${props.multiline ? ' h-20' : ''}`}
-        style={props.multiline ? { textAlignVertical: 'top' } : undefined}
-        placeholderTextColor={colors.textTertiary}
+      <Input
+        label={label}
+        size="lg"
+        style={props.multiline ? { height: 80 } : undefined}
         onChangeText={onChange}
         {...props}
       />
@@ -191,12 +192,7 @@ function Pill({ label, selected, onPress }: { label: string; selected: boolean; 
       tone={selected ? 'accent' : 'neutral'}
       className="px-4 py-1"
     >
-      <Text className={selected
-        ? 'text-[13px] text-primary font-semibold capitalize'
-        : 'text-[13px] text-muted-foreground capitalize'}
-      >
-        {label}
-      </Text>
+      <Text role={selected ? 'labelStrong' : 'label'} color={selected ? 'primary' : 'secondary'}>{label}</Text>
     </LiquidGlassPressable>
   );
 }

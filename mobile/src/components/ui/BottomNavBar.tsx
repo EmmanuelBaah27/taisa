@@ -31,6 +31,7 @@ import {
 import { useCareerStore } from '../../stores/careerStore';
 import { Icon } from './Icon';
 import { NaviiAvatar } from './NaviiAvatar';
+import { colorTokens } from '../../design-system/tokens';
 
 const nativeGlassEnabled = process.env.EXPO_PUBLIC_NATIVE_GLASS_ENABLED !== 'false';
 const glassEffectModule = resolveOptionalGlassModule(
@@ -71,7 +72,7 @@ function NavigationMaterial({ children }: { children: ReactNode }) {
       <NativeGlassView
         isInteractive
         glassEffectStyle="regular"
-        tintColor="rgba(255,255,255,0.10)"
+        tintColor={colorTokens.overlay.separator}
         colorScheme="light"
         style={materialStyle}
       >
@@ -113,7 +114,7 @@ function LeadingVisual({ item, selected, userId }: {
     <Icon
       name={item.icon}
       size={24}
-      color={selected ? '#0F1010' : BOTTOM_NAVIGATION_FIGMA.inactiveItem.iconColor}
+      color={selected ? colorTokens.text.primary : BOTTOM_NAVIGATION_FIGMA.inactiveItem.iconColor}
     />
   );
 }
@@ -234,7 +235,7 @@ export function BottomNavBar() {
     <View pointerEvents="box-none" className="absolute inset-0">
       <LinearGradient
         pointerEvents="none"
-        colors={['rgba(255,255,255,0)', '#FFFFFF']}
+        colors={[`${colorTokens.surface.app}00`, colorTokens.surface.app]}
         locations={[0, 0.545645535]}
         className="absolute left-0 right-0"
         style={{ bottom: layout.fadeBottom, height: layout.fadeHeight }}
@@ -258,9 +259,9 @@ export function BottomNavBar() {
           <NavigationMaterial>
             <Animated.View
               pointerEvents="none"
-              className="absolute rounded-[32px] bg-[rgba(15,16,16,0.06)]"
+              className="absolute rounded-[32px]"
               style={[
-                { top: SELECTED_OPTICAL_TOP, height: 48 },
+                { top: SELECTED_OPTICAL_TOP, height: 48, backgroundColor: colorTokens.overlay.separator },
                 capsuleStyle,
               ]}
             />

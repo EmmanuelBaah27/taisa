@@ -1,8 +1,9 @@
 import React from 'react';
-import { Pressable, Text } from 'react-native';
+import { Pressable } from 'react-native';
 import { router } from 'expo-router';
 
 import { ThreadResumeAction } from '../../components/ThreadResumeAction';
+import { Text } from '../../components/ui/Text';
 import {
   chatConversationRoute,
   closeChatPresentation,

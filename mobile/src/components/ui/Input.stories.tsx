@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-native';
-import { View, Text } from 'react-native';
+import { View } from 'react-native';
 import { Input } from './Input';
+import { colorTokens } from '../../design-system/tokens';
 
 const meta: Meta<typeof Input> = {
   title: 'Components/Input',
@@ -22,7 +23,7 @@ const meta: Meta<typeof Input> = {
   },
   decorators: [
     (Story) => (
-      <View style={{ padding: 24, gap: 8, backgroundColor: '#FFFFFF' }}>
+      <View style={{ padding: 24, gap: 8, backgroundColor: colorTokens.surface.app }}>
         <Story />
       </View>
     ),
@@ -46,7 +47,11 @@ export const WithValue: Story = {
 };
 
 export const Error: Story = {
-  args: { error: true, placeholder: 'This field is required' },
+  args: { label: 'Email', errorMessage: 'This field is required', placeholder: 'you@example.com' },
+};
+
+export const WithHelperText: Story = {
+  args: { label: 'Goal', helperText: 'Describe the outcome you want to reach.' },
 };
 
 export const Disabled: Story = {
@@ -57,18 +62,9 @@ export const FormExample: Story = {
   name: 'Form Example',
   render: () => (
     <View style={{ gap: 16 }}>
-      <View style={{ gap: 4 }}>
-        <Text style={{ fontSize: 14, fontWeight: '500', color: '#0F0F0F' }}>Goal</Text>
-        <Input placeholder="e.g. Land a senior design role" />
-      </View>
-      <View style={{ gap: 4 }}>
-        <Text style={{ fontSize: 14, fontWeight: '500', color: '#0F0F0F' }}>Today's focus</Text>
-        <Input size="lg" placeholder="What are you working toward this week?" />
-      </View>
-      <View style={{ gap: 4 }}>
-        <Text style={{ fontSize: 14, fontWeight: '500', color: '#EF4444' }}>Email (required)</Text>
-        <Input error placeholder="you@example.com" />
-      </View>
+      <Input label="Goal" helperText="Use a concrete outcome." placeholder="e.g. Land a senior design role" />
+      <Input label="Today's focus" size="lg" placeholder="What are you working toward this week?" />
+      <Input label="Email (required)" errorMessage="Enter a valid email address." placeholder="you@example.com" />
     </View>
   ),
 };

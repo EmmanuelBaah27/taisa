@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-native';
 import { View } from 'react-native';
 
 import { ThreadMessage } from './ThreadMessage';
+import { colorTokens } from '../../design-system/tokens';
 
 const meta: Meta<typeof ThreadMessage> = {
   title: 'Patterns/ThreadMessage',
@@ -12,7 +13,7 @@ const meta: Meta<typeof ThreadMessage> = {
   },
   decorators: [
     (Story) => (
-      <View style={{ padding: 16, backgroundColor: '#FFFFFF' }}>
+      <View style={{ padding: 16, backgroundColor: colorTokens.surface.app }}>
         <Story />
       </View>
     ),

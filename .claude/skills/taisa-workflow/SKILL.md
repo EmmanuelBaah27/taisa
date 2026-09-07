@@ -150,6 +150,7 @@ Uncertain? Make the safer call (DS), note it: "Treated X as DS — check at REVI
 - Breaking change (removed prop, renamed export) → always ask, show all usages + impact
 
 **DS compliance check — runs at every REVIEW, blocks PR if any fail:**
+- Run the root `npm run verify:design-system` command during Product Build and again at Review, before canonical Preview integration, and before Ship. Any finding blocks progression.
 - [ ] All visual primitives in screens import from `mobile/src/components/ui/`
 - [ ] No `StyleSheet.create()` in new or changed files
 - [ ] New DS components: typed + exported props, documented in `docs/design-system.md`

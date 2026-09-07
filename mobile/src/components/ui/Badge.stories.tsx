@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-native';
 import { View } from 'react-native';
 import { Badge } from './Badge';
+import { colorTokens } from '../../design-system/tokens';
 
 const meta: Meta<typeof Badge> = {
   title: 'Components/Badge',
@@ -28,7 +29,7 @@ const meta: Meta<typeof Badge> = {
   },
   decorators: [
     (Story) => (
-      <View style={{ padding: 24, flexDirection: 'row', flexWrap: 'wrap', gap: 8, backgroundColor: '#FFFFFF' }}>
+      <View style={{ padding: 24, flexDirection: 'row', flexWrap: 'wrap', gap: 8, backgroundColor: colorTokens.surface.app }}>
         <Story />
       </View>
     ),

@@ -7,6 +7,7 @@ const projectRoot = __dirname;
 const workspaceRoot = path.resolve(projectRoot, '..');
 
 const config = getDefaultConfig(projectRoot);
+config.resolver.assetExts = [...config.resolver.assetExts, 'wasm'];
 
 // Let physical devices using Expo's tunnel reach the local development API
 // through the same HTTPS origin as Metro. This is development-only: production

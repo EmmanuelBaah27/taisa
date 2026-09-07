@@ -1,5 +1,7 @@
 import React from 'react';
-import { View, Text, type ViewStyle } from 'react-native';
+import { View, type ViewStyle } from 'react-native';
+import { colorTokens } from '../../design-system/tokens';
+import { Text } from './Text';
 
 export type CardSurface = 'default' | 'elevated';
 
@@ -17,14 +19,14 @@ const SURFACE_CLASS: Record<CardSurface, string> = {
 
 const SURFACE_SHADOW: Record<CardSurface, ViewStyle> = {
   default: {
-    shadowColor: '#000',
+    shadowColor: colorTokens.text.primary,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 1,
   },
   elevated: {
-    shadowColor: '#000',
+    shadowColor: colorTokens.text.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
@@ -58,12 +60,11 @@ export function CardHeader({ children, className = '' }: CardHeaderProps) {
 
 export interface CardTitleProps {
   children: React.ReactNode;
-  className?: string;
 }
 
-export function CardTitle({ children, className = '' }: CardTitleProps) {
+export function CardTitle({ children }: CardTitleProps) {
   return (
-    <Text className={['text-lg font-semibold text-foreground leading-none', className].filter(Boolean).join(' ')}>
+    <Text role="subheading">
       {children}
     </Text>
   );
@@ -71,12 +72,11 @@ export function CardTitle({ children, className = '' }: CardTitleProps) {
 
 export interface CardDescriptionProps {
   children: React.ReactNode;
-  className?: string;
 }
 
-export function CardDescription({ children, className = '' }: CardDescriptionProps) {
+export function CardDescription({ children }: CardDescriptionProps) {
   return (
-    <Text className={['text-sm text-muted-foreground', className].filter(Boolean).join(' ')}>
+    <Text role="label" color="secondary">
       {children}
     </Text>
   );

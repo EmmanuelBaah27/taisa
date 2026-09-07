@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-native';
 import { View } from 'react-native';
 import { NaviiAvatar } from './NaviiAvatar';
+import { colorTokens } from '../../design-system/tokens';
 
 const meta: Meta<typeof NaviiAvatar> = {
   title: 'Components/NaviiAvatar',
@@ -11,7 +12,7 @@ const meta: Meta<typeof NaviiAvatar> = {
   },
   decorators: [
     (Story) => (
-      <View style={{ padding: 32, alignItems: 'center', backgroundColor: '#FFFFFF' }}>
+      <View style={{ padding: 32, alignItems: 'center', backgroundColor: colorTokens.surface.app }}>
         <Story />
       </View>
     ),

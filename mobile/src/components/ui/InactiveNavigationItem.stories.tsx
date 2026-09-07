@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-native';
 import { View } from 'react-native';
 
 import { InactiveNavigationItem } from './InactiveNavigationItem';
+import { colorTokens } from '../../design-system/tokens';
 
 const meta: Meta<typeof InactiveNavigationItem> = {
   title: 'Components/InactiveNavigationItem',
@@ -15,7 +16,7 @@ const meta: Meta<typeof InactiveNavigationItem> = {
   },
   decorators: [
     (Story) => (
-      <View style={{ padding: 24, alignItems: 'flex-start', backgroundColor: '#FFFFFF' }}>
+      <View style={{ padding: 24, alignItems: 'flex-start', backgroundColor: colorTokens.surface.app }}>
         <Story />
       </View>
     ),

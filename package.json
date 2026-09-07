@@ -9,6 +9,7 @@
   "scripts": {
     "backend": "npm run dev --workspace=backend",
     "mobile": "cd mobile && npx expo start",
+    "verify:design-system": "node scripts/design-system/verify.mjs",
     "verify:workflow": "bash scripts/verify-workflow.sh"
   }
 }

@@ -155,7 +155,7 @@ describe('bottom navigation', () => {
       borderRadius: 32,
       fontSize: 16,
       lineHeight: 24,
-      letterSpacing: -0.36,
+      letterSpacing: 0,
     });
   });
 

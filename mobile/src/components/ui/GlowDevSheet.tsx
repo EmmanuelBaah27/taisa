@@ -1,6 +1,6 @@
 // mobile/src/components/ui/GlowDevSheet.tsx
 import { useEffect } from 'react';
-import { View, Text } from 'react-native';
+import { View } from 'react-native';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import Animated, {
   useSharedValue,
@@ -10,6 +10,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import type { GlowDevControls } from '../../hooks/useGlowDevControls';
 import { LiquidGlassPressable } from './LiquidGlassPressable';
+import { Text } from './Text';
+import { colorTokens } from '../../design-system/tokens';
 
 const TRACK_WIDTH = 200;
 
@@ -44,17 +46,17 @@ function DevSlider({ value, min, max, onChange }: DevSliderProps) {
   return (
     <GestureDetector gesture={pan}>
       <View style={{ width: TRACK_WIDTH, height: 32, justifyContent: 'center' }}>
-        <View style={{ height: 3, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 2, width: TRACK_WIDTH }}>
-          <Animated.View style={[{ height: 3, backgroundColor: '#c6eb52', borderRadius: 2 }, fillStyle]} />
+        <View style={{ height: 3, backgroundColor: colorTokens.border.strong, borderRadius: 2, width: TRACK_WIDTH }}>
+          <Animated.View style={[{ height: 3, backgroundColor: colorTokens.action.primary, borderRadius: 2 }, fillStyle]} />
         </View>
         <Animated.View style={[{
           position: 'absolute',
           width: 16,
           height: 16,
           borderRadius: 8,
-          backgroundColor: '#ffffff',
+          backgroundColor: colorTokens.surface.app,
           top: 8,
-          shadowColor: '#000',
+          shadowColor: colorTokens.text.primary,
           shadowOffset: { width: 0, height: 1 },
           shadowOpacity: 0.3,
           shadowRadius: 2,
@@ -88,9 +90,7 @@ function Segment({ options, value, onChange }: SegmentProps) {
             height: 28,
           }}
         >
-          <Text style={{ color: value === opt ? '#060707' : '#ffffff', fontSize: 13, fontWeight: '600' }}>
-            {opt}
-          </Text>
+          <Text role="labelStrong" color={value === opt ? 'primary' : 'inverted'}>{opt}</Text>
         </LiquidGlassPressable>
       ))}
     </View>
@@ -120,9 +120,7 @@ function Toggle({ value, onChange }: ToggleProps) {
             height: 28,
           }}
         >
-          <Text style={{ color: value === opt ? '#060707' : '#ffffff', fontSize: 12, fontWeight: '600' }}>
-            {opt ? 'on' : 'off'}
-          </Text>
+          <Text role="metadataStrong" color={value === opt ? 'primary' : 'inverted'}>{opt ? 'on' : 'off'}</Text>
         </LiquidGlassPressable>
       ))}
     </View>
@@ -134,7 +132,7 @@ function Toggle({ value, onChange }: ToggleProps) {
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 8 }}>
-      <Text style={{ color: 'rgba(255,255,255,0.55)', fontSize: 12, width: 100 }}>{label}</Text>
+      <View style={{ width: 100 }}><Text role="metadata" color="inverted">{label}</Text></View>
       {children}
     </View>
   );
@@ -143,9 +141,9 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 function Divider({ label }: { label: string }) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 6 }}>
-      <View style={{ flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.08)' }} />
-      <Text style={{ color: 'rgba(255,255,255,0.25)', fontSize: 10, paddingHorizontal: 8 }}>{label}</Text>
-      <View style={{ flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.08)' }} />
+      <View style={{ flex: 1, height: 1, backgroundColor: colorTokens.overlay.separator }} />
+      <View style={{ paddingHorizontal: 8 }}><Text role="metadata" color="disabled">{label}</Text></View>
+      <View style={{ flex: 1, height: 1, backgroundColor: colorTokens.overlay.separator }} />
     </View>
   );
 }
@@ -188,7 +186,7 @@ export function GlowDevSheet({ controls, visible, onDismiss }: GlowDevSheetProps
         left: 0,
         right: 0,
         zIndex: 100,
-        backgroundColor: 'rgba(8,8,12,0.94)',
+        backgroundColor: colorTokens.surface.inverted,
         borderBottomLeftRadius: 18,
         borderBottomRightRadius: 18,
         paddingHorizontal: 20,
@@ -198,11 +196,9 @@ export function GlowDevSheet({ controls, visible, onDismiss }: GlowDevSheetProps
       pointerEvents={visible ? 'auto' : 'none'}
     >
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-        <Text style={{ color: '#ffffff', fontSize: 11, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase', opacity: 0.7 }}>
-          Glow Dev Controls
-        </Text>
+        <Text role="metadataStrong" color="inverted">Glow Dev Controls</Text>
         <LiquidGlassPressable accessibilityLabel="Close glow controls" hierarchy="subtle" shape="circle" onPress={onDismiss} hitSlop={12} style={{ width: 28, height: 28 }}>
-          <Text style={{ color: 'rgba(255,255,255,0.45)', fontSize: 18, lineHeight: 20 }}>✕</Text>
+          <Text role="subheading" color="disabled">✕</Text>
         </LiquidGlassPressable>
       </View>
 

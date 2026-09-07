@@ -3,6 +3,7 @@ import { View } from 'react-native';
 
 import { Icon } from './Icon';
 import { SelectedNavigationItem } from './SelectedNavigationItem';
+import { colorTokens } from '../../design-system/tokens';
 
 const meta: Meta<typeof SelectedNavigationItem> = {
   title: 'Components/SelectedNavigationItem',
@@ -10,7 +11,7 @@ const meta: Meta<typeof SelectedNavigationItem> = {
   args: {
     label: 'Chats',
     width: 108,
-    leadingVisual: <Icon name="IconChatBubbles" size={24} color="#0F1010" />,
+    leadingVisual: <Icon name="IconChatBubbles" size={24} color={colorTokens.text.primary} />,
   },
   argTypes: {
     label: { control: 'text' },
@@ -19,7 +20,7 @@ const meta: Meta<typeof SelectedNavigationItem> = {
   },
   decorators: [
     (Story) => (
-      <View style={{ padding: 24, alignItems: 'flex-start', backgroundColor: '#FFFFFF' }}>
+      <View style={{ padding: 24, alignItems: 'flex-start', backgroundColor: colorTokens.surface.app }}>
         <Story />
       </View>
     ),

@@ -3,6 +3,8 @@
 Living reference for all UI work. Update when a new component is added or a token changes.
 Full token definitions and decision rules: `foundations.md` (root of repo).
 
+Storybook imports and renders these exact production exports. It is not a second implementation and the app never fetches design-system code from Storybook; the app and Storybook both consume the production token registry and component modules in this repository.
+
 ---
 
 ## Status
@@ -10,7 +12,7 @@ Full token definitions and decision rules: `foundations.md` (root of repo).
 | Layer | State |
 |---|---|
 | Styling | NativeWind (Tailwind CSS for React Native) — all screens |
-| Tokens | Taisa DS light theme — `mobile/tailwind.config.js` + `mobile/global.css` |
+| Tokens | Authoritative values in `mobile/design-system/tokens.json`; typed access in `mobile/src/design-system/tokens.ts`; NativeWind consumes the same registry |
 | Typography | Inter — `Inter_400Regular`, `Inter_500Medium`, `Inter_600SemiBold`, and `Inter_700Bold` loaded via `expo-font` in `app/_layout.tsx` |
 | Components | Primitives in `mobile/src/components/ui/` |
 
@@ -63,7 +65,18 @@ Full token definitions and decision rules: `foundations.md` (root of repo).
 
 ## Typography
 
-Never use raw `text-sm font-semibold` combinations — use the composite utilities:
+Product copy renders through the semantic `Text` component. Its default is readable 16px body copy and its closed roles bind family, size, weight, line height, and letter spacing together.
+
+| Role | Size | Use |
+|---|---:|---|
+| `display` | 28px | Rare hero statements |
+| `heading` | 24px | Page titles |
+| `subheading` | 20px | Section and card headings |
+| `body`, `bodyStrong` | 16px | Default copy and emphasized copy |
+| `label`, `labelStrong` | 14px | Supporting labels and compact controls |
+| `metadata`, `metadataStrong` | 12px | Timestamps and genuinely tertiary detail |
+
+Legacy composite utilities remain only as compatibility aliases outside Product UI and must not be introduced in Product code. Never combine raw size and weight utilities.
 
 | Semantic weight | Inter registration |
 |---|---|
@@ -71,26 +84,6 @@ Never use raw `text-sm font-semibold` combinations — use the composite utiliti
 | Medium (500) | `Inter_500Medium` |
 | Semibold (600) | `Inter_600SemiBold` |
 | Bold (700) | `Inter_700Bold` |
-
-| Class | Size | Weight | Use for |
-|---|---|---|---|
-| `text-H1` | 24px / 32px lh | 600 | Page headings |
-| `text-H2` | 22px / 28px lh | 600 | Section headings |
-| `text-H3` | 20px / 26px lh | 600 | Sub-headings |
-| `text-xlg-regular` | 18px / 26px lh | 400 | Large body |
-| `text-lg-regular` | 18px / 26px lh | 400 | Body |
-| `text-lg-medium` | 18px / 26px lh | 500 | Body emphasis |
-| `text-lg-semibold` | 18px / 26px lh | 600 | Body strong |
-| `text-base-regular` | 16px / 22px lh | 400 | **Base UI — default text size** |
-| `text-base-medium` | 16px / 22px lh | 500 | UI emphasis |
-| `text-base-semibold` | 16px / 22px lh | 600 | UI strong |
-| `text-base-bold` | 16px / 22px lh | 700 | Strong compact emphasis where semibold is insufficient |
-| `text-small-regular` | 14px / 20px lh | 400 | Small labels, metadata |
-| `text-small-medium` | 14px / 20px lh | 500 | Small emphasis |
-| `text-small-semibold` | 14px / 20px lh | 600 | Small strong |
-| `text-caption-regular` | 12px / 16px lh | 400 | Timestamps, micro labels |
-| `text-caption-medium` | 12px / 16px lh | 500 | Caption emphasis |
-| `text-caption-semibold` | 12px / 16px lh | 600 | Caption strong |
 
 ---
 
@@ -110,7 +103,8 @@ Never use raw `text-sm font-semibold` combinations — use the composite utiliti
 
 | Component | Props | Notes |
 |---|---|---|
-| `Button` | `variant`, `size`, `label`, `icon`, `loading`, `disabled` | Six variants; default, small, 40px icon, and 56px `icon-lg` sizes |
+| `Text` | `role`, `color`, native text behavior props | Mandatory Product text boundary; defaults to 16px body and primary text; arbitrary visual styles are not exposed |
+| `Button` | `variant`, `size`, `label`, `icon`, `loading`, `disabled` | Six variants; semantic label roles; default, small, 40px icon, and 56px `icon-lg` sizes |
 | `LiquidGlassButtonSurface` | `hierarchy`, `tone`, `shape`, `disabled?`, `pressed?`, `children`, `style?` | Business-free elevated button material. A non-clipping outer caster supplies hierarchy-scaled neutral ambient elevation while the inner native or fallback glass clips blur and sheen to its shape; both layers scale together during fallback press feedback. Uses native interactive Liquid Glass on supported iOS, with semantic accent/destructive tint; reduced transparency and unsupported platforms receive the shared blur/sheen fallback. Consumers retain semantic press ownership and geometry. Native glass must never be nested. |
 | `liquidGlass` | pure resolver and semantic token exports | Central capability, hierarchy, tone, shape, and fallback mapping used by every glass control; contains no React or business logic. |
 | `SecondaryIconButton` | `label`, `icon`, `disabled?`, `onPress` | Figma node 414:706 compact secondary action: 56×56 circle with a 24px Central icon. Uses native interactive neutral Liquid Glass on supported iOS and the shared glass fallback elsewhere; fallback press reaches 0.97 over 100ms and releases with the shared spring, while reduced motion remains non-spatial. Use for pause, keyboard, close, and similar supporting actions. |
@@ -121,8 +115,10 @@ Never use raw `text-sm font-semibold` combinations — use the composite utiliti
 | `ActiveRecordingActionBar` | `durationSeconds`, `amplitudeLevel`, `paused`, `disabled?`, `recordingActionDisabled?`, `cancelLabel`, callbacks | Controls-only recording action bar for the shared composer dock: Cancel, Keyboard, raw-amplitude timestamp, Pause/Resume, and Send. It owns their arrangement and intrinsic 56px action geometry; `ChatComposerDock` owns the shared footer inset, margins, and bottom spacing. Recorder and navigation state remain in the screen owner. |
 | `Badge` | `color`, `appearance`, `size`, `icon`, `onDismiss` | Eight colors; three appearances |
 | `Card` | `surface`, `className`, `style` | Two surfaces (default / elevated) |
-| `Input` | `size`, `error`, `...TextInputProps` | Two sizes; error state |
-| `Icon` | `name`, `size`, `color` | 1906 icons — `round-outlined-radius-2-stroke-1.5` style via `react-native-svg` |
+| `Input` | `size`, `shape`, `label`, `helperText`, `errorMessage`, `error`, `trailing`, `...TextInputProps` | Readable semantic input copy with label, helper, error, focus, and disabled states |
+| `Icon` | `name`, `size`, `colorRole` | Product icons use closed semantic colour roles; raw native colour remains deprecated during migration |
+| `Toggle` | `label`, `value`, `disabled`, `onValueChange` | Accessible semantic boolean control with token-derived track and thumb colours |
+| `CardHeader`, `CardTitle`, `CardDescription`, `CardContent`, `CardFooter` | typed composition props | Registered structural exports that compose the production `Card` surface |
 | `BottomNavBar` | _(none)_ | Figma-state app navigation: 240×60 for Home/Chats and 220×60 for Me; all three tab identities remain mounted above a content-free moving glass capsule with equal 6px top and bottom padding; taps retain the coordinated capsule, icon, label, and 1.12 shell motion; during horizontal page gestures the capsule position and width interpolate directly from the shared UI-thread swipe progress, reverse with the finger, and restore on cancellation; route state remains authoritative at settlement; a broad soft neutral-grey shadow separates the glass shell from white pages without competing with the lime recording glow; Me preserves the Navii avatar; native iOS glass with material-blur fallback |
 | `PageHeaderSurface` | `variant`, `children` | Shared absolute main-page header. Keeps existing title/workspace geometry on a clean white surface and fades to transparent over the first 24px of scrolling content without frost or blur. Screens reserve the matching scroll inset; Chats date badges stick directly below the title without a section-wide background. |
 | `SelectedNavigationItem` | `label`, `leadingVisual`, `width`, `onPress`, `onPressIn?`, `onPressOut?` | Selected tab primitive from Figma node 454:738: 48px high, 16px horizontal padding, 24px visual, 8px gap, Inter Medium 16/24, and 6% black fill |
@@ -155,7 +151,7 @@ Never use raw `text-sm font-semibold` combinations — use the composite utiliti
 | `NaviiAvatar` | `seed`, `size` | Deterministic generated avatar presentation |
 
 **Extraction rule:** pattern appears in 2+ places → extract to `ui/`. Do not extract speculatively.
-**DS compliance:** no `StyleSheet.create()`, no raw hex, import tokens from Tailwind classes only.
+**DS compliance:** no `StyleSheet.create()`, no raw values, and no raw React Native `Text` in Product code. Use semantic component props or NativeWind utilities; use the typed token facade only where a native API requires a resolved value. Every exception is exact, owned, justified, expiring, and checked for continued use.
 ## Voice composer
 
 `VoiceComposer` is the bottom-loaded mixed-input control used by coaching conversations. The
