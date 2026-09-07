@@ -142,10 +142,12 @@ export default function RootLayout() {
   if (startup.status === 'ready' && (homeError !== null || governanceError !== null)) {
     return (
       <View className="flex-1 items-center justify-center bg-background px-8">
-        <Text className="text-foreground text-xl font-bold text-center">Home archive unavailable</Text>
-        <Text className="text-text-tertiary text-sm text-center mt-3">
-          Taisa could not load the local Home state. No backend copy has replaced it.
-        </Text>
+        <Text role="subheading" align="center">Home archive unavailable</Text>
+        <View className="mt-3">
+          <Text role="label" color="tertiary" align="center">
+            Taisa could not load the local Home state. No backend copy has replaced it.
+          </Text>
+        </View>
         <LiquidGlassPressable
           accessibilityLabel="Retry local Home archive"
           hierarchy="prominent"
@@ -161,7 +163,7 @@ export default function RootLayout() {
             });
           }}
         >
-          <Text className="text-foreground text-sm font-semibold">Retry local archive</Text>
+          <Text role="labelStrong">Retry local archive</Text>
         </LiquidGlassPressable>
       </View>
     );
