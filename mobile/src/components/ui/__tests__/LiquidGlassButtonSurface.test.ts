@@ -64,6 +64,7 @@ describe('LiquidGlassButtonSurface', () => {
     expect(source).toMatch(/NativeGlassView[\s\S]*overflow: 'hidden'/);
     expect(source).toMatch(/NativeGlassView[\s\S]*borderColor: appearance\.fallback\.borderColor/);
     expect(source).toMatch(/key="fallback-material"[\s\S]*overflow: 'hidden'/);
+    expect(source).toMatch(/key="fallback-material"[\s\S]*?shapeStyle,\s*\{\s*position: 'absolute',\s*inset: 0/);
   });
 
   test('centres children inside both native and fallback glass materials', () => {

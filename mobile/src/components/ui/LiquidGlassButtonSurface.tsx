@@ -179,6 +179,8 @@ export function LiquidGlassButtonSurface({
       style={[
         shapeStyle,
         {
+          position: 'absolute',
+          inset: 0,
           overflow: 'hidden',
           alignItems: 'center', justifyContent: 'center',
           borderWidth: 1,
