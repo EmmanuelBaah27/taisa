@@ -6,13 +6,14 @@
 
 ## Current local-first boundary
 
-The mobile client is authoritative for readable user data. Only two content-processing endpoint
+The mobile client is authoritative for readable user data. Three content-processing endpoint
 families belong to the new path:
 
 | Route | Status | Persistence boundary |
 |---|---|---|
 | `POST /api/v1/coaching/respond` | Current stateless coaching path | Validates bounded supplied context, calls the configured primary and optionally one alternate provider, returns structured coaching/proposals; stores no readable user content |
 | `POST /api/v1/transcribe` | Current deliberate voice path | Deletes temporary audio in `finally`; stores only content-free usage/cost metadata |
+| `POST /api/v1/organization/analyze` | Current bounded organization path | Accepts caller-supplied work/conversation summaries, performs one schema-aware provider call, and returns proposals without mutating or persisting records |
 | `GET /health` | Current operational health | No user data |
 
 The gateway still uses `x-user-id` as a device-keyed installation identifier for transport usage
@@ -23,8 +24,30 @@ No migration/export endpoint exists. Baah has no backend archive to migrate, and
 Profile, entries, analyze, reviews, goals, action-items, trajectory, notifications, chat, and today
 routes remain mounted as legacy rollback compatibility during BUILD. They must not receive new
 local-first coaching writes. Removal is separately gated on verified encrypted device recovery and
-Baah's explicit route-retirement approval; `backend/src/index.ts` intentionally remains unchanged in this
-slice.
+Baah's explicit route-retirement approval.
+
+### `POST /api/v1/organization/analyze`
+
+Accepts one strict `OrganizationRequest` from `@taisa/shared`. The request is capped by scope,
+record count, conversation count, title/status/summary lengths, and a caller-generated request ID.
+Conversation scope contains exactly the selected conversation plus confirmed open tasks. Task scope
+contains exactly the selected open task plus at most 20 recent submitted conversations from its
+planned week. Week scope contains only confirmed open tasks and submitted conversations from the
+declared local Monday-Sunday period, at most 30 of each; excess work
+must be narrowed before submission rather than silently truncated. The response must preserve the
+request ID and contain only typed lifecycle-free proposal candidates. The
+provider-neutral gateway makes exactly one schema-aware OpenAI or Anthropic call; it does not read
+backend user tables, persist readable content, or apply proposals. Invalid structured output or
+request correlation returns `INVALID_ORGANIZATION_OUTPUT`. The route is mounted behind the existing
+AI rate limit.
+
+On-device code previews the exact bounded request before submission, then reassembles and requires
+an exact match immediately before transport. Task/week summaries contain only submitted content
+from the declared period. Returned proposals enter the
+local proposal-governance path, which assigns fingerprints, admission, revalidation, resolution,
+and timestamps. Admission rechecks current task, conversation, and relationship state inside its
+local transaction. Strong-link application repeats those checks transactionally. User acceptance applies the authoritative effect and proposal
+resolution atomically; delegated operations additionally require their exact capability permission.
 
 ### `POST /api/v1/coaching/respond`
 
@@ -65,7 +88,8 @@ adapter produced it; the request and response schema examples are unchanged.
 | Trajectory | `/api/v1/trajectory` | `trajectoryAnalyst` (direct `callClaudeJson`) |
 | Notifications | `/api/v1/notifications` | `trajectoryAnalyst` check-in prompts (direct `callClaude`) |
 | Chat | `/api/v1/chat` | legacy backend-readable chat |
-| Today | `/api/v1/today` | legacy backend-readable summaries |
+| Today | `/api/v1/today` | legacy backend-readable summaries; never used by Combined Home |
+| Organization | `/api/v1/organization` | stateless, bounded proposal generation from caller-supplied records |
 
 Everything below, except the current transcription section, documents the legacy API while it
 remains mounted. It is retained so rollback behavior is explicit rather than silently stale.

@@ -2,7 +2,7 @@
 
 **Track:** Platform + Product
 **Tier:** Full
-**Status:** Review + QA — consolidated candidate verified; awaiting Baah device QA and Ship approval
+**Status:** Ship approved — automated verification and Baah preview QA passed on `319afcc`
 
 ## What is it?
 

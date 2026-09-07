@@ -71,6 +71,31 @@ SQLCipher compilation, parameterized SQLCipher `ATTACH`, filesystem promotion be
 app-switcher timing, file sharing/picking, and clean-install recovery still require the gated
 managed iPhone development-build checklist.
 
+### Combined Home platform
+
+Combined Home is a local projection over schema-version-5 repositories. Opening or hydrating Home
+does not call Axios, `/today/*`, or a model. `homeSnapshotRepository` reads work, insights, weekly
+periods, proposals, capability states, and notifications through a database lease. `useHomeStore`
+and `useGovernanceStore` coordinate those repositories and expose serializable view state; neither
+store is durable authority.
+
+The authoritative write paths are deliberately separate:
+
+- direct user commands create tasks, complete weekly-review snapshots, and update notification state;
+- accepted proposals apply their typed effect and resolve the proposal in one transaction;
+- delegated automation passes the exact six-operation gate, capability-specific permission,
+  ambiguity and revision checks, then writes the mutation, receipt, and readiness outcome atomically;
+- Undo restores the prior record only when its resulting revision still matches and records a
+  correction that can return the capability to Ask me.
+
+Readiness is per capability: Learning → Ready → Permission granted → Trial → Trusted. Coverage,
+corrections, recency, contradictions, and policy version affect readiness. Only the user can grant
+authority. Revocation, stale evidence, contradictions, or policy changes remove permission; no
+global understanding score exists.
+
+`POST /api/v1/organization/analyze` is the only Combined Home model boundary. It receives a bounded
+caller-previewed request and returns typed proposals. It cannot mutate the on-device work map.
+
 ---
 
 ## System Layers
@@ -242,7 +267,7 @@ See `docs/api.md` for the request/response patterns. See `docs/agent-persona.md`
 | Backend SQLite | Legacy CRUD rollback store plus a content-free usage ledger during BUILD; not a destination for new coaching content. |
 | `ts-node-dev` | Hot-reload TypeScript in dev without a build step. No compiled output needed during development. |
 | Installation ID in `x-user-id` | MVP transport shortcut for usage accounting and rate limiting, not authentication or career-data identity. The authoritative local `profile.id` lives in encrypted SQLite; the separate installation ID is set automatically by `mobile/src/services/api.ts`. |
-| Zustand (not Redux) | Lightweight global state for a solo mobile app. Three stores: `journalStore`, `careerStore`, `uiStore`. |
+| Zustand (not Redux) | Lightweight serializable coordination state. Existing experience stores remain alongside local `homeStore` and `governanceStore`; SQLite repositories remain authoritative. |
 | Expo managed workflow | Native configuration stays managed, but SQLCipher and LocalAuthentication require a development build; Expo Go is insufficient. |
 | `callClaudeJson` with fallback | Claude sometimes wraps JSON in markdown code fences. The fallback parser strips them before parsing. |
 | One automatic coaching fallback | Keeps coaching available across an operational provider failure without parallel calls; the combined reservation and shared parity gate preserve spend and quality boundaries. |

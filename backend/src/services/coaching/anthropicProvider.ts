@@ -1,5 +1,6 @@
 import type Anthropic from '@anthropic-ai/sdk';
 import { COACHING_GATEWAY_LIMITS } from '@taisa/shared';
+import type { z } from 'zod';
 import anthropicClient from '../claude/client';
 import { CoachingResponsePayloadSchema } from '../../schemas/coaching';
 import type {
@@ -269,6 +270,40 @@ export function createAnthropicProvider(
         payload,
         usage: {
           provider: 'anthropic',
+          model: config.model,
+          inputTokens,
+          outputTokens,
+          estimatedCostUsd: estimateCostUsd(inputTokens, outputTokens, config),
+        },
+      };
+    },
+    async respondJson<T>(
+      input: ProviderCoachingInput,
+      schema: z.ZodType<T>,
+      schemaName: string,
+    ) {
+      let message;
+      try {
+        message = await client.messages.create(
+          {
+            model: config.model,
+            max_tokens: config.maxOutputTokens,
+            system: `${input.systemPrompt}\nReturn exactly one JSON object matching ${schemaName}.`,
+            messages: [{ role: 'user', content: input.userPrompt }],
+          },
+          { maxRetries: 0 },
+        );
+      } catch (error) {
+        throw normalizeAnthropicSdkFailure(error);
+      }
+      const text = message.content.find((block) => block.type === 'text');
+      const payload = schema.parse(JSON.parse(text?.type === 'text' ? text.text : ''));
+      const inputTokens = message.usage.input_tokens;
+      const outputTokens = message.usage.output_tokens;
+      return {
+        payload,
+        usage: {
+          provider: 'anthropic' as const,
           model: config.model,
           inputTokens,
           outputTokens,

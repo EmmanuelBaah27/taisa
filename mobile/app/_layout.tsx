@@ -11,6 +11,8 @@ import { Inter_600SemiBold } from '@expo-google-fonts/inter/600SemiBold';
 import { Inter_700Bold } from '@expo-google-fonts/inter/700Bold';
 import * as SplashScreen from 'expo-splash-screen';
 import { useCareerStore } from '../src/stores/careerStore';
+import { useHomeStore } from '../src/stores/homeStore';
+import { useGovernanceStore } from '../src/stores/governanceStore';
 import {
   getPrivacyGuard,
   type GuardedAppState,
@@ -27,9 +29,16 @@ SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const { fetchProfile } = useCareerStore();
+  const hydrateHome = useHomeStore((state) => state.hydrate);
+  const homeError = useHomeStore((state) => state.error);
+  const clearHomeError = useHomeStore((state) => state.clearError);
+  const hydrateGovernance = useGovernanceStore((state) => state.hydrate);
+  const governanceError = useGovernanceStore((state) => state.error);
+  const clearGovernanceError = useGovernanceStore((state) => state.clearError);
   const privacyGuard = getPrivacyGuard();
   const [privacyState, setPrivacyState] = useState(privacyGuard.getState());
   const [startup, setStartup] = useState<StartupProfileResult | null>(null);
+  const [platformHydrated, setPlatformHydrated] = useState(false);
 
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
@@ -39,10 +48,13 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
-    if (fontsLoaded && startup !== null && privacyState.initialized) {
+    if (
+      fontsLoaded && startup !== null && privacyState.initialized
+      && (startup.status !== 'ready' || platformHydrated)
+    ) {
       void SplashScreen.hideAsync();
     }
-  }, [fontsLoaded, privacyState.initialized, startup]);
+  }, [fontsLoaded, platformHydrated, privacyState.initialized, startup]);
 
   useEffect(() => {
     void hydrateStartupProfile({
@@ -56,6 +68,16 @@ export default function RootLayout() {
   useEffect(() => {
     if (startup?.status === 'onboarding') router.replace('/onboarding');
   }, [startup]);
+
+  useEffect(() => {
+    if (startup?.status !== 'ready') return;
+    let mounted = true;
+    const now = new Date().toISOString();
+    void Promise.all([hydrateHome(now), hydrateGovernance(now)]).then(() => {
+      if (mounted) setPlatformHydrated(true);
+    });
+    return () => { mounted = false; };
+  }, [hydrateGovernance, hydrateHome, startup]);
 
   useEffect(() => {
     const unsubscribe = privacyGuard.subscribe(setPrivacyState);
@@ -89,7 +111,7 @@ export default function RootLayout() {
     };
   }, [privacyGuard]);
 
-  if (!fontsLoaded || startup === null) return null;
+  if (!fontsLoaded || startup === null || (startup.status === 'ready' && !platformHydrated)) return null;
 
   if (startup.status === 'recovery-required') {
     const presentation = recoveryPresentation(startup.error);
@@ -110,6 +132,34 @@ export default function RootLayout() {
           }}
         >
           <Text className="text-foreground text-sm font-semibold">Retry securely</Text>
+        </LiquidGlassPressable>
+      </View>
+    );
+  }
+
+  if (startup.status === 'ready' && (homeError !== null || governanceError !== null)) {
+    return (
+      <View className="flex-1 items-center justify-center bg-background px-8">
+        <Text className="text-foreground text-xl font-bold text-center">Home archive unavailable</Text>
+        <Text className="text-text-tertiary text-sm text-center mt-3">
+          Taisa could not load the local Home state. No backend copy has replaced it.
+        </Text>
+        <LiquidGlassPressable
+          accessibilityLabel="Retry local Home archive"
+          hierarchy="prominent"
+          tone="accent"
+          className="mt-6 px-6 py-3"
+          onPress={() => {
+            clearHomeError();
+            clearGovernanceError();
+            setPlatformHydrated(false);
+            const now = new Date().toISOString();
+            void Promise.all([hydrateHome(now), hydrateGovernance(now)]).then(() => {
+              setPlatformHydrated(true);
+            });
+          }}
+        >
+          <Text className="text-foreground text-sm font-semibold">Retry local archive</Text>
         </LiquidGlassPressable>
       </View>
     );

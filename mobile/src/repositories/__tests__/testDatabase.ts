@@ -5,6 +5,7 @@ import {
   SCHEMA_V2_STATEMENTS,
   SCHEMA_V3_STATEMENTS,
   SCHEMA_V4_STATEMENTS,
+  SCHEMA_V5_STATEMENTS,
 } from '../../db/schema';
 import type {
   ExclusiveTransactionConnection,
@@ -29,19 +30,22 @@ export interface TestDatabase extends ExclusiveTransactionConnection {
   withTransaction<T>(work: (transaction: RepositoryTransaction) => Promise<T>): Promise<T>;
 }
 
-export function createTestDatabase(): TestDatabase {
+export function createTestDatabase(schemaVersion = 5): TestDatabase {
   const database = new Database(':memory:');
   database.pragma('foreign_keys = ON');
   for (const statement of SCHEMA_V1_STATEMENTS) {
     database.exec(statement);
   }
-  for (const statement of SCHEMA_V2_STATEMENTS) {
+  for (const statement of schemaVersion >= 2 ? SCHEMA_V2_STATEMENTS : []) {
     database.exec(statement);
   }
-  for (const statement of SCHEMA_V3_STATEMENTS) {
+  for (const statement of schemaVersion >= 3 ? SCHEMA_V3_STATEMENTS : []) {
     database.exec(statement);
   }
-  for (const statement of SCHEMA_V4_STATEMENTS) {
+  for (const statement of schemaVersion >= 4 ? SCHEMA_V4_STATEMENTS : []) {
+    database.exec(statement);
+  }
+  for (const statement of schemaVersion >= 5 ? SCHEMA_V5_STATEMENTS : []) {
     database.exec(statement);
   }
 
