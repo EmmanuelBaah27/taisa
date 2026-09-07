@@ -13,6 +13,11 @@ test('Storybook preview consumes production color tokens', async () => {
   assert.doesNotMatch(preview, /value:\s*'#[0-9A-Fa-f]{3,8}'/);
 });
 
+test('Metro treats SQLite WebAssembly as a resolvable Storybook asset', async () => {
+  const metro = await readFile(join(root, 'mobile/metro.config.js'), 'utf8');
+  assert.match(metro, /assetExts\s*=\s*\[\.\.\.config\.resolver\.assetExts,\s*'wasm'\]/);
+});
+
 test('Tailwind and the native theme consume the authoritative token registry without duplicate colors', async () => {
   const [tailwind, theme] = await Promise.all([
     readFile(join(root, 'mobile/tailwind.config.js'), 'utf8'),
