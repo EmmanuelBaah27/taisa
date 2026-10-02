@@ -2,7 +2,7 @@
 
 **Track:** Platform + Product
 **Tier:** Full
-**Status:** Design approved; Program 0 plan awaiting approval
+**Status:** Program 0 Build; parity catalog and reference evidence in progress
 
 ---
 

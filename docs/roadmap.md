@@ -12,7 +12,7 @@
 |---|---|---|---|---|
 | Light design system | Platform + Product | Review (device QA) | feature/light-design-system | — |
 | Persistent input bar + Chat UI | Platform + Product | Plan | — | Light design system shipped |
-| SwiftUI native rebuild | Platform + Product | Plan | `docs/swiftui-native-rebuild` | Baah Program 0 plan approval |
+| SwiftUI native rebuild | Platform + Product | Build (Program 0) | `docs/swiftui-native-rebuild` | parity catalog/reference evidence, then Baah baseline-freeze approval |
 
 ---
 

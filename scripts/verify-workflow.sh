@@ -62,6 +62,7 @@ old_repo_slug='taisa'"-os"
 old_workspace_name='Taisa'"-OS"
 old_repo_path="EmmanuelBaah27/${old_repo_slug}"
 stale_refs="$({ git grep -n -I -e "$old_repo_slug" -e "$old_workspace_name" -e "$old_repo_path" -- . \
+  ':!docs/migration/swiftui/baseline-manifest.json' \
   ':!docs/superpowers/specs/2026-08-09-rename-project-taisa-design.md' \
   ':!docs/superpowers/plans/2026-08-09-rename-project-taisa.md' || true; })"
 test -z "$stale_refs" || {

@@ -2,7 +2,12 @@ import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { readFile, writeFile } from 'node:fs/promises';
 import { basename, resolve } from 'node:path';
-import { normalizeWorktree, parseBranchRecords, parseWorktreeRecords } from './lib.mjs';
+import {
+  normalizeWorktree,
+  parseBranchRecords,
+  parseWorktreeRecords,
+  reconcileDisposition,
+} from './lib.mjs';
 
 function git(args, options = {}) {
   return execFileSync('git', args, {
@@ -45,15 +50,6 @@ async function existingManifest(path) {
   }
 }
 
-function humanFields(source) {
-  return source ? {
-    disposition: source.disposition,
-    reason: source.reason,
-    accountedBy: source.accountedBy,
-    owner: source.owner,
-  } : {};
-}
-
 const repositoryRoot = git(['rev-parse', '--show-toplevel']);
 const commonDirectory = resolve(repositoryRoot, git(['rev-parse', '--git-common-dir']));
 const candidateRef = argument('candidate', 'origin/preview/taisa');
@@ -61,8 +57,14 @@ const candidateCommit = git(['rev-parse', `${candidateRef}^{commit}`], { cwd: re
 const mainCommit = git(['rev-parse', 'origin/main^{commit}'], { cwd: repositoryRoot });
 const remotePreviewCommit = git(['rev-parse', 'origin/preview/taisa^{commit}'], { cwd: repositoryRoot });
 const manifestPath = resolve(repositoryRoot, 'docs/migration/swiftui/baseline-manifest.json');
+const dispositionsPath = resolve(repositoryRoot, 'docs/migration/swiftui/source-dispositions.json');
 const previous = await existingManifest(manifestPath);
+const approvedDispositions = await existingManifest(dispositionsPath);
 const previousByKey = new Map((previous?.sources ?? []).map((source) => [source.key, source]));
+const approvedByKey = new Map(Object.entries(approvedDispositions?.sources ?? {}).map(([key, source]) => [key, {
+  ...source,
+  dispositionSource: 'human',
+}]));
 const worktrees = parseWorktreeRecords(git(['worktree', 'list', '--porcelain', '-z'], { cwd: repositoryRoot }));
 const worktreeByBranch = new Map(worktrees.filter((item) => item.branch).map((item) => [item.branch, item]));
 
@@ -74,8 +76,7 @@ const sources = localBranches(repositoryRoot).map((branchRecord) => {
   const patch = worktree ? git(['diff', '--binary', 'HEAD'], { cwd: worktree.path }) : '';
   const unique = uniqueCommits(repositoryRoot, branchRecord.head);
   const key = `branch:${branchRecord.branch}`;
-  const prior = previousByKey.get(key);
-  const defaultDisposition = unique.length || dirty.length ? 'unresolved' : 'accounted';
+  const prior = approvedByKey.get(key) ?? previousByKey.get(key);
   return normalizeWorktree({
     key,
     name: branchRecord.branch,
@@ -86,11 +87,7 @@ const sources = localBranches(repositoryRoot).map((branchRecord) => {
     dirty,
     trackedPatchSha256: patch ? sha256(patch) : null,
     uniqueCommits: unique,
-    disposition: prior?.disposition ?? defaultDisposition,
-    reason: prior?.reason ?? (defaultDisposition === 'accounted' ? 'No unique commits or dirty work versus origin/main.' : null),
-    accountedBy: prior?.accountedBy ?? (defaultDisposition === 'accounted' ? [mainCommit] : []),
-    owner: prior?.owner ?? 'Program 0',
-    ...humanFields(prior),
+    ...reconcileDisposition({ prior, uniqueCommits: unique, dirty, mainCommit }),
   });
 });
 
@@ -99,7 +96,7 @@ for (const worktree of worktrees.filter((item) => !item.branch)) {
   const patch = git(['diff', '--binary', 'HEAD'], { cwd: worktree.path });
   const unique = uniqueCommits(repositoryRoot, worktree.head);
   const key = `detached:${worktree.path}`;
-  const prior = previousByKey.get(key);
+  const prior = approvedByKey.get(key) ?? previousByKey.get(key);
   sources.push(normalizeWorktree({
     key,
     name: `detached:${basename(worktree.path)}`,
@@ -110,11 +107,7 @@ for (const worktree of worktrees.filter((item) => !item.branch)) {
     dirty,
     trackedPatchSha256: patch ? sha256(patch) : null,
     uniqueCommits: unique,
-    disposition: prior?.disposition ?? (unique.length || dirty.length ? 'unresolved' : 'accounted'),
-    reason: prior?.reason ?? null,
-    accountedBy: prior?.accountedBy ?? [],
-    owner: prior?.owner ?? 'Program 0',
-    ...humanFields(prior),
+    ...reconcileDisposition({ prior, uniqueCommits: unique, dirty, mainCommit }),
   }));
 }
 
@@ -139,6 +132,12 @@ const manifest = {
   requiredRoutes,
   sources: sources.sort((left, right) => left.key.localeCompare(right.key)),
 };
+
+const capturedKeys = new Set(manifest.sources.map((source) => source.key));
+const staleDecisionKeys = [...approvedByKey.keys()].filter((key) => !capturedKeys.has(key));
+if (staleDecisionKeys.length) {
+  throw new Error(`Source dispositions reference missing sources: ${staleDecisionKeys.join(', ')}`);
+}
 
 await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
 process.stdout.write(`Captured ${manifest.sources.length} sources and ${requiredRoutes.length} routes at ${candidateCommit}.\n`);

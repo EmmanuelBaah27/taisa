@@ -37,6 +37,26 @@ export function parseWorktreeRecords(output) {
     });
 }
 
+export function reconcileDisposition({ prior, uniqueCommits, dirty, mainCommit }) {
+  if (prior?.dispositionSource === 'human') {
+    return {
+      disposition: prior.disposition,
+      dispositionSource: 'human',
+      reason: prior.reason,
+      accountedBy: prior.accountedBy,
+      owner: prior.owner,
+    };
+  }
+  const disposition = uniqueCommits.length || dirty.length ? 'unresolved' : 'accounted';
+  return {
+    disposition,
+    dispositionSource: 'capture',
+    reason: disposition === 'accounted' ? 'No unique commits or dirty work versus origin/main.' : null,
+    accountedBy: disposition === 'accounted' ? [mainCommit] : [],
+    owner: 'Program 0',
+  };
+}
+
 export function validateManifest(manifest) {
   const errors = [];
   if (manifest.schemaVersion !== 1) errors.push('Unsupported manifest schema');

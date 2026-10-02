@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "status": "candidate",
-  "capturedAt": "2026-10-02T21:41:24.207Z",
+  "capturedAt": "2026-10-02T22:18:03.198Z",
   "repositoryRoot": "/Users/emmanuelbaah/.codex/worktrees/swiftui-native-rebuild/Taisa",
   "commonDirectory": "/Users/emmanuelbaah/Documents/Beats/VibeCoding/Taisa/.git",
   "mainCommit": "e1bcbf7231cf0e5bab2aba63b73a10c44917348b",
@@ -107,9 +107,12 @@
         "fe7ebd43d7fc46fc0b6b383e0fa310a6586fc2f6",
         "ff244bc0c4a845cf4a43d82f0dfb0191862669bf"
       ],
-      "disposition": "unresolved",
-      "reason": null,
-      "accountedBy": [],
+      "disposition": "accounted",
+      "dispositionSource": "human",
+      "reason": "Committed recovery behavior and the three dirty navigation paths are represented by evolved candidate commits, including the exact all-destination crossfade implementation.",
+      "accountedBy": [
+        "719180012de745e3b507ed93eadbe7d8a951331c"
+      ],
       "owner": "Program 0",
       "detached": false
     },
@@ -128,10 +131,11 @@
       ],
       "trackedPatchSha256": "e3537eebaca84b1299716a79522e154d438de088d2f5501d995c059753007e75",
       "uniqueCommits": [],
-      "disposition": "accounted",
-      "reason": "No unique commits or dirty work versus origin/main.",
+      "disposition": "excluded",
+      "dispositionSource": "human",
+      "reason": "Uncommitted dependency-pinning and workspace experiment predates the canonical application and is not served product behavior; preserve the worktree.",
       "accountedBy": [
-        "e1bcbf7231cf0e5bab2aba63b73a10c44917348b"
+        "decision:2026-10-02-source-disposition"
       ],
       "owner": "Program 0",
       "detached": false
@@ -152,9 +156,12 @@
         "6099874d6f4649e2944422411ae5774389aa11e2",
         "bcec9378a829d70f7bc1837a727adc528294b8f1"
       ],
-      "disposition": "unresolved",
-      "reason": null,
-      "accountedBy": [],
+      "disposition": "excluded",
+      "dispositionSource": "human",
+      "reason": "Repository-process documentation does not alter React Native product parity; preserve the branch.",
+      "accountedBy": [
+        "decision:2026-10-02-source-disposition"
+      ],
       "owner": "Program 0",
       "detached": false
     },
@@ -208,9 +215,12 @@
         "f6eb523aaf05ec294dea616d17dd41301eef3a68",
         "fede15856abae2b960baac99f91197c1661bc413"
       ],
-      "disposition": "unresolved",
-      "reason": null,
-      "accountedBy": [],
+      "disposition": "accounted",
+      "dispositionSource": "human",
+      "reason": "The committed tab-transition behavior is present in the candidate; dirty workflow documents and incompatible dependency experiments are not served product behavior and remain preserved in place.",
+      "accountedBy": [
+        "719180012de745e3b507ed93eadbe7d8a951331c"
+      ],
       "owner": "Program 0",
       "detached": false
     },
@@ -218,28 +228,38 @@
       "key": "branch:docs/swiftui-native-rebuild",
       "name": "docs/swiftui-native-rebuild",
       "path": "/Users/emmanuelbaah/.codex/worktrees/swiftui-native-rebuild/Taisa",
-      "head": "b357db60f35cd5f5c55343a447856e2ad539eb78",
+      "head": "d21ad86d27b80b2279a0d92e0d194281ffaca137",
       "branch": "docs/swiftui-native-rebuild",
       "upstream": null,
       "dirty": [
-        " M package.json",
+        " M docs/features/swiftui-native-rebuild.md",
+        " M docs/migration/swiftui/baseline-manifest.json",
+        " M docs/reconciliation/current-experience-inventory.md",
+        " M docs/roadmap.md",
+        " M docs/workflow.md",
+        " M scripts/audit-current-experience.sh",
         " M scripts/swiftui-baseline/__tests__/lib.test.mjs",
+        " M scripts/swiftui-baseline/capture.mjs",
         " M scripts/swiftui-baseline/lib.mjs",
-        "?? docs/migration/swiftui/baseline-manifest.json",
-        "?? scripts/swiftui-baseline/__tests__/verify.test.mjs",
-        "?? scripts/swiftui-baseline/capture.mjs",
-        "?? scripts/swiftui-baseline/verify.mjs"
+        " M scripts/verify-workflow.sh",
+        "?? docs/migration/swiftui/program-ledger.md",
+        "?? docs/migration/swiftui/source-dispositions.json",
+        "?? scripts/swiftui-baseline/__tests__/audit.test.mjs"
       ],
-      "trackedPatchSha256": "89cce570d46ad4a09ab57008aec9f56ca0bfa128ed60ea6163ed1106df6defb7",
+      "trackedPatchSha256": "e73c757ece7f53d04197cabfd0854d690654111476d5f711b2f414b758c69e32",
       "uniqueCommits": [
         "0b13b11a378a94d226d67e513e1c7b84e4c3711c",
         "0e47adb81761e5b1cf8a425adfc4c4b1743dcb98",
         "6f51c791ec2e624e997b9364179de2c0166abc8e",
-        "b357db60f35cd5f5c55343a447856e2ad539eb78"
+        "b357db60f35cd5f5c55343a447856e2ad539eb78",
+        "d21ad86d27b80b2279a0d92e0d194281ffaca137"
       ],
-      "disposition": "unresolved",
-      "reason": null,
-      "accountedBy": [],
+      "disposition": "excluded",
+      "dispositionSource": "human",
+      "reason": "Migration planning and evidence tooling govern the rebuild but are not part of the frozen React Native product.",
+      "accountedBy": [
+        "decision:2026-10-02-source-disposition"
+      ],
       "owner": "Program 0",
       "detached": false
     },
@@ -271,9 +291,12 @@
         "ee1565c5ac0a655a8e9ad9c52834000a1bc0b449",
         "ee45213ec2d7cd3229293108e0028da71c2a527d"
       ],
-      "disposition": "unresolved",
-      "reason": null,
-      "accountedBy": [],
+      "disposition": "accounted",
+      "dispositionSource": "human",
+      "reason": "All source patches have equivalents in the candidate history.",
+      "accountedBy": [
+        "719180012de745e3b507ed93eadbe7d8a951331c"
+      ],
       "owner": "Program 0",
       "detached": false
     },
@@ -324,9 +347,13 @@
         "f7ac5a54dd1952d5c3574e44ed34ec217d323e5a",
         "ff4a42c5b475db5addbde0fbeb14280987395616"
       ],
-      "disposition": "unresolved",
-      "reason": null,
-      "accountedBy": [],
+      "disposition": "accounted",
+      "dispositionSource": "human",
+      "reason": "Committed responsibilities were reconciled into the local-first candidate; dirty legacy thread reply work is superseded by the candidate chat-sheet architecture and remains preserved.",
+      "accountedBy": [
+        "719180012de745e3b507ed93eadbe7d8a951331c",
+        "docs/reconciliation/current-experience-inventory.md"
+      ],
       "owner": "Program 0",
       "detached": false
     },
@@ -351,9 +378,13 @@
         "f33cf48104b4d0978bb1a4bebe068f10be921eb8",
         "ff4a42c5b475db5addbde0fbeb14280987395616"
       ],
-      "disposition": "unresolved",
-      "reason": null,
-      "accountedBy": [],
+      "disposition": "accounted",
+      "dispositionSource": "human",
+      "reason": "Committed Chats behavior was reconciled into the candidate; the only dirty path is generated mobile/node_modules content.",
+      "accountedBy": [
+        "719180012de745e3b507ed93eadbe7d8a951331c",
+        "docs/reconciliation/current-experience-inventory.md"
+      ],
       "owner": "Program 0",
       "detached": false
     },
@@ -393,9 +424,12 @@
         "fb91f9d3e82bfaa4088d4bd20c60e2b7834d63ea",
         "ff7c8a48ee7e440623014007c05081b08948f258"
       ],
-      "disposition": "unresolved",
-      "reason": null,
-      "accountedBy": [],
+      "disposition": "accounted",
+      "dispositionSource": "human",
+      "reason": "The branch HEAD is an ancestor of the candidate.",
+      "accountedBy": [
+        "719180012de745e3b507ed93eadbe7d8a951331c"
+      ],
       "owner": "Program 0",
       "detached": false
     },
@@ -561,9 +595,12 @@
         "ff244bc0c4a845cf4a43d82f0dfb0191862669bf",
         "ff7c8a48ee7e440623014007c05081b08948f258"
       ],
-      "disposition": "unresolved",
-      "reason": null,
-      "accountedBy": [],
+      "disposition": "excluded",
+      "dispositionSource": "human",
+      "reason": "The additional Home-attention foundation commit was never integrated into or served by the canonical preview; preserve it as post-freeze work.",
+      "accountedBy": [
+        "decision:2026-10-02-source-disposition"
+      ],
       "owner": "Program 0",
       "detached": false
     },
@@ -579,9 +616,13 @@
       "uniqueCommits": [
         "3be2fd78c6f3e4378509e3e09f2c3fb16593f2f9"
       ],
-      "disposition": "unresolved",
-      "reason": null,
-      "accountedBy": [],
+      "disposition": "accounted",
+      "dispositionSource": "human",
+      "reason": "Accepted and rejected responsibilities are recorded in the reconciliation inventory and reflected in the candidate.",
+      "accountedBy": [
+        "719180012de745e3b507ed93eadbe7d8a951331c",
+        "docs/reconciliation/current-experience-inventory.md"
+      ],
       "owner": "Program 0",
       "detached": false
     },
@@ -622,9 +663,12 @@
         "eaed2d499182df0e7c892322d731b4bb43e37cba",
         "f194f81e6f5ff73e9fd42ef700a35e75cfb948c8"
       ],
-      "disposition": "unresolved",
-      "reason": null,
-      "accountedBy": [],
+      "disposition": "accounted",
+      "dispositionSource": "human",
+      "reason": "Committed semantic DS work is candidate ancestry; the two uncommitted glass compatibility edits were never served and remain preserved as post-freeze work.",
+      "accountedBy": [
+        "719180012de745e3b507ed93eadbe7d8a951331c"
+      ],
       "owner": "Program 0",
       "detached": false
     },
@@ -648,9 +692,12 @@
         "c1c195dc89f70d6a2a81ab45fcbc67b53bf855d3",
         "f4fa2a3dc9473782ac16e34d6c7ec1b101531bbd"
       ],
-      "disposition": "unresolved",
-      "reason": null,
-      "accountedBy": [],
+      "disposition": "accounted",
+      "dispositionSource": "human",
+      "reason": "The candidate contains evolved liquid-glass capability, control, and ownership commits.",
+      "accountedBy": [
+        "719180012de745e3b507ed93eadbe7d8a951331c"
+      ],
       "owner": "Program 0",
       "detached": false
     },
@@ -667,9 +714,12 @@
         "219f7c091e09e4475313661185857395fbda1590",
         "f0ee32ce0180e023b3a7321b41217f6314d781d7"
       ],
-      "disposition": "unresolved",
-      "reason": null,
-      "accountedBy": [],
+      "disposition": "accounted",
+      "dispositionSource": "human",
+      "reason": "The candidate contains evolved SecondaryIconButton and ActiveRecordingSurface implementations.",
+      "accountedBy": [
+        "719180012de745e3b507ed93eadbe7d8a951331c"
+      ],
       "owner": "Program 0",
       "detached": false
     },
@@ -687,9 +737,12 @@
         "6d6b55a3f9df722a61181198070d97d1c4d3d930",
         "966832c2626be515c1d61102380a4330907a0528"
       ],
-      "disposition": "unresolved",
-      "reason": null,
-      "accountedBy": [],
+      "disposition": "accounted",
+      "dispositionSource": "human",
+      "reason": "Later candidate navigation commits implement the fade, backdrop, and close-settlement behavior.",
+      "accountedBy": [
+        "719180012de745e3b507ed93eadbe7d8a951331c"
+      ],
       "owner": "Program 0",
       "detached": false
     },
@@ -729,9 +782,13 @@
         "ddc0e92d73830e5be98b995c07d8011b3de466c5",
         "e2ecafe95e52d999e85742623add059a580c7597"
       ],
-      "disposition": "unresolved",
-      "reason": null,
-      "accountedBy": [],
+      "disposition": "accounted",
+      "dispositionSource": "human",
+      "reason": "The patch is represented by candidate commit 1a9c72c.",
+      "accountedBy": [
+        "719180012de745e3b507ed93eadbe7d8a951331c",
+        "1a9c72c"
+      ],
       "owner": "Program 0",
       "detached": false
     },
@@ -809,9 +866,12 @@
         "fdb7d6df8de30b589da6b00dfa1a13a4189cdcbf",
         "ff244bc0c4a845cf4a43d82f0dfb0191862669bf"
       ],
-      "disposition": "unresolved",
-      "reason": null,
-      "accountedBy": [],
+      "disposition": "accounted",
+      "dispositionSource": "human",
+      "reason": "Evolved glass, keyboard, and tactile-feedback commits are in the candidate.",
+      "accountedBy": [
+        "719180012de745e3b507ed93eadbe7d8a951331c"
+      ],
       "owner": "Program 0",
       "detached": false
     },
@@ -894,9 +954,12 @@
         "fe7ebd43d7fc46fc0b6b383e0fa310a6586fc2f6",
         "ff244bc0c4a845cf4a43d82f0dfb0191862669bf"
       ],
-      "disposition": "unresolved",
-      "reason": null,
-      "accountedBy": [],
+      "disposition": "accounted",
+      "dispositionSource": "human",
+      "reason": "The branch HEAD is an ancestor of the candidate.",
+      "accountedBy": [
+        "719180012de745e3b507ed93eadbe7d8a951331c"
+      ],
       "owner": "Program 0",
       "detached": false
     },
@@ -989,9 +1052,12 @@
         "fe7ebd43d7fc46fc0b6b383e0fa310a6586fc2f6",
         "ff244bc0c4a845cf4a43d82f0dfb0191862669bf"
       ],
-      "disposition": "unresolved",
-      "reason": null,
-      "accountedBy": [],
+      "disposition": "accounted",
+      "dispositionSource": "human",
+      "reason": "All source patches have candidate equivalents.",
+      "accountedBy": [
+        "719180012de745e3b507ed93eadbe7d8a951331c"
+      ],
       "owner": "Program 0",
       "detached": false
     },
@@ -1034,9 +1100,12 @@
         "ddc0e92d73830e5be98b995c07d8011b3de466c5",
         "e2ecafe95e52d999e85742623add059a580c7597"
       ],
-      "disposition": "unresolved",
-      "reason": null,
-      "accountedBy": [],
+      "disposition": "accounted",
+      "dispositionSource": "human",
+      "reason": "The integration patches have candidate equivalents; the only dirty path is generated mobile/node_modules content.",
+      "accountedBy": [
+        "719180012de745e3b507ed93eadbe7d8a951331c"
+      ],
       "owner": "Program 0",
       "detached": false
     },
@@ -1051,9 +1120,11 @@
       "trackedPatchSha256": null,
       "uniqueCommits": [],
       "disposition": "accounted",
-      "reason": "No unique commits or dirty work versus origin/main.",
+      "dispositionSource": "human",
+      "reason": "Canonical main is an ancestor of the candidate.",
       "accountedBy": [
-        "e1bcbf7231cf0e5bab2aba63b73a10c44917348b"
+        "e1bcbf7231cf0e5bab2aba63b73a10c44917348b",
+        "719180012de745e3b507ed93eadbe7d8a951331c"
       ],
       "owner": "Program 0",
       "detached": false
@@ -1219,9 +1290,12 @@
         "ff244bc0c4a845cf4a43d82f0dfb0191862669bf",
         "ff7c8a48ee7e440623014007c05081b08948f258"
       ],
-      "disposition": "unresolved",
-      "reason": null,
-      "accountedBy": [],
+      "disposition": "accounted",
+      "dispositionSource": "human",
+      "reason": "This is the exact canonical preview candidate.",
+      "accountedBy": [
+        "719180012de745e3b507ed93eadbe7d8a951331c"
+      ],
       "owner": "Program 0",
       "detached": false
     },
@@ -1261,9 +1335,12 @@
         "fc218ba0b75a0c7e3b0e58e6a31c3920fba61c26",
         "fd7dff7726b69cd911c9ce12456df9a960f2951d"
       ],
-      "disposition": "unresolved",
-      "reason": null,
-      "accountedBy": [],
+      "disposition": "accounted",
+      "dispositionSource": "human",
+      "reason": "The candidate contains evolved shared-shell and interactive-navigation commits.",
+      "accountedBy": [
+        "719180012de745e3b507ed93eadbe7d8a951331c"
+      ],
       "owner": "Program 0",
       "detached": false
     }

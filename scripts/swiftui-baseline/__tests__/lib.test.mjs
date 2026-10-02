@@ -4,6 +4,7 @@ import {
   normalizeWorktree,
   parseBranchRecords,
   parseWorktreeRecords,
+  reconcileDisposition,
   validateCatalogCoverage,
   validateManifest,
 } from '../lib.mjs';
@@ -74,4 +75,41 @@ test('parses double-NUL-delimited worktree records independently', () => {
     { path: '/repo/one', head: 'abc123', branch: 'feature/one' },
     { path: '/repo/two', head: 'def456', branch: null },
   ]);
+});
+
+test('recomputes a capture-generated disposition when evidence becomes dirty', () => {
+  assert.deepEqual(reconcileDisposition({
+    prior: {
+      disposition: 'accounted',
+      dispositionSource: 'capture',
+      reason: 'No unique commits or dirty work versus origin/main.',
+      accountedBy: ['main123'],
+      owner: 'Program 0',
+    },
+    uniqueCommits: [],
+    dirty: [' M package.json'],
+    mainCommit: 'main123',
+  }), {
+    disposition: 'unresolved',
+    dispositionSource: 'capture',
+    reason: null,
+    accountedBy: [],
+    owner: 'Program 0',
+  });
+});
+
+test('preserves an explicit human disposition when evidence is recaptured', () => {
+  const prior = {
+    disposition: 'excluded',
+    dispositionSource: 'human',
+    reason: 'Approved exclusion.',
+    accountedBy: ['decision:1'],
+    owner: 'Baah',
+  };
+  assert.deepEqual(reconcileDisposition({
+    prior,
+    uniqueCommits: ['abc123'],
+    dirty: [' M package.json'],
+    mainCommit: 'main123',
+  }), prior);
 });
