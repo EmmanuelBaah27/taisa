@@ -10,6 +10,33 @@ export function normalizeWorktree(record) {
   };
 }
 
+export function parseBranchRecords(output) {
+  return output
+    .split('\n')
+    .filter(Boolean)
+    .map((record) => {
+      const [branch, head, upstream] = record.split('\0');
+      return { branch, head, upstream: upstream || null };
+    });
+}
+
+export function parseWorktreeRecords(output) {
+  return output
+    .split('\0\0')
+    .filter(Boolean)
+    .map((record) => {
+      const fields = Object.fromEntries(record.split('\0').map((line) => {
+        const separator = line.indexOf(' ');
+        return separator === -1 ? [line, true] : [line.slice(0, separator), line.slice(separator + 1)];
+      }));
+      return {
+        path: fields.worktree,
+        head: fields.HEAD,
+        branch: typeof fields.branch === 'string' ? fields.branch.replace('refs/heads/', '') : null,
+      };
+    });
+}
+
 export function validateManifest(manifest) {
   const errors = [];
   if (manifest.schemaVersion !== 1) errors.push('Unsupported manifest schema');

@@ -8,7 +8,10 @@
   ],
   "scripts": {
     "backend": "npm run dev --workspace=backend",
+    "capture:swiftui-baseline": "node scripts/swiftui-baseline/capture.mjs",
     "mobile": "cd mobile && npx expo start",
+    "verify:design-system": "node scripts/design-system/verify.mjs",
+    "verify:swiftui-baseline": "node scripts/swiftui-baseline/verify.mjs",
     "verify:workflow": "bash scripts/verify-workflow.sh"
   }
 }

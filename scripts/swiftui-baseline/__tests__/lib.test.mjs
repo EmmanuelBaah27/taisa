@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   normalizeWorktree,
+  parseBranchRecords,
+  parseWorktreeRecords,
   validateCatalogCoverage,
   validateManifest,
 } from '../lib.mjs';
@@ -47,4 +49,29 @@ test('requires one catalog row for every route', () => {
     rows: [{ source: 'app/(tabs)/index.tsx', catalogId: 'home.default' }],
   });
   assert.deepEqual(errors, ['Missing catalog coverage: app/chat/index.tsx']);
+});
+
+test('parses newline-delimited NUL branch records without changing branch names', () => {
+  const output = [
+    'feature/one\0abc123\0origin/feature/one\0',
+    'feature/two\0def456\0\0',
+    '',
+  ].join('\n');
+
+  assert.deepEqual(parseBranchRecords(output), [
+    { branch: 'feature/one', head: 'abc123', upstream: 'origin/feature/one' },
+    { branch: 'feature/two', head: 'def456', upstream: null },
+  ]);
+});
+
+test('parses double-NUL-delimited worktree records independently', () => {
+  const output = [
+    'worktree /repo/one\0HEAD abc123\0branch refs/heads/feature/one\0\0',
+    'worktree /repo/two\0HEAD def456\0detached\0\0',
+  ].join('');
+
+  assert.deepEqual(parseWorktreeRecords(output), [
+    { path: '/repo/one', head: 'abc123', branch: 'feature/one' },
+    { path: '/repo/two', head: 'def456', branch: null },
+  ]);
 });
