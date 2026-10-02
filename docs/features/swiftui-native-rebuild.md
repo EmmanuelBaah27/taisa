@@ -2,7 +2,7 @@
 
 **Track:** Platform + Product
 **Tier:** Full
-**Status:** Scope agreed; design awaiting written-spec review
+**Status:** Design approved; Program 0 plan awaiting approval
 
 ---
 

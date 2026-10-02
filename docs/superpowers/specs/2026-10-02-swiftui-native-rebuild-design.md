@@ -1,7 +1,7 @@
 # SwiftUI Native Rebuild Design
 
 **Date:** 2026-10-02
-**Status:** Draft for Baah review
+**Status:** Approved
 **Tier:** Full
 **Track:** Platform + Product
 **Scope:** `docs/features/swiftui-native-rebuild.md`
