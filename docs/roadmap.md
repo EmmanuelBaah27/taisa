@@ -1,6 +1,6 @@
 # Taisa Roadmap
 
-**Last updated:** 2026-05-14
+**Last updated:** 2026-10-02
 **Design direction:** Light theme first. Voice primary, text secondary.
 **Two tracks:** Platform (AI + backend) runs one step ahead of Product (UI).
 
@@ -12,6 +12,7 @@
 |---|---|---|---|---|
 | Light design system | Platform + Product | Review (device QA) | feature/light-design-system | — |
 | Persistent input bar + Chat UI | Platform + Product | Plan | — | Light design system shipped |
+| SwiftUI native rebuild | Platform + Product | Scope | `docs/swiftui-native-rebuild` | Baah written-spec review |
 
 ---
 
