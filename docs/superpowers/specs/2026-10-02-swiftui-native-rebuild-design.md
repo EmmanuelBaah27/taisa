@@ -32,10 +32,42 @@ Before native implementation begins:
 2. Classify each difference as approved baseline behavior, critical correction, unfinished work, or excluded future work.
 3. Reconcile approved behavior into the canonical preview architecture without deleting source branches.
 4. Run the existing backend, shared, mobile, design-system, workflow, and device checks.
-5. Record the exact verified React Native commit, fixture seed/version, backend contract revision, and signed reference build.
-6. Freeze ordinary React Native feature development.
+5. Write a versioned parity catalog that inventories every required screen, composite state, flow, copy contract, accessibility behavior, API revision, fixture, reference capture, known defect, and explicit exclusion.
+6. Record the exact verified React Native commit, fixture seed/version, backend contract revision, parity-catalog revision, and signed reference build.
+7. Freeze ordinary React Native feature development.
 
 After the freeze, every critical React Native correction receives a parity-ledger entry containing the defect, baseline impact, React Native commit, SwiftUI owner/slice, regression evidence, and resolution. New product ideas wait until parity Ship.
+
+The parity catalog is the test oracle. “Looks like the old app” is not an acceptance criterion. A Product slice may be planned only when its catalog entries identify the reference state, expected behavior, fixture, and comparison method.
+
+## Program decomposition and approval model
+
+This specification defines a migration program, not one implementation plan. Work is split into independently approvable plans whose deliverables can be accepted or rejected without authorizing neighboring work.
+
+```text
+SwiftUI Migration Program
+├── 0. Baseline freeze and parity catalog
+├── 1. Native foundation and feasibility
+│   ├── Signing, environments, CI, and native preview authority
+│   ├── Encrypted SQLite and recovery spike
+│   ├── Voice/audio and streaming spike
+│   └── Navii, shader, glass, font, and resource spikes
+├── 2. Shared local platform
+│   ├── Persistence, repositories, Keychain, files, and privacy
+│   ├── Networking and contract synchronization
+│   └── Shared coaching-session engine
+├── 3. Product slices
+│   ├── Onboarding and shell
+│   ├── Home
+│   ├── Chats
+│   ├── Text input
+│   ├── Voice input
+│   └── Me and recovery
+├── 4. Motion and visual parity
+└── 5. Release and cutover
+```
+
+Each numbered branch receives its own implementation plan and Plan approval. Product sub-slices may receive separate plans when their file/test surfaces are independently reviewable. A completed slice updates the parity catalog and program ledger before the next dependent slice starts.
 
 ## Repository and target structure
 
@@ -88,7 +120,31 @@ Store initialization is fail-closed: obtain or create the device-only Keychain k
 
 Export and restore remain native-client capabilities. Restores stage and validate a candidate before promotion, retain rollback state through successful reopen, and never allow archive-owned schema to replace trusted app migrations.
 
-The production target retains `com.taisa.app`. Parallel development/parity targets use distinct bundle identifiers and containers. Cutover documentation states that preview/test history does not carry forward. Obsolete React Native app-container cleanup must be bounded, proven safe, and must never delete the new native store.
+The production target retains `com.taisa.app`. Parallel development/parity targets use distinct bundle identifiers and containers. Cutover documentation states that React Native history does not carry forward.
+
+An App Store update can retain the old application container, so “clean start” is an explicit one-time native initialization transaction:
+
+1. Create the native database and Keychain items under new, versioned names.
+2. Open and validate the native store.
+3. Write a durable native-initialization marker.
+4. Remove only an audited allowlist of legacy React Native database, WAL/SHM, audio-cache, Expo preference, and legacy Keychain identifiers.
+5. Record content-free cleanup results and never retry an unknown or partially identified deletion target automatically.
+
+The cleanup code never deletes directories recursively, never matches globs, and never runs before the native store is valid. Interrupted-cleanup and repeated-launch tests prove idempotence. If the allowlist cannot be proven from the frozen baseline, old artifacts remain ignored until a separately approved cleanup revision; the app still starts from the new native store.
+
+## Foundation feasibility gates
+
+Product planning is blocked until bounded spikes establish:
+
+- a supported native SQLCipher dependency/build path, cipher verification, FTS behavior, transactional migration runner, test database, and export/restore candidate;
+- signed iPhone/iPad installation, development and production bundle identifiers, entitlements, certificates/profiles, App Store Connect/TestFlight access, and CI secret ownership;
+- audio-session, interruption, route-change, metering, file lifecycle, and NDJSON streaming viability on physical hardware;
+- deterministic Navii output or an approved offline replacement, with golden fixtures, licensing, accessibility, and performance evidence;
+- authoritative font source, exact PostScript names, licensing, and parity captures resolving the current Inter-versus-Strichpunkt discrepancy;
+- the OS capability matrix for iOS/iPadOS 17, 18, and later supported releases, including glass/material fallbacks and accessibility settings;
+- Metal/native shader feasibility and fallback visuals within performance budgets.
+
+A failed spike changes the design before dependent implementation begins; it is not carried forward as an unresolved placeholder.
 
 ## Backend contracts and networking
 
@@ -97,6 +153,14 @@ The backend remains the authority for transient coaching/transcription orchestra
 Networking uses `URLSession`, `async/await`, and explicit `Codable` types. Contract fixtures are generated from or checked against the existing TypeScript runtime schemas. Date, identifier, enum, optional-field, unknown-field, payload-limit, streaming-frame, error-envelope, and cancellation behavior receive cross-language tests.
 
 The client preserves installation identity in `x-user-id`, bounded coaching context, explicit Send, typed NDJSON post-Send transcription streaming, clear/uncertain/no-speech outcomes, governed proposals, content-free errors/receipts, cancellation, and idempotent local reconciliation. No provider key or prompt logic enters the app. No client retry may accidentally create a second paid coaching request.
+
+The TypeScript runtime schemas remain canonical. CI generates or validates language-neutral JSON fixtures from those schemas and runs them against Swift decoders plus backend handlers. A backend contract change cannot merge unless fixtures are regenerated, Swift compatibility is classified as compatible or breaking, and the migration ledger identifies the owning native slice.
+
+## Shared coaching-session engine
+
+Text and voice do not independently own coaching submission. One shared engine owns request identity, bounded-context assembly, message creation, gateway submission, cancellation, retry classification, response caching, governed proposals, usage receipts, and idempotent reconciliation.
+
+Text input owns editable text preparation. Voice input owns recording and transcript preparation. Both hand a validated submission to the shared engine. This boundary prevents duplicate paid requests and divergent message state.
 
 ## Native platform mapping
 
@@ -137,20 +201,16 @@ Port semantic intent, not React Native implementation details. Transform canonic
 
 SwiftUI previews cover meaningful component states, long copy, accessibility sizes, reduced motion, increased contrast, and reduced transparency. Native-only behaviors are verified in real screens on device.
 
-## Migration slices
+## Program sequence
 
-1. **Foundation:** Xcode project, CI, configuration, tokens, fonts, component catalog, contract harness, test utilities, and signed development distribution.
-2. **Local platform:** encrypted SQLite, migrations, repositories, Keychain, file lifecycle, export/restore, installation identity, and privacy guard.
-3. **Onboarding and shell:** clean-start initialization, onboarding, typed navigation, root app lock/privacy shield, and iPhone/iPad shell.
-4. **Home:** local selectors, readiness/attention policies, work/governance operations, notifications, and presentation.
-5. **Chats:** history repositories, list states, conversation resume, search/presentation utilities, and thread navigation.
-6. **Text coaching:** composer, context, gateway lifecycle, caching, feedback, proposals, conflicts, and recovery.
-7. **Voice coaching:** recording, post-Send streaming, uncertain/no-speech handling, haptics, cleanup, and keyboard transitions.
-8. **Me and recovery:** profile/settings, notifications, app lock, privacy, export, restore, and confirmations.
-9. **Motion and identity parity:** coordinated tabs, chat card transitions, glass, Navii, recording glow, and shaders.
-10. **Cutover:** regression, performance/accessibility, clean-install rehearsal, signed TestFlight/device matrix, backend compatibility, and rollback.
+0. **Baseline freeze:** reconcile active work and approve the versioned parity catalog.
+1. **Native foundation and feasibility:** prove signing/preview, project/CI, contracts, encrypted storage, voice, resources, and system-version fallbacks.
+2. **Shared local platform:** build persistence, repositories, privacy/device services, networking, and the shared coaching-session engine.
+3. **Product slices:** port onboarding/shell, Home, Chats, text input, voice input, and Me/recovery through separate acceptance gates.
+4. **Motion and visual parity:** close coordinated navigation, chat transitions, glass, avatar, glow, and shader differences after functional owners are stable.
+5. **Release and cutover:** execute full regression, accessibility/performance gates, rollout, monitoring, and rollback rehearsal.
 
-Each slice produces runnable software and has one acceptance gate. A foundation spike that disproves an approach revises the design/plan before dependent slices start.
+Each plan produces runnable software, names its required predecessor, and has one acceptance gate. No later branch is authorized by approval of this program design.
 
 ## Preview and verification lanes
 
@@ -162,7 +222,9 @@ Each slice produces runnable software and has one acceptance gate. A foundation 
 
 **Device:** Signed builds run on representative iPhone and iPad hardware. Device QA is mandatory for audio, keyboard, haptics, notifications, biometrics, privacy, files, materials/shaders, performance, memory pressure, and lifecycle behavior.
 
-Every build exposes Git revision, configuration, backend environment, database schema, and fixture version in development diagnostics. Baah is not asked to verify a build until that exact revision is signed, distributed, and confirmed on the device.
+Every build exposes Git revision, configuration, backend environment, database schema, parity-catalog revision, and fixture version in development diagnostics. Baah is not asked to verify a build until that exact revision is signed, distributed, and confirmed on the device.
+
+React Native feedback remains authoritative only from `preview/taisa`. SwiftUI feedback is authoritative only from the signed Apple preview record: native Git commit, Xcode archive/build number, bundle identifier, TestFlight/internal-distribution version, backend environment, schema version, parity-catalog revision, and confirmation that the tested device installed that build. A simulator run or feature worktree is never the native device-QA authority.
 
 ## Defect loop and severity gates
 
@@ -171,6 +233,14 @@ Every defect records exact build/device/OS/environment/fixture, reproduction and
 The loop is reproduce → failing test where practical → owning-layer fix → narrow checks → full slice gate → signed exact build → device verification. A repeated symptom is not patched in several screens when one shared owner can fix it.
 
 Severity one (data/privacy loss, unusable primary flow, security boundary failure) and severity two (major flow failure without acceptable workaround, repeated crash, incorrect coaching submission, broken recovery) block slice acceptance and cutover. Lesser parity differences require an explicit accepted-difference record.
+
+Severity three and four differences are recorded in the parity catalog. Baah accepts or rejects user-visible differences at each slice gate; the agent may close non-visible implementation differences when tests prove equivalent behavior. Accumulated lower-severity defects are reviewed again at cutover and may collectively block Ship.
+
+## Quality budgets
+
+The foundation plan records measured React Native reference values on the agreed device matrix, then sets native pass thresholds before Product implementation. At minimum the budgets cover cold/warm launch, peak memory, database open/migration/query time, list scroll frame stability, tap-to-record readiness, stop-to-first-transcript delta, clear-result-to-coaching start, app/archive size, and interruption recovery.
+
+Until measured baselines exist, the design does not invent numeric targets. The Plan gate must contain exact values, devices, measurement tools, run counts, and failure thresholds.
 
 ## Error handling and observability
 
@@ -188,7 +258,9 @@ iPad respects size class, safe areas, hardware keyboard, multitasking, rotation 
 
 Cutover requires all slices, backend contracts, the production-candidate iPhone/iPad matrix, blocking-defect closure, accepted-difference review, and explicit Ship approval.
 
-The production bundle begins with a new native store; prior preview/test data is not migrated. A backend-compatible React Native release remains reproducible from the frozen commit during initial rollout. Rollback ships that verified compatible client or pauses distribution; it never rewrites shared Git history or deletes native data without explicit action.
+The production bundle begins with a new native store; prior React Native data is not migrated. A backend-compatible React Native release remains reproducible from the frozen commit during initial rollout. Rollback ships that verified compatible client or pauses distribution; it never rewrites shared Git history or deletes native data without explicit action.
+
+Release proceeds through internal testing, an agreed external TestFlight group if applicable, and a phased App Store rollout. The release plan names the monitoring window, content-free signals, pause/rollback thresholds, decision owner, and the period for which the frozen React Native build remains reproducible.
 
 Only after stable native release evidence may a separate cleanup scope remove React Native tooling, dependencies, CI, resources, branches, or worktrees.
 
@@ -207,7 +279,7 @@ Only after stable native release evidence may a separate cleanup scope remove Re
 
 ## Deliberate exclusions
 
-No Android/web clients, backend rewrite, old-device-data import, redesign, new product capability, legacy-route retirement, or premature React Native deletion.
+No Android/web clients, backend rewrite, old-device-data import, redesign, new product capability, legacy-route retirement, premature React Native deletion, localization expansion, dark-mode redesign, macOS, visionOS, widgets, or new background-processing capability.
 
 ## Approval gates
 
