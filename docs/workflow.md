@@ -21,7 +21,7 @@ relevant to the task.
 | Recording page | Product | Review + QA | `feature/secondary-icon-button` | Baah device QA |
 | Shared chat and recording shell | Product | Build | `codex/chat-close-auth-handoff` | Baah paired-device QA after preview integration |
 | Glass elevation, alignment, and interaction feedback | Product | Review + QA | `fix/glass-elevation-keyboard-surfaces` | canonical preview integration + Baah device QA |
-| SwiftUI native rebuild | Platform + Product | Plan (Native foundation) | `codex/swiftui-baseline-fixtures` | Baah foundation-plan approval |
+| SwiftUI native rebuild | Platform + Product | Build (Native foundation) | `feature/swift-native-foundation` | exact signed-build device QA |
 
 ---
 

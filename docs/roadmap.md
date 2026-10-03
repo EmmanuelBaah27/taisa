@@ -12,7 +12,7 @@
 |---|---|---|---|---|
 | Light design system | Platform + Product | Review (device QA) | feature/light-design-system | — |
 | Persistent input bar + Chat UI | Platform + Product | Plan | — | Light design system shipped |
-| SwiftUI native rebuild | Platform + Product | Plan (Native foundation) | `codex/swiftui-baseline-fixtures` | Baah foundation-plan approval |
+| SwiftUI native rebuild | Platform + Product | Build (Native foundation) | `feature/swift-native-foundation` | exact signed-build device QA |
 
 ---
 
