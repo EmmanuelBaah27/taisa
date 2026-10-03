@@ -1,0 +1,732 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		5B0AA018E7F5C851901458DF /* FoundationRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0AD55CA9F552FE71F09A49D /* FoundationRootView.swift */; };
+		5DCEA91D737FD27D788EEF53 /* TaisaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E79CF0C618833217451F645C /* TaisaApp.swift */; };
+		8EA94BF84706F6197B9CB847 /* TaisaPreviewApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D1AF7F2E4A4A980D0791D4A /* TaisaPreviewApp.swift */; };
+		A8CB2213F91A9A8AF7DFE41E /* FoundationLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE79594CF602BC8C7C552318 /* FoundationLaunchTests.swift */; };
+		B4D5E79232FA07135208B36F /* PreviewRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C860AF058EBC0DCFBFBE7C15 /* PreviewRootView.swift */; };
+		D1445280AAB7B076CF960071 /* FoundationSmokeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C9D4835226A0691261B0E56 /* FoundationSmokeTests.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		134CBA39BCE402029C7D6BB6 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 1F69AC39B00EED61FAF1BDC8 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 66FFAFFD3FAF5E994E443BD4;
+			remoteInfo = Taisa;
+		};
+		61818A55166100F367C198BF /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 1F69AC39B00EED61FAF1BDC8 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 66FFAFFD3FAF5E994E443BD4;
+			remoteInfo = Taisa;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		1436FAD8AE09F2E408377FE1 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
+		391BEE70ED9DB4D5A40CEF12 /* Preview.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Preview.xcconfig; sourceTree = "<group>"; };
+		4D1AF7F2E4A4A980D0791D4A /* TaisaPreviewApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaisaPreviewApp.swift; sourceTree = "<group>"; };
+		5C9D4835226A0691261B0E56 /* FoundationSmokeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoundationSmokeTests.swift; sourceTree = "<group>"; };
+		AE79594CF602BC8C7C552318 /* FoundationLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoundationLaunchTests.swift; sourceTree = "<group>"; };
+		BD29E560E6C8098B625BCAEA /* TaisaUnitTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = TaisaUnitTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		C2F0C223EB506445708E8270 /* TaisaUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = TaisaUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		C860AF058EBC0DCFBFBE7C15 /* PreviewRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewRootView.swift; sourceTree = "<group>"; };
+		CC2678E7883E8BACE8D29B43 /* Taisa.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Taisa.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		DFC7614DA2D104B9F3C9FC4C /* TaisaPreview.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = TaisaPreview.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		E73285977200D46D5C6A739F /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
+		E79CF0C618833217451F645C /* TaisaApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaisaApp.swift; sourceTree = "<group>"; };
+		F0AD55CA9F552FE71F09A49D /* FoundationRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoundationRootView.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		0CA79807F37BD8DFE3979FEB /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				CC2678E7883E8BACE8D29B43 /* Taisa.app */,
+				DFC7614DA2D104B9F3C9FC4C /* TaisaPreview.app */,
+				C2F0C223EB506445708E8270 /* TaisaUITests.xctest */,
+				BD29E560E6C8098B625BCAEA /* TaisaUnitTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		16BB71C41EFB62EE6336932F /* TaisaPreview */ = {
+			isa = PBXGroup;
+			children = (
+				C860AF058EBC0DCFBFBE7C15 /* PreviewRootView.swift */,
+				4D1AF7F2E4A4A980D0791D4A /* TaisaPreviewApp.swift */,
+			);
+			path = TaisaPreview;
+			sourceTree = "<group>";
+		};
+		76C6C7C70CD322B9872D7674 /* TaisaUnitTests */ = {
+			isa = PBXGroup;
+			children = (
+				5C9D4835226A0691261B0E56 /* FoundationSmokeTests.swift */,
+			);
+			path = TaisaUnitTests;
+			sourceTree = "<group>";
+		};
+		8383E1528B799AC12D21FB59 /* TaisaApp */ = {
+			isa = PBXGroup;
+			children = (
+				F0AD55CA9F552FE71F09A49D /* FoundationRootView.swift */,
+				E79CF0C618833217451F645C /* TaisaApp.swift */,
+			);
+			path = TaisaApp;
+			sourceTree = "<group>";
+		};
+		B89EB78B2C706127A44F1607 /* TaisaUITests */ = {
+			isa = PBXGroup;
+			children = (
+				AE79594CF602BC8C7C552318 /* FoundationLaunchTests.swift */,
+			);
+			path = TaisaUITests;
+			sourceTree = "<group>";
+		};
+		D1F74BCB089FEBAE6BD022E3 = {
+			isa = PBXGroup;
+			children = (
+				D4CB250D4357A7E294F8C2E6 /* Config */,
+				8383E1528B799AC12D21FB59 /* TaisaApp */,
+				16BB71C41EFB62EE6336932F /* TaisaPreview */,
+				B89EB78B2C706127A44F1607 /* TaisaUITests */,
+				76C6C7C70CD322B9872D7674 /* TaisaUnitTests */,
+				0CA79807F37BD8DFE3979FEB /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		D4CB250D4357A7E294F8C2E6 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				E73285977200D46D5C6A739F /* Debug.xcconfig */,
+				391BEE70ED9DB4D5A40CEF12 /* Preview.xcconfig */,
+				1436FAD8AE09F2E408377FE1 /* Release.xcconfig */,
+			);
+			path = Config;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		0E4CB3E4A7973D8D85BD97CF /* TaisaUnitTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CE5F7D4F175AAA5F39793785 /* Build configuration list for PBXNativeTarget "TaisaUnitTests" */;
+			buildPhases = (
+				94C9A1BC97612CC88E9E9EC2 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				BCE8669AF00C893CF96E6DD5 /* PBXTargetDependency */,
+			);
+			name = TaisaUnitTests;
+			packageProductDependencies = (
+			);
+			productName = TaisaUnitTests;
+			productReference = BD29E560E6C8098B625BCAEA /* TaisaUnitTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		66FFAFFD3FAF5E994E443BD4 /* Taisa */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 68E979BED0F9F61F2E898BF6 /* Build configuration list for PBXNativeTarget "Taisa" */;
+			buildPhases = (
+				F697230EA83A6555EFAC728D /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Taisa;
+			packageProductDependencies = (
+			);
+			productName = Taisa;
+			productReference = CC2678E7883E8BACE8D29B43 /* Taisa.app */;
+			productType = "com.apple.product-type.application";
+		};
+		944EA23BD99A5A4A0464FA71 /* TaisaPreview */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 219F967F5DE4862C3199F819 /* Build configuration list for PBXNativeTarget "TaisaPreview" */;
+			buildPhases = (
+				4D589187A1AF0F20BBD366FF /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = TaisaPreview;
+			packageProductDependencies = (
+			);
+			productName = TaisaPreview;
+			productReference = DFC7614DA2D104B9F3C9FC4C /* TaisaPreview.app */;
+			productType = "com.apple.product-type.application";
+		};
+		B7582BFFACE3024637C84554 /* TaisaUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 6C4356A2643AA827B322A0EF /* Build configuration list for PBXNativeTarget "TaisaUITests" */;
+			buildPhases = (
+				E52D9E4DEECFA48E1ABF0EB5 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				326861F25D59E15F0D59722F /* PBXTargetDependency */,
+			);
+			name = TaisaUITests;
+			packageProductDependencies = (
+			);
+			productName = TaisaUITests;
+			productReference = C2F0C223EB506445708E8270 /* TaisaUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		1F69AC39B00EED61FAF1BDC8 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					0E4CB3E4A7973D8D85BD97CF = {
+						ProvisioningStyle = Automatic;
+					};
+					66FFAFFD3FAF5E994E443BD4 = {
+						ProvisioningStyle = Automatic;
+					};
+					944EA23BD99A5A4A0464FA71 = {
+						ProvisioningStyle = Automatic;
+					};
+					B7582BFFACE3024637C84554 = {
+						ProvisioningStyle = Automatic;
+						TestTargetID = 66FFAFFD3FAF5E994E443BD4;
+					};
+				};
+			};
+			buildConfigurationList = 31D50B5DEF904024BD609686 /* Build configuration list for PBXProject "Taisa" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = D1F74BCB089FEBAE6BD022E3;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 0CA79807F37BD8DFE3979FEB /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				66FFAFFD3FAF5E994E443BD4 /* Taisa */,
+				944EA23BD99A5A4A0464FA71 /* TaisaPreview */,
+				0E4CB3E4A7973D8D85BD97CF /* TaisaUnitTests */,
+				B7582BFFACE3024637C84554 /* TaisaUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		4D589187A1AF0F20BBD366FF /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B4D5E79232FA07135208B36F /* PreviewRootView.swift in Sources */,
+				8EA94BF84706F6197B9CB847 /* TaisaPreviewApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		94C9A1BC97612CC88E9E9EC2 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D1445280AAB7B076CF960071 /* FoundationSmokeTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E52D9E4DEECFA48E1ABF0EB5 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A8CB2213F91A9A8AF7DFE41E /* FoundationLaunchTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F697230EA83A6555EFAC728D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5B0AA018E7F5C851901458DF /* FoundationRootView.swift in Sources */,
+				5DCEA91D737FD27D788EEF53 /* TaisaApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		326861F25D59E15F0D59722F /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 66FFAFFD3FAF5E994E443BD4 /* Taisa */;
+			targetProxy = 134CBA39BCE402029C7D6BB6 /* PBXContainerItemProxy */;
+		};
+		BCE8669AF00C893CF96E6DD5 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 66FFAFFD3FAF5E994E443BD4 /* Taisa */;
+			targetProxy = 61818A55166100F367C198BF /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		0292BD2C554D7A3B6946E3E0 /* Preview */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_KEY_CFBundleDisplayName = "Taisa Preview";
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.taisa.app.preview;
+				PRODUCT_NAME = TaisaPreview;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG TAISA_PREVIEW";
+				TAISA_ENVIRONMENT = preview;
+			};
+			name = Preview;
+		};
+		19C65E9F5C30EA95509CAB2F /* Preview */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				SDKROOT = iphoneos;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Taisa.app/Taisa";
+			};
+			name = Preview;
+		};
+		1BDD5ED729CC95B608B43FC6 /* Preview */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				SDKROOT = iphoneos;
+				TEST_TARGET_NAME = Taisa;
+			};
+			name = Preview;
+		};
+		43E1C9BC77D1C424384584D9 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 1436FAD8AE09F2E408377FE1 /* Release.xcconfig */;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		4CAB8FBD92C54A3C3BB58675 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_KEY_CFBundleDisplayName = "Taisa Preview";
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.taisa.app.preview;
+				PRODUCT_NAME = TaisaPreview;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG TAISA_PREVIEW";
+				TAISA_ENVIRONMENT = preview;
+			};
+			name = Debug;
+		};
+		5E3F18BC6F053B27EBA0BA5C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				SDKROOT = iphoneos;
+				TEST_TARGET_NAME = Taisa;
+			};
+			name = Debug;
+		};
+		5EBD0B8211F640D8431E12EF /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_KEY_CFBundleDisplayName = Taisa;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_NAME = Taisa;
+				SDKROOT = iphoneos;
+			};
+			name = Debug;
+		};
+		66868162F36512DA7CBBE3D7 /* Preview */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_KEY_CFBundleDisplayName = Taisa;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_NAME = Taisa;
+				SDKROOT = iphoneos;
+			};
+			name = Preview;
+		};
+		9E837B4477D30F78BD97621F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_KEY_CFBundleDisplayName = "Taisa Preview";
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.taisa.app.preview;
+				PRODUCT_NAME = TaisaPreview;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG TAISA_PREVIEW";
+				TAISA_ENVIRONMENT = preview;
+			};
+			name = Release;
+		};
+		9EC43CF93902B14B237BFD92 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				SDKROOT = iphoneos;
+				TEST_TARGET_NAME = Taisa;
+			};
+			name = Release;
+		};
+		B2A3F326BD08ECE2A2F6E828 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = E73285977200D46D5C6A739F /* Debug.xcconfig */;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		B8AEE6C781F2FBB990336170 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_KEY_CFBundleDisplayName = Taisa;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_NAME = Taisa;
+				SDKROOT = iphoneos;
+			};
+			name = Release;
+		};
+		E65BC63C97B91133AFA6565F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				SDKROOT = iphoneos;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Taisa.app/Taisa";
+			};
+			name = Debug;
+		};
+		EFF7108980F16118591B4C3F /* Preview */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 391BEE70ED9DB4D5A40CEF12 /* Preview.xcconfig */;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Preview;
+		};
+		F52D19D4C62ADDF5406BF81F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				SDKROOT = iphoneos;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Taisa.app/Taisa";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		219F967F5DE4862C3199F819 /* Build configuration list for PBXNativeTarget "TaisaPreview" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4CAB8FBD92C54A3C3BB58675 /* Debug */,
+				0292BD2C554D7A3B6946E3E0 /* Preview */,
+				9E837B4477D30F78BD97621F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		31D50B5DEF904024BD609686 /* Build configuration list for PBXProject "Taisa" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B2A3F326BD08ECE2A2F6E828 /* Debug */,
+				EFF7108980F16118591B4C3F /* Preview */,
+				43E1C9BC77D1C424384584D9 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		68E979BED0F9F61F2E898BF6 /* Build configuration list for PBXNativeTarget "Taisa" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5EBD0B8211F640D8431E12EF /* Debug */,
+				66868162F36512DA7CBBE3D7 /* Preview */,
+				B8AEE6C781F2FBB990336170 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		6C4356A2643AA827B322A0EF /* Build configuration list for PBXNativeTarget "TaisaUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5E3F18BC6F053B27EBA0BA5C /* Debug */,
+				1BDD5ED729CC95B608B43FC6 /* Preview */,
+				9EC43CF93902B14B237BFD92 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		CE5F7D4F175AAA5F39793785 /* Build configuration list for PBXNativeTarget "TaisaUnitTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E65BC63C97B91133AFA6565F /* Debug */,
+				19C65E9F5C30EA95509CAB2F /* Preview */,
+				F52D19D4C62ADDF5406BF81F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 1F69AC39B00EED61FAF1BDC8 /* Project object */;
+}

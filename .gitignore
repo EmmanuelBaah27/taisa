@@ -13,3 +13,6 @@ dist/
 package-lock.json
 .superpowers/
 .worktrees/
+apple/DerivedData/
+apple/**/*.xcuserstate
+apple/**/xcuserdata/
