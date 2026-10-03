@@ -20,6 +20,7 @@ let package = Package(
         .target(name: "TaisaDesignSystem"),
         .target(name: "TaisaPreviewSupport", dependencies: ["TaisaCore"]),
         .testTarget(name: "TaisaCoreTests", dependencies: ["TaisaCore"]),
+        .testTarget(name: "TaisaContractsTests", dependencies: ["TaisaContracts"]),
         .testTarget(name: "TaisaDesignSystemTests", dependencies: ["TaisaDesignSystem"]),
         .testTarget(name: "TaisaPreviewSupportTests", dependencies: ["TaisaPreviewSupport"]),
     ]
