@@ -33,6 +33,8 @@ rg -q 'Closeout' docs/workflow.md || fail "workflow closeout rule is missing"
 rg -q 'memory-promotion check' docs/workflow.md || fail "workflow memory promotion rule is missing"
 rg -q 'Closeout' .claude/skills/taisa-workflow/SKILL.md || fail "orchestrator closeout rule is missing"
 rg -q 'memory-promotion check' .claude/skills/taisa-workflow/SKILL.md || fail "orchestrator memory promotion rule is missing"
+test -f .github/workflows/native-apple.yml || fail "native Apple CI workflow is missing"
+rg -q 'npm run verify:native-apple:all' .github/workflows/native-apple.yml || fail "CI does not enforce complete native Apple verification"
 
 verify_local_markdown_links() {
   local source target clean_target resolved

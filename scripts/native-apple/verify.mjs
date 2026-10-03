@@ -54,6 +54,15 @@ export async function inspectProductionBundle(bundlePath) {
   return PRODUCTION_PREVIEW_PATTERNS.filter((pattern) => matches.has(pattern));
 }
 
+export function unresolvedBuildIdentityPlaceholders(contents) {
+  const placeholders = [
+    /\$\([^)]+\)/g,
+    /GIT_(?:COMMIT|BRANCH)/g,
+    /BUILD_(?:NUMBER|IDENTITY)/g,
+  ];
+  return [...new Set(placeholders.flatMap((pattern) => contents.match(pattern) ?? []))].sort();
+}
+
 export async function inspectNativeProject(repositoryRoot) {
   const appleRoot = resolve(repositoryRoot, 'apple');
   const [project, debugConfig, previewConfig, releaseConfig] = await Promise.all([
@@ -106,6 +115,20 @@ export async function verifyNativeProject(repositoryRoot, productionBundle) {
     for (const leak of await inspectProductionBundle(productionBundle)) {
       errors.push(`Production bundle contains preview reference: ${leak}`);
     }
+  }
+  const metadataPath = resolve(
+    repositoryRoot,
+    'apple/Generated/BuildMetadata.generated.swift',
+  );
+  try {
+    const placeholders = unresolvedBuildIdentityPlaceholders(
+      await readFile(metadataPath, 'utf8'),
+    );
+    for (const placeholder of placeholders) {
+      errors.push(`Build identity contains unresolved placeholder: ${placeholder}`);
+    }
+  } catch {
+    errors.push('Generated build identity is missing');
   }
   if (inspected.previewArchiveEnabled) errors.push('Preview scheme enables archive');
   return errors;

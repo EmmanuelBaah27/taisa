@@ -10,6 +10,7 @@ final class TaisaLaunchTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["foundation.title"].exists)
         XCTAssertTrue(app.buttons["foundation.diagnostics.action"].isHittable)
         XCTAssertFalse(element("preview.catalog", in: app).exists)
+        retainScreenshot(of: app, name: "development-shell")
     }
 
     func testDiagnosticsShowsExactBuildIdentity() {
@@ -25,9 +26,17 @@ final class TaisaLaunchTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Source"].exists)
         XCTAssertTrue(app.staticTexts["Build"].exists)
         XCTAssertTrue(app.staticTexts["Bundle"].exists)
+        retainScreenshot(of: app, name: "build-diagnostics")
     }
 
     private func element(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
         app.descendants(matching: .any)[identifier]
+    }
+
+    private func retainScreenshot(of app: XCUIApplication, name: String) {
+        let attachment = XCTAttachment(screenshot: app.screenshot())
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        add(attachment)
     }
 }

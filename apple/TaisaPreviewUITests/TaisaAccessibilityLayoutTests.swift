@@ -28,5 +28,9 @@ final class TaisaAccessibilityLayoutTests: XCTestCase {
         XCTAssertLessThanOrEqual(title.frame.maxX, windowFrame.maxX)
         XCTAssertGreaterThanOrEqual(action.frame.minX, windowFrame.minX)
         XCTAssertLessThanOrEqual(action.frame.maxX, windowFrame.maxX)
+        let attachment = XCTAttachment(screenshot: app.screenshot())
+        attachment.name = identifier
+        attachment.lifetime = .keepAlways
+        add(attachment)
     }
 }
