@@ -11,6 +11,7 @@ struct FoundationRootView: View {
                 VStack(alignment: .leading, spacing: TaisaSpacing.section.rawValue) {
                     VStack(alignment: .leading, spacing: TaisaSpacing.compact.rawValue) {
                         TaisaText(role: .display, content: "Taisa")
+                            .accessibilityIdentifier("foundation.title")
                         TaisaText(
                             role: .body,
                             color: .mutedForeground,
@@ -22,6 +23,7 @@ struct FoundationRootView: View {
                     TaisaButton(role: .secondary, label: "Build diagnostics") {
                         showsDiagnostics = true
                     }
+                    .accessibilityIdentifier("foundation.diagnostics.action")
 #endif
                 }
                 .frame(maxWidth: 560, alignment: .leading)

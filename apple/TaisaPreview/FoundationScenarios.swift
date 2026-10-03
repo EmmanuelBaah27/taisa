@@ -19,7 +19,7 @@ enum FoundationScenarios {
             deviceFamily: .adaptive
         ),
         scenario(
-            identifier: "foundation.accessibility-text",
+            identifier: "foundation.accessibilityText",
             title: "Accessibility text",
             deviceFamily: .phone,
             accessibility: PreviewAccessibilitySettings(
@@ -27,18 +27,18 @@ enum FoundationScenarios {
             )
         ),
         scenario(
-            identifier: "foundation.narrow-ipad",
+            identifier: "foundation.narrowIPad",
             title: "Narrow iPad",
             deviceFamily: .tablet
         ),
         scenario(
-            identifier: "foundation.reduced-motion",
+            identifier: "foundation.reducedMotion",
             title: "Reduced motion",
             deviceFamily: .adaptive,
             accessibility: PreviewAccessibilitySettings(reducedMotion: true)
         ),
         scenario(
-            identifier: "foundation.increased-contrast",
+            identifier: "foundation.increasedContrast",
             title: "Increased contrast",
             deviceFamily: .adaptive,
             accessibility: PreviewAccessibilitySettings(increasedContrast: true)
@@ -83,8 +83,10 @@ private struct FoundationScenarioView: View {
         VStack(alignment: .leading, spacing: TaisaSpacing.section.rawValue) {
             TaisaText(role: .display, content: "Taisa")
             TaisaText(role: .heading, content: title)
+                .accessibilityIdentifier("preview.scenario.title")
             TaisaText(role: .body, color: .mutedForeground, content: detail)
             TaisaButton(role: .primary, label: "Preview action") {}
+                .accessibilityIdentifier("preview.scenario.primaryAction")
         }
         .frame(maxWidth: 560, alignment: .leading)
         .padding(TaisaSpacing.page.rawValue)

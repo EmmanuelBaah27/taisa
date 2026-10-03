@@ -5,13 +5,20 @@ import TaisaPreviewSupport
 struct PreviewCatalogView: View {
     private let registry: TaisaPreviewSupport.PreviewRegistry
     @State private var searchText = ""
+    @State private var path: [String]
 
     init(registry: TaisaPreviewSupport.PreviewRegistry = FoundationScenarios.registry) {
         self.registry = registry
+        let arguments = ProcessInfo.processInfo.arguments
+        let flagIndex = arguments.firstIndex(of: "-TAISAPreviewScenario")
+        let requestedIdentifier = flagIndex.flatMap { index in
+            arguments.indices.contains(index + 1) ? arguments[index + 1] : nil
+        }
+        _path = State(initialValue: requestedIdentifier.map { [$0] } ?? [])
     }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             List(filteredScenarios) { scenario in
                 NavigationLink(value: scenario.identifier) {
                     VStack(alignment: .leading, spacing: TaisaSpacing.compact.rawValue) {
@@ -42,7 +49,7 @@ struct PreviewCatalogView: View {
                 }
             }
         }
-        .accessibilityIdentifier("preview.catalog.ready")
+        .accessibilityIdentifier("preview.catalog")
     }
 
     private var filteredScenarios: [PreviewScenario] {
@@ -79,7 +86,7 @@ private struct PreviewScenarioView: View {
         .navigationBarTitleDisplayMode(.inline)
         .environment(\.dynamicTypeSize, dynamicTypeSize)
         .accessibilityIdentifier(
-            "preview.scenario.\(scenario.identifier).\(scenario.readiness.rawValue)"
+            "preview.ready.\(scenario.identifier)"
         )
     }
 
