@@ -1,0 +1,44 @@
+{
+  "contractVersion": 1,
+  "source": "Portable semantic values derived from mobile/design-system/tokens.json. Platform implementations must consume these values rather than NativeWind classes.",
+  "color": {
+    "background": "#FFFFFF",
+    "foreground": "#060707",
+    "mutedForeground": "#5F646A",
+    "primaryAction": "#CDEC1A",
+    "border": "#E6E6E6"
+  },
+  "spacing": {
+    "compact": 8,
+    "standard": 16,
+    "section": 24,
+    "page": 32
+  },
+  "typography": {
+    "display": {
+      "size": 28,
+      "lineHeight": 36,
+      "weight": "semibold"
+    },
+    "heading": {
+      "size": 24,
+      "lineHeight": 32,
+      "weight": "semibold"
+    },
+    "body": {
+      "size": 16,
+      "lineHeight": 24,
+      "weight": "regular"
+    },
+    "label": {
+      "size": 14,
+      "lineHeight": 20,
+      "weight": "semibold"
+    },
+    "metadata": {
+      "size": 12,
+      "lineHeight": 16,
+      "weight": "regular"
+    }
+  }
+}
