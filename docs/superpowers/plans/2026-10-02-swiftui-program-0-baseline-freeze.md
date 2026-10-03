@@ -436,6 +436,8 @@ git commit -m "docs: catalog React Native parity behavior"
 
 ### Task 5: Capture hashed reference media and performance evidence
 
+> **Revised prerequisite (2026-10-03):** Execution exposed that the canonical React Native app cannot deterministically reproduce the 65 catalog states. Complete `docs/superpowers/plans/2026-10-03-swiftui-baseline-fixture-harness.md` before resuming this task. That plan supersedes this task's capture and performance steps while preserving the same baseline-freeze approval gate.
+
 **Files:**
 - Create: `docs/migration/swiftui/reference-media/README.md`
 - Create: `docs/migration/swiftui/reference-media/manifest.json`
