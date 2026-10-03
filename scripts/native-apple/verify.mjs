@@ -15,6 +15,10 @@ function targetBlock(project, targetName, nextTargetName) {
   return project.slice(start, end === -1 ? project.length : end);
 }
 
+function packageProducts(block) {
+  return [...block.matchAll(/^\s+product:\s+(.+)$/gm)].map((match) => match[1].trim());
+}
+
 export async function inspectNativeProject(repositoryRoot) {
   const appleRoot = resolve(repositoryRoot, 'apple');
   const [project, debugConfig, previewConfig, releaseConfig] = await Promise.all([
@@ -25,6 +29,7 @@ export async function inspectNativeProject(repositoryRoot) {
   ]);
 
   const productionBlock = targetBlock(project, 'Taisa', 'TaisaPreview');
+  const previewTargetBlock = targetBlock(project, 'TaisaPreview', 'TaisaUnitTests');
   const previewStart = project.indexOf('  Taisa-Preview:\n');
   const previewEnd = project.indexOf('  Taisa:\n', previewStart);
   const previewScheme = project.slice(previewStart, previewEnd);
@@ -42,6 +47,8 @@ export async function inspectNativeProject(repositoryRoot) {
     testTargets: ['TaisaUnitTests', 'TaisaUITests'].filter((name) => (
       project.includes(`  ${name}:\n`)
     )),
+    productionProducts: packageProducts(productionBlock),
+    previewProducts: packageProducts(previewTargetBlock),
   };
 }
 

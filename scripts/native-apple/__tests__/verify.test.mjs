@@ -28,3 +28,19 @@ test('project declares native unit and UI test targets', async () => {
 
   assert.deepEqual(result.testTargets, ['TaisaUnitTests', 'TaisaUITests']);
 });
+
+test('preview support is linked only by the preview target', async () => {
+  const result = await inspectNativeProject(repositoryRoot);
+
+  assert.deepEqual(result.productionProducts, [
+    'TaisaCore',
+    'TaisaContracts',
+    'TaisaDesignSystem',
+  ]);
+  assert.deepEqual(result.previewProducts, [
+    'TaisaCore',
+    'TaisaContracts',
+    'TaisaDesignSystem',
+    'TaisaPreviewSupport',
+  ]);
+});

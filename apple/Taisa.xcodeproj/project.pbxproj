@@ -7,11 +7,18 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		009B5D0E668DB349CF67C57E /* TaisaDesignSystem in Frameworks */ = {isa = PBXBuildFile; productRef = FEF8E8A324CF703C89D9D4A7 /* TaisaDesignSystem */; };
+		0C8E71835C74BC814F59AC1C /* TaisaPreviewSupport in Frameworks */ = {isa = PBXBuildFile; productRef = 8FA686B6DCB4A6884B2DBA33 /* TaisaPreviewSupport */; };
+		1748385DCE8300004A2B4F94 /* TaisaDesignSystem in Frameworks */ = {isa = PBXBuildFile; productRef = 90EA0964036021A700C04142 /* TaisaDesignSystem */; };
+		23F902852DA35474CB0D79D0 /* TaisaContracts in Frameworks */ = {isa = PBXBuildFile; productRef = 3D8E0B5042A6307078A2815B /* TaisaContracts */; };
+		4E9C7C4A9B317988D683DA1E /* TaisaCore in Frameworks */ = {isa = PBXBuildFile; productRef = A72C408F4F7BE22C7A7A5119 /* TaisaCore */; };
 		5B0AA018E7F5C851901458DF /* FoundationRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0AD55CA9F552FE71F09A49D /* FoundationRootView.swift */; };
 		5DCEA91D737FD27D788EEF53 /* TaisaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E79CF0C618833217451F645C /* TaisaApp.swift */; };
+		85C567721275F369CD53177E /* TaisaCore in Frameworks */ = {isa = PBXBuildFile; productRef = FFB07053D3A453E2945166B9 /* TaisaCore */; };
 		8EA94BF84706F6197B9CB847 /* TaisaPreviewApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D1AF7F2E4A4A980D0791D4A /* TaisaPreviewApp.swift */; };
 		A8CB2213F91A9A8AF7DFE41E /* FoundationLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE79594CF602BC8C7C552318 /* FoundationLaunchTests.swift */; };
 		B4D5E79232FA07135208B36F /* PreviewRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C860AF058EBC0DCFBFBE7C15 /* PreviewRootView.swift */; };
+		BBFC26F78DE7211426CBE771 /* TaisaContracts in Frameworks */ = {isa = PBXBuildFile; productRef = C314463D60AD54DD62726CEE /* TaisaContracts */; };
 		D1445280AAB7B076CF960071 /* FoundationSmokeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C9D4835226A0691261B0E56 /* FoundationSmokeTests.swift */; };
 /* End PBXBuildFile section */
 
@@ -35,6 +42,7 @@
 /* Begin PBXFileReference section */
 		1436FAD8AE09F2E408377FE1 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
 		391BEE70ED9DB4D5A40CEF12 /* Preview.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Preview.xcconfig; sourceTree = "<group>"; };
+		4545C373898A484014E37320 /* TaisaFoundation */ = {isa = PBXFileReference; lastKnownFileType = folder; name = TaisaFoundation; path = Packages/TaisaFoundation; sourceTree = SOURCE_ROOT; };
 		4D1AF7F2E4A4A980D0791D4A /* TaisaPreviewApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaisaPreviewApp.swift; sourceTree = "<group>"; };
 		5C9D4835226A0691261B0E56 /* FoundationSmokeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoundationSmokeTests.swift; sourceTree = "<group>"; };
 		AE79594CF602BC8C7C552318 /* FoundationLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoundationLaunchTests.swift; sourceTree = "<group>"; };
@@ -47,6 +55,30 @@
 		E79CF0C618833217451F645C /* TaisaApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaisaApp.swift; sourceTree = "<group>"; };
 		F0AD55CA9F552FE71F09A49D /* FoundationRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoundationRootView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		B605B215A495938EA165DC32 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4E9C7C4A9B317988D683DA1E /* TaisaCore in Frameworks */,
+				23F902852DA35474CB0D79D0 /* TaisaContracts in Frameworks */,
+				009B5D0E668DB349CF67C57E /* TaisaDesignSystem in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E084E96DCDB78EF5E35182D2 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				85C567721275F369CD53177E /* TaisaCore in Frameworks */,
+				BBFC26F78DE7211426CBE771 /* TaisaContracts in Frameworks */,
+				1748385DCE8300004A2B4F94 /* TaisaDesignSystem in Frameworks */,
+				0C8E71835C74BC814F59AC1C /* TaisaPreviewSupport in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		0CA79807F37BD8DFE3979FEB /* Products */ = {
@@ -67,6 +99,14 @@
 				4D1AF7F2E4A4A980D0791D4A /* TaisaPreviewApp.swift */,
 			);
 			path = TaisaPreview;
+			sourceTree = "<group>";
+		};
+		4F8F3D9EE97CEA0B954B5C6E /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				4545C373898A484014E37320 /* TaisaFoundation */,
+			);
+			path = Packages;
 			sourceTree = "<group>";
 		};
 		76C6C7C70CD322B9872D7674 /* TaisaUnitTests */ = {
@@ -98,6 +138,7 @@
 			isa = PBXGroup;
 			children = (
 				D4CB250D4357A7E294F8C2E6 /* Config */,
+				4F8F3D9EE97CEA0B954B5C6E /* Packages */,
 				8383E1528B799AC12D21FB59 /* TaisaApp */,
 				16BB71C41EFB62EE6336932F /* TaisaPreview */,
 				B89EB78B2C706127A44F1607 /* TaisaUITests */,
@@ -142,6 +183,7 @@
 			buildConfigurationList = 68E979BED0F9F61F2E898BF6 /* Build configuration list for PBXNativeTarget "Taisa" */;
 			buildPhases = (
 				F697230EA83A6555EFAC728D /* Sources */,
+				B605B215A495938EA165DC32 /* Frameworks */,
 			);
 			buildRules = (
 			);
@@ -149,6 +191,9 @@
 			);
 			name = Taisa;
 			packageProductDependencies = (
+				A72C408F4F7BE22C7A7A5119 /* TaisaCore */,
+				3D8E0B5042A6307078A2815B /* TaisaContracts */,
+				FEF8E8A324CF703C89D9D4A7 /* TaisaDesignSystem */,
 			);
 			productName = Taisa;
 			productReference = CC2678E7883E8BACE8D29B43 /* Taisa.app */;
@@ -159,6 +204,7 @@
 			buildConfigurationList = 219F967F5DE4862C3199F819 /* Build configuration list for PBXNativeTarget "TaisaPreview" */;
 			buildPhases = (
 				4D589187A1AF0F20BBD366FF /* Sources */,
+				E084E96DCDB78EF5E35182D2 /* Frameworks */,
 			);
 			buildRules = (
 			);
@@ -166,6 +212,10 @@
 			);
 			name = TaisaPreview;
 			packageProductDependencies = (
+				FFB07053D3A453E2945166B9 /* TaisaCore */,
+				C314463D60AD54DD62726CEE /* TaisaContracts */,
+				90EA0964036021A700C04142 /* TaisaDesignSystem */,
+				8FA686B6DCB4A6884B2DBA33 /* TaisaPreviewSupport */,
 			);
 			productName = TaisaPreview;
 			productReference = DFC7614DA2D104B9F3C9FC4C /* TaisaPreview.app */;
@@ -222,6 +272,9 @@
 			);
 			mainGroup = D1F74BCB089FEBAE6BD022E3;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				0BB10D82E0D11E1C1D1C55DF /* XCLocalSwiftPackageReference "Packages/TaisaFoundation" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 0CA79807F37BD8DFE3979FEB /* Products */;
 			projectDirPath = "";
@@ -727,6 +780,44 @@
 			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		0BB10D82E0D11E1C1D1C55DF /* XCLocalSwiftPackageReference "Packages/TaisaFoundation" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/TaisaFoundation;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		3D8E0B5042A6307078A2815B /* TaisaContracts */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = TaisaContracts;
+		};
+		8FA686B6DCB4A6884B2DBA33 /* TaisaPreviewSupport */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = TaisaPreviewSupport;
+		};
+		90EA0964036021A700C04142 /* TaisaDesignSystem */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = TaisaDesignSystem;
+		};
+		A72C408F4F7BE22C7A7A5119 /* TaisaCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = TaisaCore;
+		};
+		C314463D60AD54DD62726CEE /* TaisaContracts */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = TaisaContracts;
+		};
+		FEF8E8A324CF703C89D9D4A7 /* TaisaDesignSystem */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = TaisaDesignSystem;
+		};
+		FFB07053D3A453E2945166B9 /* TaisaCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = TaisaCore;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 1F69AC39B00EED61FAF1BDC8 /* Project object */;
 }

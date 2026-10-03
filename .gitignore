@@ -16,3 +16,4 @@ package-lock.json
 apple/DerivedData/
 apple/**/*.xcuserstate
 apple/**/xcuserdata/
+apple/Packages/**/.build/

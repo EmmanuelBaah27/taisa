@@ -19,6 +19,9 @@ settings:
     SUPPORTS_MACCATALYST: NO
     GENERATE_INFOPLIST_FILE: YES
     CODE_SIGN_STYLE: Automatic
+packages:
+  TaisaFoundation:
+    path: Packages/TaisaFoundation
 targets:
   Taisa:
     type: application
@@ -31,6 +34,13 @@ targets:
         INFOPLIST_KEY_CFBundleDisplayName: Taisa
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
+    dependencies:
+      - package: TaisaFoundation
+        product: TaisaCore
+      - package: TaisaFoundation
+        product: TaisaContracts
+      - package: TaisaFoundation
+        product: TaisaDesignSystem
   TaisaPreview:
     type: application
     platform: iOS
@@ -45,6 +55,15 @@ targets:
         INFOPLIST_KEY_CFBundleDisplayName: Taisa Preview
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
+    dependencies:
+      - package: TaisaFoundation
+        product: TaisaCore
+      - package: TaisaFoundation
+        product: TaisaContracts
+      - package: TaisaFoundation
+        product: TaisaDesignSystem
+      - package: TaisaFoundation
+        product: TaisaPreviewSupport
   TaisaUnitTests:
     type: bundle.unit-test
     platform: iOS
