@@ -1,6 +1,6 @@
 # SwiftUI Baseline Fixture Harness Design
 
-**Status:** Design approved; implementation plan pending  
+**Status:** Superseded; React Native fixture work is no longer a native-build prerequisite
 **Program:** SwiftUI native rebuild — Program 0 baseline freeze  
 **Track:** Platform + Product  
 **Owner:** Program 0  

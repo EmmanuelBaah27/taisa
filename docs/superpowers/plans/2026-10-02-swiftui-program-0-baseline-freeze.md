@@ -1,5 +1,7 @@
 # SwiftUI Program 0 Baseline Freeze Implementation Plan
 
+> **Status:** Superseded by the approved Swift-first design. Retained as historical evidence; do not execute.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Reconcile Taisa's active React Native work into one explicitly approved, reproducible parity baseline and publish the machine-verifiable catalog and reference evidence that every later SwiftUI slice must match.

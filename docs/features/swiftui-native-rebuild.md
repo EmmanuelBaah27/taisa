@@ -2,15 +2,15 @@
 
 **Track:** Platform + Product
 **Tier:** Full
-**Status:** Program 0 Build; parity catalog and reference evidence in progress
+**Status:** Foundation Plan; React Native retained as non-blocking reference
 
 ---
 
 ## What is it?
 
-Rebuild Taisa's iPhone and iPad client as a native SwiftUI application targeting iOS and iPadOS 17 or later. The native client will preserve the behavior and visual language of one verified, frozen React Native preview baseline while continuing to use Taisa's existing Node/Express gateway and API contracts.
+Rebuild Taisa's iPhone and iPad client as a native SwiftUI application targeting iOS and iPadOS 17 or later. The native client uses accepted product decisions, portable behavior contracts, the existing Node/Express gateway, and the current React Native experience as non-blocking reference evidence.
 
-The rebuild will proceed as complete vertical slices beside the React Native client. React Native remains the parity oracle and rollback reference until the native application passes the full cutover gate.
+The rebuild will proceed as complete vertical slices beside the React Native client. Swift previews, fixtures, tests, and signed device builds become the implementation authority; React Native remains recoverable reference material through native cutover.
 
 ## Why now?
 
@@ -18,9 +18,8 @@ Taisa's current Apple experience depends on a large cross-platform runtime for n
 
 ## Acceptance criteria
 
-- [ ] A verified React Native commit is named and frozen as the parity baseline only after all approved active work and unique preview changes are accounted for.
-- [ ] The frozen baseline includes a versioned parity catalog covering required screens, states, flows, copy, accessibility behavior, API revision, fixture data, reference media, known defects, and explicit exclusions.
-- [ ] The native app runs on iPhone and iPad with a minimum deployment target of iOS/iPadOS 17 and reproduces the frozen baseline's required screens, copy, states, navigation, accessibility, and interaction behavior without redesign.
+- [ ] Accepted behavior is captured in platform-neutral contracts covering required screens, states, flows, copy, accessibility, API revision, fixtures, known defects, and deliberate platform adaptations.
+- [ ] The native app runs on iPhone and iPad with a minimum deployment target of iOS/iPadOS 17 and implements those accepted contracts with native platform behavior.
 - [ ] The native app continues to use the existing stateless coaching and transcription gateway contracts; the backend is not rewritten in Swift.
 - [ ] New installs begin with a fresh native local store. The native app does not import React Native SQLite, Keychain, recording, settings, or history data.
 - [ ] Taisa's local-first boundary remains intact: private capture stays on device until deliberate Send, readable user history remains device-authoritative, and the gateway stores no readable coaching content.
@@ -38,9 +37,8 @@ Taisa's current Apple experience depends on a large cross-platform runtime for n
 
 ## Platform dependencies
 
-- [ ] Reconcile current active worktrees, unique commits, and the served `preview/taisa` revision into one verified parity baseline.
-- [ ] Create and approve the parity catalog before writing Product-slice plans.
-- [ ] Freeze React Native feature development after baseline selection; allow only critical fixes recorded in a parity ledger and mirrored in SwiftUI.
+- [ ] Preserve current React Native worktrees and evidence without requiring further React Native implementation for native progress.
+- [ ] Create platform-neutral behavior contracts and native deterministic fixtures alongside each accepted slice.
 - [ ] Establish signed native development/TestFlight distribution and exact-build identification for iPhone and iPad QA.
 - [ ] Prove the native encrypted SQLite, Keychain, audio, streaming transcription, notification, biometric/privacy, export/restore, shader, glass, and avatar approaches through bounded foundation work before dependent Product slices enter Build.
 - [ ] Generate or validate Swift `Codable` contracts against the existing shared TypeScript schemas and backend fixtures.

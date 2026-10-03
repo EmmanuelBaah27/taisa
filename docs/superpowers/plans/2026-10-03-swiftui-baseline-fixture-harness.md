@@ -1,5 +1,7 @@
 # SwiftUI Baseline Fixture Harness Implementation Plan
 
+> **Status:** Superseded by the approved Swift-first design. Retained as historical evidence; do not execute.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build a physical-device, development-only React Native fixture target that reproduces all 65 SwiftUI parity states without exposing fixture behavior in production Taisa.
