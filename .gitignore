@@ -17,3 +17,4 @@ apple/DerivedData/
 apple/**/*.xcuserstate
 apple/**/xcuserdata/
 apple/Packages/**/.build/
+apple/Generated/*.generated.swift

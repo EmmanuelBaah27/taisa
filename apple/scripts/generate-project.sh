@@ -16,4 +16,5 @@ fi
 
 script_directory="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 apple_root="$(cd "${script_directory}/.." && pwd)"
+"${script_directory}/generate-build-metadata.sh"
 exec xcodegen generate --spec "${apple_root}/project.yml" --project "${apple_root}"

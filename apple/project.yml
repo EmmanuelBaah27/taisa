@@ -28,12 +28,14 @@ targets:
     platform: iOS
     sources:
       - path: TaisaApp
+      - path: Generated
     settings:
       base:
         PRODUCT_NAME: Taisa
         INFOPLIST_KEY_CFBundleDisplayName: Taisa
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
+        INFOPLIST_KEY_TaisaEnvironment: "$(TAISA_ENVIRONMENT)"
     dependencies:
       - package: TaisaFoundation
         product: TaisaCore
@@ -46,6 +48,7 @@ targets:
     platform: iOS
     sources:
       - path: TaisaPreview
+      - path: Generated
     settings:
       base:
         PRODUCT_NAME: TaisaPreview
@@ -55,6 +58,7 @@ targets:
         INFOPLIST_KEY_CFBundleDisplayName: Taisa Preview
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
+        INFOPLIST_KEY_TaisaEnvironment: "$(TAISA_ENVIRONMENT)"
     dependencies:
       - package: TaisaFoundation
         product: TaisaCore

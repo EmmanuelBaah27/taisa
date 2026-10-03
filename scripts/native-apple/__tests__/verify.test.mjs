@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
+import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import test from 'node:test';
-import { resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 
 import { inspectNativeProject } from '../verify.mjs';
 
@@ -43,4 +46,30 @@ test('preview support is linked only by the preview target', async () => {
     'TaisaDesignSystem',
     'TaisaPreviewSupport',
   ]);
+});
+
+test('metadata generator preserves clean, dirty, and detached repository state', async () => {
+  const fixture = await mkdtemp(join(tmpdir(), 'taisa-build-metadata-'));
+  const output = join(fixture, 'BuildMetadata.generated.swift');
+  execFileSync('git', ['init', '-b', 'fixture'], { cwd: fixture });
+  await writeFile(join(fixture, 'README.md'), 'fixture\n');
+  execFileSync('git', ['add', 'README.md'], { cwd: fixture });
+  execFileSync('git', [
+    '-c', 'user.name=Taisa Test',
+    '-c', 'user.email=taisa-test@example.invalid',
+    'commit', '-m', 'fixture',
+  ], { cwd: fixture });
+
+  const script = resolve(repositoryRoot, 'apple/scripts/generate-build-metadata.sh');
+  execFileSync(script, [output], {
+    env: { ...process.env, TAISA_REPOSITORY_ROOT: fixture },
+  });
+  assert.match(await readFile(output, 'utf8'), /gitBranch: String\? = "fixture"[\s\S]+isDirty = false/);
+
+  await writeFile(join(fixture, 'dirty.txt'), 'dirty\n');
+  execFileSync('git', ['checkout', '--detach'], { cwd: fixture });
+  execFileSync(script, [output], {
+    env: { ...process.env, TAISA_REPOSITORY_ROOT: fixture },
+  });
+  assert.match(await readFile(output, 'utf8'), /gitBranch: String\? = nil[\s\S]+isDirty = true/);
 });

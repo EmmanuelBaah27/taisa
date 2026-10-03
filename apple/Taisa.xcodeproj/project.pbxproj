@@ -11,14 +11,17 @@
 		0C8E71835C74BC814F59AC1C /* TaisaPreviewSupport in Frameworks */ = {isa = PBXBuildFile; productRef = 8FA686B6DCB4A6884B2DBA33 /* TaisaPreviewSupport */; };
 		1748385DCE8300004A2B4F94 /* TaisaDesignSystem in Frameworks */ = {isa = PBXBuildFile; productRef = 90EA0964036021A700C04142 /* TaisaDesignSystem */; };
 		23F902852DA35474CB0D79D0 /* TaisaContracts in Frameworks */ = {isa = PBXBuildFile; productRef = 3D8E0B5042A6307078A2815B /* TaisaContracts */; };
+		2C4953C9F7A77AFE60369188 /* BuildMetadata.generated.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5247C0A0A8695277E1212A3 /* BuildMetadata.generated.swift */; };
 		4E9C7C4A9B317988D683DA1E /* TaisaCore in Frameworks */ = {isa = PBXBuildFile; productRef = A72C408F4F7BE22C7A7A5119 /* TaisaCore */; };
 		5B0AA018E7F5C851901458DF /* FoundationRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0AD55CA9F552FE71F09A49D /* FoundationRootView.swift */; };
 		5DCEA91D737FD27D788EEF53 /* TaisaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E79CF0C618833217451F645C /* TaisaApp.swift */; };
+		6A8C01721A57C6BF44E6802F /* BuildMetadata.generated.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5247C0A0A8695277E1212A3 /* BuildMetadata.generated.swift */; };
 		85C567721275F369CD53177E /* TaisaCore in Frameworks */ = {isa = PBXBuildFile; productRef = FFB07053D3A453E2945166B9 /* TaisaCore */; };
 		8EA94BF84706F6197B9CB847 /* TaisaPreviewApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D1AF7F2E4A4A980D0791D4A /* TaisaPreviewApp.swift */; };
 		A8CB2213F91A9A8AF7DFE41E /* FoundationLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE79594CF602BC8C7C552318 /* FoundationLaunchTests.swift */; };
 		B4D5E79232FA07135208B36F /* PreviewRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C860AF058EBC0DCFBFBE7C15 /* PreviewRootView.swift */; };
 		BBFC26F78DE7211426CBE771 /* TaisaContracts in Frameworks */ = {isa = PBXBuildFile; productRef = C314463D60AD54DD62726CEE /* TaisaContracts */; };
+		BC05599BCB16F2E72FB9E01E /* BuildDiagnosticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B59487963D8B0F07F92A741 /* BuildDiagnosticsView.swift */; };
 		D1445280AAB7B076CF960071 /* FoundationSmokeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C9D4835226A0691261B0E56 /* FoundationSmokeTests.swift */; };
 /* End PBXBuildFile section */
 
@@ -45,6 +48,7 @@
 		4545C373898A484014E37320 /* TaisaFoundation */ = {isa = PBXFileReference; lastKnownFileType = folder; name = TaisaFoundation; path = Packages/TaisaFoundation; sourceTree = SOURCE_ROOT; };
 		4D1AF7F2E4A4A980D0791D4A /* TaisaPreviewApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaisaPreviewApp.swift; sourceTree = "<group>"; };
 		5C9D4835226A0691261B0E56 /* FoundationSmokeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoundationSmokeTests.swift; sourceTree = "<group>"; };
+		6B59487963D8B0F07F92A741 /* BuildDiagnosticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildDiagnosticsView.swift; sourceTree = "<group>"; };
 		AE79594CF602BC8C7C552318 /* FoundationLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoundationLaunchTests.swift; sourceTree = "<group>"; };
 		BD29E560E6C8098B625BCAEA /* TaisaUnitTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = TaisaUnitTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		C2F0C223EB506445708E8270 /* TaisaUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = TaisaUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -54,6 +58,7 @@
 		E73285977200D46D5C6A739F /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
 		E79CF0C618833217451F645C /* TaisaApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaisaApp.swift; sourceTree = "<group>"; };
 		F0AD55CA9F552FE71F09A49D /* FoundationRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoundationRootView.swift; sourceTree = "<group>"; };
+		F5247C0A0A8695277E1212A3 /* BuildMetadata.generated.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildMetadata.generated.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -120,6 +125,7 @@
 		8383E1528B799AC12D21FB59 /* TaisaApp */ = {
 			isa = PBXGroup;
 			children = (
+				6B59487963D8B0F07F92A741 /* BuildDiagnosticsView.swift */,
 				F0AD55CA9F552FE71F09A49D /* FoundationRootView.swift */,
 				E79CF0C618833217451F645C /* TaisaApp.swift */,
 			);
@@ -134,10 +140,19 @@
 			path = TaisaUITests;
 			sourceTree = "<group>";
 		};
+		C191D2E94CBA117F4E9E765C /* Generated */ = {
+			isa = PBXGroup;
+			children = (
+				F5247C0A0A8695277E1212A3 /* BuildMetadata.generated.swift */,
+			);
+			path = Generated;
+			sourceTree = "<group>";
+		};
 		D1F74BCB089FEBAE6BD022E3 = {
 			isa = PBXGroup;
 			children = (
 				D4CB250D4357A7E294F8C2E6 /* Config */,
+				C191D2E94CBA117F4E9E765C /* Generated */,
 				4F8F3D9EE97CEA0B954B5C6E /* Packages */,
 				8383E1528B799AC12D21FB59 /* TaisaApp */,
 				16BB71C41EFB62EE6336932F /* TaisaPreview */,
@@ -293,6 +308,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2C4953C9F7A77AFE60369188 /* BuildMetadata.generated.swift in Sources */,
 				B4D5E79232FA07135208B36F /* PreviewRootView.swift in Sources */,
 				8EA94BF84706F6197B9CB847 /* TaisaPreviewApp.swift in Sources */,
 			);
@@ -318,6 +334,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				BC05599BCB16F2E72FB9E01E /* BuildDiagnosticsView.swift in Sources */,
+				6A8C01721A57C6BF44E6802F /* BuildMetadata.generated.swift in Sources */,
 				5B0AA018E7F5C851901458DF /* FoundationRootView.swift in Sources */,
 				5DCEA91D737FD27D788EEF53 /* TaisaApp.swift in Sources */,
 			);
@@ -345,6 +363,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				INFOPLIST_KEY_CFBundleDisplayName = "Taisa Preview";
+				INFOPLIST_KEY_TaisaEnvironment = "$(TAISA_ENVIRONMENT)";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -453,6 +472,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				INFOPLIST_KEY_CFBundleDisplayName = "Taisa Preview";
+				INFOPLIST_KEY_TaisaEnvironment = "$(TAISA_ENVIRONMENT)";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -487,6 +507,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				INFOPLIST_KEY_CFBundleDisplayName = Taisa;
+				INFOPLIST_KEY_TaisaEnvironment = "$(TAISA_ENVIRONMENT)";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -504,6 +525,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				INFOPLIST_KEY_CFBundleDisplayName = Taisa;
+				INFOPLIST_KEY_TaisaEnvironment = "$(TAISA_ENVIRONMENT)";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -521,6 +543,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				INFOPLIST_KEY_CFBundleDisplayName = "Taisa Preview";
+				INFOPLIST_KEY_TaisaEnvironment = "$(TAISA_ENVIRONMENT)";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -621,6 +644,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				INFOPLIST_KEY_CFBundleDisplayName = Taisa;
+				INFOPLIST_KEY_TaisaEnvironment = "$(TAISA_ENVIRONMENT)";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
