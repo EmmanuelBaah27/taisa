@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import test from 'node:test';
 import { join, resolve } from 'node:path';
 
-import { inspectNativeProject } from '../verify.mjs';
+import { inspectNativeProject, inspectProductionBundle } from '../verify.mjs';
 
 const repositoryRoot = resolve(import.meta.dirname, '../../..');
 
@@ -45,6 +45,25 @@ test('preview support is linked only by the preview target', async () => {
     'TaisaContracts',
     'TaisaDesignSystem',
     'TaisaPreviewSupport',
+  ]);
+});
+
+test('production bundle inspection rejects preview code and fixture identifiers', async () => {
+  const fixture = await mkdtemp(join(tmpdir(), 'taisa-production-bundle-'));
+  const cleanBundle = join(fixture, 'Taisa.app');
+  await mkdir(cleanBundle);
+  await writeFile(join(cleanBundle, 'Taisa'), 'production foundation');
+  assert.deepEqual(await inspectProductionBundle(cleanBundle), []);
+
+  await writeFile(
+    join(cleanBundle, 'leak.txt'),
+    'TaisaPreview PreviewSupport foundation.default com.taisa.app.preview',
+  );
+  assert.deepEqual(await inspectProductionBundle(cleanBundle), [
+    'PreviewSupport',
+    'TaisaPreview',
+    'com.taisa.app.preview',
+    'foundation.default',
   ]);
 });
 

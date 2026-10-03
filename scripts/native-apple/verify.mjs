@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -17,6 +17,41 @@ function targetBlock(project, targetName, nextTargetName) {
 
 function packageProducts(block) {
   return [...block.matchAll(/^\s+product:\s+(.+)$/gm)].map((match) => match[1].trim());
+}
+
+const PRODUCTION_PREVIEW_PATTERNS = [
+  'PreviewSupport',
+  'TaisaPreview',
+  'com.taisa.app.preview',
+  'foundation.accessibility-text',
+  'foundation.default',
+  'foundation.diagnostics',
+  'foundation.increased-contrast',
+  'foundation.narrow-ipad',
+  'foundation.reduced-motion',
+];
+
+async function bundleEntries(root) {
+  const entries = await readdir(root, { withFileTypes: true });
+  const nested = await Promise.all(entries.map(async (entry) => {
+    const target = resolve(root, entry.name);
+    if (entry.isDirectory()) return bundleEntries(target);
+    return entry.isFile() ? [target] : [];
+  }));
+  return nested.flat();
+}
+
+export async function inspectProductionBundle(bundlePath) {
+  const matches = new Set();
+  for (const file of await bundleEntries(bundlePath)) {
+    const contents = await readFile(file);
+    for (const pattern of PRODUCTION_PREVIEW_PATTERNS) {
+      if (file.includes(pattern) || contents.includes(Buffer.from(pattern))) {
+        matches.add(pattern);
+      }
+    }
+  }
+  return PRODUCTION_PREVIEW_PATTERNS.filter((pattern) => matches.has(pattern));
 }
 
 export async function inspectNativeProject(repositoryRoot) {
@@ -52,7 +87,7 @@ export async function inspectNativeProject(repositoryRoot) {
   };
 }
 
-export async function verifyNativeProject(repositoryRoot) {
+export async function verifyNativeProject(repositoryRoot, productionBundle) {
   const inspected = await inspectNativeProject(repositoryRoot);
   const errors = [];
   const expected = {
@@ -67,6 +102,11 @@ export async function verifyNativeProject(repositoryRoot) {
   for (const leak of inspected.productionPreviewLeaks) {
     errors.push(`Production target contains preview reference: ${leak}`);
   }
+  if (productionBundle) {
+    for (const leak of await inspectProductionBundle(productionBundle)) {
+      errors.push(`Production bundle contains preview reference: ${leak}`);
+    }
+  }
   if (inspected.previewArchiveEnabled) errors.push('Preview scheme enables archive');
   return errors;
 }
@@ -74,7 +114,10 @@ export async function verifyNativeProject(repositoryRoot) {
 const isMain = process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
 if (isMain) {
   const repositoryRoot = resolve(import.meta.dirname, '../..');
-  const errors = await verifyNativeProject(repositoryRoot);
+  const errors = await verifyNativeProject(
+    repositoryRoot,
+    process.env.TAISA_PRODUCTION_BUNDLE,
+  );
   if (errors.length) {
     console.error(errors.join('\n'));
     process.exitCode = 1;

@@ -4,7 +4,7 @@ import SwiftUI
 struct TaisaPreviewApp: App {
     var body: some Scene {
         WindowGroup {
-            PreviewRootView()
+            PreviewCatalogView()
         }
     }
 }

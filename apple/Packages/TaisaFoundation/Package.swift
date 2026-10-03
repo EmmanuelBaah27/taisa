@@ -21,5 +21,6 @@ let package = Package(
         .target(name: "TaisaPreviewSupport", dependencies: ["TaisaCore"]),
         .testTarget(name: "TaisaCoreTests", dependencies: ["TaisaCore"]),
         .testTarget(name: "TaisaDesignSystemTests", dependencies: ["TaisaDesignSystem"]),
+        .testTarget(name: "TaisaPreviewSupportTests", dependencies: ["TaisaPreviewSupport"]),
     ]
 )
