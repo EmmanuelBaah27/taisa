@@ -11,8 +11,17 @@ export function selectSimulatorName(payload, family) {
   return device.name;
 }
 
+export function hasEligibleSimulatorDestination(output) {
+  const eligible = output.split('Ineligible destinations')[0];
+  return eligible.includes('platform:iOS Simulator');
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const family = process.argv[2];
-  const payload = JSON.parse(readFileSync(0, 'utf8'));
-  process.stdout.write(`${selectSimulatorName(payload, family)}\n`);
+  const input = readFileSync(0, 'utf8');
+  if (family === '--eligible') {
+    process.stdout.write(hasEligibleSimulatorDestination(input) ? 'yes\n' : 'no\n');
+  } else {
+    process.stdout.write(`${selectSimulatorName(JSON.parse(input), family)}\n`);
+  }
 }
