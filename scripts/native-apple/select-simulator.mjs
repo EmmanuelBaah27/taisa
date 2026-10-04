@@ -1,19 +1,18 @@
 import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
-export function selectSimulatorUDID(payload, family) {
-  const eligibleDestinations = payload.split('Ineligible destinations')[0];
-  const escapedFamily = family.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const match = eligibleDestinations.match(
-    new RegExp(`\\{[^}]*\\bid:([^,}]+)[^}]*\\bname:(${escapedFamily}[^,}]*)[^}]*\\}`),
+export function selectSimulatorName(payload, family) {
+  const candidates = Object.values(payload.devices ?? {}).flat();
+  const device = candidates.find(
+    (candidate) => candidate.isAvailable && candidate.name?.startsWith(family),
   );
 
-  if (!match) throw new Error(`No available ${family} simulator found.`);
-  return match[1].trim();
+  if (!device) throw new Error(`No available ${family} simulator found.`);
+  return device.name;
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const family = process.argv[2];
-  const payload = readFileSync(0, 'utf8');
-  process.stdout.write(`${selectSimulatorUDID(payload, family)}\n`);
+  const payload = JSON.parse(readFileSync(0, 'utf8'));
+  process.stdout.write(`${selectSimulatorName(payload, family)}\n`);
 }
