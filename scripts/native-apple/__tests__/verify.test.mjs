@@ -128,6 +128,7 @@ test('combined native verification and CI pin every required gate', async () => 
     'macos-26',
     '/Applications/Xcode_26.1.1.app',
     '17B100',
+    '-downloadPlatform iOS',
     '2.46.0',
     'verify:native-apple:all',
     'upload-artifact',
