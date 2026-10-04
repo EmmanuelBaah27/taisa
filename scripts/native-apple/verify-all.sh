@@ -15,9 +15,10 @@ npm run verify:native-contracts
 (cd apple/Packages/TaisaFoundation && swift test)
 npm run verify:native-design-system
 
-simulator_inventory="$(xcrun simctl list devices available --json)"
-iphone_udid="${TAISA_IPHONE_SIMULATOR_UDID:-$(printf '%s' "${simulator_inventory}" | node scripts/native-apple/select-simulator.mjs iPhone)}"
-ipad_udid="${TAISA_IPAD_SIMULATOR_UDID:-$(printf '%s' "${simulator_inventory}" | node scripts/native-apple/select-simulator.mjs iPad)}"
+development_destinations="$(xcodebuild -project apple/Taisa.xcodeproj -scheme Taisa-Dev -showdestinations)"
+preview_destinations="$(xcodebuild -project apple/Taisa.xcodeproj -scheme Taisa-Preview -showdestinations)"
+iphone_udid="${TAISA_IPHONE_SIMULATOR_UDID:-$(printf '%s' "${development_destinations}" | node scripts/native-apple/select-simulator.mjs iPhone)}"
+ipad_udid="${TAISA_IPAD_SIMULATOR_UDID:-$(printf '%s' "${preview_destinations}" | node scripts/native-apple/select-simulator.mjs iPad)}"
 
 xcodebuild test -quiet -project apple/Taisa.xcodeproj -scheme Taisa-Dev -destination "platform=iOS Simulator,id=${iphone_udid}" -derivedDataPath "${artifact_root}/DerivedData-Dev" -resultBundlePath "${artifact_root}/Taisa-Dev.xcresult"
 xcodebuild test -quiet -project apple/Taisa.xcodeproj -scheme Taisa-Preview -destination "platform=iOS Simulator,id=${ipad_udid}" -derivedDataPath "${artifact_root}/DerivedData-Preview" -resultBundlePath "${artifact_root}/Taisa-Preview.xcresult"
