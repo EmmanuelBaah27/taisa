@@ -13,6 +13,7 @@
 | Light design system | Platform + Product | Review (device QA) | feature/light-design-system | — |
 | Persistent input bar + Chat UI | Platform + Product | Plan | — | Light design system shipped |
 | SwiftUI native rebuild | Platform + Product | Review + QA | `feature/swift-native-foundation` | Baah Ship approval |
+| Swift native encrypted storage, sync, and recovery | Platform | Scope | `docs/swift-native-encrypted-sync` | Baah written-spec approval |
 
 After native-foundation acceptance, the next separately scoped foundations are encrypted persistence and recovery, audio and streaming, then advanced resources and platform services. Product slices remain gated until their required foundations are approved and built.
 
