@@ -21,7 +21,7 @@ relevant to the task.
 | Recording page | Product | Review + QA | `feature/secondary-icon-button` | Baah device QA |
 | Shared chat and recording shell | Product | Build | `codex/chat-close-auth-handoff` | Baah paired-device QA after preview integration |
 | Glass elevation, alignment, and interaction feedback | Product | Review + QA | `fix/glass-elevation-keyboard-surfaces` | canonical preview integration + Baah device QA |
-| SwiftUI native rebuild | Platform + Product | Build (Native foundation) | `feature/swift-native-foundation` | exact signed-build device QA |
+| SwiftUI native rebuild | Platform + Product | Review + QA | `feature/swift-native-foundation` | Baah Ship approval |
 
 ---
 
@@ -136,6 +136,8 @@ For the approved SwiftUI native-rebuild program, the equivalent order is:
 **Canonical React Native preview:** Only Metro started from `.worktrees/preview-taisa/mobile` on `preview/taisa` may own port `8082` for React Native device QA. Before Baah is asked to device-QA any React Native feature, integrate that feature's committed work into `preview/taisa`; feature worktrees remain isolated implementation environments and are not device-QA targets.
 
 **Canonical native Apple preview:** SwiftUI device feedback is authoritative only from a signed build record containing the native Git commit, Xcode build number, bundle identifier, distribution/TestFlight version, backend environment, database schema version, parity-catalog revision, and confirmation that the tested device installed that exact build. A simulator, Xcode Preview, or feature worktree is not a device-QA target.
+
+Signed native records are stored in `docs/migration/swiftui/native-builds.md` and validated by `apple/scripts/record-signed-build.mjs`. Development and preview builds use isolated bundle identifiers and must never replace the production React Native app during migration.
 
 **Verification matrix:**
 
