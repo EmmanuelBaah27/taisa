@@ -1,7 +1,7 @@
 # Swift Native Encrypted Storage, Sync, and Recovery Design
 
 **Date:** 2026-10-04  
-**Status:** Proposed for Baah review  
+**Status:** Approved by Baah on 2026-10-04
 **Scope:** `docs/features/swift-native-encrypted-sync.md`
 
 ## Intent

@@ -2,7 +2,7 @@
 
 **Tier:** Full  
 **Track:** Platform  
-**Stage:** Scope  
+**Stage:** Plan
 **Depends on:** accepted Swift native foundation
 
 ## What is it?
