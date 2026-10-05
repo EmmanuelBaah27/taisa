@@ -145,7 +145,11 @@ public enum MergeEngine {
                 !candidates.contains { other in other.0.id != candidate.0.id && fieldDescends(other.1, name: name, from: candidate.0.id, in: unique) }
             }
             if let deletion {
-                let observed = Set(deletion.observedFieldVersions.filter { $0.name == name }.map(\.versionID))
+                var observed = Set(deletion.observedFieldVersions.filter { $0.name == name }.map(\.versionID))
+                // Compaction keeps observed/discarded ancestry without its
+                // source field heads. Those known versions stay covered by the
+                // tombstone; a new version based on them still competes.
+                observed.formUnion(deletion.fieldAncestry?[name] ?? [])
                 for head in heads where !observed.contains(head.0.id) {
                     let unresolved = deletion.eventIDs.filter { !fieldDescends(head.1, name: name, from: $0, in: unique) }
                     guard let representative = unresolved.first else { continue }
