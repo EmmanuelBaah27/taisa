@@ -118,7 +118,7 @@ public struct ConflictStore: Sendable {
         let conflict = try conflict.validated()
         guard timestampMS >= 0 else { throw SyncMergeError.malformedMutation }
         do {
-            let rows = try Row.fetchAll(db, sql: "SELECT id, local_value, remote_value FROM conflicts WHERE entity_type = ? AND entity_id = ? COLLATE NOCASE AND field_name = ? AND local_version_id = ? COLLATE NOCASE AND remote_version_id = ? COLLATE NOCASE", arguments: [conflict.entityType, conflict.entityID, conflict.fieldName, conflict.first.versionID, conflict.second.versionID])
+            let rows = try Row.fetchAll(db, sql: "SELECT id, local_value, remote_value, resolved_at_ms FROM conflicts WHERE entity_type = ? AND entity_id = ? COLLATE NOCASE AND field_name = ? AND local_version_id = ? COLLATE NOCASE AND remote_version_id = ? COLLATE NOCASE", arguments: [conflict.entityType, conflict.entityID, conflict.fieldName, conflict.first.versionID, conflict.second.versionID])
             guard rows.count <= 1 else { throw SyncMergeError.persistenceFailed }
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.sortedKeys]
@@ -127,6 +127,11 @@ public struct ConflictStore: Sendable {
                 let storedSecond: Data = row["remote_value"]
                 let stored = try SyncConflict(entityType: conflict.entityType, entityID: conflict.entityID, fieldName: conflict.fieldName, first: JSONDecoder().decode(ConflictingValue.self, from: storedFirst), second: JSONDecoder().decode(ConflictingValue.self, from: storedSecond)).validated()
                 let enriched = try enrich(stored, with: conflict)
+                let resolvedAt: Int64? = row["resolved_at_ms"]
+                if resolvedAt != nil {
+                    guard enriched == stored else { throw SyncMergeError.alreadyResolved }
+                    return
+                }
                 let first = try encoder.encode(enriched.first)
                 let second = try encoder.encode(enriched.second)
                 if storedFirst != first || storedSecond != second {
@@ -147,7 +152,7 @@ public struct ConflictStore: Sendable {
               stored.fieldName == incoming.fieldName else { throw SyncMergeError.persistenceFailed }
         func alternative(_ old: ConflictingValue, _ new: ConflictingValue) throws -> ConflictingValue {
             guard old.versionID == new.versionID, old.value == new.value else { throw SyncMergeError.persistenceFailed }
-            let ancestry = Set(old.ancestorVersionIDs + new.ancestorVersionIDs).sorted()
+            let ancestry = mergeAncestry(old.ancestorVersionIDs, new.ancestorVersionIDs)
             let evidence: SyncDeletionSummary?
             switch (old.deletionEvidence, new.deletionEvidence) {
             case (nil, nil): evidence = nil
@@ -188,6 +193,27 @@ public struct ConflictStore: Sendable {
         return try SyncConflict(entityType: stored.entityType, entityID: stored.entityID, fieldName: stored.fieldName, first: alternative(stored.first, incoming.first), second: alternative(stored.second, incoming.second)).validated()
     }
 
+    /// Ancestry identifies known parents; array position is not a causal edge.
+    /// Retain the richer supplied representation unchanged when possible, so
+    /// exact or poorer delivery never rewrites an existing conflict.
+    private static func mergeAncestry(_ existing: [String], _ incoming: [String]) -> [String] {
+        let oldIDs = Set(existing), newIDs = Set(incoming)
+        if newIDs.isSubset(of: oldIDs) { return existing }
+        if oldIDs.isSubset(of: newIDs) { return incoming }
+        return oldIDs.union(newIDs).sorted()
+    }
+
+    private static func equivalent(_ stored: SyncConflict, _ incoming: SyncConflict) -> Bool {
+        func alternative(_ old: ConflictingValue, _ new: ConflictingValue) -> Bool {
+            old.versionID == new.versionID && old.value == new.value &&
+                old.deletionEvidence == new.deletionEvidence &&
+                Set(old.ancestorVersionIDs) == Set(new.ancestorVersionIDs)
+        }
+        return stored.entityType == incoming.entityType && stored.entityID == incoming.entityID &&
+            stored.fieldName == incoming.fieldName &&
+            alternative(stored.first, incoming.first) && alternative(stored.second, incoming.second)
+    }
+
     /// Marks an existing conflict resolved inside the caller's write transaction.
     /// The caller inserts the returned resolution into domain/outbox in the same closure.
     public static func resolve(_ conflict: SyncConflict, using mutation: SyncMutation, at timestampMS: Int64, in db: Database) throws {
@@ -218,7 +244,7 @@ public struct ConflictStore: Sendable {
             let storedFirst: Data = rows[0]["local_value"]
             let storedSecond: Data = rows[0]["remote_value"]
             let stored = try SyncConflict(entityType: conflict.entityType, entityID: conflict.entityID, fieldName: conflict.fieldName, first: JSONDecoder().decode(ConflictingValue.self, from: storedFirst), second: JSONDecoder().decode(ConflictingValue.self, from: storedSecond)).validated()
-            guard stored == conflict else { throw SyncMergeError.malformedMutation }
+            guard equivalent(stored, conflict) else { throw SyncMergeError.malformedMutation }
         } catch let error as SyncMergeError { throw error }
         catch { throw SyncMergeError.persistenceFailed }
         try db.execute(sql: "UPDATE conflicts SET resolved_at_ms = ? WHERE entity_type = ? AND entity_id = ? COLLATE NOCASE AND field_name = ? AND local_version_id = ? COLLATE NOCASE AND remote_version_id = ? COLLATE NOCASE AND resolved_at_ms IS NULL", arguments: [timestampMS, conflict.entityType, conflict.entityID, conflict.fieldName, conflict.first.versionID, conflict.second.versionID])

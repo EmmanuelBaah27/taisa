@@ -115,7 +115,7 @@ public enum MergeEngine {
             if let deletion {
                 let observed = Set(deletion.observedFieldVersions.filter { $0.name == name }.map(\.versionID))
                 for head in heads where !observed.contains(head.0.id) {
-                    conflicts.append(makeDeletionConflict(first: first, name: name, edit: head, deletions: deletions, evidence: deletion))
+                    conflicts.append(makeDeletionConflict(first: first, name: name, edit: head, deletions: deletions, evidence: deletion, known: unique))
                 }
             } else if heads.count == 1 {
                 winners.append(heads[0].1)
@@ -275,10 +275,24 @@ public enum MergeEngine {
         return SyncConflict(entityType: first.entityType, entityID: first.entityID, fieldName: name, first: pair.0, second: pair.1)
     }
 
-    private static func makeDeletionConflict(first: SyncMutation, name: String, edit: (SyncMutation, SyncField), deletions: [SyncMutation], evidence: SyncDeletionSummary) -> SyncConflict {
-        let lineage = Set(evidence.eventIDs + evidence.observedFieldVersions.map(\.versionID) + deletions.flatMap { $0.resolvedParentVersionIDs ?? [] }).subtracting([evidence.id]).sorted()
+    private static func makeDeletionConflict(first: SyncMutation, name: String, edit: (SyncMutation, SyncField), deletions: [SyncMutation], evidence: SyncDeletionSummary, known: [String: SyncMutation]) -> SyncConflict {
+        // Preserve the available field history of each observed edit before
+        // compaction. Record ordering and observations of unrelated fields are
+        // causal evidence, not authority to overwrite this field.
+        var lineage = Set(evidence.eventIDs + evidence.observedFieldVersions.map(\.versionID) + deletions.flatMap { $0.resolvedParentVersionIDs ?? [] })
+        for observed in evidence.observedFieldVersions {
+            var pending = [observed.versionID]
+            var seen: Set<String> = []
+            while let id = pending.popLast() {
+                guard seen.insert(id).inserted,
+                      let field = known[id]?.fields.first(where: { $0.name == observed.name }) else { continue }
+                lineage.formUnion(field.ancestorVersionIDs)
+                pending.append(contentsOf: field.ancestorVersionIDs)
+            }
+        }
+        lineage.remove(evidence.id)
         let edited = ConflictingValue(versionID: edit.0.id, ancestorVersionIDs: edit.1.ancestorVersionIDs, value: edit.1.value)
-        let deleted = ConflictingValue(versionID: evidence.id, ancestorVersionIDs: lineage, value: nil, deletionEvidence: evidence)
+        let deleted = ConflictingValue(versionID: evidence.id, ancestorVersionIDs: lineage.sorted(), value: nil, deletionEvidence: evidence)
         let pair = edited.versionID < deleted.versionID ? (edited, deleted) : (deleted, edited)
         return SyncConflict(entityType: first.entityType, entityID: first.entityID, fieldName: name, first: pair.0, second: pair.1)
     }

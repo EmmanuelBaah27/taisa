@@ -7,6 +7,7 @@ public enum SyncMergeError: Error, Sendable, Equatable, CustomStringConvertible 
     case identityMismatch
     case duplicateDeviceCounter
     case persistenceFailed
+    case alreadyResolved
 
     public var description: String {
         switch self {
@@ -15,6 +16,7 @@ public enum SyncMergeError: Error, Sendable, Equatable, CustomStringConvertible 
         case .identityMismatch: "Sync identity mismatch"
         case .duplicateDeviceCounter: "Duplicate device counter"
         case .persistenceFailed: "Sync persistence failed"
+        case .alreadyResolved: "Sync conflict already resolved"
         }
     }
 }
