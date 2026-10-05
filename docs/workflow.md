@@ -22,7 +22,7 @@ relevant to the task.
 | Shared chat and recording shell | Product | Build | `codex/chat-close-auth-handoff` | Baah paired-device QA after preview integration |
 | Glass elevation, alignment, and interaction feedback | Product | Review + QA | `fix/glass-elevation-keyboard-surfaces` | canonical preview integration + Baah device QA |
 | SwiftUI native rebuild | Platform + Product | Shipped | `main` | — |
-| Swift native encrypted storage, sync, and recovery | Platform | Build | `feature/swift-native-encrypted-sync` | Task 5 final review found a remaining compacted stale-ancestor merge defect; requires architecture decision before Task 6. Task 7 Apple Developer/CloudKit capability mutations remain separately gated. |
+| Swift native encrypted storage, sync, and recovery | Platform | Build | `feature/swift-native-encrypted-sync` | Baah approval for Apple Developer and CloudKit capability mutations at Task 7 |
 
 ---
 
