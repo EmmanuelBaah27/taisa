@@ -115,8 +115,7 @@ public enum MergeEngine {
             if let deletion {
                 let observed = Set(deletion.observedFieldVersions.filter { $0.name == name }.map(\.versionID))
                 for head in heads where !observed.contains(head.0.id) {
-                    let deleting = deletions[0]
-                    conflicts.append(makeConflict(first: first, name: name, a: head, b: (deleting, nil), deletionEvidence: deletion))
+                    conflicts.append(makeDeletionConflict(first: first, name: name, edit: head, deletions: deletions, evidence: deletion))
                 }
             } else if heads.count == 1 {
                 winners.append(heads[0].1)
@@ -152,11 +151,10 @@ public enum MergeEngine {
             let parents = parentIDs(of: event)
             for parentID in parents {
                 guard let parent = known[parentID] else { continue }
-                if parent.deviceID == event.deviceID && parent.counter >= event.counter { throw SyncMergeError.malformedMutation }
-                for inherited in parent.frontier.entries {
-                    if let observed = event.frontier.counter(for: inherited.deviceID), observed < inherited.counter { throw SyncMergeError.malformedMutation }
-                }
                 for observed in event.observedFieldVersions where observed.versionID == parentID {
+                    guard parent.fields.contains(where: { $0.name == observed.name }) else { throw SyncMergeError.malformedMutation }
+                }
+                for observed in event.retainedDeletionEvidence?.observedFieldVersions ?? [] where observed.versionID == parentID {
                     guard parent.fields.contains(where: { $0.name == observed.name }) else { throw SyncMergeError.malformedMutation }
                 }
                 if event.fields.contains(where: { $0.ancestorVersionIDs.contains(parentID) }) && event.kind != .resolve && parent.kind != .delete {
@@ -167,21 +165,47 @@ public enum MergeEngine {
             }
         }
         var active: Set<String> = []
-        var visited: Set<String> = []
-        func visit(_ event: SyncMutation) throws {
+        var effective: [String: VersionVector] = [:]
+        func visit(_ event: SyncMutation) throws -> VersionVector {
             if active.contains(event.id) { throw SyncMergeError.malformedMutation }
-            if visited.contains(event.id) { return }
+            if let cached = effective[event.id] { return cached }
             active.insert(event.id)
+            var inherited = event.retainedDeletionEvidence?.frontier
             let parents = parentIDs(of: event)
-            for parentID in parents { if let parent = known[parentID] { try visit(parent) } }
+            for parentID in parents {
+                guard let parent = known[parentID] else { continue }
+                let parentFrontier = try visit(parent)
+                if parent.deviceID == event.deviceID && parent.counter >= event.counter { throw SyncMergeError.malformedMutation }
+                inherited = inherited?.merged(with: parentFrontier) ?? parentFrontier
+            }
+            if let inherited {
+                for entry in inherited.entries {
+                    if let explicit = event.frontier.counter(for: entry.deviceID), explicit < entry.counter {
+                        throw SyncMergeError.malformedMutation
+                    }
+                }
+                if let own = inherited.counter(for: event.deviceID), own >= event.counter {
+                    throw SyncMergeError.malformedMutation
+                }
+            }
+            let closure = inherited.flatMap { event.frontier.merged(with: $0) } ?? event.frontier
             active.remove(event.id)
-            visited.insert(event.id)
+            effective[event.id] = closure
+            return closure
         }
-        for event in events { try visit(event) }
+        for event in events { _ = try visit(event) }
     }
 
     private static func parentIDs(of event: SyncMutation) -> Set<String> {
-        Set(event.fields.flatMap(\.ancestorVersionIDs) + event.observedFieldVersions.map(\.versionID) + (event.recordParentVersionID.map { [$0] } ?? []) + (event.resolvedParentVersionIDs ?? []))
+        var parents = Set(event.fields.flatMap(\.ancestorVersionIDs))
+        parents.formUnion(event.observedFieldVersions.map(\.versionID))
+        if let record = event.recordParentVersionID { parents.insert(record) }
+        parents.formUnion(event.resolvedParentVersionIDs ?? [])
+        if let retained = event.retainedDeletionEvidence {
+            parents.formUnion(retained.eventIDs)
+            parents.formUnion(retained.observedFieldVersions.map(\.versionID))
+        }
+        return parents
     }
 
     private static func descends(_ child: SyncMutation, from ancestorID: String, in known: [String: SyncMutation]) -> Bool {
@@ -244,10 +268,18 @@ public enum MergeEngine {
         return SyncDeletionSummary(id: orderedIDs[0], eventIDs: orderedIDs, timestampMS: latest, frontier: frontier, observedFieldVersions: observed.keys.sorted().flatMap { name in observed[name]!.sorted().map { SyncObservedField(name: name, versionID: $0) } })
     }
 
-    private static func makeConflict(first: SyncMutation, name: String, a: (SyncMutation, SyncField?), b: (SyncMutation, SyncField?), deletionEvidence: SyncDeletionSummary? = nil) -> SyncConflict {
+    private static func makeConflict(first: SyncMutation, name: String, a: (SyncMutation, SyncField?), b: (SyncMutation, SyncField?)) -> SyncConflict {
         let left = ConflictingValue(versionID: a.0.id, ancestorVersionIDs: a.1?.ancestorVersionIDs ?? a.0.resolvedParentVersionIDs ?? [], value: a.1?.value)
-        let right = ConflictingValue(versionID: b.0.id, ancestorVersionIDs: b.1?.ancestorVersionIDs ?? b.0.resolvedParentVersionIDs ?? [], value: b.1?.value, deletionEvidence: deletionEvidence)
+        let right = ConflictingValue(versionID: b.0.id, ancestorVersionIDs: b.1?.ancestorVersionIDs ?? b.0.resolvedParentVersionIDs ?? [], value: b.1?.value)
         let pair = left.versionID < right.versionID ? (left, right) : (right, left)
+        return SyncConflict(entityType: first.entityType, entityID: first.entityID, fieldName: name, first: pair.0, second: pair.1)
+    }
+
+    private static func makeDeletionConflict(first: SyncMutation, name: String, edit: (SyncMutation, SyncField), deletions: [SyncMutation], evidence: SyncDeletionSummary) -> SyncConflict {
+        let lineage = Set(evidence.eventIDs + evidence.observedFieldVersions.map(\.versionID) + deletions.flatMap { $0.resolvedParentVersionIDs ?? [] }).subtracting([evidence.id]).sorted()
+        let edited = ConflictingValue(versionID: edit.0.id, ancestorVersionIDs: edit.1.ancestorVersionIDs, value: edit.1.value)
+        let deleted = ConflictingValue(versionID: evidence.id, ancestorVersionIDs: lineage, value: nil, deletionEvidence: evidence)
+        let pair = edited.versionID < deleted.versionID ? (edited, deleted) : (deleted, edited)
         return SyncConflict(entityType: first.entityType, entityID: first.entityID, fieldName: name, first: pair.0, second: pair.1)
     }
 }

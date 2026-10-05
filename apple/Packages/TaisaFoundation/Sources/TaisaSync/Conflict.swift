@@ -117,26 +117,75 @@ public struct ConflictStore: Sendable {
     public static func persist(_ conflict: SyncConflict, at timestampMS: Int64, in db: Database) throws {
         let conflict = try conflict.validated()
         guard timestampMS >= 0 else { throw SyncMergeError.malformedMutation }
-        let first: Data
-        let second: Data
         do {
+            let rows = try Row.fetchAll(db, sql: "SELECT id, local_value, remote_value FROM conflicts WHERE entity_type = ? AND entity_id = ? COLLATE NOCASE AND field_name = ? AND local_version_id = ? COLLATE NOCASE AND remote_version_id = ? COLLATE NOCASE", arguments: [conflict.entityType, conflict.entityID, conflict.fieldName, conflict.first.versionID, conflict.second.versionID])
+            guard rows.count <= 1 else { throw SyncMergeError.persistenceFailed }
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.sortedKeys]
-            first = try encoder.encode(conflict.first)
-            second = try encoder.encode(conflict.second)
-        } catch { throw SyncMergeError.persistenceFailed }
-        do {
-            let rows = try Row.fetchAll(db, sql: "SELECT local_value, remote_value FROM conflicts WHERE entity_type = ? AND entity_id = ? COLLATE NOCASE AND field_name = ? AND local_version_id = ? COLLATE NOCASE AND remote_version_id = ? COLLATE NOCASE", arguments: [conflict.entityType, conflict.entityID, conflict.fieldName, conflict.first.versionID, conflict.second.versionID])
-            guard rows.count <= 1 else { throw SyncMergeError.persistenceFailed }
             if let row = rows.first {
                 let storedFirst: Data = row["local_value"]
                 let storedSecond: Data = row["remote_value"]
-                guard storedFirst == first, storedSecond == second else { throw SyncMergeError.persistenceFailed }
+                let stored = try SyncConflict(entityType: conflict.entityType, entityID: conflict.entityID, fieldName: conflict.fieldName, first: JSONDecoder().decode(ConflictingValue.self, from: storedFirst), second: JSONDecoder().decode(ConflictingValue.self, from: storedSecond)).validated()
+                let enriched = try enrich(stored, with: conflict)
+                let first = try encoder.encode(enriched.first)
+                let second = try encoder.encode(enriched.second)
+                if storedFirst != first || storedSecond != second {
+                    try db.execute(sql: "UPDATE conflicts SET local_value = ?, remote_value = ? WHERE id = ? AND local_value = ? AND remote_value = ? AND resolved_at_ms IS NULL", arguments: [first, second, row["id"] as String, storedFirst, storedSecond])
+                    guard db.changesCount == 1 else { throw SyncMergeError.persistenceFailed }
+                }
                 return
             }
+            let first = try encoder.encode(conflict.first)
+            let second = try encoder.encode(conflict.second)
             try db.execute(sql: "INSERT INTO conflicts (id, entity_type, entity_id, field_name, local_version_id, remote_version_id, local_value, remote_value, created_at_ms) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", arguments: [UUID().uuidString, conflict.entityType, conflict.entityID, conflict.fieldName, conflict.first.versionID, conflict.second.versionID, first, second, timestampMS])
         } catch let error as SyncMergeError { throw error }
         catch { throw SyncMergeError.persistenceFailed }
+    }
+
+    private static func enrich(_ stored: SyncConflict, with incoming: SyncConflict) throws -> SyncConflict {
+        guard stored.entityType == incoming.entityType, stored.entityID == incoming.entityID,
+              stored.fieldName == incoming.fieldName else { throw SyncMergeError.persistenceFailed }
+        func alternative(_ old: ConflictingValue, _ new: ConflictingValue) throws -> ConflictingValue {
+            guard old.versionID == new.versionID, old.value == new.value else { throw SyncMergeError.persistenceFailed }
+            let ancestry = Set(old.ancestorVersionIDs + new.ancestorVersionIDs).sorted()
+            let evidence: SyncDeletionSummary?
+            switch (old.deletionEvidence, new.deletionEvidence) {
+            case (nil, nil): evidence = nil
+            case (let existing?, nil): evidence = existing
+            case (nil, let added?): evidence = added
+            case (let existing?, let added?):
+                guard existing.id == added.id else { throw SyncMergeError.persistenceFailed }
+                func includes(_ richer: SyncDeletionSummary, _ poorer: SyncDeletionSummary) -> Bool {
+                    guard Set(poorer.eventIDs).isSubset(of: Set(richer.eventIDs)),
+                          richer.timestampMS >= poorer.timestampMS,
+                          Set(poorer.observedFieldVersions.map { "\($0.name):\($0.versionID)" }).isSubset(of: Set(richer.observedFieldVersions.map { "\($0.name):\($0.versionID)" })) else { return false }
+                    return poorer.frontier.entries.allSatisfy { entry in
+                        (richer.frontier.counter(for: entry.deviceID) ?? 0) >= entry.counter
+                    }
+                }
+                if existing.eventIDs == added.eventIDs {
+                    guard existing == added else { throw SyncMergeError.persistenceFailed }
+                    evidence = existing
+                } else {
+                    let oldIDs = Set(existing.eventIDs)
+                    let newIDs = Set(added.eventIDs)
+                    if oldIDs.isSubset(of: newIDs) && !includes(added, existing) { throw SyncMergeError.persistenceFailed }
+                    if newIDs.isSubset(of: oldIDs) && !includes(existing, added) { throw SyncMergeError.persistenceFailed }
+                    let ids = Array(Set(existing.eventIDs + added.eventIDs)).sorted()
+                    guard let frontier = existing.frontier.merged(with: added.frontier) else { throw SyncMergeError.persistenceFailed }
+                    var observations: [String: Set<String>] = [:]
+                    for item in existing.observedFieldVersions + added.observedFieldVersions {
+                        observations[item.name, default: []].insert(item.versionID)
+                    }
+                    let observed = observations.keys.sorted().flatMap { name in
+                        observations[name]!.sorted().map { SyncObservedField(name: name, versionID: $0) }
+                    }
+                    evidence = try SyncDeletionSummary(id: ids[0], eventIDs: ids, timestampMS: max(existing.timestampMS, added.timestampMS), frontier: frontier, observedFieldVersions: observed).validated()
+                }
+            }
+            return ConflictingValue(versionID: old.versionID, ancestorVersionIDs: ancestry, value: old.value, deletionEvidence: evidence)
+        }
+        return try SyncConflict(entityType: stored.entityType, entityID: stored.entityID, fieldName: stored.fieldName, first: alternative(stored.first, incoming.first), second: alternative(stored.second, incoming.second)).validated()
     }
 
     /// Marks an existing conflict resolved inside the caller's write transaction.
