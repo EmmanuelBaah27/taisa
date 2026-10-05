@@ -49,10 +49,12 @@ struct RepositoryCore<Record: DomainRecord>: Sendable {
     let spec: RepositorySpec
 
     func get(id: String) async throws -> Record? {
-        try validateID(id)
+        let id = try canonicalID(id)
         do {
             return try await store.read { db in
-                guard let row = try Row.fetchOne(db, sql: "SELECT * FROM \(spec.table) WHERE id = ? AND NOT EXISTS (SELECT 1 FROM tombstones WHERE entity_type = ? AND entity_id = ?)", arguments: [id, spec.entity, id]) else { return nil }
+                let matches = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM \(spec.table) WHERE id = ? COLLATE NOCASE", arguments: [id]) ?? 0
+                guard matches <= 1 else { throw RepositoryError.persistenceFailed }
+                guard let row = try Row.fetchOne(db, sql: "SELECT * FROM \(spec.table) WHERE id = ? COLLATE NOCASE AND NOT EXISTS (SELECT 1 FROM tombstones WHERE entity_type = ? AND entity_id = ? COLLATE NOCASE)", arguments: [id, spec.entity, id]) else { return nil }
                 return try decode(row)
             }
         } catch {
@@ -61,34 +63,40 @@ struct RepositoryCore<Record: DomainRecord>: Sendable {
     }
 
     func create(_ record: Record, context: MutationContext) async throws {
+        let record = try canonicalRecord(record), context = try canonicalContext(context)
         try validate(record: record, context: context)
         try await safeWrite { db in
             let fields = try properties(record)
+            let storedFields = try storageFields(fields, db: db)
             if try isDuplicate(context, entityID: record.id, operation: "create", record: record, db: db) { return }
-            guard try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM \(spec.table) WHERE id = ?", arguments: [record.id]) == 0 else { throw RepositoryError.alreadyExists }
+            guard try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM \(spec.table) WHERE id = ? COLLATE NOCASE", arguments: [record.id]) == 0 else { throw RepositoryError.alreadyExists }
             let columns = spec.fields.map(\.column)
             let placeholders = Array(repeating: "?", count: columns.count).joined(separator: ", ")
-            try db.execute(sql: "INSERT INTO \(spec.table) (\(columns.joined(separator: ", "))) VALUES (\(placeholders))", arguments: StatementArguments(columns.map { value(fields, for: $0) }))
+            try db.execute(sql: "INSERT INTO \(spec.table) (\(columns.joined(separator: ", "))) VALUES (\(placeholders))", arguments: StatementArguments(columns.map { value(storedFields, for: $0) }))
             let causality = try versions(fields: fields, previous: [:], id: record.id, context: context, db: db)
             try ChangeJournal.insert(db: db, context: context, entity: spec.entity, entityID: record.id, operation: "create", record: record, causality: causality)
         }
     }
 
     func update(_ record: Record, context: MutationContext) async throws {
+        let record = try canonicalRecord(record), context = try canonicalContext(context)
         guard !spec.appendOnly else { throw RepositoryError.immutableRecord }
         try validate(record: record, context: context)
         try await safeWrite { db in
             let fields = try properties(record)
+            let storedFields = try storageFields(fields, db: db)
             if try isDuplicate(context, entityID: record.id, operation: "update", record: record, db: db) { return }
-            guard let row = try Row.fetchOne(db, sql: "SELECT * FROM \(spec.table) WHERE id = ?", arguments: [record.id]),
+            let matches = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM \(spec.table) WHERE id = ? COLLATE NOCASE", arguments: [record.id]) ?? 0
+            guard matches <= 1 else { throw RepositoryError.persistenceFailed }
+            guard let row = try Row.fetchOne(db, sql: "SELECT * FROM \(spec.table) WHERE id = ? COLLATE NOCASE", arguments: [record.id]),
                   try !isDeleted(record.id, db: db) else { throw RepositoryError.notFound }
             let old = try properties(decode(row))
             for key in spec.immutable where !equal(fields[key], old[key]) { throw RepositoryError.immutableRecord }
             let changed = spec.fields.filter { $0.property != "id" && !equal(fields[$0.property], old[$0.property]) }
             if !changed.isEmpty {
                 let assignments = changed.map { "\($0.column) = ?" }.joined(separator: ", ")
-                let args = changed.map { value(fields, for: $0.column) } + [record.id.databaseValue]
-                try db.execute(sql: "UPDATE \(spec.table) SET \(assignments) WHERE id = ?", arguments: StatementArguments(args))
+                let args = changed.map { value(storedFields, for: $0.column) } + [record.id.databaseValue]
+                try db.execute(sql: "UPDATE \(spec.table) SET \(assignments) WHERE id = ? COLLATE NOCASE", arguments: StatementArguments(args))
             }
             let causality = try versions(fields: fields, previous: old, id: record.id, context: context, db: db)
             try ChangeJournal.insert(db: db, context: context, entity: spec.entity, entityID: record.id, operation: "update", record: record, causality: causality)
@@ -96,10 +104,11 @@ struct RepositoryCore<Record: DomainRecord>: Sendable {
     }
 
     func delete(id: String, context: MutationContext) async throws {
+        let id = try canonicalID(id), context = try canonicalContext(context)
         try validateID(id); try validate(context)
         try await safeWrite { db in
             if try isDuplicate(context, entityID: id, operation: "delete", record: Optional<Record>.none, db: db) { return }
-            guard try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM \(spec.table) WHERE id = ?", arguments: [id]) == 1,
+            guard try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM \(spec.table) WHERE id = ? COLLATE NOCASE", arguments: [id]) == 1,
                   try !isDeleted(id, db: db) else { throw RepositoryError.notFound }
             let causality = try versions(fields: [:], previous: [:], id: id, context: context, db: db)
             try db.execute(sql: "INSERT INTO tombstones (id, entity_type, entity_id, deletion_version_id, deleted_at_ms) VALUES (?, ?, ?, ?, ?)", arguments: [UUID().uuidString, spec.entity, id, context.id, context.timestamp])
@@ -118,17 +127,19 @@ struct RepositoryCore<Record: DomainRecord>: Sendable {
     }
 
     private func isDeleted(_ id: String, db: Database) throws -> Bool {
-        try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM tombstones WHERE entity_type = ? AND entity_id = ?", arguments: [spec.entity, id]) == 1
+        try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM tombstones WHERE entity_type = ? AND entity_id = ? COLLATE NOCASE", arguments: [spec.entity, id]) == 1
     }
 
     private func isDuplicate(_ context: MutationContext, entityID: String, operation: String, record: Record?, db: Database) throws -> Bool {
-        guard let row = try Row.fetchOne(db, sql: "SELECT entity_type, entity_id, payload FROM outbox WHERE mutation_id = ?", arguments: [context.id]) else { return false }
+        let matches = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM outbox WHERE mutation_id = ? COLLATE NOCASE", arguments: [context.id]) ?? 0
+        guard matches <= 1 else { throw RepositoryError.persistenceFailed }
+        guard let row = try Row.fetchOne(db, sql: "SELECT entity_type, entity_id, payload FROM outbox WHERE mutation_id = ? COLLATE NOCASE", arguments: [context.id]) else { return false }
         let storedPayload: Data = row["payload"]
         let causality = try ChangeJournal.causality(from: storedPayload)
         let payload = try ChangeJournal.canonicalPayload(context: context, entity: spec.entity, entityID: entityID, operation: operation, record: record, causality: causality)
         guard (row["entity_type"] as String) == spec.entity,
-              (row["entity_id"] as String) == entityID,
-              storedPayload == payload else { throw RepositoryError.mutationCollision }
+              try canonicalID(row["entity_id"] as String) == entityID,
+              try ChangeJournal.normalizedPayload(storedPayload).data == ChangeJournal.normalizedPayload(payload).data else { throw RepositoryError.mutationCollision }
         return true
     }
 
@@ -142,12 +153,50 @@ struct RepositoryCore<Record: DomainRecord>: Sendable {
     }
 
     private func validateID(_ id: String) throws {
-        guard id.count == 36, UUID(uuidString: id) != nil else { throw RepositoryError.invalidIdentifier }
+        _ = try canonicalID(id)
+    }
+
+    private func canonicalID(_ id: String) throws -> String {
+        guard let canonical = UUIDIdentity.canonical(id) else { throw RepositoryError.invalidIdentifier }
+        return canonical
+    }
+
+    private func canonicalContext(_ context: MutationContext) throws -> MutationContext {
+        MutationContext(id: try canonicalID(context.id), deviceID: try canonicalID(context.deviceID), timestamp: context.timestamp)
+    }
+
+    private func canonicalRecord(_ record: Record) throws -> Record {
+        let data = try JSONEncoder().encode(record)
+        guard var object = try JSONSerialization.jsonObject(with: data) as? [String: Any] else { throw RepositoryError.persistenceFailed }
+        for (property, _) in spec.fields where property == "id" || property.hasSuffix("ID") {
+            if let raw = object[property] as? String { object[property] = try canonicalID(raw) }
+        }
+        return try JSONDecoder().decode(Record.self, from: JSONSerialization.data(withJSONObject: object))
     }
 
     private func properties(_ record: Record) throws -> [String: Any] {
         let data = try JSONEncoder().encode(record)
         return try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]
+    }
+
+    private func storageFields(_ fields: [String: Any], db: Database) throws -> [String: Any] {
+        let references: [(String, String)]
+        switch spec.entity {
+        case "message": references = [("conversationID", "conversations")]
+        case "milestone": references = [("goalID", "goals")]
+        case "action": references = [("goalID", "goals")]
+        case "evidence": references = [("goalID", "goals"), ("actionID", "actions")]
+        case "source": references = [("memoryItemID", "memory_items")]
+        default: references = []
+        }
+        var stored = fields
+        for (property, table) in references {
+            guard let canonical = fields[property] as? String else { continue }
+            let matches = try String.fetchAll(db, sql: "SELECT id FROM \(table) WHERE id = ? COLLATE NOCASE", arguments: [canonical])
+            guard matches.count <= 1 else { throw RepositoryError.persistenceFailed }
+            if let existing = matches.first { stored[property] = existing }
+        }
+        return stored
     }
 
     private func decode(_ row: Row) throws -> Record {
@@ -158,7 +207,7 @@ struct RepositoryCore<Record: DomainRecord>: Sendable {
             else if let text = String.fromDatabaseValue(value) { object[property] = text }
             else if let integer = Int64.fromDatabaseValue(value) { object[property] = integer }
         }
-        return try JSONDecoder().decode(Record.self, from: JSONSerialization.data(withJSONObject: object))
+        return try canonicalRecord(JSONDecoder().decode(Record.self, from: JSONSerialization.data(withJSONObject: object)))
     }
 
     private func value(_ fields: [String: Any], for column: String) -> DatabaseValue {
@@ -180,7 +229,7 @@ struct RepositoryCore<Record: DomainRecord>: Sendable {
 
     private func versions(fields: [String: Any], previous: [String: Any], id: String, context: MutationContext, db: Database) throws -> CausalSnapshot {
         let recordParent = try latestVersion(field: "__record", id: id, db: db)
-        let previousCounter = try Int64.fetchOne(db, sql: "SELECT MAX(device_counter) FROM field_versions WHERE device_id = ?", arguments: [context.deviceID]) ?? 0
+        let previousCounter = try Int64.fetchOne(db, sql: "SELECT MAX(device_counter) FROM field_versions WHERE device_id = ? COLLATE NOCASE", arguments: [context.deviceID]) ?? 0
         let (counter, overflow) = previousCounter.addingReportingOverflow(1)
         guard !overflow else { throw RepositoryError.persistenceFailed }
         var observed: [ObservedFieldVersion] = []
@@ -195,7 +244,7 @@ struct RepositoryCore<Record: DomainRecord>: Sendable {
             var seen: Set<String> = []
             while let version = cursor, seen.insert(version).inserted {
                 ancestors.append(version)
-                cursor = try String.fetchOne(db, sql: "SELECT parent_version_id FROM field_versions WHERE entity_type = ? AND entity_id = ? AND field_name = ? AND version_id = ? ORDER BY rowid DESC LIMIT 1", arguments: [spec.entity, id, property, version])
+                cursor = try String.fetchOne(db, sql: "SELECT parent_version_id FROM field_versions WHERE entity_type = ? AND entity_id = ? COLLATE NOCASE AND field_name = ? AND version_id = ? COLLATE NOCASE ORDER BY rowid DESC LIMIT 1", arguments: [spec.entity, id, property, version]).map { try canonicalID($0) }
             }
             try db.execute(sql: "INSERT INTO field_versions (id, entity_type, entity_id, field_name, version_id, parent_version_id, device_id, device_counter, updated_at_ms) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", arguments: [UUID().uuidString, spec.entity, id, property, context.id, parent, context.deviceID, counter, context.timestamp])
             changed.append(FieldCausalVersion(fieldName: property, versionID: context.id, parentVersionID: parent, ancestorVersionIDs: ancestors, deviceCounter: counter))
@@ -205,6 +254,6 @@ struct RepositoryCore<Record: DomainRecord>: Sendable {
     }
 
     private func latestVersion(field: String, id: String, db: Database) throws -> String? {
-        try String.fetchOne(db, sql: "SELECT version_id FROM field_versions WHERE entity_type = ? AND entity_id = ? AND field_name = ? ORDER BY rowid DESC LIMIT 1", arguments: [spec.entity, id, field])
+        try String.fetchOne(db, sql: "SELECT version_id FROM field_versions WHERE entity_type = ? AND entity_id = ? COLLATE NOCASE AND field_name = ? ORDER BY rowid DESC LIMIT 1", arguments: [spec.entity, id, field]).map { try canonicalID($0) }
     }
 }
