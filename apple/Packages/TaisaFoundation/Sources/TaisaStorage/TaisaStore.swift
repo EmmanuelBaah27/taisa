@@ -5,13 +5,17 @@ import GRDB
 /// concurrency boundary, so callers must return Sendable data, never a GRDB row.
 public final class TaisaStore: Sendable {
     private let queue: DatabaseQueue
+    private let lifecycle: StoreLifecycle
 
     private struct SourceGeneration: Equatable {
         let dataVersion: Int
         let fileIDs: [String: UInt64]
     }
 
-    private init(queue: DatabaseQueue) { self.queue = queue }
+    private init(queue: DatabaseQueue, lifecycle: StoreLifecycle) {
+        self.queue = queue
+        self.lifecycle = lifecycle
+    }
 
     public static func open(
         at url: URL,
@@ -25,7 +29,27 @@ public final class TaisaStore: Sendable {
     static func open(
         at url: URL,
         keyStore: any DatabaseKeyStore,
-        afterValidation: @Sendable () async throws -> Void
+        afterValidation: @Sendable () async throws -> Void,
+        afterGeneration: @Sendable () async throws -> Void = {}
+    ) async throws -> TaisaStore {
+        let lifecycle = await StoreLifecycleRegistry.shared.lifecycle(for: url)
+        return try await lifecycle.exclusive {
+            try await openUnderLifecycle(
+                at: url,
+                keyStore: keyStore,
+                lifecycle: lifecycle,
+                afterValidation: afterValidation,
+                afterGeneration: afterGeneration
+            )
+        }
+    }
+
+    private static func openUnderLifecycle(
+        at url: URL,
+        keyStore: any DatabaseKeyStore,
+        lifecycle: StoreLifecycle,
+        afterValidation: @Sendable () async throws -> Void,
+        afterGeneration: @Sendable () async throws -> Void
     ) async throws -> TaisaStore {
         // This decision precedes any key creation. Missing Keychain material for
         // an existing file is a recovery state, never permission to replace it.
@@ -148,6 +172,22 @@ public final class TaisaStore: Sendable {
                 throw StorageError.integrityFailed
             }
         }
+        try await afterGeneration()
+        // This is the validation publication point for TaisaStore writers:
+        // every supported open/write for this canonical path holds the same
+        // lifecycle ownership, so none can change the source before return.
+        // Independently keyed SQLite writers are outside that contract; a
+        // commit already completed here is detected without opening the
+        // original writable, but later arbitrary commits cannot be excluded.
+        if let sourceGeneration {
+            guard try generation(of: validationQueue, at: url) == sourceGeneration else {
+                throw StorageError.integrityFailed
+            }
+            guard try TaisaMigrator.preflight(validationQueue) == version,
+                  try generation(of: validationQueue, at: url) == sourceGeneration else {
+                throw StorageError.integrityFailed
+            }
+        }
         let queue: DatabaseQueue
         if existed {
             configuration.readonly = false
@@ -174,7 +214,7 @@ public final class TaisaStore: Sendable {
         } catch {
             throw StorageError.configurationFailed
         }
-        return TaisaStore(queue: queue)
+        return TaisaStore(queue: queue, lifecycle: lifecycle)
     }
 
     private static func generation(of queue: DatabaseQueue, at url: URL) throws -> SourceGeneration {
@@ -214,6 +254,53 @@ public final class TaisaStore: Sendable {
     public func write<Value: Sendable>(
         _ body: @Sendable (Database) throws -> Value
     ) async throws -> Value {
-        try await queue.write(body)
+        try await lifecycle.exclusive {
+            try await queue.write(body)
+        }
+    }
+}
+
+/// Process-local ownership for the supported TaisaStore open/write lifecycle.
+/// Callers must use one canonical URL for a store; independent SQLite handles
+/// and external filesystem replacement are not participants in this gate.
+private actor StoreLifecycleRegistry {
+    static let shared = StoreLifecycleRegistry()
+    private var lifecycles: [String: StoreLifecycle] = [:]
+
+    func lifecycle(for url: URL) -> StoreLifecycle {
+        let path = url.standardizedFileURL.resolvingSymlinksInPath().path
+        if let lifecycle = lifecycles[path] { return lifecycle }
+        let lifecycle = StoreLifecycle()
+        lifecycles[path] = lifecycle
+        return lifecycle
+    }
+}
+
+private actor StoreLifecycle {
+    private var occupied = false
+    private var waiters: [CheckedContinuation<Void, Never>] = []
+
+    func exclusive<Value: Sendable>(
+        _ body: @Sendable () async throws -> Value
+    ) async throws -> Value {
+        await acquire()
+        defer { release() }
+        return try await body()
+    }
+
+    private func acquire() async {
+        if !occupied {
+            occupied = true
+            return
+        }
+        await withCheckedContinuation { waiters.append($0) }
+    }
+
+    private func release() {
+        if waiters.isEmpty {
+            occupied = false
+        } else {
+            waiters.removeFirst().resume()
+        }
     }
 }

@@ -336,6 +336,33 @@ import Testing
         #expect(try await otherWriter.read { db in try !db.tableExists("messages") })
     }
 
+    @Test func schemaChangeAfterGenerationCheckCannotBePublished() async throws {
+        let fixture = try MigrationFixture()
+        defer { fixture.remove() }
+        _ = try await TaisaStore.open(at: fixture.url, keyStore: fixture.keys)
+        let restarted = try fixture.restartCopy()
+        let otherWriter = try fixture.makeKeyedQueue(at: restarted)
+        let mutation = MigrationSnapshotRecorder()
+        await #expect(throws: StorageError.integrityFailed) {
+            try await TaisaStore.open(
+                at: restarted,
+                keyStore: fixture.keys,
+                afterValidation: {},
+                afterGeneration: {
+                    try await otherWriter.write { db in try db.execute(sql: "DROP TABLE messages") }
+                    try otherWriter.close()
+                    try await mutation.record(fixture.fileSnapshot(at: restarted))
+                }
+            )
+        }
+        let afterMutation = await mutation.snapshot
+        #expect(afterMutation?.durableBytes["-wal"]?.isEmpty == false)
+        #expect(try fixture.fileSnapshot(at: restarted) == afterMutation)
+        #expect(try await fixture.keys.loadKey() == fixture.key)
+        let check = try fixture.makeKeyedQueue(at: restarted, readonly: true)
+        #expect(try await check.read { db in try !db.tableExists("messages") })
+    }
+
     @Test func soleConnectionOrphanWalIsRejectedWithoutCheckpoint() async throws {
         let fixture = try MigrationFixture()
         defer { fixture.remove() }
