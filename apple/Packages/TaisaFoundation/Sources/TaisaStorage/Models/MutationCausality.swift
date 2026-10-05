@@ -18,9 +18,21 @@ public struct ObservedFieldVersion: Codable, Sendable, Equatable {
 public struct CausalSnapshot: Codable, Sendable, Equatable {
     public let logicalVersionID: String
     public let recordParentVersionID: String?
+    /// Additional parents of an explicit conflict resolution. Nil in legacy snapshots.
+    public let resolvedParentVersionIDs: [String]?
     public let deviceID: String
     public let deviceCounter: Int64
     public let changedFields: [FieldCausalVersion]
     /// The local field frontier before this mutation, including a deletion.
     public let observedFieldVersions: [ObservedFieldVersion]
+
+    public init(logicalVersionID: String, recordParentVersionID: String?, resolvedParentVersionIDs: [String]? = nil, deviceID: String, deviceCounter: Int64, changedFields: [FieldCausalVersion], observedFieldVersions: [ObservedFieldVersion]) {
+        self.logicalVersionID = logicalVersionID
+        self.recordParentVersionID = recordParentVersionID
+        self.resolvedParentVersionIDs = resolvedParentVersionIDs
+        self.deviceID = deviceID
+        self.deviceCounter = deviceCounter
+        self.changedFields = changedFields
+        self.observedFieldVersions = observedFieldVersions
+    }
 }

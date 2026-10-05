@@ -25,6 +25,20 @@ public struct VersionVector: Codable, Sendable, Equatable {
         return entries.first { UUID(uuidString: $0.deviceID) == identity }?.counter
     }
 
+    public func merged(with other: VersionVector) -> VersionVector? {
+        guard isValid, other.isValid else { return nil }
+        var values: [String: Int64] = [:]
+        for entry in entries + other.entries {
+            let key = UUID(uuidString: entry.deviceID)!.uuidString
+            values[key] = max(values[key] ?? 0, entry.counter)
+        }
+        return VersionVector(entries: values.keys.sorted().map { DeviceCounter(deviceID: $0, counter: values[$0]!) })
+    }
+
+    func canonicalized() -> VersionVector {
+        VersionVector(entries: entries.map { DeviceCounter(deviceID: UUID(uuidString: $0.deviceID)!.uuidString, counter: $0.counter) }.sorted { $0.deviceID < $1.deviceID })
+    }
+
     /// Strict acknowledgement: equality still permits replay of the deletion.
     public func isBeyond(_ other: VersionVector) -> Bool {
         guard isValid, other.isValid, !other.entries.isEmpty else { return false }
@@ -32,6 +46,9 @@ public struct VersionVector: Codable, Sendable, Equatable {
         for entry in other.entries {
             guard let acknowledged = counter(for: entry.deviceID), acknowledged >= entry.counter else { return false }
             advanced = advanced || acknowledged > entry.counter
+        }
+        for entry in entries where other.counter(for: entry.deviceID) == nil {
+            advanced = advanced || entry.counter > 0
         }
         return advanced
     }

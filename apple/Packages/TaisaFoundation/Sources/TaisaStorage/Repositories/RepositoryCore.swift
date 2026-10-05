@@ -277,9 +277,24 @@ struct RepositoryCore<Record: DomainRecord>: Sendable {
                   !equal(fields[property], previous[property]) else { continue }
             var ancestors: [String] = []
             var cursor = parent
-            var seen: Set<String> = []
-            while let version = cursor, seen.insert(version).inserted {
-                ancestors.append(version)
+            var walked: Set<String> = []
+            var listed: Set<String> = []
+            while let version = cursor, walked.insert(version).inserted {
+                if listed.insert(version).inserted { ancestors.append(version) }
+                // A resolution may have multiple parents. The v1 field_versions
+                // row records its immediate parent; the committed journal
+                // snapshot retains the remaining transitive branches.
+                if let payload = try Data.fetchOne(db, sql: "SELECT payload FROM outbox WHERE mutation_id = ? COLLATE NOCASE AND entity_type = ? AND entity_id = ? COLLATE NOCASE", arguments: [version, spec.entity, id]) {
+                    let snapshot = try ChangeJournal.causality(from: payload)
+                    guard try canonicalID(snapshot.logicalVersionID) == version else { throw RepositoryError.persistenceFailed }
+                    if let field = snapshot.changedFields.first(where: { $0.fieldName == property }) {
+                        guard try canonicalID(field.versionID) == version else { throw RepositoryError.persistenceFailed }
+                        for raw in field.ancestorVersionIDs {
+                            let ancestor = try canonicalID(raw)
+                            if listed.insert(ancestor).inserted { ancestors.append(ancestor) }
+                        }
+                    }
+                }
                 cursor = try String.fetchOne(db, sql: "SELECT parent_version_id FROM field_versions WHERE entity_type = ? AND entity_id = ? COLLATE NOCASE AND field_name = ? AND version_id = ? COLLATE NOCASE ORDER BY rowid DESC LIMIT 1", arguments: [spec.entity, id, property, version]).map { try canonicalID($0) }
             }
             try db.execute(sql: "INSERT INTO field_versions (id, entity_type, entity_id, field_name, version_id, parent_version_id, device_id, device_counter, updated_at_ms) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", arguments: [UUID().uuidString, spec.entity, id, property, context.id, parent, context.deviceID, counter, context.timestamp])

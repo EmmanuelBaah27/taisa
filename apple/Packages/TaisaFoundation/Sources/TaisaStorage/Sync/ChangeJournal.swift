@@ -225,6 +225,12 @@ public struct ChangeJournal: Sendable {
             object["record"] = record
         }
         for key in ["logicalVersionID", "recordParentVersionID", "deviceID"] { try normalize(key, in: &causal) }
+        if let parents = causal["resolvedParentVersionIDs"] as? [String] {
+            causal["resolvedParentVersionIDs"] = try parents.map { raw in
+                guard let value = UUIDIdentity.canonical(raw) else { throw RepositoryError.persistenceFailed }
+                return value
+            }
+        }
         if var fields = causal["changedFields"] as? [[String: Any]] {
             for index in fields.indices {
                 try normalize("versionID", in: &fields[index])
@@ -289,6 +295,7 @@ public struct ChangeJournal: Sendable {
         try CausalSnapshot(
             logicalVersionID: requiredID(snapshot.logicalVersionID),
             recordParentVersionID: snapshot.recordParentVersionID.map { try requiredID($0) },
+            resolvedParentVersionIDs: try snapshot.resolvedParentVersionIDs?.map { try requiredID($0) },
             deviceID: requiredID(snapshot.deviceID),
             deviceCounter: snapshot.deviceCounter,
             changedFields: snapshot.changedFields.map { field in
