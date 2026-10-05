@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - Support iOS 17+, iPhone and iPad; use iOS 26 Passwords APIs only behind `#available` and provide a manual-save confirmation flow on older supported systems.
-- The accepted native foundation at `321edf8` is the required predecessor; do not merge this work ahead of that foundation.
+- The shipped native foundation at `444d239` is the required predecessor; do not merge this work ahead of that foundation.
 - Never write private content, keys, recovery material, plaintext entity IDs, titles, messages, or transcripts to CloudKit metadata, logs, diagnostics, notifications, screenshots, or test artifacts.
 - The device SQLCipher key is random, Keychain-protected, and never synchronized; the random vault key is separately wrapped by recovery-key-derived material.
 - Use only CryptoKit and SQLCipher cryptographic primitives; no custom cipher, nonce construction, or password-based KDF.
