@@ -246,6 +246,10 @@ public struct ChangeJournal: Sendable {
                 for index in fields.indices { try normalize("versionID", in: &fields[index]) }
                 retained["observedFieldVersions"] = fields
             }
+            if let raw = retained["fieldAncestry"], !(raw is NSNull) {
+                guard let map = raw as? [String: [String]] else { throw RepositoryError.persistenceFailed }
+                retained["fieldAncestry"] = try canonicalFieldAncestry(map)
+            }
             causal["retainedDeletionCausality"] = retained
         }
         if var fields = causal["changedFields"] as? [[String: Any]] {
@@ -314,7 +318,7 @@ public struct ChangeJournal: Sendable {
             recordParentVersionID: snapshot.recordParentVersionID.map { try requiredID($0) },
             resolvedParentVersionIDs: try snapshot.resolvedParentVersionIDs?.map { try requiredID($0) },
             retainedDeletionCausality: try snapshot.retainedDeletionCausality.map { retained in
-                RetainedDeletionCausality(versionIDs: try retained.versionIDs.map { try requiredID($0) }, latestDeletedAtMS: retained.latestDeletedAtMS, frontier: try retained.frontier.map { CausalDeviceCounter(deviceID: try requiredID($0.deviceID), counter: $0.counter) }, observedFieldVersions: try retained.observedFieldVersions.map { ObservedFieldVersion(fieldName: $0.fieldName, versionID: try requiredID($0.versionID)) })
+                RetainedDeletionCausality(versionIDs: try retained.versionIDs.map { try requiredID($0) }, latestDeletedAtMS: retained.latestDeletedAtMS, frontier: try retained.frontier.map { CausalDeviceCounter(deviceID: try requiredID($0.deviceID), counter: $0.counter) }, observedFieldVersions: try retained.observedFieldVersions.map { ObservedFieldVersion(fieldName: $0.fieldName, versionID: try requiredID($0.versionID)) }, fieldAncestry: try canonicalFieldAncestry(retained.fieldAncestry))
             },
             deviceID: requiredID(snapshot.deviceID),
             deviceCounter: snapshot.deviceCounter,
@@ -325,6 +329,18 @@ public struct ChangeJournal: Sendable {
                 try ObservedFieldVersion(fieldName: field.fieldName, versionID: requiredID(field.versionID))
             }
         )
+    }
+
+    static func canonicalFieldAncestry(_ source: [String: [String]]?) throws -> [String: [String]]? {
+        guard let source, !source.isEmpty else { return nil }
+        var result: [String: [String]] = [:]
+        for (name, raw) in source {
+            guard !name.isEmpty, name != "__record", !raw.isEmpty else { throw RepositoryError.persistenceFailed }
+            let ids = try raw.map { try requiredID($0) }
+            guard Set(ids).count == ids.count else { throw RepositoryError.persistenceFailed }
+            result[name] = ids.sorted()
+        }
+        return result
     }
 
     private static func reservationMarker(id: String, expiresAtMS: Int64) -> String {

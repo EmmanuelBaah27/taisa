@@ -22,6 +22,38 @@ public struct SyncDeletionSummary: Codable, Sendable, Equatable {
     public let timestampMS: Int64
     public let frontier: VersionVector
     public let observedFieldVersions: [SyncObservedField]
+    public let fieldAncestry: [String: [String]]?
+
+    public init(id: String, eventIDs: [String], timestampMS: Int64, frontier: VersionVector, observedFieldVersions: [SyncObservedField], fieldAncestry: [String: [String]]? = nil) {
+        self.id = id
+        self.eventIDs = eventIDs
+        self.timestampMS = timestampMS
+        self.frontier = frontier
+        self.observedFieldVersions = observedFieldVersions
+        self.fieldAncestry = fieldAncestry
+    }
+
+    static func canonicalFieldAncestry(_ source: [String: [String]]?) throws -> [String: [String]]? {
+        guard let source, !source.isEmpty else { return nil }
+        var result: [String: [String]] = [:]
+        for (name, raw) in source {
+            guard !name.isEmpty, name != "__record", !raw.isEmpty else { throw SyncMergeError.malformedMutation }
+            let ids = try raw.map { value in
+                guard let id = UUID(uuidString: value)?.uuidString else { throw SyncMergeError.malformedMutation }
+                return id
+            }
+            guard Set(ids).count == ids.count else { throw SyncMergeError.malformedMutation }
+            result[name] = ids.sorted()
+        }
+        return result
+    }
+
+    func retaining(field: String, ancestry: [String]) throws -> SyncDeletionSummary {
+        var map = fieldAncestry ?? [:]
+        let ids = Set((map[field] ?? []) + ancestry).subtracting(eventIDs)
+        if !ids.isEmpty { map[field] = ids.sorted() }
+        return try SyncDeletionSummary(id: id, eventIDs: eventIDs, timestampMS: timestampMS, frontier: frontier, observedFieldVersions: observedFieldVersions, fieldAncestry: map).validated()
+    }
 
     func validated() throws -> SyncDeletionSummary {
         guard let key = UUID(uuidString: id)?.uuidString,
@@ -30,7 +62,7 @@ public struct SyncDeletionSummary: Codable, Sendable, Equatable {
               Set(eventIDs.compactMap { UUID(uuidString: $0) }).count == eventIDs.count,
               eventIDs.contains(where: { UUID(uuidString: $0) == UUID(uuidString: id) }),
               observedFieldVersions.allSatisfy({ !$0.name.isEmpty && UUID(uuidString: $0.versionID) != nil }) else { throw SyncMergeError.malformedMutation }
-        return SyncDeletionSummary(id: key, eventIDs: eventIDs.map { UUID(uuidString: $0)!.uuidString }.sorted(), timestampMS: timestampMS, frontier: frontier.canonicalized(), observedFieldVersions: observedFieldVersions.map { SyncObservedField(name: $0.name, versionID: UUID(uuidString: $0.versionID)!.uuidString) }.sorted { ($0.name, $0.versionID) < ($1.name, $1.versionID) })
+        return try SyncDeletionSummary(id: key, eventIDs: eventIDs.map { UUID(uuidString: $0)!.uuidString }.sorted(), timestampMS: timestampMS, frontier: frontier.canonicalized(), observedFieldVersions: observedFieldVersions.map { SyncObservedField(name: $0.name, versionID: UUID(uuidString: $0.versionID)!.uuidString) }.sorted { ($0.name, $0.versionID) < ($1.name, $1.versionID) }, fieldAncestry: Self.canonicalFieldAncestry(fieldAncestry))
     }
 }
 
@@ -100,7 +132,7 @@ public enum MergeEngine {
         }
 
         let deletions = ordered.filter { $0.kind == .delete && !isSuperseded($0, by: ordered) }
-        let deletion = try summarize(deletions)
+        let deletion = try summarize(deletions, known: unique)
         let fieldNames = Set(ordered.flatMap { $0.fields.map(\.name) }).sorted()
         var winners: [SyncField] = []
         var conflicts: [SyncConflict] = []
@@ -115,7 +147,9 @@ public enum MergeEngine {
             if let deletion {
                 let observed = Set(deletion.observedFieldVersions.filter { $0.name == name }.map(\.versionID))
                 for head in heads where !observed.contains(head.0.id) {
-                    conflicts.append(makeDeletionConflict(first: first, name: name, edit: head, deletions: deletions, evidence: deletion, known: unique))
+                    let unresolved = deletion.eventIDs.filter { !fieldDescends(head.1, name: name, from: $0, in: unique) }
+                    guard let representative = unresolved.first else { continue }
+                    conflicts.append(try makeDeletionConflict(first: first, name: name, edit: head, deletionID: representative, evidence: deletion).validated())
                 }
             } else if heads.count == 1 {
                 winners.append(heads[0].1)
@@ -156,6 +190,9 @@ public enum MergeEngine {
                 }
                 for observed in event.retainedDeletionEvidence?.observedFieldVersions ?? [] where observed.versionID == parentID {
                     guard parent.fields.contains(where: { $0.name == observed.name }) else { throw SyncMergeError.malformedMutation }
+                }
+                for (name, ids) in event.retainedDeletionEvidence?.fieldAncestry ?? [:] where ids.contains(parentID) && parent.kind != .delete {
+                    guard parent.fields.contains(where: { $0.name == name }) else { throw SyncMergeError.malformedMutation }
                 }
                 if event.fields.contains(where: { $0.ancestorVersionIDs.contains(parentID) }) && event.kind != .resolve && parent.kind != .delete {
                     for field in event.fields where field.ancestorVersionIDs.contains(parentID) {
@@ -204,6 +241,7 @@ public enum MergeEngine {
         if let retained = event.retainedDeletionEvidence {
             parents.formUnion(retained.eventIDs)
             parents.formUnion(retained.observedFieldVersions.map(\.versionID))
+            parents.formUnion((retained.fieldAncestry ?? [:]).values.flatMap { $0 })
         }
         return parents
     }
@@ -243,11 +281,12 @@ public enum MergeEngine {
         }
     }
 
-    private static func summarize(_ deletions: [SyncMutation]) throws -> SyncDeletionSummary? {
+    private static func summarize(_ deletions: [SyncMutation], known: [String: SyncMutation]) throws -> SyncDeletionSummary? {
         guard let first = deletions.first else { return nil }
         var frontier = first.frontier
         var observed: [String: Set<String>] = [:]
         var eventIDs: Set<String> = []
+        var fieldAncestry: [String: Set<String>] = [:]
         var latest = first.timestampMS
         for event in deletions {
             eventIDs.insert(event.id)
@@ -262,10 +301,31 @@ public enum MergeEngine {
                 guard let inheritedFrontier = frontier.merged(with: inherited.frontier) else { throw SyncMergeError.malformedMutation }
                 frontier = inheritedFrontier
                 for field in inherited.observedFieldVersions { observed[field.name, default: []].insert(field.versionID) }
+                for (name, ids) in inherited.fieldAncestry ?? [:] { fieldAncestry[name, default: []].formUnion(ids) }
+            }
+            // Legacy keep-deletion snapshots have one selected field and an
+            // untagged parent list. Attribute that list only to the selected
+            // field, never to observations inherited from other fields.
+            if event.observedFieldVersions.count == 1, let name = event.observedFieldVersions.first?.name {
+                fieldAncestry[name, default: []].formUnion(event.resolvedParentVersionIDs ?? [])
             }
         }
+        for (name, versions) in observed {
+            var pending = Array(versions)
+            var seen: Set<String> = []
+            while let id = pending.popLast() {
+                guard seen.insert(id).inserted,
+                      let field = known[id]?.fields.first(where: { $0.name == name }) else { continue }
+                fieldAncestry[name, default: []].formUnion(field.ancestorVersionIDs)
+                pending.append(contentsOf: field.ancestorVersionIDs)
+            }
+        }
+        let retainedFields = fieldAncestry.reduce(into: [String: [String]]()) { result, pair in
+            let ids = pair.value.subtracting(eventIDs)
+            if !ids.isEmpty { result[pair.key] = ids.sorted() }
+        }
         let orderedIDs = eventIDs.sorted()
-        return SyncDeletionSummary(id: orderedIDs[0], eventIDs: orderedIDs, timestampMS: latest, frontier: frontier, observedFieldVersions: observed.keys.sorted().flatMap { name in observed[name]!.sorted().map { SyncObservedField(name: name, versionID: $0) } })
+        return SyncDeletionSummary(id: orderedIDs[0], eventIDs: orderedIDs, timestampMS: latest, frontier: frontier, observedFieldVersions: observed.keys.sorted().flatMap { name in observed[name]!.sorted().map { SyncObservedField(name: name, versionID: $0) } }, fieldAncestry: retainedFields.isEmpty ? nil : retainedFields)
     }
 
     private static func makeConflict(first: SyncMutation, name: String, a: (SyncMutation, SyncField?), b: (SyncMutation, SyncField?)) -> SyncConflict {
@@ -275,24 +335,15 @@ public enum MergeEngine {
         return SyncConflict(entityType: first.entityType, entityID: first.entityID, fieldName: name, first: pair.0, second: pair.1)
     }
 
-    private static func makeDeletionConflict(first: SyncMutation, name: String, edit: (SyncMutation, SyncField), deletions: [SyncMutation], evidence: SyncDeletionSummary, known: [String: SyncMutation]) -> SyncConflict {
-        // Preserve the available field history of each observed edit before
+    private static func makeDeletionConflict(first: SyncMutation, name: String, edit: (SyncMutation, SyncField), deletionID: String, evidence: SyncDeletionSummary) -> SyncConflict {
+        // Preserve the available history of this field's observed edits before
         // compaction. Record ordering and observations of unrelated fields are
         // causal evidence, not authority to overwrite this field.
-        var lineage = Set(evidence.eventIDs + evidence.observedFieldVersions.map(\.versionID) + deletions.flatMap { $0.resolvedParentVersionIDs ?? [] })
-        for observed in evidence.observedFieldVersions {
-            var pending = [observed.versionID]
-            var seen: Set<String> = []
-            while let id = pending.popLast() {
-                guard seen.insert(id).inserted,
-                      let field = known[id]?.fields.first(where: { $0.name == observed.name }) else { continue }
-                lineage.formUnion(field.ancestorVersionIDs)
-                pending.append(contentsOf: field.ancestorVersionIDs)
-            }
-        }
-        lineage.remove(evidence.id)
+        let observations = evidence.observedFieldVersions.filter { $0.name == name }
+        var lineage = Set(evidence.eventIDs + observations.map(\.versionID) + (evidence.fieldAncestry?[name] ?? []))
+        lineage.remove(deletionID)
         let edited = ConflictingValue(versionID: edit.0.id, ancestorVersionIDs: edit.1.ancestorVersionIDs, value: edit.1.value)
-        let deleted = ConflictingValue(versionID: evidence.id, ancestorVersionIDs: lineage.sorted(), value: nil, deletionEvidence: evidence)
+        let deleted = ConflictingValue(versionID: deletionID, ancestorVersionIDs: lineage.sorted(), value: nil, deletionEvidence: evidence)
         let pair = edited.versionID < deleted.versionID ? (edited, deleted) : (deleted, edited)
         return SyncConflict(entityType: first.entityType, entityID: first.entityID, fieldName: name, first: pair.0, second: pair.1)
     }

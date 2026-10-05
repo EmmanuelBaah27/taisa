@@ -294,10 +294,20 @@ struct RepositoryCore<Record: DomainRecord>: Sendable {
                     let snapshot = try ChangeJournal.causality(from: payload)
                     guard try canonicalID(snapshot.logicalVersionID) == version else { throw RepositoryError.persistenceFailed }
                     let matching = snapshot.changedFields.filter { $0.fieldName == property }
-                    guard matching.count == 1, let field = matching.first,
-                          try canonicalID(field.versionID) == version,
-                          field.deviceCounter == snapshot.deviceCounter else { throw RepositoryError.persistenceFailed }
-                    for raw in field.ancestorVersionIDs {
+                    guard matching.count <= 1 else { throw RepositoryError.persistenceFailed }
+                    let retained = snapshot.retainedDeletionCausality?.fieldAncestry?[property] ?? []
+                    let historicalParents: [String]
+                    if let field = matching.first {
+                        guard try canonicalID(field.versionID) == version,
+                              field.deviceCounter == snapshot.deviceCounter else { throw RepositoryError.persistenceFailed }
+                        historicalParents = field.ancestorVersionIDs + retained
+                    } else {
+                        guard !retained.isEmpty,
+                              let object = try JSONSerialization.jsonObject(with: payload) as? [String: Any],
+                              object["operation"] as? String == "delete" else { throw RepositoryError.persistenceFailed }
+                        historicalParents = retained
+                    }
+                    for raw in historicalParents {
                         let ancestor = try canonicalID(raw)
                         if listed.insert(ancestor).inserted { ancestors.append(ancestor) }
                     }

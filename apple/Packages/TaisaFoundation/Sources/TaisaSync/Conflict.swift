@@ -48,7 +48,8 @@ public struct SyncConflict: Codable, Sendable, Equatable {
         guard (conflict.first.value == nil) != (conflict.second.value == nil) else { throw SyncMergeError.malformedMutation }
         let edit = conflict.first.value == nil ? conflict.second : conflict.first
         let deletion = conflict.first.value == nil ? conflict.first : conflict.second
-        let mutation = SyncMutation(id: mutationID, entityType: conflict.entityType, entityID: conflict.entityID, entityVersion: 1, deviceID: deviceID, counter: counter, timestampMS: timestampMS, kind: .delete, fields: [], observedFieldVersions: [SyncObservedField(name: conflict.fieldName, versionID: edit.versionID)], recordParentVersionID: conflict.first.versionID, resolvedParentVersionIDs: conflict.ancestry, retainedDeletionEvidence: deletion.deletionEvidence)
+        let retained = try deletion.deletionEvidence?.retaining(field: conflict.fieldName, ancestry: conflict.ancestry)
+        let mutation = SyncMutation(id: mutationID, entityType: conflict.entityType, entityID: conflict.entityID, entityVersion: 1, deviceID: deviceID, counter: counter, timestampMS: timestampMS, kind: .delete, fields: [], observedFieldVersions: [SyncObservedField(name: conflict.fieldName, versionID: edit.versionID)], recordParentVersionID: conflict.first.versionID, resolvedParentVersionIDs: conflict.ancestry, retainedDeletionEvidence: retained)
         try mutation.validate()
         return mutation.canonicalized()
     }
@@ -75,7 +76,9 @@ public struct SyncConflict: Codable, Sendable, Equatable {
             guard Set(ancestors).count == ancestors.count else { throw SyncMergeError.malformedMutation }
             guard source.value == nil || source.deletionEvidence == nil else { throw SyncMergeError.malformedMutation }
             let evidence = try source.deletionEvidence?.validated()
-            if let evidence { guard evidence.eventIDs.contains(id) else { throw SyncMergeError.malformedMutation } }
+            if let evidence {
+                guard evidence.eventIDs.contains(id), (evidence.fieldAncestry ?? [:]).keys.allSatisfy(allowed.contains) else { throw SyncMergeError.malformedMutation }
+            }
             return ConflictingValue(versionID: id, ancestorVersionIDs: ancestors, value: source.value, deletionEvidence: evidence)
         }
         let a = try canonical(first, id: firstID)
@@ -169,8 +172,9 @@ public struct ConflictStore: Sendable {
                     }
                 }
                 if existing.eventIDs == added.eventIDs {
-                    guard existing == added else { throw SyncMergeError.persistenceFailed }
-                    evidence = existing
+                    guard existing.id == added.id, existing.timestampMS == added.timestampMS,
+                          existing.frontier == added.frontier, existing.observedFieldVersions == added.observedFieldVersions else { throw SyncMergeError.persistenceFailed }
+                    evidence = SyncDeletionSummary(id: existing.id, eventIDs: existing.eventIDs, timestampMS: existing.timestampMS, frontier: existing.frontier, observedFieldVersions: existing.observedFieldVersions, fieldAncestry: mergeFieldAncestry(existing.fieldAncestry, added.fieldAncestry))
                 } else {
                     let oldIDs = Set(existing.eventIDs)
                     let newIDs = Set(added.eventIDs)
@@ -185,12 +189,18 @@ public struct ConflictStore: Sendable {
                     let observed = observations.keys.sorted().flatMap { name in
                         observations[name]!.sorted().map { SyncObservedField(name: name, versionID: $0) }
                     }
-                    evidence = try SyncDeletionSummary(id: ids[0], eventIDs: ids, timestampMS: max(existing.timestampMS, added.timestampMS), frontier: frontier, observedFieldVersions: observed).validated()
+                    evidence = try SyncDeletionSummary(id: ids[0], eventIDs: ids, timestampMS: max(existing.timestampMS, added.timestampMS), frontier: frontier, observedFieldVersions: observed, fieldAncestry: mergeFieldAncestry(existing.fieldAncestry, added.fieldAncestry)).validated()
                 }
             }
             return ConflictingValue(versionID: old.versionID, ancestorVersionIDs: ancestry, value: old.value, deletionEvidence: evidence)
         }
         return try SyncConflict(entityType: stored.entityType, entityID: stored.entityID, fieldName: stored.fieldName, first: alternative(stored.first, incoming.first), second: alternative(stored.second, incoming.second)).validated()
+    }
+
+    private static func mergeFieldAncestry(_ first: [String: [String]]?, _ second: [String: [String]]?) -> [String: [String]]? {
+        var map = first ?? [:]
+        for (name, ids) in second ?? [:] { map[name] = Set((map[name] ?? []) + ids).sorted() }
+        return map.isEmpty ? nil : map
     }
 
     /// Ancestry identifies known parents; array position is not a causal edge.
@@ -235,7 +245,7 @@ public struct ConflictStore: Sendable {
             let edited = conflict.first.value == nil ? conflict.second : conflict.first
             let deleting = conflict.first.value == nil ? conflict.first : conflict.second
             guard mutation.observedFieldVersions.contains(where: { $0.name == conflict.fieldName && $0.versionID == edited.versionID }),
-                  mutation.retainedDeletionEvidence == deleting.deletionEvidence else { throw SyncMergeError.malformedMutation }
+                  mutation.retainedDeletionEvidence == (try deleting.deletionEvidence?.retaining(field: conflict.fieldName, ancestry: conflict.ancestry)) else { throw SyncMergeError.malformedMutation }
         default: throw SyncMergeError.malformedMutation
         }
         do {

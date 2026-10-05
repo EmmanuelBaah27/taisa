@@ -31,12 +31,15 @@ public struct RetainedDeletionCausality: Codable, Sendable, Equatable {
     public let latestDeletedAtMS: Int64
     public let frontier: [CausalDeviceCounter]
     public let observedFieldVersions: [ObservedFieldVersion]
+    /// Field-tagged ancestry retained through compaction. Nil in legacy payloads.
+    public let fieldAncestry: [String: [String]]?
 
-    public init(versionIDs: [String], latestDeletedAtMS: Int64, frontier: [CausalDeviceCounter], observedFieldVersions: [ObservedFieldVersion]) {
+    public init(versionIDs: [String], latestDeletedAtMS: Int64, frontier: [CausalDeviceCounter], observedFieldVersions: [ObservedFieldVersion], fieldAncestry: [String: [String]]? = nil) {
         self.versionIDs = versionIDs
         self.latestDeletedAtMS = latestDeletedAtMS
         self.frontier = frontier
         self.observedFieldVersions = observedFieldVersions
+        self.fieldAncestry = fieldAncestry
     }
 }
 
