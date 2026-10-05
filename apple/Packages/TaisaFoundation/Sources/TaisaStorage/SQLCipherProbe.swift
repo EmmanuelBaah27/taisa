@@ -25,10 +25,13 @@ public enum SQLCipherProbe {
             throw SQLCipherProbeError.databaseMissing
         }
 
+        // SQLCipher treats bare key bytes as a passphrase and runs PBKDF2.
+        // The x'<64 hex>' form selects the documented 32-byte raw-key path.
+        let rawKey = Data(("x'" + key.map { String(format: "%02x", $0) }.joined() + "'").utf8)
         var configuration = Configuration()
         configuration.prepareDatabase { database in
             // SQLCipher must receive the bytes before any page or schema is read.
-            try database.usePassphrase(key)
+            try database.usePassphrase(rawKey)
         }
 
         let queue: DatabaseQueue

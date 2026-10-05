@@ -13,6 +13,36 @@ import Testing
     #expect(!result.fileBytes.contains(Data("PRIVATE-CANARY".utf8)))
 }
 
+@Test func opensDatabaseKeyedIndependentlyWithSQLCipherRawKey() throws {
+    let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let databaseURL = directory.appendingPathComponent("raw-key.sqlite")
+    let canary = "RAW-KEY-CANARY"
+
+    // This fixture is keyed with SQLCipher's documented PRAGMA syntax,
+    // independently of the probe's Data-to-raw-key conversion.
+    do {
+        var configuration = Configuration()
+        configuration.prepareDatabase { database in
+            try database.execute(
+                sql: "PRAGMA key = \"x'000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f'\""
+            )
+        }
+        let queue = try DatabaseQueue(path: databaseURL.path, configuration: configuration)
+        try queue.write { database in
+            try database.execute(sql: "CREATE TABLE secret (value TEXT NOT NULL)")
+            try database.execute(sql: "INSERT INTO secret (value) VALUES (?)", arguments: [canary])
+        }
+    }
+
+    let key = Data((0..<32).map { UInt8($0) })
+    let runtime = try SQLCipherProbe.verify(databaseURL: databaseURL, key: key)
+    let fileBytes = try Data(contentsOf: databaseURL)
+    #expect(!runtime.cipherVersion.isEmpty)
+    #expect(!fileBytes.contains(Data(canary.utf8)))
+}
+
 @Test func invalidKeyLengthFailsClosed() throws {
     let databaseURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
     #expect(throws: SQLCipherProbeError.invalidKeyLength) {
@@ -45,11 +75,12 @@ private extension SQLCipherProbe {
         defer { try? FileManager.default.removeItem(at: directory) }
         let databaseURL = directory.appendingPathComponent("encrypted.sqlite")
         let key = Data(repeating: 0xA5, count: 32)
+        let rawKeyStatement = "PRAGMA key = \"x'\(String(repeating: "a5", count: 32))'\""
 
         do {
             var configuration = Configuration()
             configuration.prepareDatabase { database in
-                try database.usePassphrase(key)
+                try database.execute(sql: rawKeyStatement)
             }
             let queue = try DatabaseQueue(path: databaseURL.path, configuration: configuration)
             try queue.write { database in
@@ -61,7 +92,7 @@ private extension SQLCipherProbe {
         let runtime = try verify(databaseURL: databaseURL, key: key)
         var reopenConfiguration = Configuration()
         reopenConfiguration.prepareDatabase { database in
-            try database.usePassphrase(key)
+            try database.execute(sql: rawKeyStatement)
         }
         let reopened = try DatabaseQueue(path: databaseURL.path, configuration: reopenConfiguration)
         let reopenedCanary = try reopened.read { database in
