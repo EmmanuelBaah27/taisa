@@ -21,6 +21,7 @@ relevant to the task.
 | Recording page | Product | Review + QA | `feature/secondary-icon-button` | Baah device QA |
 | Shared chat and recording shell | Product | Build | `codex/chat-close-auth-handoff` | Baah paired-device QA after preview integration |
 | Glass elevation, alignment, and interaction feedback | Product | Review + QA | `fix/glass-elevation-keyboard-surfaces` | canonical preview integration + Baah device QA |
+| SwiftUI native rebuild | Platform + Product | Review + QA | `feature/swift-native-foundation` | Baah Ship approval |
 
 ---
 
@@ -116,6 +117,10 @@ dependency stage. If not yet in BUILD:
 1. DS layer → `mobile/src/components/ui/` (NativeWind, typed props, no business logic)
 2. Screen layer → imports only from `mobile/src/components/ui/`, no inline primitive styles
 
+For the approved SwiftUI native-rebuild program, the equivalent order is:
+1. Native DS layer → `apple/DesignSystem/` (typed semantic tokens and components, no business logic)
+2. Native feature layer → consumes `apple/DesignSystem/`; raw visual values require a documented, verified exception
+
 **Token check before BUILD:**
 - Tokens defined → proceed normally
 - Tokens partial → proceed, mark gaps `// TOKEN-TBD: needs <value>`, refine at REVIEW
@@ -128,7 +133,11 @@ dependency stage. If not yet in BUILD:
 ### 5. Review + QA
 **Who:** Claude (`requesting-code-review` + `verification-before-completion`) + Baah (device QA)
 
-**Canonical phone preview:** Only Metro started from `.worktrees/preview-taisa/mobile` on `preview/taisa` may own port `8082` for device QA. Before Beats is asked to device-QA any feature, integrate that feature's committed work into `preview/taisa`; feature worktrees remain isolated implementation environments and are not device-QA targets.
+**Canonical React Native preview:** Only Metro started from `.worktrees/preview-taisa/mobile` on `preview/taisa` may own port `8082` for React Native device QA. Before Baah is asked to device-QA any React Native feature, integrate that feature's committed work into `preview/taisa`; feature worktrees remain isolated implementation environments and are not device-QA targets.
+
+**Canonical native Apple preview:** SwiftUI device feedback is authoritative only from a signed build record containing the native Git commit, Xcode build number, bundle identifier, distribution/TestFlight version, backend environment, database schema version, parity-catalog revision, and confirmation that the tested device installed that exact build. A simulator, Xcode Preview, or feature worktree is not a device-QA target.
+
+Signed native records are stored in `docs/migration/swiftui/native-builds.md` and validated by `apple/scripts/record-signed-build.mjs`. Development and preview builds use isolated bundle identifiers and must never replace the production React Native app during migration.
 
 **Verification matrix:**
 
@@ -138,6 +147,9 @@ dependency stage. If not yet in BUILD:
 | Shared types | Shared type-check/build + affected backend tests |
 | Mobile logic | Mobile TypeScript check + relevant available tests |
 | Mobile UI | Mobile TypeScript check + DS compliance + relevant Storybook checks + device QA |
+| Native Apple logic | Swift build + relevant Swift Testing/XCTest suites |
+| Native Apple UI | Swift build + native DS compliance + preview/snapshot checks + exact signed-build device QA |
+| Native Apple cross-stack | Backend tests/build + shared contract fixtures + Swift build/tests + exact signed-build device QA |
 | Cross-stack | Backend tests/build + shared checks + mobile TypeScript check |
 | Docs/workflow | Path/link consistency + workflow verification + clean diff |
 
@@ -148,6 +160,12 @@ Run the narrowest relevant check throughout BUILD, then run the complete applica
 - [ ] No `StyleSheet.create()` in new or changed files
 - [ ] New DS components: typed + exported props, documented in `docs/design-system.md`
 - [ ] No business logic inside DS components
+
+**Native Apple DS compliance check (blocks PR if any fail):**
+- [ ] Product views consume typed components/tokens from `apple/DesignSystem/`
+- [ ] Raw visual values have a narrow documented exception and verification coverage
+- [ ] New native DS components expose typed semantic APIs and preview states
+- [ ] No business logic, networking, persistence, or navigation inside native DS components
 
 **If build fails QA:**
 1. Baah notes specific failures in chat.

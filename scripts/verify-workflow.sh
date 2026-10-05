@@ -14,7 +14,7 @@ test -f docs/project-memory.md || fail "project memory index is missing"
 test -f docs/decisions/README.md || fail "decision record guide is missing"
 test -f docs/decisions/0001-use-repository-native-project-memory.md || fail "initial project memory decision is missing"
 test -f docs/learnings.md || fail "reusable learning log is missing"
-test "$(git remote get-url origin)" = "https://github.com/EmmanuelBaah27/taisa.git" || fail "origin does not use the canonical Taisa URL"
+node scripts/canonical-origin.mjs "$(git remote get-url origin)" || fail "origin does not use the canonical Taisa URL"
 
 rg -q 'main.*only permanent branch|only permanent branch.*main' docs/workflow.md || fail "canonical main policy is missing"
 rg -q '<type>/<short-kebab-case-description>' docs/workflow.md || fail "typed branch naming policy is missing"
@@ -33,6 +33,8 @@ rg -q 'Closeout' docs/workflow.md || fail "workflow closeout rule is missing"
 rg -q 'memory-promotion check' docs/workflow.md || fail "workflow memory promotion rule is missing"
 rg -q 'Closeout' .claude/skills/taisa-workflow/SKILL.md || fail "orchestrator closeout rule is missing"
 rg -q 'memory-promotion check' .claude/skills/taisa-workflow/SKILL.md || fail "orchestrator memory promotion rule is missing"
+test -f .github/workflows/native-apple.yml || fail "native Apple CI workflow is missing"
+rg -q 'npm run verify:native-apple:all' .github/workflows/native-apple.yml || fail "CI does not enforce complete native Apple verification"
 
 verify_local_markdown_links() {
   local source target clean_target resolved
@@ -62,6 +64,7 @@ old_repo_slug='taisa'"-os"
 old_workspace_name='Taisa'"-OS"
 old_repo_path="EmmanuelBaah27/${old_repo_slug}"
 stale_refs="$({ git grep -n -I -e "$old_repo_slug" -e "$old_workspace_name" -e "$old_repo_path" -- . \
+  ':!docs/migration/swiftui/baseline-manifest.json' \
   ':!docs/superpowers/specs/2026-08-09-rename-project-taisa-design.md' \
   ':!docs/superpowers/plans/2026-08-09-rename-project-taisa.md' || true; })"
 test -z "$stale_refs" || {

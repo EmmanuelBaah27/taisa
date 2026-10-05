@@ -1,0 +1,17 @@
+{
+  "candidateCommit": "c72eef6f7e5fba4d2607d45ebfe4a166b3ea8ac7",
+  "installedCommit": "c72eef6f7e5fba4d2607d45ebfe4a166b3ea8ac7",
+  "dirty": false,
+  "xcodeVersion": "26.1.1",
+  "xcodeBuild": "17B100",
+  "appBuildNumber": "1",
+  "bundleIdentifier": "com.taisa.app.dev",
+  "environment": "development",
+  "contractRevision": "transcription-fixtures-v1",
+  "deviceName": "Beat's iPad — iPad Pro 11-inch (4th generation)",
+  "deviceIdentifier": "00008112-000C25CA0107401E",
+  "operatingSystem": "iOS 26.6.1 (23G83)",
+  "installed": true,
+  "launched": true,
+  "testerConfirmation": "Baah confirmed the development shell, centered layout, and exact diagnostics on 2026-10-04."
+}
