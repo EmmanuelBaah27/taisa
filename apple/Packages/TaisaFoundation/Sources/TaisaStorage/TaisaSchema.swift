@@ -4,9 +4,15 @@ enum TaisaSchema {
     static let currentVersion = 1
 
     static func createVersion1(in db: Database) throws {
+        for statement in statements { try db.execute(sql: statement) }
+    }
+
+    // The stored DDL is also the canonical v1 integrity contract. Comparing it
+    // on reopen catches removed FKs, checks, PKs, types, and unique constraints
+    // even when the table still has every expected column name.
+    private static let statements: [String] = [
         // IDs are opaque UUID strings; every persisted time is UTC milliseconds.
         // This database-only schema deliberately has no audio path or URI column.
-        let statements = [
             """
             CREATE TABLE profile (
                 id TEXT PRIMARY KEY NOT NULL CHECK (length(id) = 36),
@@ -220,9 +226,7 @@ enum TaisaSchema {
             "CREATE INDEX outbox_pending ON outbox(status, created_at_ms)",
             "CREATE INDEX tombstones_by_date ON tombstones(deleted_at_ms)",
             "CREATE INDEX snapshots_by_date ON snapshot_manifests(created_at_ms)",
-        ]
-        for statement in statements { try db.execute(sql: statement) }
-    }
+    ]
 
     static func validateVersion1(in db: Database) throws {
         let requiredColumns: [String: Set<String>] = [
@@ -251,6 +255,15 @@ enum TaisaSchema {
                 guard try db.tableExists(table) else { throw StorageError.schemaMismatch }
                 let actual = Set(try db.columns(in: table).map(\.name))
                 guard actual == expected else { throw StorageError.schemaMismatch }
+            }
+            for statement in statements where statement.hasPrefix("CREATE TABLE ") {
+                let name = String(statement.split(separator: " ", maxSplits: 3)[2])
+                let stored = try String.fetchOne(
+                    db,
+                    sql: "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?",
+                    arguments: [name]
+                )
+                guard stored == statement else { throw StorageError.schemaMismatch }
             }
         } catch {
             throw StorageError.schemaMismatch

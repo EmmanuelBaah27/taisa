@@ -38,21 +38,53 @@ public final class TaisaStore: Sendable {
         let rawKey = Data(("x'" + key.map { String(format: "%02x", $0) }.joined() + "'").utf8)
         var configuration = Configuration()
         configuration.foreignKeysEnabled = true
+        configuration.readonly = existed
         configuration.prepareDatabase { db in
             try db.usePassphrase(rawKey)
         }
 
-        let queue: DatabaseQueue
+        // An existing source is opened read-only so rejection cannot checkpoint
+        // its pending WAL. SQLite's online backup yields a consistent view of
+        // main + WAL in a disposable encrypted file for full integrity checks.
+        let validationQueue: DatabaseQueue
         do {
-            queue = try DatabaseQueue(path: url.path, configuration: configuration)
+            validationQueue = try DatabaseQueue(path: url.path, configuration: configuration)
         } catch let error as DatabaseError where error.resultCode == .SQLITE_NOTADB {
             throw StorageError.authenticationFailed
         } catch {
             throw StorageError.openFailed
         }
 
+        let inspectionQueue: DatabaseQueue
+        var validationDirectory: URL?
+        defer {
+            if let validationDirectory {
+                try? FileManager.default.removeItem(at: validationDirectory)
+            }
+        }
+        if existed {
+            let directory = FileManager.default.temporaryDirectory
+                .appendingPathComponent("taisa-validation-\(UUID().uuidString)")
+            do {
+                try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: false)
+                validationDirectory = directory
+                var copyConfiguration = configuration
+                copyConfiguration.readonly = false
+                let copy = try DatabaseQueue(
+                    path: directory.appendingPathComponent("inspection.sqlite").path,
+                    configuration: copyConfiguration
+                )
+                try validationQueue.backup(to: copy)
+                inspectionQueue = copy
+            } catch {
+                throw StorageError.integrityFailed
+            }
+        } else {
+            inspectionQueue = validationQueue
+        }
+
         do {
-            try await queue.read { db in
+            try await inspectionQueue.read { db in
                 guard let cipherVersion = try String.fetchOne(db, sql: "PRAGMA cipher_version"),
                       !cipherVersion.isEmpty else {
                     throw StorageError.cipherUnavailable
@@ -79,7 +111,21 @@ public final class TaisaStore: Sendable {
             throw StorageError.integrityFailed
         }
 
-        try TaisaMigrator.migrate(queue)
+        let version = try TaisaMigrator.preflight(inspectionQueue)
+        let queue: DatabaseQueue
+        if existed {
+            configuration.readonly = false
+            do {
+                queue = try DatabaseQueue(path: url.path, configuration: configuration)
+            } catch let error as DatabaseError where error.resultCode == .SQLITE_NOTADB {
+                throw StorageError.authenticationFailed
+            } catch {
+                throw StorageError.openFailed
+            }
+        } else {
+            queue = validationQueue
+        }
+        try TaisaMigrator.migrate(queue, from: version)
         do {
             try await queue.writeWithoutTransaction { db in
                 let journalMode = try String.fetchOne(db, sql: "PRAGMA journal_mode = WAL")
