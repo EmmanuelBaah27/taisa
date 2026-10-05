@@ -212,6 +212,8 @@ enum TaisaSchema {
             "CREATE INDEX milestones_by_goal ON milestones(goal_id)",
             "CREATE INDEX actions_by_goal_status ON actions(goal_id, status)",
             "CREATE INDEX evidence_by_date ON evidence(occurred_at_ms)",
+            "CREATE INDEX evidence_by_goal ON evidence(goal_id)",
+            "CREATE INDEX evidence_by_action ON evidence(action_id)",
             "CREATE INDEX memory_sources_by_source ON memory_sources(source_type, source_id)",
             "CREATE INDEX field_versions_by_field ON field_versions(entity_type, entity_id, field_name)",
             "CREATE INDEX conflicts_unresolved ON conflicts(resolved_at_ms)",
@@ -220,5 +222,38 @@ enum TaisaSchema {
             "CREATE INDEX snapshots_by_date ON snapshot_manifests(created_at_ms)",
         ]
         for statement in statements { try db.execute(sql: statement) }
+    }
+
+    static func validateVersion1(in db: Database) throws {
+        let requiredColumns: [String: Set<String>] = [
+            "profile": ["id", "display_name", "headline", "biography", "updated_at_ms"],
+            "conversations": ["id", "title", "created_at_ms", "updated_at_ms"],
+            "messages": ["id", "conversation_id", "role", "body", "created_at_ms"],
+            "goals": ["id", "title", "detail", "status", "created_at_ms", "updated_at_ms"],
+            "milestones": ["id", "goal_id", "title", "status", "target_at_ms", "updated_at_ms"],
+            "actions": ["id", "goal_id", "title", "detail", "status", "due_at_ms", "created_at_ms", "updated_at_ms"],
+            "evidence": ["id", "goal_id", "action_id", "title", "detail", "occurred_at_ms", "created_at_ms"],
+            "memory_items": ["id", "kind", "content", "status", "created_at_ms", "updated_at_ms"],
+            "memory_sources": ["id", "memory_item_id", "source_type", "source_id", "created_at_ms"],
+            "sync_devices": ["id", "vault_id", "registration_envelope", "acknowledged_counter", "registered_at_ms", "removed_at_ms"],
+            "field_versions": ["id", "entity_type", "entity_id", "field_name", "version_id", "parent_version_id", "device_id", "device_counter", "updated_at_ms"],
+            "conflicts": ["id", "entity_type", "entity_id", "field_name", "local_version_id", "remote_version_id", "local_value", "remote_value", "created_at_ms", "resolved_at_ms"],
+            "outbox": ["id", "mutation_id", "entity_type", "entity_id", "payload", "status", "retry_category", "attempts", "created_at_ms", "acknowledged_at_ms"],
+            "inbox_quarantine": ["id", "envelope_id", "ciphertext", "reason_code", "received_at_ms"],
+            "tombstones": ["id", "entity_type", "entity_id", "deletion_version_id", "deleted_at_ms"],
+            "sync_state": ["id", "vault_id", "account_fingerprint", "change_token", "engine_state", "updated_at_ms"],
+            "vault_metadata": ["id", "vault_id", "key_version", "wrapped_key", "algorithm", "updated_at_ms"],
+            "snapshot_manifests": ["id", "vault_id", "source_device_id", "schema_version", "envelope_version", "manifest", "archive_digest", "archive_size_bytes", "created_at_ms"],
+            "migration_state": ["version", "applied_at_ms"],
+        ]
+        do {
+            for (table, expected) in requiredColumns {
+                guard try db.tableExists(table) else { throw StorageError.schemaMismatch }
+                let actual = Set(try db.columns(in: table).map(\.name))
+                guard actual == expected else { throw StorageError.schemaMismatch }
+            }
+        } catch {
+            throw StorageError.schemaMismatch
+        }
     }
 }

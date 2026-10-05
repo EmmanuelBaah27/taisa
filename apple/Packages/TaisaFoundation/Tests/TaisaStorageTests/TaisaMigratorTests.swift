@@ -75,6 +75,112 @@ import Testing
         let count = try await store.read { db in try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM field_versions") }
         #expect(count == 2)
     }
+
+    @Test func existingOrphanRowIsRejectedWithoutRepair() async throws {
+        let fixture = try MigrationFixture()
+        defer { fixture.remove() }
+        _ = try await TaisaStore.open(at: fixture.url, keyStore: fixture.keys)
+        let raw = try fixture.makeKeyedQueue(foreignKeysEnabled: false)
+        try await raw.write { db in
+            try db.execute(
+                sql: "INSERT INTO messages (id, conversation_id, role, body, created_at_ms) VALUES (?, ?, 'user', 'orphan', 1)",
+                arguments: [UUID().uuidString, UUID().uuidString]
+            )
+        }
+        let before = try fixture.fileSnapshot()
+        await #expect(throws: StorageError.integrityFailed) {
+            try await TaisaStore.open(at: fixture.url, keyStore: fixture.keys)
+        }
+        #expect(try fixture.fileSnapshot() == before)
+        #expect(try await fixture.keys.loadKey() == fixture.key)
+        let violations = try await raw.read { db in try Row.fetchAll(db, sql: "PRAGMA foreign_key_check").count }
+        #expect(violations == 1)
+    }
+
+    @Test func existingCheckConstraintViolationIsRejected() async throws {
+        let fixture = try MigrationFixture()
+        defer { fixture.remove() }
+        _ = try await TaisaStore.open(at: fixture.url, keyStore: fixture.keys)
+        let raw = try fixture.makeKeyedQueue()
+        try await raw.writeWithoutTransaction { db in
+            try db.execute(sql: "PRAGMA ignore_check_constraints = ON")
+            try db.execute(
+                sql: "INSERT INTO goals (id, title, status, created_at_ms, updated_at_ms) VALUES (?, 'bad', 'invalid', 1, 1)",
+                arguments: [UUID().uuidString]
+            )
+            try db.execute(sql: "PRAGMA ignore_check_constraints = OFF")
+        }
+        let before = try fixture.fileSnapshot()
+        await #expect(throws: StorageError.integrityFailed) {
+            try await TaisaStore.open(at: fixture.url, keyStore: fixture.keys)
+        }
+        #expect(try fixture.fileSnapshot() == before)
+    }
+
+    @Test func missingRequiredTableIsRejectedWithoutRepair() async throws {
+        let fixture = try MigrationFixture()
+        defer { fixture.remove() }
+        _ = try await TaisaStore.open(at: fixture.url, keyStore: fixture.keys)
+        let raw = try fixture.makeKeyedQueue()
+        try await raw.write { db in try db.execute(sql: "DROP TABLE messages") }
+        let before = try fixture.fileSnapshot()
+        await #expect(throws: StorageError.schemaMismatch) {
+            try await TaisaStore.open(at: fixture.url, keyStore: fixture.keys)
+        }
+        #expect(try fixture.fileSnapshot() == before)
+        #expect(try await fixture.keys.loadKey() == fixture.key)
+        #expect(try await raw.read { db in try !db.tableExists("messages") })
+    }
+
+    @Test func missingEssentialColumnIsRejected() async throws {
+        let fixture = try MigrationFixture()
+        defer { fixture.remove() }
+        _ = try await TaisaStore.open(at: fixture.url, keyStore: fixture.keys)
+        let raw = try fixture.makeKeyedQueue()
+        try await raw.write { db in
+            try db.execute(sql: "ALTER TABLE profile RENAME COLUMN headline TO obsolete_headline")
+        }
+        await #expect(throws: StorageError.schemaMismatch) {
+            try await TaisaStore.open(at: fixture.url, keyStore: fixture.keys)
+        }
+    }
+
+    @Test func mismatchedVersionMarkersAreRejected() async throws {
+        let fixture = try MigrationFixture()
+        defer { fixture.remove() }
+        _ = try await TaisaStore.open(at: fixture.url, keyStore: fixture.keys)
+        let raw = try fixture.makeKeyedQueue()
+        try await raw.write { db in try db.execute(sql: "PRAGMA user_version = 0") }
+        let before = try fixture.fileSnapshot()
+        await #expect(throws: StorageError.schemaMismatch) {
+            try await TaisaStore.open(at: fixture.url, keyStore: fixture.keys)
+        }
+        #expect(try fixture.fileSnapshot() == before)
+    }
+
+    @Test func missingMigrationStateIsRejected() async throws {
+        let fixture = try MigrationFixture()
+        defer { fixture.remove() }
+        _ = try await TaisaStore.open(at: fixture.url, keyStore: fixture.keys)
+        let raw = try fixture.makeKeyedQueue()
+        try await raw.write { db in try db.execute(sql: "DELETE FROM migration_state") }
+        await #expect(throws: StorageError.schemaMismatch) {
+            try await TaisaStore.open(at: fixture.url, keyStore: fixture.keys)
+        }
+    }
+
+    @Test func unknownMigrationIdentifierIsRejectedWithoutRepair() async throws {
+        let fixture = try MigrationFixture()
+        defer { fixture.remove() }
+        _ = try await TaisaStore.open(at: fixture.url, keyStore: fixture.keys)
+        let raw = try fixture.makeKeyedQueue()
+        try await raw.write { db in try db.execute(sql: "INSERT INTO grdb_migrations (identifier) VALUES ('v99')") }
+        let before = try fixture.fileSnapshot()
+        await #expect(throws: StorageError.unsupportedMigration) {
+            try await TaisaStore.open(at: fixture.url, keyStore: fixture.keys)
+        }
+        #expect(try fixture.fileSnapshot() == before)
+    }
 }
 
 private struct MigrationFixture {
@@ -90,15 +196,39 @@ private struct MigrationFixture {
         keys = FixedDatabaseKeyStore(key: key)
     }
 
-    func makeKeyedQueue() throws -> DatabaseQueue {
+    func makeKeyedQueue(foreignKeysEnabled: Bool = true) throws -> DatabaseQueue {
         var configuration = Configuration()
+        configuration.foreignKeysEnabled = foreignKeysEnabled
         configuration.prepareDatabase { db in
             try db.execute(sql: "PRAGMA key = \"x'000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f'\"")
         }
         return try DatabaseQueue(path: url.path, configuration: configuration)
     }
 
+    func fileSnapshot() throws -> MigrationFileSnapshot {
+        var durableBytes: [String: Data] = [:]
+        var fileNumbers: [String: UInt64] = [:]
+        for suffix in ["", "-wal", "-shm"] {
+            let path = URL(fileURLWithPath: url.path + suffix)
+            if FileManager.default.fileExists(atPath: path.path) {
+                let attributes = try FileManager.default.attributesOfItem(atPath: path.path)
+                guard let number = attributes[.systemFileNumber] as? NSNumber else {
+                    throw CocoaError(.fileReadUnknown)
+                }
+                fileNumbers[suffix] = number.uint64Value
+                // SQLite changes -shm reader slots even for a rejected open.
+                if suffix != "-shm" { durableBytes[suffix] = try Data(contentsOf: path) }
+            }
+        }
+        return MigrationFileSnapshot(durableBytes: durableBytes, fileNumbers: fileNumbers)
+    }
+
     func remove() { try? FileManager.default.removeItem(at: directory) }
+}
+
+private struct MigrationFileSnapshot: Equatable {
+    let durableBytes: [String: Data]
+    let fileNumbers: [String: UInt64]
 }
 
 private actor FixedDatabaseKeyStore: DatabaseKeyStore {

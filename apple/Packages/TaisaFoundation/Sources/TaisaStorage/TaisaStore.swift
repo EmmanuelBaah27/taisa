@@ -64,13 +64,19 @@ public final class TaisaStore: Sendable {
                 guard try String.fetchAll(db, sql: "PRAGMA cipher_integrity_check").isEmpty else {
                     throw StorageError.integrityFailed
                 }
+                guard try String.fetchAll(db, sql: "PRAGMA integrity_check") == ["ok"] else {
+                    throw StorageError.integrityFailed
+                }
+                guard try Row.fetchAll(db, sql: "PRAGMA foreign_key_check").isEmpty else {
+                    throw StorageError.integrityFailed
+                }
             }
         } catch let error as StorageError {
             throw error
         } catch let error as DatabaseError where error.resultCode == .SQLITE_NOTADB {
             throw StorageError.authenticationFailed
         } catch {
-            throw StorageError.openFailed
+            throw StorageError.integrityFailed
         }
 
         try TaisaMigrator.migrate(queue)

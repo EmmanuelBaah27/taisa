@@ -30,6 +30,17 @@ private struct StoreFixture {
     }
 
     func remove() { try? FileManager.default.removeItem(at: directory) }
+
+    func durableBytes() throws -> [String: Data] {
+        var result: [String: Data] = [:]
+        for suffix in ["", "-wal"] {
+            let path = URL(fileURLWithPath: url.path + suffix)
+            if FileManager.default.fileExists(atPath: path.path) {
+                result[suffix] = try Data(contentsOf: path)
+            }
+        }
+        return result
+    }
 }
 
 @Suite(.serialized) struct TaisaStoreTests {
@@ -42,7 +53,11 @@ private struct StoreFixture {
             try db.execute(sql: "INSERT INTO profile (id, display_name, updated_at_ms) VALUES (?, ?, ?)", arguments: [UUID().uuidString, "PRIVATE-STORE-CANARY", 1_700_000_000_000])
         }
         #expect(await keys.saves == 1)
-        #expect(!(try Data(contentsOf: fixture.url)).contains(Data("PRIVATE-STORE-CANARY".utf8)))
+        let encryptedFiles = try fixture.durableBytes()
+        #expect(encryptedFiles["-wal"] != nil)
+        for bytes in encryptedFiles.values {
+            #expect(!bytes.contains(Data("PRIVATE-STORE-CANARY".utf8)))
+        }
         let reopened = try await TaisaStore.open(at: fixture.url, keyStore: keys)
         let value = try await reopened.read { db in try String.fetchOne(db, sql: "SELECT display_name FROM profile") }
         #expect(value == "PRIVATE-STORE-CANARY")
@@ -54,11 +69,13 @@ private struct StoreFixture {
         defer { fixture.remove() }
         let original = MemoryDatabaseKeyStore()
         _ = try await TaisaStore.open(at: fixture.url, keyStore: original)
+        let before = try fixture.durableBytes()
         let wrong = MemoryDatabaseKeyStore(key: Data(repeating: 0x5a, count: 32))
         await #expect(throws: StorageError.authenticationFailed) {
             try await TaisaStore.open(at: fixture.url, keyStore: wrong)
         }
         #expect(await wrong.saves == 0)
+        #expect(try fixture.durableBytes() == before)
     }
 
     @Test func existingDatabaseWithoutKeyFailsClosed() async throws {

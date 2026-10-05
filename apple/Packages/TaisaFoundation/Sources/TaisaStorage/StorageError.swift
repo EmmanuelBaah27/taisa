@@ -9,5 +9,7 @@ public enum StorageError: Error, Equatable, Sendable {
     case integrityFailed
     case configurationFailed
     case migrationFailed
+    case schemaMismatch
+    case unsupportedMigration
     case unsupportedSchemaVersion(Int)
 }

@@ -14,6 +14,34 @@ enum TaisaMigrator {
         guard version <= TaisaSchema.currentVersion else {
             throw StorageError.unsupportedSchemaVersion(version)
         }
+        do {
+            try queue.read { db in
+                let hasGRDBMarkers = try db.tableExists("grdb_migrations")
+                let applied = hasGRDBMarkers
+                    ? try String.fetchAll(db, sql: "SELECT identifier FROM grdb_migrations ORDER BY identifier")
+                    : []
+                guard applied.allSatisfy({ $0 == "v1" }) else {
+                    throw StorageError.unsupportedMigration
+                }
+                if version == 1 {
+                    guard applied == ["v1"] else { throw StorageError.schemaMismatch }
+                    try TaisaSchema.validateVersion1(in: db)
+                    let states = try Int.fetchAll(db, sql: "SELECT version FROM migration_state ORDER BY version")
+                    guard states == [1] else { throw StorageError.schemaMismatch }
+                } else {
+                    guard applied.isEmpty, try !db.tableExists("migration_state") else {
+                        throw StorageError.schemaMismatch
+                    }
+                }
+            }
+        } catch let error as StorageError {
+            throw error
+        } catch {
+            throw StorageError.schemaMismatch
+        }
+        // A known v1 store is read-only during open validation. In particular,
+        // the migrator must not create or repair metadata on a rejected store.
+        if version == 1 { return }
 
         var migrator = DatabaseMigrator()
         migrator.registerMigration("v1", foreignKeyChecks: .immediate) { db in
@@ -26,11 +54,17 @@ enum TaisaMigrator {
         }
         do {
             try migrator.migrate(queue)
-            let finalVersion = try queue.read { db in
-                try Int.fetchOne(db, sql: "PRAGMA user_version") ?? 0
-            }
-            guard finalVersion == TaisaSchema.currentVersion else {
-                throw StorageError.migrationFailed
+            try queue.read { db in
+                let finalVersion = try Int.fetchOne(db, sql: "PRAGMA user_version") ?? 0
+                guard finalVersion == TaisaSchema.currentVersion else {
+                    throw StorageError.migrationFailed
+                }
+                try TaisaSchema.validateVersion1(in: db)
+                let applied = try String.fetchAll(db, sql: "SELECT identifier FROM grdb_migrations")
+                let states = try Int.fetchAll(db, sql: "SELECT version FROM migration_state")
+                guard applied == ["v1"], states == [1] else {
+                    throw StorageError.migrationFailed
+                }
             }
         } catch {
             throw StorageError.migrationFailed
