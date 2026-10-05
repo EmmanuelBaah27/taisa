@@ -32,10 +32,11 @@ public final class TaisaStore: Sendable {
         afterValidation: @Sendable () async throws -> Void,
         afterGeneration: @Sendable () async throws -> Void = {}
     ) async throws -> TaisaStore {
-        let lifecycle = await StoreLifecycleRegistry.shared.lifecycle(for: url)
+        let canonicalURL = StoreDatabaseIdentity.canonicalURL(for: url)
+        let lifecycle = await StoreLifecycleRegistry.shared.lifecycle(for: canonicalURL)
         return try await lifecycle.exclusive {
             try await openUnderLifecycle(
-                at: url,
+                at: canonicalURL,
                 keyStore: keyStore,
                 lifecycle: lifecycle,
                 afterValidation: afterValidation,
@@ -263,17 +264,45 @@ public final class TaisaStore: Sendable {
 /// Process-local ownership for the supported TaisaStore open/write lifecycle.
 /// Callers must use one canonical URL for a store; independent SQLite handles
 /// and external filesystem replacement are not participants in this gate.
+private enum StoreDatabaseIdentity {
+    static func canonicalURL(for url: URL) -> URL {
+        // Resolve only an existing ancestor. Foundation can resolve the same
+        // /private/tmp child differently before and after SQLite creates it.
+        // Re-appending normalized missing components keeps that identity
+        // stable while collapsing /private/tmp, /tmp, and symlinked parents.
+        var ancestor = url.standardizedFileURL
+        var missingComponents: [String] = []
+        while !FileManager.default.fileExists(atPath: ancestor.path) {
+            let parent = ancestor.deletingLastPathComponent()
+            if parent.path == ancestor.path { break }
+            missingComponents.insert(ancestor.lastPathComponent, at: 0)
+            ancestor = parent
+        }
+        var canonical = ancestor.resolvingSymlinksInPath()
+        for component in missingComponents {
+            canonical.appendPathComponent(component)
+        }
+        return canonical.standardizedFileURL
+    }
+}
+
 private actor StoreLifecycleRegistry {
     static let shared = StoreLifecycleRegistry()
-    private var lifecycles: [String: StoreLifecycle] = [:]
+    private var lifecycles: [String: WeakStoreLifecycle] = [:]
 
     func lifecycle(for url: URL) -> StoreLifecycle {
-        let path = url.standardizedFileURL.resolvingSymlinksInPath().path
-        if let lifecycle = lifecycles[path] { return lifecycle }
+        let path = url.path
+        if let lifecycle = lifecycles[path]?.value { return lifecycle }
+        lifecycles = lifecycles.filter { $0.value.value != nil }
         let lifecycle = StoreLifecycle()
-        lifecycles[path] = lifecycle
+        lifecycles[path] = WeakStoreLifecycle(lifecycle)
         return lifecycle
     }
+}
+
+private final class WeakStoreLifecycle {
+    weak var value: StoreLifecycle?
+    init(_ value: StoreLifecycle) { self.value = value }
 }
 
 private actor StoreLifecycle {
