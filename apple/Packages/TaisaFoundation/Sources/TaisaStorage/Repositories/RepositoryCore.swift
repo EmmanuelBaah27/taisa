@@ -284,15 +284,22 @@ struct RepositoryCore<Record: DomainRecord>: Sendable {
                 // A resolution may have multiple parents. The v1 field_versions
                 // row records its immediate parent; the committed journal
                 // snapshot retains the remaining transitive branches.
-                if let payload = try Data.fetchOne(db, sql: "SELECT payload FROM outbox WHERE mutation_id = ? COLLATE NOCASE AND entity_type = ? AND entity_id = ? COLLATE NOCASE", arguments: [version, spec.entity, id]) {
+                let historical = try Row.fetchAll(db, sql: "SELECT mutation_id, entity_type, entity_id, payload FROM outbox WHERE mutation_id = ? COLLATE NOCASE", arguments: [version])
+                guard historical.count <= 1 else { throw RepositoryError.persistenceFailed }
+                if let row = historical.first {
+                    guard try canonicalID(row["mutation_id"] as String) == version,
+                          (row["entity_type"] as String) == spec.entity,
+                          try canonicalID(row["entity_id"] as String) == id else { throw RepositoryError.persistenceFailed }
+                    let payload: Data = row["payload"]
                     let snapshot = try ChangeJournal.causality(from: payload)
                     guard try canonicalID(snapshot.logicalVersionID) == version else { throw RepositoryError.persistenceFailed }
-                    if let field = snapshot.changedFields.first(where: { $0.fieldName == property }) {
-                        guard try canonicalID(field.versionID) == version else { throw RepositoryError.persistenceFailed }
-                        for raw in field.ancestorVersionIDs {
-                            let ancestor = try canonicalID(raw)
-                            if listed.insert(ancestor).inserted { ancestors.append(ancestor) }
-                        }
+                    let matching = snapshot.changedFields.filter { $0.fieldName == property }
+                    guard matching.count == 1, let field = matching.first,
+                          try canonicalID(field.versionID) == version,
+                          field.deviceCounter == snapshot.deviceCounter else { throw RepositoryError.persistenceFailed }
+                    for raw in field.ancestorVersionIDs {
+                        let ancestor = try canonicalID(raw)
+                        if listed.insert(ancestor).inserted { ancestors.append(ancestor) }
                     }
                 }
                 cursor = try String.fetchOne(db, sql: "SELECT parent_version_id FROM field_versions WHERE entity_type = ? AND entity_id = ? COLLATE NOCASE AND field_name = ? AND version_id = ? COLLATE NOCASE ORDER BY rowid DESC LIMIT 1", arguments: [spec.entity, id, property, version]).map { try canonicalID($0) }

@@ -7,11 +7,13 @@ public struct ConflictingValue: Codable, Sendable, Equatable {
     public let ancestorVersionIDs: [String]
     /// Nil identifies a deletion. A non-nil Data is the preserved value.
     public let value: Data?
+    public let deletionEvidence: SyncDeletionSummary?
 
-    public init(versionID: String, ancestorVersionIDs: [String], value: Data?) {
+    public init(versionID: String, ancestorVersionIDs: [String], value: Data?, deletionEvidence: SyncDeletionSummary? = nil) {
         self.versionID = versionID
         self.ancestorVersionIDs = ancestorVersionIDs
         self.value = value
+        self.deletionEvidence = deletionEvidence
     }
 }
 
@@ -45,14 +47,16 @@ public struct SyncConflict: Codable, Sendable, Equatable {
         let conflict = try validated()
         guard (conflict.first.value == nil) != (conflict.second.value == nil) else { throw SyncMergeError.malformedMutation }
         let edit = conflict.first.value == nil ? conflict.second : conflict.first
-        let mutation = SyncMutation(id: mutationID, entityType: conflict.entityType, entityID: conflict.entityID, entityVersion: 1, deviceID: deviceID, counter: counter, timestampMS: timestampMS, kind: .delete, fields: [], observedFieldVersions: [SyncObservedField(name: conflict.fieldName, versionID: edit.versionID)], recordParentVersionID: conflict.first.versionID, resolvedParentVersionIDs: conflict.ancestry)
+        let deletion = conflict.first.value == nil ? conflict.first : conflict.second
+        let mutation = SyncMutation(id: mutationID, entityType: conflict.entityType, entityID: conflict.entityID, entityVersion: 1, deviceID: deviceID, counter: counter, timestampMS: timestampMS, kind: .delete, fields: [], observedFieldVersions: [SyncObservedField(name: conflict.fieldName, versionID: edit.versionID)], recordParentVersionID: conflict.first.versionID, resolvedParentVersionIDs: conflict.ancestry, retainedDeletionEvidence: deletion.deletionEvidence)
         try mutation.validate()
         return mutation.canonicalized()
     }
 
-    private var ancestry: [String] {
+    fileprivate var ancestry: [String] {
         let immediate = [first.versionID, second.versionID]
-        let transitive = Set(first.ancestorVersionIDs + second.ancestorVersionIDs).subtracting(immediate).sorted()
+        let deletions = (first.deletionEvidence?.eventIDs ?? []) + (second.deletionEvidence?.eventIDs ?? [])
+        let transitive = Set(first.ancestorVersionIDs + second.ancestorVersionIDs + deletions).subtracting(immediate).sorted()
         return immediate + transitive
     }
 
@@ -69,7 +73,10 @@ public struct SyncConflict: Codable, Sendable, Equatable {
                 return value
             }
             guard Set(ancestors).count == ancestors.count else { throw SyncMergeError.malformedMutation }
-            return ConflictingValue(versionID: id, ancestorVersionIDs: ancestors, value: source.value)
+            guard source.value == nil || source.deletionEvidence == nil else { throw SyncMergeError.malformedMutation }
+            let evidence = try source.deletionEvidence?.validated()
+            if let evidence { guard evidence.eventIDs.contains(id) else { throw SyncMergeError.malformedMutation } }
+            return ConflictingValue(versionID: id, ancestorVersionIDs: ancestors, value: source.value, deletionEvidence: evidence)
         }
         let a = try canonical(first, id: firstID)
         let b = try canonical(second, id: secondID)
@@ -138,10 +145,33 @@ public struct ConflictStore: Sendable {
         let conflict = try conflict.validated()
         try mutation.validate()
         let mutation = mutation.canonicalized()
+        let lineage = Set(conflict.ancestry)
         guard timestampMS >= 0, mutation.entityType == conflict.entityType, mutation.entityID == conflict.entityID,
               mutation.kind == .resolve || mutation.kind == .delete,
-              (mutation.resolvedParentVersionIDs ?? []).contains(conflict.first.versionID),
-              (mutation.resolvedParentVersionIDs ?? []).contains(conflict.second.versionID) else { throw SyncMergeError.malformedMutation }
+              Set(mutation.resolvedParentVersionIDs ?? []) == lineage,
+              mutation.recordParentVersionID == conflict.first.versionID || mutation.recordParentVersionID == conflict.second.versionID else { throw SyncMergeError.malformedMutation }
+        switch mutation.kind {
+        case .resolve:
+            guard mutation.fields.count == 1, let field = mutation.fields.first,
+                  field.name == conflict.fieldName, Set(field.ancestorVersionIDs) == lineage,
+                  mutation.retainedDeletionEvidence == nil else { throw SyncMergeError.malformedMutation }
+        case .delete:
+            guard (conflict.first.value == nil) != (conflict.second.value == nil) else { throw SyncMergeError.malformedMutation }
+            let edited = conflict.first.value == nil ? conflict.second : conflict.first
+            let deleting = conflict.first.value == nil ? conflict.first : conflict.second
+            guard mutation.observedFieldVersions.contains(where: { $0.name == conflict.fieldName && $0.versionID == edited.versionID }),
+                  mutation.retainedDeletionEvidence == deleting.deletionEvidence else { throw SyncMergeError.malformedMutation }
+        default: throw SyncMergeError.malformedMutation
+        }
+        do {
+            let rows = try Row.fetchAll(db, sql: "SELECT local_value, remote_value FROM conflicts WHERE entity_type = ? AND entity_id = ? COLLATE NOCASE AND field_name = ? AND local_version_id = ? COLLATE NOCASE AND remote_version_id = ? COLLATE NOCASE AND resolved_at_ms IS NULL", arguments: [conflict.entityType, conflict.entityID, conflict.fieldName, conflict.first.versionID, conflict.second.versionID])
+            guard rows.count == 1 else { throw SyncMergeError.persistenceFailed }
+            let storedFirst: Data = rows[0]["local_value"]
+            let storedSecond: Data = rows[0]["remote_value"]
+            let stored = try SyncConflict(entityType: conflict.entityType, entityID: conflict.entityID, fieldName: conflict.fieldName, first: JSONDecoder().decode(ConflictingValue.self, from: storedFirst), second: JSONDecoder().decode(ConflictingValue.self, from: storedSecond)).validated()
+            guard stored == conflict else { throw SyncMergeError.malformedMutation }
+        } catch let error as SyncMergeError { throw error }
+        catch { throw SyncMergeError.persistenceFailed }
         try db.execute(sql: "UPDATE conflicts SET resolved_at_ms = ? WHERE entity_type = ? AND entity_id = ? COLLATE NOCASE AND field_name = ? AND local_version_id = ? COLLATE NOCASE AND remote_version_id = ? COLLATE NOCASE AND resolved_at_ms IS NULL", arguments: [timestampMS, conflict.entityType, conflict.entityID, conflict.fieldName, conflict.first.versionID, conflict.second.versionID])
         guard db.changesCount == 1 else { throw SyncMergeError.persistenceFailed }
     }

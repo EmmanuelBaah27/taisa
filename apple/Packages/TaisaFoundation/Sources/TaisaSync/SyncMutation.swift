@@ -63,8 +63,9 @@ public struct SyncMutation: Codable, Sendable, Equatable {
     public let frontier: VersionVector
     public let recordParentVersionID: String?
     public let resolvedParentVersionIDs: [String]?
+    public let retainedDeletionEvidence: SyncDeletionSummary?
 
-    public init(id: String, entityType: String, entityID: String, entityVersion: Int, deviceID: String, counter: Int64, timestampMS: Int64, kind: Kind, fields: [SyncField], observedFieldVersions: [SyncObservedField] = [], frontier: VersionVector? = nil, recordParentVersionID: String? = nil, resolvedParentVersionIDs: [String]? = nil) {
+    public init(id: String, entityType: String, entityID: String, entityVersion: Int, deviceID: String, counter: Int64, timestampMS: Int64, kind: Kind, fields: [SyncField], observedFieldVersions: [SyncObservedField] = [], frontier: VersionVector? = nil, recordParentVersionID: String? = nil, resolvedParentVersionIDs: [String]? = nil, retainedDeletionEvidence: SyncDeletionSummary? = nil) {
         self.id = id
         self.entityType = entityType
         self.entityID = entityID
@@ -78,6 +79,7 @@ public struct SyncMutation: Codable, Sendable, Equatable {
         self.frontier = frontier ?? VersionVector(entries: [DeviceCounter(deviceID: deviceID, counter: counter)])
         self.recordParentVersionID = recordParentVersionID
         self.resolvedParentVersionIDs = resolvedParentVersionIDs
+        self.retainedDeletionEvidence = retainedDeletionEvidence
     }
 
     /// Adapts Task 3's committed causal snapshot without adding GRDB to this API.
@@ -96,7 +98,10 @@ public struct SyncMutation: Codable, Sendable, Equatable {
             },
             observedFieldVersions: causality.observedFieldVersions.map { SyncObservedField(name: $0.fieldName, versionID: $0.versionID) },
             recordParentVersionID: causality.recordParentVersionID,
-            resolvedParentVersionIDs: causality.resolvedParentVersionIDs
+            resolvedParentVersionIDs: causality.resolvedParentVersionIDs,
+            retainedDeletionEvidence: causality.retainedDeletionCausality.map { retained in
+                SyncDeletionSummary(id: retained.versionIDs.first ?? "", eventIDs: retained.versionIDs, timestampMS: retained.latestDeletedAtMS, frontier: VersionVector(entries: retained.frontier.map { DeviceCounter(deviceID: $0.deviceID, counter: $0.counter) }), observedFieldVersions: retained.observedFieldVersions.map { SyncObservedField(name: $0.fieldName, versionID: $0.versionID) })
+            }
         )
         try validate()
     }
@@ -107,7 +112,10 @@ public struct SyncMutation: Codable, Sendable, Equatable {
         let versions = fields.map { field in
             JournalField(fieldName: field.name, versionID: field.versionID, parentVersionID: field.ancestorVersionIDs.first, ancestorVersionIDs: field.ancestorVersionIDs, deviceCounter: field.deviceCounter)
         }
-        let projection = JournalSnapshot(logicalVersionID: id, recordParentVersionID: recordParentVersionID, resolvedParentVersionIDs: resolvedParentVersionIDs, deviceID: deviceID, deviceCounter: counter, changedFields: versions, observedFieldVersions: observedFieldVersions.map { JournalObserved(fieldName: $0.name, versionID: $0.versionID) })
+        let retained = retainedDeletionEvidence.map { evidence in
+            JournalRetainedDeletion(versionIDs: evidence.eventIDs, latestDeletedAtMS: evidence.timestampMS, frontier: evidence.frontier.entries.map { JournalDeviceCounter(deviceID: $0.deviceID, counter: $0.counter) }, observedFieldVersions: evidence.observedFieldVersions.map { JournalObserved(fieldName: $0.name, versionID: $0.versionID) })
+        }
+        let projection = JournalSnapshot(logicalVersionID: id, recordParentVersionID: recordParentVersionID, resolvedParentVersionIDs: resolvedParentVersionIDs, retainedDeletionCausality: retained, deviceID: deviceID, deviceCounter: counter, changedFields: versions, observedFieldVersions: observedFieldVersions.map { JournalObserved(fieldName: $0.name, versionID: $0.versionID) })
         return try JSONDecoder().decode(CausalSnapshot.self, from: JSONEncoder().encode(projection))
     }
 
@@ -125,6 +133,13 @@ public struct SyncMutation: Codable, Sendable, Equatable {
               (kind != .delete || fields.isEmpty),
               (kind == .delete || !fields.isEmpty || (kind == .update && recordParentVersionID != nil)) else { throw SyncMergeError.malformedMutation }
         if (entityType == "message" || entityType == "memory_source") && kind != .create && kind != .delete { throw SyncMergeError.malformedMutation }
+        if let retainedDeletionEvidence {
+            guard kind == .delete else { throw SyncMergeError.malformedMutation }
+            let evidence = try retainedDeletionEvidence.validated()
+            let parents = Set((resolvedParentVersionIDs ?? []).compactMap { UUID(uuidString: $0)?.uuidString })
+            guard Set(evidence.eventIDs).isSubset(of: parents),
+                  evidence.frontier.counter(for: deviceID).map({ $0 < counter }) ?? true else { throw SyncMergeError.malformedMutation }
+        }
         if !fields.isEmpty && !(resolvedParentVersionIDs ?? []).isEmpty && kind != .resolve { throw SyncMergeError.malformedMutation }
         if kind == .resolve && !(resolvedParentVersionIDs ?? []).isEmpty {
             let resolved = Set((resolvedParentVersionIDs ?? []).compactMap { UUID(uuidString: $0) })
@@ -148,10 +163,13 @@ public struct SyncMutation: Codable, Sendable, Equatable {
 
     func canonicalized() -> SyncMutation {
         func key(_ value: String) -> String { UUID(uuidString: value)!.uuidString }
+        let retained = retainedDeletionEvidence.map { evidence in
+            SyncDeletionSummary(id: key(evidence.id), eventIDs: evidence.eventIDs.map(key).sorted(), timestampMS: evidence.timestampMS, frontier: evidence.frontier.canonicalized(), observedFieldVersions: evidence.observedFieldVersions.map { SyncObservedField(name: $0.name, versionID: key($0.versionID)) }.sorted { ($0.name, $0.versionID) < ($1.name, $1.versionID) })
+        }
         return SyncMutation(id: key(id), entityType: entityType, entityID: key(entityID), entityVersion: entityVersion, deviceID: key(deviceID), counter: counter, timestampMS: timestampMS, kind: kind,
             fields: fields.map { SyncField(name: $0.name, value: $0.value, versionID: key($0.versionID), ancestorVersionIDs: $0.ancestorVersionIDs.map(key), deviceCounter: $0.deviceCounter) }.sorted { $0.name < $1.name },
             observedFieldVersions: observedFieldVersions.map { SyncObservedField(name: $0.name, versionID: key($0.versionID)) }.sorted { $0.name < $1.name },
-            frontier: frontier.canonicalized(), recordParentVersionID: recordParentVersionID.map(key), resolvedParentVersionIDs: resolvedParentVersionIDs?.map(key).sorted())
+            frontier: frontier.canonicalized(), recordParentVersionID: recordParentVersionID.map(key), resolvedParentVersionIDs: resolvedParentVersionIDs?.map(key).sorted(), retainedDeletionEvidence: retained)
     }
 }
 
@@ -159,10 +177,21 @@ private struct JournalSnapshot: Encodable {
     let logicalVersionID: String
     let recordParentVersionID: String?
     let resolvedParentVersionIDs: [String]?
+    let retainedDeletionCausality: JournalRetainedDeletion?
     let deviceID: String
     let deviceCounter: Int64
     let changedFields: [JournalField]
     let observedFieldVersions: [JournalObserved]
+}
+private struct JournalRetainedDeletion: Encodable {
+    let versionIDs: [String]
+    let latestDeletedAtMS: Int64
+    let frontier: [JournalDeviceCounter]
+    let observedFieldVersions: [JournalObserved]
+}
+private struct JournalDeviceCounter: Encodable {
+    let deviceID: String
+    let counter: Int64
 }
 private struct JournalField: Encodable {
     let fieldName: String

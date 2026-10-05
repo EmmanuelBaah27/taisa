@@ -231,6 +231,23 @@ public struct ChangeJournal: Sendable {
                 return value
             }
         }
+        if var retained = causal["retainedDeletionCausality"] as? [String: Any] {
+            if let versions = retained["versionIDs"] as? [String] {
+                retained["versionIDs"] = try versions.map { raw in
+                    guard let value = UUIDIdentity.canonical(raw) else { throw RepositoryError.persistenceFailed }
+                    return value
+                }
+            }
+            if var frontier = retained["frontier"] as? [[String: Any]] {
+                for index in frontier.indices { try normalize("deviceID", in: &frontier[index]) }
+                retained["frontier"] = frontier
+            }
+            if var fields = retained["observedFieldVersions"] as? [[String: Any]] {
+                for index in fields.indices { try normalize("versionID", in: &fields[index]) }
+                retained["observedFieldVersions"] = fields
+            }
+            causal["retainedDeletionCausality"] = retained
+        }
         if var fields = causal["changedFields"] as? [[String: Any]] {
             for index in fields.indices {
                 try normalize("versionID", in: &fields[index])
@@ -296,6 +313,9 @@ public struct ChangeJournal: Sendable {
             logicalVersionID: requiredID(snapshot.logicalVersionID),
             recordParentVersionID: snapshot.recordParentVersionID.map { try requiredID($0) },
             resolvedParentVersionIDs: try snapshot.resolvedParentVersionIDs?.map { try requiredID($0) },
+            retainedDeletionCausality: try snapshot.retainedDeletionCausality.map { retained in
+                RetainedDeletionCausality(versionIDs: try retained.versionIDs.map { try requiredID($0) }, latestDeletedAtMS: retained.latestDeletedAtMS, frontier: try retained.frontier.map { CausalDeviceCounter(deviceID: try requiredID($0.deviceID), counter: $0.counter) }, observedFieldVersions: try retained.observedFieldVersions.map { ObservedFieldVersion(fieldName: $0.fieldName, versionID: try requiredID($0.versionID)) })
+            },
             deviceID: requiredID(snapshot.deviceID),
             deviceCounter: snapshot.deviceCounter,
             changedFields: snapshot.changedFields.map { field in

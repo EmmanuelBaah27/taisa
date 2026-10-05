@@ -78,7 +78,7 @@ import TaisaSync
         let merged = try MergeEngine.reduce(events: [edit, deletion, restored])
         #expect(merged.kind == .deleted)
         #expect(merged.conflicts.isEmpty)
-        #expect(merged.deletion?.eventIDs == [UUID(uuidString: id(3))!.uuidString])
+        #expect(Set(merged.deletion?.eventIDs ?? []) == Set([id(2), id(3)].map { UUID(uuidString: $0)!.uuidString }))
     }
 
     @Test func recordOrderWithoutFieldAncestryDoesNotSilenceConcurrentField() throws {
@@ -126,5 +126,50 @@ import TaisaSync
         #expect(try JSONDecoder().decode(SyncMergeState.self, from: payload) == state)
         let invalid = try JSONEncoder().encode([left, SyncMutation(id: id(3), entityType: "goal", entityID: entity, entityVersion: 1, deviceID: a, counter: 1, timestampMS: 3, kind: .update, fields: [SyncField(name: "title", value: Data("C".utf8), versionID: id(3), deviceCounter: 1)])])
         #expect(throws: SyncMergeError.self) { try JSONDecoder().decode(SyncMergeState.self, from: invalid) }
+    }
+
+    @Test func keepDeletionJournalRoundtripCarriesPriorRetentionEvidenceAlone() throws {
+        let old = SyncMutation(id: id(1), entityType: "goal", entityID: entity, entityVersion: 1, deviceID: a, counter: 8, timestampMS: 90 * 86_400_000, kind: .delete, fields: [], observedFieldVersions: [SyncObservedField(name: "detail", versionID: id(7))])
+        let edit = mutation(2, device: b, counter: 1, field: "title", value: "Offline")
+        let conflict = try #require(MergeEngine.reduce(events: [old, edit]).conflicts.first)
+        let resolution = try conflict.resolveKeepingDeletion(mutationID: id(3), deviceID: b, counter: 2, timestampMS: 1)
+        let snapshot = try resolution.journalCausality()
+        let restored = try SyncMutation(id: resolution.id, entityType: resolution.entityType, entityID: resolution.entityID, entityVersion: 1, timestampMS: resolution.timestampMS, kind: .delete, fieldValues: [:], causality: snapshot)
+        let summary = try #require(MergeEngine.merge(local: nil, remote: restored).deletion)
+        #expect(summary.timestampMS == old.timestampMS)
+        #expect(summary.frontier.counter(for: a) == 8)
+        #expect(summary.frontier.counter(for: b) == 2)
+        #expect(summary.observedFieldVersions.contains { $0.name == "detail" && UUID(uuidString: $0.versionID) == UUID(uuidString: id(7)) })
+        #expect(Set(summary.eventIDs).contains(UUID(uuidString: id(1))!.uuidString))
+        let full = try #require(MergeEngine.reduce(events: [old, edit, resolution]).deletion)
+        #expect(full == summary)
+    }
+
+    @Test func observedFieldCycleFailsBeforeMaterialization() throws {
+        let first = SyncMutation(id: id(1), entityType: "goal", entityID: entity, entityVersion: 1, deviceID: a, counter: 1, timestampMS: 1, kind: .update, fields: [SyncField(name: "title", value: Data("A".utf8), versionID: id(1), deviceCounter: 1)], observedFieldVersions: [SyncObservedField(name: "title", versionID: id(2))])
+        let second = SyncMutation(id: id(2), entityType: "goal", entityID: entity, entityVersion: 1, deviceID: b, counter: 1, timestampMS: 1, kind: .update, fields: [SyncField(name: "title", value: Data("B".utf8), versionID: id(2), deviceCounter: 1)], observedFieldVersions: [SyncObservedField(name: "title", versionID: id(1))])
+        #expect(throws: SyncMergeError.self) { try MergeEngine.reduce(events: [first, second]) }
+    }
+
+    @Test func keepDeletionResolutionNamesEveryConcurrentDeletionParent() throws {
+        let first = SyncMutation(id: id(1), entityType: "goal", entityID: entity, entityVersion: 1, deviceID: a, counter: 1, timestampMS: 10, kind: .delete, fields: [])
+        let second = SyncMutation(id: id(2), entityType: "goal", entityID: entity, entityVersion: 1, deviceID: b, counter: 1, timestampMS: 20, kind: .delete, fields: [])
+        let edit = mutation(3, device: c, counter: 1, field: "title", value: "Offline")
+        let conflict = try #require(MergeEngine.reduce(events: [first, second, edit]).conflicts.first)
+        let resolution = try conflict.resolveKeepingDeletion(mutationID: id(4), deviceID: c, counter: 2, timestampMS: 1)
+        let expected = Set([id(1), id(2), id(3)].map { UUID(uuidString: $0)!.uuidString })
+        #expect(Set(resolution.resolvedParentVersionIDs ?? []) == expected)
+        let restored = try SyncMutation(id: resolution.id, entityType: resolution.entityType, entityID: resolution.entityID, entityVersion: 1, timestampMS: resolution.timestampMS, kind: .delete, fieldValues: [:], causality: resolution.journalCausality())
+        let summary = try #require(MergeEngine.merge(local: nil, remote: restored).deletion)
+        #expect(Set(summary.eventIDs) == Set([id(1), id(2), id(4)].map { UUID(uuidString: $0)!.uuidString }))
+    }
+
+    @Test func compactedDeletionEvidenceCannotRegressResolutionsOwnCounter() throws {
+        let deletion = SyncMutation(id: id(1), entityType: "goal", entityID: entity, entityVersion: 1, deviceID: a, counter: 8, timestampMS: 1, kind: .delete, fields: [])
+        let edit = mutation(2, device: b, counter: 1, field: "title", value: "Offline")
+        let conflict = try #require(MergeEngine.reduce(events: [deletion, edit]).conflicts.first)
+        #expect(throws: SyncMergeError.self) {
+            try conflict.resolveKeepingDeletion(mutationID: id(3), deviceID: a, counter: 2, timestampMS: 2)
+        }
     }
 }

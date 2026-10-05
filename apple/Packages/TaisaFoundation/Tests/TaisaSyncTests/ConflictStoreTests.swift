@@ -81,6 +81,27 @@ private actor ConflictTestKeys: DatabaseKeyStore {
         let title = try #require(next.causality.changedFields.first { $0.fieldName == "title" })
         #expect(Set(title.ancestorVersionIDs) == Set([resolvedID, a, b, base]))
     }
+
+    @Test func staleOrIncompleteResolutionCannotClearStoredConflict() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = try await TaisaStore.open(at: directory.appendingPathComponent("conflicts.sqlite"), keyStore: ConflictTestKeys())
+        let entity = "11111111-1111-4111-8111-111111111111"
+        let base = "00000000-0000-4000-8000-000000000001"
+        let left = "00000000-0000-4000-8000-000000000002"
+        let right = "00000000-0000-4000-8000-000000000003"
+        let resolutionID = "00000000-0000-4000-8000-000000000004"
+        let device = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+        let saved = SyncConflict(entityType: "goal", entityID: entity, fieldName: "title", first: ConflictingValue(versionID: left, ancestorVersionIDs: [base], value: Data("A".utf8)), second: ConflictingValue(versionID: right, ancestorVersionIDs: [base], value: Data("B".utf8)))
+        try await ConflictStore(store: store).persist(saved, at: 1)
+        let incomplete = SyncMutation(id: resolutionID, entityType: "goal", entityID: entity, entityVersion: 1, deviceID: device, counter: 1, timestampMS: 2, kind: .resolve, fields: [SyncField(name: "title", value: Data("C".utf8), versionID: resolutionID, ancestorVersionIDs: [left, right], deviceCounter: 1)], recordParentVersionID: left, resolvedParentVersionIDs: [left, right])
+        await #expect(throws: SyncMergeError.self) { try await store.write { db in try ConflictStore.resolve(saved, using: incomplete, at: 2, in: db) } }
+        let stale = SyncConflict(entityType: saved.entityType, entityID: saved.entityID, fieldName: saved.fieldName, first: ConflictingValue(versionID: left, ancestorVersionIDs: [base], value: Data("WRONG".utf8)), second: saved.second)
+        let claimed = try stale.resolve(value: Data("C".utf8), mutationID: resolutionID, deviceID: device, counter: 1, timestampMS: 2)
+        await #expect(throws: SyncMergeError.self) { try await store.write { db in try ConflictStore.resolve(stale, using: claimed, at: 2, in: db) } }
+        #expect(try await ConflictStore(store: store).unresolved().count == 1)
+    }
     @Test func unresolvedConflictPersistsEncryptedAcrossReopenAndReplayIsIdempotent() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
