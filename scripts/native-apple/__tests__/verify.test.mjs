@@ -129,6 +129,7 @@ test('combined native verification and CI pin every required gate', async () => 
     '/Applications/Xcode_26.1.1.app',
     '17B100',
     '-downloadPlatform iOS',
+    'for attempt in 1 2 3',
     'brew install ripgrep',
     '2.46.0',
     'verify:native-apple:all',

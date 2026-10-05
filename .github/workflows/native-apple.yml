@@ -20,7 +20,14 @@ jobs:
           sudo xcode-select -s /Applications/Xcode_26.1.1.app
           xcodebuild -version | grep 'Build version 17B100'
       - name: Install pinned iOS platform
-        run: xcodebuild -downloadPlatform iOS
+        run: |
+          for attempt in 1 2 3; do
+            if xcodebuild -downloadPlatform iOS; then
+              exit 0
+            fi
+            test "${attempt}" -lt 3 || exit 1
+            sleep 15
+          done
       - name: Install pinned XcodeGen
         run: |
           brew install xcodegen
