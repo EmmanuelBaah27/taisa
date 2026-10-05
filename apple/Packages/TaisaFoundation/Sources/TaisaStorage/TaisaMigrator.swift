@@ -31,7 +31,7 @@ enum TaisaMigrator {
                 } else {
                     let objects = try String.fetchAll(
                         db,
-                        sql: "SELECT name FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' AND type IN ('table', 'view', 'trigger', 'index') LIMIT 1"
+                        sql: "SELECT name FROM sqlite_master WHERE substr(name, 1, 7) != 'sqlite_' AND type IN ('table', 'view', 'trigger', 'index') LIMIT 1"
                     )
                     guard applied.isEmpty, objects.isEmpty else {
                         throw StorageError.schemaMismatch

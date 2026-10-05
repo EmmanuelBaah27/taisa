@@ -281,6 +281,61 @@ import Testing
         #expect(try await check.read { db in try !db.tableExists("profile") })
     }
 
+    @Test func sqliteXdataVersionZeroSchemaIsRejectedBeforeMetadataCreation() async throws {
+        let fixture = try MigrationFixture()
+        defer { fixture.remove() }
+        let raw = try fixture.makeKeyedQueue()
+        try await raw.write { db in
+            try db.execute(sql: "CREATE TABLE sqliteXdata (id TEXT PRIMARY KEY)")
+            try db.execute(sql: "INSERT INTO sqliteXdata (id) VALUES ('private')")
+        }
+        let restarted = try fixture.restartCopy()
+        let before = try fixture.fileSnapshot(at: restarted)
+        await #expect(throws: StorageError.schemaMismatch) {
+            try await TaisaStore.open(at: restarted, keyStore: fixture.keys)
+        }
+        #expect(try fixture.fileSnapshot(at: restarted) == before)
+        #expect(try await fixture.keys.loadKey() == fixture.key)
+        let check = try fixture.makeKeyedQueue(at: restarted, readonly: true)
+        #expect(try await check.read { db in try !db.tableExists("grdb_migrations") })
+        #expect(try await check.read { db in try !db.tableExists("profile") })
+    }
+
+    @Test func emptyExistingVersionZeroSchemaInitializes() async throws {
+        let fixture = try MigrationFixture()
+        defer { fixture.remove() }
+        _ = try fixture.makeKeyedQueue()
+        let restarted = try fixture.restartCopy()
+        let store = try await TaisaStore.open(at: restarted, keyStore: fixture.keys)
+        #expect(try await store.read { db in try db.tableExists("profile") })
+        #expect(try await store.read { db in try Int.fetchOne(db, sql: "PRAGMA user_version") } == 1)
+        #expect(try await fixture.keys.loadKey() == fixture.key)
+    }
+
+    @Test func schemaChangeAfterSnapshotIsRejectedWithoutTouchingOriginal() async throws {
+        let fixture = try MigrationFixture()
+        defer { fixture.remove() }
+        _ = try await TaisaStore.open(at: fixture.url, keyStore: fixture.keys)
+        let restarted = try fixture.restartCopy()
+        let otherWriter = try fixture.makeKeyedQueue(at: restarted)
+        let mutation = MigrationSnapshotRecorder()
+        await #expect(throws: StorageError.integrityFailed) {
+            try await TaisaStore.open(
+                at: restarted,
+                keyStore: fixture.keys,
+                afterValidation: {
+                    try await otherWriter.write { db in try db.execute(sql: "DROP TABLE messages") }
+                    try await mutation.record(fixture.fileSnapshot(at: restarted))
+                }
+            )
+        }
+        let afterMutation = await mutation.snapshot
+        #expect(afterMutation != nil)
+        #expect(try fixture.fileSnapshot(at: restarted) == afterMutation)
+        #expect(try await fixture.keys.loadKey() == fixture.key)
+        #expect(try await otherWriter.read { db in try !db.tableExists("messages") })
+    }
+
     @Test func soleConnectionOrphanWalIsRejectedWithoutCheckpoint() async throws {
         let fixture = try MigrationFixture()
         defer { fixture.remove() }
@@ -383,9 +438,14 @@ private struct MigrationFixture {
     func remove() { try? FileManager.default.removeItem(at: directory) }
 }
 
-private struct MigrationFileSnapshot: Equatable {
+private struct MigrationFileSnapshot: Equatable, Sendable {
     let durableBytes: [String: Data]
     let fileNumbers: [String: UInt64]
+}
+
+private actor MigrationSnapshotRecorder {
+    private(set) var snapshot: MigrationFileSnapshot?
+    func record(_ value: MigrationFileSnapshot) { snapshot = value }
 }
 
 private enum MigrationInterruption: Error { case injected }

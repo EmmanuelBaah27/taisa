@@ -256,6 +256,10 @@ enum TaisaSchema {
                 let actual = Set(try db.columns(in: table).map(\.name))
                 guard actual == expected else { throw StorageError.schemaMismatch }
             }
+            // V1's supported producer is this canonical migration. SQLite can
+            // rewrite equivalent CREATE text during manual ALTER/restore; such
+            // rewritten schemas require an explicit migration, not guessed
+            // normalization that could erase constraint differences.
             for statement in statements where statement.hasPrefix("CREATE TABLE ") {
                 let name = String(statement.split(separator: " ", maxSplits: 3)[2])
                 let stored = try String.fetchOne(
