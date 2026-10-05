@@ -9,6 +9,7 @@ public enum RepositoryError: Error, Sendable, Equatable {
     case immutableRecord
     case mutationCollision
     case persistenceFailed
+    case reservationMismatch
 }
 
 public protocol DomainRecord: Codable, Sendable, Equatable {
@@ -68,8 +69,8 @@ struct RepositoryCore<Record: DomainRecord>: Sendable {
             let columns = spec.fields.map(\.column)
             let placeholders = Array(repeating: "?", count: columns.count).joined(separator: ", ")
             try db.execute(sql: "INSERT INTO \(spec.table) (\(columns.joined(separator: ", "))) VALUES (\(placeholders))", arguments: StatementArguments(columns.map { value(fields, for: $0) }))
-            try versions(fields: fields, previous: [:], id: record.id, context: context, db: db)
-            try ChangeJournal.insert(db: db, context: context, entity: spec.entity, entityID: record.id, operation: "create", record: record)
+            let causality = try versions(fields: fields, previous: [:], id: record.id, context: context, db: db)
+            try ChangeJournal.insert(db: db, context: context, entity: spec.entity, entityID: record.id, operation: "create", record: record, causality: causality)
         }
     }
 
@@ -88,9 +89,9 @@ struct RepositoryCore<Record: DomainRecord>: Sendable {
                 let assignments = changed.map { "\($0.column) = ?" }.joined(separator: ", ")
                 let args = changed.map { value(fields, for: $0.column) } + [record.id.databaseValue]
                 try db.execute(sql: "UPDATE \(spec.table) SET \(assignments) WHERE id = ?", arguments: StatementArguments(args))
-                try versions(fields: fields, previous: old, id: record.id, context: context, db: db)
             }
-            try ChangeJournal.insert(db: db, context: context, entity: spec.entity, entityID: record.id, operation: "update", record: record)
+            let causality = try versions(fields: fields, previous: old, id: record.id, context: context, db: db)
+            try ChangeJournal.insert(db: db, context: context, entity: spec.entity, entityID: record.id, operation: "update", record: record, causality: causality)
         }
     }
 
@@ -100,8 +101,9 @@ struct RepositoryCore<Record: DomainRecord>: Sendable {
             if try isDuplicate(context, entityID: id, operation: "delete", record: Optional<Record>.none, db: db) { return }
             guard try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM \(spec.table) WHERE id = ?", arguments: [id]) == 1,
                   try !isDeleted(id, db: db) else { throw RepositoryError.notFound }
+            let causality = try versions(fields: [:], previous: [:], id: id, context: context, db: db)
             try db.execute(sql: "INSERT INTO tombstones (id, entity_type, entity_id, deletion_version_id, deleted_at_ms) VALUES (?, ?, ?, ?, ?)", arguments: [UUID().uuidString, spec.entity, id, context.id, context.timestamp])
-            try ChangeJournal.insert(db: db, context: context, entity: spec.entity, entityID: id, operation: "delete", record: Optional<Record>.none)
+            try ChangeJournal.insert(db: db, context: context, entity: spec.entity, entityID: id, operation: "delete", record: Optional<Record>.none, causality: causality)
         }
     }
 
@@ -121,10 +123,12 @@ struct RepositoryCore<Record: DomainRecord>: Sendable {
 
     private func isDuplicate(_ context: MutationContext, entityID: String, operation: String, record: Record?, db: Database) throws -> Bool {
         guard let row = try Row.fetchOne(db, sql: "SELECT entity_type, entity_id, payload FROM outbox WHERE mutation_id = ?", arguments: [context.id]) else { return false }
-        let payload = try ChangeJournal.canonicalPayload(context: context, entity: spec.entity, entityID: entityID, operation: operation, record: record)
+        let storedPayload: Data = row["payload"]
+        let causality = try ChangeJournal.causality(from: storedPayload)
+        let payload = try ChangeJournal.canonicalPayload(context: context, entity: spec.entity, entityID: entityID, operation: operation, record: record, causality: causality)
         guard (row["entity_type"] as String) == spec.entity,
               (row["entity_id"] as String) == entityID,
-              (row["payload"] as Data) == payload else { throw RepositoryError.mutationCollision }
+              storedPayload == payload else { throw RepositoryError.mutationCollision }
         return true
     }
 
@@ -174,11 +178,33 @@ struct RepositoryCore<Record: DomainRecord>: Sendable {
         }
     }
 
-    private func versions(fields: [String: Any], previous: [String: Any], id: String, context: MutationContext, db: Database) throws {
-        for (property, _) in spec.fields where property != "id" && property != "createdAtMS" && !equal(fields[property], previous[property]) {
-            let parent = try String.fetchOne(db, sql: "SELECT version_id FROM field_versions WHERE entity_type = ? AND entity_id = ? AND field_name = ? ORDER BY rowid DESC LIMIT 1", arguments: [spec.entity, id, property])
-            let counter = (try Int.fetchOne(db, sql: "SELECT MAX(device_counter) FROM field_versions WHERE entity_type = ? AND entity_id = ? AND field_name = ? AND device_id = ?", arguments: [spec.entity, id, property, context.deviceID]) ?? 0) + 1
+    private func versions(fields: [String: Any], previous: [String: Any], id: String, context: MutationContext, db: Database) throws -> CausalSnapshot {
+        let recordParent = try latestVersion(field: "__record", id: id, db: db)
+        let previousCounter = try Int64.fetchOne(db, sql: "SELECT MAX(device_counter) FROM field_versions WHERE device_id = ?", arguments: [context.deviceID]) ?? 0
+        let (counter, overflow) = previousCounter.addingReportingOverflow(1)
+        guard !overflow else { throw RepositoryError.persistenceFailed }
+        var observed: [ObservedFieldVersion] = []
+        var changed: [FieldCausalVersion] = []
+        for (property, _) in spec.fields where property != "id" && property != "createdAtMS" {
+            let parent = try latestVersion(field: property, id: id, db: db)
+            if let parent { observed.append(ObservedFieldVersion(fieldName: property, versionID: parent)) }
+            guard fields[property] != nil || previous[property] != nil,
+                  !equal(fields[property], previous[property]) else { continue }
+            var ancestors: [String] = []
+            var cursor = parent
+            var seen: Set<String> = []
+            while let version = cursor, seen.insert(version).inserted {
+                ancestors.append(version)
+                cursor = try String.fetchOne(db, sql: "SELECT parent_version_id FROM field_versions WHERE entity_type = ? AND entity_id = ? AND field_name = ? AND version_id = ? ORDER BY rowid DESC LIMIT 1", arguments: [spec.entity, id, property, version])
+            }
             try db.execute(sql: "INSERT INTO field_versions (id, entity_type, entity_id, field_name, version_id, parent_version_id, device_id, device_counter, updated_at_ms) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", arguments: [UUID().uuidString, spec.entity, id, property, context.id, parent, context.deviceID, counter, context.timestamp])
+            changed.append(FieldCausalVersion(fieldName: property, versionID: context.id, parentVersionID: parent, ancestorVersionIDs: ancestors, deviceCounter: counter))
         }
+        try db.execute(sql: "INSERT INTO field_versions (id, entity_type, entity_id, field_name, version_id, parent_version_id, device_id, device_counter, updated_at_ms) VALUES (?, ?, ?, '__record', ?, ?, ?, ?, ?)", arguments: [UUID().uuidString, spec.entity, id, context.id, recordParent, context.deviceID, counter, context.timestamp])
+        return CausalSnapshot(logicalVersionID: context.id, recordParentVersionID: recordParent, deviceID: context.deviceID, deviceCounter: counter, changedFields: changed.sorted { $0.fieldName < $1.fieldName }, observedFieldVersions: observed.sorted { $0.fieldName < $1.fieldName })
+    }
+
+    private func latestVersion(field: String, id: String, db: Database) throws -> String? {
+        try String.fetchOne(db, sql: "SELECT version_id FROM field_versions WHERE entity_type = ? AND entity_id = ? AND field_name = ? ORDER BY rowid DESC LIMIT 1", arguments: [spec.entity, id, field])
     }
 }

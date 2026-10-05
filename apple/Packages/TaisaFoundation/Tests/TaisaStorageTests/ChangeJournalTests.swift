@@ -87,7 +87,12 @@ private actor JournalKeys: DatabaseKeyStore {
         let record = ProfileRecord(id: id, displayName: "Name", headline: "Designer", biography: "Bio", updatedAtMS: 100)
         try await ProfileRepository(store: store).create(record, context: MutationContext(id: mutationID, deviceID: deviceID, timestamp: 100))
         let payload = try #require(await ChangeJournal(store: store).pending(limit: 1).first?.payload)
-        let expected = "{\"deviceID\":\"\(deviceID)\",\"entityID\":\"\(id)\",\"entityType\":\"profile\",\"id\":\"\(mutationID)\",\"operation\":\"create\",\"record\":{\"biography\":\"Bio\",\"displayName\":\"Name\",\"headline\":\"Designer\",\"id\":\"\(id)\",\"updatedAtMS\":100},\"timestamp\":100}"
+        let fieldNames = ["biography", "displayName", "headline", "updatedAtMS"]
+        let changedFields = fieldNames.map { name in
+            "{\"ancestorVersionIDs\":[],\"deviceCounter\":1,\"fieldName\":\"\(name)\",\"versionID\":\"\(mutationID)\"}"
+        }.joined(separator: ",")
+        let causality = "{\"changedFields\":[\(changedFields)],\"deviceCounter\":1,\"deviceID\":\"\(deviceID)\",\"logicalVersionID\":\"\(mutationID)\",\"observedFieldVersions\":[]}"
+        let expected = "{\"causality\":\(causality),\"deviceID\":\"\(deviceID)\",\"entityID\":\"\(id)\",\"entityType\":\"profile\",\"id\":\"\(mutationID)\",\"operation\":\"create\",\"record\":{\"biography\":\"Bio\",\"displayName\":\"Name\",\"headline\":\"Designer\",\"id\":\"\(id)\",\"updatedAtMS\":100},\"timestamp\":100}"
         #expect(payload == Data(expected.utf8))
         #expect(!payload.contains(Data("audioURI".utf8)))
         #expect(!payload.contains(Data("recoveryKey".utf8)))

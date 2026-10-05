@@ -1,4 +1,12 @@
-public struct ConversationRepository: DomainRepository {
+/// Message history is append-only: callers can create, read, and tombstone a
+/// message, but cannot replace its body under the same stable ID.
+public protocol MessageRepositoryContract: Sendable {
+    func message(id: String) async throws -> MessageRecord?
+    func createMessage(_ record: MessageRecord, context: MutationContext) async throws
+    func deleteMessage(id: String, context: MutationContext) async throws
+}
+
+public struct ConversationRepository: DomainRepository, MessageRepositoryContract {
     private let core: RepositoryCore<ConversationRecord>
     public init(store: TaisaStore) { core = RepositoryCore(store: store, spec: RepositorySpec(table: "conversations", entity: "conversation", fields: [("id", "id"), ("title", "title"), ("createdAtMS", "created_at_ms"), ("updatedAtMS", "updated_at_ms")], immutable: ["createdAtMS"], appendOnly: false)) }
     public func get(id: String) async throws -> ConversationRecord? { try await core.get(id: id) }

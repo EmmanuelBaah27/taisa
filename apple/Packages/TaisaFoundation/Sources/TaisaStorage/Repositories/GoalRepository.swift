@@ -1,4 +1,11 @@
-public struct GoalRepository: DomainRepository {
+public protocol MilestoneRepositoryContract: Sendable {
+    func milestone(id: String) async throws -> MilestoneRecord?
+    func createMilestone(_ record: MilestoneRecord, context: MutationContext) async throws
+    func updateMilestone(_ record: MilestoneRecord, context: MutationContext) async throws
+    func deleteMilestone(id: String, context: MutationContext) async throws
+}
+
+public struct GoalRepository: DomainRepository, MilestoneRepositoryContract {
     private let core: RepositoryCore<GoalRecord>
     public init(store: TaisaStore) { core = RepositoryCore(store: store, spec: RepositorySpec(table: "goals", entity: "goal", fields: [("id", "id"), ("title", "title"), ("detail", "detail"), ("status", "status"), ("createdAtMS", "created_at_ms"), ("updatedAtMS", "updated_at_ms")], immutable: ["createdAtMS"], appendOnly: false)) }
     public func get(id: String) async throws -> GoalRecord? { try await core.get(id: id) }
