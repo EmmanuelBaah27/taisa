@@ -14,7 +14,7 @@ test -f docs/project-memory.md || fail "project memory index is missing"
 test -f docs/decisions/README.md || fail "decision record guide is missing"
 test -f docs/decisions/0001-use-repository-native-project-memory.md || fail "initial project memory decision is missing"
 test -f docs/learnings.md || fail "reusable learning log is missing"
-test "$(git remote get-url origin)" = "https://github.com/EmmanuelBaah27/taisa.git" || fail "origin does not use the canonical Taisa URL"
+node scripts/canonical-origin.mjs "$(git remote get-url origin)" || fail "origin does not use the canonical Taisa URL"
 
 rg -q 'main.*only permanent branch|only permanent branch.*main' docs/workflow.md || fail "canonical main policy is missing"
 rg -q '<type>/<short-kebab-case-description>' docs/workflow.md || fail "typed branch naming policy is missing"
