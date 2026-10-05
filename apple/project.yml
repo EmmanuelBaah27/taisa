@@ -44,6 +44,8 @@ targets:
         product: TaisaContracts
       - package: TaisaFoundation
         product: TaisaDesignSystem
+      - package: TaisaFoundation
+        product: TaisaStorage
   TaisaPreview:
     type: application
     platform: iOS
@@ -70,6 +72,8 @@ targets:
         product: TaisaDesignSystem
       - package: TaisaFoundation
         product: TaisaPreviewSupport
+      - package: TaisaFoundation
+        product: TaisaStorage
   TaisaUnitTests:
     type: bundle.unit-test
     platform: iOS
@@ -77,6 +81,8 @@ targets:
       - path: TaisaUnitTests
     dependencies:
       - target: Taisa
+      - package: TaisaFoundation
+        product: TaisaStorage
   TaisaUITests:
     type: bundle.ui-testing
     platform: iOS
