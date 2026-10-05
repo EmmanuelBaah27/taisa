@@ -44,6 +44,37 @@ struct RepositorySpec: Sendable {
     let appendOnly: Bool
 }
 
+/// The single repository/journal mapping from transport-neutral entity tags to
+/// v1 storage tables and their identity-bearing parent references.
+enum DomainEntity: String, CaseIterable {
+    case profile, conversation, message, goal, milestone, action, evidence, memory, memory_source
+
+    var table: String {
+        switch self {
+        case .profile: "profile"
+        case .conversation: "conversations"
+        case .message: "messages"
+        case .goal: "goals"
+        case .milestone: "milestones"
+        case .action: "actions"
+        case .evidence: "evidence"
+        case .memory: "memory_items"
+        case .memory_source: "memory_sources"
+        }
+    }
+
+    var references: [(property: String, column: String, table: String)] {
+        switch self {
+        case .message: [("conversationID", "conversation_id", "conversations")]
+        case .milestone: [("goalID", "goal_id", "goals")]
+        case .action: [("goalID", "goal_id", "goals")]
+        case .evidence: [("goalID", "goal_id", "goals"), ("actionID", "action_id", "actions")]
+        case .memory_source: [("memoryItemID", "memory_item_id", "memory_items")]
+        default: []
+        }
+    }
+}
+
 struct RepositoryCore<Record: DomainRecord>: Sendable {
     let store: TaisaStore
     let spec: RepositorySpec
@@ -69,6 +100,7 @@ struct RepositoryCore<Record: DomainRecord>: Sendable {
             let fields = try properties(record)
             let storedFields = try storageFields(fields, db: db)
             if try isDuplicate(context, entityID: record.id, operation: "create", record: record, db: db) { return }
+            try validateSourceTuple(fields, excluding: nil, db: db)
             guard try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM \(spec.table) WHERE id = ? COLLATE NOCASE", arguments: [record.id]) == 0 else { throw RepositoryError.alreadyExists }
             let columns = spec.fields.map(\.column)
             let placeholders = Array(repeating: "?", count: columns.count).joined(separator: ", ")
@@ -86,6 +118,7 @@ struct RepositoryCore<Record: DomainRecord>: Sendable {
             let fields = try properties(record)
             let storedFields = try storageFields(fields, db: db)
             if try isDuplicate(context, entityID: record.id, operation: "update", record: record, db: db) { return }
+            try validateSourceTuple(fields, excluding: record.id, db: db)
             let matches = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM \(spec.table) WHERE id = ? COLLATE NOCASE", arguments: [record.id]) ?? 0
             guard matches <= 1 else { throw RepositoryError.persistenceFailed }
             guard let row = try Row.fetchOne(db, sql: "SELECT * FROM \(spec.table) WHERE id = ? COLLATE NOCASE", arguments: [record.id]),
@@ -180,23 +213,26 @@ struct RepositoryCore<Record: DomainRecord>: Sendable {
     }
 
     private func storageFields(_ fields: [String: Any], db: Database) throws -> [String: Any] {
-        let references: [(String, String)]
-        switch spec.entity {
-        case "message": references = [("conversationID", "conversations")]
-        case "milestone": references = [("goalID", "goals")]
-        case "action": references = [("goalID", "goals")]
-        case "evidence": references = [("goalID", "goals"), ("actionID", "actions")]
-        case "source": references = [("memoryItemID", "memory_items")]
-        default: references = []
-        }
+        guard let kind = DomainEntity(rawValue: spec.entity), kind.table == spec.table else { throw RepositoryError.persistenceFailed }
         var stored = fields
-        for (property, table) in references {
+        for (property, _, table) in kind.references {
             guard let canonical = fields[property] as? String else { continue }
             let matches = try String.fetchAll(db, sql: "SELECT id FROM \(table) WHERE id = ? COLLATE NOCASE", arguments: [canonical])
             guard matches.count <= 1 else { throw RepositoryError.persistenceFailed }
             if let existing = matches.first { stored[property] = existing }
         }
         return stored
+    }
+
+    private func validateSourceTuple(_ fields: [String: Any], excluding ownID: String?, db: Database) throws {
+        guard spec.entity == "memory_source" else { return }
+        guard let memoryID = fields["memoryItemID"] as? String,
+              let sourceType = fields["sourceType"] as? String,
+              let sourceID = fields["sourceID"] as? String else { throw RepositoryError.persistenceFailed }
+        // V1's composite UNIQUE uses BINARY UUID strings. Preserve its
+        // semantic relationship uniqueness for previously persisted casing.
+        let matches = try String.fetchAll(db, sql: "SELECT id FROM memory_sources WHERE source_type = ? AND source_id = ? COLLATE NOCASE AND memory_item_id = ? COLLATE NOCASE", arguments: [sourceType, sourceID, memoryID])
+        guard matches.allSatisfy({ ownID != nil && UUIDIdentity.canonical($0) == ownID }) else { throw RepositoryError.persistenceFailed }
     }
 
     private func decode(_ row: Row) throws -> Record {

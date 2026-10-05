@@ -24,7 +24,7 @@ public struct ChangeJournal: Sendable {
             let cursor = try Row.fetchCursor(db, sql: "SELECT mutation_id, entity_type, entity_id, payload, created_at_ms, status, attempts, retry_category, acknowledged_at_ms FROM outbox WHERE status IN ('pending', 'retrying') ORDER BY rowid")
             var changes: [PendingChange] = []
             while changes.count < min(limit, 200), let row = try cursor.next() {
-                try Self.requireUniqueMutation(row["mutation_id"], db: db)
+                try Self.requireUniqueMutation(row, db: db)
                 let state = try Self.state(row)
                 switch state {
                 case .pending, .retrying:
@@ -52,7 +52,7 @@ public struct ChangeJournal: Sendable {
             let cursor = try Row.fetchCursor(db, sql: "SELECT mutation_id, entity_type, entity_id, payload, created_at_ms, status, attempts, retry_category, acknowledged_at_ms FROM outbox WHERE status IN ('pending', 'retrying') ORDER BY rowid")
             var selected: [(PendingChange, String, String?)] = []
             while selected.count < min(limit, 200), let row = try cursor.next() {
-                try Self.requireUniqueMutation(row["mutation_id"], db: db)
+                try Self.requireUniqueMutation(row, db: db)
                 let state = try Self.state(row)
                 switch state {
                 case .pending, .retrying:
@@ -247,17 +247,42 @@ public struct ChangeJournal: Sendable {
         return (normalized, normalized != original)
     }
 
-    private static func requireUniqueMutation(_ id: String, db: Database) throws {
-        let key = try requiredID(id)
+    private static func requireUniqueMutation(_ row: Row, db: Database) throws {
+        let key = try requiredID(row["mutation_id"])
         let matches = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM outbox WHERE mutation_id = ? COLLATE NOCASE", arguments: [key]) ?? 0
         guard matches == 1 else { throw RepositoryError.persistenceFailed }
+        try requireUnambiguousEntity(row, db: db)
     }
 
     private static func uniqueMutationRow(_ id: String, db: Database) throws -> Row? {
         let key = try requiredID(id)
         let matches = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM outbox WHERE mutation_id = ? COLLATE NOCASE", arguments: [key]) ?? 0
         guard matches <= 1 else { throw RepositoryError.persistenceFailed }
-        return try Row.fetchOne(db, sql: "SELECT * FROM outbox WHERE mutation_id = ? COLLATE NOCASE", arguments: [key])
+        let row = try Row.fetchOne(db, sql: "SELECT * FROM outbox WHERE mutation_id = ? COLLATE NOCASE", arguments: [key])
+        if let row { try requireUnambiguousEntity(row, db: db) }
+        return row
+    }
+
+    private static func requireUnambiguousEntity(_ row: Row, db: Database) throws {
+        let entityType: String = row["entity_type"]
+        guard let kind = DomainEntity(rawValue: entityType) else { throw RepositoryError.persistenceFailed }
+        let entityID = try requiredID(row["entity_id"] as String)
+        let matches = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM \(kind.table) WHERE id = ? COLLATE NOCASE", arguments: [entityID]) ?? 0
+        guard matches <= 1 else { throw RepositoryError.persistenceFailed }
+        guard !kind.references.isEmpty else { return }
+        let storedRecord = try Row.fetchOne(db, sql: "SELECT * FROM \(kind.table) WHERE id = ? COLLATE NOCASE", arguments: [entityID])
+        let payload: Data = row["payload"]
+        guard let object = try JSONSerialization.jsonObject(with: payload) as? [String: Any] else { throw RepositoryError.persistenceFailed }
+        let record = object["record"] as? [String: Any]
+        for (property, column, table) in kind.references {
+            var parentsToCheck: Set<String> = []
+            if let parent = record?[property] as? String { try parentsToCheck.insert(requiredID(parent)) }
+            if let storedRecord, let storedParent: String = storedRecord[column] { try parentsToCheck.insert(requiredID(storedParent)) }
+            for parentID in parentsToCheck {
+                let parents = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM \(table) WHERE id = ? COLLATE NOCASE", arguments: [parentID]) ?? 0
+                guard parents <= 1 else { throw RepositoryError.persistenceFailed }
+            }
+        }
     }
 
     static func canonicalCausality(_ snapshot: CausalSnapshot) throws -> CausalSnapshot {
