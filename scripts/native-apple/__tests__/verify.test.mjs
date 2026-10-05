@@ -107,6 +107,10 @@ test('combined native verification and CI pin every required gate', async () => 
     resolve(repositoryRoot, '.github/workflows/native-apple.yml'),
     'utf8',
   );
+  const designSystemWorkflow = await readFile(
+    resolve(repositoryRoot, '.github/workflows/design-system.yml'),
+    'utf8',
+  );
   const combined = packageJSON.scripts['verify:native-apple:all'];
 
   for (const required of [
@@ -135,6 +139,9 @@ test('combined native verification and CI pin every required gate', async () => 
     'verify:native-apple:all',
     'upload-artifact',
   ]) assert.match(workflow, new RegExp(required.replaceAll('.', '\\.')));
+
+  assert.match(designSystemWorkflow, /name: Design System Compliance/);
+  assert.match(designSystemWorkflow, /npm run verify:native-design-system/);
 });
 
 test('rejects unexpanded build identity placeholders', () => {
