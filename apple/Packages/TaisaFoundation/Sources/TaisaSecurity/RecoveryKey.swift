@@ -37,7 +37,7 @@ enum SecurityRandom {
 
 /// A 256-bit generated secret. Only `formatted` is suitable for a short authenticated ceremony.
 /// Swift Data/CryptoKit may retain value copies; zeroing the temporary RNG buffer cannot clear those copies.
-public struct RecoveryKey: Sendable, CustomStringConvertible, CustomDebugStringConvertible {
+public struct RecoveryKey: Sendable, CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
     private static let prefix = "TAISA1"
     private static let checksumContext = Data("taisa.recovery.v1".utf8)
     let keyMaterial: Data
@@ -87,6 +87,9 @@ public struct RecoveryKey: Sendable, CustomStringConvertible, CustomDebugStringC
 
     public var description: String { "<redacted recovery key>" }
     public var debugDescription: String { description }
+    public var customMirror: Mirror {
+        Mirror(self, children: ["state": "redacted"], displayStyle: .struct)
+    }
 }
 
 private extension Character {

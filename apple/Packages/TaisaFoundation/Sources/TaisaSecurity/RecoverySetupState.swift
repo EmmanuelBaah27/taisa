@@ -2,7 +2,7 @@ import Foundation
 
 /// In-memory ceremony state. Only the two explicit storage confirmations and
 /// a re-entered key verification may unlock sync; none of these is persisted here.
-public struct RecoverySetupState: Sendable, CustomStringConvertible, CustomDebugStringConvertible {
+public struct RecoverySetupState: Sendable, CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
     public static let manualSaveInstructions =
         "Copy the recovery key, create a new entry in Passwords, paste the key there, " +
         "and make a separate offline copy. Then confirm both copies and re-enter the key."
@@ -57,6 +57,15 @@ public struct RecoverySetupState: Sendable, CustomStringConvertible, CustomDebug
         recoveryVerified = true
     }
 
-    public var description: String { "<redacted recovery setup state>" }
+    private var diagnosticState: String {
+        if canEnableSync { return "ready" }
+        if needsManualSave { return "manual-save-required" }
+        return "awaiting-confirmation"
+    }
+
+    public var description: String { "<recovery setup: \(diagnosticState)>" }
     public var debugDescription: String { description }
+    public var customMirror: Mirror {
+        Mirror(self, children: ["state": diagnosticState], displayStyle: .struct)
+    }
 }

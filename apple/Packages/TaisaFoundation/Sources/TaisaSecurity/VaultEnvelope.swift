@@ -1,7 +1,7 @@
 import Foundation
 
 /// All fields are authenticated. IDs must be opaque transport identifiers, never user content.
-public struct EnvelopeMetadata: Codable, Equatable, Sendable {
+public struct EnvelopeMetadata: Codable, Equatable, Sendable, CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
     private static let allowedEntityTypes: Set<String> = [
         "profile", "conversation", "message", "goal", "milestone", "action",
         "evidence", "memory", "memory_source", "snapshot",
@@ -25,9 +25,15 @@ public struct EnvelopeMetadata: Codable, Equatable, Sendable {
               schemaVersion > 0
         else { throw VaultError.malformedEnvelope }
     }
+
+    public var description: String { "<redacted envelope metadata>" }
+    public var debugDescription: String { description }
+    public var customMirror: Mirror {
+        Mirror(self, children: ["state": "redacted"], displayStyle: .struct)
+    }
 }
 
-public struct VaultEnvelope: Codable, Equatable, Sendable {
+public struct VaultEnvelope: Codable, Equatable, Sendable, CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
     public var version: Int
     public var metadata: EnvelopeMetadata
     /// CryptoKit AES.GCM combined representation: 12-byte nonce, ciphertext, 16-byte tag.
@@ -38,9 +44,15 @@ public struct VaultEnvelope: Codable, Equatable, Sendable {
         self.metadata = metadata
         self.ciphertext = ciphertext
     }
+
+    public var description: String { "<redacted vault envelope>" }
+    public var debugDescription: String { description }
+    public var customMirror: Mirror {
+        Mirror(self, children: ["state": "redacted"], displayStyle: .struct)
+    }
 }
 
-public struct WrappedVaultKey: Codable, Equatable, Sendable {
+public struct WrappedVaultKey: Codable, Equatable, Sendable, CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
     public var version: Int
     public var vaultID: UUID
     public var salt: Data
@@ -51,5 +63,11 @@ public struct WrappedVaultKey: Codable, Equatable, Sendable {
         self.vaultID = vaultID
         self.salt = salt
         self.ciphertext = ciphertext
+    }
+
+    public var description: String { "<redacted wrapped vault>" }
+    public var debugDescription: String { description }
+    public var customMirror: Mirror {
+        Mirror(self, children: ["state": "redacted"], displayStyle: .struct)
     }
 }

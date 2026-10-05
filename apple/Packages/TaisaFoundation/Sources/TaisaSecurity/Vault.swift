@@ -1,7 +1,7 @@
 import CryptoKit
 import Foundation
 
-public struct Vault: Sendable, CustomStringConvertible, CustomDebugStringConvertible {
+public struct Vault: Sendable, CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
     public let id: UUID
     private let keyMaterial: Data
     private static let version = 1
@@ -102,13 +102,19 @@ public struct Vault: Sendable, CustomStringConvertible, CustomDebugStringConvert
         return difference == 0
     }
 
-    public var description: String { "<redacted vault \(id.uuidString)>" }
+    public var description: String { "<redacted vault>" }
     public var debugDescription: String { description }
+    public var customMirror: Mirror {
+        Mirror(self, children: ["state": "redacted"], displayStyle: .struct)
+    }
 }
 
-public struct RecoveryRotation: Sendable, CustomStringConvertible, CustomDebugStringConvertible {
+public struct RecoveryRotation: Sendable, CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
     public let recoveryKey: RecoveryKey
     public let wrappedVault: WrappedVaultKey
     public var description: String { "<redacted recovery rotation>" }
     public var debugDescription: String { description }
+    public var customMirror: Mirror {
+        Mirror(self, children: ["state": "redacted"], displayStyle: .struct)
+    }
 }
