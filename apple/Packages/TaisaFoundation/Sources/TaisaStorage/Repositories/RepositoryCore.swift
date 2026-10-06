@@ -271,9 +271,15 @@ struct RepositoryCore<Record: DomainRecord>: Sendable {
         var observed: [ObservedFieldVersion] = []
         var changed: [FieldCausalVersion] = []
         let visibleTips = try visibleFieldTips(id: id, db: db)
+        let deleting = fields.isEmpty && previous.isEmpty
         for (property, _) in spec.fields where property != "id" && property != "createdAtMS" {
             let parent = try latestVersion(field: property, id: id, db: db)
-            if let parent { observed.append(ObservedFieldVersion(fieldName: property, versionID: parent)) }
+            if deleting {
+                let heads = Set((parent.map { [$0] } ?? []) + (visibleTips[property] ?? []))
+                observed += heads.sorted().map { ObservedFieldVersion(fieldName: property, versionID: $0) }
+            } else if let parent {
+                observed.append(ObservedFieldVersion(fieldName: property, versionID: parent))
+            }
             guard fields[property] != nil || previous[property] != nil,
                   !equal(fields[property], previous[property]) else { continue }
             var ancestors: [String] = []
@@ -281,7 +287,8 @@ struct RepositoryCore<Record: DomainRecord>: Sendable {
             if let parent { pending.append(parent) }
             var walked: Set<String> = []
             var listed: Set<String> = []
-            while let version = pending.popLast(), walked.insert(version).inserted {
+            while let version = pending.popLast() {
+                guard walked.insert(version).inserted else { continue }
                 if listed.insert(version).inserted { ancestors.append(version) }
                 // A resolution may have multiple parents. The v1 field_versions
                 // row records its immediate parent; the committed journal
@@ -322,7 +329,7 @@ struct RepositoryCore<Record: DomainRecord>: Sendable {
             changed.append(FieldCausalVersion(fieldName: property, versionID: context.id, parentVersionID: parent, ancestorVersionIDs: ancestors, deviceCounter: counter))
         }
         try db.execute(sql: "INSERT INTO field_versions (id, entity_type, entity_id, field_name, version_id, parent_version_id, device_id, device_counter, updated_at_ms) VALUES (?, ?, ?, '__record', ?, ?, ?, ?, ?)", arguments: [UUID().uuidString, spec.entity, id, context.id, recordParent, context.deviceID, counter, context.timestamp])
-        return CausalSnapshot(logicalVersionID: context.id, recordParentVersionID: recordParent, deviceID: context.deviceID, deviceCounter: counter, changedFields: changed.sorted { $0.fieldName < $1.fieldName }, observedFieldVersions: observed.sorted { $0.fieldName < $1.fieldName })
+        return CausalSnapshot(logicalVersionID: context.id, recordParentVersionID: recordParent, deviceID: context.deviceID, deviceCounter: counter, changedFields: changed.sorted { $0.fieldName < $1.fieldName }, observedFieldVersions: observed.sorted { ($0.fieldName, $0.versionID) < ($1.fieldName, $1.versionID) })
     }
 
     private func latestVersion(field: String, id: String, db: Database) throws -> String? {

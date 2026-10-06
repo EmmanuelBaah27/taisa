@@ -34,8 +34,12 @@ public actor SyncCoordinator {
             return SyncOutcome(state: status)
         }
         do {
-            let (boundToken, _, recovery, generation) = try await bindAccount(fingerprint)
+            let (boundToken, retryAtMS, recovery, generation) = try await bindAccount(fingerprint)
             guard recovery == .zoneReset else { status = .recoveryRequired; return SyncOutcome(state: status) }
+            if let retryAtMS, max(nowMS(), 0) < retryAtMS {
+                status = .zoneReset
+                return SyncOutcome(state: status, retryAtMS: retryAtMS)
+            }
             let session = try await transport.bind(expectedFingerprint: fingerprint)
             let recoveryToken = try await store.write { db -> Data? in
                 guard let row = try Row.fetchOne(db, sql: "SELECT engine_state, change_token FROM sync_state WHERE id = 1"),
@@ -61,7 +65,7 @@ public actor SyncCoordinator {
             let result = await runTurn(token: recoveryToken, session: session, generation: generation)
             guard result.state == .upToDate || result.state == .conflictsNeedReview else {
                 status = .zoneReset
-                return SyncOutcome(state: status, uploaded: result.uploaded, downloaded: result.downloaded, conflicts: result.conflicts)
+                return SyncOutcome(state: status, uploaded: result.uploaded, downloaded: result.downloaded, conflicts: result.conflicts, retryAtMS: result.retryAtMS)
             }
             try await ensureAccount(session, generation: generation)
             try await store.write { db in
@@ -345,6 +349,11 @@ public actor SyncCoordinator {
             }) {
                 let events = sources.filter { $0.mutation.entityType + "|" + $0.mutation.entityID == key }.map(\.mutation)
                 guard let first = events.first else { continue }
+                if first.entityType == "memory_source" &&
+                    events.contains(where: { $0.kind == .update || $0.kind == .resolve }) &&
+                    !events.contains(where: { $0.kind == .create }) {
+                    throw SyncProjectionError.dependencyPending
+                }
                 let decision = try MergeEngine.reduce(events: events)
                 try SyncEntityShape.materialize(decision, entityType: first.entityType, entityID: first.entityID, source: sources, in: db)
                 for resolution in events where resolution.kind == .resolve || (resolution.kind == .delete && resolution.resolvedParentVersionIDs != nil) {

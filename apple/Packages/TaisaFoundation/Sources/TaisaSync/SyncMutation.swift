@@ -131,7 +131,9 @@ public struct SyncMutation: Codable, Sendable, Equatable {
               Set((resolvedParentVersionIDs ?? []).compactMap { UUID(uuidString: $0) }).count == (resolvedParentVersionIDs ?? []).count,
               !(resolvedParentVersionIDs ?? []).contains(where: { UUID(uuidString: $0) == UUID(uuidString: id) }),
               Set(fields.map(\.name)).count == fields.count,
-              Set(observedFieldVersions.map(\.name)).count == observedFieldVersions.count,
+              (kind == .delete
+                ? Set(observedFieldVersions.map { $0.name + "|" + (UUID(uuidString: $0.versionID)?.uuidString ?? "") }).count == observedFieldVersions.count
+                : Set(observedFieldVersions.map(\.name)).count == observedFieldVersions.count),
               (kind != .delete || fields.isEmpty),
               (kind == .delete || !fields.isEmpty || (kind == .update && recordParentVersionID != nil)) else { throw SyncMergeError.malformedMutation }
         if entityType == "message" && kind != .create && kind != .delete { throw SyncMergeError.malformedMutation }
@@ -171,7 +173,7 @@ public struct SyncMutation: Codable, Sendable, Equatable {
         }
         return SyncMutation(id: key(id), entityType: entityType, entityID: key(entityID), entityVersion: entityVersion, deviceID: key(deviceID), counter: counter, timestampMS: timestampMS, kind: kind,
             fields: fields.map { SyncField(name: $0.name, value: $0.value, versionID: key($0.versionID), ancestorVersionIDs: $0.ancestorVersionIDs.map(key), deviceCounter: $0.deviceCounter) }.sorted { $0.name < $1.name },
-            observedFieldVersions: observedFieldVersions.map { SyncObservedField(name: $0.name, versionID: key($0.versionID)) }.sorted { $0.name < $1.name },
+            observedFieldVersions: observedFieldVersions.map { SyncObservedField(name: $0.name, versionID: key($0.versionID)) }.sorted { ($0.name, $0.versionID) < ($1.name, $1.versionID) },
             frontier: frontier.canonicalized(), recordParentVersionID: recordParentVersionID.map(key), resolvedParentVersionIDs: resolvedParentVersionIDs?.map(key).sorted(), retainedDeletionEvidence: retained)
     }
 }

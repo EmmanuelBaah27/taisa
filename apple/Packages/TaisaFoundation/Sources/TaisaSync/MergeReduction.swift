@@ -103,7 +103,9 @@ public enum MergeEngine {
         try validateGraph(ordered)
         let state = SyncMergeState(events: ordered)
         let duplicateDelivery = events.count > ordered.count
-        if first.entityType == "memory_source" && !ordered.contains(where: { $0.kind == .create }) {
+        if first.entityType == "memory_source" &&
+            ordered.contains(where: { $0.kind == .update || $0.kind == .resolve }) &&
+            !ordered.contains(where: { $0.kind == .create }) {
             throw SyncMergeError.malformedMutation
         }
 
@@ -117,7 +119,7 @@ public enum MergeEngine {
                     candidate.fields.count == exemplar.fields.count && zip(candidate.fields, exemplar.fields).allSatisfy { $0.name == $1.name && $0.value == $1.value }
                 }
                 if identical {
-                    let equalHeads: [String: [String]] = first.entityType == "memory_source" && creates.count > 1
+                    let equalHeads: [String: [String]] = creates.count > 1
                         ? Dictionary(uniqueKeysWithValues: exemplar.fields.map { ($0.name, creates.map(\.id).sorted()) })
                         : [:]
                     return MergeDecision(kind: duplicateDelivery || creates.count > 1 ? .duplicate : .applied, fields: exemplar.fields, visibleFieldHeads: equalHeads, conflicts: [], deletion: nil, state: state)
