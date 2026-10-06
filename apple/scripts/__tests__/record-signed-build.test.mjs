@@ -1,11 +1,18 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { spawnSync } from 'node:child_process';
+import { X509Certificate } from 'node:crypto';
+import { rootCertificates } from 'node:tls';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, realpathSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { inspectSignedBuild, validateSignedBuild } from '../record-signed-build.mjs';
+
+// Public CA certificates provide real, parseable DER without generating keys,
+// signing apps, reading a keychain, or contacting a certificate issuer.
+const signerCertificate = new X509Certificate(rootCertificates[0]);
+const unrelatedCertificate = new X509Certificate(rootCertificates[1]);
 
 const validRecord = {
   candidateCommit: 'abc123',
@@ -50,6 +57,7 @@ function fixture(t) {
   const image = Buffer.concat([Buffer.from([0xcf, 0xfa, 0xed, 0xfe]), Buffer.from(personalRecord.candidateCommit + ' transcription-fixtures-v1')]);
   writeFileSync(executable, image);
   const facts = {
+    signerCertificate: signerCertificate.raw,
     info: { CFBundleIdentifier: 'com.taisa.app.personal', TaisaEnvironment: 'personal', CFBundleExecutable: 'TaisaPersonal', CFBundleVersion: '1' },
     rights: { 'application-identifier': 'XH59HG6MSY.com.taisa.app.personal', 'com.apple.developer.team-identifier': 'XH59HG6MSY', 'get-task-allow': true },
     profile: { UUID: '11111111-1111-4111-8111-111111111111', TeamIdentifier: ['XH59HG6MSY'], ApplicationIdentifierPrefix: ['XH59HG6MSY'], ExpirationDate: '2099-01-01T00:00:00Z', ProvisionedDevices: ['device-id'], Entitlements: { 'application-identifier': 'XH59HG6MSY.com.taisa.app.personal', 'com.apple.developer.team-identifier': 'XH59HG6MSY', 'get-task-allow': true } },
@@ -57,10 +65,15 @@ function fixture(t) {
     links: `${executable}:\n\t/System/Library/Frameworks/Security.framework/Security (compatibility version 1.0.0, current version 1.0.0)\n`,
     symbols: '0000000000001000 T _main\n',
   };
+  facts.profile.DeveloperCertificates = [signerCertificate.raw.toString('base64')];
   const calls = [];
   const run = (command, args, options = {}) => {
     calls.push([command, args]);
     if (command === 'codesign') {
+      if (args.includes('--extract-certificates')) {
+        if (facts.signerCertificate !== undefined) writeFileSync(args[args.indexOf('--extract-certificates') + 1] + '0', facts.signerCertificate);
+        return { stdout: '', stderr: '' };
+      }
       if (args.includes('--verify')) { if (facts.unsigned) throw new Error('unsigned'); return { stdout: '', stderr: '' }; }
       if (args.includes('--entitlements')) return { stdout: 'RIGHTS_FIXTURE', stderr: '' };
       return { stdout: '', stderr: facts.signature };
@@ -70,8 +83,13 @@ function fixture(t) {
       if (args[0] === '-insert') return { stdout: 'WRAPPED_PROFILE_FIXTURE', stderr: '' };
       if (args[0] === '-extract') {
         if (args[1] === 'Profile') return { stdout: Object.keys(facts.profile).join('\n'), stderr: '' };
-        const value = facts.profile[args[1].replace('Profile.', '')];
+        const path = args[1].replace('Profile.', '').split('.');
+        const value = path.reduce((object, key) => object?.[key], facts.profile);
         if (value === undefined) throw new Error('missing profile field');
+        if (args.includes('array')) {
+          if (!Array.isArray(value)) throw new Error('wrong profile field type');
+          return { stdout: `${value.length}\n`, stderr: '' };
+        }
         return { stdout: args[2] === 'raw' ? value + '\n' : JSON.stringify(value), stderr: '' };
       }
       return { stdout: JSON.stringify(options.input === 'RIGHTS_FIXTURE' ? facts.rights : options.input === 'PROFILE_FIXTURE' ? facts.profile : facts.info), stderr: '' };
@@ -96,6 +114,37 @@ test('Personal rejects caller evidence contradicting inspected facts', t => {
   }
 });
 
+test('Personal records the matched actual signer certificate even when it is not first in the profile', t => {
+  const f = fixture(t);
+  f.facts.profile.DeveloperCertificates.unshift(unrelatedCertificate.raw.toString('base64'));
+  const result = inspectSignedBuild(f.record, f.options);
+  assert.deepEqual(result.errors, []);
+  assert.equal(result.record.artifactEvidence.signerCertificateSHA256,
+    signerCertificate.fingerprint256.replaceAll(':', '').toLowerCase());
+});
+
+for (const [name, certificates] of [
+  ['missing', undefined], ['empty', []], ['not an array', {}],
+  ['unrelated same-team signer', [unrelatedCertificate.raw.toString('base64')]],
+  ['invalid base64', ['%%%not-base64%%%']],
+  ['malformed DER', [Buffer.from('UNRELATED_SIGNER_CERTIFICATE').toString('base64')]],
+  ['malformed entry after matching signer', [signerCertificate.raw.toString('base64'), 'AAAA']],
+]) {
+  test(`Personal rejects ${name} profile developer certificates`, t => {
+    const f = fixture(t);
+    f.facts.profile.DeveloperCertificates = certificates;
+    assert.notDeepEqual(validateSignedBuild(f.record, f.options), []);
+  });
+}
+
+for (const [name, certificate] of [['missing', undefined], ['empty', Buffer.alloc(0)], ['malformed', Buffer.from('NOT_A_CERTIFICATE')]]) {
+  test(`Personal rejects ${name} extracted app signer certificate`, t => {
+    const f = fixture(t);
+    f.facts.signerCertificate = certificate;
+    assert.notDeepEqual(validateSignedBuild(f.record, f.options), []);
+  });
+}
+
 test('Personal accepts inspected signed app and profile and invokes signature verification', t => {
   const f = fixture(t);
   assert.deepEqual(validateSignedBuild(f.record, f.options), []);
@@ -109,12 +158,12 @@ test('Personal handles real profile plist date and certificate types using local
   const xml = value => {
     if (Array.isArray(value)) return `<array>${value.map(xml).join('')}</array>`;
     if (typeof value === 'boolean') return value ? '<true/>' : '<false/>';
-    if (typeof value === 'object') return `<dict>${Object.entries(value).map(([key, item]) => `<key>${key}</key>${xml(item)}`).join('')}</dict>`;
+    if (typeof value === 'object') return `<dict>${Object.entries(value).map(([key, item]) => `<key>${key}</key>${key === 'DeveloperCertificates' ? `<array>${item.map(data => `<data>${data}</data>`).join('')}</array>` : xml(item)}`).join('')}</dict>`;
     return `<string>${value}</string>`;
   };
   const profileXML = `<?xml version="1.0"?><plist version="1.0">${xml(f.facts.profile)
     .replace('<string>2099-01-01T00:00:00Z</string>', '<date>2099-01-01T00:00:00Z</date>')
-    .replace('<dict>', '<dict><key>DeveloperCertificates</key><array><data>YWJj</data></array><key>CreationDate</key><date>2026-10-06T00:00:00Z</date>')}</plist>`;
+    .replace('<dict>', '<dict><key>CreationDate</key><date>2026-10-06T00:00:00Z</date>')}</plist>`;
   const run = (command, args, options = {}) => {
     if (command === 'security') return { stdout: profileXML, stderr: '' };
     if (command === 'plutil' && (args[0] === '-insert' || args[0] === '-extract')) {

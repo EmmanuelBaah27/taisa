@@ -1,6 +1,7 @@
-import { createHash } from 'node:crypto';
+import { createHash, X509Certificate } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
-import { lstatSync, readFileSync, readdirSync, realpathSync } from 'node:fs';
+import { lstatSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 
@@ -37,6 +38,28 @@ function bundleFiles(path) {
 function isMachO(bytes) {
   return bytes.length >= 4 && [0xfeedface, 0xcefaedfe, 0xfeedfacf, 0xcffaedfe,
     0xcafebabe, 0xbebafeca, 0xcafebabf, 0xbfbafeca].includes(bytes.readUInt32BE(0));
+}
+
+function certificateSHA256(bytes) {
+  try {
+    const certificate = new X509Certificate(bytes);
+    // Require exactly one DER certificate, not a PEM wrapper or trailing data.
+    if (!certificate.raw.equals(bytes)) throw new Error('noncanonical DER');
+    return sha256(certificate.raw);
+  } catch { throw new Error('malformed signing certificate DER'); }
+}
+
+function inspectSignerCertificate(command, appPath) {
+  const directory = mkdtempSync(join(tmpdir(), 'taisa-signer-certificate-'));
+  try {
+    const prefix = join(directory, 'signer-');
+    // Display/extract only: codesign writes public DER files into our private
+    // temporary directory, never changes the app or accesses a signing key.
+    command('codesign', ['-d', '--extract-certificates', prefix, appPath]);
+    return certificateSHA256(regularFile(`${prefix}0`));
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 }
 
 /** The command runner is injectable only by module callers/tests, never record JSON.
@@ -81,6 +104,7 @@ export function inspectPersonalBuild(record, { run = runCommand, now = new Date(
   command('codesign', ['--verify', '--deep', '--strict', appPath]);
   const signatureOutput = command('codesign', ['-d', '--verbose=4', appPath]);
   const signature = `${signatureOutput.stdout}\n${signatureOutput.stderr}`;
+  const signerCertificateSHA256 = inspectSignerCertificate(command, appPath);
   const signedEntitlements = convert(command('codesign', ['-d', '--entitlements', ':-', appPath]).stdout);
   const profileXML = command('security', ['cms', '-D', '-i', profilePath]).stdout;
   if (typeof profileXML !== 'string' || !profileXML.trim()) throw new Error('empty profile inspection');
@@ -101,9 +125,24 @@ export function inspectPersonalBuild(record, { run = runCommand, now = new Date(
   }
   profile.UUID = command('plutil', ['-extract', 'Profile.UUID', 'raw', '-expect', 'string', '-o', '-', '-'], wrappedProfile).stdout?.trim();
   profile.ExpirationDate = command('plutil', ['-extract', 'Profile.ExpirationDate', 'raw', '-expect', 'date', '-o', '-', '-'], wrappedProfile).stdout?.trim();
+  const certificateCount = command('plutil', ['-extract', 'Profile.DeveloperCertificates', 'raw', '-expect', 'array', '-o', '-', '-'], wrappedProfile).stdout?.trim();
+  if (!/^[1-9][0-9]*$/.test(certificateCount) || !Number.isSafeInteger(Number(certificateCount))) {
+    throw new Error('profile developer certificate list is missing or empty');
+  }
+  const profileCertificateSHA256 = [];
+  for (let index = 0; index < Number(certificateCount); index++) {
+    const encoded = command('plutil', ['-extract', `Profile.DeveloperCertificates.${index}`, 'raw', '-expect', 'data', '-o', '-', '-'], wrappedProfile).stdout;
+    if (typeof encoded !== 'string' || !encoded.trim()) throw new Error('empty profile developer certificate');
+    const normalized = encoded.replace(/\s/g, '');
+    const bytes = Buffer.from(normalized, 'base64');
+    if (bytes.toString('base64') !== normalized) throw new Error('malformed profile developer certificate encoding');
+    profileCertificateSHA256.push(certificateSHA256(bytes));
+  }
   const provisioningEntitlements = profile.Entitlements;
   const errors = [];
   const requireFact = (condition, message) => { if (!condition) errors.push(message); };
+  requireFact(profileCertificateSHA256.includes(signerCertificateSHA256),
+    'profile does not authorize the actual app signing certificate');
   const team = record.teamIdentifier;
   requireFact(typeof team === 'string' && /^[A-Z0-9]{10}$/.test(team), 'Personal teamIdentifier is required');
   const appIdentifier = `${team}.${bundle}`;
@@ -163,7 +202,7 @@ export function inspectPersonalBuild(record, { run = runCommand, now = new Date(
     if (Object.hasOwn(record, field) && !isDeepStrictEqual(record[field], value)) errors.push(`caller ${field} disagrees with inspected artifact`);
   }
   return { errors, evidence: { ...evidence, appPath, profilePath,
-    artifactEvidence: { executable, teamIdentifier: team, profileUUID: profile.UUID,
+    artifactEvidence: { executable, teamIdentifier: team, signerCertificateSHA256, profileUUID: profile.UUID,
       profileExpiration: profile.ExpirationDate, profileSHA256: sha256(profileBytes),
       infoPlistSHA256: sha256(infoBytes), images, inspectedAt: now.toISOString(), signatureVerified: true } } };
 }
