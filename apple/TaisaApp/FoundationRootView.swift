@@ -17,6 +17,14 @@ struct FoundationRootView: View {
                             color: .mutedForeground,
                             content: "Native foundation ready"
                         )
+                        if let storageStatus {
+                            TaisaText(
+                                role: .body,
+                                color: .mutedForeground,
+                                content: storageStatus
+                            )
+                            .accessibilityIdentifier("foundation.storage.status")
+                        }
                     }
 #if DEBUG || TAISA_PREVIEW
                     environmentBadge
@@ -55,12 +63,19 @@ struct FoundationRootView: View {
         .accessibilityLabel("Environment: \(currentEnvironment.rawValue)")
     }
 
+#endif
+
+    var storageStatus: String? {
+        SyncCapability.forEnvironment(currentEnvironment) == .localOnly
+            ? "Stored securely on this device"
+            : nil
+    }
+
     private var currentEnvironment: TaisaEnvironment {
         let value = Bundle.main.object(forInfoDictionaryKey: "TaisaEnvironment") as? String
             ?? "development"
         return (try? TaisaEnvironment(configurationValue: value)) ?? .development
     }
-#endif
 }
 
 #Preview("iPhone") {
