@@ -201,27 +201,54 @@ public actor SyncCoordinator {
                     throw error
                 }
                 let selected = Set(reserved.map { $0.change.id })
-                let acknowledged = Set(sent.acknowledgedIDs)
+                var acknowledged = Set(sent.acknowledgedIDs)
+                var failures = sent.failures
                 guard acknowledged.count == sent.acknowledgedIDs.count,
                       acknowledged.isSubset(of: selected),
-                      Set(sent.failures.keys).isSubset(of: selected),
-                      acknowledged.isDisjoint(with: Set(sent.failures.keys)) else { throw SyncTransportError.permission }
+                      Set(failures.keys).isSubset(of: selected),
+                      Set(sent.serverConflicts.keys).isSubset(of: Set(failures.keys)),
+                      acknowledged.isDisjoint(with: Set(failures.keys)) else { throw SyncTransportError.permission }
+                for (id, remote) in sent.serverConflicts {
+                    guard let local = changes.first(where: { $0.id == id }), remote.id == id,
+                          remote.envelope.metadata == local.envelope.metadata else {
+                        failures[id] = .permission
+                        continue
+                    }
+                    do {
+                        let localPlaintext = try vault.open(local.envelope)
+                        let remotePlaintext = try vault.open(remote.envelope)
+                        if localPlaintext == remotePlaintext {
+                            // CKSyncEngine may report a replay of the same mutation
+                            // with a new AES-GCM nonce. Its authenticated plaintext
+                            // is already on the server, so the outbox can advance.
+                            acknowledged.insert(id)
+                            failures.removeValue(forKey: id)
+                        } else {
+                            // Preserve both versions: the local outbox remains pending
+                            // while the server copy enters the encrypted merge path.
+                            conflicts += try await apply([(remote, remotePlaintext)], token: durableToken, expectedToken: expectedCommitToken, generation: generation)
+                            downloaded += 1
+                        }
+                    } catch {
+                        failures[id] = .permission
+                    }
+                }
                 for item in reserved {
                     if acknowledged.contains(item.change.id) {
                         try await journal.acknowledge(id: item.change.id, at: max(nowMS(), 0))
                         uploaded += 1
                     } else {
-                        let category = Self.retryCategory(sent.failures[item.change.id] ?? SyncTransportError.retryable)
+                        let category = Self.retryCategory(failures[item.change.id] ?? SyncTransportError.retryable)
                         try await journal.retry(id: item.change.id, category: category, reservationID: item.reservationID)
                     }
                 }
-                if !sent.failures.isEmpty || acknowledged.count != reserved.count {
-                    let failures = Array(sent.failures.values)
-                    let serverDeadline = failures.compactMap { failure -> Int64? in
+                if !failures.isEmpty || acknowledged.count != reserved.count {
+                    let failureValues = Array(failures.values)
+                    let serverDeadline = failureValues.compactMap { failure -> Int64? in
                         if case .rateLimited(let deadline) = failure { return deadline }
                         return nil
                     }.max()
-                    return await failed(Self.aggregateFailures(failures), uploaded: uploaded, downloaded: downloaded, generation: generation, serverDeadline: serverDeadline)
+                    return await failed(Self.aggregateFailures(failureValues), uploaded: uploaded, downloaded: downloaded, generation: generation, serverDeadline: serverDeadline)
                 }
                 if reserved.count < 200 { break }
             }

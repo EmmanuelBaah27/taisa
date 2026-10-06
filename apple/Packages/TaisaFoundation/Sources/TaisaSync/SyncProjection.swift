@@ -5,6 +5,9 @@ import TaisaStorage
 enum SyncProjectionError: Error { case dependencyPending }
 
 struct SyncEngineCheckpoint: Codable, Sendable {
+    var cloudKitState: Data?
+    var cloudKitInbox: [CloudKitInboxItem] = []
+    var cloudKitNextSequence: Int64 = 0
     var received: [String: Data] = [:]
     var retryAtMS: Int64?
     var retryAttempts: Int = 0
@@ -14,7 +17,7 @@ struct SyncEngineCheckpoint: Codable, Sendable {
     var turnGeneration: Int64 = 0
     var visibleFieldTips: [String: [String]] = [:]
 
-    private enum CodingKeys: String, CodingKey { case received, retryAtMS, retryAttempts, recoveryState, lastState, recoveryPrepared, turnGeneration, visibleFieldTips }
+    private enum CodingKeys: String, CodingKey { case received, retryAtMS, retryAttempts, recoveryState, lastState, recoveryPrepared, turnGeneration, visibleFieldTips, cloudKitState, cloudKitInbox, cloudKitNextSequence }
     init() {}
     init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
@@ -26,7 +29,15 @@ struct SyncEngineCheckpoint: Codable, Sendable {
         recoveryPrepared = try values.decodeIfPresent(Bool.self, forKey: .recoveryPrepared) ?? false
         turnGeneration = try values.decodeIfPresent(Int64.self, forKey: .turnGeneration) ?? 0
         visibleFieldTips = try values.decodeIfPresent([String: [String]].self, forKey: .visibleFieldTips) ?? [:]
+        cloudKitState = try values.decodeIfPresent(Data.self, forKey: .cloudKitState)
+        cloudKitInbox = try values.decodeIfPresent([CloudKitInboxItem].self, forKey: .cloudKitInbox) ?? []
+        cloudKitNextSequence = try values.decodeIfPresent(Int64.self, forKey: .cloudKitNextSequence) ?? 0
     }
+}
+
+struct CloudKitInboxItem: Codable, Sendable {
+    let sequence: Int64
+    let change: EncryptedChange
 }
 
 /// The journal's canonical payload is the only plaintext wire input. All of

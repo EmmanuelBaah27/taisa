@@ -32,5 +32,8 @@ compile-checks the available Apple frameworks; capability
 creation and real CloudKit use remain gated later in the approved plan.
 
 Development, preview, and production retain their separate bundle identities
-(`com.taisa.app.dev`, `com.taisa.app.preview`, `com.taisa.app`). No real CloudKit
-container or Keychain synchronization is enabled by this dependency task.
+(`com.taisa.app.dev`, `com.taisa.app.preview`, `com.taisa.app`). Task 7 now declares
+the approved development and production CloudKit entitlements in local project
+configuration; Preview remains fake-only. External Apple capability state is
+unverified, and no production CloudKit schema has been promoted. See
+[`cloudkit-schema.md`](cloudkit-schema.md) for the exact local schema proposal.

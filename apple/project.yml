@@ -37,6 +37,11 @@ targets:
         INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
         INFOPLIST_KEY_TaisaEnvironment: "$(TAISA_ENVIRONMENT)"
+      configs:
+        Debug:
+          CODE_SIGN_ENTITLEMENTS: Config/TaisaDev.entitlements
+        Release:
+          CODE_SIGN_ENTITLEMENTS: Config/Taisa.entitlements
     dependencies:
       - package: TaisaFoundation
         product: TaisaCore
@@ -46,6 +51,8 @@ targets:
         product: TaisaDesignSystem
       - package: TaisaFoundation
         product: TaisaStorage
+      - package: TaisaFoundation
+        product: TaisaCloudKit
   TaisaPreview:
     type: application
     platform: iOS
@@ -63,6 +70,7 @@ targets:
         INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
         INFOPLIST_KEY_TaisaEnvironment: "$(TAISA_ENVIRONMENT)"
+        CODE_SIGN_ENTITLEMENTS: Config/TaisaPreview.entitlements
     dependencies:
       - package: TaisaFoundation
         product: TaisaCore

@@ -22,7 +22,7 @@ relevant to the task.
 | Shared chat and recording shell | Product | Build | `codex/chat-close-auth-handoff` | Baah paired-device QA after preview integration |
 | Glass elevation, alignment, and interaction feedback | Product | Review + QA | `fix/glass-elevation-keyboard-surfaces` | canonical preview integration + Baah device QA |
 | SwiftUI native rebuild | Platform + Product | Shipped | `main` | — |
-| Swift native encrypted storage, sync, and recovery | Platform | Build | `feature/swift-native-encrypted-sync` | Task 7 capability changes approved; local CloudKit build active. Portal automation is blocked by the registered Taisa-OS symlink and must be retried through provisioning or completed manually. Production schema promotion remains unapproved. |
+| Swift native encrypted storage, sync, and recovery | Platform | Build | `feature/swift-native-encrypted-sync` | Task 7 local CloudKit build complete; Apple portal capability state remains unverified because computer-control startup is blocked by a registered symlink. Production schema promotion remains unapproved. |
 
 ---
 

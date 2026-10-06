@@ -1,4 +1,5 @@
 import { readdir, readFile } from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -78,6 +79,14 @@ export async function inspectNativeProject(repositoryRoot) {
   const previewEnd = project.indexOf('  Taisa:\n', previewStart);
   const previewScheme = project.slice(previewStart, previewEnd);
   const leakPatterns = ['TaisaPreview', 'PreviewSupport', 'com.taisa.app.preview'];
+  const entitlement = (name) => JSON.parse(execFileSync('plutil', [
+    '-convert', 'json', '-o', '-', resolve(appleRoot, `Config/${name}.entitlements`),
+  ], { encoding: 'utf8' }));
+  const [developmentRights, productionRights, previewRights] = [
+    entitlement('TaisaDev'), entitlement('Taisa'), entitlement('TaisaPreview'),
+  ];
+  const productionProducts = packageProducts(productionBlock);
+  const previewProducts = packageProducts(previewTargetBlock);
 
   return {
     bundleIdentifiers: {
@@ -91,8 +100,31 @@ export async function inspectNativeProject(repositoryRoot) {
     testTargets: ['TaisaUnitTests', 'TaisaUITests'].filter((name) => (
       project.includes(`  ${name}:\n`)
     )),
-    productionProducts: packageProducts(productionBlock),
-    previewProducts: packageProducts(previewTargetBlock),
+    productionProducts,
+    previewProducts,
+    cloudKitIsolation: {
+      developmentContainer: developmentRights['com.apple.developer.icloud-container-identifiers']?.[0] ?? null,
+      productionContainer: productionRights['com.apple.developer.icloud-container-identifiers']?.[0] ?? null,
+      developmentContainers: developmentRights['com.apple.developer.icloud-container-identifiers'] ?? [],
+      productionContainers: productionRights['com.apple.developer.icloud-container-identifiers'] ?? [],
+      developmentCloudEnvironment: developmentRights['com.apple.developer.icloud-container-environment'] ?? null,
+      productionCloudEnvironment: productionRights['com.apple.developer.icloud-container-environment'] ?? null,
+      previewContainers: previewRights['com.apple.developer.icloud-container-identifiers'] ?? [],
+      previewServices: previewRights['com.apple.developer.icloud-services'] ?? [],
+      previewPushEnvironment: previewRights['aps-environment'] ?? null,
+      previewLinksLiveTransport: previewProducts.includes('TaisaCloudKit'),
+      developmentPushEnvironment: developmentRights['aps-environment'] ?? null,
+      productionPushEnvironment: productionRights['aps-environment'] ?? null,
+      developmentServices: developmentRights['com.apple.developer.icloud-services'] ?? [],
+      productionServices: productionRights['com.apple.developer.icloud-services'] ?? [],
+      associatedDomains: [developmentRights, productionRights, previewRights]
+        .some((rights) => 'com.apple.developer.associated-domains' in rights),
+      projectEntitlementBindings: {
+        development: /Debug:\s*\n\s*CODE_SIGN_ENTITLEMENTS:\s*Config\/TaisaDev\.entitlements/.test(productionBlock),
+        production: /Release:\s*\n\s*CODE_SIGN_ENTITLEMENTS:\s*Config\/Taisa\.entitlements/.test(productionBlock),
+        preview: /CODE_SIGN_ENTITLEMENTS:\s*Config\/TaisaPreview\.entitlements/.test(previewTargetBlock),
+      },
+    },
   };
 }
 
@@ -131,6 +163,25 @@ export async function verifyNativeProject(repositoryRoot, productionBundle) {
     errors.push('Generated build identity is missing');
   }
   if (inspected.previewArchiveEnabled) errors.push('Preview scheme enables archive');
+  const isolation = inspected.cloudKitIsolation;
+  if (isolation.developmentContainer !== 'iCloud.com.taisa.app.dev'
+      || isolation.productionContainer !== 'iCloud.com.taisa.app'
+      || JSON.stringify(isolation.developmentContainers) !== '["iCloud.com.taisa.app.dev"]'
+      || JSON.stringify(isolation.productionContainers) !== '["iCloud.com.taisa.app"]'
+      || isolation.developmentCloudEnvironment !== 'Development'
+      || isolation.productionCloudEnvironment !== 'Production'
+      || isolation.previewContainers.length !== 0
+      || isolation.previewServices.length !== 0
+      || isolation.previewPushEnvironment !== null
+      || isolation.previewLinksLiveTransport
+      || isolation.developmentPushEnvironment !== 'development'
+      || isolation.productionPushEnvironment !== 'production'
+      || JSON.stringify(isolation.developmentServices) !== '["CloudKit"]'
+      || JSON.stringify(isolation.productionServices) !== '["CloudKit"]'
+      || isolation.associatedDomains
+      || Object.values(isolation.projectEntitlementBindings).some((bound) => !bound)) {
+    errors.push('CloudKit capability or entitlement isolation mismatch');
+  }
   return errors;
 }
 

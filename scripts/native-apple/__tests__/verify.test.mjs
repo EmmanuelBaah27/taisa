@@ -43,13 +43,38 @@ test('preview support is linked only by the preview target', async () => {
     'TaisaCore',
     'TaisaContracts',
     'TaisaDesignSystem',
+    'TaisaStorage',
+    'TaisaCloudKit',
   ]);
   assert.deepEqual(result.previewProducts, [
     'TaisaCore',
     'TaisaContracts',
     'TaisaDesignSystem',
     'TaisaPreviewSupport',
+    'TaisaStorage',
   ]);
+});
+
+test('CloudKit capability is isolated to development and production identities', async () => {
+  const result = await inspectNativeProject(repositoryRoot);
+  assert.deepEqual(result.cloudKitIsolation, {
+    developmentContainer: 'iCloud.com.taisa.app.dev',
+    productionContainer: 'iCloud.com.taisa.app',
+    developmentContainers: ['iCloud.com.taisa.app.dev'],
+    productionContainers: ['iCloud.com.taisa.app'],
+    developmentCloudEnvironment: 'Development',
+    productionCloudEnvironment: 'Production',
+    previewContainers: [],
+    previewServices: [],
+    previewPushEnvironment: null,
+    previewLinksLiveTransport: false,
+    developmentPushEnvironment: 'development',
+    productionPushEnvironment: 'production',
+    developmentServices: ['CloudKit'],
+    productionServices: ['CloudKit'],
+    associatedDomains: false,
+    projectEntitlementBindings: { development: true, production: true, preview: true },
+  });
 });
 
 test('production bundle inspection rejects preview code and fixture identifiers', async () => {

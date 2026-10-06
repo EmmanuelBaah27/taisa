@@ -40,7 +40,7 @@ public enum SyncTransportError: Error, Sendable, Equatable, CustomStringConverti
     public var customMirror: Mirror { Mirror(self, children: ["category": description], displayStyle: .enum) }
 }
 
-public struct EncryptedChange: Sendable, Equatable, CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
+public struct EncryptedChange: Codable, Sendable, Equatable, CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
     public let id: String
     public let envelope: VaultEnvelope
 
@@ -73,10 +73,12 @@ public struct SyncFetchPage: Sendable, CustomStringConvertible, CustomDebugStrin
 public struct SyncSendResult: Sendable, CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
     public let acknowledgedIDs: [String]
     public let failures: [String: SyncTransportError]
+    public let serverConflicts: [String: EncryptedChange]
 
-    public init(acknowledgedIDs: [String], failures: [String: SyncTransportError] = [:]) {
+    public init(acknowledgedIDs: [String], failures: [String: SyncTransportError] = [:], serverConflicts: [String: EncryptedChange] = [:]) {
         self.acknowledgedIDs = acknowledgedIDs
         self.failures = failures
+        self.serverConflicts = serverConflicts
     }
 
     public var description: String { "<redacted sync send result>" }
