@@ -7,10 +7,12 @@ options:
 configs:
   Debug: debug
   Preview: debug
+  Personal: debug
   Release: release
 configFiles:
   Debug: Config/Debug.xcconfig
   Preview: Config/Preview.xcconfig
+  Personal: Config/Personal.xcconfig
   Release: Config/Release.xcconfig
 settings:
   base:
@@ -26,6 +28,10 @@ targets:
   Taisa:
     type: application
     platform: iOS
+    info:
+      path: Config/TaisaInfo.plist
+      properties:
+        UIBackgroundModes: [remote-notification]
     sources:
       - path: TaisaApp
       - path: Generated
@@ -37,6 +43,11 @@ targets:
         INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
         INFOPLIST_KEY_TaisaEnvironment: "$(TAISA_ENVIRONMENT)"
+      configs:
+        Debug:
+          CODE_SIGN_ENTITLEMENTS: Config/TaisaDev.entitlements
+        Release:
+          CODE_SIGN_ENTITLEMENTS: Config/Taisa.entitlements
     dependencies:
       - package: TaisaFoundation
         product: TaisaCore
@@ -44,6 +55,14 @@ targets:
         product: TaisaContracts
       - package: TaisaFoundation
         product: TaisaDesignSystem
+      - package: TaisaFoundation
+        product: TaisaStorage
+      - package: TaisaFoundation
+        product: TaisaCloudKit
+      - package: TaisaFoundation
+        product: TaisaRecovery
+      - package: TaisaFoundation
+        product: TaisaSecurity
   TaisaPreview:
     type: application
     platform: iOS
@@ -61,6 +80,7 @@ targets:
         INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
         INFOPLIST_KEY_TaisaEnvironment: "$(TAISA_ENVIRONMENT)"
+        CODE_SIGN_ENTITLEMENTS: Config/TaisaPreview.entitlements
     dependencies:
       - package: TaisaFoundation
         product: TaisaCore
@@ -70,6 +90,71 @@ targets:
         product: TaisaDesignSystem
       - package: TaisaFoundation
         product: TaisaPreviewSupport
+      - package: TaisaFoundation
+        product: TaisaStorage
+  TaisaPersonal:
+    type: application
+    platform: iOS
+    info:
+      path: Config/TaisaPersonalInfo.plist
+      properties:
+        TaisaEnvironment: "$(TAISA_ENVIRONMENT)"
+        NSFaceIDUsageDescription: "Authenticate to use your Taisa recovery key."
+        LSSupportsOpeningDocumentsInPlace: true
+        UTExportedTypeDeclarations:
+          - UTTypeIdentifier: com.taisa.encrypted-backup
+            UTTypeDescription: Taisa Encrypted Backup
+            UTTypeConformsTo: [public.data]
+            UTTypeTagSpecification:
+              public.filename-extension: [taisa-backup]
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: Taisa Encrypted Backup
+            LSItemContentTypes: [com.taisa.encrypted-backup]
+            CFBundleTypeRole: Viewer
+    sources:
+      - path: TaisaApp
+      - path: Generated
+    settings:
+      base:
+        PRODUCT_NAME: TaisaPersonal
+        PRODUCT_BUNDLE_IDENTIFIER: com.taisa.app.personal
+        TAISA_ENVIRONMENT: personal
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) DEBUG TAISA_PERSONAL"
+        INFOPLIST_KEY_CFBundleDisplayName: Taisa Personal
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+        INFOPLIST_KEY_TaisaEnvironment: "$(TAISA_ENVIRONMENT)"
+        CODE_SIGN_ENTITLEMENTS: Config/TaisaPersonal.entitlements
+    dependencies:
+      - package: TaisaFoundation
+        product: TaisaCore
+      - package: TaisaFoundation
+        product: TaisaContracts
+      - package: TaisaFoundation
+        product: TaisaDesignSystem
+      - package: TaisaFoundation
+        product: TaisaStorage
+      - package: TaisaFoundation
+        product: TaisaSecurity
+      - package: TaisaFoundation
+        product: TaisaRecovery
+  TaisaPersonalTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: TaisaPersonalTests
+    dependencies:
+      - target: TaisaPersonal
+      - package: TaisaFoundation
+        product: TaisaCore
+  TaisaPersonalUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: TaisaPersonalUITests
+    dependencies:
+      - target: TaisaPersonal
   TaisaUnitTests:
     type: bundle.unit-test
     platform: iOS
@@ -77,6 +162,12 @@ targets:
       - path: TaisaUnitTests
     dependencies:
       - target: Taisa
+      - package: TaisaFoundation
+        product: TaisaStorage
+      - package: TaisaFoundation
+        product: TaisaRecovery
+      - package: TaisaFoundation
+        product: TaisaSecurity
   TaisaUITests:
     type: bundle.ui-testing
     platform: iOS
@@ -124,6 +215,22 @@ schemes:
       config: Preview
       targets:
         - TaisaPreviewUITests
+  Taisa-Personal:
+    build:
+      targets:
+        TaisaPersonal:
+          - run
+          - test
+          - analyze
+    run:
+      config: Personal
+    analyze:
+      config: Personal
+    test:
+      config: Personal
+      targets:
+        - TaisaPersonalTests
+        - TaisaPersonalUITests
   Taisa:
     build:
       targets:

@@ -1,12 +1,15 @@
 #!/usr/bin/env node
 
+import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
+import { inspectPersonalBuild, validateRetainedPersonalEvidence } from './inspect-personal-build.mjs';
 
 const bundleIdentifiers = {
   development: 'com.taisa.app.dev',
   preview: 'com.taisa.app.preview',
   production: 'com.taisa.app',
+  personal: 'com.taisa.app.personal',
 };
 
 const requiredTextFields = [
@@ -24,7 +27,7 @@ const requiredTextFields = [
   'testerConfirmation',
 ];
 
-export function validateSignedBuild(record = {}) {
+export function inspectSignedBuild(record = {}, options = {}) {
   const errors = [];
 
   for (const field of requiredTextFields) {
@@ -51,7 +54,34 @@ export function validateSignedBuild(record = {}) {
     );
   }
 
-  return errors;
+  if (record.environment === 'personal') {
+    if (typeof record.appVersion !== 'string' || !/^\d+\.\d+(?:\.\d+)?$/.test(record.appVersion)) {
+      errors.push('Personal appVersion must be a dotted numeric marketing version');
+    }
+    if (typeof record.databaseSchemaVersion !== 'string'
+        || !/^[1-9]\d*$/.test(record.databaseSchemaVersion)) {
+      errors.push('Personal databaseSchemaVersion must be a positive integer string');
+    }
+    if (typeof record.parityCatalogRevision !== 'string'
+        || !/^[a-f0-9]{40}$/i.test(record.parityCatalogRevision)) {
+      errors.push('Personal parityCatalogRevision must be a full Git commit');
+    }
+    try {
+      const appExists = typeof record.appPath === 'string' && existsSync(record.appPath);
+      const profileExists = typeof record.profilePath === 'string' && existsSync(record.profilePath);
+      const inspected = !appExists && !profileExists
+        ? validateRetainedPersonalEvidence(record)
+        : inspectPersonalBuild(record, options);
+      errors.push(...inspected.errors);
+      record = { ...record, ...inspected.evidence };
+    } catch (error) { errors.push(`Personal artifact inspection failed: ${error.message}`); }
+  }
+
+  return { errors, record };
+}
+
+export function validateSignedBuild(record = {}, options = {}) {
+  return inspectSignedBuild(record, options).errors;
 }
 
 async function main() {
@@ -61,14 +91,15 @@ async function main() {
   }
 
   const record = JSON.parse(await readFile(inputPath, 'utf8'));
-  const errors = validateSignedBuild(record);
+  const inspected = inspectSignedBuild(record);
+  const { errors } = inspected;
   if (errors.length > 0) {
     process.stderr.write(`${errors.map((error) => `- ${error}`).join('\n')}\n`);
     process.exitCode = 1;
     return;
   }
 
-  process.stdout.write(`${JSON.stringify(record, null, 2)}\n`);
+  process.stdout.write(`${JSON.stringify(inspected.record, null, 2)}\n`);
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {

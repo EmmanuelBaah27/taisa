@@ -1,6 +1,7 @@
 public enum TaisaEnvironment: String, Codable, Sendable {
     case development
     case preview
+    case personal
     case production
 
     public init(configurationValue: String) throws {
@@ -12,6 +13,10 @@ public enum TaisaEnvironment: String, Codable, Sendable {
 
     public var allowsFixtures: Bool {
         self == .preview
+    }
+
+    public var allowsLiveCloudTransport: Bool {
+        self == .development || self == .production
     }
 }
 

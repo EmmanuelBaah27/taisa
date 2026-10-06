@@ -1,0 +1,4 @@
+#include "Base.xcconfig"
+PRODUCT_BUNDLE_IDENTIFIER = com.taisa.app.personal
+TAISA_ENVIRONMENT = personal
+SWIFT_ACTIVE_COMPILATION_CONDITIONS = $(inherited) DEBUG TAISA_PERSONAL

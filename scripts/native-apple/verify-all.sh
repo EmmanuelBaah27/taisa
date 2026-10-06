@@ -21,8 +21,10 @@ ipad_name="${TAISA_IPAD_SIMULATOR_NAME:-$(printf '%s' "${simulator_inventory}" |
 
 development_destinations="$(xcodebuild -project apple/Taisa.xcodeproj -scheme Taisa-Dev -showdestinations)"
 preview_destinations="$(xcodebuild -project apple/Taisa.xcodeproj -scheme Taisa-Preview -showdestinations)"
+personal_destinations="$(xcodebuild -project apple/Taisa.xcodeproj -scheme Taisa-Personal -showdestinations)"
 development_can_test="$(printf '%s' "${development_destinations}" | node scripts/native-apple/select-simulator.mjs --eligible)"
 preview_can_test="$(printf '%s' "${preview_destinations}" | node scripts/native-apple/select-simulator.mjs --eligible)"
+personal_can_test="$(printf '%s' "${personal_destinations}" | node scripts/native-apple/select-simulator.mjs --eligible)"
 
 if [[ "${development_can_test}" == "yes" && "${preview_can_test}" == "yes" ]]; then
   xcodebuild test -quiet -project apple/Taisa.xcodeproj -scheme Taisa-Dev -destination "platform=iOS Simulator,name=${iphone_name}" -derivedDataPath "${artifact_root}/DerivedData-Dev" -resultBundlePath "${artifact_root}/Taisa-Dev.xcresult"
@@ -32,8 +34,16 @@ else
   xcodebuild build-for-testing -quiet -project apple/Taisa.xcodeproj -scheme Taisa-Dev -destination 'generic/platform=iOS Simulator' -derivedDataPath "${artifact_root}/DerivedData-Dev" CODE_SIGNING_ALLOWED=NO
   xcodebuild build-for-testing -quiet -project apple/Taisa.xcodeproj -scheme Taisa-Preview -destination 'generic/platform=iOS Simulator' -derivedDataPath "${artifact_root}/DerivedData-Preview" CODE_SIGNING_ALLOWED=NO
 fi
+if [[ "${personal_can_test}" == "yes" ]]; then
+  # Simulator Keychain needs a locally signed process. Ad-hoc signing does not
+  # provision a team or contact Apple; physical-device verification stays unsigned.
+  xcodebuild test -quiet -project apple/Taisa.xcodeproj -scheme Taisa-Personal -configuration Personal -destination "platform=iOS Simulator,name=${iphone_name}" -derivedDataPath "${artifact_root}/DerivedData-Personal" -resultBundlePath "${artifact_root}/Taisa-Personal.xcresult" CODE_SIGN_IDENTITY=- CODE_SIGNING_ALLOWED=YES
+else
+  xcodebuild build-for-testing -quiet -project apple/Taisa.xcodeproj -scheme Taisa-Personal -configuration Personal -destination 'generic/platform=iOS Simulator' -derivedDataPath "${artifact_root}/DerivedData-Personal" CODE_SIGNING_ALLOWED=NO
+fi
+xcodebuild build -quiet -project apple/Taisa.xcodeproj -scheme Taisa-Personal -configuration Personal -destination 'generic/platform=iOS' -derivedDataPath "${artifact_root}/DerivedData-Personal-Device" CODE_SIGNING_ALLOWED=NO
 xcodebuild build -quiet -project apple/Taisa.xcodeproj -scheme Taisa -configuration Release -destination 'generic/platform=iOS Simulator' -derivedDataPath "${artifact_root}/DerivedData-Release" CODE_SIGNING_ALLOWED=NO
 
-TAISA_PRODUCTION_BUNDLE="${artifact_root}/DerivedData-Release/Build/Products/Release-iphonesimulator/Taisa.app" node scripts/native-apple/verify.mjs
+TAISA_PRODUCTION_BUNDLE="${artifact_root}/DerivedData-Release/Build/Products/Release-iphonesimulator/Taisa.app" TAISA_PERSONAL_BUNDLE="${artifact_root}/DerivedData-Personal-Device/Build/Products/Personal-iphoneos/TaisaPersonal.app" node scripts/native-apple/verify.mjs
 npm run verify:workflow
 echo "Complete native Apple verification passed."

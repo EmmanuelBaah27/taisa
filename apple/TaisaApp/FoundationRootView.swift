@@ -4,6 +4,8 @@ import TaisaDesignSystem
 
 struct FoundationRootView: View {
     @State private var showsDiagnostics = false
+    @State private var showsRecovery = false
+    @State private var recoveryImportURL: URL?
 
     var body: some View {
         NavigationStack {
@@ -17,7 +19,27 @@ struct FoundationRootView: View {
                             color: .mutedForeground,
                             content: "Native foundation ready"
                         )
+                        if let storageStatus {
+                            TaisaText(
+                                role: .body,
+                                color: .mutedForeground,
+                                content: storageStatus
+                            )
+                            .accessibilityIdentifier("foundation.storage.status")
+                        }
                     }
+                    if storageStatus != nil {
+                        TaisaButton(role: .secondary, label: "Backup and recovery") { showsRecovery = true }
+                            .accessibilityIdentifier("foundation.recovery.action")
+                    }
+#if TAISA_PERSONAL
+                    if ProcessInfo.processInfo.arguments.contains(PersonalDeviceQA.launchArgument) {
+                        NavigationLink { PersonalDeviceQAView() } label: {
+                            TaisaText(role: .body, content: "Personal device QA")
+                        }
+                        .accessibilityIdentifier("foundation.personal-qa.action")
+                    }
+#endif
 #if DEBUG || TAISA_PREVIEW
                     environmentBadge
                     TaisaButton(role: .secondary, label: "Build diagnostics") {
@@ -39,6 +61,15 @@ struct FoundationRootView: View {
 #endif
             }
             .accessibilityIdentifier("foundation.root")
+            .navigationDestination(isPresented: $showsRecovery) { RecoveryView(importURL: recoveryImportURL) }
+            .onOpenURL { url in
+                guard storageStatus != nil else { return }
+                recoveryImportURL = url
+                showsRecovery = true
+            }
+            .onChange(of: showsRecovery) { _, shown in
+                if !shown { recoveryImportURL = nil }
+            }
         }
     }
 
@@ -55,12 +86,19 @@ struct FoundationRootView: View {
         .accessibilityLabel("Environment: \(currentEnvironment.rawValue)")
     }
 
+#endif
+
+    var storageStatus: String? {
+        SyncCapability.forEnvironment(currentEnvironment) == .localOnly
+            ? "Stored securely on this device"
+            : nil
+    }
+
     private var currentEnvironment: TaisaEnvironment {
         let value = Bundle.main.object(forInfoDictionaryKey: "TaisaEnvironment") as? String
             ?? "development"
         return (try? TaisaEnvironment(configurationValue: value)) ?? .development
     }
-#endif
 }
 
 #Preview("iPhone") {
