@@ -25,6 +25,52 @@ test('accepts a complete development signed-build record', () => {
   assert.deepEqual(validateSignedBuild(validRecord), []);
 });
 
+const personalRecord = {
+  ...validRecord,
+  environment: 'personal',
+  bundleIdentifier: 'com.taisa.app.personal',
+  signedEntitlements: { 'application-identifier': 'TEAM.com.taisa.app.personal' },
+  provisioningEntitlements: { 'get-task-allow': true },
+  backgroundModes: [],
+  linkedLibraries: ['/System/Library/Frameworks/Security.framework/Security'],
+  linksLiveTransport: false,
+};
+
+test('accepts an explicit isolated Personal record without relabeling it development', () => {
+  assert.deepEqual(validateSignedBuild(personalRecord), []);
+});
+
+test('Personal requires exact identity and explicit capability evidence', () => {
+  assert.match(validateSignedBuild({ ...personalRecord, bundleIdentifier: 'com.taisa.app.dev' }).join('\n'), /does not match/);
+  for (const field of ['signedEntitlements', 'provisioningEntitlements', 'backgroundModes', 'linkedLibraries', 'linksLiveTransport']) {
+    const record = { ...personalRecord };
+    delete record[field];
+    assert.match(validateSignedBuild(record).join('\n'), new RegExp(field));
+  }
+});
+
+test('Personal rejects paid capabilities in both signature and profile even with empty values', () => {
+  for (const field of ['signedEntitlements', 'provisioningEntitlements']) {
+    for (const key of ['com.apple.developer.icloud-container-identifiers', 'com.apple.developer.icloud-services', 'com.apple.developer.ubiquity-kvstore-identifier', 'aps-environment', 'com.apple.developer.associated-domains']) {
+      assert.match(validateSignedBuild({ ...personalRecord, [field]: { [key]: [] } }).join('\n'), /forbidden Personal capability/);
+    }
+  }
+});
+
+test('Personal rejects remote notifications and compiled live transport evidence', () => {
+  assert.match(validateSignedBuild({ ...personalRecord, backgroundModes: ['remote-notification'] }).join('\n'), /background/);
+  assert.match(validateSignedBuild({ ...personalRecord, linksLiveTransport: true }).join('\n'), /linksLiveTransport/);
+  for (const library of ['CloudKit.framework/CloudKit', 'TaisaCloudKit', 'CKContainer']) {
+    assert.match(validateSignedBuild({ ...personalRecord, linkedLibraries: [library] }).join('\n'), /live transport/);
+  }
+});
+
+test('Personal rejects malformed isolation evidence', () => {
+  for (const [field, value] of [['signedEntitlements', []], ['provisioningEntitlements', null], ['backgroundModes', 'none'], ['linkedLibraries', [null]], ['linksLiveTransport', 'false']]) {
+    assert.match(validateSignedBuild({ ...personalRecord, [field]: value }).join('\n'), new RegExp(field));
+  }
+});
+
 test('rejects a record whose installed commit differs from the candidate', () => {
   assert.match(
     validateSignedBuild({ ...validRecord, installedCommit: 'def456' }).join('\n'),

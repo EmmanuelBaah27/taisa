@@ -16,9 +16,13 @@
 		1A9AA4F6A3D6FB605A972CB2 /* TaisaCore in Frameworks */ = {isa = PBXBuildFile; productRef = D2ACC0C577B5AEDE6763EFE5 /* TaisaCore */; };
 		1C3C0759308495D3F89AD423 /* BuildDiagnosticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B59487963D8B0F07F92A741 /* BuildDiagnosticsView.swift */; };
 		23F902852DA35474CB0D79D0 /* TaisaContracts in Frameworks */ = {isa = PBXBuildFile; productRef = 3D8E0B5042A6307078A2815B /* TaisaContracts */; };
+		264ACBC992C077312BF36A7F /* PersonalDeviceQAView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92D5594A142F5C6089D8C7E2 /* PersonalDeviceQAView.swift */; };
+		2704C585225D9C8902B3B338 /* PersonalDeviceQAView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92D5594A142F5C6089D8C7E2 /* PersonalDeviceQAView.swift */; };
 		27647A73DE2201D81A1724E9 /* PreviewCatalogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E29E857D33A087D16F65BB2C /* PreviewCatalogView.swift */; };
 		2C4953C9F7A77AFE60369188 /* BuildMetadata.generated.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5247C0A0A8695277E1212A3 /* BuildMetadata.generated.swift */; };
+		32C4DA62AEB52085E487E64F /* PersonalDeviceQA.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84B4FC6A6B65DD3C62F773B1 /* PersonalDeviceQA.swift */; };
 		355485AD163D89FD5B0CBCA5 /* PersonalRecoveryBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3369C3B07B2C81C17D16BFFB /* PersonalRecoveryBackend.swift */; };
+		357DAF31314ED4F1B0C5F912 /* PersonalDeviceQATests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A19D945D21AC83D8AF47BED /* PersonalDeviceQATests.swift */; };
 		391B21B781EBCDB921226163 /* PersonalRecoveryBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3369C3B07B2C81C17D16BFFB /* PersonalRecoveryBackend.swift */; };
 		3AD4E8D286F8319496162CEE /* CloudKitRuntimeConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDD926DEBBEEBABEDDE1BCE4 /* CloudKitRuntimeConfiguration.swift */; };
 		453968367E2C069858A27195 /* TaisaSecurity in Frameworks */ = {isa = PBXBuildFile; productRef = 42B0308E32320DD4D331FF0B /* TaisaSecurity */; };
@@ -55,6 +59,7 @@
 		D1445280AAB7B076CF960071 /* FoundationSmokeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C9D4835226A0691261B0E56 /* FoundationSmokeTests.swift */; };
 		D23CB4A7E400C56447E31548 /* RecoveryViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A01B83066FC36CB8726EE5C8 /* RecoveryViewModel.swift */; };
 		D78923F4CFD4918C2BC107BC /* TaisaSecurity in Frameworks */ = {isa = PBXBuildFile; productRef = 02B15911AB05FD1D79A8F89B /* TaisaSecurity */; };
+		E142786C2D3010C4A93CF144 /* PersonalDeviceQA.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84B4FC6A6B65DD3C62F773B1 /* PersonalDeviceQA.swift */; };
 		E417A17D0B99B34A5154D18D /* TaisaRecovery in Frameworks */ = {isa = PBXBuildFile; productRef = C557FCD4DF05EE6AE9DA5AEF /* TaisaRecovery */; };
 		F204440FEA96C5FC1F7A9A7C /* TaisaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E79CF0C618833217451F645C /* TaisaApp.swift */; };
 		F87EBD9C8CC414815088AD95 /* FoundationScenarios.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA84D91BC150697897986EF9 /* FoundationScenarios.swift */; };
@@ -109,6 +114,7 @@
 		2C67580C7BC2D92BA207D078 /* TaisaPreviewUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = TaisaPreviewUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		3369C3B07B2C81C17D16BFFB /* PersonalRecoveryBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalRecoveryBackend.swift; sourceTree = "<group>"; };
 		391BEE70ED9DB4D5A40CEF12 /* Preview.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Preview.xcconfig; sourceTree = "<group>"; };
+		3A19D945D21AC83D8AF47BED /* PersonalDeviceQATests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalDeviceQATests.swift; sourceTree = "<group>"; };
 		4545C373898A484014E37320 /* TaisaFoundation */ = {isa = PBXFileReference; lastKnownFileType = folder; name = TaisaFoundation; path = Packages/TaisaFoundation; sourceTree = SOURCE_ROOT; };
 		4D1AF7F2E4A4A980D0791D4A /* TaisaPreviewApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaisaPreviewApp.swift; sourceTree = "<group>"; };
 		538DFC0F6334FDEC4DB6DE3E /* AppleCapabilityAvailabilityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleCapabilityAvailabilityTests.swift; sourceTree = "<group>"; };
@@ -119,7 +125,9 @@
 		65924125DDA0CEF804FDC976 /* TaisaPersonal.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = TaisaPersonal.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		6B59487963D8B0F07F92A741 /* BuildDiagnosticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildDiagnosticsView.swift; sourceTree = "<group>"; };
 		7D827F52A6D59761BA92F0B6 /* TaisaPersonalUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = TaisaPersonalUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		84B4FC6A6B65DD3C62F773B1 /* PersonalDeviceQA.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalDeviceQA.swift; sourceTree = "<group>"; };
 		913DBB6F0D16BF6173604367 /* TaisaPreviewCatalogTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaisaPreviewCatalogTests.swift; sourceTree = "<group>"; };
+		92D5594A142F5C6089D8C7E2 /* PersonalDeviceQAView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalDeviceQAView.swift; sourceTree = "<group>"; };
 		A01B83066FC36CB8726EE5C8 /* RecoveryViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecoveryViewModel.swift; sourceTree = "<group>"; };
 		A27ABA4FC2F66A76681F60EA /* TaisaBackupDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaisaBackupDocument.swift; sourceTree = "<group>"; };
 		BD29E560E6C8098B625BCAEA /* TaisaUnitTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = TaisaUnitTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -279,6 +287,8 @@
 				6B59487963D8B0F07F92A741 /* BuildDiagnosticsView.swift */,
 				EDD926DEBBEEBABEDDE1BCE4 /* CloudKitRuntimeConfiguration.swift */,
 				F0AD55CA9F552FE71F09A49D /* FoundationRootView.swift */,
+				84B4FC6A6B65DD3C62F773B1 /* PersonalDeviceQA.swift */,
+				92D5594A142F5C6089D8C7E2 /* PersonalDeviceQAView.swift */,
 				E79CF0C618833217451F645C /* TaisaApp.swift */,
 				73BDC3C6D2994C65D83D10EF /* Recovery */,
 			);
@@ -332,6 +342,7 @@
 		DF3F74FDFC8EDE9B9AA0C6D7 /* TaisaPersonalTests */ = {
 			isa = PBXGroup;
 			children = (
+				3A19D945D21AC83D8AF47BED /* PersonalDeviceQATests.swift */,
 				E5A6963E5BEC4FF073F86F31 /* PersonalIsolationTests.swift */,
 			);
 			path = TaisaPersonalTests;
@@ -596,6 +607,8 @@
 				C706F833D6F085BA07123280 /* BuildMetadata.generated.swift in Sources */,
 				3AD4E8D286F8319496162CEE /* CloudKitRuntimeConfiguration.swift in Sources */,
 				C2DBE85A614BA9BA5CB5D2E7 /* FoundationRootView.swift in Sources */,
+				E142786C2D3010C4A93CF144 /* PersonalDeviceQA.swift in Sources */,
+				264ACBC992C077312BF36A7F /* PersonalDeviceQAView.swift in Sources */,
 				355485AD163D89FD5B0CBCA5 /* PersonalRecoveryBackend.swift in Sources */,
 				5D3E2CD7D9A522B3FC372CFC /* RecoveryView.swift in Sources */,
 				D23CB4A7E400C56447E31548 /* RecoveryViewModel.swift in Sources */,
@@ -636,6 +649,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				357DAF31314ED4F1B0C5F912 /* PersonalDeviceQATests.swift in Sources */,
 				75C41727467C062CC7EA09D4 /* PersonalIsolationTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -656,6 +670,8 @@
 				6A8C01721A57C6BF44E6802F /* BuildMetadata.generated.swift in Sources */,
 				FFAA066E0649D55DCCFDE268 /* CloudKitRuntimeConfiguration.swift in Sources */,
 				5B0AA018E7F5C851901458DF /* FoundationRootView.swift in Sources */,
+				32C4DA62AEB52085E487E64F /* PersonalDeviceQA.swift in Sources */,
+				2704C585225D9C8902B3B338 /* PersonalDeviceQAView.swift in Sources */,
 				391B21B781EBCDB921226163 /* PersonalRecoveryBackend.swift in Sources */,
 				10558363B760A0814005644A /* RecoveryView.swift in Sources */,
 				92AC13DEA84CC891F4654F4C /* RecoveryViewModel.swift in Sources */,

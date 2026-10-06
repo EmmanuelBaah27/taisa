@@ -1,6 +1,39 @@
 import XCTest
 
 @MainActor final class PersonalRecoveryUITests: XCTestCase {
+    func testExplicitQALaunchCanCreateOnceAndInspectAfterRelaunch() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--taisa-personal-device-qa"]
+        app.launch()
+        let qa = app.buttons["foundation.personal-qa.action"]
+        XCTAssertTrue(qa.waitForExistence(timeout: 10))
+        guard qa.exists else { return }
+        qa.tap()
+        let presence = app.staticTexts["personal-qa.presence"]
+        XCTAssertTrue(presence.waitForExistence(timeout: 10))
+        app.buttons["personal-qa.create"].tap()
+        let expected = NSPredicate(format: "label == %@", "Canary: present and verified")
+        expectation(for: expected, evaluatedWith: presence)
+        waitForExpectations(timeout: 10)
+        let hash = app.staticTexts["personal-qa.hash"].label
+        let counts = app.staticTexts["personal-qa.counts"].label
+        app.buttons["personal-qa.create"].tap()
+        XCTAssertEqual(app.staticTexts["personal-qa.hash"].label, hash)
+        app.terminate()
+        app.launch()
+        app.buttons["foundation.personal-qa.action"].tap()
+        XCTAssertTrue(presence.waitForExistence(timeout: 10))
+        XCTAssertEqual(presence.label, "Canary: present and verified")
+        XCTAssertEqual(app.staticTexts["personal-qa.hash"].label, hash)
+        XCTAssertEqual(app.staticTexts["personal-qa.counts"].label, counts)
+        app.terminate()
+        app.launchArguments = []
+        app.launch()
+        XCTAssertTrue(app.buttons["foundation.recovery.action"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.buttons["foundation.personal-qa.action"].exists)
+        XCTAssertFalse(app.staticTexts["personal-qa.presence"].exists)
+    }
+
     func testRecoveryActionsAndCancelledFileSelection() throws {
         let app = XCUIApplication()
         app.launch()

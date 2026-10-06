@@ -32,6 +32,14 @@ struct FoundationRootView: View {
                         TaisaButton(role: .secondary, label: "Backup and recovery") { showsRecovery = true }
                             .accessibilityIdentifier("foundation.recovery.action")
                     }
+#if TAISA_PERSONAL
+                    if ProcessInfo.processInfo.arguments.contains(PersonalDeviceQA.launchArgument) {
+                        NavigationLink { PersonalDeviceQAView() } label: {
+                            TaisaText(role: .body, content: "Personal device QA")
+                        }
+                        .accessibilityIdentifier("foundation.personal-qa.action")
+                    }
+#endif
 #if DEBUG || TAISA_PREVIEW
                     environmentBadge
                     TaisaButton(role: .secondary, label: "Build diagnostics") {

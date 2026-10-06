@@ -7,6 +7,7 @@ const bundleIdentifiers = {
   development: 'com.taisa.app.dev',
   preview: 'com.taisa.app.preview',
   production: 'com.taisa.app',
+  personal: 'com.taisa.app.personal',
 };
 
 const requiredTextFields = [
@@ -49,6 +50,37 @@ export function validateSignedBuild(record = {}) {
       `bundle identifier ${record.bundleIdentifier ?? '<missing>'} does not match `
       + `${record.environment} environment (${expectedBundleIdentifier})`,
     );
+  }
+
+  if (record.environment === 'personal') {
+    // These are observed build/profile facts, not inferred from the lane name.
+    for (const field of ['signedEntitlements', 'provisioningEntitlements']) {
+      const rights = record[field];
+      if (!rights || typeof rights !== 'object' || Array.isArray(rights)) {
+        errors.push(`${field} must contain inspected Personal entitlement evidence`);
+      } else {
+        for (const key of Object.keys(rights)) {
+          if (/icloud|cloudkit|ubiquity|aps-environment|push|associated-domains/i.test(key)) {
+            errors.push(`forbidden Personal capability in ${field}: ${key}`);
+          }
+        }
+      }
+    }
+    for (const field of ['backgroundModes', 'linkedLibraries']) {
+      if (!Array.isArray(record[field]) || record[field].some((item) => typeof item !== 'string')) {
+        errors.push(`${field} must contain inspected Personal build evidence`);
+      }
+    }
+    if (Array.isArray(record.backgroundModes) && record.backgroundModes.length > 0) {
+      errors.push('Personal background modes must be empty');
+    }
+    if (Array.isArray(record.linkedLibraries)
+        && record.linkedLibraries.some((name) => /CloudKit|CKContainer/i.test(name))) {
+      errors.push('Personal build contains live transport linkage');
+    }
+    if (record.linksLiveTransport !== false) {
+      errors.push('Personal linksLiveTransport must be explicitly false after binary inspection');
+    }
   }
 
   return errors;
