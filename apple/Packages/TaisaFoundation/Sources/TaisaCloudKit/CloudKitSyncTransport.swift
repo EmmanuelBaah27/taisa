@@ -4,26 +4,64 @@ import Foundation
 import TaisaStorage
 import TaisaSync
 
-struct CloudKitTransportRuntime: Sendable {
-    let accountState: @Sendable (CKContainer) async throws -> SyncAccountState
-    let send: @Sendable (CKSyncEngine) async throws -> Void
-    let fetch: @Sendable (CKSyncEngine) async throws -> Void
-    let cancel: @Sendable (CKSyncEngine) async -> Void
+struct CloudKitEngineHandle: @unchecked Sendable {
+    let id = UUID()
+    let native: CKSyncEngine?
+    init(native: CKSyncEngine? = nil) { self.native = native }
+}
 
-    static let live = Self(
-        accountState: { container in
-            switch try await container.accountStatus() {
-            case .available:
-                let user = try await container.userRecordID()
-                return .available(fingerprint: Data(SHA256.hash(data: Data(user.recordName.utf8))))
-            case .noAccount: return .noAccount
-            default: return .unavailable
+struct CloudKitRecordSaveFailure: Sendable {
+    let record: CKRecord
+    let error: CKError
+}
+
+/// The live bridge owns system CloudKit objects. Tests provide the same
+/// operation/event boundary without constructing a signed CKContainer.
+struct CloudKitTransportRuntime: Sendable {
+    let accountState: @Sendable () async throws -> SyncAccountState
+    let makeEngine: @Sendable (Data?, CloudKitSyncTransport) throws -> CloudKitEngineHandle
+    let send: @Sendable (CloudKitEngineHandle, [CKRecord]) async throws -> Void
+    let fetch: @Sendable (CloudKitEngineHandle) async throws -> Void
+    let cancel: @Sendable (CloudKitEngineHandle) async -> Void
+
+    static func live(containerIdentifier: String) -> Self {
+        let container = CKContainer(identifier: containerIdentifier)
+        return Self(
+            accountState: {
+                switch try await container.accountStatus() {
+                case .available:
+                    let user = try await container.userRecordID()
+                    return .available(fingerprint: Data(SHA256.hash(data: Data(user.recordName.utf8))))
+                case .noAccount: return .noAccount
+                default: return .unavailable
+                }
+            },
+            makeEngine: { serialized, delegate in
+                var configuration = CKSyncEngine.Configuration(
+                    database: container.privateCloudDatabase,
+                    stateSerialization: try CloudKitEngineStateCodec.decode(serialized),
+                    delegate: delegate
+                )
+                configuration.automaticallySync = false
+                configuration.subscriptionID = "TaisaVaultV1Changes"
+                return CloudKitEngineHandle(native: CKSyncEngine(configuration))
+            },
+            send: { handle, records in
+                guard let native = handle.native else { throw SyncTransportError.retryable }
+                let zone = CKRecordZone(zoneID: CloudRecordMapper.zoneID)
+                native.state.add(pendingDatabaseChanges: [.saveZone(zone)])
+                native.state.add(pendingRecordZoneChanges: records.map { .saveRecord($0.recordID) })
+                try await native.sendChanges()
+            },
+            fetch: { handle in
+                guard let native = handle.native else { throw SyncTransportError.retryable }
+                try await native.fetchChanges()
+            },
+            cancel: { handle in
+                if let native = handle.native { await native.cancelOperations() }
             }
-        },
-        send: { try await $0.sendChanges() },
-        fetch: { try await $0.fetchChanges() },
-        cancel: { await $0.cancelOperations() }
-    )
+        )
+    }
 }
 
 /// Async actor methods are reentrant. Hold this lease across the complete
@@ -93,12 +131,11 @@ struct CloudKitAccountBinding: Sendable {
 /// A private-database CKSyncEngine adapter. The coordinator sees only sealed
 /// `EncryptedChange` values and SQLCipher-backed transport tokens.
 public actor CloudKitSyncTransport: SyncTransport, CKSyncEngineDelegate {
-    private let container: CKContainer
     private let persistence: SyncTransportPersistence
     private let assetRoot: URL
     private let runtime: CloudKitTransportRuntime
     private let operationIsolation = CloudKitOperationIsolation()
-    private var engine: CKSyncEngine?
+    private var engine: CloudKitEngineHandle?
     private var account = CloudKitAccountBinding()
     private var outgoing: [CKRecord.ID: CKRecord] = [:]
     private var acknowledged: [String] = []
@@ -108,19 +145,16 @@ public actor CloudKitSyncTransport: SyncTransport, CKSyncEngineDelegate {
     private var needsFullReconciliation = false
 
     public init(containerIdentifier: String, bundleIdentifier: String, store: TaisaStore) throws {
-        try self.init(containerIdentifier: containerIdentifier, bundleIdentifier: bundleIdentifier, store: store, runtime: .live)
+        guard Self.approvedContainer(for: bundleIdentifier) == containerIdentifier else {
+            throw SyncTransportError.permission
+        }
+        try self.init(containerIdentifier: containerIdentifier, bundleIdentifier: bundleIdentifier,
+                      store: store, runtime: .live(containerIdentifier: containerIdentifier))
     }
 
     init(containerIdentifier: String, bundleIdentifier: String, store: TaisaStore,
          runtime: CloudKitTransportRuntime, assetRoot: URL? = nil) throws {
-        let approved: String?
-        switch bundleIdentifier {
-        case "com.taisa.app.dev": approved = "iCloud.com.taisa.app.dev"
-        case "com.taisa.app": approved = "iCloud.com.taisa.app"
-        default: approved = nil
-        }
-        guard approved == containerIdentifier else { throw SyncTransportError.permission }
-        container = CKContainer(identifier: containerIdentifier)
+        guard Self.approvedContainer(for: bundleIdentifier) == containerIdentifier else { throw SyncTransportError.permission }
         persistence = SyncTransportPersistence(store: store)
         self.runtime = runtime
         self.assetRoot = assetRoot ?? FileManager.default.temporaryDirectory.appendingPathComponent("taisa-cloudkit-\(UUID().uuidString)")
@@ -128,7 +162,7 @@ public actor CloudKitSyncTransport: SyncTransport, CKSyncEngineDelegate {
 
     public func accountState() async -> SyncAccountState {
         do {
-            let state = try await runtime.accountState(container)
+            let state = try await runtime.accountState()
             switch state {
             case .available(let observed):
                 if account.observeAvailable(observed) {
@@ -156,7 +190,7 @@ public actor CloudKitSyncTransport: SyncTransport, CKSyncEngineDelegate {
             let boundGeneration = account.generation
             let serialized = try await persistence.engineState(for: observed)
             guard account.fingerprint == observed, account.generation == boundGeneration else { throw SyncTransportError.accountChanged }
-            if engine == nil { engine = try makeEngine(serialized: serialized) }
+            if engine == nil { engine = try runtime.makeEngine(serialized, self) }
         }
         return SyncAccountSession(fingerprint: observed, generation: account.generation)
     }
@@ -183,13 +217,10 @@ public actor CloudKitSyncTransport: SyncTransport, CKSyncEngineDelegate {
             let record = try CloudRecordMapper.makeRecord(change, assetDirectory: operationAssets.directory)
             outgoing[record.recordID] = record
         }
-        let zone = CKRecordZone(zoneID: CloudRecordMapper.zoneID)
-        activeEngine.state.add(pendingDatabaseChanges: [.saveZone(zone)])
-        activeEngine.state.add(pendingRecordZoneChanges: outgoing.keys.map { .saveRecord($0) })
         let operationRuntime = runtime
         do {
             try await withTaskCancellationHandler {
-                try await operationRuntime.send(activeEngine)
+                try await operationRuntime.send(activeEngine, Array(outgoing.values))
             } onCancel: {
                 Task { await operationRuntime.cancel(activeEngine) }
             }
@@ -229,7 +260,7 @@ public actor CloudKitSyncTransport: SyncTransport, CKSyncEngineDelegate {
             guard account.matches(session) else {
                 throw SyncTransportError.accountChanged
             }
-            engine = try makeEngine(serialized: nil)
+            engine = try runtime.makeEngine(nil, self)
             needsFullReconciliation = false
         }
         guard let activeEngine = engine else { throw SyncTransportError.retryable }
@@ -270,7 +301,7 @@ public actor CloudKitSyncTransport: SyncTransport, CKSyncEngineDelegate {
         _ context: CKSyncEngine.SendChangesContext,
         syncEngine: CKSyncEngine
     ) async -> CKSyncEngine.RecordZoneChangeBatch? {
-        guard engine === syncEngine else { return nil }
+        guard engine?.native === syncEngine else { return nil }
         let records = syncEngine.state.pendingRecordZoneChanges.compactMap { pending -> CKRecord? in
             guard case .saveRecord(let id) = pending, context.options.scope.contains(pending) else { return nil }
             return outgoing[id]
@@ -280,70 +311,101 @@ public actor CloudKitSyncTransport: SyncTransport, CKSyncEngineDelegate {
     }
 
     public func handleEvent(_ event: CKSyncEngine.Event, syncEngine: CKSyncEngine) async {
-        guard engine === syncEngine else { return }
-        guard let activeFingerprint = account.fingerprint else { return }
-        let eventGeneration = account.generation
+        guard let activeEngine = engine, activeEngine.native === syncEngine else { return }
+        guard account.fingerprint != nil else { return }
         switch event {
         case .stateUpdate(let update):
-            // A rejected record or zone change must not make its CloudKit
-            // change token durable. Recreate from the prior encrypted state.
-            guard eventError == nil else { return }
             do {
-                try await persistence.saveEngineState(CloudKitEngineStateCodec.encode(update.stateSerialization), for: activeFingerprint)
+                await recordEngineState(try CloudKitEngineStateCodec.encode(update.stateSerialization), from: activeEngine.id)
             } catch {
-                guard engine === syncEngine, account.generation == eventGeneration else { return }
+                guard engine?.id == activeEngine.id else { return }
                 eventError = .accountChanged
             }
         case .accountChange:
+            let prior = engine
             account.invalidate()
             engine = nil
             needsFullReconciliation = false
             eventError = .accountChanged
             // Do not await cancellation inside an engine delegate callback.
-            Task { await runtime.cancel(syncEngine) }
+            if let prior { Task { await runtime.cancel(prior) } }
         case .fetchedRecordZoneChanges(let fetched):
-            do {
-                guard fetched.deletions.isEmpty else { eventError = .zoneReset; return }
-                let changes = try fetched.modifications
-                    .filter { $0.record.recordID.zoneID == CloudRecordMapper.zoneID }
-                    .map { try CloudRecordMapper.change(from: $0.record) }
-                try await persistence.append(changes, for: activeFingerprint)
-            } catch {
-                guard engine === syncEngine, account.generation == eventGeneration else { return }
-                eventError = .permission
-            }
+            await recordFetched(records: fetched.modifications.map(\.record),
+                                hasDeletions: !fetched.deletions.isEmpty, from: activeEngine.id)
         case .fetchedDatabaseChanges(let fetched):
             if fetched.deletions.contains(where: { $0.zoneID == CloudRecordMapper.zoneID }) {
                 eventError = .zoneReset
             }
         case .sentRecordZoneChanges(let sent):
-            acknowledged.append(contentsOf: sent.savedRecords.compactMap { record in
-                outgoing[record.recordID] == nil ? nil : record.recordID.recordName
-            })
-            for failed in sent.failedRecordSaves {
-                guard engine === syncEngine, account.generation == eventGeneration else { return }
-                guard outgoing[failed.record.recordID] != nil else { continue }
-                let id = failed.record.recordID.recordName
-                failures[id] = CloudKitErrorMapper.map(failed.error)
-                if failed.error.code == .serverRecordChanged, let server = failed.error.serverRecord {
-                    do {
-                        let remote = try CloudRecordMapper.change(from: server)
-                        try await persistence.append([remote], for: activeFingerprint)
-                        guard engine === syncEngine, account.generation == eventGeneration else { return }
-                        serverConflicts[id] = remote
-                    }
-                    catch {
-                        guard engine === syncEngine, account.generation == eventGeneration else { return }
-                        eventError = .permission
-                    }
-                }
-                syncEngine.state.remove(pendingRecordZoneChanges: [.saveRecord(failed.record.recordID)])
-            }
+            await recordSends(
+                savedRecords: sent.savedRecords,
+                failed: sent.failedRecordSaves.map { CloudKitRecordSaveFailure(record: $0.record, error: $0.error) },
+                from: activeEngine.id
+            )
         case .sentDatabaseChanges(let sent):
             if let failed = sent.failedZoneSaves.first { eventError = CloudKitErrorMapper.map(failed.error) }
         case .didFetchRecordZoneChanges(let fetched):
             if let error = fetched.error { eventError = CloudKitErrorMapper.map(error) }
         default: break
+        }
+    }
+
+    /// Shared by the native delegate and deterministic adapter tests.
+    func recordEngineState(_ serialized: Data, from engineID: UUID) async {
+        guard engine?.id == engineID, let activeFingerprint = account.fingerprint else { return }
+        let eventGeneration = account.generation
+        // A rejected record or zone change must not make its CloudKit
+        // change token durable. Recreate from the prior encrypted state.
+        guard eventError == nil else { return }
+        do {
+            try await persistence.saveEngineState(serialized, for: activeFingerprint)
+        } catch {
+            guard engine?.id == engineID, account.generation == eventGeneration else { return }
+            eventError = .accountChanged
+        }
+    }
+
+    /// Shared by the native delegate and deterministic adapter tests.
+    func recordFetched(records: [CKRecord], hasDeletions: Bool, from engineID: UUID) async {
+        guard engine?.id == engineID, let activeFingerprint = account.fingerprint else { return }
+        let eventGeneration = account.generation
+        do {
+            guard !hasDeletions else { eventError = .zoneReset; return }
+            let changes = try records
+                .filter { $0.recordID.zoneID == CloudRecordMapper.zoneID }
+                .map { try CloudRecordMapper.change(from: $0) }
+            try await persistence.append(changes, for: activeFingerprint)
+        } catch {
+            guard engine?.id == engineID, account.generation == eventGeneration else { return }
+            eventError = .permission
+        }
+    }
+
+    /// Shared by the native delegate and deterministic adapter tests.
+    func recordSends(savedRecords: [CKRecord], failed: [CloudKitRecordSaveFailure], from engineID: UUID) async {
+        guard let activeEngine = engine, activeEngine.id == engineID,
+              let activeFingerprint = account.fingerprint else { return }
+        let eventGeneration = account.generation
+        acknowledged.append(contentsOf: savedRecords.compactMap { record in
+            outgoing[record.recordID] == nil ? nil : record.recordID.recordName
+        })
+        for item in failed {
+            guard engine?.id == engineID, account.generation == eventGeneration else { return }
+            guard outgoing[item.record.recordID] != nil else { continue }
+            let id = item.record.recordID.recordName
+            failures[id] = CloudKitErrorMapper.map(item.error)
+            if item.error.code == .serverRecordChanged, let server = item.error.serverRecord {
+                do {
+                    let remote = try CloudRecordMapper.change(from: server)
+                    try await persistence.append([remote], for: activeFingerprint)
+                    guard engine?.id == engineID, account.generation == eventGeneration else { return }
+                    serverConflicts[id] = remote
+                } catch {
+                    guard engine?.id == engineID, account.generation == eventGeneration else { return }
+                    eventError = .permission
+                }
+            }
+            activeEngine.native?.state.remove(pendingRecordZoneChanges: [.saveRecord(item.record.recordID)])
         }
     }
 
@@ -365,14 +427,11 @@ public actor CloudKitSyncTransport: SyncTransport, CKSyncEngineDelegate {
         if let prior { await runtime.cancel(prior) }
     }
 
-    private func makeEngine(serialized: Data?) throws -> CKSyncEngine {
-        var configuration = CKSyncEngine.Configuration(
-            database: container.privateCloudDatabase,
-            stateSerialization: try CloudKitEngineStateCodec.decode(serialized),
-            delegate: self
-        )
-        configuration.automaticallySync = false
-        configuration.subscriptionID = "TaisaVaultV1Changes"
-        return CKSyncEngine(configuration)
+    private static func approvedContainer(for bundleIdentifier: String) -> String? {
+        switch bundleIdentifier {
+        case "com.taisa.app.dev": return "iCloud.com.taisa.app.dev"
+        case "com.taisa.app": return "iCloud.com.taisa.app"
+        default: return nil
+        }
     }
 }
