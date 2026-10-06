@@ -85,6 +85,9 @@ export async function inspectNativeProject(repositoryRoot) {
   const [developmentRights, productionRights, previewRights] = [
     entitlement('TaisaDev'), entitlement('Taisa'), entitlement('TaisaPreview'),
   ];
+  const liveInfo = JSON.parse(execFileSync('plutil', [
+    '-convert', 'json', '-o', '-', resolve(appleRoot, 'Config/TaisaInfo.plist'),
+  ], { encoding: 'utf8' }));
   const productionProducts = packageProducts(productionBlock);
   const previewProducts = packageProducts(previewTargetBlock);
 
@@ -124,6 +127,11 @@ export async function inspectNativeProject(repositoryRoot) {
         production: /Release:\s*\n\s*CODE_SIGN_ENTITLEMENTS:\s*Config\/Taisa\.entitlements/.test(productionBlock),
         preview: /CODE_SIGN_ENTITLEMENTS:\s*Config\/TaisaPreview\.entitlements/.test(previewTargetBlock),
       },
+    },
+    backgroundNotificationIsolation: {
+      liveModes: liveInfo.UIBackgroundModes ?? [],
+      liveInfoBound: /info:\s*\n\s*path:\s*Config\/TaisaInfo\.plist/.test(productionBlock),
+      previewConfiguresBackgroundMode: /UIBackgroundModes|remote-notification/.test(previewTargetBlock),
     },
   };
 }
@@ -181,6 +189,11 @@ export async function verifyNativeProject(repositoryRoot, productionBundle) {
       || isolation.associatedDomains
       || Object.values(isolation.projectEntitlementBindings).some((bound) => !bound)) {
     errors.push('CloudKit capability or entitlement isolation mismatch');
+  }
+  const background = inspected.backgroundNotificationIsolation;
+  if (JSON.stringify(background.liveModes) !== '["remote-notification"]'
+      || !background.liveInfoBound || background.previewConfiguresBackgroundMode) {
+    errors.push('Remote-notification background mode must belong only to live app targets');
   }
   return errors;
 }

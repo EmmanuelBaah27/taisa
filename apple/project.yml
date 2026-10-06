@@ -26,6 +26,10 @@ targets:
   Taisa:
     type: application
     platform: iOS
+    info:
+      path: Config/TaisaInfo.plist
+      properties:
+        UIBackgroundModes: [remote-notification]
     sources:
       - path: TaisaApp
       - path: Generated

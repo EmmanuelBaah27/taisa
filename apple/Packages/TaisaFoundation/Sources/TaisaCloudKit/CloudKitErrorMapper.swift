@@ -15,11 +15,22 @@ public enum CloudKitErrorMapper {
         case .permissionFailure, .badContainer: return .permission
         case .changeTokenExpired: return .tokenExpired
         case .zoneNotFound, .userDeletedZone: return .zoneReset
-        case .requestRateLimited, .serviceUnavailable:
-            let seconds = max(cloud.retryAfterSeconds ?? 1, 0)
-            let delay = min(seconds * 1_000, Double(Int64.max / 2))
-            return .rateLimited(retryAfterMS: nowMS + Int64(delay))
-        default: return .retryable
+        default:
+            if let retry = cloud.retryAfterSeconds {
+                return .rateLimited(retryAfterMS: deadline(after: retry, nowMS: nowMS))
+            }
+            if cloud.code == .requestRateLimited || cloud.code == .serviceUnavailable || cloud.code == .zoneBusy {
+                return .rateLimited(retryAfterMS: deadline(after: 1, nowMS: nowMS))
+            }
+            return .retryable
         }
+    }
+
+    private static func deadline(after seconds: TimeInterval, nowMS: Int64) -> Int64 {
+        let milliseconds = seconds.isFinite ? max(seconds * 1_000, 0) : 0
+        let baseline = max(nowMS, 0)
+        let remaining = Int64.max - baseline
+        guard milliseconds < Double(remaining) else { return Int64.max }
+        return baseline + Int64(milliseconds)
     }
 }

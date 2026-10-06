@@ -49,14 +49,21 @@ public actor SyncTransportPersistence {
             cursor = value
         } else { cursor = 0 }
         return try await store.write { db in
-            guard let row = try Row.fetchOne(db, sql: "SELECT account_fingerprint, engine_state FROM sync_state WHERE id = 1"),
+            guard let row = try Row.fetchOne(db, sql: "SELECT account_fingerprint, engine_state, change_token FROM sync_state WHERE id = 1"),
                   (row["account_fingerprint"] as Data?) == fingerprint,
                   let encoded: Data = row["engine_state"] else { throw SyncTransportError.accountChanged }
             var checkpoint = try JSONDecoder().decode(SyncEngineCheckpoint.self, from: encoded)
             guard cursor <= checkpoint.cloudKitNextSequence else { throw SyncTransportError.tokenExpired }
-            checkpoint.cloudKitInbox.removeAll { $0.sequence <= cursor }
-            let pending = checkpoint.cloudKitInbox.prefix(limit)
-            let last = pending.last?.sequence ?? cursor
+            let committed: Int64
+            if let committedData: Data = row["change_token"] {
+                guard let value = String(data: committedData, encoding: .utf8).flatMap(Int64.init),
+                      value >= 0, value <= checkpoint.cloudKitNextSequence else { throw SyncTransportError.tokenExpired }
+                committed = value
+            } else { committed = 0 }
+            checkpoint.cloudKitInbox.removeAll { $0.sequence <= committed }
+            let effectiveCursor = max(cursor, committed)
+            let pending = checkpoint.cloudKitInbox.filter { $0.sequence > effectiveCursor }.prefix(limit)
+            let last = pending.last?.sequence ?? effectiveCursor
             let hasMore = checkpoint.cloudKitInbox.contains { $0.sequence > last }
             try db.execute(sql: "UPDATE sync_state SET engine_state = ? WHERE id = 1", arguments: [try JSONEncoder().encode(checkpoint)])
             return SyncFetchPage(changes: pending.map(\.change), token: Data(String(last).utf8), hasMore: hasMore)

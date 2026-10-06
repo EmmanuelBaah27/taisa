@@ -77,6 +77,15 @@ test('CloudKit capability is isolated to development and production identities',
   });
 });
 
+test('background remote notifications are configured only for the live app target', async () => {
+  const result = await inspectNativeProject(repositoryRoot);
+  assert.deepEqual(result.backgroundNotificationIsolation, {
+    liveModes: ['remote-notification'],
+    liveInfoBound: true,
+    previewConfiguresBackgroundMode: false,
+  });
+});
+
 test('production bundle inspection rejects preview code and fixture identifiers', async () => {
   const fixture = await mkdtemp(join(tmpdir(), 'taisa-production-bundle-'));
   const cleanBundle = join(fixture, 'Taisa.app');
