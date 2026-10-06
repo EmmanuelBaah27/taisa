@@ -84,8 +84,24 @@ public struct SyncSendResult: Sendable, CustomStringConvertible, CustomDebugStri
     public var customMirror: Mirror { Mirror(self, children: ["state": "redacted"], displayStyle: .struct) }
 }
 
+/// Opaque transport identity for one Apple-account generation. A transport
+/// must validate it atomically with every read/write dispatch, including a
+/// change away from and back to the same fingerprint.
+public struct SyncAccountSession: Sendable, Equatable, CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
+    public let fingerprint: Data
+    public let generation: UUID
+    public init(fingerprint: Data, generation: UUID) {
+        self.fingerprint = fingerprint
+        self.generation = generation
+    }
+    public var description: String { "<redacted sync account session>" }
+    public var debugDescription: String { description }
+    public var customMirror: Mirror { Mirror(self, children: ["state": "redacted"], displayStyle: .struct) }
+}
+
 public protocol SyncTransport: Sendable {
     func accountState() async -> SyncAccountState
-    func fetch(after token: Data?) async throws -> SyncFetchPage
-    func send(_ changes: [EncryptedChange]) async throws -> SyncSendResult
+    func bind(expectedFingerprint: Data) async throws -> SyncAccountSession
+    func fetch(after token: Data?, session: SyncAccountSession) async throws -> SyncFetchPage
+    func send(_ changes: [EncryptedChange], session: SyncAccountSession) async throws -> SyncSendResult
 }

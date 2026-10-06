@@ -2,7 +2,7 @@ import Foundation
 
 public enum SyncReason: Sendable { case localChange, notification, foreground, manual }
 
-public enum SyncState: Sendable, Equatable, CustomStringConvertible, CustomDebugStringConvertible {
+public enum SyncState: String, Codable, Sendable, Equatable, CustomStringConvertible, CustomDebugStringConvertible {
     case idle
     case syncing
     case upToDate

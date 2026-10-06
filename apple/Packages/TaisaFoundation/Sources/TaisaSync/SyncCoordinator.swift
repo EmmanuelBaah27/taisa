@@ -3,6 +3,8 @@ import GRDB
 import TaisaSecurity
 import TaisaStorage
 
+private enum SyncTurnError: Error { case superseded }
+
 /// Owns one local store's sync turn. The transport sees ciphertext and opaque IDs only.
 public actor SyncCoordinator {
     private let store: TaisaStore
@@ -23,12 +25,64 @@ public actor SyncCoordinator {
 
     public var currentState: SyncState { status }
 
+    /// Explicit recovery after the transport has recreated/verified its zone.
+    /// Every retained local or received mutation is replayed before the durable
+    /// reset flag can be cleared. Ordinary synchronize never clears it.
+    public func reconcileZoneAfterReset() async -> SyncOutcome {
+        guard case .available(let fingerprint) = await transport.accountState() else {
+            status = .zoneReset
+            return SyncOutcome(state: status)
+        }
+        do {
+            let (_, _, recovery, generation) = try await bindAccount(fingerprint)
+            guard recovery == .zoneReset else { status = .recoveryRequired; return SyncOutcome(state: status) }
+            let session = try await transport.bind(expectedFingerprint: fingerprint)
+            try await store.write { db in
+                guard let encoded = try Data.fetchOne(db, sql: "SELECT engine_state FROM sync_state WHERE id = 1") else { throw SyncMergeError.persistenceFailed }
+                var checkpoint = try JSONDecoder().decode(SyncEngineCheckpoint.self, from: encoded)
+                guard checkpoint.recoveryState == .zoneReset else { throw SyncMergeError.persistenceFailed }
+                if !checkpoint.recoveryPrepared {
+                    for payload in checkpoint.received.values {
+                        let projection = try SyncProjection(payload)
+                        try db.execute(sql: "INSERT OR IGNORE INTO outbox (id, mutation_id, entity_type, entity_id, payload, status, created_at_ms) VALUES (?, ?, ?, ?, ?, 'pending', ?)", arguments: [UUID().uuidString, projection.mutation.id, projection.mutation.entityType, projection.mutation.entityID, payload, projection.mutation.timestampMS])
+                    }
+                    try db.execute(sql: "UPDATE outbox SET status = 'pending', retry_category = NULL, acknowledged_at_ms = NULL WHERE status = 'acknowledged'")
+                    checkpoint.recoveryPrepared = true
+                    checkpoint.retryAtMS = nil
+                    checkpoint.retryAttempts = 0
+                    try db.execute(sql: "UPDATE sync_state SET change_token = NULL, engine_state = ? WHERE id = 1", arguments: [try JSONEncoder().encode(checkpoint)])
+                }
+            }
+            let result = await runTurn(token: nil, session: session, generation: generation)
+            guard result.state == .upToDate || result.state == .conflictsNeedReview else {
+                status = .zoneReset
+                return SyncOutcome(state: status, uploaded: result.uploaded, downloaded: result.downloaded, conflicts: result.conflicts)
+            }
+            try await ensureAccount(session, generation: generation)
+            try await store.write { db in
+                guard let encoded = try Data.fetchOne(db, sql: "SELECT engine_state FROM sync_state WHERE id = 1") else { throw SyncMergeError.persistenceFailed }
+                var checkpoint = try JSONDecoder().decode(SyncEngineCheckpoint.self, from: encoded)
+                guard checkpoint.recoveryState == .zoneReset,
+                      (try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM outbox WHERE status != 'acknowledged'") ?? 0) == 0 else { throw SyncMergeError.persistenceFailed }
+                checkpoint.recoveryState = nil
+                checkpoint.recoveryPrepared = false
+                checkpoint.lastState = result.state
+                try db.execute(sql: "UPDATE sync_state SET engine_state = ? WHERE id = 1", arguments: [try JSONEncoder().encode(checkpoint)])
+            }
+            status = result.state
+            return result
+        } catch {
+            status = .zoneReset
+            return SyncOutcome(state: status)
+        }
+    }
+
     /// Resolution is a normal local mutation: domain state, conflict state,
     /// causality and the outgoing journal entry share one SQL transaction.
     public func resolveConflict(_ conflict: SyncConflict, using mutation: SyncMutation) async throws {
         let timestamp = max(nowMS(), mutation.timestampMS)
-        try await store.write { db in
-            let state = try Row.fetchOne(db, sql: "SELECT engine_state FROM sync_state WHERE id = 1")
+        do { try await store.write { db in
+            let state = try Row.fetchOne(db, sql: "SELECT engine_state, change_token FROM sync_state WHERE id = 1")
             let prior: Data? = state?["engine_state"]
             let checkpoint = try prior.map { try JSONDecoder().decode(SyncEngineCheckpoint.self, from: $0) } ?? SyncEngineCheckpoint()
             let localRows = try Row.fetchAll(db, sql: "SELECT payload FROM outbox")
@@ -41,12 +95,16 @@ public actor SyncCoordinator {
                 $0.entityType == mutation.entityType && $0.entityID == mutation.entityID
             } + [mutation]
             let decision = try MergeEngine.reduce(events: events)
-            let payload = try SyncProjection.journalPayload(for: mutation, decision: decision)
+            let sources = local + remote
+            guard let creation = sources.first(where: { $0.mutation.kind == .create && $0.mutation.entityType == mutation.entityType && $0.mutation.entityID == mutation.entityID }) else { throw SyncMergeError.malformedMutation }
+            let payload = try SyncProjection.journalPayload(for: mutation, decision: decision, fullFields: creation.fullFields)
             try ConflictStore.resolve(conflict, using: mutation, at: timestamp, in: db)
-            try SyncEntityShape.materialize(decision, entityType: mutation.entityType, entityID: mutation.entityID, in: db)
+            try SyncEntityShape.materialize(decision, entityType: mutation.entityType, entityID: mutation.entityID, source: sources, in: db)
             try SyncEntityShape.retainCausality(mutation, in: db)
+            try SyncEntityShape.retainVisibleTips(decision, entityType: mutation.entityType, entityID: mutation.entityID, in: db)
             try db.execute(sql: "INSERT INTO outbox (id, mutation_id, entity_type, entity_id, payload, status, created_at_ms) VALUES (?, ?, ?, ?, ?, 'pending', ?)", arguments: [UUID().uuidString, mutation.id, mutation.entityType, mutation.entityID, payload, mutation.timestampMS])
-        }
+        } } catch let error as SyncMergeError { throw error }
+        catch { throw SyncMergeError.persistenceFailed }
     }
 
     public func synchronize(reason: SyncReason) async -> SyncOutcome {
@@ -60,12 +118,17 @@ public actor SyncCoordinator {
         case .available(let fingerprint):
             guard !fingerprint.isEmpty else { status = .recoveryRequired; return SyncOutcome(state: status) }
             do {
-                let (token, retryAtMS) = try await bindAccount(fingerprint)
+                let (token, retryAtMS, recoveryState, generation) = try await bindAccount(fingerprint)
+                if let recoveryState {
+                    status = recoveryState
+                    return SyncOutcome(state: status)
+                }
                 if let retryAtMS, max(nowMS(), 0) < retryAtMS {
                     status = .retrying
                     return SyncOutcome(state: status, retryAtMS: retryAtMS)
                 }
-                return await runTurn(token: token, fingerprint: fingerprint)
+                let session = try await transport.bind(expectedFingerprint: fingerprint)
+                return await runTurn(token: token, session: session, generation: generation)
             } catch SyncTransportError.accountChanged {
                 status = .accountChanged
                 return SyncOutcome(state: status)
@@ -76,7 +139,7 @@ public actor SyncCoordinator {
         }
     }
 
-    private func bindAccount(_ fingerprint: Data) async throws -> (Data?, Int64?) {
+    private func bindAccount(_ fingerprint: Data) async throws -> (Data?, Int64?, SyncState?, Int64) {
         let vaultID = vault.id.uuidString
         let timestamp = max(nowMS(), 0)
         return try await store.write { db in
@@ -85,22 +148,29 @@ public actor SyncCoordinator {
                 let storedAccount: Data? = row["account_fingerprint"]
                 guard storedVault == vaultID, storedAccount == fingerprint else { throw SyncTransportError.accountChanged }
                 let checkpointData: Data? = row["engine_state"]
-                let checkpoint = try checkpointData.map { try JSONDecoder().decode(SyncEngineCheckpoint.self, from: $0) }
-                return (row["change_token"] as Data?, checkpoint?.retryAtMS)
+                var checkpoint = try checkpointData.map { try JSONDecoder().decode(SyncEngineCheckpoint.self, from: $0) } ?? SyncEngineCheckpoint()
+                let (generation, overflow) = checkpoint.turnGeneration.addingReportingOverflow(1)
+                guard !overflow else { throw SyncMergeError.persistenceFailed }
+                checkpoint.turnGeneration = generation
+                try db.execute(sql: "UPDATE sync_state SET engine_state = ? WHERE id = 1", arguments: [try JSONEncoder().encode(checkpoint)])
+                return (row["change_token"] as Data?, checkpoint.retryAtMS, checkpoint.recoveryState, generation)
             }
-            try db.execute(sql: "INSERT INTO sync_state (id, vault_id, account_fingerprint, updated_at_ms) VALUES (1, ?, ?, ?)", arguments: [vaultID, fingerprint, timestamp])
-            return (nil, nil)
+            var checkpoint = SyncEngineCheckpoint()
+            checkpoint.turnGeneration = 1
+            try db.execute(sql: "INSERT INTO sync_state (id, vault_id, account_fingerprint, engine_state, updated_at_ms) VALUES (1, ?, ?, ?, ?)", arguments: [vaultID, fingerprint, try JSONEncoder().encode(checkpoint), timestamp])
+            return (nil, nil, nil, 1)
         }
     }
 
-    private func runTurn(token: Data?, fingerprint: Data) async -> SyncOutcome {
+    private func runTurn(token: Data?, session: SyncAccountSession, generation: Int64) async -> SyncOutcome {
         var uploaded = 0
         var downloaded = 0
         var conflicts = 0
         var durableToken = token
+        var expectedCommitToken = token
         do {
             while !Task.isCancelled {
-                try await ensureAccount(fingerprint)
+                try await ensureAccount(session, generation: generation)
                 let reserved = try await journal.reservePending(limit: 200, at: max(nowMS(), 0), leaseDurationMS: 60_000)
                 if reserved.isEmpty { break }
                 let changes = try reserved.map { item -> EncryptedChange in
@@ -111,9 +181,9 @@ public actor SyncCoordinator {
                 }
                 let sent: SyncSendResult
                 do {
-                    try await ensureAccount(fingerprint)
-                    sent = try await transport.send(changes)
-                    try await ensureAccount(fingerprint)
+                    try await ensureAccount(session, generation: generation)
+                    sent = try await transport.send(changes, session: session)
+                    try await ensureAccount(session, generation: generation)
                 }
                 catch {
                     for item in reserved { try await journal.retry(id: item.change.id, category: Self.retryCategory(error), reservationID: item.reservationID) }
@@ -135,17 +205,17 @@ public actor SyncCoordinator {
                     }
                 }
                 if !sent.failures.isEmpty || acknowledged.count != reserved.count {
-                    let error = sent.failures.values.first ?? .retryable
-                    return await failed(error, uploaded: uploaded, downloaded: downloaded, attempts: (reserved.first?.change.attempts ?? 0) + 1)
+                    return await failed(Self.aggregateFailures(Array(sent.failures.values)), uploaded: uploaded, downloaded: downloaded, generation: generation)
                 }
                 if reserved.count < 200 { break }
             }
             var reconciling = false
             var pageCount = 0
+            var deferred: [(EncryptedChange, Data)] = []
             while !Task.isCancelled {
-                try await ensureAccount(fingerprint)
+                try await ensureAccount(session, generation: generation)
                 let page: SyncFetchPage
-                do { page = try await transport.fetch(after: durableToken) }
+                do { page = try await transport.fetch(after: durableToken, session: session) }
                 catch SyncTransportError.tokenExpired where !reconciling {
                     // The old durable token remains intact until a fetched page
                     // and its materialized records commit together.
@@ -154,7 +224,7 @@ public actor SyncCoordinator {
                     continue
                 }
                 pageCount += 1
-                try await ensureAccount(fingerprint)
+                try await ensureAccount(session, generation: generation)
                 guard pageCount <= 1_000,
                       !page.hasMore || page.token != durableToken else { throw SyncTransportError.retryable }
                 if Task.isCancelled {
@@ -164,6 +234,7 @@ public actor SyncCoordinator {
                 var records: [(EncryptedChange, Data)] = []
                 for change in page.changes {
                     do {
+                        guard change.envelope.metadata.schemaVersion == 1 else { throw SyncMergeError.unsupportedVersion }
                         guard change.id == change.envelope.metadata.recordID.uuidString else { throw SyncTransportError.permission }
                         let plaintext = try vault.open(change.envelope)
                         let projection = try SyncProjection(plaintext)
@@ -173,13 +244,22 @@ public actor SyncCoordinator {
                         records.append((change, plaintext))
                     } catch {
                         try await quarantine([change])
-                        status = .recoveryRequired
-                        return SyncOutcome(state: status, uploaded: uploaded, downloaded: downloaded, quarantined: 1)
+                        let failure = await failed(SyncTransportError.permission, uploaded: uploaded, downloaded: downloaded, generation: generation)
+                        return SyncOutcome(state: failure.state, uploaded: uploaded, downloaded: downloaded, quarantined: 1)
                     }
                 }
-                conflicts += try await apply(records, token: page.token)
-                downloaded += page.changes.count
+                let candidates = deferred + records
+                do {
+                conflicts += try await apply(candidates, token: page.token, expectedToken: expectedCommitToken, generation: generation)
+                } catch SyncProjectionError.dependencyPending where page.hasMore {
+                    deferred = candidates
+                    durableToken = page.token
+                    continue
+                }
+                downloaded += candidates.count
+                deferred = []
                 durableToken = page.token
+                expectedCommitToken = page.token
                 if !page.hasMore { break }
             }
             if Task.isCancelled { status = .retrying; return SyncOutcome(state: status, uploaded: uploaded, downloaded: downloaded) }
@@ -188,26 +268,43 @@ public actor SyncCoordinator {
                 try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM outbox WHERE status != 'acknowledged'") ?? 0
             }
             status = unresolved > 0 ? .conflictsNeedReview : (outstanding > 0 ? .retrying : .upToDate)
+            try await persistLastState(status, generation: generation)
+            return SyncOutcome(state: status, uploaded: uploaded, downloaded: downloaded, conflicts: conflicts)
+        } catch SyncTurnError.superseded {
+            let committed = (try? await store.read { db -> SyncState? in
+                let encoded = try Data.fetchOne(db, sql: "SELECT engine_state FROM sync_state WHERE id = 1")
+                return try encoded.flatMap { try JSONDecoder().decode(SyncEngineCheckpoint.self, from: $0).lastState }
+            }) ?? nil
+            status = committed ?? .retrying
             return SyncOutcome(state: status, uploaded: uploaded, downloaded: downloaded, conflicts: conflicts)
         } catch {
-            return await failed(error, uploaded: uploaded, downloaded: downloaded)
+            if Task.isCancelled {
+                status = .retrying
+                return SyncOutcome(state: status, uploaded: uploaded, downloaded: downloaded)
+            }
+            return await failed(error, uploaded: uploaded, downloaded: downloaded, generation: generation)
         }
     }
 
-    private func ensureAccount(_ expected: Data) async throws {
-        switch await transport.accountState() {
-        case .available(let observed) where observed == expected: return
-        case .offline: throw SyncTransportError.offline
-        default: throw SyncTransportError.accountChanged
+    private func ensureAccount(_ session: SyncAccountSession, generation: Int64) async throws {
+        let current = try await transport.bind(expectedFingerprint: session.fingerprint)
+        guard current == session else { throw SyncTransportError.accountChanged }
+        let currentGeneration = try await store.read { db -> Int64 in
+            let encoded = try Data.fetchOne(db, sql: "SELECT engine_state FROM sync_state WHERE id = 1")
+            return try encoded.map { try JSONDecoder().decode(SyncEngineCheckpoint.self, from: $0).turnGeneration } ?? 0
         }
+        guard currentGeneration == generation else { throw SyncTurnError.superseded }
     }
 
-    private func apply(_ records: [(EncryptedChange, Data)], token: Data?) async throws -> Int {
+    private func apply(_ records: [(EncryptedChange, Data)], token: Data?, expectedToken: Data?, generation: Int64) async throws -> Int {
         let timestamp = max(nowMS(), 0)
         return try await store.write { db in
-            let state = try Row.fetchOne(db, sql: "SELECT engine_state FROM sync_state WHERE id = 1")
+            let state = try Row.fetchOne(db, sql: "SELECT engine_state, change_token FROM sync_state WHERE id = 1")
+            let actualToken: Data? = state?["change_token"]
+            guard actualToken == expectedToken else { throw SyncTurnError.superseded }
             let prior: Data? = state?["engine_state"]
             var checkpoint = try prior.map { try JSONDecoder().decode(SyncEngineCheckpoint.self, from: $0) } ?? SyncEngineCheckpoint()
+            guard checkpoint.turnGeneration == generation else { throw SyncTurnError.superseded }
             var received = checkpoint.received
             var affected: Set<String> = []
             for (change, plaintext) in records {
@@ -237,7 +334,7 @@ public actor SyncCoordinator {
                 let events = sources.filter { $0.mutation.entityType + "|" + $0.mutation.entityID == key }.map(\.mutation)
                 guard let first = events.first else { continue }
                 let decision = try MergeEngine.reduce(events: events)
-                try SyncEntityShape.materialize(decision, entityType: first.entityType, entityID: first.entityID, in: db)
+                try SyncEntityShape.materialize(decision, entityType: first.entityType, entityID: first.entityID, source: sources, in: db)
                 for resolution in events where resolution.kind == .resolve || (resolution.kind == .delete && resolution.resolvedParentVersionIDs != nil) {
                     let parents = Set(resolution.resolvedParentVersionIDs ?? [])
                     let rows = try Row.fetchAll(db, sql: "SELECT field_name, local_version_id, remote_version_id, local_value, remote_value FROM conflicts WHERE entity_type = ? AND entity_id = ? COLLATE NOCASE AND resolved_at_ms IS NULL", arguments: [first.entityType, first.entityID])
@@ -260,13 +357,26 @@ public actor SyncCoordinator {
                     conflictCount += 1
                 }
                 for event in events { try SyncEntityShape.retainCausality(event, in: db) }
+                try SyncEntityShape.retainVisibleTips(decision, entityType: first.entityType, entityID: first.entityID, in: db)
             }
             checkpoint.received = received
             checkpoint.retryAtMS = nil
+            checkpoint.retryAttempts = 0
+            checkpoint.lastState = .syncing
             let engine = try JSONEncoder().encode(checkpoint)
             try db.execute(sql: "UPDATE sync_state SET change_token = ?, engine_state = ?, updated_at_ms = ? WHERE id = 1", arguments: [token, engine, timestamp])
             guard db.changesCount == 1 else { throw SyncTransportError.permission }
             return conflictCount
+        }
+    }
+
+    private func persistLastState(_ state: SyncState, generation: Int64) async throws {
+        try await store.write { db in
+            let encoded = try Data.fetchOne(db, sql: "SELECT engine_state FROM sync_state WHERE id = 1")
+            var checkpoint = try encoded.map { try JSONDecoder().decode(SyncEngineCheckpoint.self, from: $0) } ?? SyncEngineCheckpoint()
+            guard checkpoint.turnGeneration == generation else { throw SyncTurnError.superseded }
+            checkpoint.lastState = state
+            try db.execute(sql: "UPDATE sync_state SET engine_state = ? WHERE id = 1", arguments: [try JSONEncoder().encode(checkpoint)])
         }
     }
 
@@ -279,34 +389,70 @@ public actor SyncCoordinator {
         }
     }
 
-    private func failed(_ error: Error, uploaded: Int, downloaded: Int, attempts: Int = 0) async -> SyncOutcome {
+    private func failed(_ error: Error, uploaded: Int, downloaded: Int, generation: Int64) async -> SyncOutcome {
         var deadline: Int64?
+        let now = max(nowMS(), 0)
+        let retryable: Bool
         switch error as? SyncTransportError {
-        case .offline: status = .offline
-        case .quota: status = .storageFull
-        case .accountChanged: status = .accountChanged
-        case .permission, .tokenExpired: status = .recoveryRequired
-        case .zoneReset: status = .zoneReset
+        case .offline: status = .offline; retryable = false
+        case .quota: status = .storageFull; retryable = false
+        case .accountChanged: status = .accountChanged; retryable = false
+        case .permission, .tokenExpired: status = .recoveryRequired; retryable = false
+        case .zoneReset: status = .zoneReset; retryable = false
         case .rateLimited(let retryAfter):
             status = .retrying
-            deadline = RetryPolicy.nextAttemptMS(nowMS: max(nowMS(), 0), attempts: attempts, retryAfterMS: retryAfter)
+            retryable = true
+            deadline = retryAfter
         case .retryable:
             status = .retrying
-            deadline = RetryPolicy.nextAttemptMS(nowMS: max(nowMS(), 0), attempts: attempts)
-        case .none: status = .recoveryRequired
+            retryable = true
+        case .none: status = .recoveryRequired; retryable = false
         }
-        if let retryDeadline = deadline {
-            do {
-                try await store.write { db in
-                    let row = try Row.fetchOne(db, sql: "SELECT engine_state FROM sync_state WHERE id = 1")
-                    let prior: Data? = row?["engine_state"]
-                    var checkpoint = try prior.map { try JSONDecoder().decode(SyncEngineCheckpoint.self, from: $0) } ?? SyncEngineCheckpoint()
-                    checkpoint.retryAtMS = retryDeadline
-                    try db.execute(sql: "UPDATE sync_state SET engine_state = ? WHERE id = 1", arguments: [try JSONEncoder().encode(checkpoint)])
+        do {
+            let requested = deadline
+            let recoveryStatus = status
+            deadline = try await store.write { db in
+                let row = try Row.fetchOne(db, sql: "SELECT engine_state FROM sync_state WHERE id = 1")
+                let prior: Data? = row?["engine_state"]
+                var checkpoint = try prior.map { try JSONDecoder().decode(SyncEngineCheckpoint.self, from: $0) } ?? SyncEngineCheckpoint()
+                guard checkpoint.turnGeneration == generation else { throw SyncTurnError.superseded }
+                if uploaded > 0 || downloaded > 0 { checkpoint.retryAttempts = 0 }
+                if retryable {
+                    let next = RetryPolicy.nextAttemptMS(nowMS: now, attempts: checkpoint.retryAttempts, retryAfterMS: requested)
+                    checkpoint.retryAttempts = min(checkpoint.retryAttempts + 1, 8)
+                    checkpoint.retryAtMS = next
+                } else {
+                    checkpoint.retryAtMS = nil
+                    if (recoveryStatus == .zoneReset || recoveryStatus == .recoveryRequired), checkpoint.recoveryState != .zoneReset {
+                        checkpoint.recoveryState = recoveryStatus
+                    }
                 }
-            } catch { status = .recoveryRequired; deadline = nil }
-        }
+                checkpoint.lastState = checkpoint.recoveryState ?? recoveryStatus
+                try db.execute(sql: "UPDATE sync_state SET engine_state = ? WHERE id = 1", arguments: [try JSONEncoder().encode(checkpoint)])
+                return checkpoint.retryAtMS
+            }
+        } catch SyncTurnError.superseded {
+            status = (try? await store.read { db -> SyncState? in
+                let encoded = try Data.fetchOne(db, sql: "SELECT engine_state FROM sync_state WHERE id = 1")
+                return try encoded.flatMap { try JSONDecoder().decode(SyncEngineCheckpoint.self, from: $0).lastState }
+            }) ?? .retrying
+            deadline = nil
+        } catch { status = .recoveryRequired; deadline = nil }
         return SyncOutcome(state: status, uploaded: uploaded, downloaded: downloaded, retryAtMS: deadline)
+    }
+
+    private static func aggregateFailures(_ failures: [SyncTransportError]) -> SyncTransportError {
+        if failures.contains(.accountChanged) { return .accountChanged }
+        if failures.contains(.permission) { return .permission }
+        if failures.contains(.zoneReset) { return .zoneReset }
+        if failures.contains(.quota) { return .quota }
+        if failures.contains(.offline) { return .offline }
+        let deadlines = failures.compactMap { error -> Int64? in
+            if case .rateLimited(let deadline) = error { return deadline }
+            return nil
+        }
+        if let longest = deadlines.max() { return .rateLimited(retryAfterMS: longest) }
+        return .retryable
     }
 
     private static func retryCategory(_ error: Error) -> String {

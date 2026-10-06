@@ -166,7 +166,8 @@ private actor CoordinatorKeys: DatabaseKeyStore {
         #expect(await SyncCoordinator(store: senderStore, vault: vault, transport: transport, nowMS: { 100 }).synchronize(reason: .manual).state == .upToDate)
         let invalidID = UUID().uuidString
         let metadata = EnvelopeMetadata(vaultID: vault.id, recordID: UUID(uuidString: invalidID)!, entityType: "profile", schemaVersion: 1, tombstone: false)
-        _ = try await transport.send([EncryptedChange(id: invalidID, envelope: VaultEnvelope(version: 1, metadata: metadata, ciphertext: Data(repeating: 0, count: 28)))])
+        let session = try await transport.bind(expectedFingerprint: Data("quarantine-account".utf8))
+        _ = try await transport.send([EncryptedChange(id: invalidID, envelope: VaultEnvelope(version: 1, metadata: metadata, ciphertext: Data(repeating: 0, count: 28)))], session: session)
         let receiver = SyncCoordinator(store: receiverStore, vault: vault, transport: transport, nowMS: { 101 })
         let first = await receiver.synchronize(reason: .manual)
         #expect(first.state == .recoveryRequired)
@@ -340,6 +341,9 @@ private actor CoordinatorKeys: DatabaseKeyStore {
         #expect(await secondSync.synchronize(reason: .manual).state == .upToDate)
         #expect(try await ProfileRepository(store: second).get(id: recordID)?.displayName == "Chosen")
         #expect(try await ConflictStore(store: second).unresolved().isEmpty)
+        try await ProfileRepository(store: second).update(ProfileRecord(id: recordID, displayName: "Later", headline: "", biography: "", updatedAtMS: 40), context: MutationContext(id: UUID().uuidString, deviceID: secondDevice, timestamp: 40))
+        let later = try #require(await ChangeJournal(store: second).pending(limit: 10).first)
+        #expect(later.causality.changedFields.first { $0.fieldName == "displayName" }?.parentVersionID == resolutionID)
     }
 
     @Test func deleteVersusEditResolutionRestoresVisibilityOnBothDevices() async throws {

@@ -3,6 +3,7 @@ import Foundation
 /// Deterministic transport shared by independent local stores. It never opens CloudKit.
 public actor InMemorySyncTransport: SyncTransport {
     private var fingerprint: Data
+    private var generation = UUID()
     private var accountOverride: SyncAccountState?
     private var changes: [EncryptedChange] = []
     private var nextSendError: SyncTransportError?
@@ -11,25 +12,42 @@ public actor InMemorySyncTransport: SyncTransport {
     private var duplicateNextFetch = false
     private var reverseNextFetch = false
     private var accountAfterSend: Data?
+    private var accountAfterFetch: Data?
     private var cancelFetchedTurn = false
     private var pageLimit = 200
 
     public init(accountFingerprint: Data) { fingerprint = accountFingerprint }
 
     public func accountState() async -> SyncAccountState { accountOverride ?? .available(fingerprint: fingerprint) }
-    public func setAccountFingerprint(_ value: Data) { fingerprint = value; accountOverride = nil }
-    public func setAccountState(_ value: SyncAccountState?) { accountOverride = value }
+    public func setAccountFingerprint(_ value: Data) { fingerprint = value; accountOverride = nil; generation = UUID() }
+    public func setAccountState(_ value: SyncAccountState?) { accountOverride = value; generation = UUID() }
     public func failNextSend(_ error: SyncTransportError) { nextSendError = error }
     public func failNextFetch(_ error: SyncTransportError) { nextFetchError = error }
     public func failNextItems(_ failures: [String: SyncTransportError]) { nextPartialFailures = failures }
     public func duplicateNextDownload() { duplicateNextFetch = true }
     public func reverseNextDownload() { reverseNextFetch = true }
     public func changeAccountAfterNextSend(to value: Data) { accountAfterSend = value }
+    public func changeAccountAfterNextFetch(to value: Data) { accountAfterFetch = value }
     public func cancelNextFetch() { cancelFetchedTurn = true }
     public func setPageLimit(_ value: Int) { pageLimit = max(1, value) }
     public func allChanges() -> [EncryptedChange] { changes }
+    public func resetZoneForTesting() { changes = [] }
 
-    public func send(_ incoming: [EncryptedChange]) async throws -> SyncSendResult {
+    public func bind(expectedFingerprint: Data) async throws -> SyncAccountSession {
+        if case .offline = accountOverride { throw SyncTransportError.offline }
+        guard case .available(let observed) = accountOverride ?? .available(fingerprint: fingerprint),
+              observed == expectedFingerprint else { throw SyncTransportError.accountChanged }
+        return SyncAccountSession(fingerprint: observed, generation: generation)
+    }
+
+    private func require(_ session: SyncAccountSession) throws {
+        guard session.generation == generation,
+              case .available(let observed) = accountOverride ?? .available(fingerprint: fingerprint),
+              session.fingerprint == observed else { throw SyncTransportError.accountChanged }
+    }
+
+    public func send(_ incoming: [EncryptedChange], session: SyncAccountSession) async throws -> SyncSendResult {
+        try require(session)
         if let error = nextSendError { nextSendError = nil; throw error }
         let failures = nextPartialFailures
         nextPartialFailures = [:]
@@ -45,12 +63,14 @@ public actor InMemorySyncTransport: SyncTransport {
         }
         if let accountAfterSend {
             fingerprint = accountAfterSend
+            generation = UUID()
             self.accountAfterSend = nil
         }
         return SyncSendResult(acknowledgedIDs: acknowledgements, failures: failures)
     }
 
-    public func fetch(after token: Data?) async throws -> SyncFetchPage {
+    public func fetch(after token: Data?, session: SyncAccountSession) async throws -> SyncFetchPage {
+        try require(session)
         if let error = nextFetchError { nextFetchError = nil; throw error }
         let offset: Int
         if let token {
@@ -66,6 +86,11 @@ public actor InMemorySyncTransport: SyncTransport {
         if cancelFetchedTurn {
             cancelFetchedTurn = false
             withUnsafeCurrentTask { $0?.cancel() }
+        }
+        if let accountAfterFetch {
+            fingerprint = accountAfterFetch
+            generation = UUID()
+            self.accountAfterFetch = nil
         }
         return SyncFetchPage(changes: page, token: Data(String(end).utf8), hasMore: end < changes.count)
     }
