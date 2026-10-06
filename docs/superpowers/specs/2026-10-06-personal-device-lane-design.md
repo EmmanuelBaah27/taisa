@@ -1,8 +1,8 @@
 # Personal Device Lane Design
 
-**Date:** 2026-10-06  
-**Status:** Approved in conversation by Baah on 2026-10-06  
-**Amends:** `docs/superpowers/specs/2026-10-04-swift-native-encrypted-sync-design.md`  
+**Date:** 2026-10-06
+**Status:** Approved in conversation by Baah on 2026-10-06
+**Amends:** `docs/superpowers/specs/2026-10-04-swift-native-encrypted-sync-design.md`
 **Scope:** `docs/features/swift-native-encrypted-sync.md`
 
 ## Intent
@@ -60,4 +60,3 @@ Physical-device QA installs the same Personal bundle identifier over itself on b
 This lane does not satisfy the original automatic iPhone–iPad synchronization acceptance criterion. Live CloudKit provisioning, notification delivery, multi-device enrollment, cryptographic device removal, and production schema promotion remain deferred until Baah has an active Apple Developer Program team. The completed transport stays tested and dormant; it is not rewritten or removed.
 
 Custom Taisa sync, third-party signing services, background peer-to-peer sync, and presenting Preview's fake transport to Baah as real sync remain out of scope.
-

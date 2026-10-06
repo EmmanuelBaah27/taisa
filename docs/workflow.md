@@ -22,7 +22,7 @@ relevant to the task.
 | Shared chat and recording shell | Product | Build | `codex/chat-close-auth-handoff` | Baah paired-device QA after preview integration |
 | Glass elevation, alignment, and interaction feedback | Product | Review + QA | `fix/glass-elevation-keyboard-surfaces` | canonical preview integration + Baah device QA |
 | SwiftUI native rebuild | Platform + Product | Shipped | `main` | — |
-| Swift native encrypted storage, sync, and recovery | Platform | Build | `feature/swift-native-encrypted-sync` | Personal Device lane implementation active; next Baah gate is Task 6 approval for Personal Team signing/install. Live CloudKit remains blocked on paid Apple Developer Program membership; production schema promotion remains unapproved. |
+| Swift native encrypted storage, sync, and recovery | Platform | Review + QA | `feature/swift-native-encrypted-sync` | Baah Ship approval; live CloudKit remains blocked on paid Apple Developer Program membership and production schema promotion remains unapproved. |
 
 ---
 
@@ -138,7 +138,7 @@ For the approved SwiftUI native-rebuild program, the equivalent order is:
 
 **Canonical native Apple preview:** SwiftUI device feedback is authoritative only from a signed build record containing the native Git commit, Xcode build number, bundle identifier, distribution/TestFlight version, backend environment, database schema version, parity-catalog revision, and confirmation that the tested device installed that exact build. A simulator, Xcode Preview, or feature worktree is not a device-QA target.
 
-Signed native records are stored in `docs/migration/swiftui/native-builds.md` and validated by `apple/scripts/record-signed-build.mjs`. Development and preview builds use isolated bundle identifiers and must never replace the production React Native app during migration.
+Signed native records are stored in `docs/migration/swiftui/native-builds.md` and validated by `apple/scripts/record-signed-build.mjs`. Development, preview, and Personal builds use isolated bundle identifiers and must never replace the production React Native app during migration. A Personal Team refresh installs over the existing `com.taisa.app.personal` identity; it never uninstalls that identity because its encrypted store is device-local. Personal file transfer is an explicit encrypted replacement from one authoritative device, not synchronization or history merging.
 
 **Verification matrix:**
 

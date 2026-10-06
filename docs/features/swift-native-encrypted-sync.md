@@ -1,8 +1,8 @@
 # Swift Native Encrypted Storage, Sync, and Recovery
 
-**Tier:** Full  
-**Track:** Platform  
-**Stage:** Plan
+**Tier:** Full
+**Track:** Platform
+**Stage:** Review + QA
 **Depends on:** accepted Swift native foundation
 
 ## What is it?
@@ -58,9 +58,9 @@ The interim lane is specified in `docs/superpowers/specs/2026-10-06-personal-dev
 
 ## Closeout
 
-- **Actual outcome:** Pending implementation.
-- **Plan deviations:** None yet.
-- **Learnings and decisions:** Pending review.
-- **Remaining debt:** Pending review.
-- **Canonical docs updated:** Pending.
+- **Actual outcome:** The native encrypted local store, recovery-key ceremony, authenticated database-only snapshot, atomic replacement restore, separate `Taisa-Personal` target, and Files/AirDrop transfer flow are implemented. On 2026-10-06 Baah verified the exact signed Personal candidate on the registered iPhone and iPad: a nonempty canary survived same-identity install-over, restored from iPhone to a clean iPad, retained identical counts and SHA-256 after force-reopen, and both devices reported device-local storage.
+- **Plan deviations:** The free Personal Team cannot provision CloudKit or push, so automatic sync was preserved in code but not activated or claimed. The accepted interim lane uses explicit encrypted snapshot replacement and a manual Passwords recovery-key save flow. Free-profile slot pressure required Baah-approved removal of only the old `com.taisa.app.dev` installations; the production, Preview, and Personal identities were preserved.
+- **Learnings and decisions:** Weekly refresh must install over `com.taisa.app.personal` and never uninstall it. Encrypted file transfer copies one authoritative history and never merges divergent devices. The recovery key is stored separately in Passwords plus an offline copy, and the signed artifact is rejected unless its signer, profile, explicit device authorization, bundle, environment, embedded commit, entitlements, and linkage all match.
+- **Remaining debt:** The original CloudKit criteria—including live development schema creation, real two-device incremental sync/conflict/deletion/offline tests, production schema promotion, and paid-capability signed QA—remain open. Recovery does not include recordings or unfinished audio, and file transfer does not merge histories.
+- **Canonical docs updated:** Personal signed-build records and weekly refresh guidance, CloudKit deferral, workflow evidence rules, and roadmap status are updated on this branch.
 - **PR and merge evidence:** Pending.

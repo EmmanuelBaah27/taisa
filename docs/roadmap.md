@@ -1,6 +1,6 @@
 # Taisa Roadmap
 
-**Last updated:** 2026-10-04
+**Last updated:** 2026-10-06
 **Design direction:** Light theme first. Voice primary, text secondary.
 **Two tracks:** Platform (AI + backend) runs one step ahead of Product (UI).
 
@@ -13,7 +13,7 @@
 | Light design system | Platform + Product | Review (device QA) | feature/light-design-system | — |
 | Persistent input bar + Chat UI | Platform + Product | Plan | — | Light design system shipped |
 | SwiftUI native rebuild | Platform + Product | Review + QA | `feature/swift-native-foundation` | Baah Ship approval |
-| Swift native encrypted storage, sync, and recovery | Platform | Plan | `docs/swift-native-encrypted-sync` | Baah Plan approval and execution-method selection |
+| Swift native encrypted storage, sync, and recovery | Platform | Review + QA | `feature/swift-native-encrypted-sync` | Baah Ship approval; automatic CloudKit sync remains deferred pending paid capabilities |
 
 After native-foundation acceptance, the next separately scoped foundations are encrypted persistence and recovery, audio and streaming, then advanced resources and platform services. Product slices remain gated until their required foundations are approved and built.
 

@@ -12,11 +12,18 @@ No production schema promotion has been performed or authorized.
 | Development | `com.taisa.app.dev` | `iCloud.com.taisa.app.dev` | development |
 | Production | `com.taisa.app` | `iCloud.com.taisa.app` | production |
 | Preview | `com.taisa.app.preview` | none; deterministic fake only | none |
+| Personal | `com.taisa.app.personal` | none; local-only encrypted store plus deliberate encrypted file transfer | none |
 
 The Preview target has an empty entitlements file and does not link
 `TaisaCloudKit`. There is no Associated Domains entitlement. Recovery-key
 saving uses the approved manual Passwords flow until Baah supplies an owned
 HTTPS domain and separately approves Web Credentials integration.
+
+The Personal target also has an empty capability set and does not link
+`TaisaCloudKit`. Signed-device QA on 2026-10-06 verified no iCloud, CloudKit,
+push, Associated Domains, background-mode, or live-transport linkage in the
+signed product. Files/AirDrop recovery is a replace operation between devices,
+not a synchronization transport and not a CloudKit acceptance substitute.
 
 ## Development schema proposal
 
@@ -53,3 +60,8 @@ The development schema must be created and inspected against the actual
 development container during signed-device QA. Production schema promotion
 requires a separate Baah approval, a verified development schema, and a
 recorded promotion result before production distribution.
+
+The automatic iPhone–iPad sync acceptance criterion remains deferred until a
+paid Apple Developer Program team can provision the required capabilities and
+Baah separately approves live development-container verification. No schema was
+created, promoted, or changed by the Personal device lane.

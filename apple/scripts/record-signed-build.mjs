@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 
+import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
-import { inspectPersonalBuild } from './inspect-personal-build.mjs';
+import { inspectPersonalBuild, validateRetainedPersonalEvidence } from './inspect-personal-build.mjs';
 
 const bundleIdentifiers = {
   development: 'com.taisa.app.dev',
@@ -54,8 +55,23 @@ export function inspectSignedBuild(record = {}, options = {}) {
   }
 
   if (record.environment === 'personal') {
+    if (typeof record.appVersion !== 'string' || !/^\d+\.\d+(?:\.\d+)?$/.test(record.appVersion)) {
+      errors.push('Personal appVersion must be a dotted numeric marketing version');
+    }
+    if (typeof record.databaseSchemaVersion !== 'string'
+        || !/^[1-9]\d*$/.test(record.databaseSchemaVersion)) {
+      errors.push('Personal databaseSchemaVersion must be a positive integer string');
+    }
+    if (typeof record.parityCatalogRevision !== 'string'
+        || !/^[a-f0-9]{40}$/i.test(record.parityCatalogRevision)) {
+      errors.push('Personal parityCatalogRevision must be a full Git commit');
+    }
     try {
-      const inspected = inspectPersonalBuild(record, options);
+      const appExists = typeof record.appPath === 'string' && existsSync(record.appPath);
+      const profileExists = typeof record.profilePath === 'string' && existsSync(record.profilePath);
+      const inspected = !appExists && !profileExists
+        ? validateRetainedPersonalEvidence(record)
+        : inspectPersonalBuild(record, options);
       errors.push(...inspected.errors);
       record = { ...record, ...inspected.evidence };
     } catch (error) { errors.push(`Personal artifact inspection failed: ${error.message}`); }

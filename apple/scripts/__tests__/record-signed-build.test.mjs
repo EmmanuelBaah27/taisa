@@ -43,6 +43,9 @@ const personalRecord = {
   candidateCommit: '1234567890123456789012345678901234567890',
   installedCommit: '1234567890123456789012345678901234567890',
   teamIdentifier: 'XH59HG6MSY',
+  appVersion: '1.0',
+  databaseSchemaVersion: '1',
+  parityCatalogRevision: '719180012de745e3b507ed93eadbe7d8a951331c',
 };
 
 function fixture(t) {
@@ -58,7 +61,7 @@ function fixture(t) {
   writeFileSync(executable, image);
   const facts = {
     signerCertificate: signerCertificate.raw,
-    info: { CFBundleIdentifier: 'com.taisa.app.personal', TaisaEnvironment: 'personal', CFBundleExecutable: 'TaisaPersonal', CFBundleVersion: '1' },
+    info: { CFBundleIdentifier: 'com.taisa.app.personal', TaisaEnvironment: 'personal', CFBundleExecutable: 'TaisaPersonal', CFBundleVersion: '1', CFBundleShortVersionString: '1.0' },
     rights: { 'application-identifier': 'XH59HG6MSY.com.taisa.app.personal', 'com.apple.developer.team-identifier': 'XH59HG6MSY', 'get-task-allow': true },
     profile: { UUID: '11111111-1111-4111-8111-111111111111', TeamIdentifier: ['XH59HG6MSY'], ApplicationIdentifierPrefix: ['XH59HG6MSY'], ExpirationDate: '2099-01-01T00:00:00Z', ProvisionedDevices: ['device-id'], Entitlements: { 'application-identifier': 'XH59HG6MSY.com.taisa.app.personal', 'com.apple.developer.team-identifier': 'XH59HG6MSY', 'get-task-allow': true } },
     signature: 'Identifier=com.taisa.app.personal\nAuthority=Apple Development: Synthetic Test\nTeamIdentifier=XH59HG6MSY\n',
@@ -166,6 +169,83 @@ test('Personal accepts inspected signed app and profile and invokes signature ve
   assert(f.calls.some(([command, args]) => command === 'codesign' && args.includes('--verify')));
   assert(f.calls.some(([command, args]) => command === 'security' && args.includes(f.profilePath)));
   assert(f.calls.some(([command, args]) => command === 'otool' && args.includes(f.executable)));
+});
+
+test('Personal requires strongly formed release, schema, and parity revisions', t => {
+  for (const [field, value] of [
+    ['appVersion', ''],
+    ['appVersion', 'version one'],
+    ['databaseSchemaVersion', '0'],
+    ['databaseSchemaVersion', '1.5'],
+    ['parityCatalogRevision', '7191800'],
+  ]) {
+    const f = fixture(t);
+    assert.match(validateSignedBuild({ ...f.record, [field]: value }, f.options).join('\n'),
+      new RegExp(field));
+  }
+});
+
+test('Personal checks the marketing version against the signed app Info.plist', t => {
+  const f = fixture(t);
+  f.facts.info.CFBundleShortVersionString = '1.1';
+  assert.match(validateSignedBuild(f.record, f.options).join('\n'), /marketing version mismatch/);
+});
+
+test('Personal persists complete live inspection evidence and labels its provenance', t => {
+  const f = fixture(t);
+  const result = inspectSignedBuild(f.record, f.options);
+  assert.deepEqual(result.errors, []);
+  assert.deepEqual(result.record.signedEntitlements, f.facts.rights);
+  assert.deepEqual(result.record.provisioningEntitlements, f.facts.profile.Entitlements);
+  assert.deepEqual(result.record.backgroundModes, []);
+  assert.deepEqual(result.record.linkedLibraries,
+    ['/System/Library/Frameworks/Security.framework/Security']);
+  assert.equal(result.record.linksLiveTransport, false);
+  assert.equal(result.record.artifactEvidence.signatureVerified, true);
+  assert.equal(result.record.artifactEvidence.attestationType, 'live-artifact-inspection');
+  assert.equal(result.record.evidenceValidation.mode, 'live-artifact-reinspection');
+  assert.equal(result.record.evidenceValidation.liveReinspectionPerformed, true);
+});
+
+test('Personal validates retained evidence when the original artifact no longer exists', t => {
+  const f = fixture(t);
+  const live = inspectSignedBuild(f.record, f.options);
+  assert.deepEqual(live.errors, []);
+  rmSync(f.appPath, { recursive: true, force: true });
+  const retained = inspectSignedBuild(live.record, f.options);
+  assert.deepEqual(retained.errors, []);
+  assert.equal(retained.record.evidenceValidation.mode, 'retained-attestation-only');
+  assert.equal(retained.record.evidenceValidation.liveReinspectionPerformed, false);
+  assert.equal(retained.record.artifactEvidence.attestationType, 'live-artifact-inspection');
+});
+
+test('Personal rejects incomplete or malformed retained inspection evidence', t => {
+  const f = fixture(t);
+  const live = inspectSignedBuild(f.record, f.options);
+  assert.deepEqual(live.errors, []);
+  rmSync(f.appPath, { recursive: true, force: true });
+  for (const mutate of [
+    record => { delete record.signedEntitlements; },
+    record => { record.backgroundModes = ['remote-notification']; },
+    record => { record.linkedLibraries = []; },
+    record => { record.linksLiveTransport = true; },
+    record => { record.artifactEvidence.profileSHA256 = 'not-a-hash'; },
+    record => { record.artifactEvidence.images = []; },
+    record => { record.artifactEvidence.signatureVerified = false; },
+  ]) {
+    const record = structuredClone(live.record);
+    mutate(record);
+    assert.notDeepEqual(validateSignedBuild(record, f.options), []);
+  }
+});
+
+test('Personal live inspection rejects retained evidence that disagrees with the artifact', t => {
+  const f = fixture(t);
+  const live = inspectSignedBuild(f.record, f.options);
+  assert.deepEqual(live.errors, []);
+  live.record.artifactEvidence.profileSHA256 = '0'.repeat(64);
+  assert.match(validateSignedBuild(live.record, f.options).join('\n'),
+    /caller artifactEvidence disagrees/);
 });
 
 test('Personal handles real profile plist date and certificate types using local plutil', { skip: process.platform !== 'darwin' }, t => {

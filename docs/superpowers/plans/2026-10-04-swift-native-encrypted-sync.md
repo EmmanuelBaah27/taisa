@@ -67,7 +67,7 @@ Assert that a keyed database reports non-empty `PRAGMA cipher_version`, survives
 
 - [ ] **Step 2: Run RED**
 
-Run: `cd apple/Packages/TaisaFoundation && swift test --filter SQLCipherProbeTests`  
+Run: `cd apple/Packages/TaisaFoundation && swift test --filter SQLCipherProbeTests`
 Expected: FAIL because `TaisaStorage` and `SQLCipherProbe` do not exist.
 
 - [ ] **Step 3: Pin the managed SQLCipher GRDB package**
@@ -130,7 +130,7 @@ Cover fresh creation, reopen, wrong key, database file present with missing Keyc
 
 - [ ] **Step 2: Run RED**
 
-Run: `cd apple/Packages/TaisaFoundation && swift test --filter 'TaisaStoreTests|TaisaMigratorTests'`  
+Run: `cd apple/Packages/TaisaFoundation && swift test --filter 'TaisaStoreTests|TaisaMigratorTests'`
 Expected: FAIL with missing storage types.
 
 - [ ] **Step 3: Implement Keychain and store opening**
@@ -143,7 +143,7 @@ Create normalized tables for profile, conversations, messages, goals, milestones
 
 - [ ] **Step 5: Run GREEN and full package tests**
 
-Run: `cd apple/Packages/TaisaFoundation && swift test`  
+Run: `cd apple/Packages/TaisaFoundation && swift test`
 Expected: all existing and storage tests PASS.
 
 - [ ] **Step 6: Commit**
@@ -177,7 +177,7 @@ Run the same create/update/delete/idempotency/isolation suite against every repo
 
 - [ ] **Step 2: Run RED**
 
-Run: `cd apple/Packages/TaisaFoundation && swift test --filter 'RepositoryContractTests|ChangeJournalTests'`  
+Run: `cd apple/Packages/TaisaFoundation && swift test --filter 'RepositoryContractTests|ChangeJournalTests'`
 Expected: FAIL because repositories and journal are absent.
 
 - [ ] **Step 3: Implement focused domain records and repositories**
@@ -190,7 +190,7 @@ Within the caller's database transaction, encode a canonical local mutation, ins
 
 - [ ] **Step 5: Run GREEN**
 
-Run: `cd apple/Packages/TaisaFoundation && swift test`  
+Run: `cd apple/Packages/TaisaFoundation && swift test`
 Expected: all package tests PASS, including rollback and duplicate mutation coverage.
 
 - [ ] **Step 6: Commit**
@@ -222,7 +222,7 @@ Use fixed test vectors to cover generation/normalization/checksum, AES-GCM authe
 
 - [ ] **Step 2: Run RED**
 
-Run: `cd apple/Packages/TaisaFoundation && swift test --filter TaisaSecurityTests`  
+Run: `cd apple/Packages/TaisaFoundation && swift test --filter TaisaSecurityTests`
 Expected: FAIL because `TaisaSecurity` does not exist.
 
 - [ ] **Step 3: Implement vault cryptography**
@@ -235,7 +235,7 @@ On supported iOS 26 builds with an approved owned web-credentials domain, use `C
 
 - [ ] **Step 5: Run GREEN and secret-scan tests**
 
-Run: `cd apple/Packages/TaisaFoundation && swift test`  
+Run: `cd apple/Packages/TaisaFoundation && swift test`
 Expected: PASS; captured logs and error descriptions contain no recovery or vault key bytes.
 
 - [ ] **Step 6: Commit**
@@ -267,7 +267,7 @@ Cover new record, duplicate, append-only messages, ancestor update, non-overlapp
 
 - [ ] **Step 2: Run RED**
 
-Run: `cd apple/Packages/TaisaFoundation && swift test --filter TaisaSyncTests`  
+Run: `cd apple/Packages/TaisaFoundation && swift test --filter TaisaSyncTests`
 Expected: FAIL because sync merge types are absent.
 
 - [ ] **Step 3: Implement version and merge rules**
@@ -280,7 +280,7 @@ Set the initial retention floor to 90 days. Permit purge only when every current
 
 - [ ] **Step 5: Run GREEN**
 
-Run: `cd apple/Packages/TaisaFoundation && swift test`  
+Run: `cd apple/Packages/TaisaFoundation && swift test`
 Expected: PASS for the full merge matrix and tombstone safety rules.
 
 - [ ] **Step 6: Commit**
@@ -310,7 +310,7 @@ Test offline edits/reconnect, 250-record batch boundaries, duplicates, partial u
 
 - [ ] **Step 2: Run RED**
 
-Run: `cd apple/Packages/TaisaFoundation && swift test --filter SyncCoordinatorTests`  
+Run: `cd apple/Packages/TaisaFoundation && swift test --filter SyncCoordinatorTests`
 Expected: FAIL because coordinator/transport are absent.
 
 - [ ] **Step 3: Define transport and state interfaces**
@@ -331,7 +331,7 @@ Read at most 200 outbox items per batch, encrypt off the main actor, replay idem
 
 - [ ] **Step 5: Run GREEN**
 
-Run: `cd apple/Packages/TaisaFoundation && swift test`  
+Run: `cd apple/Packages/TaisaFoundation && swift test`
 Expected: PASS, including two independent in-memory stores converging after offline work.
 
 - [ ] **Step 6: Commit**
@@ -366,7 +366,7 @@ Assert record names/fields never contain canary private strings, only allowliste
 
 - [ ] **Step 2: Run RED**
 
-Run: `cd apple/Packages/TaisaFoundation && swift test --filter TaisaCloudKitTests` and `npm run verify:native-apple`  
+Run: `cd apple/Packages/TaisaFoundation && swift test --filter TaisaCloudKitTests` and `npm run verify:native-apple`
 Expected: FAIL because CloudKit integration and entitlements are absent.
 
 - [ ] **Step 3: Stop for external capability approval**
@@ -421,7 +421,7 @@ Cover correct/wrong key, no iCloud account, account mismatch, duplicate enrollme
 
 - [ ] **Step 2: Run RED**
 
-Run: `cd apple/Packages/TaisaFoundation && swift test --filter 'EnrollmentTests|VaultRotationTests'`  
+Run: `cd apple/Packages/TaisaFoundation && swift test --filter 'EnrollmentTests|VaultRotationTests'`
 Expected: FAIL with missing coordinators.
 
 - [ ] **Step 3: Implement enrollment and device registry**
@@ -434,7 +434,7 @@ Write a durable rotation journal containing opaque item IDs and phases. Generate
 
 - [ ] **Step 5: Run GREEN and commit**
 
-Run: `cd apple/Packages/TaisaFoundation && swift test`  
+Run: `cd apple/Packages/TaisaFoundation && swift test`
 Expected: PASS.
 
 ```bash
@@ -462,7 +462,7 @@ Test consistent checkpoint, authenticated manifest, no audio paths, wrong key, t
 
 - [ ] **Step 2: Run RED**
 
-Run: `cd apple/Packages/TaisaFoundation && swift test --filter TaisaRecoveryTests`  
+Run: `cd apple/Packages/TaisaFoundation && swift test --filter TaisaRecoveryTests`
 Expected: FAIL because recovery package is absent.
 
 - [ ] **Step 3: Implement bounded snapshot policy**
@@ -475,7 +475,7 @@ Require free space of at least `2 × encrypted snapshot size + 100 MB`; stream d
 
 - [ ] **Step 5: Run GREEN and commit**
 
-Run: `cd apple/Packages/TaisaFoundation && swift test`  
+Run: `cd apple/Packages/TaisaFoundation && swift test`
 Expected: PASS.
 
 ```bash
@@ -509,7 +509,7 @@ Test accessibility labels/order, Dynamic Type, copy protection/background shield
 
 - [ ] **Step 2: Run RED**
 
-Run `Taisa-Preview` and `Taisa-Dev` focused XCUITest plans.  
+Run `Taisa-Preview` and `Taisa-Dev` focused XCUITest plans.
 Expected: FAIL because storage views/scenarios are absent.
 
 - [ ] **Step 3: Implement DS primitives first**
@@ -579,7 +579,7 @@ Performance fixture: 10,000 messages, 2,000 evidence items, 500 goals/actions, 1
 
 - [ ] **Step 2: Run RED**
 
-Run focused Swift tests and the updated verification script.  
+Run focused Swift tests and the updated verification script.
 Expected: FAIL because privacy diagnostics, performance harness, and gates are absent.
 
 - [ ] **Step 3: Implement content-safe diagnostics and lifecycle ownership**
@@ -592,7 +592,7 @@ Extend the full native gate with every package/test target, entitlement/containe
 
 - [ ] **Step 5: Run the complete local gate**
 
-Run: `npm run verify:native-apple:all`  
+Run: `npm run verify:native-apple:all`
 Expected: PASS with no generated-project drift, content leak, or Release preview/live-fixture leak.
 
 - [ ] **Step 6: Commit the clean candidate before signing**
