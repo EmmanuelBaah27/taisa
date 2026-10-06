@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import test from 'node:test';
 import { join, resolve } from 'node:path';
@@ -8,10 +8,75 @@ import { join, resolve } from 'node:path';
 import {
   inspectNativeProject,
   inspectProductionBundle,
+  inspectPersonalBundle,
   unresolvedBuildIdentityPlaceholders,
+  verifyNativeProject,
 } from '../verify.mjs';
 
 const repositoryRoot = resolve(import.meta.dirname, '../../..');
+
+test('personal built products reject identity drift, background capabilities and live symbols', async () => {
+  const fixture = await mkdtemp(join(tmpdir(), 'taisa-personal-bundle-'));
+  const plistPath = join(fixture, 'Info.plist');
+  const plist = (extra = '', identity = 'com.taisa.app.personal') => `<?xml version="1.0"?><plist version="1.0"><dict><key>CFBundleIdentifier</key><string>${identity}</string><key>TaisaEnvironment</key><string>personal</string>${extra}</dict></plist>`;
+  await writeFile(plistPath, plist());
+  assert.deepEqual(await inspectPersonalBundle(fixture), []);
+  await writeFile(plistPath, plist('<key>UIBackgroundModes</key><array><string>remote-notification</string></array>'));
+  assert.deepEqual(await inspectPersonalBundle(fixture), ['Personal bundle declares background modes']);
+  await writeFile(plistPath, plist('', 'com.taisa.app'));
+  assert.deepEqual(await inspectPersonalBundle(fixture), ['Personal bundle identity or environment mismatch']);
+  await writeFile(plistPath, plist());
+  for (const symbol of ['TaisaCloudKit', 'CKContainer', 'CloudKit.framework']) {
+    await writeFile(join(fixture, 'TaisaPersonal'), symbol);
+    assert.deepEqual(await inspectPersonalBundle(fixture), [`Personal bundle contains live CloudKit reference: ${symbol}`]);
+  }
+});
+
+test('personal identity has no paid capabilities, live transport, background mode, or archive', async () => {
+  const result = await inspectNativeProject(repositoryRoot);
+  assert.deepEqual(result.personalIsolation, {
+    personal: {
+      bundleIdentifier: 'com.taisa.app.personal',
+      entitlementKeys: [],
+      linksLiveTransport: false,
+      configuresBackgroundMode: false,
+      archiveEnabled: false,
+    },
+  });
+});
+
+test('personal capability mutations are rejected without changing live entitlements', async () => {
+  const fixture = await mkdtemp(join(tmpdir(), 'taisa-personal-project-'));
+  await cp(resolve(repositoryRoot, 'apple'), join(fixture, 'apple'), {
+    recursive: true,
+    filter: (source) => !source.includes('/Packages/') && !source.includes('/Taisa.xcodeproj/'),
+  });
+  const liveNames = ['TaisaDev', 'Taisa', 'TaisaPreview'];
+  const before = await Promise.all(liveNames.map((name) => readFile(join(fixture, `apple/Config/${name}.entitlements`))));
+  const rightsPath = join(fixture, 'apple/Config/TaisaPersonal.entitlements');
+  const original = await readFile(rightsPath, 'utf8');
+  assert.deepEqual(await verifyNativeProject(fixture), []);
+  for (const key of ['aps-environment', 'com.apple.developer.icloud-container-identifiers', 'com.apple.developer.associated-domains']) {
+    await writeFile(rightsPath, original.replace('<dict/>', `<dict><key>${key}</key><string>forbidden</string></dict>`));
+    assert.ok((await verifyNativeProject(fixture)).includes('Personal app isolation mismatch'));
+  }
+  await writeFile(rightsPath, original);
+  const projectPath = join(fixture, 'apple/project.yml');
+  const project = await readFile(projectPath, 'utf8');
+  for (const mutation of [
+    project.replace('PRODUCT_NAME: TaisaPersonal', 'PRODUCT_NAME: TaisaPersonal\n        UIBackgroundModes: [remote-notification]'),
+    project.replace('PRODUCT_NAME: TaisaPersonal', 'PRODUCT_NAME: TaisaPersonal\n        PRODUCT_BUNDLE_IDENTIFIER: com.taisa.app'),
+    project.replace('  TaisaPersonalTests:', '      - package: TaisaFoundation\n        product: TaisaCloudKit\n  TaisaPersonalTests:'),
+    project.replace('  Taisa-Personal:\n', '  Taisa-Personal:\n    archive:\n      config: Personal\n'),
+    project.replace('CODE_SIGN_ENTITLEMENTS: Config/TaisaPersonal.entitlements', 'CODE_SIGN_ENTITLEMENTS: Config/TaisaDev.entitlements'),
+  ]) {
+    await writeFile(projectPath, mutation);
+    assert.ok((await verifyNativeProject(fixture)).includes('Personal app isolation mismatch'));
+    assert.equal((await inspectNativeProject(fixture)).previewArchiveEnabled, false);
+  }
+  const after = await Promise.all(liveNames.map((name) => readFile(join(fixture, `apple/Config/${name}.entitlements`))));
+  assert.deepEqual(after, before);
+});
 
 test('declares distinct production, development, and preview identities', async () => {
   const result = await inspectNativeProject(repositoryRoot);
@@ -154,6 +219,7 @@ test('combined native verification and CI pin every required gate', async () => 
     'verify:native-design-system',
     'Taisa-Dev',
     'Taisa-Preview',
+    'Taisa-Personal',
     'Release',
     'verify:workflow',
   ]) assert.match(combined, new RegExp(required));

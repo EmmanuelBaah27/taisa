@@ -8,12 +8,12 @@ function valueFor(contents, key) {
   return match?.[1]?.trim() ?? null;
 }
 
-function targetBlock(project, targetName, nextTargetName) {
+function targetBlock(project, targetName) {
   const start = project.indexOf(`  ${targetName}:\n`);
   if (start === -1) return '';
-  const endMarker = nextTargetName ? `  ${nextTargetName}:\n` : '\nschemes:\n';
-  const end = project.indexOf(endMarker, start + targetName.length + 3);
-  return project.slice(start, end === -1 ? project.length : end);
+  const remainder = project.slice(start + `  ${targetName}:\n`.length);
+  const end = remainder.search(/^  \S[^\n]*:\s*$|^\S[^\n]*:\s*$/m);
+  return `  ${targetName}:\n${end === -1 ? remainder : remainder.slice(0, end)}`;
 }
 
 function packageProducts(block) {
@@ -55,6 +55,29 @@ export async function inspectProductionBundle(bundlePath) {
   return PRODUCTION_PREVIEW_PATTERNS.filter((pattern) => matches.has(pattern));
 }
 
+export async function inspectPersonalBundle(bundlePath) {
+  const errors = [];
+  const info = JSON.parse(execFileSync('plutil', [
+    '-convert', 'json', '-o', '-', resolve(bundlePath, 'Info.plist'),
+  ], { encoding: 'utf8' }));
+  if (info.CFBundleIdentifier !== 'com.taisa.app.personal' || info.TaisaEnvironment !== 'personal') {
+    errors.push('Personal bundle identity or environment mismatch');
+  }
+  if ('UIBackgroundModes' in info) errors.push('Personal bundle declares background modes');
+  const patterns = ['TaisaCloudKit', 'CKContainer', 'CloudKit.framework'];
+  const matches = new Set();
+  for (const file of await bundleEntries(bundlePath)) {
+    const contents = await readFile(file);
+    for (const pattern of patterns) {
+      if (file.includes(pattern) || contents.includes(Buffer.from(pattern))) matches.add(pattern);
+    }
+  }
+  for (const pattern of patterns.filter((pattern) => matches.has(pattern))) {
+    errors.push(`Personal bundle contains live CloudKit reference: ${pattern}`);
+  }
+  return errors;
+}
+
 export function unresolvedBuildIdentityPlaceholders(contents) {
   const placeholders = [
     /\$\([^)]+\)/g,
@@ -66,18 +89,19 @@ export function unresolvedBuildIdentityPlaceholders(contents) {
 
 export async function inspectNativeProject(repositoryRoot) {
   const appleRoot = resolve(repositoryRoot, 'apple');
-  const [project, debugConfig, previewConfig, releaseConfig] = await Promise.all([
+  const [project, debugConfig, previewConfig, releaseConfig, personalConfig] = await Promise.all([
     readFile(resolve(appleRoot, 'project.yml'), 'utf8'),
     readFile(resolve(appleRoot, 'Config/Debug.xcconfig'), 'utf8'),
     readFile(resolve(appleRoot, 'Config/Preview.xcconfig'), 'utf8'),
     readFile(resolve(appleRoot, 'Config/Release.xcconfig'), 'utf8'),
+    readFile(resolve(appleRoot, 'Config/Personal.xcconfig'), 'utf8'),
   ]);
 
-  const productionBlock = targetBlock(project, 'Taisa', 'TaisaPreview');
-  const previewTargetBlock = targetBlock(project, 'TaisaPreview', 'TaisaUnitTests');
-  const previewStart = project.indexOf('  Taisa-Preview:\n');
-  const previewEnd = project.indexOf('  Taisa:\n', previewStart);
-  const previewScheme = project.slice(previewStart, previewEnd);
+  const productionBlock = targetBlock(project, 'Taisa');
+  const previewTargetBlock = targetBlock(project, 'TaisaPreview');
+  const personalBlock = targetBlock(project, 'TaisaPersonal');
+  const personalScheme = targetBlock(project, 'Taisa-Personal');
+  const previewScheme = targetBlock(project, 'Taisa-Preview');
   const leakPatterns = ['TaisaPreview', 'PreviewSupport', 'com.taisa.app.preview'];
   const entitlement = (name) => JSON.parse(execFileSync('plutil', [
     '-convert', 'json', '-o', '-', resolve(appleRoot, `Config/${name}.entitlements`),
@@ -90,8 +114,34 @@ export async function inspectNativeProject(repositoryRoot) {
   ], { encoding: 'utf8' }));
   const productionProducts = packageProducts(productionBlock);
   const previewProducts = packageProducts(previewTargetBlock);
+  const personalRights = entitlement('TaisaPersonal');
+  const personalInfoPath = personalBlock.match(/info:\s*\n\s*path:\s*(.+)/)?.[1]?.trim();
+  const personalInfo = personalInfoPath
+    ? JSON.parse(execFileSync('plutil', ['-convert', 'json', '-o', '-', resolve(appleRoot, personalInfoPath)], { encoding: 'utf8' }))
+    : {};
 
   return {
+    personalIsolation: {
+      personal: {
+        bundleIdentifier: valueFor(personalConfig, 'PRODUCT_BUNDLE_IDENTIFIER'),
+        entitlementKeys: Object.keys(personalRights).sort(),
+        linksLiveTransport: /TaisaCloudKit|CloudKit\.framework/.test(personalBlock),
+        configuresBackgroundMode: /UIBackgroundModes|remote-notification/.test(personalBlock)
+          || 'UIBackgroundModes' in personalInfo,
+        archiveEnabled: /\n\s+archive:|\n\s+- archive\s*$|TaisaPersonal:\s+all/m.test(personalScheme),
+      },
+    },
+    personalProjectBindings: {
+      app: personalBlock.includes('type: application'),
+      identity: /PRODUCT_BUNDLE_IDENTIFIER:\s*com\.taisa\.app\.personal\s*$/.test(personalBlock.match(/^\s*PRODUCT_BUNDLE_IDENTIFIER:.*$/m)?.[0] ?? ''),
+      environment: /TAISA_ENVIRONMENT:\s*personal\s*$/m.test(personalBlock)
+        && valueFor(personalConfig, 'TAISA_ENVIRONMENT') === 'personal',
+      condition: personalBlock.includes('TAISA_PERSONAL') && personalConfig.includes('TAISA_PERSONAL'),
+      entitlements: /CODE_SIGN_ENTITLEMENTS:\s*Config\/TaisaPersonal\.entitlements/.test(personalBlock),
+      configuration: /Personal:\s*Config\/Personal\.xcconfig/.test(project),
+      testHost: /target:\s*TaisaPersonal\s*$/m.test(targetBlock(project, 'TaisaPersonalTests')),
+      scheme: /config:\s*Personal/.test(personalScheme) && personalScheme.includes('- TaisaPersonalTests'),
+    },
     bundleIdentifiers: {
       production: valueFor(releaseConfig, 'PRODUCT_BUNDLE_IDENTIFIER'),
       development: valueFor(debugConfig, 'PRODUCT_BUNDLE_IDENTIFIER'),
@@ -136,7 +186,7 @@ export async function inspectNativeProject(repositoryRoot) {
   };
 }
 
-export async function verifyNativeProject(repositoryRoot, productionBundle) {
+export async function verifyNativeProject(repositoryRoot, productionBundle, personalBundle) {
   const inspected = await inspectNativeProject(repositoryRoot);
   const errors = [];
   const expected = {
@@ -156,6 +206,7 @@ export async function verifyNativeProject(repositoryRoot, productionBundle) {
       errors.push(`Production bundle contains preview reference: ${leak}`);
     }
   }
+  if (personalBundle) errors.push(...await inspectPersonalBundle(personalBundle));
   const metadataPath = resolve(
     repositoryRoot,
     'apple/Generated/BuildMetadata.generated.swift',
@@ -171,6 +222,13 @@ export async function verifyNativeProject(repositoryRoot, productionBundle) {
     errors.push('Generated build identity is missing');
   }
   if (inspected.previewArchiveEnabled) errors.push('Preview scheme enables archive');
+  const personal = inspected.personalIsolation.personal;
+  if (personal.bundleIdentifier !== 'com.taisa.app.personal'
+      || personal.entitlementKeys.length !== 0 || personal.linksLiveTransport
+      || personal.configuresBackgroundMode || personal.archiveEnabled
+      || Object.values(inspected.personalProjectBindings).some((bound) => !bound)) {
+    errors.push('Personal app isolation mismatch');
+  }
   const isolation = inspected.cloudKitIsolation;
   if (isolation.developmentContainer !== 'iCloud.com.taisa.app.dev'
       || isolation.productionContainer !== 'iCloud.com.taisa.app'
@@ -204,6 +262,7 @@ if (isMain) {
   const errors = await verifyNativeProject(
     repositoryRoot,
     process.env.TAISA_PRODUCTION_BUNDLE,
+    process.env.TAISA_PERSONAL_BUNDLE,
   );
   if (errors.length) {
     console.error(errors.join('\n'));

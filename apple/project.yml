@@ -7,10 +7,12 @@ options:
 configs:
   Debug: debug
   Preview: debug
+  Personal: debug
   Release: release
 configFiles:
   Debug: Config/Debug.xcconfig
   Preview: Config/Preview.xcconfig
+  Personal: Config/Personal.xcconfig
   Release: Config/Release.xcconfig
 settings:
   base:
@@ -86,6 +88,48 @@ targets:
         product: TaisaPreviewSupport
       - package: TaisaFoundation
         product: TaisaStorage
+  TaisaPersonal:
+    type: application
+    platform: iOS
+    info:
+      path: Config/TaisaPersonalInfo.plist
+      properties:
+        TaisaEnvironment: "$(TAISA_ENVIRONMENT)"
+    sources:
+      - path: TaisaApp
+      - path: Generated
+    settings:
+      base:
+        PRODUCT_NAME: TaisaPersonal
+        PRODUCT_BUNDLE_IDENTIFIER: com.taisa.app.personal
+        TAISA_ENVIRONMENT: personal
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) DEBUG TAISA_PERSONAL"
+        INFOPLIST_KEY_CFBundleDisplayName: Taisa Personal
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+        INFOPLIST_KEY_TaisaEnvironment: "$(TAISA_ENVIRONMENT)"
+        CODE_SIGN_ENTITLEMENTS: Config/TaisaPersonal.entitlements
+    dependencies:
+      - package: TaisaFoundation
+        product: TaisaCore
+      - package: TaisaFoundation
+        product: TaisaContracts
+      - package: TaisaFoundation
+        product: TaisaDesignSystem
+      - package: TaisaFoundation
+        product: TaisaStorage
+      - package: TaisaFoundation
+        product: TaisaSecurity
+  TaisaPersonalTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: TaisaPersonalTests
+    dependencies:
+      - target: TaisaPersonal
+      - package: TaisaFoundation
+        product: TaisaCore
   TaisaUnitTests:
     type: bundle.unit-test
     platform: iOS
@@ -142,6 +186,21 @@ schemes:
       config: Preview
       targets:
         - TaisaPreviewUITests
+  Taisa-Personal:
+    build:
+      targets:
+        TaisaPersonal:
+          - run
+          - test
+          - analyze
+    run:
+      config: Personal
+    analyze:
+      config: Personal
+    test:
+      config: Personal
+      targets:
+        - TaisaPersonalTests
   Taisa:
     build:
       targets:
