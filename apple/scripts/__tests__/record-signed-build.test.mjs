@@ -70,10 +70,14 @@ function fixture(t) {
   const run = (command, args, options = {}) => {
     calls.push([command, args]);
     if (command === 'codesign') {
-      if (args.includes('--extract-certificates')) {
-        if (facts.signerCertificate !== undefined) writeFileSync(args[args.indexOf('--extract-certificates') + 1] + '0', facts.signerCertificate);
+      const extraction = args.find(arg => arg.startsWith('--extract-certificates='));
+      if (extraction) {
+        if (facts.signerCertificate !== undefined) writeFileSync(extraction.slice('--extract-certificates='.length) + '0', facts.signerCertificate);
         return { stdout: '', stderr: '' };
       }
+      // codesign's optional option argument requires equals-form. With a
+      // separate prefix it instead tries to inspect that nonexistent path.
+      if (args.includes('--extract-certificates')) throw new Error('prefix: No such file or directory');
       if (args.includes('--verify')) { if (facts.unsigned) throw new Error('unsigned'); return { stdout: '', stderr: '' }; }
       if (args.includes('--entitlements')) return { stdout: 'RIGHTS_FIXTURE', stderr: '' };
       return { stdout: '', stderr: facts.signature };
@@ -121,6 +125,17 @@ test('Personal records the matched actual signer certificate even when it is not
   assert.deepEqual(result.errors, []);
   assert.equal(result.record.artifactEvidence.signerCertificateSHA256,
     signerCertificate.fingerprint256.replaceAll(':', '').toLowerCase());
+});
+
+test('Personal supplies certificate extraction prefix as an option value, not an app path', t => {
+  const f = fixture(t);
+  assert.deepEqual(validateSignedBuild(f.record, f.options), []);
+  const extraction = f.calls.find(([program, args]) => program === 'codesign'
+    && args.some(arg => arg.startsWith('--extract-certificates=')));
+  assert(extraction);
+  assert.equal(extraction[1].length, 3);
+  assert.equal(extraction[1][0], '-d');
+  assert.equal(extraction[1][2], f.appPath);
 });
 
 for (const [name, certificates] of [

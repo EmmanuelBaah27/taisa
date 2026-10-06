@@ -55,7 +55,7 @@ function inspectSignerCertificate(command, appPath) {
     const prefix = join(directory, 'signer-');
     // Display/extract only: codesign writes public DER files into our private
     // temporary directory, never changes the app or accesses a signing key.
-    command('codesign', ['-d', '--extract-certificates', prefix, appPath]);
+    command('codesign', ['-d', `--extract-certificates=${prefix}`, appPath]);
     return certificateSHA256(regularFile(`${prefix}0`));
   } finally {
     rmSync(directory, { recursive: true, force: true });
