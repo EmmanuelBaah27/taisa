@@ -70,6 +70,9 @@ public struct MergeDecision: Sendable, Equatable {
     public enum Kind: Sendable { case applied, duplicate, noOp, merged, conflicted, deleted, deletedWithConflicts }
     public let kind: Kind
     public let fields: [SyncField]
+    /// All causally maximal, equal-valued versions of each visible field.
+    /// The selected field value is singular; its ancestry need not be.
+    public let visibleFieldHeads: [String: [String]]
     public let conflicts: [SyncConflict]
     public let deletion: SyncDeletionSummary?
     public let state: SyncMergeState
@@ -100,8 +103,12 @@ public enum MergeEngine {
         try validateGraph(ordered)
         let state = SyncMergeState(events: ordered)
         let duplicateDelivery = events.count > ordered.count
+        if first.entityType == "memory_source" && !ordered.contains(where: { $0.kind == .create }) {
+            throw SyncMergeError.malformedMutation
+        }
 
-        if first.entityType == "message" || first.entityType == "memory_source" {
+        if first.entityType == "message" ||
+            (first.entityType == "memory_source" && ordered.allSatisfy { $0.kind == .create || $0.kind == .delete }) {
             let creates = ordered.filter { $0.kind == .create }
             let deletions = ordered.filter { $0.kind == .delete }
             if deletions.isEmpty {
@@ -110,7 +117,10 @@ public enum MergeEngine {
                     candidate.fields.count == exemplar.fields.count && zip(candidate.fields, exemplar.fields).allSatisfy { $0.name == $1.name && $0.value == $1.value }
                 }
                 if identical {
-                    return MergeDecision(kind: duplicateDelivery || creates.count > 1 ? .duplicate : .applied, fields: exemplar.fields, conflicts: [], deletion: nil, state: state)
+                    let equalHeads: [String: [String]] = first.entityType == "memory_source" && creates.count > 1
+                        ? Dictionary(uniqueKeysWithValues: exemplar.fields.map { ($0.name, creates.map(\.id).sorted()) })
+                        : [:]
+                    return MergeDecision(kind: duplicateDelivery || creates.count > 1 ? .duplicate : .applied, fields: exemplar.fields, visibleFieldHeads: equalHeads, conflicts: [], deletion: nil, state: state)
                 }
                 let names = Set(creates.flatMap { $0.fields.map(\.name) }).sorted()
                 let alternatives = names.flatMap { name -> [SyncConflict] in
@@ -127,7 +137,7 @@ public enum MergeEngine {
                     }
                     return result
                 }
-                return MergeDecision(kind: .conflicted, fields: [], conflicts: alternatives, deletion: nil, state: state)
+                return MergeDecision(kind: .conflicted, fields: [], visibleFieldHeads: [:], conflicts: alternatives, deletion: nil, state: state)
             }
         }
 
@@ -135,6 +145,7 @@ public enum MergeEngine {
         let deletion = try summarize(deletions, known: unique)
         let fieldNames = Set(ordered.flatMap { $0.fields.map(\.name) }).sorted()
         var winners: [SyncField] = []
+        var visibleFieldHeads: [String: [String]] = [:]
         var conflicts: [SyncConflict] = []
         for name in fieldNames {
             let candidates = ordered.compactMap { event -> (SyncMutation, SyncField)? in
@@ -160,6 +171,7 @@ public enum MergeEngine {
             } else if heads.count > 1 {
                 if heads.allSatisfy({ $0.1.value == heads[0].1.value }) {
                     winners.append(heads[0].1)
+                    visibleFieldHeads[name] = heads.map { $0.0.id }.sorted()
                     continue
                 }
                 for left in 0..<(heads.count - 1) {
@@ -178,7 +190,7 @@ public enum MergeEngine {
         else if duplicateDelivery { kind = .duplicate }
         else if ordered.count == 1 { kind = ordered[0].fields.isEmpty ? .noOp : .applied }
         else { kind = .merged }
-        return MergeDecision(kind: kind, fields: deletion == nil ? winners.sorted { $0.name < $1.name } : [], conflicts: conflicts, deletion: deletion, state: state)
+        return MergeDecision(kind: kind, fields: deletion == nil ? winners.sorted { $0.name < $1.name } : [], visibleFieldHeads: deletion == nil ? visibleFieldHeads : [:], conflicts: conflicts, deletion: deletion, state: state)
     }
 
     private static func validateGraph(_ events: [SyncMutation]) throws {

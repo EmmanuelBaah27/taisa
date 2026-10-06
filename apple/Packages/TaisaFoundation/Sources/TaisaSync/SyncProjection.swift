@@ -12,8 +12,9 @@ struct SyncEngineCheckpoint: Codable, Sendable {
     var lastState: SyncState?
     var recoveryPrepared: Bool = false
     var turnGeneration: Int64 = 0
+    var visibleFieldTips: [String: [String]] = [:]
 
-    private enum CodingKeys: String, CodingKey { case received, retryAtMS, retryAttempts, recoveryState, lastState, recoveryPrepared, turnGeneration }
+    private enum CodingKeys: String, CodingKey { case received, retryAtMS, retryAttempts, recoveryState, lastState, recoveryPrepared, turnGeneration, visibleFieldTips }
     init() {}
     init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
@@ -24,6 +25,7 @@ struct SyncEngineCheckpoint: Codable, Sendable {
         lastState = try values.decodeIfPresent(SyncState.self, forKey: .lastState)
         recoveryPrepared = try values.decodeIfPresent(Bool.self, forKey: .recoveryPrepared) ?? false
         turnGeneration = try values.decodeIfPresent(Int64.self, forKey: .turnGeneration) ?? 0
+        visibleFieldTips = try values.decodeIfPresent([String: [String]].self, forKey: .visibleFieldTips) ?? [:]
     }
 }
 
@@ -163,20 +165,7 @@ struct SyncEntityShape {
             var fields = creation.fullFields
             for field in decision.fields { fields[field.name] = field.value }
             guard Set(fields.keys) == Set(shape.columns.keys) else { throw SyncMergeError.malformedMutation }
-            let relations: [(String, String)] = switch shape.table {
-            case "messages": [("conversationID", "conversations")]
-            case "milestones": [("goalID", "goals")]
-            case "actions": [("goalID", "goals")]
-            case "evidence": [("goalID", "goals"), ("actionID", "actions")]
-            case "memory_sources": [("memoryItemID", "memory_items")]
-            default: []
-            }
-            for (property, parentTable) in relations {
-                guard let encoded = fields[property],
-                      let parent = try JSONSerialization.jsonObject(with: encoded, options: [.fragmentsAllowed]) as? String else { continue }
-                let exists = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM \(parentTable) WHERE id = ? COLLATE NOCASE", arguments: [parent]) ?? 0
-                guard exists == 1 else { throw SyncProjectionError.dependencyPending }
-            }
+            try checkParents(in: fields, shape: shape, db: db)
             let ordered = shape.columns.keys.sorted()
             let names = ["id"] + ordered.map { shape.columns[$0]! }
             let values = [entityID.databaseValue] + (try ordered.map { try databaseValue(fields[$0]!) })
@@ -187,9 +176,27 @@ struct SyncEntityShape {
             guard ordered.allSatisfy({ shape.columns[$0] != nil }) else { throw SyncMergeError.malformedMutation }
             if ordered.isEmpty { return }
             let fields = Dictionary(uniqueKeysWithValues: decision.fields.map { ($0.name, $0.value) })
+            try checkParents(in: fields, shape: shape, db: db)
             let assignments = ordered.map { "\(shape.columns[$0]!) = ?" }.joined(separator: ", ")
             let values = try ordered.map { try databaseValue(fields[$0]!) } + [entityID.databaseValue]
             try db.execute(sql: "UPDATE \(shape.table) SET \(assignments) WHERE id = ? COLLATE NOCASE", arguments: StatementArguments(values))
+        }
+    }
+
+    private static func checkParents(in fields: [String: Data], shape: SyncEntityShape, db: Database) throws {
+        let relations: [(String, String)] = switch shape.table {
+        case "messages": [("conversationID", "conversations")]
+        case "milestones": [("goalID", "goals")]
+        case "actions": [("goalID", "goals")]
+        case "evidence": [("goalID", "goals"), ("actionID", "actions")]
+        case "memory_sources": [("memoryItemID", "memory_items")]
+        default: []
+        }
+        for (property, parentTable) in relations {
+            guard let encoded = fields[property],
+                  let parent = try JSONSerialization.jsonObject(with: encoded, options: [.fragmentsAllowed]) as? String else { continue }
+            let exists = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM \(parentTable) WHERE id = ? COLLATE NOCASE", arguments: [parent]) ?? 0
+            guard exists == 1 else { throw SyncProjectionError.dependencyPending }
         }
     }
 

@@ -134,7 +134,7 @@ public struct SyncMutation: Codable, Sendable, Equatable {
               Set(observedFieldVersions.map(\.name)).count == observedFieldVersions.count,
               (kind != .delete || fields.isEmpty),
               (kind == .delete || !fields.isEmpty || (kind == .update && recordParentVersionID != nil)) else { throw SyncMergeError.malformedMutation }
-        if (entityType == "message" || entityType == "memory_source") && kind != .create && kind != .delete { throw SyncMergeError.malformedMutation }
+        if entityType == "message" && kind != .create && kind != .delete { throw SyncMergeError.malformedMutation }
         if let retainedDeletionEvidence {
             guard kind == .delete else { throw SyncMergeError.malformedMutation }
             let evidence = try retainedDeletionEvidence.validated()

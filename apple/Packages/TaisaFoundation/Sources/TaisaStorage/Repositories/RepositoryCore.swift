@@ -270,16 +270,18 @@ struct RepositoryCore<Record: DomainRecord>: Sendable {
         guard !overflow else { throw RepositoryError.persistenceFailed }
         var observed: [ObservedFieldVersion] = []
         var changed: [FieldCausalVersion] = []
+        let visibleTips = try visibleFieldTips(id: id, db: db)
         for (property, _) in spec.fields where property != "id" && property != "createdAtMS" {
             let parent = try latestVersion(field: property, id: id, db: db)
             if let parent { observed.append(ObservedFieldVersion(fieldName: property, versionID: parent)) }
             guard fields[property] != nil || previous[property] != nil,
                   !equal(fields[property], previous[property]) else { continue }
             var ancestors: [String] = []
-            var cursor = parent
+            var pending = Array(Set(visibleTips[property] ?? []).subtracting(parent.map { [$0] } ?? [])).sorted()
+            if let parent { pending.append(parent) }
             var walked: Set<String> = []
             var listed: Set<String> = []
-            while let version = cursor, walked.insert(version).inserted {
+            while let version = pending.popLast(), walked.insert(version).inserted {
                 if listed.insert(version).inserted { ancestors.append(version) }
                 // A resolution may have multiple parents. The v1 field_versions
                 // row records its immediate parent; the committed journal
@@ -312,7 +314,9 @@ struct RepositoryCore<Record: DomainRecord>: Sendable {
                         if listed.insert(ancestor).inserted { ancestors.append(ancestor) }
                     }
                 }
-                cursor = try String.fetchOne(db, sql: "SELECT parent_version_id FROM field_versions WHERE entity_type = ? AND entity_id = ? COLLATE NOCASE AND field_name = ? AND version_id = ? COLLATE NOCASE ORDER BY rowid DESC LIMIT 1", arguments: [spec.entity, id, property, version]).map { try canonicalID($0) }
+                if let ancestor = try String.fetchOne(db, sql: "SELECT parent_version_id FROM field_versions WHERE entity_type = ? AND entity_id = ? COLLATE NOCASE AND field_name = ? AND version_id = ? COLLATE NOCASE ORDER BY rowid DESC LIMIT 1", arguments: [spec.entity, id, property, version]) {
+                    pending.append(try canonicalID(ancestor))
+                }
             }
             try db.execute(sql: "INSERT INTO field_versions (id, entity_type, entity_id, field_name, version_id, parent_version_id, device_id, device_counter, updated_at_ms) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", arguments: [UUID().uuidString, spec.entity, id, property, context.id, parent, context.deviceID, counter, context.timestamp])
             changed.append(FieldCausalVersion(fieldName: property, versionID: context.id, parentVersionID: parent, ancestorVersionIDs: ancestors, deviceCounter: counter))
@@ -323,5 +327,19 @@ struct RepositoryCore<Record: DomainRecord>: Sendable {
 
     private func latestVersion(field: String, id: String, db: Database) throws -> String? {
         try String.fetchOne(db, sql: "SELECT version_id FROM field_versions WHERE entity_type = ? AND entity_id = ? COLLATE NOCASE AND field_name = ? ORDER BY rowid DESC LIMIT 1", arguments: [spec.entity, id, field]).map { try canonicalID($0) }
+    }
+
+    private func visibleFieldTips(id: String, db: Database) throws -> [String: [String]] {
+        guard let encoded = try Data.fetchOne(db, sql: "SELECT engine_state FROM sync_state WHERE id = 1") else { return [:] }
+        guard let state = try JSONSerialization.jsonObject(with: encoded) as? [String: Any] else { throw RepositoryError.persistenceFailed }
+        let map = state["visibleFieldTips"] as? [String: [String]] ?? [:]
+        let prefix = spec.entity + "|" + id + "|"
+        var result: [String: [String]] = [:]
+        for (key, versions) in map where key.hasPrefix(prefix) {
+            let property = String(key.dropFirst(prefix.count))
+            guard spec.fields.contains(where: { $0.property == property }) else { throw RepositoryError.persistenceFailed }
+            result[property] = try versions.map { try canonicalID($0) }
+        }
+        return result
     }
 }
