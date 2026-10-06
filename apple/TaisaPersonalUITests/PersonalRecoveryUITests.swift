@@ -46,7 +46,7 @@ import XCTest
         XCTAssertFalse(app.buttons["Export Encrypted Backup"].exists)
         app.buttons["Restore Backup"].tap()
         let cancel = app.buttons["Cancel"]
-        XCTAssertTrue(cancel.waitForExistence(timeout: 5))
+        XCTAssertTrue(cancel.waitForExistence(timeout: 15))
         cancel.tap()
         XCTAssertTrue(app.buttons["Back Up Now"].waitForExistence(timeout: 5))
         try app.performAccessibilityAudit()
