@@ -1,5 +1,15 @@
 import Foundation
 import GRDB
+import CryptoKit
+import Darwin
+
+/// Digest and size describe the encrypted SQLCipher file before outer framing.
+public struct CheckpointMetadata: Equatable, Sendable {
+    public let schemaVersion: Int
+    public let entityCounts: [String: Int]
+    public let plaintextByteCount: Int64
+    public let plaintextSHA256: Data
+}
 
 /// Serialized SQLCipher access for local repositories. Returned values cross a
 /// concurrency boundary, so callers must return Sendable data, never a GRDB row.
@@ -250,6 +260,71 @@ public final class TaisaStore: Sendable {
         _ body: @Sendable (Database) throws -> Value
     ) async throws -> Value {
         try await queue.read(body)
+    }
+
+    /// A fresh, independently keyed SQLCipher checkpoint. Never overwrites a file.
+    /// All supported source writers hold this same lifecycle gate.
+    public func exportCheckpoint(to url: URL, archiveDatabaseKey: Data) async throws -> CheckpointMetadata {
+        guard archiveDatabaseKey.count == 32 else { throw StorageError.invalidKeyLength }
+        return try await lifecycle.exclusive {
+            try Task.checkCancellation()
+            var created = false
+            var complete = false
+            defer {
+                if created && !complete {
+                    for suffix in ["", "-wal", "-shm", "-journal"] {
+                        try? FileManager.default.removeItem(atPath: url.path + suffix)
+                    }
+                }
+            }
+            do {
+                guard try TaisaMigrator.preflight(self.queue) == TaisaSchema.currentVersion else {
+                    throw StorageError.schemaMismatch
+                }
+                try await self.queue.writeWithoutTransaction { db in
+                    let result = try Row.fetchOne(db, sql: "PRAGMA wal_checkpoint(TRUNCATE)")
+                    guard let result, (result[0] as Int) == 0 else { throw StorageError.integrityFailed }
+                }
+                let descriptor = Darwin.open(url.path, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW, 0o600)
+                guard descriptor >= 0 else { throw StorageError.openFailed }
+                created = true
+                Darwin.close(descriptor)
+                var configuration = Configuration()
+                configuration.foreignKeysEnabled = true
+                let rawKey = Data(("x'" + archiveDatabaseKey.map { String(format: "%02x", $0) }.joined() + "'").utf8)
+                configuration.prepareDatabase { try $0.usePassphrase(rawKey) }
+                let copy = try DatabaseQueue(path: url.path, configuration: configuration)
+                defer { try? copy.close() }
+                try self.queue.backup(to: copy)
+                let schemaVersion = try TaisaMigrator.preflight(copy)
+                let counts = try await copy.read { db in
+                    guard try String.fetchAll(db, sql: "PRAGMA cipher_integrity_check").isEmpty,
+                          try String.fetchAll(db, sql: "PRAGMA integrity_check") == ["ok"],
+                          try Row.fetchAll(db, sql: "PRAGMA foreign_key_check").isEmpty else {
+                        throw StorageError.integrityFailed
+                    }
+                    let tables = try String.fetchAll(db, sql: "SELECT name FROM sqlite_master WHERE type = 'table' AND substr(name, 1, 7) != 'sqlite_' ORDER BY name")
+                    var counts: [String: Int] = [:]
+                    // Schema preflight above admits only the canonical table identifiers.
+                    for table in tables { counts[table] = try Int.fetchOne(db, sql: "SELECT count(*) FROM \"\(table)\"") }
+                    return counts
+                }
+                try copy.close()
+                let file = try FileHandle(forReadingFrom: url)
+                defer { try? file.close() }
+                var hash = SHA256()
+                var size: Int64 = 0
+                while let data = try file.read(upToCount: 1_048_576), !data.isEmpty {
+                    try Task.checkCancellation()
+                    hash.update(data: data); size += Int64(data.count)
+                }
+                complete = true
+                return CheckpointMetadata(schemaVersion: schemaVersion, entityCounts: counts,
+                                          plaintextByteCount: size, plaintextSHA256: Data(hash.finalize()))
+            } catch is CancellationError { throw CancellationError() }
+            catch let error as StorageError { throw error }
+            catch { throw StorageError.integrityFailed }
+        }
     }
 
     public func write<Value: Sendable>(

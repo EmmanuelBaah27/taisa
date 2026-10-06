@@ -38,6 +38,20 @@ enum SecurityRandom {
 /// A 256-bit generated secret. Only `formatted` is suitable for a short authenticated ceremony.
 /// Swift Data/CryptoKit may retain value copies; zeroing the temporary RNG buffer cannot clear those copies.
 public struct RecoveryKey: Sendable, CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
+    public enum PortableBackupPurpose: String, Sendable {
+        case frames = "taisa.portable-backup.frames.v1"
+        case database = "taisa.portable-backup.database.v1"
+    }
+
+    /// Purpose-constrained derivation keeps recovery material inside the security module.
+    public func derivePortableBackupKey(salt: Data, purpose: PortableBackupPurpose) throws -> SymmetricKey {
+        guard salt.count == 32 else { throw VaultError.invalidKeyLength }
+        return HKDF<SHA256>.deriveKey(
+            inputKeyMaterial: SymmetricKey(data: keyMaterial), salt: salt,
+            info: Data(purpose.rawValue.utf8), outputByteCount: 32
+        )
+    }
+
     private static let prefix = "TAISA1"
     private static let checksumContext = Data("taisa.recovery.v1".utf8)
     let keyMaterial: Data

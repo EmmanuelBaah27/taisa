@@ -15,6 +15,7 @@ let package = Package(
         .library(name: "TaisaPreviewSupport", targets: ["TaisaPreviewSupport"]),
         .library(name: "TaisaStorage", targets: ["TaisaStorage"]),
         .library(name: "TaisaSecurity", targets: ["TaisaSecurity"]),
+        .library(name: "TaisaRecovery", targets: ["TaisaRecovery"]),
         .library(name: "TaisaSync", targets: ["TaisaSync"]),
         .library(name: "TaisaCloudKit", targets: ["TaisaCloudKit"]),
     ],
@@ -30,6 +31,7 @@ let package = Package(
             .product(name: "GRDB", package: "GRDB.swift"),
         ]),
         .target(name: "TaisaSecurity"),
+        .target(name: "TaisaRecovery", dependencies: ["TaisaStorage", "TaisaSecurity", .product(name: "GRDB", package: "GRDB.swift")]),
         .target(name: "TaisaSync", dependencies: [
             "TaisaStorage",
             "TaisaSecurity",
@@ -45,6 +47,7 @@ let package = Package(
             .product(name: "GRDB", package: "GRDB.swift"),
         ]),
         .testTarget(name: "TaisaSecurityTests", dependencies: ["TaisaSecurity"]),
+        .testTarget(name: "TaisaRecoveryTests", dependencies: ["TaisaRecovery", "TaisaStorage", "TaisaSecurity", .product(name: "GRDB", package: "GRDB.swift")]),
         .testTarget(name: "TaisaSyncTests", dependencies: ["TaisaSync", "TaisaStorage", "TaisaSecurity"]),
         .testTarget(name: "TaisaCloudKitTests", dependencies: ["TaisaCloudKit", "TaisaSync", "TaisaSecurity", "TaisaStorage", .product(name: "GRDB", package: "GRDB.swift")]),
     ]
