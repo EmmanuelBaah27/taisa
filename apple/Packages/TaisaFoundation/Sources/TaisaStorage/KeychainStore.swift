@@ -38,4 +38,20 @@ public actor KeychainStore: DatabaseKeyStore {
         let status = SecItemAdd(item as CFDictionary, nil)
         guard status == errSecSuccess else { throw StorageError.keychainFailure(status) }
     }
+
+    public func replaceKey(_ key: Data) throws {
+        guard key.count == 32 else { throw StorageError.invalidKeyLength }
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: Self.service,
+            kSecAttrAccount as String: "database",
+            kSecAttrSynchronizable as String: kCFBooleanFalse as Any,
+        ]
+        let attributes: [String: Any] = [
+            kSecValueData as String: key,
+            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
+        ]
+        let status = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
+        guard status == errSecSuccess else { throw StorageError.keychainFailure(status) }
+    }
 }

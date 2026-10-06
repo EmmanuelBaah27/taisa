@@ -33,7 +33,9 @@ public enum PortableArchive {
     }
 
     /// The writer retains this open regular-file descriptor through publication.
-    static func verify(file: FileHandle, recoveryKey: RecoveryKey, maximumPayloadBytes: Int64) throws -> SnapshotManifest {
+    static func verify(file: FileHandle, recoveryKey: RecoveryKey, maximumPayloadBytes: Int64,
+                       receiveSalt: (Data) throws -> Void = { _ in },
+                       receivePayload: (Data) throws -> Void = { _ in }) throws -> SnapshotManifest {
         do {
             try file.seek(toOffset: 0)
             let header = try readExactly(64, from: file)
@@ -42,6 +44,7 @@ public enum PortableArchive {
             let length = integer(header.subdata(in: 60..<64))
             guard length >= 28, length <= maximumManifestBytes else { throw SnapshotError.malformedArchive }
             let key = try recoveryKey.derivePortableBackupKey(salt: header.subdata(in: 28..<60), purpose: .frames)
+            try receiveSalt(header.subdata(in: 28..<60))
             let manifestBox = try readExactly(length, from: file)
             let manifestData = try open(manifestBox, key: key, aad: header)
             let manifest: SnapshotManifest
@@ -71,6 +74,7 @@ public enum PortableArchive {
                 guard seenNonces.insert(Data(box.prefix(12))).inserted else { throw SnapshotError.malformedArchive }
                 let data = try open(box, key: key, aad: frameAAD(header: header, digest: digest, index: index, count: manifest.chunkCount))
                 hash.update(data: data); total += Int64(data.count)
+                try receivePayload(data)
             }
             guard total == manifest.plaintextByteCount,
                   Data(hash.finalize()) == manifest.plaintextSHA256,

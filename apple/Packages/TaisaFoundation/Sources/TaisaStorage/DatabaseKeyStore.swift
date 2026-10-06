@@ -5,6 +5,12 @@ import Security
 public protocol DatabaseKeyStore: Sendable {
     func loadKey() async throws -> Data?
     func saveKey(_ key: Data) async throws
+    /// Atomically replaces an existing device-local key during a journaled restore.
+    func replaceKey(_ key: Data) async throws
+}
+
+public extension DatabaseKeyStore {
+    func replaceKey(_ key: Data) async throws { try await saveKey(key) }
 }
 
 enum DatabaseKeyGenerator {

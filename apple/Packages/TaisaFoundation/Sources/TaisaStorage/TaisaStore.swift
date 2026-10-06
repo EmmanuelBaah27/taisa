@@ -62,6 +62,9 @@ public final class TaisaStore: Sendable {
         afterValidation: @Sendable () async throws -> Void,
         afterGeneration: @Sendable () async throws -> Void
     ) async throws -> TaisaStore {
+        // Recovery must settle the database/key exchange before a normal open
+        // can create, migrate, or checkpoint any file at this path.
+        try StoreDatabaseIdentity.assertNoPendingRestore(at: url)
         // This decision precedes any key creation. Missing Keychain material for
         // an existing file is a recovery state, never permission to replace it.
         let existed = FileManager.default.fileExists(atPath: url.path)
@@ -225,6 +228,7 @@ public final class TaisaStore: Sendable {
         } catch {
             throw StorageError.configurationFailed
         }
+        await lifecycle.register(queue)
         return TaisaStore(queue: queue, lifecycle: lifecycle)
     }
 
@@ -259,7 +263,81 @@ public final class TaisaStore: Sendable {
     public func read<Value: Sendable>(
         _ body: @Sendable (Database) throws -> Value
     ) async throws -> Value {
-        try await queue.read(body)
+        try await lifecycle.read(queue: queue) { try await queue.read(body) }
+    }
+
+    /// Holds the canonical store gate across backup, closing every supported
+    /// handle, exchange, Keychain update and rollback. `prepare` runs while all
+    /// handles are quiescent, before close can checkpoint the original WAL.
+    /// The caller must recover an outstanding restore journal before normal open.
+    public static func withExclusiveReplacement<Value: Sendable>(
+        at url: URL,
+        prepare: @escaping @Sendable () async throws -> Void = {},
+        body: @escaping @Sendable () async throws -> Value
+    ) async throws -> Value {
+        let lifecycle = await StoreLifecycleRegistry.shared.lifecycle(for: StoreDatabaseIdentity.canonicalURL(for: url))
+        return try await lifecycle.exclusive {
+            await lifecycle.beginReplacement()
+            do {
+                try await prepare()
+                try await lifecycle.closeHandles()
+                let result = try await body()
+                await lifecycle.endReplacement()
+                return result
+            } catch {
+                await lifecycle.endReplacement()
+                throw error
+            }
+        }
+    }
+
+    /// Private candidate only: verify current schema and integrity, then change
+    /// its SQLCipher key and leave a closed, single-file database for promotion.
+    public func rekeyRestoreCandidate(to key: Data) async throws -> [String: Int] {
+        guard key.count == 32 else { throw StorageError.invalidKeyLength }
+        return try await lifecycle.exclusive {
+            try await self.lifecycle.assertOpen(self.queue)
+            guard try TaisaMigrator.preflight(self.queue) == TaisaSchema.currentVersion else { throw StorageError.schemaMismatch }
+            let counts = try await self.queue.read { db in
+                guard try String.fetchAll(db, sql: "PRAGMA cipher_integrity_check").isEmpty,
+                      try String.fetchAll(db, sql: "PRAGMA integrity_check") == ["ok"],
+                      try Row.fetchAll(db, sql: "PRAGMA foreign_key_check").isEmpty else { throw StorageError.integrityFailed }
+                var counts: [String: Int] = [:]
+                for table in try String.fetchAll(db, sql: "SELECT name FROM sqlite_master WHERE type = 'table' AND substr(name, 1, 7) != 'sqlite_' ORDER BY name") {
+                    counts[table] = try Int.fetchOne(db, sql: "SELECT count(*) FROM \"\(table)\"")
+                }
+                return counts
+            }
+            try await self.queue.writeWithoutTransaction { db in
+                guard let row = try Row.fetchOne(db, sql: "PRAGMA wal_checkpoint(TRUNCATE)"), (row[0] as Int) == 0,
+                      try String.fetchOne(db, sql: "PRAGMA journal_mode = DELETE")?.lowercased() == "delete" else { throw StorageError.integrityFailed }
+                let raw = Data(("x'" + key.map { String(format: "%02x", $0) }.joined() + "'").utf8)
+                try db.changePassphrase(raw)
+                guard try String.fetchAll(db, sql: "PRAGMA cipher_integrity_check").isEmpty,
+                      try String.fetchAll(db, sql: "PRAGMA integrity_check") == ["ok"] else { throw StorageError.integrityFailed }
+            }
+            try self.queue.close()
+            await self.lifecycle.markClosed(self.queue)
+            return counts
+        }
+    }
+
+    /// Read-only validation under an already-owned replacement gate. Does not
+    /// open a normal store, migrate, create files, or register writable handles.
+    public static func validateReplacement(at url: URL, key: Data, expectedSchemaVersion: Int? = nil) throws {
+        guard key.count == 32 else { throw StorageError.invalidKeyLength }
+        var configuration = Configuration(); configuration.readonly = true; configuration.foreignKeysEnabled = true
+        let raw = Data(("x'" + key.map { String(format: "%02x", $0) }.joined() + "'").utf8)
+        configuration.prepareDatabase { try $0.usePassphrase(raw) }
+        let queue = try DatabaseQueue(path: url.path, configuration: configuration)
+        defer { try? queue.close() }
+        let version = try TaisaMigrator.preflight(queue)
+        if let expectedSchemaVersion, version != expectedSchemaVersion { throw StorageError.schemaMismatch }
+        try queue.read { db in
+            guard try String.fetchAll(db, sql: "PRAGMA cipher_integrity_check").isEmpty,
+                  try String.fetchAll(db, sql: "PRAGMA integrity_check") == ["ok"],
+                  try Row.fetchAll(db, sql: "PRAGMA foreign_key_check").isEmpty else { throw StorageError.integrityFailed }
+        }
     }
 
     /// A fresh, independently keyed SQLCipher checkpoint. Never overwrites a file.
@@ -267,6 +345,7 @@ public final class TaisaStore: Sendable {
     public func exportCheckpoint(to url: URL, archiveDatabaseKey: Data) async throws -> CheckpointMetadata {
         guard archiveDatabaseKey.count == 32 else { throw StorageError.invalidKeyLength }
         return try await lifecycle.exclusive {
+            try await self.lifecycle.assertOpen(self.queue)
             try Task.checkCancellation()
             var created = false
             var complete = false
@@ -331,7 +410,8 @@ public final class TaisaStore: Sendable {
         _ body: @Sendable (Database) throws -> Value
     ) async throws -> Value {
         try await lifecycle.exclusive {
-            try await queue.write(body)
+            try await lifecycle.assertOpen(queue)
+            return try await queue.write(body)
         }
     }
 }
@@ -340,6 +420,12 @@ public final class TaisaStore: Sendable {
 /// Callers must use one canonical URL for a store; independent SQLite handles
 /// and external filesystem replacement are not participants in this gate.
 private enum StoreDatabaseIdentity {
+    static func assertNoPendingRestore(at url: URL) throws {
+        let journal = url.deletingLastPathComponent().appendingPathComponent("." + url.lastPathComponent + ".restore-journal")
+        var status = stat()
+        guard lstat(journal.path, &status) != 0, errno == ENOENT else { throw StorageError.openFailed }
+    }
+
     static func canonicalURL(for url: URL) -> URL {
         // Resolve only an existing ancestor. Foundation can resolve the same
         // /private/tmp child differently before and after SQLite creates it.
@@ -369,7 +455,7 @@ private actor StoreLifecycleRegistry {
         let path = url.path
         if let lifecycle = lifecycles[path]?.value { return lifecycle }
         lifecycles = lifecycles.filter { $0.value.value != nil }
-        let lifecycle = StoreLifecycle()
+        let lifecycle = StoreLifecycle(databaseURL: url)
         lifecycles[path] = WeakStoreLifecycle(lifecycle)
         return lifecycle
     }
@@ -381,8 +467,60 @@ private final class WeakStoreLifecycle {
 }
 
 private actor StoreLifecycle {
+    private let databaseURL: URL
+    init(databaseURL: URL) { self.databaseURL = databaseURL }
     private var occupied = false
     private var waiters: [CheckedContinuation<Void, Never>] = []
+    private var handles: [WeakStoreQueue] = []
+    private var closed: Set<ObjectIdentifier> = []
+    private var replacing = false
+    private var readers = 0
+    private var readerWaiters: [CheckedContinuation<Void, Never>] = []
+    private var drainWaiter: CheckedContinuation<Void, Never>?
+
+    func read<Value: Sendable>(queue: DatabaseQueue, body: @Sendable () async throws -> Value) async throws -> Value {
+        while replacing { await withCheckedContinuation { readerWaiters.append($0) } }
+        try assertOpen(queue)
+        readers += 1
+        defer {
+            readers -= 1
+            if readers == 0 { drainWaiter?.resume(); drainWaiter = nil }
+        }
+        return try await body()
+    }
+
+    func beginReplacement() async {
+        replacing = true
+        if readers > 0 { await withCheckedContinuation { drainWaiter = $0 } }
+    }
+
+    func endReplacement() {
+        replacing = false
+        let waiters = readerWaiters; readerWaiters.removeAll()
+        for waiter in waiters { waiter.resume() }
+    }
+
+    func register(_ queue: DatabaseQueue) {
+        closed.remove(ObjectIdentifier(queue))
+        handles = handles.filter { $0.value != nil }
+        handles.append(WeakStoreQueue(queue))
+    }
+
+    func closeHandles() throws {
+        for handle in handles {
+            if let queue = handle.value, !closed.contains(ObjectIdentifier(queue)) {
+                try queue.close()
+                closed.insert(ObjectIdentifier(queue))
+            }
+        }
+        handles.removeAll()
+    }
+
+    func markClosed(_ queue: DatabaseQueue) { closed.insert(ObjectIdentifier(queue)) }
+    func assertOpen(_ queue: DatabaseQueue) throws {
+        guard !closed.contains(ObjectIdentifier(queue)) else { throw StorageError.openFailed }
+        try StoreDatabaseIdentity.assertNoPendingRestore(at: databaseURL)
+    }
 
     func exclusive<Value: Sendable>(
         _ body: @Sendable () async throws -> Value
@@ -407,4 +545,9 @@ private actor StoreLifecycle {
             waiters.removeFirst().resume()
         }
     }
+}
+
+private final class WeakStoreQueue {
+    weak var value: DatabaseQueue?
+    init(_ value: DatabaseQueue) { self.value = value }
 }
