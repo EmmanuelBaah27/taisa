@@ -206,3 +206,18 @@ The underlying list stays mounted, does not refresh while the card-backed chat i
 its offset before refreshing after return. Missing geometry, changed viewport dimensions, fresh
 capture, and reduced motion use an immediate exit. The legacy slide-down and drag-to-dismiss
 transitions remain removed.
+
+## Native Personal recovery
+
+`apple/TaisaApp/Recovery/RecoveryView.swift` consumes `TaisaText`, `TaisaButton`,
+`TaisaTypography`, `TaisaColor`, and `TaisaSpacing` from the native package.
+Recovery state, authentication, files, and storage remain in the feature layer.
+The screen uses a scrolling, single-column layout with intrinsic multiline labels;
+it introduces no custom animation and therefore no motion requirement for progress.
+
+Narrow system-control exceptions are the native `SecureField` (secure keyboard and
+masked input), `Toggle` (saved-copy confirmation), navigation, and system document/share
+presentations. The input uses DS typography/color; toggle labels and surrounding
+spacing use DS components/tokens. These retain platform security and accessibility
+behavior without introducing business logic into the DS. Coverage includes a
+375-point iPad layout, largest Dynamic Type, and simulator accessibility audits.

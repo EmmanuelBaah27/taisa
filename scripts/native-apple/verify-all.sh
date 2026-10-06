@@ -35,7 +35,9 @@ else
   xcodebuild build-for-testing -quiet -project apple/Taisa.xcodeproj -scheme Taisa-Preview -destination 'generic/platform=iOS Simulator' -derivedDataPath "${artifact_root}/DerivedData-Preview" CODE_SIGNING_ALLOWED=NO
 fi
 if [[ "${personal_can_test}" == "yes" ]]; then
-  xcodebuild test -quiet -project apple/Taisa.xcodeproj -scheme Taisa-Personal -configuration Personal -destination "platform=iOS Simulator,name=${iphone_name}" -derivedDataPath "${artifact_root}/DerivedData-Personal" -resultBundlePath "${artifact_root}/Taisa-Personal.xcresult" CODE_SIGNING_ALLOWED=NO
+  # Simulator Keychain needs a locally signed process. Ad-hoc signing does not
+  # provision a team or contact Apple; physical-device verification stays unsigned.
+  xcodebuild test -quiet -project apple/Taisa.xcodeproj -scheme Taisa-Personal -configuration Personal -destination "platform=iOS Simulator,name=${iphone_name}" -derivedDataPath "${artifact_root}/DerivedData-Personal" -resultBundlePath "${artifact_root}/Taisa-Personal.xcresult" CODE_SIGN_IDENTITY=- CODE_SIGNING_ALLOWED=YES
 else
   xcodebuild build-for-testing -quiet -project apple/Taisa.xcodeproj -scheme Taisa-Personal -configuration Personal -destination 'generic/platform=iOS Simulator' -derivedDataPath "${artifact_root}/DerivedData-Personal" CODE_SIGNING_ALLOWED=NO
 fi

@@ -59,6 +59,10 @@ targets:
         product: TaisaStorage
       - package: TaisaFoundation
         product: TaisaCloudKit
+      - package: TaisaFoundation
+        product: TaisaRecovery
+      - package: TaisaFoundation
+        product: TaisaSecurity
   TaisaPreview:
     type: application
     platform: iOS
@@ -95,6 +99,18 @@ targets:
       path: Config/TaisaPersonalInfo.plist
       properties:
         TaisaEnvironment: "$(TAISA_ENVIRONMENT)"
+        NSFaceIDUsageDescription: "Authenticate to use your Taisa recovery key."
+        LSSupportsOpeningDocumentsInPlace: true
+        UTExportedTypeDeclarations:
+          - UTTypeIdentifier: com.taisa.encrypted-backup
+            UTTypeDescription: Taisa Encrypted Backup
+            UTTypeConformsTo: [public.data]
+            UTTypeTagSpecification:
+              public.filename-extension: [taisa-backup]
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: Taisa Encrypted Backup
+            LSItemContentTypes: [com.taisa.encrypted-backup]
+            CFBundleTypeRole: Viewer
     sources:
       - path: TaisaApp
       - path: Generated
@@ -121,6 +137,8 @@ targets:
         product: TaisaStorage
       - package: TaisaFoundation
         product: TaisaSecurity
+      - package: TaisaFoundation
+        product: TaisaRecovery
   TaisaPersonalTests:
     type: bundle.unit-test
     platform: iOS
@@ -130,6 +148,13 @@ targets:
       - target: TaisaPersonal
       - package: TaisaFoundation
         product: TaisaCore
+  TaisaPersonalUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: TaisaPersonalUITests
+    dependencies:
+      - target: TaisaPersonal
   TaisaUnitTests:
     type: bundle.unit-test
     platform: iOS
@@ -139,6 +164,10 @@ targets:
       - target: Taisa
       - package: TaisaFoundation
         product: TaisaStorage
+      - package: TaisaFoundation
+        product: TaisaRecovery
+      - package: TaisaFoundation
+        product: TaisaSecurity
   TaisaUITests:
     type: bundle.ui-testing
     platform: iOS
@@ -201,6 +230,7 @@ schemes:
       config: Personal
       targets:
         - TaisaPersonalTests
+        - TaisaPersonalUITests
   Taisa:
     build:
       targets:

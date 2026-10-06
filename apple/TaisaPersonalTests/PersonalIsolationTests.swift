@@ -4,6 +4,10 @@ import TaisaCore
 @testable import TaisaPersonal
 
 @Suite struct PersonalIsolationTests {
+    @Test func personalRecoveryOpensDeviceProtectedStore() async throws {
+        let backend = try PersonalRecoveryBackend.personal()
+        _ = try await backend.openStore()
+    }
     @Test func personalHostHasIsolatedIdentityAndEnvironment() throws {
         #expect(Bundle.main.bundleIdentifier == "com.taisa.app.personal")
         let value = try #require(Bundle.main.object(forInfoDictionaryKey: "TaisaEnvironment") as? String)

@@ -4,6 +4,8 @@ import TaisaDesignSystem
 
 struct FoundationRootView: View {
     @State private var showsDiagnostics = false
+    @State private var showsRecovery = false
+    @State private var recoveryImportURL: URL?
 
     var body: some View {
         NavigationStack {
@@ -26,6 +28,10 @@ struct FoundationRootView: View {
                             .accessibilityIdentifier("foundation.storage.status")
                         }
                     }
+                    if storageStatus != nil {
+                        TaisaButton(role: .secondary, label: "Backup and recovery") { showsRecovery = true }
+                            .accessibilityIdentifier("foundation.recovery.action")
+                    }
 #if DEBUG || TAISA_PREVIEW
                     environmentBadge
                     TaisaButton(role: .secondary, label: "Build diagnostics") {
@@ -47,6 +53,15 @@ struct FoundationRootView: View {
 #endif
             }
             .accessibilityIdentifier("foundation.root")
+            .navigationDestination(isPresented: $showsRecovery) { RecoveryView(importURL: recoveryImportURL) }
+            .onOpenURL { url in
+                guard storageStatus != nil else { return }
+                recoveryImportURL = url
+                showsRecovery = true
+            }
+            .onChange(of: showsRecovery) { _, shown in
+                if !shown { recoveryImportURL = nil }
+            }
         }
     }
 

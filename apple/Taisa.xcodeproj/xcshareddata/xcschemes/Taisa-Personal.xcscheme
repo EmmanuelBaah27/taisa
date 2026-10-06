@@ -50,6 +50,17 @@
                ReferencedContainer = "container:Taisa.xcodeproj">
             </BuildableReference>
          </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "E4EA2E988FC6D4B332D0C363"
+               BuildableName = "TaisaPersonalUITests.xctest"
+               BlueprintName = "TaisaPersonalUITests"
+               ReferencedContainer = "container:Taisa.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
       <CommandLineArguments>
       </CommandLineArguments>

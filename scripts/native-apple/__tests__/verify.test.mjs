@@ -120,6 +120,8 @@ test('preview support is linked only by the preview target', async () => {
     'TaisaDesignSystem',
     'TaisaStorage',
     'TaisaCloudKit',
+    'TaisaRecovery',
+    'TaisaSecurity',
   ]);
   assert.deepEqual(result.previewProducts, [
     'TaisaCore',
