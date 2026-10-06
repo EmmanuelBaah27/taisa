@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Status:** Proposed — awaiting Baah Plan approval
+**Status:** Approved by Baah on 2026-10-06 — Build active
 
 **Goal:** Install a truthful local-only Swift Taisa build through an Xcode Personal Team and provide recovery-key-encrypted file export/import for deliberate iPhone–iPad transfer.
 

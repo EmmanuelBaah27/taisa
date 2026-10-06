@@ -22,7 +22,7 @@ relevant to the task.
 | Shared chat and recording shell | Product | Build | `codex/chat-close-auth-handoff` | Baah paired-device QA after preview integration |
 | Glass elevation, alignment, and interaction feedback | Product | Review + QA | `fix/glass-elevation-keyboard-surfaces` | canonical preview integration + Baah device QA |
 | SwiftUI native rebuild | Platform + Product | Shipped | `main` | — |
-| Swift native encrypted storage, sync, and recovery | Platform | Plan | `feature/swift-native-encrypted-sync` | Personal Device lane plan drafted; Baah plan approval and execution-method selection are next. Live CloudKit remains blocked on paid Apple Developer Program membership; production schema promotion remains unapproved. |
+| Swift native encrypted storage, sync, and recovery | Platform | Build | `feature/swift-native-encrypted-sync` | Personal Device lane implementation active; next Baah gate is Task 6 approval for Personal Team signing/install. Live CloudKit remains blocked on paid Apple Developer Program membership; production schema promotion remains unapproved. |
 
 ---
 
