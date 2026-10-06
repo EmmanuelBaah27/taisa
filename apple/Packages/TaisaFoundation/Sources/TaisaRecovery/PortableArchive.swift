@@ -1,5 +1,6 @@
 import CryptoKit
 import Foundation
+import Darwin
 import Security
 import TaisaSecurity
 
@@ -18,9 +19,23 @@ public enum PortableArchive {
         at url: URL, recoveryKey: RecoveryKey,
         maximumPayloadBytes: Int64 = 1_073_741_824
     ) throws -> SnapshotManifest {
+        guard url.isFileURL else { throw SnapshotError.ioFailure }
+        // O_NONBLOCK prevents a hostile FIFO from blocking before fstat rejects it.
+        let descriptor = Darwin.open(url.path, O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)
+        guard descriptor >= 0 else { throw SnapshotError.ioFailure }
+        let file = FileHandle(fileDescriptor: descriptor, closeOnDealloc: true)
+        defer { try? file.close() }
+        var status = stat()
+        guard fstat(descriptor, &status) == 0, status.st_mode & S_IFMT == S_IFREG else {
+            throw SnapshotError.ioFailure
+        }
+        return try verify(file: file, recoveryKey: recoveryKey, maximumPayloadBytes: maximumPayloadBytes)
+    }
+
+    /// The writer retains this open regular-file descriptor through publication.
+    static func verify(file: FileHandle, recoveryKey: RecoveryKey, maximumPayloadBytes: Int64) throws -> SnapshotManifest {
         do {
-            let file = try FileHandle(forReadingFrom: url)
-            defer { try? file.close() }
+            try file.seek(toOffset: 0)
             let header = try readExactly(64, from: file)
             guard header.prefix(8) == magic else { throw SnapshotError.malformedArchive }
             guard integer(header.subdata(in: 8..<12)) == 1 else { throw SnapshotError.unsupportedVersion }

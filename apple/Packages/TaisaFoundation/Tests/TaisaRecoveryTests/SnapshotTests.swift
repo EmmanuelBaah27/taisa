@@ -1,4 +1,5 @@
 import CryptoKit
+import Darwin
 import Foundation
 import GRDB
 import Testing
@@ -290,6 +291,72 @@ private struct Fixture {
         let ordinary = SnapshotService(store: store, audioGuard: AudioGuard(), sourceInstallationID: installationID)
         await #expect(throws: SnapshotError.destinationExists) { try await ordinary.createPortableArchive(at: fixture.destination, recoveryKey: key) }
         #expect(try Data(contentsOf: fixture.destination) == Data("existing".utf8))
+    }
+
+    @Test(arguments: ["symlink", "inode", "permissions", "directory"])
+    func stagedPathReplacementCannotPublishOrRemoveSubstitutedObjects(_ attack: String) async throws {
+        let fixture = try Fixture(); defer { fixture.remove() }
+        let store = try await fixture.store()
+        let directory = fixture.directory.appendingPathComponent("export", isDirectory: true)
+        let movedDirectory = fixture.directory.appendingPathComponent("moved-export", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: false)
+        let destination = directory.appendingPathComponent("backup.taisa-backup")
+        let preserved = fixture.directory.appendingPathComponent("preserved-original")
+        let key = try RecoveryKey.generate()
+        let service = SnapshotService(store: store, audioGuard: AudioGuard(), sourceInstallationID: installationID, beforeVerification: { url in
+            if attack == "directory" {
+                let names = try FileManager.default.contentsOfDirectory(atPath: directory.path)
+                try FileManager.default.moveItem(at: directory, to: movedDirectory)
+                try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: false)
+                for name in names where !name.hasSuffix(".partial") {
+                    let substitute = directory.appendingPathComponent(name, isDirectory: true)
+                    try FileManager.default.createDirectory(at: substitute, withIntermediateDirectories: false)
+                    try Data("unrelated-directory-content".utf8).write(to: substitute.appendingPathComponent("keep"))
+                }
+                // A same-byte substitute must still fail identity validation.
+                let relativePath = String(url.path.dropFirst(directory.path.count + 1))
+                try FileManager.default.copyItem(at: movedDirectory.appendingPathComponent(relativePath), to: url)
+            } else if attack == "permissions" {
+                try FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: url.path)
+            } else {
+                try FileManager.default.moveItem(at: url, to: preserved)
+                if attack == "symlink" {
+                    try FileManager.default.createSymbolicLink(at: url, withDestinationURL: preserved)
+                } else {
+                    try FileManager.default.copyItem(at: preserved, to: url)
+                }
+            }
+        })
+        await #expect(throws: SnapshotError.self) { try await service.createPortableArchive(at: destination, recoveryKey: key) }
+        #expect(!FileManager.default.fileExists(atPath: destination.path))
+        let remaining = (FileManager.default.enumerator(at: directory, includingPropertiesForKeys: nil)?.allObjects as? [URL]) ?? []
+        if attack == "directory" {
+            #expect(remaining.contains { $0.pathExtension == "partial" })
+            let kept = remaining.filter { $0.lastPathComponent.hasPrefix(".taisa-") && $0.pathExtension != "partial" }
+            #expect(kept.count == 1)
+            for entry in kept {
+                #expect(try Data(contentsOf: entry.appendingPathComponent("keep")) == Data("unrelated-directory-content".utf8))
+            }
+            #expect(!FileManager.default.fileExists(atPath: movedDirectory.appendingPathComponent("backup.taisa-backup").path))
+        } else if attack != "permissions" {
+            #expect(try PortableArchive.verify(at: preserved, recoveryKey: key).entityCounts["messages"] == 1)
+            let substitutes = remaining.filter { $0.pathExtension == "partial" }
+            #expect(substitutes.count == 1)
+            if attack == "symlink", let substitute = substitutes.first {
+                #expect(try FileManager.default.destinationOfSymbolicLink(atPath: substitute.path) == preserved.path)
+            }
+        }
+    }
+
+    @Test func publicVerifierRejectsSymbolicLinkWithoutFollowingTarget() async throws {
+        let fixture = try Fixture(); defer { fixture.remove() }
+        let store = try await fixture.store()
+        let key = try RecoveryKey.generate()
+        _ = try await SnapshotService(store: store, audioGuard: AudioGuard(), sourceInstallationID: installationID).createPortableArchive(at: fixture.destination, recoveryKey: key)
+        let alias = fixture.directory.appendingPathComponent("alias.taisa-backup")
+        try FileManager.default.createSymbolicLink(at: alias, withDestinationURL: fixture.destination)
+        #expect(throws: SnapshotError.self) { try PortableArchive.verify(at: alias, recoveryKey: key) }
+        #expect(try PortableArchive.verify(at: fixture.destination, recoveryKey: key).entityCounts["messages"] == 1)
     }
 
     private func split(_ data: Data) throws -> (header: Data, manifest: Data, frames: [Data]) {
