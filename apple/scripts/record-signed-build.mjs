@@ -2,6 +2,7 @@
 
 import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
+import { inspectPersonalBuild } from './inspect-personal-build.mjs';
 
 const bundleIdentifiers = {
   development: 'com.taisa.app.dev',
@@ -25,7 +26,7 @@ const requiredTextFields = [
   'testerConfirmation',
 ];
 
-export function validateSignedBuild(record = {}) {
+export function inspectSignedBuild(record = {}, options = {}) {
   const errors = [];
 
   for (const field of requiredTextFields) {
@@ -53,37 +54,18 @@ export function validateSignedBuild(record = {}) {
   }
 
   if (record.environment === 'personal') {
-    // These are observed build/profile facts, not inferred from the lane name.
-    for (const field of ['signedEntitlements', 'provisioningEntitlements']) {
-      const rights = record[field];
-      if (!rights || typeof rights !== 'object' || Array.isArray(rights)) {
-        errors.push(`${field} must contain inspected Personal entitlement evidence`);
-      } else {
-        for (const key of Object.keys(rights)) {
-          if (/icloud|cloudkit|ubiquity|aps-environment|push|associated-domains/i.test(key)) {
-            errors.push(`forbidden Personal capability in ${field}: ${key}`);
-          }
-        }
-      }
-    }
-    for (const field of ['backgroundModes', 'linkedLibraries']) {
-      if (!Array.isArray(record[field]) || record[field].some((item) => typeof item !== 'string')) {
-        errors.push(`${field} must contain inspected Personal build evidence`);
-      }
-    }
-    if (Array.isArray(record.backgroundModes) && record.backgroundModes.length > 0) {
-      errors.push('Personal background modes must be empty');
-    }
-    if (Array.isArray(record.linkedLibraries)
-        && record.linkedLibraries.some((name) => /CloudKit|CKContainer/i.test(name))) {
-      errors.push('Personal build contains live transport linkage');
-    }
-    if (record.linksLiveTransport !== false) {
-      errors.push('Personal linksLiveTransport must be explicitly false after binary inspection');
-    }
+    try {
+      const inspected = inspectPersonalBuild(record, options);
+      errors.push(...inspected.errors);
+      record = { ...record, ...inspected.evidence };
+    } catch (error) { errors.push(`Personal artifact inspection failed: ${error.message}`); }
   }
 
-  return errors;
+  return { errors, record };
+}
+
+export function validateSignedBuild(record = {}, options = {}) {
+  return inspectSignedBuild(record, options).errors;
 }
 
 async function main() {
@@ -93,14 +75,15 @@ async function main() {
   }
 
   const record = JSON.parse(await readFile(inputPath, 'utf8'));
-  const errors = validateSignedBuild(record);
+  const inspected = inspectSignedBuild(record);
+  const { errors } = inspected;
   if (errors.length > 0) {
     process.stderr.write(`${errors.map((error) => `- ${error}`).join('\n')}\n`);
     process.exitCode = 1;
     return;
   }
 
-  process.stdout.write(`${JSON.stringify(record, null, 2)}\n`);
+  process.stdout.write(`${JSON.stringify(inspected.record, null, 2)}\n`);
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
