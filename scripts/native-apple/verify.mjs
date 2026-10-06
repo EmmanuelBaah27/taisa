@@ -20,6 +20,22 @@ function packageProducts(block) {
   return [...block.matchAll(/^\s+product:\s+(.+)$/gm)].map((match) => match[1].trim());
 }
 
+function settingScopes(settings = {}) {
+  return [settings.base ?? settings, ...Object.values(settings.configs ?? {})];
+}
+
+function personalSettings(settings = {}) {
+  return { ...(settings.base ?? settings), ...(settings.configs?.Personal ?? {}) };
+}
+
+function personalBinding(settings, key, expected) {
+  // Every configuration of this isolated app must retain the same binding,
+  // including SDK-conditional overrides that can affect an unsigned device build.
+  return settingScopes(settings).every((scope) => Object.entries(scope).every(([name, value]) => (
+    (name !== key && !name.startsWith(`${key}[`)) || value === expected
+  )));
+}
+
 const PRODUCTION_PREVIEW_PATTERNS = [
   'PreviewSupport',
   'TaisaPreview',
@@ -100,6 +116,14 @@ export async function inspectNativeProject(repositoryRoot) {
   const productionBlock = targetBlock(project, 'Taisa');
   const previewTargetBlock = targetBlock(project, 'TaisaPreview');
   const personalBlock = targetBlock(project, 'TaisaPersonal');
+  const specification = JSON.parse(execFileSync('xcodegen', [
+    'dump', '--no-env', '--type', 'json', '--spec', resolve(appleRoot, 'project.yml'),
+  ], { encoding: 'utf8' }));
+  const targetSettings = specification.targets?.TaisaPersonal?.settings ?? {};
+  const effectivePersonalSettings = {
+    ...personalSettings(specification.settings),
+    ...personalSettings(targetSettings),
+  };
   const personalScheme = targetBlock(project, 'Taisa-Personal');
   const previewScheme = targetBlock(project, 'Taisa-Preview');
   const leakPatterns = ['TaisaPreview', 'PreviewSupport', 'com.taisa.app.preview'];
@@ -114,7 +138,10 @@ export async function inspectNativeProject(repositoryRoot) {
   ], { encoding: 'utf8' }));
   const productionProducts = packageProducts(productionBlock);
   const previewProducts = packageProducts(previewTargetBlock);
-  const personalRights = entitlement('TaisaPersonal');
+  const selectedEntitlements = effectivePersonalSettings.CODE_SIGN_ENTITLEMENTS;
+  const personalRights = typeof selectedEntitlements === 'string'
+    ? JSON.parse(execFileSync('plutil', ['-convert', 'json', '-o', '-', resolve(appleRoot, selectedEntitlements)], { encoding: 'utf8' }))
+    : {};
   const personalInfoPath = personalBlock.match(/info:\s*\n\s*path:\s*(.+)/)?.[1]?.trim();
   const personalInfo = personalInfoPath
     ? JSON.parse(execFileSync('plutil', ['-convert', 'json', '-o', '-', resolve(appleRoot, personalInfoPath)], { encoding: 'utf8' }))
@@ -133,11 +160,14 @@ export async function inspectNativeProject(repositoryRoot) {
     },
     personalProjectBindings: {
       app: personalBlock.includes('type: application'),
-      identity: /PRODUCT_BUNDLE_IDENTIFIER:\s*com\.taisa\.app\.personal\s*$/.test(personalBlock.match(/^\s*PRODUCT_BUNDLE_IDENTIFIER:.*$/m)?.[0] ?? ''),
-      environment: /TAISA_ENVIRONMENT:\s*personal\s*$/m.test(personalBlock)
+      identity: effectivePersonalSettings.PRODUCT_BUNDLE_IDENTIFIER === 'com.taisa.app.personal'
+        && personalBinding(targetSettings, 'PRODUCT_BUNDLE_IDENTIFIER', 'com.taisa.app.personal'),
+      environment: effectivePersonalSettings.TAISA_ENVIRONMENT === 'personal'
+        && personalBinding(targetSettings, 'TAISA_ENVIRONMENT', 'personal')
         && valueFor(personalConfig, 'TAISA_ENVIRONMENT') === 'personal',
       condition: personalBlock.includes('TAISA_PERSONAL') && personalConfig.includes('TAISA_PERSONAL'),
-      entitlements: /CODE_SIGN_ENTITLEMENTS:\s*Config\/TaisaPersonal\.entitlements/.test(personalBlock),
+      entitlements: selectedEntitlements === 'Config/TaisaPersonal.entitlements'
+        && personalBinding(targetSettings, 'CODE_SIGN_ENTITLEMENTS', 'Config/TaisaPersonal.entitlements'),
       configuration: /Personal:\s*Config\/Personal\.xcconfig/.test(project),
       testHost: /target:\s*TaisaPersonal\s*$/m.test(targetBlock(project, 'TaisaPersonalTests')),
       scheme: /config:\s*Personal/.test(personalScheme) && personalScheme.includes('- TaisaPersonalTests'),

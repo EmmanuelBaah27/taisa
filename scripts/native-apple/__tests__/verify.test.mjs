@@ -63,12 +63,22 @@ test('personal capability mutations are rejected without changing live entitleme
   await writeFile(rightsPath, original);
   const projectPath = join(fixture, 'apple/project.yml');
   const project = await readFile(projectPath, 'utf8');
+  await writeFile(projectPath, project.replace(
+    'CODE_SIGN_ENTITLEMENTS: Config/TaisaPersonal.entitlements',
+    'CODE_SIGN_ENTITLEMENTS: Config/TaisaPersonal.entitlements\n      configs:\n        Personal:\n          CODE_SIGN_ENTITLEMENTS: Config/TaisaPersonal.entitlements',
+  ));
+  assert.deepEqual(await verifyNativeProject(fixture), []);
   for (const mutation of [
     project.replace('PRODUCT_NAME: TaisaPersonal', 'PRODUCT_NAME: TaisaPersonal\n        UIBackgroundModes: [remote-notification]'),
-    project.replace('PRODUCT_NAME: TaisaPersonal', 'PRODUCT_NAME: TaisaPersonal\n        PRODUCT_BUNDLE_IDENTIFIER: com.taisa.app'),
+    project.replace('PRODUCT_BUNDLE_IDENTIFIER: com.taisa.app.personal', 'PRODUCT_BUNDLE_IDENTIFIER: com.taisa.app'),
     project.replace('  TaisaPersonalTests:', '      - package: TaisaFoundation\n        product: TaisaCloudKit\n  TaisaPersonalTests:'),
     project.replace('  Taisa-Personal:\n', '  Taisa-Personal:\n    archive:\n      config: Personal\n'),
     project.replace('CODE_SIGN_ENTITLEMENTS: Config/TaisaPersonal.entitlements', 'CODE_SIGN_ENTITLEMENTS: Config/TaisaDev.entitlements'),
+    project.replace('CODE_SIGN_ENTITLEMENTS: Config/TaisaPersonal.entitlements', 'CODE_SIGN_ENTITLEMENTS: Config/TaisaPersonal.entitlements\n      configs:\n        Personal:\n          CODE_SIGN_ENTITLEMENTS: Config/TaisaDev.entitlements'),
+    project.replace('CODE_SIGN_ENTITLEMENTS: Config/TaisaPersonal.entitlements', 'CODE_SIGN_ENTITLEMENTS: Config/TaisaPersonal.entitlements\n      configs:\n        Personal:\n          PRODUCT_BUNDLE_IDENTIFIER: com.taisa.app'),
+    project.replace('CODE_SIGN_ENTITLEMENTS: Config/TaisaPersonal.entitlements', 'CODE_SIGN_ENTITLEMENTS: Config/TaisaPersonal.entitlements\n      configs:\n        Personal:\n          TAISA_ENVIRONMENT: development'),
+    project.replace('CODE_SIGN_ENTITLEMENTS: Config/TaisaPersonal.entitlements', 'CODE_SIGN_ENTITLEMENTS: Config/TaisaPersonal.entitlements\n      configs:\n        Debug:\n          CODE_SIGN_ENTITLEMENTS: Config/TaisaDev.entitlements'),
+    project.replace('CODE_SIGN_ENTITLEMENTS: Config/TaisaPersonal.entitlements', 'CODE_SIGN_ENTITLEMENTS: Config/TaisaPersonal.entitlements\n      configs:\n        Personal:\n          CODE_SIGN_ENTITLEMENTS[sdk=iphoneos*]: Config/TaisaDev.entitlements'),
   ]) {
     await writeFile(projectPath, mutation);
     assert.ok((await verifyNativeProject(fixture)).includes('Personal app isolation mismatch'));
