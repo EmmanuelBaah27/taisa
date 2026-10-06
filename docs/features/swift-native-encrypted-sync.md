@@ -50,6 +50,12 @@ Baah uses both iPhone and iPad, so backup-only behavior is insufficient. The fou
 - Deleting React Native code, retiring backend routes, or changing the existing production app.
 - Shipping later audio/streaming or advanced resources/platform-service foundations.
 
+## Interim Personal Team lane
+
+Baah approved an interim free-signing path on 2026-10-06 because an Xcode Personal Team cannot provision the iCloud, CloudKit, and remote-notification capabilities required by the full design. The `Taisa-Personal` lane is local-only, preserves the full CloudKit implementation for later activation, and adds deliberate encrypted file export/import for device transfer. It must never present fake or manual transfer as automatic synchronization.
+
+The interim lane is specified in `docs/superpowers/specs/2026-10-06-personal-device-lane-design.md`. It does not close the original automatic multi-device synchronization acceptance criterion; that criterion remains blocked on paid Apple Developer Program capability access.
+
 ## Closeout
 
 - **Actual outcome:** Pending implementation.
