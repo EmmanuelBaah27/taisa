@@ -33,6 +33,7 @@ public struct RestoreCoordinator: Sendable {
     private let freeSpace: @Sendable (URL) throws -> Int64
     private let fault: @Sendable (RestoreFaultPoint) throws -> Void
     private let recoveryFault: @Sendable (RestoreRecoveryFaultPoint) throws -> Void
+    private let journalDurability: @Sendable (RestorePhase, Int32) throws -> Void
     public var journalURL: URL { activeStoreURL.deletingLastPathComponent().appendingPathComponent("." + activeStoreURL.lastPathComponent + ".restore-journal") }
     private static let suffixes = ["", "-wal", "-shm", "-journal"]
 
@@ -48,10 +49,12 @@ public struct RestoreCoordinator: Sendable {
     init(activeStoreURL: URL, keyStore: any DatabaseKeyStore,
          freeSpace: @escaping @Sendable (URL) throws -> Int64,
          fault: @escaping @Sendable (RestoreFaultPoint) throws -> Void,
-         recoveryFault: @escaping @Sendable (RestoreRecoveryFaultPoint) throws -> Void = { _ in }) {
+         recoveryFault: @escaping @Sendable (RestoreRecoveryFaultPoint) throws -> Void = { _ in },
+         journalDurability: @escaping @Sendable (RestorePhase, Int32) throws -> Void = RestoreJournal.syncDirectory) {
         self.activeStoreURL = activeStoreURL.standardizedFileURL
         self.keyStore = keyStore; self.freeSpace = freeSpace; self.fault = fault
         self.recoveryFault = recoveryFault
+        self.journalDurability = journalDurability
     }
 
     public func validate(archiveURL: URL, recoveryKey: RecoveryKey) async throws -> RestoreCandidate {
@@ -109,7 +112,7 @@ public struct RestoreCoordinator: Sendable {
                         confirmReplacement: @Sendable () async throws -> Bool) async throws -> RestoreReceipt {
         let root = try RestoreDirectory(activeStoreURL.deletingLastPathComponent())
         let directory = try checkedCandidate(candidate, root: root)
-        let journal = RestoreJournal(root: root, name: journalURL.lastPathComponent)
+        let journal = RestoreJournal(root: root, name: journalURL.lastPathComponent, durability: journalDurability)
         do {
             guard try await confirmReplacement() else { throw RestoreError.declined }
             try Task.checkCancellation()
@@ -177,14 +180,14 @@ public struct RestoreCoordinator: Sendable {
             })
         } catch is RestoreInterruption { throw RestoreInterruption.simulatedCrash }
         catch {
-            if let key = try? await keyStore.loadKey(), let record = try? journal.read(key: key), record.phase == .committed {
+            if journal.durablePhase == .committed {
                 try? await recoverInterruptedPromotion()
                 return RestoreReceipt(manifest: candidate.manifest)
             }
             // A failed rollback deliberately retains its journal and copies.
             // Relaunch must retry recovery before any normal store open.
             if try root.info(journal.name) != nil {
-                do { try await recoverInterruptedPromotion() }
+                do { try await recoverInterruptedPromotion(forceRollback: true) }
                 catch { throw RestoreError.recoveryRequired }
             } else { try? cleanupCandidate(directory, root: root, identity: candidate.databaseID) }
             if error is CancellationError { throw CancellationError() }
@@ -196,11 +199,23 @@ public struct RestoreCoordinator: Sendable {
     /// Call at launch before opening repositories. Repeated calls are safe;
     /// invalid/unreadable journals fail closed and retain recovery material.
     public func recoverInterruptedPromotion() async throws {
+        try await recoverInterruptedPromotion(forceRollback: false)
+    }
+
+    private func recoverInterruptedPromotion(forceRollback: Bool) async throws {
         let root = try RestoreDirectory(activeStoreURL.deletingLastPathComponent())
-        let journal = RestoreJournal(root: root, name: journalURL.lastPathComponent)
+        let journal = RestoreJournal(root: root, name: journalURL.lastPathComponent, durability: journalDurability)
         guard try root.info(journal.name) != nil else { return }
         try await TaisaStore.withExclusiveReplacement(at: activeStoreURL, prepare: {
-            guard let key = try await keyStore.loadKey(), try journal.read(key: key) != nil else { throw RestoreError.recoveryRequired }
+            guard let key = try await keyStore.loadKey(), var record = try journal.read(key: key) else { throw RestoreError.recoveryRequired }
+            if forceRollback && record.phase == .committed {
+                // The current process knows its committed fsync failed. First
+                // durably revoke that merely visible commit, then roll back.
+                // If this write also fails, retain every recovery artifact.
+                record.phase = .keyCommitted
+                try journal.write(record)
+            }
+            try journal.confirmDurability(of: record)
         }, body: {
             guard let key = try await keyStore.loadKey(), let record = try journal.read(key: key) else { throw RestoreError.recoveryRequired }
             if try root.info(record.directoryName) == nil {
@@ -288,6 +303,7 @@ public struct RestoreCoordinator: Sendable {
     }
 
     private func finish(_ record: RestoreRecord, directory: RestoreDirectory, journal: RestoreJournal, recovering: Bool = false) throws {
+        guard journal.durablePhase == record.phase else { throw RestoreError.recoveryRequired }
         // Keep the recovery marker until every known artifact is cleaned. Both
         // rollback and committed cleanup tolerate already-moved/deleted files.
         for (suffix, identity) in record.backupIDs where try directory.info("original.sqlite" + suffix) != nil {

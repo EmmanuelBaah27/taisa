@@ -1,4 +1,5 @@
 import CryptoKit
+import Darwin
 import Foundation
 import GRDB
 import Testing
@@ -17,6 +18,17 @@ private actor RestoreKeys: DatabaseKeyStore {
     func failOnce() { failNextSave = true }
 }
 private struct RestoreAudio: AudioExportGuard { func assertNoPendingAudioReferences() async throws {} }
+private final class RestoreSyncFailureLatch: @unchecked Sendable {
+    private let lock = NSLock()
+    private var failing = false
+    func sync(_ phase: RestorePhase, _ descriptor: Int32) throws {
+        let fail = lock.withLock {
+            if phase == .committed { failing = true }
+            return failing
+        }
+        guard !fail, fsync(descriptor) == 0 else { throw RestoreError.ioFailure }
+    }
+}
 private struct RestoreFixture {
     let directory: URL
     let active: URL
@@ -264,6 +276,137 @@ private struct RestoreFixture {
         try output.close()
         await #expect(throws: Error.self) { try await f.coordinator().validate(archiveURL: f.archive, recoveryKey: f.recovery) }
         #expect(try f.files() == before)
+    }
+
+    @Test func committedDirectorySyncFailureNeverReportsSuccess() async throws {
+        let f = try await RestoreFixture(); defer { f.remove() }
+        let before = try f.files()
+        let coordinator = RestoreCoordinator(activeStoreURL: f.active, keyStore: f.keys,
+            freeSpace: { _ in Int64.max }, fault: { _ in }, journalDurability: { phase, fd in
+                if phase == .committed { throw RestoreError.ioFailure }
+                guard fsync(fd) == 0 else { throw RestoreError.ioFailure }
+            })
+        let candidate = try await coordinator.validate(archiveURL: f.archive, recoveryKey: f.recovery)
+        await #expect(throws: Error.self) { try await coordinator.promote(candidate, confirmReplacement: { true }) }
+        #expect(try f.files() == before)
+        #expect(await f.keys.loadKey() == Data(repeating: 0x31, count: 32))
+        #expect(!FileManager.default.fileExists(atPath: coordinator.journalURL.path))
+    }
+
+    @Test func recoveryMustSyncVisibleCommitBeforeDeletingRollbackMaterial() async throws {
+        let f = try await RestoreFixture(); defer { f.remove() }
+        let interrupted = RestoreCoordinator(activeStoreURL: f.active, keyStore: f.keys,
+            freeSpace: { _ in Int64.max }, fault: { _ in }, journalDurability: { phase, fd in
+                if phase == .committed { throw RestoreInterruption.simulatedCrash }
+                guard fsync(fd) == 0 else { throw RestoreError.ioFailure }
+            })
+        let candidate = try await interrupted.validate(archiveURL: f.archive, recoveryKey: f.recovery)
+        await #expect(throws: RestoreInterruption.self) { try await interrupted.promote(candidate, confirmReplacement: { true }) }
+        let backup = candidate.directory.appendingPathComponent("original.sqlite")
+        let backupBytes = try Data(contentsOf: backup)
+        let recovering = RestoreCoordinator(activeStoreURL: f.active, keyStore: f.keys,
+            freeSpace: { _ in Int64.max }, fault: { _ in }, journalDurability: { _, _ in throw RestoreError.ioFailure })
+        await #expect(throws: Error.self) { try await recovering.recoverInterruptedPromotion() }
+        #expect(try Data(contentsOf: backup) == backupBytes)
+        #expect(FileManager.default.fileExists(atPath: recovering.journalURL.path))
+        try await f.coordinator().recoverInterruptedPromotion()
+        #expect(await f.keys.loadKey() == candidate.databaseKey)
+        #expect(!FileManager.default.fileExists(atPath: recovering.journalURL.path))
+    }
+
+    @Test func persistentCommitSyncFailureRetainsOriginalsForLaterRecovery() async throws {
+        let f = try await RestoreFixture(); defer { f.remove() }
+        let before = try f.files()
+        let failure = RestoreSyncFailureLatch()
+        let coordinator = RestoreCoordinator(activeStoreURL: f.active, keyStore: f.keys,
+            freeSpace: { _ in Int64.max }, fault: { _ in }, journalDurability: failure.sync)
+        let candidate = try await coordinator.validate(archiveURL: f.archive, recoveryKey: f.recovery)
+        await #expect(throws: RestoreError.recoveryRequired) { try await coordinator.promote(candidate, confirmReplacement: { true }) }
+        #expect(FileManager.default.fileExists(atPath: coordinator.journalURL.path))
+        #expect(try Data(contentsOf: candidate.directory.appendingPathComponent("original.sqlite")) == before[""])
+        #expect(try Data(contentsOf: candidate.directory.appendingPathComponent("original.sqlite-wal")) == before["-wal"])
+        try await f.coordinator().recoverInterruptedPromotion()
+        #expect(try f.files() == before)
+        #expect(await f.keys.loadKey() == Data(repeating: 0x31, count: 32))
+    }
+
+    @Test func cancellationDuringConfirmationPreservesOriginalAndRemovesCandidate() async throws {
+        let f = try await RestoreFixture(); defer { f.remove() }
+        let before = try f.files()
+        let coordinator = f.coordinator()
+        let candidate = try await coordinator.validate(archiveURL: f.archive, recoveryKey: f.recovery)
+        let promotion = Task {
+            try await coordinator.promote(candidate, confirmReplacement: {
+                withUnsafeCurrentTask { $0?.cancel() }
+                return true
+            })
+        }
+        await #expect(throws: CancellationError.self) { try await promotion.value }
+        #expect(try f.files() == before)
+        #expect(await f.keys.loadKey() == Data(repeating: 0x31, count: 32))
+        #expect(!FileManager.default.fileExists(atPath: candidate.directory.path))
+    }
+
+    @Test func replacementWaitsForInflightReaderBeforePreparingJournal() async throws {
+        let f = try await RestoreFixture(); defer { f.remove() }
+        let coordinator = f.coordinator()
+        let candidate = try await coordinator.validate(archiveURL: f.archive, recoveryKey: f.recovery)
+        let release = DispatchSemaphore(value: 0)
+        let started = AsyncStream<Void>.makeStream()
+        let read = Task {
+            try await f.store.read { db in
+                started.continuation.yield(()); started.continuation.finish()
+                release.wait()
+                return try String.fetchOne(db, sql: "SELECT display_name FROM profile")
+            }
+        }
+        for await _ in started.stream { break }
+        let confirming = AsyncStream<Void>.makeStream()
+        let promotion = Task {
+            try await coordinator.promote(candidate, confirmReplacement: {
+                confirming.continuation.yield(()); confirming.continuation.finish()
+                return true
+            })
+        }
+        for await _ in confirming.stream { break }
+        try await Task.sleep(for: .milliseconds(100))
+        let appearedWhileReaderHeld = FileManager.default.fileExists(atPath: coordinator.journalURL.path)
+        release.signal()
+        #expect(try await read.value == "ORIGINAL")
+        _ = try await promotion.value
+        #expect(!appearedWhileReaderHeld)
+        #expect(await f.keys.loadKey() == candidate.databaseKey)
+    }
+
+    @Test(arguments: ["phase", "transaction", "corrupt-old", "corrupt-new", "swapped-roles"], [false, true])
+    func bothJournalEnvelopesMustAgree(_ mutation: String, _ useNewKey: Bool) async throws {
+        let f = try await RestoreFixture(); defer { f.remove() }
+        let root = try RestoreDirectory(f.directory)
+        let oldKey = Data(repeating: 0x41, count: 32), newKey = Data(repeating: 0x42, count: 32)
+        let journal = RestoreJournal(root: root, name: "envelope-probe")
+        func record() -> RestoreRecord {
+            RestoreRecord(phase: .prepared, directoryName: ".taisa-restore-fixture", directoryID: root.identity,
+                candidateID: root.identity, originalIDs: [:], backupIDs: [:], originalKey: oldKey, candidateKey: newKey)
+        }
+        var first = record()
+        try journal.write(first)
+        let url = f.directory.appendingPathComponent(journal.name)
+        let prepared = try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as! [String: String]
+        if mutation == "transaction" { first = record() } else { first.phase = .committed }
+        try journal.write(first)
+        let second = try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as! [String: String]
+        var modified = prepared
+        switch mutation {
+        case "phase", "transaction": modified["new"] = second["new"]
+        case "corrupt-old": modified["old"] = Data(repeating: 0, count: 28).base64EncodedString()
+        case "corrupt-new": modified["new"] = Data(repeating: 0, count: 28).base64EncodedString()
+        case "swapped-roles": modified = ["old": prepared["new"]!, "new": prepared["old"]!]
+        default: break
+        }
+        let file = try FileHandle(forWritingTo: url)
+        try file.truncate(atOffset: 0); try file.write(contentsOf: JSONSerialization.data(withJSONObject: modified)); try file.close()
+        #expect(throws: RestoreError.recoveryRequired) { try RestoreJournal(root: root, name: journal.name).read(key: useNewKey ? newKey : oldKey) }
+        #expect(FileManager.default.fileExists(atPath: url.path))
     }
 
     // Build authentic but semantically invalid manifests independently of the verifier.

@@ -116,6 +116,7 @@ final class RestoreDirectory: @unchecked Sendable {
 }
 
 struct RestoreRecord: Codable, Sendable {
+    let transactionID: UUID
     var phase: RestorePhase
     let directoryName: String
     let directoryID: RestoreFileID
@@ -124,6 +125,16 @@ struct RestoreRecord: Codable, Sendable {
     let backupIDs: [String: RestoreFileID]
     let originalKey: Data
     let candidateKey: Data
+
+    init(phase: RestorePhase, transactionID: UUID = UUID(), directoryName: String,
+         directoryID: RestoreFileID, candidateID: RestoreFileID,
+         originalIDs: [String: RestoreFileID], backupIDs: [String: RestoreFileID],
+         originalKey: Data, candidateKey: Data) {
+        self.phase = phase; self.transactionID = transactionID; self.directoryName = directoryName
+        self.directoryID = directoryID; self.candidateID = candidateID
+        self.originalIDs = originalIDs; self.backupIDs = backupIDs
+        self.originalKey = originalKey; self.candidateKey = candidateKey
+    }
 }
 
 /// The journal is sealed twice: once for the old Keychain key, once for the new.
@@ -135,14 +146,25 @@ final class RestoreJournal: @unchecked Sendable {
     // Access is serialized by the active store lifecycle. Tracks the exact
     // inode read/written by this transaction, never ownership by filename.
     private var identity: RestoreFileID?
-    init(root: RestoreDirectory, name: String) { self.root = root; self.name = name }
+    /// Process-local proof: a readable phase is never a substitute for a
+    /// successful directory synchronization of that exact journal inode.
+    private(set) var durablePhase: RestorePhase?
+    private let durability: @Sendable (RestorePhase, Int32) throws -> Void
+    init(root: RestoreDirectory, name: String,
+         durability: @escaping @Sendable (RestorePhase, Int32) throws -> Void = RestoreJournal.syncDirectory) {
+        self.root = root; self.name = name; self.durability = durability
+    }
+    static func syncDirectory(_ phase: RestorePhase, _ descriptor: Int32) throws {
+        guard fsync(descriptor) == 0 else { throw RestoreError.ioFailure }
+    }
     private struct Envelope: Codable { let old: Data; let new: Data }
     private var aad: Data { Data(("taisa.restore-journal.v1:" + root.url.path + "/" + name).utf8) }
 
     func write(_ record: RestoreRecord) throws {
-        let plain = try JSONEncoder().encode(record)
-        let old = try AES.GCM.seal(plain, using: SymmetricKey(data: record.originalKey), authenticating: aad).combined!
-        let new = try AES.GCM.seal(plain, using: SymmetricKey(data: record.candidateKey), authenticating: aad).combined!
+        durablePhase = nil
+        let plain = try canonical(record)
+        let old = try AES.GCM.seal(plain, using: SymmetricKey(data: record.originalKey), authenticating: aad + Data(".old".utf8)).combined!
+        let new = try AES.GCM.seal(plain, using: SymmetricKey(data: record.candidateKey), authenticating: aad + Data(".new".utf8)).combined!
         let bytes = try JSONEncoder().encode(Envelope(old: old, new: new))
         let temporary = name + "." + UUID().uuidString
         let output = try root.file(temporary, create: true)
@@ -158,7 +180,21 @@ final class RestoreJournal: @unchecked Sendable {
         } else if identity != nil { throw RestoreError.recoveryRequired }
         guard renameat(root.fd, temporary, root.fd, name) == 0 else { throw RestoreError.ioFailure }
         identity = tempID
-        try root.sync()
+        try durability(record.phase, root.fd)
+        durablePhase = record.phase
+    }
+
+    /// Relaunch has no in-memory write receipt. Synchronize the authenticated
+    /// visible record before any rollback/committed cleanup can consume files.
+    func confirmDurability(of record: RestoreRecord) throws {
+        durablePhase = nil
+        guard let identity else { throw RestoreError.recoveryRequired }
+        try root.check(); try root.require(name, identity)
+        let file = try root.file(name); defer { try? file.close() }
+        try file.synchronize()
+        try root.require(name, identity)
+        try durability(record.phase, root.fd)
+        durablePhase = record.phase
     }
 
     func read(key: Data) throws -> RestoreRecord? {
@@ -170,19 +206,48 @@ final class RestoreJournal: @unchecked Sendable {
         guard let bytes = try file.read(upToCount: 65_537), bytes.count <= 65_536 else { throw RestoreError.recoveryRequired }
         do {
             let envelope = try JSONDecoder().decode(Envelope.self, from: bytes)
-            for sealed in [envelope.old, envelope.new] {
-                if let plain = try? AES.GCM.open(AES.GCM.SealedBox(combined: sealed), using: SymmetricKey(data: key), authenticating: aad),
-                   let record = try? JSONDecoder().decode(RestoreRecord.self, from: plain),
-                   record.originalKey.count == 32, record.candidateKey.count == 32,
-                   record.directoryName.hasPrefix(".taisa-restore-"),
-                   !record.directoryName.contains("/") {
-                    try root.require(name, readIdentity)
-                    identity = readIdentity
-                    return record
-                }
+            func open(_ sealed: Data, key: Data, role: String) throws -> Data {
+                try AES.GCM.open(AES.GCM.SealedBox(combined: sealed), using: SymmetricKey(data: key), authenticating: aad + Data(role.utf8))
             }
+            let plain: Data
+            let usedOldKey: Bool
+            if let old = try? open(envelope.old, key: key, role: ".old") {
+                plain = old; usedOldKey = true
+            } else {
+                plain = try open(envelope.new, key: key, role: ".new"); usedOldKey = false
+            }
+            let record = try JSONDecoder().decode(RestoreRecord.self, from: plain)
+            guard record.originalKey.count == 32, record.candidateKey.count == 32,
+                  !constantTimeEqual(record.originalKey, record.candidateKey),
+                  constantTimeEqual(key, usedOldKey ? record.originalKey : record.candidateKey),
+                  record.directoryName.hasPrefix(".taisa-restore-"), !record.directoryName.contains("/") else {
+                throw RestoreError.recoveryRequired
+            }
+            // Recover the alternate key only from authenticated plaintext, then
+            // authenticate BOTH role-bound envelopes. Compare every canonical
+            // field, including transaction ID, phase, paths, inodes and keys.
+            let expected = try canonical(record)
+            let old = try open(envelope.old, key: record.originalKey, role: ".old")
+            let new = try open(envelope.new, key: record.candidateKey, role: ".new")
+            guard constantTimeEqual(plain, expected), constantTimeEqual(old, expected), constantTimeEqual(new, expected) else {
+                throw RestoreError.recoveryRequired
+            }
+            try root.require(name, readIdentity)
+            identity = readIdentity
+            return record
         } catch { throw RestoreError.recoveryRequired }
-        throw RestoreError.recoveryRequired
+    }
+
+    private func canonical(_ record: RestoreRecord) throws -> Data {
+        let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
+        return try encoder.encode(record)
+    }
+
+    private func constantTimeEqual(_ lhs: Data, _ rhs: Data) -> Bool {
+        guard lhs.count == rhs.count else { return false }
+        var difference: UInt8 = 0
+        for (left, right) in zip(lhs, rhs) { difference |= left ^ right }
+        return difference == 0
     }
 
     func remove() throws {
