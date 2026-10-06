@@ -15,6 +15,24 @@ import {
 
 const repositoryRoot = resolve(import.meta.dirname, '../../..');
 
+// Security regression requested by Task 5 review: native selection bypasses
+// the explicit local-only/expiring clipboard boundary.
+test('recovery secret has no unrestricted native selection or clipboard route', async () => {
+  const view = await readFile(join(repositoryRoot, 'apple/TaisaApp/Recovery/RecoveryView.swift'), 'utf8');
+  assert.doesNotMatch(view, /textSelection\(\.enabled\)/);
+  assert.match(view, /textSelection\(\.disabled\)/);
+  assert.doesNotMatch(view, /Select to copy/);
+  assert.match(view, /Use Copy Recovery Key/);
+  assert.match(view, /\.localOnly: true/);
+  assert.match(view, /\.expirationDate: Date\(\)\.addingTimeInterval\(120\)/);
+});
+
+test('verified archive export cannot eagerly allocate its entire file', async () => {
+  const document = await readFile(join(repositoryRoot, 'apple/TaisaApp/Recovery/TaisaBackupDocument.swift'), 'utf8');
+  assert.doesNotMatch(document, /Data\s*\(\s*contentsOf:|regularFileWithContents:|encryptedBytes/);
+  assert.match(document, /PortableArchive\.verify/);
+});
+
 test('personal built products reject identity drift, background capabilities and live symbols', async () => {
   const fixture = await mkdtemp(join(tmpdir(), 'taisa-personal-bundle-'));
   const plistPath = join(fixture, 'Info.plist');

@@ -54,11 +54,16 @@ struct RecoveryView: View {
             case .failure: Task { await model.cancel() }
             }
         }, onCancellation: { Task { await model?.cancel() } })
-        .fileExporter(isPresented: $exporting, document: model?.document,
-                      contentTypes: [.taisaBackup], defaultFilename: "Taisa.taisa-backup", onCompletion: { result in
-            let succeeded = (try? result.get()) != nil
-            Task { await model?.exportFinished(success: succeeded, failed: !succeeded) }
-        }, onCancellation: { Task { await model?.exportFinished(success: false) } })
+        .sheet(isPresented: $exporting, onDismiss: {
+            Task { await model?.exportFinished(success: false) }
+        }) {
+            if let document = model?.document {
+                BackupFileExporter(document: document) { success in
+                    Task { await model?.exportFinished(success: success) }
+                    exporting = false
+                }
+            }
+        }
         .sheet(isPresented: $sharing, onDismiss: {
             Task { await model?.exportFinished(success: false) }
         }) {
@@ -77,7 +82,9 @@ struct RecoveryView: View {
                 if phase == .inactive && model.state == .authenticating {
                     model.shieldForSystemInterruption()
                 } else {
-                    importing = false; exporting = false; sharing = false
+                    if model.state != .systemExport {
+                        importing = false; exporting = false; sharing = false
+                    }
                     Task { await model.sceneBecameInactive() }
                 }
             }
@@ -108,12 +115,12 @@ struct RecoveryView: View {
             TaisaText(role: .body, content: "Unlock to finish saving and verifying your recovery key.")
             TaisaButton(role: .primary, label: "Unlock Recovery Key Setup") { Task { await model.resumeCeremony() } }
             cancel(model)
-        case .authenticating, .creating, .validating, .restoring, .finishing:
+        case .authenticating, .creating, .validating, .restoring, .systemExport, .finishing:
             TaisaText(role: .body, content: progressLabel(model.state))
                 .accessibilityIdentifier("recovery.progress")
             // Text-only progress has no spatial animation, including Reduce Motion.
             TaisaButton(role: .secondary, label: "Cancel") { Task { await model.cancel() } }
-                .disabled(model.state == .restoring || model.state == .finishing)
+                .disabled(model.state == .restoring || model.state == .systemExport || model.state == .finishing)
         case .awaitingKey:
             keyField
             TaisaButton(role: .primary, label: "Continue with Recovery Key") {
@@ -130,9 +137,9 @@ struct RecoveryView: View {
             TaisaText(role: .body, content: RecoverySetupState.manualSaveInstructions)
             if let key = model.ceremonyKey {
                 TaisaText(role: .body, content: key)
-                    .textSelection(.enabled)
+                    .textSelection(.disabled)
                     .privacySensitive()
-                    .accessibilityLabel("Recovery key. Select to copy into Passwords and keep an offline copy.")
+                    .accessibilityLabel("Recovery key. Use Copy Recovery Key to save in Passwords and keep an offline copy.")
                 TaisaButton(role: .secondary, label: "Copy Recovery Key") {
                     UIPasteboard.general.setItems([[UIPasteboard.typeAutomatic: key]], options: [
                         .localOnly: true, .expirationDate: Date().addingTimeInterval(120)
@@ -150,8 +157,8 @@ struct RecoveryView: View {
             cancel(model)
         case .exportReady:
             TaisaText(role: .body, content: "Your encrypted backup is ready. Choose where to save or send it.")
-            TaisaButton(role: .primary, label: "Export Encrypted Backup") { exporting = true }
-            TaisaButton(role: .secondary, label: "Send with AirDrop") { sharing = true }
+            TaisaButton(role: .primary, label: "Export Encrypted Backup") { model.beginSystemExport(); exporting = true }
+            TaisaButton(role: .secondary, label: "Send with AirDrop") { model.beginSystemExport(); sharing = true }
             cancel(model)
         case .importSelected:
             TaisaText(role: .body, content: "Backup selected. Authenticate to enter its recovery key.")
@@ -193,6 +200,7 @@ struct RecoveryView: View {
         case .creating: "Creating and verifying encrypted backup…"
         case .validating: "Checking backup…"
         case .restoring: "Restoring verified backup…"
+        case .systemExport: "Complete or cancel the transfer in the system sheet…"
         case .finishing: "Finishing encrypted backup…"
         default: "Working…"
         }

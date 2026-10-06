@@ -6,7 +6,7 @@ import TaisaSecurity
 
 @MainActor @Observable
 final class RecoveryViewModel {
-    enum State: Equatable { case idle, authenticating, awaitingKey, ceremony, lockedCeremony, creating, exportReady, finishing, importSelected, validating, confirmation, restoring, success, failure }
+    enum State: Equatable { case idle, authenticating, awaitingKey, ceremony, lockedCeremony, creating, exportReady, systemExport, finishing, importSelected, validating, confirmation, restoring, success, failure }
     private(set) var state: State = .idle
     private(set) var message: String?
     private(set) var document: TaisaBackupDocument?
@@ -20,6 +20,7 @@ final class RecoveryViewModel {
     private var restoring = false
     private var generation = UUID()
     private var operation: Task<Void, Never>?
+    private var cleanupTask: Task<Void, Never>?
     private var setup: RecoverySetupState?
     private var pendingAuthentication: Bool?
     private var suspendedKey: RecoveryKey?
@@ -29,10 +30,10 @@ final class RecoveryViewModel {
         self.backend = backend; self.authenticate = authenticate
     }
 
-    var isBusy: Bool { [.authenticating, .creating, .validating, .restoring, .finishing].contains(state) || operation != nil }
+    var isBusy: Bool { [.authenticating, .creating, .validating, .restoring, .systemExport, .finishing].contains(state) || operation != nil || cleanupTask != nil }
     var acceptsKey: Bool { !isShielded && state == .awaitingKey }
     var canGenerateKey: Bool { acceptsKey && !restoring }
-    var canResumeCeremony: Bool { suspendedKey != nil && [.lockedCeremony, .failure].contains(state) && !isShielded }
+    var canResumeCeremony: Bool { suspendedKey != nil && [.lockedCeremony, .failure].contains(state) && !isShielded && !isBusy }
     var canStart: Bool {
         !isBusy && !isShielded && suspendedKey == nil && [.idle, .success, .failure].contains(state)
     }
@@ -76,6 +77,7 @@ final class RecoveryViewModel {
         } catch {
             guard token == generation else { return }
             try? await backend.cleanup()
+            guard token == generation else { return }
             fail("Device authentication is required. Try again when you’re ready.")
         }
     }
@@ -165,8 +167,13 @@ final class RecoveryViewModel {
         }
     }
 
+    func beginSystemExport() {
+        guard state == .exportReady, document != nil, !isShielded, !isBusy else { return }
+        state = .systemExport
+    }
+
     func exportFinished(success: Bool, failed: Bool = false) async {
-        guard state == .exportReady else { return }
+        guard [.exportReady, .systemExport].contains(state) else { return }
         state = .finishing
         document = nil
         do {
@@ -178,16 +185,33 @@ final class RecoveryViewModel {
     }
 
     func cancel() async {
+        await cancel(preservingCeremony: false)
+    }
+
+    private func cancel(preservingCeremony: Bool) async {
         if state == .restoring { await operation?.value; return }
+        // The platform owns the file until its completion/cancellation callback.
+        if state == .systemExport || state == .finishing { return }
+        if !preservingCeremony { suspendedKey = nil; suspendedSetup = nil }
+        if let cleanupTask { await cleanupTask.value; return }
         generation = UUID(); pendingAuthentication = nil; setup = nil; ceremonyKey = nil; document = nil
-        suspendedKey = nil; suspendedSetup = nil
         let pending = operation
-        pending?.cancel()
-        await pending?.value
-        operation = nil
-        document = nil; ceremonyKey = nil; setup = nil
-        do { try await backend.cleanup(); state = .idle; message = nil }
-        catch { fail("Recovery cleanup could not finish. Reopen Taisa before trying again.") }
+        // Install one owner before yielding. Reentrant lifecycle/cancel calls
+        // join it; new operations stay disabled until that owner settles.
+        let cleanup = Task {
+            pending?.cancel()
+            await pending?.value
+            self.operation = nil
+            self.document = nil; self.ceremonyKey = nil; self.setup = nil
+            do {
+                try await self.backend.cleanup()
+                self.state = self.suspendedKey == nil ? .idle : .lockedCeremony
+                self.message = nil
+            } catch { self.fail("Recovery cleanup could not finish. Reopen Taisa before trying again.") }
+        }
+        cleanupTask = cleanup
+        await cleanup.value
+        cleanupTask = nil
     }
 
     func sceneBecameInactive() async {
@@ -195,15 +219,14 @@ final class RecoveryViewModel {
         // Once replacement is explicitly confirmed, let the journaled operation
         // settle and retain its truthful outcome. Backgrounding is not a second
         // replacement decision; the coordinator handles interruption recovery.
-        if state == .restoring { return }
+        if state == .restoring || state == .systemExport || state == .finishing { return }
         // Manual Passwords saving requires leaving the app. Retain only opaque
         // security values in memory; showing them again requires fresh device auth.
-        let savedKey = suspendedKey ?? ceremonyKey.flatMap { try? RecoveryKey(validating: $0) }
-        let savedSetup = suspendedSetup ?? setup
-        await cancel()
-        if let savedKey, let savedSetup {
-            suspendedKey = savedKey; suspendedSetup = savedSetup; state = .lockedCeremony
+        if suspendedKey == nil, let ceremonyKey, let setup {
+            suspendedKey = try? RecoveryKey(validating: ceremonyKey)
+            suspendedSetup = setup
         }
+        await cancel(preservingCeremony: true)
     }
     // LocalAuthentication itself makes the scene inactive. No key is present at
     // that point; defer acceptance until active, but backgrounding still cancels.

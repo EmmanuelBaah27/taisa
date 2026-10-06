@@ -221,3 +221,9 @@ presentations. The input uses DS typography/color; toggle labels and surrounding
 spacing use DS components/tokens. These retain platform security and accessibility
 behavior without introducing business logic into the DS. Coverage includes a
 375-point iPad layout, largest Dynamic Type, and simulator accessibility audits.
+Recovery-key text disables native selection; its content-free accessibility label
+directs users to the explicit Copy Recovery Key action with a local-only, expiring
+clipboard item. The system document exporter uses the verified file URL through
+`UIDocumentPickerViewController` (iOS 14+, within the iOS 17 baseline), not an
+in-memory `FileDocument`. Its transfer lifetime stays owned until the platform
+reports completion or cancellation; scene changes shield the underlying content.

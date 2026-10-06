@@ -3,6 +3,7 @@ import SwiftUI
 import TaisaRecovery
 import TaisaSecurity
 import TaisaStorage
+import Darwin
 @testable import Taisa
 
 @MainActor
@@ -165,6 +166,37 @@ final class RecoveryViewModelTests: XCTestCase {
         await model.cancel()
     }
 
+    // Break caught: a second lifecycle cleanup overwrites the first suspended ceremony.
+    func testOverlappingInactiveAndBackgroundPreserveUnlockRoute() async throws {
+        let fixture = try await RecoveryFixture()
+        defer { fixture.remove() }
+        let model = fixture.model()
+        await model.beginBackup(); try model.generateRecoveryKey()
+        let original = try XCTUnwrap(model.ceremonyKey)
+        let entered = DispatchSemaphore(value: 0)
+        let release = DispatchSemaphore(value: 0)
+        let backend = fixture.backend
+        let hold = Task.detached { await backend.holdForLifecycleProbe(entered: entered, release: release) }
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            DispatchQueue.global().async { entered.wait(); continuation.resume() }
+        }
+        let inactive = Task { await model.sceneBecameInactive() }
+        while model.ceremonyKey != nil { await Task.yield() }
+        var backgroundStarted = false
+        let background = Task { backgroundStarted = true; await model.sceneBecameInactive() }
+        while !backgroundStarted { await Task.yield() }
+        model.sceneBecameActive()
+        XCTAssertFalse(model.canStart)
+        release.signal()
+        await hold.value; await inactive.value; await background.value
+        XCTAssertTrue(model.canResumeCeremony)
+        XCTAssertNil(model.ceremonyKey)
+        await model.resumeCeremony()
+        XCTAssertEqual(model.ceremonyKey, original)
+        await model.cancel()
+        XCTAssertTrue(model.canStart)
+    }
+
     func testNarrowIPadLargestTypeRender() async throws {
         let fixture = try await RecoveryFixture()
         defer { fixture.remove() }
@@ -243,6 +275,140 @@ final class RecoveryViewModelTests: XCTestCase {
         XCTAssertEqual(model.message, "Encrypted backup export failed. Create a backup and try again.")
         XCTAssertNil(model.document)
         XCTAssertTrue(try fixture.transferFiles().isEmpty)
+    }
+
+    // Break caught: export buffers the entire encrypted archive in process memory.
+    func testVerifiedExportRetainsNoArchiveBytes() async throws {
+        let fixture = try await RecoveryFixture()
+        defer { fixture.remove() }
+        let model = fixture.model()
+        await model.beginBackup(); await model.submitKey(try RecoveryKey.generate().formatted)
+        let document = try XCTUnwrap(model.document)
+        XCTAssertFalse(Mirror(reflecting: document).children.contains { $0.value is Data },
+                       "The verified export must retain a file reference, not archive bytes")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: document.shareURL.path))
+        await model.cancel()
+    }
+
+    // Break caught: an inactive scene deletes a file while the system exporter reads it.
+    func testSystemExportOwnsFileUntilSuccessCancellationOrFailure() async throws {
+        let fixture = try await RecoveryFixture()
+        defer { fixture.remove() }
+        for outcome in [0, 1, 2] {
+            let model = fixture.model()
+            await model.beginBackup(); await model.submitKey(try RecoveryKey.generate().formatted)
+            let url = try XCTUnwrap(model.document).shareURL
+            model.beginSystemExport()
+            await model.sceneBecameInactive()
+            await model.cancel()
+            XCTAssertTrue(FileManager.default.fileExists(atPath: url.path))
+            XCTAssertTrue(model.isShielded)
+            await model.exportFinished(success: outcome == 0, failed: outcome == 2)
+            XCTAssertFalse(FileManager.default.fileExists(atPath: url.path))
+            XCTAssertNil(model.document)
+            XCTAssertTrue(try fixture.transferFiles().isEmpty)
+            model.sceneBecameActive()
+            XCTAssertTrue(model.canStart)
+        }
+    }
+
+    // Break caught: process-death artifacts accumulate, or a sweep removes live/foreign files.
+    func testStartupSweepsOnlyUnlockedOwnedTransferArtifacts() async throws {
+        let fixture = try await RecoveryFixture()
+        defer { fixture.remove() }
+        let model = fixture.model()
+        await model.beginBackup(); await model.submitKey(try RecoveryKey.generate().formatted)
+        let live = try XCTUnwrap(model.document).shareURL
+        let root = fixture.root.appendingPathComponent("transfers")
+        let orphan = root.appendingPathComponent(UUID().uuidString)
+        let unknown = root.appendingPathComponent(UUID().uuidString)
+        for directory in [orphan, unknown] {
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
+            FileManager.default.createFile(atPath: directory.appendingPathComponent(".owner").path, contents: nil, attributes: [.posixPermissions: 0o600])
+        }
+        let partial = orphan.appendingPathComponent(".taisa-" + UUID().uuidString)
+        try FileManager.default.createDirectory(at: partial, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
+        FileManager.default.createFile(atPath: partial.appendingPathComponent("checkpoint.sqlite").path, contents: Data([1]), attributes: [.posixPermissions: 0o600])
+        FileManager.default.createFile(atPath: unknown.appendingPathComponent("not-owned").path, contents: Data([2]))
+        let candidate = fixture.root.appendingPathComponent(".taisa-restore-" + UUID().uuidString)
+        try FileManager.default.createDirectory(at: candidate, withIntermediateDirectories: false)
+        let symlink = root.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createSymbolicLink(at: symlink, withDestinationURL: candidate)
+        _ = try await fixture.backend.openStore()
+        XCTAssertFalse(FileManager.default.fileExists(atPath: orphan.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: live.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: unknown.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: candidate.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: symlink.path))
+        await model.cancel()
+    }
+
+    // Boundary-only sparse probe: authentication is tested with the real archive
+    // above; after verification this fixture expands the file solely to measure
+    // the system URL handoff, not to claim sparse bytes form a valid archive.
+    func testNearLimitSparseExportHandoffHasBoundedMemoryAndCancellation() async throws {
+        let fixture = try await RecoveryFixture()
+        defer { fixture.remove() }
+        let model = fixture.model()
+        await model.beginBackup(); await model.submitKey(try RecoveryKey.generate().formatted)
+        let document = try XCTUnwrap(model.document)
+        let file = try FileHandle(forWritingTo: document.shareURL)
+        try file.truncate(atOffset: 1_099_000_000); try file.close()
+        var status = stat()
+        XCTAssertEqual(lstat(document.shareURL.path, &status), 0)
+        XCTAssertLessThan(status.st_blocks * 512, 4_000_000)
+        let before = try residentBytes()
+        var completion: Bool?
+        let delegate = BackupFileExporter.Coordinator { completion = $0 }
+        let picker = document.exportController(delegate: delegate)
+        model.beginSystemExport()
+        let growth = max(0, try residentBytes() - before)
+        XCTAssertLessThan(growth, 64 * 1_024 * 1_024)
+        let evidence = XCTAttachment(string: "Sparse bytes: 1099000000; resident growth: \(growth) bytes")
+        evidence.name = "file-backed-export-memory"; evidence.lifetime = .keepAlways; add(evidence)
+        delegate.documentPickerWasCancelled(picker)
+        XCTAssertEqual(completion, false)
+        await model.exportFinished(success: completion == true)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: document.shareURL.path))
+    }
+
+    func testVerifiedLargeArchiveExportMemoryDoesNotScaleWithFileBytes() async throws {
+        let fixture = try await RecoveryFixture()
+        defer { fixture.remove() }
+        let store = try await fixture.backend.openStore()
+        try await store.write { db in
+            try db.execute(sql: "CREATE TABLE export_probe (payload BLOB)")
+            try db.execute(sql: "INSERT INTO export_probe VALUES (zeroblob(67108864))")
+        }
+        let key = try RecoveryKey.generate()
+        let receipt = try await fixture.snapshot.createPortableArchive(
+            at: fixture.root.appendingPathComponent("large.taisa-backup"), recoveryKey: key)
+        let before = try residentBytes()
+        let document = try TaisaBackupDocument(verified: receipt, recoveryKey: key)
+        let growth = max(0, try residentBytes() - before)
+        XCTAssertGreaterThan(receipt.manifest.plaintextByteCount, 67_108_864)
+        XCTAssertLessThan(growth, 32 * 1_024 * 1_024)
+        XCTAssertFalse(Mirror(reflecting: document).children.contains { $0.value is Data })
+        let evidence = XCTAttachment(string: "Verified database bytes: \(receipt.manifest.plaintextByteCount); resident growth: \(growth) bytes")
+        evidence.name = "verified-large-export-memory"; evidence.lifetime = .keepAlways; add(evidence)
+    }
+}
+
+private func residentBytes() throws -> Int64 {
+    var info = mach_task_basic_info()
+    var count = mach_msg_type_number_t(MemoryLayout<mach_task_basic_info>.size / MemoryLayout<natural_t>.size)
+    let result = withUnsafeMutablePointer(to: &info) { pointer in
+        pointer.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
+            task_info(mach_task_self_, task_flavor_t(MACH_TASK_BASIC_INFO), $0, &count)
+        }
+    }
+    guard result == KERN_SUCCESS else { throw NSError(domain: "MemoryProbe", code: Int(result)) }
+    return Int64(info.resident_size)
+}
+
+private extension PersonalRecoveryBackend {
+    func holdForLifecycleProbe(entered: DispatchSemaphore, release: DispatchSemaphore) {
+        entered.signal(); release.wait()
     }
 }
 
