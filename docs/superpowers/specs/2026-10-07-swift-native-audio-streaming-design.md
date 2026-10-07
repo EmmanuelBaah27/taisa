@@ -1,7 +1,7 @@
 # Swift Native Audio and Conversation Streaming Design
 
 **Date:** 2026-10-07
-**Status:** Approved in conversation; written-spec review pending
+**Status:** Approved
 **Tier:** Full
 **Track:** Platform
 **Scope:** `docs/features/swift-native-audio-streaming.md`

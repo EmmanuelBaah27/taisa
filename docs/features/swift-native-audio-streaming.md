@@ -2,7 +2,7 @@
 
 **Tier:** Full
 **Track:** Platform
-**Status:** Ready to plan
+**Status:** Scope approved; implementation plan awaiting approval
 **Depends on:** shipped Swift native foundation and encrypted local persistence/recovery
 
 ---
