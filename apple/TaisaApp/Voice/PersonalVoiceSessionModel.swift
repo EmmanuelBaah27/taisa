@@ -6,6 +6,18 @@ import TaisaStorage
 import TaisaVoice
 
 func voiceActionFailureStatus(_ error: any Error) -> String {
+    if let captureError = error as? AudioCaptureError {
+        let code: String
+        switch captureError {
+        case .permissionDenied: code = "CAPTURE_PERMISSION_DENIED"
+        case .turnAlreadyOwned: code = "CAPTURE_TURN_ALREADY_OWNED"
+        case .noActiveCapture: code = "CAPTURE_NO_ACTIVE_CAPTURE"
+        case .invalidState: code = "CAPTURE_INVALID_STATE"
+        case .audioNotFinalized: code = "CAPTURE_AUDIO_NOT_FINALIZED"
+        case .unsupportedPlatform: code = "CAPTURE_UNSUPPORTED_PLATFORM"
+        }
+        return "Voice action failed (\(code))."
+    }
     let failure = error as NSError
     return "Voice action failed (\(failure.domain) \(failure.code))."
 }

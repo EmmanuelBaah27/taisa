@@ -9,6 +9,39 @@ import TaisaStorage
 
 @Suite("Voice review regressions")
 struct VoiceSessionReviewRegressionTests {
+    @Test("relaunch terminalizes a checkpointed recording even when prepare never produced a file")
+    func relaunchRecoversRecordingWithoutPreparedAudio() async throws {
+        let capture = ReviewCaptureSpy()
+        let initial = VoiceTurnRecord(
+            id: ReviewIDs.turn.uuidString,
+            conversationID: ReviewIDs.conversation.uuidString,
+            transcriptionRequestID: ReviewIDs.transcription.uuidString,
+            transcriptionIdempotencyKey: "transcription-1",
+            coachingRequestID: ReviewIDs.coaching.uuidString,
+            coachingIdempotencyKey: "coaching-1",
+            state: .recording,
+            stage: .capture,
+            createdAtMS: 1,
+            updatedAtMS: 1
+        )
+        let coordinator = VoiceSessionCoordinator(
+            initial: initial,
+            checkpoints: ReviewCheckpointSpy(),
+            transcription: ReviewTranscriptionRunner(events: []),
+            coaching: ReviewCoachingRunner(events: []),
+            connectivity: ReviewConnectivity(),
+            reconciliation: ReviewReconciliation(),
+            capture: capture,
+            audio: ReviewAudioSpy()
+        )
+
+        try await coordinator.recoverIfAuthorized()
+
+        #expect(await coordinator.snapshot().durable.state == .terminalFailure)
+        #expect(await coordinator.snapshot().durable.stage == .finished)
+        #expect(await capture.released == [ReviewIDs.turn])
+    }
+
     @Test("coordinator commits terminal history through the encrypted repository")
     func encryptedRepositoryIntegration() async throws {
         let directory = FileManager.default.temporaryDirectory
