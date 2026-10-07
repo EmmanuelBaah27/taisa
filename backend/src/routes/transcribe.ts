@@ -267,10 +267,23 @@ export function createTranscribeRouter(options: TranscribeRouterOptions = {}) {
         );
       }
 
+      let store: TranscriptionIdempotencyStore;
+      try {
+        store = receiptStore();
+      } catch (error) {
+        throw new TranscriptionBoundaryError(
+          503,
+          'TRANSCRIPTION_CONFIG_ERROR',
+          'Transcription is not configured',
+          true,
+          error,
+        );
+      }
+
       const measuredDurationSeconds = await measureAudioDurationSeconds(req.file.path);
       const audioSHA256 = createHash('sha256')
         .update(await fs.promises.readFile(req.file.path)).digest('hex');
-      const idempotency = receiptStore().begin({
+      const idempotency = store.begin({
         key: idempotencyKey,
         requestId: req.requestId ?? 'missing-request-id',
         ownerId,
@@ -342,7 +355,7 @@ export function createTranscribeRouter(options: TranscribeRouterOptions = {}) {
       const fileName = `audio.${safeAudioExtension(req.file.originalname)}`;
       const client = options.client ?? new OpenAI({ apiKey: environment.OPENAI_API_KEY });
       reservation.beginProviderInvocation();
-      receiptStore().markProviderStarted(idempotencyKey);
+      store.markProviderStarted(idempotencyKey);
       const provider = client.audio.transcriptions.create.bind(
         client.audio.transcriptions,
       ) as unknown as StreamingTranscriptionProvider;
@@ -366,7 +379,7 @@ export function createTranscribeRouter(options: TranscribeRouterOptions = {}) {
         if (res.destroyed) break;
         if (event.type !== 'transcript.delta') {
           terminalWritten = true;
-          receiptStore().complete(idempotencyKey, event as unknown as Record<string, unknown>);
+          store.complete(idempotencyKey, event as unknown as Record<string, unknown>);
           if (event.type === 'transcript.completed' || event.type === 'transcript.no_speech') {
             reservation.commit(estimatedUsage);
           } else {
