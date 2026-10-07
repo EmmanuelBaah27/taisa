@@ -184,6 +184,10 @@ public actor VoiceSessionCoordinator {
 
     public func connectivityChanged(isAvailable: Bool) async throws {
         guard isAvailable else { return }
+        if durable.stage == .capture,
+           durable.state == .recording || durable.state == .paused {
+            return
+        }
         try await recoverIfAuthorized()
     }
 
