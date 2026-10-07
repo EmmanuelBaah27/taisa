@@ -52,8 +52,9 @@ legacy migration source until its required behavior and unique work are accounte
   UUID is the user identifier. Do not add application auth middleware by accident.
 - The legacy backend remains Node/Express with SQLite and no migration framework. Schema
   changes require an approved migration path and matching durable documentation.
-- Do not eject or convert the legacy Expo application. Install `mobile/` dependencies from
-  `mobile/`; root workspaces are `backend` and `shared` only.
+- Do not run `npx expo run:ios` or `npx expo eject` without explicit approval; use
+  `npx expo start` for the legacy application. Install `mobile/` dependencies from `mobile/`;
+  root workspaces are `backend` and `shared` only.
 - New or rebuilt legacy UI uses NativeWind and the documented design system; do not add
   `StyleSheet.create()` to new or rebuilt components.
 - Do not confuse the legacy one-shot journal analyser with the unimplemented four-mode Senior

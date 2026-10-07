@@ -231,14 +231,13 @@ lifecycle against implementation, canonical preview, verification, device eviden
 `main`. Linear controls live lifecycle; Git controls versioned technical truth. Failed Linear
 access uses the visible offline fallback and must be caught up before a stage or gate.
 
-Named voice deferrals: hands-free turn-taking; simultaneous playback and capture; interruption detection
-and barge-in; full-duplex conversational voice; and live transcription before Send.
-Current audio contracts must not assume capture and playback
-can never coexist, but these records do not authorize implementation.
+Deferring concurrent voice behavior must not make current audio/session contracts assume that
+capture and playback can never coexist. Linear holds the mutable outcome inventory and
+lifecycle; Git retains only this durable architectural guardrail.
 
 Monthly reconciliation runs the first Monday at 09:00 Africa/Accra as a thread heartbeat. It
-checks Linear against durable Git contracts, reports access failures, and stays quiet when
-there is no meaningful change. It may record safe routine evidence but never approves Scope, Plan, priority changes, lifecycle promotion into active work, or Ship.
+checks Linear against durable Git contracts, reports access failures, and stays quiet when there is no meaningful change.
+It may record safe routine evidence but never approves Scope, Plan, priority changes, lifecycle promotion into active work, or Ship.
 
 ## 11. Documentation, Closeout, and memory
 

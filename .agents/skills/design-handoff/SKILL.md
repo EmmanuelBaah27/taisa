@@ -39,7 +39,7 @@ In all paths: DS tokens carry the precision the design source doesn't provide.
 ## Step-by-step
 
 ```
-1. READ  → scope doc for the feature                    [TAISA: docs/features/<name>.md]
+1. READ  → approved Scope in the matching Linear issue/document
 2. READ  → Work Map and Product Discussion decisions
 3. READ  → design system tokens                         [TAISA: docs/design-system.md]
 4. SCAN  → existing components                          [TAISA: mobile/src/components/]
@@ -102,7 +102,7 @@ List any gaps. These go into the plan as platform prerequisites if not already c
 ```markdown
 # Design Handoff — [Feature Name]
 
-**Scope doc:** docs/features/<name>.md
+**Scope:** [Linear issue/document URL]
 **Design source:** [Figma link or screenshot reference]
 **Status:** Draft / Confirmed
 **Last updated:** YYYY-MM-DD
@@ -202,8 +202,11 @@ Baah does not need to say "ready to plan."
 | Need | Read |
 |---|---|
 | Design tokens | `docs/design-system.md` |
-| Feature scope | `docs/features/<name>.md` |
+| Approved Scope | Matching Taisa Linear issue or attached document |
 | Live priority / dependencies | Matching Taisa Linear issue and milestone |
 | API shape | `docs/api.md` |
 | Workflow stages | `docs/workflow.md` |
-</content>
+
+Write the confirmed handoff to the matching Linear issue or attached Linear document.
+Repository feature scopes, specifications, plans, and QA notes are historical input only;
+never update or cite them as the live Scope, Plan, stage, or approval artifact.

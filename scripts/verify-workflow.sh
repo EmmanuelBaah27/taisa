@@ -30,12 +30,11 @@ for skill in "${active_skills[@]}"; do
   compatibility_skill=".claude/skills/$skill/SKILL.md"
 
   test -f "$canonical_skill" || fail "$skill is missing from the canonical agent-neutral skill tree"
-  if test -e "$compatibility_skill"; then
-    test -L "$compatibility_skill" ||
-      fail "$compatibility_skill is an independently editable duplicate"
-    test "$(cd "$(dirname "$compatibility_skill")" && realpath "$(basename "$compatibility_skill")")" = \
-      "$(realpath "$canonical_skill")" || fail "$compatibility_skill does not forward to the canonical skill"
-  fi
+  test -L "$compatibility_skill" ||
+    fail "$compatibility_skill is missing or independently editable"
+  test -f "$compatibility_skill" || fail "$compatibility_skill resolves to a missing file"
+  test "$(cd "$(dirname "$compatibility_skill")" && realpath "$(basename "$compatibility_skill")")" = \
+    "$(realpath "$canonical_skill")" || fail "$compatibility_skill does not forward to the canonical skill"
 done
 
 # Linear is the sole live delivery authority. These checks intentionally stay
@@ -67,27 +66,29 @@ rg -q 'e95356d8-17f7-4700-bdfe-222782bea546' \
 rg -qi 'every actionable task.*Linear issue|Linear issue.*every actionable task' \
   .agents/skills/taisa-workflow/SKILL.md || fail "universal Linear issue intake is missing"
 
-for capability in \
-  'hands-free turn-taking' \
-  'simultaneous.*playback.*capture' \
-  'barge-in' \
-  'full-duplex' \
-  'live transcription before Send'; do
-  rg -qi "$capability" docs/workflow.md .agents/skills/taisa-workflow/SKILL.md ||
-    fail "deferred voice capability contract is missing: $capability"
+for authority_file in docs/workflow.md .agents/skills/taisa-workflow/SKILL.md; do
+  rg -qi 'Captured.*Watching.*Candidate.*Planned.*Shipped.*Dropped' "$authority_file" ||
+    fail "$authority_file is missing the deferred-capability lifecycle"
+  rg -qi 'first Monday.*09:00.*Africa/Accra' "$authority_file" ||
+    fail "$authority_file is missing the monthly reconciliation cadence"
+  rg -qi 'quiet.*no.*meaningful change|no meaningful change.*quiet' "$authority_file" ||
+    fail "$authority_file is missing the monthly reconciliation quiet-state boundary"
+  rg -qi 'never approves.*Scope.*Plan.*priority.*lifecycle promotion.*Ship' "$authority_file" ||
+    fail "$authority_file is missing the complete monthly reconciliation approval boundary"
 done
-rg -qi 'Captured.*Watching.*Candidate.*Planned.*Shipped.*Dropped' \
-  docs/workflow.md .agents/skills/taisa-workflow/SKILL.md ||
-  fail "deferred-capability lifecycle is missing"
-rg -qi 'first Monday.*09:00.*Africa/Accra' \
-  docs/workflow.md .agents/skills/taisa-workflow/SKILL.md ||
-  fail "monthly reconciliation cadence is missing"
-rg -qi 'quiet.*no.*meaningful change|no meaningful change.*quiet' \
-  docs/workflow.md .agents/skills/taisa-workflow/SKILL.md ||
-  fail "monthly reconciliation quiet-state boundary is missing"
-rg -qi 'never approves.*Scope.*Plan.*Ship|must not approve.*Scope.*Plan.*Ship' \
-  docs/workflow.md .agents/skills/taisa-workflow/SKILL.md ||
-  fail "monthly reconciliation approval boundary is missing"
+
+if rg -n 'current named voice deferrals|Named voice deferrals' \
+  docs/workflow.md .agents/skills/taisa-workflow/SKILL.md; then
+  fail "repository instructions duplicate Linear's current deferred-capability inventory"
+fi
+
+if rg -n 'docs/features/<|Roadmap status vocabulary|output to correct location.*docs/features' \
+  .agents/skills/scope-writer/SKILL.md .agents/skills/design-handoff/SKILL.md; then
+  fail "active skills still treat repository Scope or roadmap state as live authority"
+fi
+
+rg -q 'npx expo run:ios.*npx expo eject|npx expo eject.*npx expo run:ios' AGENTS.md ||
+  fail "AGENTS.md is missing the approval boundary for legacy native project generation"
 
 rg -q 'main.*only permanent branch|only permanent branch.*main' docs/workflow.md || fail "canonical main policy is missing"
 rg -q '<type>/<short-kebab-case-description>' docs/workflow.md || fail "typed branch naming policy is missing"

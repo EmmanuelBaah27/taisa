@@ -269,11 +269,9 @@ canonical preview, verification, device evidence, and `main`; never promote a de
 because implementation resembles it. Linear owns live lifecycle; Git owns the durable
 technical constraints and evidence that must version with code.
 
-The current named voice deferrals are hands-free turn-taking, simultaneous playback and capture,
-interruption detection and barge-in, full-duplex conversational voice, and live transcription before Send.
-They remain separate so later Scope can
-evaluate value, privacy, audio-session ownership, dependencies, and failure recovery without
-silently importing the entire duplex stack.
+Deferring concurrent voice behavior must not hard-code permanent mutual exclusion between
+capture and playback into current audio/session contracts. Linear holds the mutable outcome
+inventory and lifecycle; Git retains only this durable architectural guardrail.
 
 ### Monthly reconciliation heartbeat
 

@@ -4,13 +4,15 @@ description: >
   Use when a feature idea needs a formal scope doc — user describes a feature,
   says "scope this", "let's define this", or a Linear issue needs scoping.
   Reads current project state, asks targeted clarifying questions, flags missing
-  or weak acceptance criteria, and writes the completed doc to the correct location.
+  or weak acceptance criteria, and writes the approved result to the matching Linear issue
+  or attached Linear document.
 ---
 
 # Scope Writer
 
-Converts raw feature ideas into agreed scope docs. Reads Linear live delivery state, fills gaps
-with targeted questions, drafts a complete scope doc, and writes it to the right place.
+Converts raw feature ideas into agreed Scope. Reads Linear live delivery state, fills gaps
+with targeted questions, drafts a complete Scope, and writes it to the matching issue or an
+attached Linear document.
 
 ---
 
@@ -24,9 +26,9 @@ with targeted questions, drafts a complete scope doc, and writes it to the right
              Integration slices, sizes, dependencies, and pickup order
 4. SELECT  → Baah selects the next slice
 5. DISCUSS → show its track-specific Discussion Map; ask one question at a time
-6. DRAFT   → complete scope doc using the format below
+6. DRAFT   → complete Scope using the format below
 7. FLAG    → check every AC against the quality rules before showing
-8. WRITE   → output to correct location                           [TAISA: docs/features/<name>.md]
+8. WRITE   → matching Linear issue or attached Linear document
 9. UPDATE  → record Scope approval and next gate in the Linear issue
 10. CHAIN  → after Baah agrees scope doc:
              Platform track → invoke writing-plans directly
@@ -139,30 +141,21 @@ These are blocked by design in v1. Flag the AC to Baah before including it.
 Independent Product foundation may proceed after Product Plan approval. Contract wiring and
 live-data integration wait for the named Platform dependency.
 
-### Roadmap status vocabulary
+### Live authority and historical inputs
 
-| Status | Meaning |
-|--------|---------|
-| Needs scoping | No scope doc written |
-| Ready to plan | Scope doc written and agreed |
-| In plan | Implementation plan being written |
-| In build | Active development |
-| Done | Shipped and merged |
-
-### Document locations
-
-| Document | Location |
-|----------|----------|
-| Scope docs | `docs/features/<feature-name>.md` |
-| Implementation plans | `docs/superpowers/plans/<name>.md` *(written at Plan stage, not now)* |
+The matching Linear issue owns live stage, Scope, Plan, approvals, dependencies, and
+acceptance. Store longer Scope or Plan artifacts as attached Linear documents. Existing
+repository feature scopes and plans are historical input only; never update or cite them as
+the current gate artifact. Durable architecture, API, data, design-system, migration, and
+decision documents remain Git authority for the technical truths that version with code.
 
 ### Feature tiers
 
 | Tier | Signal | Scope doc? |
 |---|---|---|
-| Quick (< 1h) | Single change, no new DS components, no Platform work | No — the agent states intent in one line and builds |
-| Standard (half day) | New screen or significant component | Inline Work and Discussion Maps; lightweight scope and plan with separate approvals |
-| Full (multi-day) | New Platform work, new DS components, complex Product | Full scope doc, all gates |
+| Quick (< 1h) | Single change, no new DS components, no Platform work | Compact Linear Scope and Plan evidence; applicable approvals still precede Build |
+| Standard (half day) | New screen or significant component | Inline Work and Discussion Maps in Linear; lightweight Scope and Plan with separate approvals |
+| Full (multi-day) | New Platform work, new DS components, complex Product | Full Linear Scope/Plan artifacts and all gates |
 
 The agent states tier before scoping: "This is a Standard build."
 Baah can override: "treat this as Quick" or "go Full on this."
