@@ -43,7 +43,7 @@ public struct UsageReceipt: Equatable, Sendable, Decodable {
     }
 }
 
-public enum TranscriptionStreamEvent: Equatable, Sendable, Decodable {
+public enum TranscriptionStreamEvent: Equatable, Sendable, Decodable, StrictStreamEvent {
     case delta(requestId: UUID, sequence: Int, delta: String)
     case completed(
         requestId: UUID,
@@ -55,6 +55,22 @@ public enum TranscriptionStreamEvent: Equatable, Sendable, Decodable {
     )
     case noSpeech(requestId: UUID, sequence: Int)
     case failed(requestId: UUID, sequence: Int)
+
+    public var streamRequestID: UUID {
+        switch self {
+        case let .delta(id, _, _), let .completed(id, _, _, _, _, _), let .noSpeech(id, _), let .failed(id, _): id
+        }
+    }
+
+    public var streamSequence: Int {
+        switch self {
+        case let .delta(_, sequence, _), let .completed(_, sequence, _, _, _, _), let .noSpeech(_, sequence), let .failed(_, sequence): sequence
+        }
+    }
+
+    public var isTerminalStreamEvent: Bool {
+        switch self { case .delta: false; case .completed, .noSpeech, .failed: true }
+    }
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: DynamicCodingKey.self)
