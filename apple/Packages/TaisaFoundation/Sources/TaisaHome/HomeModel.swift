@@ -6,9 +6,12 @@ import TaisaStorage
 @Observable
 public final class HomeModel {
     public private(set) var state: HomeState = .idle
+    public private(set) var completionUndoToken: WeeklyWorkUndoToken?
+    public var canUndoCompletion: Bool { completionUndoToken != nil }
 
     @ObservationIgnored private let client: HomeClient
     @ObservationIgnored private var generation = 0
+    @ObservationIgnored private var mutationGeneration = 0
     @ObservationIgnored private var loadTask: Task<LoadOutcome, Never>?
 
     public init(client: HomeClient) {
@@ -61,6 +64,62 @@ public final class HomeModel {
                 state = .idle
             }
         }
+    }
+
+    public func complete(actionID: String) async {
+        mutationGeneration += 1
+        let active = mutationGeneration
+        do {
+            let token = try await client.complete(actionID)
+            guard mutationGeneration == active else { return }
+            completionUndoToken = token
+            await load()
+        } catch {
+            guard mutationGeneration == active else { return }
+            publishMutationFailure(error)
+        }
+    }
+
+    public func undoCompletion() async {
+        guard let token = completionUndoToken else { return }
+        mutationGeneration += 1
+        let active = mutationGeneration
+        do {
+            try await client.restore(token)
+            guard mutationGeneration == active else { return }
+            completionUndoToken = nil
+            await load()
+        } catch {
+            guard mutationGeneration == active else { return }
+            publishMutationFailure(error)
+        }
+    }
+
+    public func place(actionID: String, weekContaining: Date, plannedDay: Date?) async {
+        await mutate { try await client.place(actionID, weekContaining, plannedDay) }
+    }
+
+    public func move(actionID: String, weekContaining: Date, plannedDay: Date?) async {
+        await mutate { try await client.move(actionID, weekContaining, plannedDay) }
+    }
+
+    private func mutate(_ operation: () async throws -> Void) async {
+        mutationGeneration += 1
+        let active = mutationGeneration
+        do {
+            try await operation()
+            guard mutationGeneration == active else { return }
+            await load()
+        } catch {
+            guard mutationGeneration == active else { return }
+            publishMutationFailure(error)
+        }
+    }
+
+    private func publishMutationFailure(_ error: any Error) {
+        let issue = Self.issue(for: error)
+        if let snapshot = state.snapshot { state = .content(snapshot, isRefreshing: false, issue: issue) }
+        else { state = .failure(issue) }
     }
 
     private static func issue(for error: any Error) -> HomeIssue {
