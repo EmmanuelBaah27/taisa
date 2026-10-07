@@ -46,6 +46,40 @@ struct VoiceSessionReviewRegressionTests {
         #expect(await audio.deleted == ["00000000-0000-0000-0000-000000000201"])
     }
 
+    @Test("relaunch finishes local cleanup before connectivity becomes available")
+    func relaunchFinishesCleanupWhileOffline() async throws {
+        let audio = ReviewAudioSpy()
+        let initial = VoiceTurnRecord(
+            id: ReviewIDs.turn.uuidString,
+            conversationID: ReviewIDs.conversation.uuidString,
+            transcriptionRequestID: ReviewIDs.transcription.uuidString,
+            transcriptionIdempotencyKey: "transcription-1",
+            coachingRequestID: ReviewIDs.coaching.uuidString,
+            coachingIdempotencyKey: "coaching-1",
+            state: .discarded,
+            stage: .cleanup,
+            audioFileID: "00000000-0000-0000-0000-000000000201",
+            cleanupState: .pending,
+            createdAtMS: 1,
+            updatedAtMS: 1
+        )
+        let coordinator = VoiceSessionCoordinator(
+            initial: initial,
+            checkpoints: ReviewCheckpointSpy(),
+            transcription: ReviewTranscriptionRunner(events: []),
+            coaching: ReviewCoachingRunner(events: []),
+            connectivity: ReviewConnectivity(available: false),
+            reconciliation: ReviewReconciliation(),
+            capture: ReviewCaptureSpy(),
+            audio: audio
+        )
+
+        try await coordinator.recoverIfAuthorized()
+
+        #expect(await audio.deleted == ["00000000-0000-0000-0000-000000000201"])
+        #expect(await coordinator.snapshot().durable.stage == .finished)
+    }
+
     @Test("relaunch terminalizes a checkpointed recording even when prepare never produced a file")
     func relaunchRecoversRecordingWithoutPreparedAudio() async throws {
         let capture = ReviewCaptureSpy()
@@ -531,7 +565,9 @@ private actor ReviewCoachingRunner: VoiceCoachingRunning {
 }
 
 private actor ReviewConnectivity: ConnectivityMonitoring {
-    func isAvailable() async -> Bool { true }
+    private let available: Bool
+    init(available: Bool = true) { self.available = available }
+    func isAvailable() async -> Bool { available }
 }
 
 private actor ReviewReconciliation: CoachingReconciliationLookingUp {

@@ -198,15 +198,24 @@ public actor VoiceSessionCoordinator {
             try await send(.captureFailed(code: "CAPTURE_INTERRUPTED"))
             return
         }
+        let recovery = VoiceSessionRecovery.action(for: durable)
+        if recovery == .cleanupOnly {
+            guard durable.cleanupState == .pending else { return }
+            if let fileID = durable.audioFileID {
+                try await deleteAudio(fileID)
+            } else if durable.state.isTerminal {
+                try await send(.cleanupCompleted)
+            }
+            return
+        }
+
         guard await connectivity.isAvailable() else { return }
 
-        switch VoiceSessionRecovery.action(for: durable) {
+        switch recovery {
         case .none, .requireConfirmation:
             return
         case .cleanupOnly:
-            if let fileID = durable.audioFileID, durable.cleanupState == .pending {
-                try await deleteAudio(fileID)
-            }
+            return
         case .retryTranscription:
             if durable.state == .recoverableFailure {
                 scheduleDurableRetry(stage: .transcription)
