@@ -22,7 +22,7 @@ relevant to the task.
 | Shared chat and recording shell | Product | Build | `codex/chat-close-auth-handoff` | Baah paired-device QA after preview integration |
 | Glass elevation, alignment, and interaction feedback | Product | Review + QA | `fix/glass-elevation-keyboard-surfaces` | canonical preview integration + Baah device QA |
 | SwiftUI native rebuild | Platform + Product | Shipped | `main` | — |
-| Swift native encrypted storage, sync, and recovery | Platform | Review + QA | `feature/swift-native-encrypted-sync` | Baah Ship approval; live CloudKit remains blocked on paid Apple Developer Program membership and production schema promotion remains unapproved. |
+| Swift native audio and conversation streaming | Platform | Scope | `docs/swift-native-audio-streaming` | Baah written-spec review; implementation plan is not yet approved |
 
 ---
 
