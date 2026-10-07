@@ -9,6 +9,39 @@ import TaisaStorage
 
 @Suite("Voice review regressions")
 struct VoiceSessionReviewRegressionTests {
+    @Test("relaunch cleans up a legacy cancelled capture and unlocks the next turn")
+    func relaunchRecoversCancelledCapture() async throws {
+        let capture = ReviewCaptureSpy()
+        let initial = VoiceTurnRecord(
+            id: ReviewIDs.turn.uuidString,
+            conversationID: ReviewIDs.conversation.uuidString,
+            transcriptionRequestID: ReviewIDs.transcription.uuidString,
+            transcriptionIdempotencyKey: "transcription-1",
+            coachingRequestID: ReviewIDs.coaching.uuidString,
+            coachingIdempotencyKey: "coaching-1",
+            state: .cancelled,
+            stage: .capture,
+            createdAtMS: 1,
+            updatedAtMS: 1
+        )
+        let coordinator = VoiceSessionCoordinator(
+            initial: initial,
+            checkpoints: ReviewCheckpointSpy(),
+            transcription: ReviewTranscriptionRunner(events: []),
+            coaching: ReviewCoachingRunner(events: []),
+            connectivity: ReviewConnectivity(),
+            reconciliation: ReviewReconciliation(),
+            capture: capture,
+            audio: ReviewAudioSpy()
+        )
+
+        try await coordinator.recoverIfAuthorized()
+
+        #expect(await coordinator.snapshot().durable.state == .discarded)
+        #expect(await coordinator.snapshot().durable.stage == .finished)
+        #expect(await capture.discarded == [ReviewIDs.turn])
+    }
+
     @Test("relaunch terminalizes a checkpointed recording even when prepare never produced a file")
     func relaunchRecoversRecordingWithoutPreparedAudio() async throws {
         let capture = ReviewCaptureSpy()
