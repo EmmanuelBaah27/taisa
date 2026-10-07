@@ -41,6 +41,10 @@ actor PersonalRecoveryBackend {
 
     func deviceID() -> String { installationID.uuidString }
 
+    func voiceStoreContext() async throws -> (store: TaisaStore, deviceID: UUID) {
+        (try await openStore(), installationID)
+    }
+
     func createBackup(key: RecoveryKey) async throws -> TaisaBackupDocument {
         let directory = try makeTransferDirectory()
         do {

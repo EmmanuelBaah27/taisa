@@ -53,7 +53,7 @@ struct RepositorySpec: Sendable {
 /// v1 storage tables and their identity-bearing parent references.
 enum DomainEntity: String, CaseIterable {
     case profile, conversation, message, goal, milestone, action, evidence, memory, memory_source
-    case weekly_placement, work_event, insight, insight_source, insight_revision
+    case weekly_placement, work_event, insight, insight_source, insight_revision, voice_turn
 
     var table: String {
         switch self {
@@ -71,6 +71,7 @@ enum DomainEntity: String, CaseIterable {
         case .insight: "insights"
         case .insight_source: "insight_sources"
         case .insight_revision: "insight_revisions"
+        case .voice_turn: "voice_turns"
         }
     }
 
@@ -83,6 +84,11 @@ enum DomainEntity: String, CaseIterable {
         case .memory_source: [("memoryItemID", "memory_item_id", "memory_items")]
         case .weekly_placement, .work_event: [("actionID", "action_id", "actions")]
         case .insight_source, .insight_revision: [("insightID", "insight_id", "insights")]
+        case .voice_turn: [
+            ("conversationID", "conversation_id", "conversations"),
+            ("userMessageID", "user_message_id", "messages"),
+            ("assistantMessageID", "assistant_message_id", "messages"),
+        ]
         default: []
         }
     }

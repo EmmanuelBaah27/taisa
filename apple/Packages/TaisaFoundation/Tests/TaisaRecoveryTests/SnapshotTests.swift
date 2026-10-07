@@ -58,7 +58,7 @@ private struct Fixture {
         #expect(metadata.entityCounts["messages"] == 1)
         #expect(metadata.entityCounts["conversations"] == 1)
         #expect(metadata.entityCounts["goals"] == 0)
-        #expect(metadata.entityCounts.count == 25)
+        #expect(metadata.entityCounts.count == 27)
         let bytes = try Data(contentsOf: checkpoint)
         #expect(metadata.plaintextByteCount == bytes.count)
         #expect(metadata.plaintextSHA256 == Data(SHA256.hash(data: bytes)))

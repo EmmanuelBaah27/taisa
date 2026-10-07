@@ -101,7 +101,7 @@ private actor EntityIdentityKeys: DatabaseKeyStore {
     @Test func entityTagMappingMatchesEveryDomainTableAndReference() async throws {
         let (store, directory, _) = try await fixture()
         defer { try? FileManager.default.removeItem(at: directory) }
-        #expect(DomainEntity.allCases.count == 14)
+        #expect(DomainEntity.allCases.count == 15)
         for kind in DomainEntity.allCases {
             let valid = try await store.read { db in
                 guard try db.tableExists(kind.table),

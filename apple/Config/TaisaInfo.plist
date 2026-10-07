@@ -18,6 +18,8 @@
 	<string>1.0</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Taisa uses the microphone only when you choose to record a conversation.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>

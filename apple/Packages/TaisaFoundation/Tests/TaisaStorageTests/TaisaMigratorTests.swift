@@ -4,7 +4,61 @@ import Testing
 @testable import TaisaStorage
 
 @Suite(.serialized) struct TaisaMigratorTests {
-    @Test func populatedVersionOneStoreUpgradesLosslesslyToVersionTwo() async throws {
+    @Test func populatedPreviewVersionTwoStoreUpgradesLosslesslyToVersionThree() async throws {
+        let fixture = try MigrationFixture()
+        defer { fixture.remove() }
+        let queue = try fixture.makeKeyedQueue()
+        let conversationID = UUID().uuidString
+        let turnID = UUID().uuidString
+
+        var legacy = DatabaseMigrator()
+        legacy.registerMigration("v1", foreignKeyChecks: .immediate) { db in
+            try TaisaSchema.createVersion1(in: db)
+            try db.execute(sql: "INSERT INTO migration_state (version, applied_at_ms) VALUES (1, 1)")
+            try db.execute(sql: "PRAGMA user_version = 1")
+        }
+        legacy.registerMigration("v2", foreignKeyChecks: .immediate) { db in
+            try TaisaSchema.createVersion2(in: db)
+            try db.execute(sql: "INSERT INTO migration_state (version, applied_at_ms) VALUES (2, 2)")
+            try db.execute(sql: "PRAGMA user_version = 2")
+        }
+        try legacy.migrate(queue)
+        try await queue.write { db in
+            try db.execute(
+                sql: "INSERT INTO conversations (id, title, created_at_ms, updated_at_ms) VALUES (?, 'Preserve voice', 1, 1)",
+                arguments: [conversationID]
+            )
+            try db.execute(
+                sql: """
+                    INSERT INTO voice_turns (
+                        id, conversation_id, transcription_request_id, transcription_idempotency_key,
+                        coaching_request_id, coaching_idempotency_key, state, stage, cleanup_state,
+                        created_at_ms, updated_at_ms
+                    ) VALUES (?, ?, ?, 'transcription-key', ?, 'coaching-key', 'draft', 'capture', 'notRequired', 1, 1)
+                    """,
+                arguments: [turnID, conversationID, UUID().uuidString, UUID().uuidString]
+            )
+        }
+        try queue.close()
+
+        let store = try await TaisaStore.open(at: fixture.url, keyStore: fixture.keys)
+        let state = try await store.read { db in
+            (
+                try Int.fetchOne(db, sql: "PRAGMA user_version"),
+                try String.fetchOne(db, sql: "SELECT state FROM voice_turns WHERE id = ?", arguments: [turnID]),
+                try db.tableExists("weekly_placements"),
+                try db.tableExists("insights"),
+                try Int.fetchAll(db, sql: "SELECT version FROM migration_state ORDER BY version")
+            )
+        }
+        #expect(state.0 == 3)
+        #expect(state.1 == "draft")
+        #expect(state.2)
+        #expect(state.3)
+        #expect(state.4 == [1, 2, 3])
+    }
+
+    @Test func populatedVersionOneStoreUpgradesLosslesslyToCurrentVersion() async throws {
         let fixture = try MigrationFixture()
         defer { fixture.remove() }
         let queue = try fixture.makeKeyedQueue()
@@ -45,7 +99,7 @@ import Testing
             )
         }
 
-        #expect(state.0 == 2)
+        #expect(state.0 == TaisaSchema.currentVersion)
         #expect(state.1 == "Baah")
         #expect(state.2 == "Preserve me")
         #expect(state.3)
@@ -95,7 +149,7 @@ import Testing
         #expect(state.2 == nil)
     }
 
-    @Test func interruptedVersionTwoMigrationLeavesVersionOneUnchanged() async throws {
+    @Test func interruptedVersionThreeMigrationLeavesVersionTwoUnchanged() async throws {
         let fixture = try MigrationFixture()
         defer { fixture.remove() }
         let queue = try fixture.makeKeyedQueue()
@@ -104,6 +158,11 @@ import Testing
             try TaisaSchema.createVersion1(in: db)
             try db.execute(sql: "INSERT INTO migration_state (version, applied_at_ms) VALUES (1, 1)")
             try db.execute(sql: "PRAGMA user_version = 1")
+        }
+        legacyMigrator.registerMigration("v2", foreignKeyChecks: .immediate) { db in
+            try TaisaSchema.createVersion2(in: db)
+            try db.execute(sql: "INSERT INTO migration_state (version, applied_at_ms) VALUES (2, 2)")
+            try db.execute(sql: "PRAGMA user_version = 2")
         }
         try legacyMigrator.migrate(queue)
         let actionID = UUID().uuidString
@@ -115,8 +174,8 @@ import Testing
         }
 
         #expect(throws: StorageError.migrationFailed) {
-            try TaisaMigrator.migrate(queue, from: 1, createVersion2: { db in
-                try TaisaSchema.createVersion2(in: db)
+            try TaisaMigrator.migrate(queue, from: 2, createVersion3: { db in
+                try TaisaSchema.createVersion3(in: db)
                 throw MigrationInterruption.injected
             })
         }
@@ -128,10 +187,10 @@ import Testing
                 try String.fetchAll(db, sql: "SELECT identifier FROM grdb_migrations ORDER BY identifier")
             )
         }
-        #expect(state.0 == 1)
+        #expect(state.0 == 2)
         #expect(state.1 == "Keep me")
         #expect(!state.2)
-        #expect(state.3 == ["v1"])
+        #expect(state.3 == ["v1", "v2"])
     }
 
     @Test func futureSchemaIsRejectedWithoutMutation() async throws {

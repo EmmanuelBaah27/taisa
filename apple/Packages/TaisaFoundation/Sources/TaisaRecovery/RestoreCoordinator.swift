@@ -85,16 +85,22 @@ public struct RestoreCoordinator: Sendable {
         let manifest = try PortableArchive.verify(file: input, recoveryKey: recoveryKey, maximumPayloadBytes: 1_073_741_824,
             receiveSalt: { salt = $0 }, receivePayload: { try output.write(contentsOf: $0) })
         try output.synchronize(); try output.close()
-        // The current schema is the only supported snapshot schema; opening may never silently
-        // upgrade a manifest into something different from what was verified.
-        guard manifest.schemaVersion == TaisaStore.currentSchemaVersion else { throw RestoreError.incompatibleSchema }
+        // Every released schema through the current one remains restorable. The
+        // candidate is authenticated and validated at its declared version before
+        // TaisaStore performs the ordinary forward migration in private staging.
+        guard (1...TaisaStore.currentSchemaVersion).contains(manifest.schemaVersion) else {
+            throw RestoreError.incompatibleSchema
+        }
         let archiveKey = try recoveryKey.derivePortableBackupKey(salt: salt, purpose: .database).withUnsafeBytes { Data($0) }
         try directory.require("candidate.sqlite", initialID); try directory.check(); try root.check()
         try TaisaStore.validateReplacement(at: databaseURL, key: archiveKey, expectedSchemaVersion: manifest.schemaVersion)
         let store = try await TaisaStore.open(at: databaseURL, keyStore: CandidateKeys(key: archiveKey))
         let localKey = try PortableArchive.randomSalt()
         let counts = try await store.rekeyRestoreCandidate(to: localKey)
-        guard counts == manifest.entityCounts else { throw RestoreError.invalidCandidate }
+        guard manifest.entityCounts.allSatisfy({ counts[$0.key] == $0.value }),
+              counts.filter({ manifest.entityCounts[$0.key] == nil }).allSatisfy({ $0.value == 0 }) else {
+            throw RestoreError.invalidCandidate
+        }
         try TaisaStore.validateReplacement(at: databaseURL, key: localKey)
         try directory.check(); try root.check()
         let file = try directory.file("candidate.sqlite"); defer { try? file.close() }

@@ -1,0 +1,92 @@
+import XCTest
+import TaisaStorage
+import TaisaVoice
+@testable import Taisa
+
+final class VoiceSessionDiagnosticsViewModelTests: XCTestCase {
+    func testActionsDeriveFromDurableState() {
+        XCTAssertEqual(model(.draft, .capture).actions, [.record])
+        XCTAssertEqual(
+            model(.recording, .capture).actions,
+            [.pause, .send, .discard]
+        )
+        XCTAssertEqual(
+            model(.paused, .capture).actions,
+            [.resume, .send, .discard]
+        )
+        XCTAssertEqual(
+            model(.awaitingTranscriptConfirmation, .transcription).actions,
+            [.confirmTranscript, .cancel, .discard]
+        )
+        XCTAssertEqual(
+            model(.recoverableFailure, .coaching).actions,
+            [.retry, .cancel, .discard]
+        )
+        XCTAssertEqual(model(.cancelled, .capture).actions, [.discard])
+        XCTAssertEqual(
+            model(.resumeRequiresConfirmation, .coaching).actions,
+            [.confirmResume, .cancel, .discard]
+        )
+    }
+
+    func testStatusIsTextualAndPrivateContentIsNeverAnnounced() {
+        let viewModel = model(.transcribing, .transcription)
+        XCTAssertEqual(viewModel.statusTitle, "Transcribing")
+        XCTAssertEqual(viewModel.statusAccessibilityLabel, "Voice session status: Transcribing")
+        XCTAssertFalse(viewModel.announcesPrivateContent)
+    }
+
+    func testActionFailureStatusIsVisibleWhileRoutineReadyStatusIsHidden() {
+        XCTAssertNil(model(.recording, .capture, actionStatus: "Ready").actionStatusTitle)
+        XCTAssertEqual(
+            model(
+                .recording,
+                .capture,
+                actionStatus: "Voice action failed (TaisaAudio.AudioCaptureError 3)."
+            ).actionStatusTitle,
+            "Voice action failed (TaisaAudio.AudioCaptureError 3)."
+        )
+    }
+
+    func testReduceMotionDisablesWaveformAnimation() {
+        XCTAssertTrue(model(.recording, .capture, reduceMotion: false).animatesWaveform)
+        XCTAssertFalse(model(.recording, .capture, reduceMotion: true).animatesWaveform)
+        XCTAssertFalse(model(.paused, .capture, reduceMotion: false).animatesWaveform)
+    }
+
+    func testFinishedTerminalTurnCanContinueSameConversation() {
+        for state in [
+            VoiceTurnState.completed,
+            .noSpeech,
+            .terminalFailure,
+            .discarded,
+        ] {
+            XCTAssertEqual(model(state, .finished).actions, [.nextTurn])
+        }
+        XCTAssertEqual(model(.completed, .cleanup).actions, [])
+    }
+
+    private func model(
+        _ state: VoiceTurnState,
+        _ stage: VoiceTurnStage,
+        reduceMotion: Bool = false,
+        actionStatus: String = "Ready"
+    ) -> VoiceSessionDiagnosticsViewModel {
+        VoiceSessionDiagnosticsViewModel(
+            snapshot: VoiceSessionSnapshot(
+                durable: VoiceTurnRecord(
+                    id: UUID().uuidString, conversationID: UUID().uuidString,
+                    transcriptionRequestID: UUID().uuidString,
+                    transcriptionIdempotencyKey: "t",
+                    coachingRequestID: UUID().uuidString,
+                    coachingIdempotencyKey: "c",
+                    state: state, stage: stage, createdAtMS: 0, updatedAtMS: 0
+                ),
+                partialTranscript: "private transcript",
+                partialCoaching: "private response"
+            ),
+            reduceMotion: reduceMotion,
+            actionStatus: actionStatus
+        )
+    }
+}
