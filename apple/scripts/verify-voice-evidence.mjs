@@ -3,6 +3,7 @@
 import { execFileSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
+import { inspectSignedBuild } from './record-signed-build.mjs';
 
 export const voiceFixtureRevision = 'voice-session-fixtures-v1';
 
@@ -122,6 +123,55 @@ export function validateVoiceEvidence(evidence = {}, { expectedCommit } = {}) {
   return errors;
 }
 
+export function validateSignedBuildBindings(evidence, records = []) {
+  const errors = [];
+  if (!Array.isArray(records) || records.length !== 2) {
+    return ['exactly two signed-build records are required'];
+  }
+  const rows = Array.isArray(evidence?.rows) ? evidence.rows : [];
+  const seenDevices = new Set();
+  for (const source of records) {
+    const inspected = inspectSignedBuild(structuredClone(source));
+    errors.push(...inspected.errors.map((error) => `signed-build record: ${error}`));
+    const record = inspected.record;
+    if (record.environment !== 'personal') errors.push('signed-build record must be Personal');
+    if (record.artifactEvidence?.signatureVerified !== true) {
+      errors.push('signed-build artifact signature was not verified');
+    }
+    if (record.candidateCommit !== evidence.candidateCommit
+        || record.installedCommit !== evidence.installedCommit) {
+      errors.push('signed-build commit differs from voice evidence');
+    }
+    if (record.appVersion !== evidence.appVersion
+        || record.appBuildNumber !== evidence.buildNumber
+        || record.databaseSchemaVersion !== evidence.databaseSchemaVersion) {
+      errors.push('signed-build app metadata differs from voice evidence');
+    }
+    const deviceRows = rows.filter((row) => row.deviceIdentifier === record.deviceIdentifier);
+    if (deviceRows.length === 0) errors.push('signed-build device is absent from voice evidence');
+    if (deviceRows.some((row) => row.deviceName !== record.deviceName
+        || row.operatingSystem !== record.operatingSystem)) {
+      errors.push('signed-build device metadata differs from voice evidence');
+    }
+    if (seenDevices.has(record.deviceIdentifier)) errors.push('signed-build device records must be distinct');
+    seenDevices.add(record.deviceIdentifier);
+    if (evidence.provisioningProfile !== record.artifactEvidence?.profileUUID) {
+      errors.push('signed-build provisioning profile differs from voice evidence');
+    }
+    if (evidence.signer !== record.artifactEvidence?.signerCertificateSHA256) {
+      errors.push('signed-build signer differs from voice evidence');
+    }
+  }
+  for (const family of ['iPhone', 'iPad']) {
+    const identifiers = new Set(rows.filter((row) => row.deviceFamily === family)
+      .map((row) => row.deviceIdentifier));
+    if (identifiers.size !== 1 || !seenDevices.has([...identifiers][0])) {
+      errors.push(`${family} evidence is not bound to one signed-build device record`);
+    }
+  }
+  return errors;
+}
+
 export function parseVoiceEvidence(document) {
   const match = document.match(/<!-- TAISA_VOICE_EVIDENCE\s*([\s\S]*?)\s*-->/);
   if (!match) throw new Error('TAISA_VOICE_EVIDENCE block is missing');
@@ -130,12 +180,19 @@ export function parseVoiceEvidence(document) {
 }
 
 async function main() {
-  const inputPath = process.argv[2];
-  if (!inputPath) throw new Error('usage: verify-voice-evidence.mjs <device-matrix.md>');
+  const [inputPath, iphoneRecordPath, ipadRecordPath] = process.argv.slice(2);
+  if (!inputPath || !iphoneRecordPath || !ipadRecordPath) {
+    throw new Error('usage: verify-voice-evidence.mjs <device-matrix.md> <iphone-signed-build.json> <ipad-signed-build.json>');
+  }
   const document = await readFile(inputPath, 'utf8');
   const evidence = parseVoiceEvidence(document);
   const expectedCommit = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
-  const errors = validateVoiceEvidence(evidence, { expectedCommit });
+  const records = await Promise.all([iphoneRecordPath, ipadRecordPath]
+    .map(async (recordPath) => JSON.parse(await readFile(recordPath, 'utf8'))));
+  const errors = [
+    ...validateVoiceEvidence(evidence, { expectedCommit }),
+    ...validateSignedBuildBindings(evidence, records),
+  ];
   if (errors.length > 0) {
     process.stderr.write(`${errors.map((error) => `- ${error}`).join('\n')}\n`);
     process.exitCode = 1;

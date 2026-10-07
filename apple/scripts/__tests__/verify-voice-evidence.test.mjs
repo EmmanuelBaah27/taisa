@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import {
   parseVoiceEvidence,
   requiredVoiceCases,
+  validateSignedBuildBindings,
   validateVoiceEvidence,
 } from '../verify-voice-evidence.mjs';
 
@@ -108,4 +110,28 @@ test('requires bounded numeric performance evidence on both devices', () => {
   row.durationMS = null;
   row.peakMemoryMB = null;
   assert.match(validateVoiceEvidence(evidence).join('\n'), /performance/i);
+});
+
+test('rejects voice evidence that is not bound to signed Personal artifacts', () => {
+  const evidence = validEvidence();
+  const records = ['iphone', 'ipad'].map((family) => JSON.parse(readFileSync(
+    new URL(`../../../docs/migration/swiftui/native-build-records/2026-10-06-${family}-personal.json`, import.meta.url),
+  )));
+  evidence.candidateCommit = records[0].candidateCommit;
+  evidence.installedCommit = records[0].installedCommit;
+  evidence.appVersion = records[0].appVersion;
+  evidence.buildNumber = records[0].appBuildNumber;
+  evidence.databaseSchemaVersion = records[0].databaseSchemaVersion;
+  evidence.signer = records[0].artifactEvidence.signerCertificateSHA256;
+  evidence.provisioningProfile = records[0].artifactEvidence.profileUUID;
+  evidence.rows = records.flatMap((record, index) => requiredVoiceCases.map((caseID) => ({
+    deviceFamily: index === 0 ? 'iPhone' : 'iPad',
+    deviceName: record.deviceName, deviceIdentifier: record.deviceIdentifier,
+    operatingSystem: record.operatingSystem, physicalDevice: true, caseID, result: 'pass',
+    durationMS: caseID.startsWith('performance.') ? 1_000 : null,
+    peakMemoryMB: caseID.startsWith('performance.') ? 128 : null,
+  })));
+  assert.deepEqual(validateSignedBuildBindings(evidence, records), []);
+  records[1].installedCommit = 'abcdefabcdefabcdefabcdefabcdefabcdefabcd';
+  assert.match(validateSignedBuildBindings(evidence, records).join('\n'), /commit|installed/i);
 });

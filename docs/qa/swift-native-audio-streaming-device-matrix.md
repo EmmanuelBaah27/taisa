@@ -9,7 +9,8 @@
 2. Install the same build on the registered physical iPhone and iPad. Replace every `PENDING` value below with inspected build/device metadata, set `physicalDevice` to `true`, and record each result.
 3. Exercise microphone allow/deny, local pause/resume and the Send boundary; phone, Siri and alarm interruptions; Bluetooth and wired route loss; background/foreground, lock/unlock and force-quit recovery; Wi-Fi and cellular loss/return; cancellation during capture, transcription and coaching; same-conversation multi-turn continuation; VoiceOver, Dynamic Type and Reduce Motion.
 4. Run the content-free privacy scan. For the two performance cases on each device, supply measured positive `durationMS` and peak `peakMemoryMB`; leave both values `null` for every other case.
-5. Run `node apple/scripts/verify-voice-evidence.mjs docs/qa/swift-native-audio-streaming-device-matrix.md`. Any failure returns the feature to Build with QA notes.
+5. Record and inspect one canonical Personal signed-build record for each installed device with `apple/scripts/record-signed-build.mjs`. Put the inspected signer certificate SHA-256 and provisioning profile UUID in the evidence fields below.
+6. Run `node apple/scripts/verify-voice-evidence.mjs docs/qa/swift-native-audio-streaming-device-matrix.md <iphone-signed-build.json> <ipad-signed-build.json>`. The verifier cryptographically revalidates retained artifacts when available and requires the matrix to match both signed records. Any failure returns the feature to Build with QA notes.
 
 The block below is the sole machine-readable evidence record.
 
