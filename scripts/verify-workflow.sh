@@ -16,6 +16,34 @@ test -f docs/decisions/0001-use-repository-native-project-memory.md || fail "ini
 test -f docs/learnings.md || fail "reusable learning log is missing"
 node scripts/canonical-origin.mjs "$(git remote get-url origin)" || fail "origin does not use the canonical Taisa URL"
 
+# Linear is the sole live delivery authority. These checks intentionally stay
+# offline: they verify repository contracts without reading or mutating Linear.
+test ! -e docs/roadmap.md || fail "repository roadmap duplicates Linear live authority"
+
+for authority_file in AGENTS.md CLAUDE.md docs/workflow.md .claude/skills/taisa-workflow/SKILL.md; do
+  rg -qi 'Linear.*sole live authority|sole live authority.*Linear' "$authority_file" ||
+    fail "$authority_file does not declare Linear as the sole live authority"
+  rg -qi 'Linear.*unavailable|offline fallback' "$authority_file" ||
+    fail "$authority_file is missing the Linear-unavailable fallback"
+done
+
+if rg -n 'Active Work table|docs/roadmap\.md' \
+  AGENTS.md CLAUDE.md docs/workflow.md .claude/skills/taisa-workflow/SKILL.md docs/project-memory.md; then
+  fail "active repository instructions still reference duplicate live authority"
+fi
+
+if rg -n 'No formal Work Map, scope doc, or Linear issue|No Linear issue|Linear issues are created only' \
+  AGENTS.md CLAUDE.md docs/workflow.md .claude/skills/taisa-workflow/SKILL.md docs/project-memory.md; then
+  fail "active repository instructions still permit actionable work without Linear intake"
+fi
+
+rg -q '31b0d99c-6f74-4c9c-af2a-12e6e25aabe0' \
+  .claude/skills/taisa-workflow/SKILL.md || fail "Taisa Linear project ID is missing"
+rg -q 'e95356d8-17f7-4700-bdfe-222782bea546' \
+  .claude/skills/taisa-workflow/SKILL.md || fail "Taisa Linear team ID is missing"
+rg -qi 'every actionable task.*Linear issue|Linear issue.*every actionable task' \
+  .claude/skills/taisa-workflow/SKILL.md || fail "universal Linear issue intake is missing"
+
 rg -q 'main.*only permanent branch|only permanent branch.*main' docs/workflow.md || fail "canonical main policy is missing"
 rg -q '<type>/<short-kebab-case-description>' docs/workflow.md || fail "typed branch naming policy is missing"
 rg -qi 'squash merge' docs/workflow.md || fail "squash merge policy is missing"
