@@ -1,0 +1,4 @@
+[
+  {"type":"coaching.delta","requestId":"00000000-0000-4000-8000-000000000105","sequence":0,"delta":"A"},
+  {"type":"coaching.failed","requestId":"00000000-0000-4000-8000-000000000105","sequence":2,"code":"COACHING_UNAVAILABLE","retryable":true}
+]

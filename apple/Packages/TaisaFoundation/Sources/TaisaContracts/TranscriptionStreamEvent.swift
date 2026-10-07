@@ -120,7 +120,7 @@ public enum TranscriptionStreamEvent: Equatable, Sendable, Decodable {
     }
 }
 
-private struct DynamicCodingKey: CodingKey, Hashable {
+struct DynamicCodingKey: CodingKey, Hashable {
     let stringValue: String
     let intValue: Int? = nil
 
@@ -133,7 +133,7 @@ private struct DynamicCodingKey: CodingKey, Hashable {
     }
 }
 
-private extension KeyedDecodingContainer where Key == DynamicCodingKey {
+extension KeyedDecodingContainer where Key == DynamicCodingKey {
     func decode<T: Decodable>(_ type: T.Type, forKey key: String) throws -> T {
         try decode(type, forKey: DynamicCodingKey(stringValue: key)!)
     }
