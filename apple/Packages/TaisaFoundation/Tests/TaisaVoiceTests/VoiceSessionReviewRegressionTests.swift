@@ -80,6 +80,29 @@ struct VoiceSessionReviewRegressionTests {
         #expect(await coordinator.snapshot().durable.stage == .finished)
     }
 
+    @Test("recording preparation failure does not leave a fake recording session")
+    func preparationFailureFinishesTheTurn() async throws {
+        let coordinator = VoiceSessionCoordinator(
+            initial: reviewTurn(state: .draft, stage: .capture),
+            checkpoints: ReviewCheckpointSpy(),
+            transcription: ReviewTranscriptionRunner(events: []),
+            coaching: ReviewCoachingRunner(events: []),
+            connectivity: ReviewConnectivity(),
+            reconciliation: ReviewReconciliation(),
+            capture: FailingPrepareCapture(),
+            audio: ReviewAudioSpy()
+        )
+
+        await #expect(throws: AudioCaptureError.permissionDenied) {
+            try await coordinator.send(.startRecording)
+        }
+
+        let snapshot = await coordinator.snapshot()
+        #expect(snapshot.durable.state == .terminalFailure)
+        #expect(snapshot.durable.stage == .finished)
+        #expect(snapshot.durable.failureCode == "CAPTURE_PREPARE_FAILED")
+    }
+
     @Test("relaunch terminalizes a checkpointed recording even when prepare never produced a file")
     func relaunchRecoversRecordingWithoutPreparedAudio() async throws {
         let capture = ReviewCaptureSpy()
@@ -502,6 +525,20 @@ private actor ReviewCaptureSpy: VoiceCaptureControlling {
     func cancel(turnID: UUID) async throws { cancelled.append(turnID) }
     func discard(turnID: UUID) async throws { discarded.append(turnID) }
     func release(turnID: UUID) async throws { released.append(turnID) }
+}
+
+private actor FailingPrepareCapture: VoiceCaptureControlling {
+    func events() -> AsyncStream<AudioCaptureEvent> { AsyncStream { $0.finish() } }
+    func prepare(turnID: UUID) async throws -> String { throw AudioCaptureError.permissionDenied }
+    func start(turnID: UUID) async throws {}
+    func pause(turnID: UUID) async throws {}
+    func resume(turnID: UUID) async throws {}
+    func finalize(turnID: UUID) async throws -> FinalizedVoiceAudio {
+        throw AudioCaptureError.audioNotFinalized
+    }
+    func cancel(turnID: UUID) async throws {}
+    func discard(turnID: UUID) async throws {}
+    func release(turnID: UUID) async throws {}
 }
 
 private actor ReviewTranscriptionRunner: VoiceTranscriptionRunning {
