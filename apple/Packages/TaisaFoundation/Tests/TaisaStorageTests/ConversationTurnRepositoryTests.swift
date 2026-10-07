@@ -238,6 +238,48 @@ struct ConversationTurnRepositoryTests {
         #expect(try await repository.latestResumableTurn(conversationID: conversationID) == nil)
     }
 
+    @Test func latestResumableTurnRestoresCaptureOnlyAfterAudioIdentityIsDurable() async throws {
+        let fixture = try await makeFixture(); defer { fixture.remove() }
+        let repository = ConversationTurnRepository(store: fixture.store)
+        let draft = VoiceTurnRecord(
+            id: turnID, conversationID: conversationID,
+            transcriptionRequestID: "00000000-0000-0000-0000-000000000041",
+            transcriptionIdempotencyKey: "transcription-key",
+            coachingRequestID: "00000000-0000-0000-0000-000000000042",
+            coachingIdempotencyKey: "coaching-key",
+            state: .recording, stage: .capture, retryCount: 0,
+            cleanupState: .notRequired, createdAtMS: 1, updatedAtMS: 1
+        )
+        try await repository.checkpoint(
+            draft, messages: [], cleanup: nil,
+            context: .init(
+                id: "00000000-0000-0000-0000-000000000073",
+                deviceID: deviceID, timestamp: 73
+            )
+        )
+        #expect(try await repository.latestResumableTurn(conversationID: conversationID) == nil)
+
+        let retained = VoiceTurnRecord(
+            id: draft.id, conversationID: draft.conversationID,
+            transcriptionRequestID: draft.transcriptionRequestID,
+            transcriptionIdempotencyKey: draft.transcriptionIdempotencyKey,
+            coachingRequestID: draft.coachingRequestID,
+            coachingIdempotencyKey: draft.coachingIdempotencyKey,
+            state: .paused, stage: .capture,
+            audioFileID: "00000000-0000-0000-0000-000000000074",
+            retryCount: 0, cleanupState: .pending,
+            createdAtMS: 1, updatedAtMS: 2
+        )
+        try await repository.checkpoint(
+            retained, messages: [], cleanup: nil,
+            context: .init(
+                id: "00000000-0000-0000-0000-000000000075",
+                deviceID: deviceID, timestamp: 75
+            )
+        )
+        #expect(try await repository.latestResumableTurn(conversationID: conversationID) == retained)
+    }
+
     private func queuedTurn() -> VoiceTurnRecord {
         VoiceTurnRecord(
             id: turnID,

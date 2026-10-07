@@ -108,6 +108,8 @@ struct VoiceSessionReducerTests {
             state: coaching, command: .fail(code: "AUTH", retryable: false, ambiguous: false)
         )
         #expect(terminal.next.state == .terminalFailure)
+        #expect(terminal.next.stage == .cleanup)
+        #expect(terminal.effects == [.checkpoint(terminal.next), .deleteAudio("local-audio")])
 
         let ambiguous = try reducer.reduce(
             state: coaching, command: .fail(code: "AMBIGUOUS", retryable: false, ambiguous: true)

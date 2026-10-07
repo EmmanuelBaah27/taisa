@@ -43,6 +43,7 @@ public protocol VoiceCoachingRunning: Sendable {
 
 public protocol VoiceCaptureControlling: Sendable {
     func events() async -> AsyncStream<AudioCaptureEvent>
+    func prepare(turnID: UUID) async throws -> String
     func start(turnID: UUID) async throws
     func pause(turnID: UUID) async throws
     func resume(turnID: UUID) async throws
@@ -187,7 +188,14 @@ public actor VoiceSessionCoordinator {
     }
 
     public func recoverIfAuthorized() async throws {
-        guard activeStage == nil, await connectivity.isAvailable() else { return }
+        guard activeStage == nil else { return }
+        if durable.stage == .capture,
+           (durable.state == .recording || durable.state == .paused),
+           durable.audioFileID != nil {
+            try await send(.captureFailed(code: "CAPTURE_INTERRUPTED"))
+            return
+        }
+        guard await connectivity.isAvailable() else { return }
 
         switch VoiceSessionRecovery.action(for: durable) {
         case .none, .requireConfirmation:
@@ -216,7 +224,13 @@ public actor VoiceSessionCoordinator {
     }
 
     public func waitForIdle() async {
-        while let task = activeTask { await task.value }
+        while activeStage != nil {
+            if let task = activeTask {
+                await task.value
+            } else {
+                await Task.yield()
+            }
+        }
     }
 
     private func apply(_ transition: VoiceSessionTransition) async throws {
@@ -232,7 +246,22 @@ public actor VoiceSessionCoordinator {
                 guard await connectivity.isAvailable() else { continue }
                 launchCoaching()
             case .startRecording:
-                try await capture.start(turnID: currentTurnID())
+                let turnID = try currentTurnID()
+                let fileID = try await capture.prepare(turnID: turnID)
+                do {
+                    try await send(.captureStarted(fileID: fileID))
+                } catch {
+                    try? await capture.discard(turnID: turnID)
+                    try? await capture.release(turnID: turnID)
+                    try? await send(.captureFailed(code: "CAPTURE_CHECKPOINT_FAILED"))
+                    throw error
+                }
+                do {
+                    try await capture.start(turnID: turnID)
+                } catch {
+                    try? await send(.captureFailed(code: "CAPTURE_START_FAILED"))
+                    throw error
+                }
                 observeCaptureEvents()
             case .pauseRecording:
                 try await capture.pause(turnID: currentTurnID())
@@ -257,6 +286,8 @@ public actor VoiceSessionCoordinator {
                 )
             case .deleteAudio(let fileID):
                 try await deleteAudio(fileID)
+            case .completeCleanup:
+                try await send(.cleanupCompleted)
             case .conversationReady:
                 try await capture.release(turnID: currentTurnID())
             case .requestTranscriptConfirmation, .requestResumeConfirmation:
@@ -301,7 +332,7 @@ public actor VoiceSessionCoordinator {
     }
 
     private func launchTranscription() {
-        guard activeStage == nil else { return }
+        guard activeStage == nil || (activeStage == .transcription && activeTask == nil) else { return }
         operationGeneration += 1
         let generation = operationGeneration
         activeStage = .transcription
@@ -377,7 +408,7 @@ public actor VoiceSessionCoordinator {
     }
 
     private func launchCoaching() {
-        if activeStage == .coaching { return }
+        guard activeStage != .coaching || activeTask == nil else { return }
         operationGeneration += 1
         let generation = operationGeneration
         activeStage = .coaching
@@ -536,6 +567,7 @@ public actor VoiceSessionCoordinator {
             }
             if discardCapture {
                 try await capture.discard(turnID: turnID)
+                try await send(.cleanupCompleted)
             } else {
                 try await capture.cancel(turnID: turnID)
             }
@@ -565,6 +597,9 @@ public actor VoiceSessionCoordinator {
         guard eventTurnID.uuidString.lowercased() == durable.id else { return }
         guard durable.state == .recording else { return }
         switch event {
+        case .blocked(_, .mediaServicesReset):
+            try? await capture.discard(turnID: eventTurnID)
+            try? await send(.captureFailed(code: "MEDIA_SERVICES_RESET"))
         case .paused, .blocked:
             try? await send(.capturePaused)
         default:
@@ -611,7 +646,6 @@ public actor VoiceSessionCoordinator {
             return
         }
         activeTask = nil
-        activeStage = nil
         try await send(.retry)
     }
 
@@ -642,7 +676,6 @@ public actor VoiceSessionCoordinator {
     private func prepareRetry(generation: Int) {
         guard isCurrent(generation) else { return }
         activeTask = nil
-        activeStage = nil
     }
 
     private func deleteAudio(_ fileID: String) async throws {

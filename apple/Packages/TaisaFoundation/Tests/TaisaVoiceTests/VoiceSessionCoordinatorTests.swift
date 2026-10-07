@@ -148,6 +148,9 @@ private struct ReconciliationSpy: CoachingReconciliationLookingUp {
 
 private actor NoopCapture: VoiceCaptureControlling {
     func events() -> AsyncStream<AudioCaptureEvent> { AsyncStream { $0.finish() } }
+    func prepare(turnID: UUID) async throws -> String {
+        "00000000-0000-0000-0000-000000000201"
+    }
     func start(turnID: UUID) async throws {}
     func pause(turnID: UUID) async throws {}
     func resume(turnID: UUID) async throws {}

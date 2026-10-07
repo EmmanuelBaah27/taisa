@@ -62,6 +62,7 @@ public enum AudioCaptureError: Error, Sendable, Equatable {
 public actor AudioCaptureService {
     private enum State {
         case idle
+        case prepared(PendingAudioFile)
         case recording(PendingAudioFile)
         case paused(PendingAudioFile)
         case blocked(PendingAudioFile)
@@ -87,7 +88,7 @@ public actor AudioCaptureService {
     }
 
     @discardableResult
-    public func start(turnID: UUID) async throws -> PendingAudioFile {
+    public func prepare(turnID: UUID) async throws -> PendingAudioFile {
         if self.turnID != nil {
             try requireOwned(turnID)
             if let pending = pendingFile { return pending }
@@ -98,15 +99,26 @@ public actor AudioCaptureService {
             throw AudioCaptureError.permissionDenied
         }
         let pending = try await files.allocate(turnID: turnID)
+        self.turnID = turnID
+        state = .prepared(pending)
+        return pending
+    }
+
+    @discardableResult
+    public func start(turnID: UUID) async throws -> PendingAudioFile {
+        let pending = try await prepare(turnID: turnID)
+        if case .recording = state { return pending }
+        guard case .prepared = state else { throw AudioCaptureError.invalidState }
         do {
             try await session.activate()
             try await recorder.start(at: pending.url)
         } catch {
             try? await files.delete(pending)
             await session.deactivate()
+            self.turnID = nil
+            state = .idle
             throw error
         }
-        self.turnID = turnID
         state = .recording(pending)
         return pending
     }
@@ -187,7 +199,7 @@ public actor AudioCaptureService {
         case .finalized, .cancelled, .discarded:
             self.turnID = nil
             state = .idle
-        case .idle, .recording, .paused, .blocked:
+        case .idle, .prepared, .recording, .paused, .blocked:
             throw AudioCaptureError.invalidState
         }
     }
@@ -250,7 +262,7 @@ public actor AudioCaptureService {
 
     private var pendingFile: PendingAudioFile? {
         switch state {
-        case .recording(let file), .paused(let file), .blocked(let file), .cancelled(let file), .finalized(let file, _):
+        case .prepared(let file), .recording(let file), .paused(let file), .blocked(let file), .cancelled(let file), .finalized(let file, _):
             return file
         case .idle, .discarded:
             return nil

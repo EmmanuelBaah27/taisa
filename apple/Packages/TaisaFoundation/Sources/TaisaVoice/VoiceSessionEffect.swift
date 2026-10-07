@@ -13,5 +13,6 @@ public enum VoiceSessionEffect: Sendable, Equatable {
     case authorizeTranscriptionRetry
     case cancelWork
     case deleteAudio(String)
+    case completeCleanup
     case conversationReady
 }

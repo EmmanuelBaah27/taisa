@@ -64,7 +64,8 @@ struct VoiceSessionDiagnosticsViewModel: Equatable {
         case .paused: [.resume, .send, .cancel, .discard]
         case .awaitingTranscriptConfirmation, .transcriptUncertain:
             [.confirmTranscript, .cancel, .discard]
-        case .recoverableFailure, .cancelled: [.retry, .cancel, .discard]
+        case .recoverableFailure, .cancelled:
+            stage == .capture ? [.discard] : [.retry, .cancel, .discard]
         case .resumeRequiresConfirmation: [.confirmResume, .cancel, .discard]
         case .queued, .transcribing, .transcriptClear, .coaching: [.cancel, .discard]
         case .completed, .noSpeech, .terminalFailure, .discarded:

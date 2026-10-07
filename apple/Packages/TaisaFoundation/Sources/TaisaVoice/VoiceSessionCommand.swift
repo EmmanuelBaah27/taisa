@@ -19,9 +19,11 @@ public enum TranscriptOutcome: Sendable, Equatable {
 
 public enum VoiceSessionCommand: Sendable, Equatable {
     case startRecording
+    case captureStarted(fileID: String)
     case pauseRecording
     case resumeRecording
     case capturePaused
+    case captureFailed(code: String)
     case send(FinalizedVoiceAudio)
     case transcriptionBegan
     case transcriptCompleted(TranscriptOutcome)

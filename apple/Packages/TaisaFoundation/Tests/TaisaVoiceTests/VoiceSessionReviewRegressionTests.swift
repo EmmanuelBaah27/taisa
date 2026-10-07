@@ -112,6 +112,8 @@ struct VoiceSessionReviewRegressionTests {
 
         #expect(await capture.discarded == [ReviewIDs.turn])
         #expect(await capture.cancelled.isEmpty)
+        #expect(await capture.released == [ReviewIDs.turn])
+        #expect(await coordinator.snapshot().durable.stage == .finished)
     }
 
     @Test("persisted transitions receive monotonic update timestamps")
@@ -129,8 +131,9 @@ struct VoiceSessionReviewRegressionTests {
         try await coordinator.send(.startRecording)
         try await coordinator.send(.pauseRecording)
 
-        #expect(await checkpoints.updatedAtValues == [100, 101])
-        #expect(await coordinator.snapshot().durable.updatedAtMS == 101)
+        #expect(await checkpoints.updatedAtValues == [100, 101, 102])
+        #expect(await coordinator.snapshot().durable.updatedAtMS == 102)
+        #expect(await coordinator.snapshot().durable.audioFileID == "00000000-0000-0000-0000-000000000201")
     }
 
     @Test("capture lifecycle pause is checkpointed into durable session state")
@@ -152,6 +155,51 @@ struct VoiceSessionReviewRegressionTests {
         }
 
         #expect(await coordinator.snapshot().durable.state == .paused)
+    }
+
+    @Test("relaunch of interrupted capture deletes retained audio and unlocks the next turn")
+    func interruptedCaptureRelaunchCleansUp() async throws {
+        let audio = ReviewAudioSpy()
+        let capture = ReviewCaptureSpy()
+        let coordinator = VoiceSessionCoordinator(
+            initial: reviewTurn(state: .paused, stage: .capture),
+            checkpoints: ReviewCheckpointSpy(),
+            transcription: ReviewTranscriptionRunner(events: []),
+            coaching: ReviewCoachingRunner(events: []),
+            connectivity: ReviewConnectivity(), reconciliation: ReviewReconciliation(),
+            capture: capture, audio: audio
+        )
+
+        try await coordinator.recoverIfAuthorized()
+
+        #expect(await audio.deleted == ["audio-1"])
+        #expect(await capture.released == [ReviewIDs.turn])
+        #expect(await coordinator.snapshot().durable.state == .terminalFailure)
+        #expect(await coordinator.snapshot().durable.stage == .finished)
+    }
+
+    @Test("media services reset becomes terminal cleanup instead of fake resumable pause")
+    func mediaResetCleansUpCapture() async throws {
+        let audio = ReviewAudioSpy()
+        let capture = ReviewCaptureSpy()
+        let coordinator = VoiceSessionCoordinator(
+            initial: reviewTurn(state: .draft, stage: .capture),
+            checkpoints: ReviewCheckpointSpy(),
+            transcription: ReviewTranscriptionRunner(events: []),
+            coaching: ReviewCoachingRunner(events: []),
+            connectivity: ReviewConnectivity(), reconciliation: ReviewReconciliation(),
+            capture: capture, audio: audio
+        )
+
+        try await coordinator.send(.startRecording)
+        await capture.emit(.blocked(turnID: ReviewIDs.turn, reason: .mediaServicesReset))
+        for _ in 0..<40 where await coordinator.snapshot().durable.stage != .finished {
+            await Task.yield()
+        }
+
+        #expect(await capture.discarded == [ReviewIDs.turn])
+        #expect(await coordinator.snapshot().durable.failureCode == "MEDIA_SERVICES_RESET")
+        #expect(await coordinator.snapshot().durable.stage == .finished)
     }
 
     @Test("ambiguous transcription waits for explicit owner-authorized retry")
@@ -338,6 +386,9 @@ private actor ReviewCaptureSpy: VoiceCaptureControlling {
     }
     func events() -> AsyncStream<AudioCaptureEvent> { eventStream }
     func emit(_ event: AudioCaptureEvent) { eventContinuation.yield(event) }
+    func prepare(turnID: UUID) async throws -> String {
+        "00000000-0000-0000-0000-000000000201"
+    }
     func start(turnID: UUID) async throws {}
     func pause(turnID: UUID) async throws {}
     func resume(turnID: UUID) async throws {}

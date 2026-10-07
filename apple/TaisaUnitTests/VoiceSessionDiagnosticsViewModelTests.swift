@@ -22,6 +22,7 @@ final class VoiceSessionDiagnosticsViewModelTests: XCTestCase {
             model(.recoverableFailure, .coaching).actions,
             [.retry, .cancel, .discard]
         )
+        XCTAssertEqual(model(.cancelled, .capture).actions, [.discard])
         XCTAssertEqual(
             model(.resumeRequiresConfirmation, .coaching).actions,
             [.confirmResume, .cancel, .discard]

@@ -18,6 +18,14 @@ public struct VoiceSessionReducer: Sendable {
             try require(state.state == .draft)
             return transition(copy(state, state: .recording, stage: .capture), .startRecording)
 
+        case .captureStarted(let fileID):
+            try require(state.state == .recording && state.stage == .capture)
+            guard UUID(uuidString: fileID) != nil else { throw VoiceSessionReducerError.invalidCommand }
+            return checkpoint(copy(
+                state, state: .recording, stage: .capture,
+                audioFileID: .some(fileID), cleanupState: .pending
+            ))
+
         case .pauseRecording:
             try require(state.state == .recording)
             return transition(copy(state, state: .paused, stage: .capture), .pauseRecording)
@@ -29,6 +37,15 @@ public struct VoiceSessionReducer: Sendable {
         case .capturePaused:
             try require(state.state == .recording && state.stage == .capture)
             return checkpoint(copy(state, state: .paused, stage: .capture))
+
+        case .captureFailed(let code):
+            try require((state.state == .recording || state.state == .paused) && state.stage == .capture)
+            guard !code.isEmpty else { throw VoiceSessionReducerError.invalidCommand }
+            let next = copy(
+                state, state: .terminalFailure, stage: .cleanup,
+                failureCode: .some(code), cleanupState: .pending
+            )
+            return transition(next, deleteEffect(state))
 
         case .send(let audio):
             try require(state.state == .recording || state.state == .paused)
@@ -100,7 +117,7 @@ public struct VoiceSessionReducer: Sendable {
             return transition(copy(
                 state, state: .completed, stage: .cleanup,
                 coachingReceipt: .some(receipt),
-                assistantMessageID: .some(assistantMessageID), cleanupState: .pending
+                cleanupState: .pending, assistantMessageID: .some(assistantMessageID)
             ), deleteEffect(state))
 
         case let .fail(code, retryable, ambiguous):
@@ -110,10 +127,15 @@ public struct VoiceSessionReducer: Sendable {
             let nextState: VoiceTurnState = ambiguous
                 ? .resumeRequiresConfirmation
                 : retryable ? .recoverableFailure : .terminalFailure
+            if !ambiguous && !retryable {
+                let next = copy(
+                    state, state: nextState, stage: .cleanup,
+                    failureCode: .some(code), cleanupState: .pending
+                )
+                return transition(next, deleteEffect(state))
+            }
             let next = copy(state, state: nextState, stage: state.stage, failureCode: .some(code))
-            return ambiguous
-                ? transition(next, .requestResumeConfirmation)
-                : checkpoint(next)
+            return ambiguous ? transition(next, .requestResumeConfirmation) : checkpoint(next)
 
         case let .scheduleRetry(code, nextRetryAtMS):
             guard !state.state.isTerminal, !code.isEmpty, nextRetryAtMS >= 0 else {
@@ -167,7 +189,9 @@ public struct VoiceSessionReducer: Sendable {
             try require(!state.state.isTerminal)
             let next = copy(state, state: .discarded, stage: .cleanup, cleanupState: .pending)
             var effects: [VoiceSessionEffect] = [.checkpoint(next), .cancelWork]
-            if let audio = state.audioFileID { effects.append(.deleteAudio(audio)) }
+            if state.stage != .capture {
+                effects.append(state.audioFileID.map(VoiceSessionEffect.deleteAudio) ?? .completeCleanup)
+            }
             return VoiceSessionTransition(next: next, effects: effects)
 
         case .cleanupCompleted:
@@ -204,7 +228,7 @@ public struct VoiceSessionReducer: Sendable {
     }
 
     private func deleteEffect(_ state: VoiceTurnRecord) -> VoiceSessionEffect {
-        state.audioFileID.map(VoiceSessionEffect.deleteAudio) ?? .conversationReady
+        state.audioFileID.map(VoiceSessionEffect.deleteAudio) ?? .completeCleanup
     }
 
     private func copy(
@@ -221,9 +245,9 @@ public struct VoiceSessionReducer: Sendable {
         failureCode: String?? = nil,
         transcriptionReceipt: String?? = nil,
         coachingReceipt: String?? = nil,
+        cleanupState: VoiceTurnCleanupState? = nil,
         userMessageID: String?? = nil,
-        assistantMessageID: String?? = nil,
-        cleanupState: VoiceTurnCleanupState? = nil
+        assistantMessageID: String?? = nil
     ) -> VoiceTurnRecord {
         func resolve<T>(_ override: T??, _ current: T?) -> T? {
             switch override { case .none: current; case .some(let value): value }

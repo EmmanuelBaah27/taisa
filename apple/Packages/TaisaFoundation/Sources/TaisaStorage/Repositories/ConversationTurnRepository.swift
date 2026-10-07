@@ -31,7 +31,8 @@ public struct ConversationTurnRepository: Sendable {
                     sql: """
                         SELECT * FROM voice_turns
                         WHERE conversation_id = ? COLLATE NOCASE
-                          AND stage NOT IN ('capture', 'finished')
+                          AND stage != 'finished'
+                          AND (stage != 'capture' OR audio_file_id IS NOT NULL)
                         ORDER BY updated_at_ms DESC, created_at_ms DESC, rowid DESC
                         LIMIT 1
                         """,
