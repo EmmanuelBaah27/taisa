@@ -26,6 +26,10 @@ public struct VoiceSessionReducer: Sendable {
             try require(state.state == .paused)
             return transition(copy(state, state: .recording, stage: .capture), .resumeRecording)
 
+        case .capturePaused:
+            try require(state.state == .recording && state.stage == .capture)
+            return checkpoint(copy(state, state: .paused, stage: .capture))
+
         case .send(let audio):
             try require(state.state == .recording || state.state == .paused)
             guard !audio.fileID.isEmpty, !audio.sha256.isEmpty, audio.durationMS >= 0 else {
@@ -139,11 +143,21 @@ public struct VoiceSessionReducer: Sendable {
             }
 
         case .confirmResume:
-            try require(state.state == .resumeRequiresConfirmation && state.stage == .coaching)
-            return transition(
-                copy(state, state: .coaching, stage: .coaching),
-                .authorizeCoachingRetry
-            )
+            try require(state.state == .resumeRequiresConfirmation)
+            switch state.stage {
+            case .transcription:
+                return transition(
+                    copy(state, state: .transcribing, stage: .transcription),
+                    .authorizeTranscriptionRetry
+                )
+            case .coaching:
+                return transition(
+                    copy(state, state: .coaching, stage: .coaching),
+                    .authorizeCoachingRetry
+                )
+            default:
+                throw VoiceSessionReducerError.illegalTransition
+            }
 
         case .cancel:
             try require(!state.state.isTerminal)

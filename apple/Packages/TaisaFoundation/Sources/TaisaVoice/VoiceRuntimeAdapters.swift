@@ -49,16 +49,23 @@ public actor AudioCaptureController: VoiceCaptureControlling, VoiceAudioDeleting
     private let files: any AudioFileStoring
     private let lifecycle: (any AudioSessionLifecycleObserving)?
     private var lifecycleTask: Task<Void, Never>?
+    private let eventStream: AsyncStream<AudioCaptureEvent>
+    private let eventContinuation: AsyncStream<AudioCaptureEvent>.Continuation
 
     public init(
         service: AudioCaptureService,
         files: any AudioFileStoring,
         lifecycle: (any AudioSessionLifecycleObserving)? = nil
     ) {
+        (eventStream, eventContinuation) = AsyncStream.makeStream(
+            of: AudioCaptureEvent.self, bufferingPolicy: .bufferingNewest(8)
+        )
         self.service = service
         self.files = files
         self.lifecycle = lifecycle
     }
+
+    public func events() -> AsyncStream<AudioCaptureEvent> { eventStream }
 
     public func start(turnID: UUID) async throws {
         _ = try await service.start(turnID: turnID)
@@ -67,7 +74,9 @@ public actor AudioCaptureController: VoiceCaptureControlling, VoiceAudioDeleting
         lifecycleTask = Task {
             for await event in lifecycle.events() {
                 guard !Task.isCancelled else { return }
-                _ = try? await service.handle(event, turnID: turnID)
+                if let result = try? await service.handle(event, turnID: turnID) {
+                    eventContinuation.yield(result)
+                }
             }
         }
     }
@@ -87,6 +96,16 @@ public actor AudioCaptureController: VoiceCaptureControlling, VoiceAudioDeleting
         lifecycleTask?.cancel()
         lifecycleTask = nil
         _ = try await service.cancel(turnID: turnID)
+    }
+    public func discard(turnID: UUID) async throws {
+        lifecycleTask?.cancel()
+        lifecycleTask = nil
+        _ = try await service.discard(turnID: turnID)
+    }
+    public func release(turnID: UUID) async throws {
+        lifecycleTask?.cancel()
+        lifecycleTask = nil
+        try await service.release(turnID: turnID)
     }
 
     public func audio(for turn: VoiceTurnRecord) async throws -> FinalizedAudio {

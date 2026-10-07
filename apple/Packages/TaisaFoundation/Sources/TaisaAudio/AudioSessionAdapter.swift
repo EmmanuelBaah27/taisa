@@ -80,6 +80,7 @@ private final class AudioSessionObserverTokens: @unchecked Sendable {
 
 #if os(iOS)
 import AVFoundation
+import UIKit
 
 public actor SystemAudioSessionAdapter: AudioSessionAdapting {
     public init() {}
@@ -122,11 +123,18 @@ public struct SystemAudioSessionLifecycleSource: AudioSessionLifecycleObserving 
             oldDeviceUnavailableValue: AVAudioSession.RouteChangeReason.oldDeviceUnavailable.rawValue
         )
         return AsyncStream { continuation in
-            let names = [mapper.interruption, mapper.routeChange, mapper.mediaServicesReset]
+            let names = [
+                mapper.interruption, mapper.routeChange, mapper.mediaServicesReset,
+                UIApplication.didEnterBackgroundNotification,
+            ]
             let tokens = AudioSessionObserverTokens(center: center)
             for name in names {
                 let token = center.addObserver(forName: name, object: nil, queue: nil) { notification in
-                    if let event = mapper.event(for: notification) { continuation.yield(event) }
+                    if notification.name == UIApplication.didEnterBackgroundNotification {
+                        continuation.yield(.appBackgrounded)
+                    } else if let event = mapper.event(for: notification) {
+                        continuation.yield(event)
+                    }
                 }
                 tokens.append(token)
             }

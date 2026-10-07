@@ -3,6 +3,7 @@ import TaisaStorage
 public enum VoiceRecoveryAction: Sendable, Equatable {
     case none
     case retryTranscription
+    case reconcileTranscription
     case retryCoaching
     case reconcileCoaching
     case requireConfirmation
@@ -19,7 +20,8 @@ public enum VoiceSessionRecovery {
             return .none
         case .transcription:
             switch record.state {
-            case .queued, .transcribing, .recoverableFailure: return .retryTranscription
+            case .transcribing: return .reconcileTranscription
+            case .queued, .recoverableFailure: return .retryTranscription
             default: return .none
             }
         case .coaching:

@@ -65,6 +65,8 @@ The gateway already exposes strict ordered NDJSON transcription events and a val
 
 ## Verification status
 
-Automated verification on 2026-10-07 passed the backend suite (380 tests), backend and shared TypeScript compilation, portable contract/evidence tests (14 tests), Swift foundation suite (380 tests), native design-system checks, development/preview/Personal simulator suites, generic device and Release compilation, native isolation inspection, and workflow verification.
+Automated verification on 2026-10-07 passed the backend suite (388 tests), backend TypeScript compilation, Swift foundation suite (395 tests), portable contract/evidence checks, native design-system checks, development/preview/Personal simulator suites, generic device and Release compilation, native isolation inspection, and workflow verification.
+
+Independent whole-branch review remediation is complete: Personal relaunch now selects the latest persisted resumable turn; capture ownership is released between turns; capture discard stops and deletes the recorder-owned file; interruption, route-loss, and application-background events checkpoint durable paused state; transition timestamps advance monotonically; and transcription uses owner-bound encrypted idempotency receipts with completed replay, reconciliation, and explicit authorization for ambiguous paid work. Production now requires a separate `TAISA_TRANSCRIPTION_RECEIPT_ENCRYPTION_KEY`.
 
 The final acceptance criterion remains open until the reviewed exact commit is integrated into `preview/taisa`, signed as `Taisa-Personal`, installed on both registered physical devices, exercised against every row in `docs/qa/swift-native-audio-streaming-device-matrix.md`, and accepted by `apple/scripts/verify-voice-evidence.mjs`.

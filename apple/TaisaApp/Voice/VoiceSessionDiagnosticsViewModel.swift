@@ -17,7 +17,7 @@ enum VoiceSessionDiagnosticAction: String, Equatable, Identifiable {
         case .discard: "Discard"
         case .confirmTranscript: "Confirm transcript"
         case .retry: "Retry"
-        case .confirmResume: "Resume coaching"
+        case .confirmResume: "Retry request"
         case .nextTurn: "Next turn"
         }
     }

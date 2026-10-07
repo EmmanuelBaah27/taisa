@@ -203,6 +203,41 @@ struct ConversationTurnRepositoryTests {
         }
     }
 
+    @Test func latestResumableTurnRestoresActiveWorkButIgnoresFinishedHistory() async throws {
+        let fixture = try await makeFixture(); defer { fixture.remove() }
+        let repository = ConversationTurnRepository(store: fixture.store)
+        let active = queuedTurn()
+        try await repository.checkpoint(
+            active, messages: [], cleanup: nil,
+            context: MutationContext(
+                id: "00000000-0000-0000-0000-000000000071",
+                deviceID: deviceID, timestamp: 70
+            )
+        )
+
+        #expect(try await repository.latestResumableTurn(conversationID: conversationID) == active)
+
+        let finished = VoiceTurnRecord(
+            id: active.id, conversationID: active.conversationID,
+            transcriptionRequestID: active.transcriptionRequestID,
+            transcriptionIdempotencyKey: active.transcriptionIdempotencyKey,
+            coachingRequestID: active.coachingRequestID,
+            coachingIdempotencyKey: active.coachingIdempotencyKey,
+            state: .noSpeech, stage: .finished,
+            cleanupState: .completed,
+            createdAtMS: active.createdAtMS, updatedAtMS: 71
+        )
+        try await repository.checkpoint(
+            finished, messages: [], cleanup: nil,
+            context: MutationContext(
+                id: "00000000-0000-0000-0000-000000000072",
+                deviceID: deviceID, timestamp: 71
+            )
+        )
+
+        #expect(try await repository.latestResumableTurn(conversationID: conversationID) == nil)
+    }
+
     private func queuedTurn() -> VoiceTurnRecord {
         VoiceTurnRecord(
             id: turnID,

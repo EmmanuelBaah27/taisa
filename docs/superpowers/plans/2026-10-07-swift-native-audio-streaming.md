@@ -1,6 +1,6 @@
 # Swift Native Audio and Conversation Streaming Implementation Plan
 
-> **Status:** Approved; Build in progress.
+> **Status:** Approved; Review + QA — automated implementation complete, exact signed-device matrix pending.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -65,7 +65,7 @@ test('rejects wrong request, gap, duplicate conflict, unknown field, and post-te
 
 - [ ] **Step 2: Run RED**
 
-Run: `node --test scripts/native-contracts/__tests__/verify-coaching-fixtures.test.mjs`  
+Run: `node --test scripts/native-contracts/__tests__/verify-coaching-fixtures.test.mjs`
 Expected: FAIL because the coaching fixture verifier and schema do not exist.
 
 - [ ] **Step 3: Implement the strict portable event family**
@@ -81,10 +81,10 @@ Validate exact fields, UUID identity, non-negative contiguous sequence, one term
 
 - [ ] **Step 4: Run TypeScript GREEN and Swift RED/GREEN**
 
-Run: `node --test scripts/native-contracts/__tests__/verify-coaching-fixtures.test.mjs scripts/native-contracts/__tests__/verify-transcription-fixtures.test.mjs`  
+Run: `node --test scripts/native-contracts/__tests__/verify-coaching-fixtures.test.mjs scripts/native-contracts/__tests__/verify-transcription-fixtures.test.mjs`
 Expected: PASS.
 
-Run: `cd apple/Packages/TaisaFoundation && swift test --filter TaisaContractsTests`  
+Run: `cd apple/Packages/TaisaFoundation && swift test --filter TaisaContractsTests`
 Expected before implementation: FAIL because the Swift decoder is missing. Expected after implementation: PASS.
 
 - [ ] **Step 5: Commit**
@@ -132,7 +132,7 @@ it('reports ambiguous work without starting another provider attempt', async () 
 
 - [ ] **Step 2: Run RED**
 
-Run: `npm test --workspace=backend -- --runInBand coaching.streaming.test.ts coaching.idempotency.test.ts`  
+Run: `npm test --workspace=backend -- --runInBand coaching.streaming.test.ts coaching.idempotency.test.ts`
 Expected: FAIL because the stream route and durable receipt store do not exist.
 
 - [ ] **Step 3: Implement atomic receipts, settlement, stream, and lookup**
@@ -141,10 +141,10 @@ Persist request hash, idempotency key, lifecycle status, attempt/cost status, te
 
 - [ ] **Step 4: Verify GREEN and legacy compatibility**
 
-Run: `npm test --workspace=backend -- --runInBand coaching.streaming.test.ts coaching.idempotency.test.ts coaching.routes.test.ts coachingGateway.test.ts coaching.rateLimit.test.ts`  
+Run: `npm test --workspace=backend -- --runInBand coaching.streaming.test.ts coaching.idempotency.test.ts coaching.routes.test.ts coachingGateway.test.ts coaching.rateLimit.test.ts`
 Expected: PASS with one provider invocation and one settlement per stable key.
 
-Run: `npm run build --workspace=backend && npm run build --workspace=shared`  
+Run: `npm run build --workspace=backend && npm run build --workspace=shared`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -179,7 +179,7 @@ git commit -m "feat: stream coaching with durable idempotency"
 
 - [ ] **Step 2: Run RED**
 
-Run: `cd apple/Packages/TaisaFoundation && swift test --filter ConversationTurnRepositoryTests`  
+Run: `cd apple/Packages/TaisaFoundation && swift test --filter ConversationTurnRepositoryTests`
 Expected: FAIL because the record, migration, and repository do not exist.
 
 - [ ] **Step 3: Implement schema, repository, and exclusion rules**
@@ -188,7 +188,7 @@ Store stable identities, stage, audio fingerprint/reference, transcript decision
 
 - [ ] **Step 4: Verify GREEN plus recovery/sync regressions**
 
-Run: `cd apple/Packages/TaisaFoundation && swift test --filter 'ConversationTurnRepositoryTests|SnapshotTests|SyncProjection'`  
+Run: `cd apple/Packages/TaisaFoundation && swift test --filter 'ConversationTurnRepositoryTests|SnapshotTests|SyncProjection'`
 Expected: PASS and serialized archives/projections contain no audio path or bytes.
 
 - [ ] **Step 5: Commit**
@@ -218,7 +218,7 @@ Cover record, pause, resume, Send, cancel, discard, clear/uncertain/no-speech te
 
 - [ ] **Step 2: Run RED**
 
-Run: `cd apple/Packages/TaisaFoundation && swift test --filter VoiceSessionReducerTests`  
+Run: `cd apple/Packages/TaisaFoundation && swift test --filter VoiceSessionReducerTests`
 Expected: FAIL because `TaisaVoice` and the reducer do not exist.
 
 - [ ] **Step 3: Implement the minimal pure reducer**
@@ -227,7 +227,7 @@ Every transition returns a checkpoint before an external side effect. Illegal co
 
 - [ ] **Step 4: Verify GREEN and transition completeness**
 
-Run: `cd apple/Packages/TaisaFoundation && swift test --filter VoiceSessionReducerTests`  
+Run: `cd apple/Packages/TaisaFoundation && swift test --filter VoiceSessionReducerTests`
 Expected: PASS for every allowed edge and every forbidden regression.
 
 - [ ] **Step 5: Commit**
@@ -263,7 +263,7 @@ git commit -m "feat: define durable voice session state machine"
 
 - [ ] **Step 2: Run RED**
 
-Run: `cd apple/Packages/TaisaFoundation && swift test --filter TaisaAudioTests`  
+Run: `cd apple/Packages/TaisaFoundation && swift test --filter TaisaAudioTests`
 Expected: FAIL because the audio target and protocols do not exist.
 
 - [ ] **Step 3: Implement protocol-backed service and AVFoundation adapter**
@@ -272,10 +272,10 @@ Request permission only from `start`, use one owned recording, apply complete fi
 
 - [ ] **Step 4: Verify GREEN and project build**
 
-Run: `cd apple/Packages/TaisaFoundation && swift test --filter TaisaAudioTests`  
+Run: `cd apple/Packages/TaisaFoundation && swift test --filter TaisaAudioTests`
 Expected: PASS.
 
-Run: `xcodebuild -project apple/Taisa.xcodeproj -scheme Taisa-Dev -sdk iphonesimulator -configuration Debug build CODE_SIGNING_ALLOWED=NO`  
+Run: `xcodebuild -project apple/Taisa.xcodeproj -scheme Taisa-Dev -sdk iphonesimulator -configuration Debug build CODE_SIGNING_ALLOWED=NO`
 Expected: BUILD SUCCEEDED with microphone usage text present.
 
 - [ ] **Step 5: Commit**
@@ -304,7 +304,7 @@ Test fragmented UTF-8, split lines, maximum line/buffer sizes, request mismatch,
 
 - [ ] **Step 2: Run RED**
 
-Run: `cd apple/Packages/TaisaFoundation && swift test --filter StreamClientTests`  
+Run: `cd apple/Packages/TaisaFoundation && swift test --filter StreamClientTests`
 Expected: FAIL because clients and bounded transport do not exist.
 
 - [ ] **Step 3: Implement bounded incremental clients**
@@ -313,7 +313,7 @@ Upload audio only from the transcription client after queued state is durable. A
 
 - [ ] **Step 4: Verify GREEN**
 
-Run: `cd apple/Packages/TaisaFoundation && swift test --filter 'StreamClientTests|TranscriptionStreamEventTests|CoachingStreamEventTests'`  
+Run: `cd apple/Packages/TaisaFoundation && swift test --filter 'StreamClientTests|TranscriptionStreamEventTests|CoachingStreamEventTests'`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -348,7 +348,7 @@ git commit -m "feat: add strict native conversation stream clients"
 
 - [ ] **Step 2: Run RED**
 
-Run: `cd apple/Packages/TaisaFoundation && swift test --filter 'VoiceSessionCoordinatorTests|VoiceSessionRecoveryTests'`  
+Run: `cd apple/Packages/TaisaFoundation && swift test --filter 'VoiceSessionCoordinatorTests|VoiceSessionRecoveryTests'`
 Expected: FAIL because orchestration and recovery do not exist.
 
 - [ ] **Step 3: Implement actor-owned orchestration**
@@ -357,7 +357,7 @@ Serialize commands in one actor, checkpoint before executing effects, cancel sta
 
 - [ ] **Step 4: Verify GREEN and repeated-run stability**
 
-Run: `cd apple/Packages/TaisaFoundation && swift test --filter 'VoiceSessionCoordinatorTests|VoiceSessionRecoveryTests' --repeat 10`  
+Run: `cd apple/Packages/TaisaFoundation && swift test --filter 'VoiceSessionCoordinatorTests|VoiceSessionRecoveryTests' --repeat 10`
 Expected: PASS without duplicate transport calls or leaked tasks.
 
 - [ ] **Step 5: Commit**
@@ -387,7 +387,7 @@ Assert recoverable audio is retained, terminal/discarded audio is deleted, unkno
 
 - [ ] **Step 2: Run RED**
 
-Run: `cd apple/Packages/TaisaFoundation && swift test --filter 'VoiceAudioCleanupTests|VoiceSessionFixtureTests|DiagnosticRedactionTests'`  
+Run: `cd apple/Packages/TaisaFoundation && swift test --filter 'VoiceAudioCleanupTests|VoiceSessionFixtureTests|DiagnosticRedactionTests'`
 Expected: FAIL because cleanup and fixtures do not exist.
 
 - [ ] **Step 3: Implement cleanup and deterministic fixture registry**
@@ -396,7 +396,7 @@ Keep fixtures synthetic and network-denied. Record only content-free stage, coun
 
 - [ ] **Step 4: Verify GREEN**
 
-Run: `cd apple/Packages/TaisaFoundation && swift test --filter 'VoiceAudioCleanupTests|VoiceSessionFixtureTests|DiagnosticRedactionTests'`  
+Run: `cd apple/Packages/TaisaFoundation && swift test --filter 'VoiceAudioCleanupTests|VoiceSessionFixtureTests|DiagnosticRedactionTests'`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -428,7 +428,7 @@ Verify action availability derives from domain state, private content is not aut
 
 - [ ] **Step 2: Run RED**
 
-Run: `xcodebuild test -project apple/Taisa.xcodeproj -scheme Taisa-Preview -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -only-testing:TaisaUnitTests/VoiceSessionDiagnosticsViewModelTests -only-testing:TaisaPreviewUITests/VoiceSessionAccessibilityTests`  
+Run: `xcodebuild test -project apple/Taisa.xcodeproj -scheme Taisa-Preview -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -only-testing:TaisaUnitTests/VoiceSessionDiagnosticsViewModelTests -only-testing:TaisaPreviewUITests/VoiceSessionAccessibilityTests`
 Expected: FAIL because the diagnostic surface is missing.
 
 - [ ] **Step 3: Implement the narrow validation surface**
@@ -437,10 +437,10 @@ Use existing design-system components and string resources. Do not establish fin
 
 - [ ] **Step 4: Verify GREEN and design-system compliance**
 
-Run: `xcodebuild test -project apple/Taisa.xcodeproj -scheme Taisa-Preview -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -only-testing:TaisaUnitTests/VoiceSessionDiagnosticsViewModelTests -only-testing:TaisaPreviewUITests/VoiceSessionAccessibilityTests`  
+Run: `xcodebuild test -project apple/Taisa.xcodeproj -scheme Taisa-Preview -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -only-testing:TaisaUnitTests/VoiceSessionDiagnosticsViewModelTests -only-testing:TaisaPreviewUITests/VoiceSessionAccessibilityTests`
 Expected: PASS.
 
-Run: `node scripts/native-apple/verify-design-system.mjs`  
+Run: `node scripts/native-apple/verify-design-system.mjs`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -470,7 +470,7 @@ Reject evidence containing private text/audio/path fields, wrong commit or fixtu
 
 - [ ] **Step 2: Run RED**
 
-Run: `node --test apple/scripts/__tests__/verify-voice-evidence.test.mjs`  
+Run: `node --test apple/scripts/__tests__/verify-voice-evidence.test.mjs`
 Expected: FAIL because the verifier and matrix do not exist.
 
 - [ ] **Step 3: Implement the verifier and matrix template**
@@ -479,16 +479,16 @@ Include permission, pause/resume, phone/Siri/alarm, Bluetooth/wired route remova
 
 - [ ] **Step 4: Run the complete automated matrix**
 
-Run: `npm test --workspace=backend -- --runInBand && npm run build --workspace=backend && npm run build --workspace=shared`  
+Run: `npm test --workspace=backend -- --runInBand && npm run build --workspace=backend && npm run build --workspace=shared`
 Expected: PASS.
 
-Run: `node --test scripts/native-contracts/__tests__/*.test.mjs apple/scripts/__tests__/verify-voice-evidence.test.mjs`  
+Run: `node --test scripts/native-contracts/__tests__/*.test.mjs apple/scripts/__tests__/verify-voice-evidence.test.mjs`
 Expected: PASS.
 
-Run: `cd apple/Packages/TaisaFoundation && swift test`  
+Run: `cd apple/Packages/TaisaFoundation && swift test`
 Expected: PASS.
 
-Run: `bash scripts/native-apple/verify-all.sh`  
+Run: `bash scripts/native-apple/verify-all.sh`
 Expected: PASS.
 
 - [ ] **Step 5: Build, install, and execute the signed device matrix**
@@ -511,3 +511,9 @@ git commit -m "test: verify native audio streaming foundation"
 - Type consistency: Task 1 event identities feed Tasks 2 and 6; Task 3 persistence and Task 4 transitions feed Task 7; Tasks 5–7 feed Tasks 8–10.
 - External mutations: no signing, capability, provider configuration, or paid infrastructure change is planned. If implementation proves one necessary, stop for target-specific approval.
 - Execution recommendation: native inline execution, because the ten tasks share tightly coupled identities and state-machine contracts; one whole-branch independent review remains mandatory before QA.
+
+## Execution closeout — 2026-10-07
+
+Tasks 1–9 and Task 10 Steps 1–4 are implemented and verified. The complete backend suite (388 tests), backend TypeScript build, Swift foundation suite (395 tests), contract/evidence checks, all native Apple simulator/build/isolation gates, design-system verification, and workflow verification pass. Independent review blockers covering persisted relaunch, multi-turn capture ownership, discard shutdown, lifecycle state, monotonic timestamps, and charge-safe transcription reconciliation were remediated and regression-tested.
+
+Task 10 Step 5 remains open for exact signed iPhone/iPad QA after canonical preview integration. Step 6 and Ship remain open until that device evidence passes and Baah grants the Ship gate. The unchecked procedural boxes above preserve the originally approved execution script; this closeout is the authoritative current-stage record.

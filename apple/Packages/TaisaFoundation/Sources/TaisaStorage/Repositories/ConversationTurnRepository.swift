@@ -20,6 +20,28 @@ public struct ConversationTurnRepository: Sendable {
         catch { throw RepositoryError.persistenceFailed }
     }
 
+    public func latestResumableTurn(conversationID: String) async throws -> VoiceTurnRecord? {
+        guard let conversationID = UUIDIdentity.canonical(conversationID) else {
+            throw RepositoryError.invalidIdentifier
+        }
+        do {
+            return try await store.read { db in
+                try Row.fetchOne(
+                    db,
+                    sql: """
+                        SELECT * FROM voice_turns
+                        WHERE conversation_id = ? COLLATE NOCASE
+                          AND stage NOT IN ('capture', 'finished')
+                        ORDER BY updated_at_ms DESC, created_at_ms DESC, rowid DESC
+                        LIMIT 1
+                        """,
+                    arguments: [conversationID]
+                ).map(Self.decode)
+            }
+        } catch let error as RepositoryError { throw error }
+        catch { throw RepositoryError.persistenceFailed }
+    }
+
     public func checkpoint(
         _ source: VoiceTurnRecord,
         messages: [MessageRecord],

@@ -1,5 +1,7 @@
 import Foundation
+import TaisaAudio
 import TaisaContracts
+import TaisaNetworking
 import TaisaStorage
 
 public protocol VoiceTurnCheckpointing: Sendable {
@@ -14,16 +16,40 @@ public protocol VoiceTranscriptionRunning: Sendable {
     func stream(for turn: VoiceTurnRecord) async throws -> AsyncThrowingStream<TranscriptionStreamEvent, Error>
 }
 
+public enum TranscriptionReconciliationResult: Sendable, Equatable {
+    case safeToRetry
+    case ambiguous
+    case completed(TranscriptionStreamEvent)
+}
+
+public protocol TranscriptionReconciliationLookingUp: Sendable {
+    func reconcile(requestID: UUID) async throws -> TranscriptionReconciliationResult
+    func authorizeRetry(requestID: UUID) async throws
+}
+
+public struct FailClosedTranscriptionReconciliation: TranscriptionReconciliationLookingUp {
+    public init() {}
+    public func reconcile(requestID: UUID) async throws -> TranscriptionReconciliationResult {
+        .ambiguous
+    }
+    public func authorizeRetry(requestID: UUID) async throws {
+        throw StreamTransportError.reconciliationRequired
+    }
+}
+
 public protocol VoiceCoachingRunning: Sendable {
     func stream(for turn: VoiceTurnRecord) async throws -> AsyncThrowingStream<CoachingStreamEvent, Error>
 }
 
 public protocol VoiceCaptureControlling: Sendable {
+    func events() async -> AsyncStream<AudioCaptureEvent>
     func start(turnID: UUID) async throws
     func pause(turnID: UUID) async throws
     func resume(turnID: UUID) async throws
     func finalize(turnID: UUID) async throws -> FinalizedVoiceAudio
     func cancel(turnID: UUID) async throws
+    func discard(turnID: UUID) async throws
+    func release(turnID: UUID) async throws
 }
 
 public protocol VoiceAudioDeleting: Sendable {
@@ -84,6 +110,7 @@ public actor VoiceSessionCoordinator {
     private let reducer: VoiceSessionReducer
     private let checkpoints: any VoiceTurnCheckpointing
     private let transcription: any VoiceTranscriptionRunning
+    private let transcriptionReconciliation: any TranscriptionReconciliationLookingUp
     private let coaching: any VoiceCoachingRunning
     private let connectivity: any ConnectivityMonitoring
     private let reconciliation: any CoachingReconciliationLookingUp
@@ -100,12 +127,14 @@ public actor VoiceSessionCoordinator {
     private var pendingAssistantReply: String?
     private var activeStage: VoiceTurnStage?
     private var activeTask: Task<Void, Never>?
+    private var captureEventsTask: Task<Void, Never>?
     private var operationGeneration = 0
 
     public init(
         initial: VoiceTurnRecord,
         checkpoints: any VoiceTurnCheckpointing,
         transcription: any VoiceTranscriptionRunning,
+        transcriptionReconciliation: any TranscriptionReconciliationLookingUp = FailClosedTranscriptionReconciliation(),
         coaching: any VoiceCoachingRunning,
         connectivity: any ConnectivityMonitoring,
         reconciliation: any CoachingReconciliationLookingUp,
@@ -122,6 +151,7 @@ public actor VoiceSessionCoordinator {
         durable = initial
         self.checkpoints = checkpoints
         self.transcription = transcription
+        self.transcriptionReconciliation = transcriptionReconciliation
         self.coaching = coaching
         self.connectivity = connectivity
         self.reconciliation = reconciliation
@@ -172,6 +202,8 @@ public actor VoiceSessionCoordinator {
             } else {
                 launchTranscription()
             }
+        case .reconcileTranscription:
+            try await reconcileTranscription()
         case .retryCoaching:
             if durable.state == .recoverableFailure {
                 scheduleDurableRetry(stage: .coaching)
@@ -188,6 +220,7 @@ public actor VoiceSessionCoordinator {
     }
 
     private func apply(_ transition: VoiceSessionTransition) async throws {
+        let prior = durable
         for effect in transition.effects {
             switch effect {
             case .checkpoint(let record):
@@ -200,6 +233,7 @@ public actor VoiceSessionCoordinator {
                 launchCoaching()
             case .startRecording:
                 try await capture.start(turnID: currentTurnID())
+                observeCaptureEvents()
             case .pauseRecording:
                 try await capture.pause(turnID: currentTurnID())
             case .resumeRecording:
@@ -210,20 +244,33 @@ public actor VoiceSessionCoordinator {
                 }
                 try await reconciliation.authorizeRetry(requestID: requestID)
                 launchCoaching()
+            case .authorizeTranscriptionRetry:
+                guard let requestID = UUID(uuidString: durable.transcriptionRequestID) else {
+                    throw VoiceSessionReducerError.invalidCommand
+                }
+                try await transcriptionReconciliation.authorizeRetry(requestID: requestID)
+                launchTranscription()
             case .cancelWork:
-                try await cancelWork()
+                try await cancelWork(
+                    prior: prior,
+                    discardCapture: transition.next.state == .discarded
+                )
             case .deleteAudio(let fileID):
                 try await deleteAudio(fileID)
-            case .requestTranscriptConfirmation, .requestResumeConfirmation,
-                 .conversationReady:
+            case .conversationReady:
+                try await capture.release(turnID: currentTurnID())
+            case .requestTranscriptConfirmation, .requestResumeConfirmation:
                 break
             }
         }
     }
 
-    private func persist(_ record: VoiceTurnRecord) async throws {
+    private func persist(_ candidate: VoiceTurnRecord) async throws {
+        let timestamp = max(
+            nowMS(), durable.updatedAtMS == Int64.max ? Int64.max : durable.updatedAtMS + 1
+        )
+        let record = timestamped(candidate, at: timestamp)
         var messages: [MessageRecord] = []
-        let timestamp = nowMS()
         if record.userMessageID != durable.userMessageID,
            let id = record.userMessageID, let body = record.acceptedTranscript {
             messages.append(.init(
@@ -309,6 +356,14 @@ public actor VoiceSessionCoordinator {
                     return
                 }
             }
+        } catch let error as StreamTransportError where error == .reconciliationRequired {
+            partialTranscript = ""
+            if isCurrent(generation), !Task.isCancelled, durable.state == .transcribing {
+                try? await send(.fail(
+                    code: "AMBIGUOUS_PAID_WORK", retryable: false, ambiguous: true
+                ))
+            }
+            finishStage(generation)
         } catch {
             partialTranscript = ""
             if isCurrent(generation), !Task.isCancelled, durable.state == .transcribing {
@@ -415,16 +470,129 @@ public actor VoiceSessionCoordinator {
         }
     }
 
-    private func cancelWork() async throws {
+    private func reconcileTranscription() async throws {
+        guard let requestID = UUID(uuidString: durable.transcriptionRequestID) else {
+            try await send(.fail(
+                code: "INVALID_TRANSCRIPTION_REQUEST_ID", retryable: false, ambiguous: false
+            ))
+            return
+        }
+        switch try await transcriptionReconciliation.reconcile(requestID: requestID) {
+        case .safeToRetry:
+            launchTranscription()
+        case .ambiguous:
+            try await send(.fail(
+                code: "AMBIGUOUS_PAID_WORK", retryable: false, ambiguous: true
+            ))
+        case .completed(let event):
+            switch event {
+            case .completed(let eventRequestID, _, let text, _, let quality, _):
+                guard eventRequestID == requestID else {
+                    throw StreamTransportError.protocolViolation(.requestMismatch)
+                }
+                switch quality {
+                case .clear:
+                    try await send(.transcriptCompleted(.clear(
+                        text: text, receipt: requestID.uuidString.lowercased(),
+                        userMessageID: makeMessageID().uuidString
+                    )))
+                case .uncertain:
+                    try await send(.transcriptCompleted(.uncertain(
+                        text: text, receipt: requestID.uuidString.lowercased()
+                    )))
+                }
+            case .noSpeech(let eventRequestID, _):
+                guard eventRequestID == requestID else {
+                    throw StreamTransportError.protocolViolation(.requestMismatch)
+                }
+                try await send(.transcriptCompleted(.noSpeech(
+                    receipt: requestID.uuidString.lowercased()
+                )))
+            case .failed:
+                try await send(.fail(
+                    code: "TRANSCRIPTION_FAILED", retryable: false, ambiguous: false
+                ))
+            case .delta:
+                throw StreamTransportError.invalidResponse
+            }
+        }
+    }
+
+    private func cancelWork(
+        prior: VoiceTurnRecord,
+        discardCapture: Bool
+    ) async throws {
         operationGeneration += 1
         activeTask?.cancel()
         activeTask = nil
         activeStage = nil
         partialTranscript = ""
         partialCoaching = ""
-        if durable.stage == .capture {
-            try await capture.cancel(turnID: currentTurnID())
+        captureEventsTask?.cancel()
+        captureEventsTask = nil
+        if prior.stage == .capture {
+            guard let turnID = UUID(uuidString: prior.id) else {
+                throw VoiceSessionReducerError.invalidCommand
+            }
+            if discardCapture {
+                try await capture.discard(turnID: turnID)
+            } else {
+                try await capture.cancel(turnID: turnID)
+            }
         }
+    }
+
+    private func observeCaptureEvents() {
+        captureEventsTask?.cancel()
+        captureEventsTask = Task { [weak self] in
+            guard let self else { return }
+            for await event in await self.capture.events() {
+                guard !Task.isCancelled else { return }
+                await self.captureEventReceived(event)
+            }
+        }
+    }
+
+    private func captureEventReceived(_ event: AudioCaptureEvent) async {
+        let eventTurnID: UUID
+        switch event {
+        case .started(let turnID, _), .paused(let turnID, _), .resumed(let turnID),
+             .blocked(let turnID, _), .finalized(let turnID, _),
+             .finalizedAudioPreserved(let turnID, _),
+             .cancelledAudioPreserved(let turnID, _), .discarded(let turnID, _):
+            eventTurnID = turnID
+        }
+        guard eventTurnID.uuidString.lowercased() == durable.id else { return }
+        guard durable.state == .recording else { return }
+        switch event {
+        case .paused, .blocked:
+            try? await send(.capturePaused)
+        default:
+            break
+        }
+    }
+
+    private func timestamped(_ source: VoiceTurnRecord, at updatedAtMS: Int64) -> VoiceTurnRecord {
+        VoiceTurnRecord(
+            id: source.id, conversationID: source.conversationID,
+            transcriptionRequestID: source.transcriptionRequestID,
+            transcriptionIdempotencyKey: source.transcriptionIdempotencyKey,
+            coachingRequestID: source.coachingRequestID,
+            coachingIdempotencyKey: source.coachingIdempotencyKey,
+            state: source.state, stage: source.stage,
+            audioFileID: source.audioFileID, audioSHA256: source.audioSHA256,
+            audioDurationMS: source.audioDurationMS,
+            acceptedTranscript: source.acceptedTranscript,
+            uncertainTranscript: source.uncertainTranscript,
+            retryCount: source.retryCount, nextRetryAtMS: source.nextRetryAtMS,
+            failureCode: source.failureCode,
+            transcriptionReceipt: source.transcriptionReceipt,
+            coachingReceipt: source.coachingReceipt,
+            userMessageID: source.userMessageID,
+            assistantMessageID: source.assistantMessageID,
+            cleanupState: source.cleanupState,
+            createdAtMS: source.createdAtMS, updatedAtMS: updatedAtMS
+        )
     }
 
     private func scheduleRetryOrFail(code: String, generation: Int) async throws {

@@ -10,13 +10,21 @@ public struct TranscriptionStreamRequest: Sendable {
     public let endpoint: URL
     public let requestID: UUID
     public let bearerToken: String
+    public let ownerID: String
+    public let idempotencyKey: String
     public let audio: FinalizedAudio
     public var queuedIsDurable: Bool
 
-    public init(endpoint: URL, requestID: UUID, bearerToken: String, audio: FinalizedAudio, queuedIsDurable: Bool) {
+    public init(
+        endpoint: URL, requestID: UUID, bearerToken: String,
+        ownerID: String, idempotencyKey: String,
+        audio: FinalizedAudio, queuedIsDurable: Bool
+    ) {
         self.endpoint = endpoint
         self.requestID = requestID
         self.bearerToken = bearerToken
+        self.ownerID = ownerID
+        self.idempotencyKey = idempotencyKey
         self.audio = audio
         self.queuedIsDurable = queuedIsDurable
     }
@@ -41,6 +49,8 @@ public struct TranscriptionStreamClient: Sendable {
                     request.timeoutInterval = 60
                     request.setValue("Bearer \(input.bearerToken)", forHTTPHeaderField: "Authorization")
                     request.setValue(input.requestID.uuidString.lowercased(), forHTTPHeaderField: "X-Request-ID")
+                    request.setValue(input.ownerID, forHTTPHeaderField: "X-User-ID")
+                    request.setValue(input.idempotencyKey, forHTTPHeaderField: "Idempotency-Key")
                     let boundary = "Taisa-\(input.requestID.uuidString)"
                     request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
                     do {

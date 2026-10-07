@@ -10,6 +10,7 @@ public enum VoiceSessionEffect: Sendable, Equatable {
     case requestTranscriptConfirmation
     case requestResumeConfirmation
     case authorizeCoachingRetry
+    case authorizeTranscriptionRetry
     case cancelWork
     case deleteAudio(String)
     case conversationReady

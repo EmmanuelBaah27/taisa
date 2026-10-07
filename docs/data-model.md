@@ -46,6 +46,12 @@ encryption key is supplied separately as `TAISA_COACHING_RECEIPT_ENCRYPTION_KEY`
 it without a migration makes old terminal replay unavailable, so deployment key custody is part of
 the backup/restore procedure.
 
+`transcription_idempotency_receipts` applies the same owner-bound lifecycle to paid transcription.
+It binds the idempotency key and request UUID to an audio SHA-256 fingerprint, stores only an
+AES-256-GCM encrypted terminal stream event, and refuses automatic replay while provider work is
+ambiguous. `TAISA_TRANSCRIPTION_RECEIPT_ENCRYPTION_KEY` is a separate 32-byte base64 key and follows
+the same deployment backup and rotation requirements as the coaching receipt key.
+
 ### Manual encrypted recovery
 
 An exported SQLCipher database contains the complete local schema plus an encrypted

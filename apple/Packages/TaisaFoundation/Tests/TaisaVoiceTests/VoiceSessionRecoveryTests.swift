@@ -8,12 +8,13 @@ struct VoiceSessionRecoveryTests {
     @Test(arguments: [
         (VoiceTurnState.draft, VoiceTurnStage.capture, VoiceRecoveryAction.none),
         (.queued, .transcription, .retryTranscription),
-        (.transcribing, .transcription, .retryTranscription),
+        (.transcribing, .transcription, .reconcileTranscription),
         (.recoverableFailure, .transcription, .retryTranscription),
         (.transcriptClear, .coaching, .retryCoaching),
         (.coaching, .coaching, .reconcileCoaching),
         (.recoverableFailure, .coaching, .reconcileCoaching),
         (.resumeRequiresConfirmation, .coaching, .requireConfirmation),
+        (.resumeRequiresConfirmation, .transcription, .requireConfirmation),
         (.completed, .cleanup, .cleanupOnly),
         (.discarded, .cleanup, .cleanupOnly),
     ])

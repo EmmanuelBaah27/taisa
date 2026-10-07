@@ -37,6 +37,10 @@ final class PersonalVoiceSessionModel: ObservableObject {
             let conversationID = stableConversationID()
             self.conversationID = conversationID
             try await ensureConversation(conversationID, store: context.store, deviceID: deviceID)
+            let turns = ConversationTurnRepository(store: context.store)
+            let initial = try await turns.latestResumableTurn(
+                conversationID: conversationID.uuidString
+            ) ?? makeTurn(conversationID: conversationID)
             let files = try ProtectedAudioFileStore()
             let capture = AudioCaptureController(
                 service: AudioCaptureService(
@@ -46,11 +50,14 @@ final class PersonalVoiceSessionModel: ObservableObject {
             )
             let connectivity = SystemConnectivityMonitor()
             let coordinator = VoiceSessionCoordinator(
-                initial: makeTurn(conversationID: conversationID),
+                initial: initial,
                 checkpoints: RepositoryVoiceTurnCheckpointer(
-                    repository: ConversationTurnRepository(store: context.store), deviceID: deviceID
+                    repository: turns, deviceID: deviceID
                 ),
                 transcription: GatewayTranscriptionRunner(configuration: configuration, audio: capture),
+                transcriptionReconciliation: GatewayTranscriptionReconciliation(
+                    configuration: configuration
+                ),
                 coaching: GatewayCoachingRunner(configuration: configuration),
                 connectivity: connectivity,
                 reconciliation: GatewayCoachingReconciliation(configuration: configuration),

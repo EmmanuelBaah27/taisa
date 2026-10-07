@@ -100,6 +100,24 @@ struct AudioCaptureServiceTests {
         }
     }
 
+    @Test("terminal cleanup releases ownership for the next conversation turn")
+    func releaseAllowsANewTurn() async throws {
+        let files = FileStoreSpy()
+        let service = AudioCaptureService(
+            session: SessionSpy(), recorder: RecorderSpy(), files: files
+        )
+        let first = UUID()
+        let second = UUID()
+
+        _ = try await service.start(turnID: first)
+        _ = try await service.finalize(turnID: first)
+        try await service.release(turnID: first)
+        let next = try await service.start(turnID: second)
+
+        #expect(next.turnID == second)
+        #expect(await files.allocationCount == 2)
+    }
+
     @Test("protected file store finalizes immutable upload metadata")
     func protectedFileStoreFinalizesMetadata() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)

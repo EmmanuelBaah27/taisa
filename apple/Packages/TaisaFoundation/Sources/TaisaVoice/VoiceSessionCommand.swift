@@ -21,6 +21,7 @@ public enum VoiceSessionCommand: Sendable, Equatable {
     case startRecording
     case pauseRecording
     case resumeRecording
+    case capturePaused
     case send(FinalizedVoiceAudio)
     case transcriptionBegan
     case transcriptCompleted(TranscriptOutcome)

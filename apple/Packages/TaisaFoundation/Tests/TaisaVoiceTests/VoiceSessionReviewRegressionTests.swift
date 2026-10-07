@@ -3,6 +3,7 @@ import GRDB
 import Testing
 import TaisaAudio
 import TaisaContracts
+import TaisaNetworking
 import TaisaStorage
 @testable import TaisaVoice
 
@@ -67,6 +68,7 @@ struct VoiceSessionReviewRegressionTests {
     func terminalBodiesPersistBeforeCleanup() async throws {
         let checkpoints = ReviewCheckpointSpy()
         let audio = ReviewAudioSpy()
+        let capture = ReviewCaptureSpy()
         let messageIDs = ReviewMessageIDs()
         let coordinator = VoiceSessionCoordinator(
             initial: reviewTurn(state: .queued, stage: .transcription),
@@ -80,7 +82,7 @@ struct VoiceSessionReviewRegressionTests {
             ]),
             connectivity: ReviewConnectivity(),
             reconciliation: ReviewReconciliation(),
-            capture: ReviewCaptureSpy(),
+            capture: capture,
             audio: audio,
             makeMessageID: messageIDs.next
         )
@@ -90,7 +92,88 @@ struct VoiceSessionReviewRegressionTests {
 
         #expect(await checkpoints.messageBodies == ["I led the critique.", "What changed?"])
         #expect(await audio.deleted == ["audio-1"])
+        #expect(await capture.released == [ReviewIDs.turn])
         #expect(await coordinator.snapshot().durable.stage == .finished)
+    }
+
+    @Test("discard during capture stops and deletes the recorder-owned file")
+    func discardDuringCaptureUsesCaptureDiscard() async throws {
+        let capture = ReviewCaptureSpy()
+        let coordinator = VoiceSessionCoordinator(
+            initial: reviewTurn(state: .recording, stage: .capture),
+            checkpoints: ReviewCheckpointSpy(),
+            transcription: ReviewTranscriptionRunner(events: []),
+            coaching: ReviewCoachingRunner(events: []),
+            connectivity: ReviewConnectivity(), reconciliation: ReviewReconciliation(),
+            capture: capture, audio: ReviewAudioSpy()
+        )
+
+        try await coordinator.send(.discard)
+
+        #expect(await capture.discarded == [ReviewIDs.turn])
+        #expect(await capture.cancelled.isEmpty)
+    }
+
+    @Test("persisted transitions receive monotonic update timestamps")
+    func transitionTimestampsAdvance() async throws {
+        let checkpoints = ReviewCheckpointSpy()
+        let coordinator = VoiceSessionCoordinator(
+            initial: reviewTurn(state: .draft, stage: .capture),
+            checkpoints: checkpoints,
+            transcription: ReviewTranscriptionRunner(events: []),
+            coaching: ReviewCoachingRunner(events: []),
+            connectivity: ReviewConnectivity(), reconciliation: ReviewReconciliation(),
+            capture: ReviewCaptureSpy(), audio: ReviewAudioSpy(), nowMS: { 100 }
+        )
+
+        try await coordinator.send(.startRecording)
+        try await coordinator.send(.pauseRecording)
+
+        #expect(await checkpoints.updatedAtValues == [100, 101])
+        #expect(await coordinator.snapshot().durable.updatedAtMS == 101)
+    }
+
+    @Test("capture lifecycle pause is checkpointed into durable session state")
+    func lifecyclePauseUpdatesDurableState() async throws {
+        let capture = ReviewCaptureSpy()
+        let coordinator = VoiceSessionCoordinator(
+            initial: reviewTurn(state: .draft, stage: .capture),
+            checkpoints: ReviewCheckpointSpy(),
+            transcription: ReviewTranscriptionRunner(events: []),
+            coaching: ReviewCoachingRunner(events: []),
+            connectivity: ReviewConnectivity(), reconciliation: ReviewReconciliation(),
+            capture: capture, audio: ReviewAudioSpy()
+        )
+
+        try await coordinator.send(.startRecording)
+        await capture.emit(.paused(turnID: ReviewIDs.turn, reason: .interruption))
+        for _ in 0..<20 where await coordinator.snapshot().durable.state != .paused {
+            await Task.yield()
+        }
+
+        #expect(await coordinator.snapshot().durable.state == .paused)
+    }
+
+    @Test("ambiguous transcription waits for explicit owner-authorized retry")
+    func ambiguousTranscriptionRequiresConfirmation() async throws {
+        let reconciliation = ReviewTranscriptionReconciliation(.ambiguous)
+        let coordinator = VoiceSessionCoordinator(
+            initial: reviewTurn(state: .queued, stage: .transcription),
+            checkpoints: ReviewCheckpointSpy(),
+            transcription: ReconciliationRequiredTranscriptionRunner(),
+            transcriptionReconciliation: reconciliation,
+            coaching: ReviewCoachingRunner(events: []),
+            connectivity: ReviewConnectivity(), reconciliation: ReviewReconciliation(),
+            capture: ReviewCaptureSpy(), audio: ReviewAudioSpy()
+        )
+
+        try await coordinator.recoverIfAuthorized()
+        await coordinator.waitForIdle()
+        #expect(await coordinator.snapshot().durable.state == .resumeRequiresConfirmation)
+
+        try await coordinator.send(.confirmResume)
+        await coordinator.waitForIdle()
+        #expect(await reconciliation.authorizeCalls == 1)
     }
 
     @Test("cancel stops an active transcription stream and suppresses later events")
@@ -221,6 +304,7 @@ private func reviewTranscriptionCompleted() throws -> TranscriptionStreamEvent {
 private actor ReviewCheckpointSpy: VoiceTurnCheckpointing {
     private(set) var messageBodies: [String] = []
     private(set) var retryCounts: [Int] = []
+    private(set) var updatedAtValues: [Int64] = []
     func checkpoint(
         _ record: VoiceTurnRecord,
         messages: [MessageRecord],
@@ -228,6 +312,7 @@ private actor ReviewCheckpointSpy: VoiceTurnCheckpointing {
     ) async throws {
         messageBodies.append(contentsOf: messages.map(\.body))
         retryCounts.append(record.retryCount)
+        updatedAtValues.append(record.updatedAtMS)
     }
 }
 
@@ -241,13 +326,27 @@ private actor ReviewAudioSpy: VoiceAudioDeleting {
 }
 
 private actor ReviewCaptureSpy: VoiceCaptureControlling {
+    private let eventStream: AsyncStream<AudioCaptureEvent>
+    private let eventContinuation: AsyncStream<AudioCaptureEvent>.Continuation
+    private(set) var cancelled: [UUID] = []
+    private(set) var discarded: [UUID] = []
+    private(set) var released: [UUID] = []
+    init() {
+        (eventStream, eventContinuation) = AsyncStream.makeStream(
+            of: AudioCaptureEvent.self, bufferingPolicy: .bufferingNewest(8)
+        )
+    }
+    func events() -> AsyncStream<AudioCaptureEvent> { eventStream }
+    func emit(_ event: AudioCaptureEvent) { eventContinuation.yield(event) }
     func start(turnID: UUID) async throws {}
     func pause(turnID: UUID) async throws {}
     func resume(turnID: UUID) async throws {}
     func finalize(turnID: UUID) async throws -> FinalizedVoiceAudio {
         .init(fileID: "audio-1", sha256: "abc", durationMS: 1_000)
     }
-    func cancel(turnID: UUID) async throws {}
+    func cancel(turnID: UUID) async throws { cancelled.append(turnID) }
+    func discard(turnID: UUID) async throws { discarded.append(turnID) }
+    func release(turnID: UUID) async throws { released.append(turnID) }
 }
 
 private actor ReviewTranscriptionRunner: VoiceTranscriptionRunning {
@@ -259,6 +358,22 @@ private actor ReviewTranscriptionRunner: VoiceTranscriptionRunning {
             continuation.finish()
         }
     }
+}
+
+private actor ReconciliationRequiredTranscriptionRunner: VoiceTranscriptionRunning {
+    func stream(
+        for turn: VoiceTurnRecord
+    ) async throws -> AsyncThrowingStream<TranscriptionStreamEvent, Error> {
+        throw StreamTransportError.reconciliationRequired
+    }
+}
+
+private actor ReviewTranscriptionReconciliation: TranscriptionReconciliationLookingUp {
+    let result: TranscriptionReconciliationResult
+    private(set) var authorizeCalls = 0
+    init(_ result: TranscriptionReconciliationResult) { self.result = result }
+    func reconcile(requestID: UUID) async throws -> TranscriptionReconciliationResult { result }
+    func authorizeRetry(requestID: UUID) async throws { authorizeCalls += 1 }
 }
 
 private actor BlockingReviewTranscriptionRunner: VoiceTranscriptionRunning {

@@ -177,6 +177,21 @@ public actor AudioCaptureService {
         return .discarded(turnID: turnID, fileID: pending.fileID)
     }
 
+    public func release(turnID: UUID) throws {
+        guard self.turnID != nil else {
+            state = .idle
+            return
+        }
+        try requireOwned(turnID)
+        switch state {
+        case .finalized, .cancelled, .discarded:
+            self.turnID = nil
+            state = .idle
+        case .idle, .recording, .paused, .blocked:
+            throw AudioCaptureError.invalidState
+        }
+    }
+
     public func meter(turnID: UUID) async throws -> AudioMeterSample {
         try requireOwned(turnID)
         guard case .recording = state else { throw AudioCaptureError.invalidState }

@@ -118,6 +118,17 @@ struct VoiceSessionReducerTests {
         #expect(approved.next.state == .coaching)
         #expect(approved.effects == [.checkpoint(approved.next), .authorizeCoachingRetry])
 
+        let transcriptionAmbiguity = turn(
+            state: .resumeRequiresConfirmation, stage: .transcription
+        )
+        let transcriptionApproved = try reducer.reduce(
+            state: transcriptionAmbiguity, command: .confirmResume
+        )
+        #expect(transcriptionApproved.next.state == .transcribing)
+        #expect(transcriptionApproved.effects == [
+            .checkpoint(transcriptionApproved.next), .authorizeTranscriptionRetry,
+        ])
+
         let cancelled = try reducer.reduce(state: coaching, command: .cancel)
         let resumed = try reducer.reduce(state: cancelled.next, command: .retry)
         #expect(resumed.next.state == .coaching)

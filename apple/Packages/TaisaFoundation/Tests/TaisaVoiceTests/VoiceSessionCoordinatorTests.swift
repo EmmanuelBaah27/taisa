@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+import TaisaAudio
 import TaisaContracts
 import TaisaStorage
 @testable import TaisaVoice
@@ -146,6 +147,7 @@ private struct ReconciliationSpy: CoachingReconciliationLookingUp {
 }
 
 private actor NoopCapture: VoiceCaptureControlling {
+    func events() -> AsyncStream<AudioCaptureEvent> { AsyncStream { $0.finish() } }
     func start(turnID: UUID) async throws {}
     func pause(turnID: UUID) async throws {}
     func resume(turnID: UUID) async throws {}
@@ -153,6 +155,8 @@ private actor NoopCapture: VoiceCaptureControlling {
         .init(fileID: "audio-1", sha256: "abc", durationMS: 1_000)
     }
     func cancel(turnID: UUID) async throws {}
+    func discard(turnID: UUID) async throws {}
+    func release(turnID: UUID) async throws {}
 }
 
 private actor NoopAudio: VoiceAudioDeleting {

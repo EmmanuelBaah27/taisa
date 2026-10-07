@@ -48,8 +48,71 @@ public actor GatewayTranscriptionRunner: VoiceTranscriptionRunning {
         return client.stream(.init(
             endpoint: configuration.endpoint("api/v1/transcribe"),
             requestID: requestID, bearerToken: configuration.bearerToken,
+            ownerID: configuration.ownerID,
+            idempotencyKey: turn.transcriptionIdempotencyKey,
             audio: try await audio.audio(for: turn), queuedIsDurable: turn.state == .transcribing
         ))
+    }
+}
+
+public actor GatewayTranscriptionReconciliation: TranscriptionReconciliationLookingUp {
+    private struct Envelope<Payload: Decodable>: Decodable { let success: Bool; let data: Payload? }
+    private struct Result: Decodable {
+        let status: String
+        let event: TranscriptionStreamEvent?
+    }
+
+    private let configuration: VoiceGatewayConfiguration
+    private let session: URLSession
+
+    public init(configuration: VoiceGatewayConfiguration, session: URLSession = .shared) {
+        self.configuration = configuration
+        self.session = session
+    }
+
+    public func reconcile(requestID: UUID) async throws -> TranscriptionReconciliationResult {
+        var request = authenticatedRequest(
+            configuration.endpoint("api/v1/transcribe/requests/\(requestID.uuidString.lowercased())")
+        )
+        request.httpMethod = "GET"
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw StreamTransportError.invalidResponse
+        }
+        if http.statusCode == 404 { return .safeToRetry }
+        guard (200..<300).contains(http.statusCode),
+              let result = try JSONDecoder().decode(Envelope<Result>.self, from: data).data else {
+            throw StreamTransportError.serverUnavailable
+        }
+        switch result.status {
+        case "start": return .safeToRetry
+        case "ambiguous": return .ambiguous
+        case "completed":
+            guard let event = result.event else { throw StreamTransportError.invalidResponse }
+            return .completed(event)
+        default: throw StreamTransportError.invalidResponse
+        }
+    }
+
+    public func authorizeRetry(requestID: UUID) async throws {
+        var request = authenticatedRequest(
+            configuration.endpoint("api/v1/transcribe/requests/\(requestID.uuidString.lowercased())/resolve")
+        )
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = Data(#"{"decision":"retry"}"#.utf8)
+        let (_, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+            throw StreamTransportError.reconciliationRequired
+        }
+    }
+
+    private func authenticatedRequest(_ url: URL) -> URLRequest {
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 30
+        request.setValue("Bearer \(configuration.bearerToken)", forHTTPHeaderField: "Authorization")
+        request.setValue(configuration.ownerID, forHTTPHeaderField: "X-User-ID")
+        return request
     }
 }
 

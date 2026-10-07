@@ -3,6 +3,7 @@ import type { NextFunction, Request, Response } from 'express';
 import multer from 'multer';
 import OpenAI from 'openai';
 import fs from 'fs';
+import { createHash } from 'node:crypto';
 import type { UsageReceipt } from '@taisa/shared';
 import { logRequestError } from '../middleware/requestContext';
 import {
@@ -18,6 +19,11 @@ import {
   streamTranscription,
   type StreamingTranscriptionProvider,
 } from '../services/transcription/streamingTranscription';
+import {
+  TranscriptionIdempotencyConflictError,
+  TranscriptionIdempotencyStore,
+  TranscriptionRequestNotFoundError,
+} from '../services/transcription/transcriptionIdempotencyStore';
 
 type TranscriptionClient = Pick<OpenAI, 'audio'>;
 const UPLOAD_DIRECTORY = '/tmp/beats-audio/';
@@ -26,6 +32,8 @@ interface TranscribeRouterOptions {
   client?: TranscriptionClient;
   ledger?: UsageLedger;
   environment?: Record<string, string | undefined>;
+  idempotencyStore?: TranscriptionIdempotencyStore;
+  allowLegacyOwnerHeader?: boolean;
 }
 
 interface TranscriptionConfig {
@@ -140,6 +148,42 @@ export function createTranscribeRouter(options: TranscribeRouterOptions = {}) {
   const ledger = options.ledger ?? costLedger;
   const environment = options.environment ?? process.env;
   const staleUploadCleanup = cleanupStaleTranscriptionUploads();
+  let defaultIdempotencyStore: TranscriptionIdempotencyStore | undefined;
+
+  const receiptStore = () => {
+    if (options.idempotencyStore) return options.idempotencyStore;
+    if (!defaultIdempotencyStore) {
+      defaultIdempotencyStore = new TranscriptionIdempotencyStore({
+        databasePath: environment.TAISA_USAGE_LEDGER_PATH?.trim() || 'taisa-usage-ledger.sqlite',
+        encryptionKeyBase64: environment.TAISA_TRANSCRIPTION_RECEIPT_ENCRYPTION_KEY?.trim() || '',
+      });
+    }
+    return defaultIdempotencyStore;
+  };
+
+  const requestOwner = (req: Request, res: Response): string | null => {
+    const authenticated = typeof res.locals.deviceCredentialId === 'string'
+      ? res.locals.deviceCredentialId.trim() : '';
+    const legacyAllowed = options.allowLegacyOwnerHeader
+      ?? environment.NODE_ENV !== 'production';
+    const legacy = legacyAllowed ? req.header('X-User-ID')?.trim() ?? '' : '';
+    const owner = authenticated || legacy;
+    if (!owner || owner.length > 200) {
+      res.status(401).json({
+        success: false,
+        error: { code: 'DEVICE_AUTHENTICATION_REQUIRED', message: 'Device authentication required' },
+      });
+      return null;
+    }
+    return owner;
+  };
+
+  const authenticateRequest = (req: Request, res: Response, next: NextFunction) => {
+    const owner = requestOwner(req, res);
+    if (!owner) return;
+    res.locals.transcriptionOwnerId = owner;
+    return next();
+  };
 
   const uploadAudio = (request: Request, response: Response, next: NextFunction) => {
     let maxUploadBytes: number;
@@ -184,7 +228,7 @@ export function createTranscribeRouter(options: TranscribeRouterOptions = {}) {
   };
 
   // POST /api/v1/transcribe
-  router.post('/', uploadAudio, async (req, res) => {
+  router.post('/', authenticateRequest, uploadAudio, async (req, res) => {
     if (!req.file) {
       return res.status(400).json({
         success: false,
@@ -197,10 +241,19 @@ export function createTranscribeRouter(options: TranscribeRouterOptions = {}) {
     let streamStarted = false;
     let terminalWritten = false;
     const providerAbort = new AbortController();
+    const ownerId = String(res.locals.transcriptionOwnerId);
+    const suppliedIdempotencyKey = req.header('Idempotency-Key')?.trim();
+    const idempotencyKey = suppliedIdempotencyKey
+      || (environment.NODE_ENV !== 'production' ? req.requestId : undefined);
     const abortProvider = () => providerAbort.abort();
     req.once('aborted', abortProvider);
     res.once('close', abortProvider);
     try {
+      if (!idempotencyKey || idempotencyKey.length > 200) {
+        throw new TranscriptionBoundaryError(
+          400, 'INVALID_IDEMPOTENCY_KEY', 'A bounded Idempotency-Key is required',
+        );
+      }
       let config: TranscriptionConfig;
       try {
         config = loadTranscriptionConfig(environment);
@@ -215,6 +268,30 @@ export function createTranscribeRouter(options: TranscribeRouterOptions = {}) {
       }
 
       const measuredDurationSeconds = await measureAudioDurationSeconds(req.file.path);
+      const audioSHA256 = createHash('sha256')
+        .update(await fs.promises.readFile(req.file.path)).digest('hex');
+      const idempotency = receiptStore().begin({
+        key: idempotencyKey,
+        requestId: req.requestId ?? 'missing-request-id',
+        ownerId,
+        audioSHA256,
+      });
+      if (idempotency.status === 'ambiguous') {
+        throw new TranscriptionBoundaryError(
+          409, 'AMBIGUOUS_PAID_WORK', 'Paid transcription work requires reconciliation',
+        );
+      }
+      if (idempotency.status === 'completed') {
+        res.status(200);
+        res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
+        res.setHeader('Cache-Control', 'no-store');
+        res.flushHeaders();
+        streamStarted = true;
+        terminalWritten = true;
+        res.write(`${JSON.stringify(idempotency.event)}\n`);
+        res.end();
+        return;
+      }
       const callerDurationSeconds = parseDurationSeconds(req.body.durationSeconds);
       if (Number.isNaN(callerDurationSeconds)) {
         throw new TranscriptionBoundaryError(
@@ -265,6 +342,7 @@ export function createTranscribeRouter(options: TranscribeRouterOptions = {}) {
       const fileName = `audio.${safeAudioExtension(req.file.originalname)}`;
       const client = options.client ?? new OpenAI({ apiKey: environment.OPENAI_API_KEY });
       reservation.beginProviderInvocation();
+      receiptStore().markProviderStarted(idempotencyKey);
       const provider = client.audio.transcriptions.create.bind(
         client.audio.transcriptions,
       ) as unknown as StreamingTranscriptionProvider;
@@ -286,6 +364,7 @@ export function createTranscribeRouter(options: TranscribeRouterOptions = {}) {
         if (res.destroyed) break;
         if (event.type !== 'transcript.delta') {
           terminalWritten = true;
+          receiptStore().complete(idempotencyKey, event as unknown as Record<string, unknown>);
           if (event.type === 'transcript.completed' || event.type === 'transcript.no_speech') {
             reservation.commit(estimatedUsage);
           } else {
@@ -304,15 +383,25 @@ export function createTranscribeRouter(options: TranscribeRouterOptions = {}) {
             error: { code: error.code, message: error.message },
           },
         };
+      } else if (error instanceof TranscriptionIdempotencyConflictError) {
+        result = {
+          status: 409,
+          body: {
+            success: false,
+            error: { code: error.code, message: 'Idempotency key conflicts with another request' },
+          },
+        };
       } else {
         logRequestError(req, 'TRANSCRIPTION_FAILED', error);
         if (streamStarted && !res.destroyed && !terminalWritten) {
-          res.write(`${JSON.stringify({
+          const terminal = {
             type: 'transcript.failed',
             requestId: req.requestId ?? 'missing-request-id',
             sequence: 0,
             code: 'TRANSCRIPTION_FAILED',
-          })}\n`);
+          };
+          receiptStore().complete(idempotencyKey!, terminal);
+          res.write(`${JSON.stringify(terminal)}\n`);
           terminalWritten = true;
         } else if (!streamStarted) {
           result = {
@@ -356,6 +445,47 @@ export function createTranscribeRouter(options: TranscribeRouterOptions = {}) {
       },
     };
     return res.status(fallback.status).json(fallback.body);
+  });
+
+  router.get('/requests/:requestId', (req, res) => {
+    const ownerId = requestOwner(req, res);
+    if (!ownerId) return;
+    const result = receiptStore().reconcile(req.params.requestId, ownerId);
+    if (result.status === 'missing') {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'REQUEST_NOT_FOUND', message: 'Transcription request not found' },
+      });
+    }
+    return res.json({ success: true, data: result });
+  });
+
+  router.post('/requests/:requestId/resolve', (req, res) => {
+    const ownerId = requestOwner(req, res);
+    if (!ownerId) return;
+    if (req.body?.decision !== 'retry') {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'INVALID_RESOLUTION', message: 'A retry decision is required' },
+      });
+    }
+    try {
+      return res.json({
+        success: true,
+        data: receiptStore().authorizeRetry(req.params.requestId, ownerId),
+      });
+    } catch (error) {
+      if (error instanceof TranscriptionRequestNotFoundError) {
+        return res.status(404).json({
+          success: false,
+          error: { code: error.code, message: 'Transcription request not found' },
+        });
+      }
+      return res.status(409).json({
+        success: false,
+        error: { code: 'IDEMPOTENCY_STATE_CONFLICT', message: 'Request is not awaiting resolution' },
+      });
+    }
   });
 
   return router;

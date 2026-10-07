@@ -120,6 +120,18 @@ struct StreamClientTests {
         #expect(request.value(forHTTPHeaderField: "X-Request-ID") == requestID.uuidString.lowercased())
         #expect(request.value(forHTTPHeaderField: "Idempotency-Key") == "turn-1")
     }
+
+    @Test("transcription applies owner-bound durable idempotency identities")
+    func transcriptionHeaders() async throws {
+        let terminal = Data(#"{"type":"transcript.no_speech","requestId":"11111111-1111-4111-8111-111111111111","sequence":0}"#.utf8)
+        let transport = ScriptedStreamTransport(response: .ok(chunks: [terminal]))
+        _ = try await collect(
+            TranscriptionStreamClient(transport: transport).stream(.fixture(requestID: requestID))
+        )
+        let request = try #require(await transport.lastRequest)
+        #expect(request.value(forHTTPHeaderField: "X-User-ID") == "device-1")
+        #expect(request.value(forHTTPHeaderField: "Idempotency-Key") == "transcription-key")
+    }
 }
 
 private func collect<Event>(_ stream: AsyncThrowingStream<Event, Error>) async throws -> [Event] {
@@ -150,6 +162,12 @@ private extension NDJSONHTTPResponse {
 
 private extension TranscriptionStreamRequest {
     static func fixture(requestID: UUID) -> Self {
-        .init(endpoint: URL(string: "https://example.test/transcribe")!, requestID: requestID, bearerToken: "token", audio: .init(fileID: UUID(), url: URL(fileURLWithPath: "/etc/hosts"), duration: 1, byteCount: 1, sha256: String(repeating: "a", count: 64)), queuedIsDurable: true)
+        .init(
+            endpoint: URL(string: "https://example.test/transcribe")!,
+            requestID: requestID, bearerToken: "token", ownerID: "device-1",
+            idempotencyKey: "transcription-key",
+            audio: .init(fileID: UUID(), url: URL(fileURLWithPath: "/etc/hosts"), duration: 1, byteCount: 1, sha256: String(repeating: "a", count: 64)),
+            queuedIsDurable: true
+        )
     }
 }
