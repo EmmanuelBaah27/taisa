@@ -85,9 +85,7 @@ private struct PreviewScenarioView: View {
         .navigationTitle(scenario.title)
         .navigationBarTitleDisplayMode(.inline)
         .environment(\.dynamicTypeSize, dynamicTypeSize)
-        .accessibilityIdentifier(
-            "preview.ready.\(scenario.identifier)"
-        )
+        .accessibilityIdentifier("preview.ready.\(scenario.identifier)")
     }
 
     private var dynamicTypeSize: DynamicTypeSize {
