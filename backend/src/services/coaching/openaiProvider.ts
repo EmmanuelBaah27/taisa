@@ -74,15 +74,14 @@ function openAIResponseFormat() {
     OpenAICoachingResponseEnvelopeSchema,
     'coaching_response',
   );
-  return {
-    ...format,
+  return Object.assign(format, {
     json_schema: {
       ...format.json_schema,
       schema: stripUnsupportedStringLengthKeywords(
         pruneUnreachableDefinitions(format.json_schema.schema as Record<string, any>),
       ),
     },
-  };
+  });
 }
 
 export function createOpenAIProvider(
