@@ -32,6 +32,7 @@ targets:
       path: Config/TaisaInfo.plist
       properties:
         UIBackgroundModes: [remote-notification]
+        NSMicrophoneUsageDescription: "Taisa uses the microphone only when you choose to record a conversation."
     sources:
       - path: TaisaApp
       - path: Generated
@@ -46,6 +47,8 @@ targets:
       configs:
         Debug:
           CODE_SIGN_ENTITLEMENTS: Config/TaisaDev.entitlements
+        Preview:
+          PRODUCT_BUNDLE_IDENTIFIER: com.taisa.app.unit-host
         Release:
           CODE_SIGN_ENTITLEMENTS: Config/Taisa.entitlements
     dependencies:
@@ -63,11 +66,14 @@ targets:
         product: TaisaRecovery
       - package: TaisaFoundation
         product: TaisaSecurity
+      - package: TaisaFoundation
+        product: TaisaVoice
   TaisaPreview:
     type: application
     platform: iOS
     sources:
       - path: TaisaPreview
+      - path: TaisaApp/Voice
       - path: Generated
     settings:
       base:
@@ -92,6 +98,8 @@ targets:
         product: TaisaPreviewSupport
       - package: TaisaFoundation
         product: TaisaStorage
+      - package: TaisaFoundation
+        product: TaisaVoice
   TaisaPersonal:
     type: application
     platform: iOS
@@ -99,7 +107,9 @@ targets:
       path: Config/TaisaPersonalInfo.plist
       properties:
         TaisaEnvironment: "$(TAISA_ENVIRONMENT)"
+        TaisaVoiceGatewayURL: "$(TAISA_VOICE_GATEWAY_URL)"
         NSFaceIDUsageDescription: "Authenticate to use your Taisa recovery key."
+        NSMicrophoneUsageDescription: "Taisa uses the microphone only when you choose to record a conversation."
         LSSupportsOpeningDocumentsInPlace: true
         UTExportedTypeDeclarations:
           - UTTypeIdentifier: com.taisa.encrypted-backup
@@ -139,6 +149,12 @@ targets:
         product: TaisaSecurity
       - package: TaisaFoundation
         product: TaisaRecovery
+      - package: TaisaFoundation
+        product: TaisaVoice
+      - package: TaisaFoundation
+        product: TaisaAudio
+      - package: TaisaFoundation
+        product: TaisaNetworking
   TaisaPersonalTests:
     type: bundle.unit-test
     platform: iOS
@@ -168,6 +184,8 @@ targets:
         product: TaisaRecovery
       - package: TaisaFoundation
         product: TaisaSecurity
+      - package: TaisaFoundation
+        product: TaisaVoice
   TaisaUITests:
     type: bundle.ui-testing
     platform: iOS
@@ -214,6 +232,7 @@ schemes:
     test:
       config: Preview
       targets:
+        - TaisaUnitTests
         - TaisaPreviewUITests
   Taisa-Personal:
     build:

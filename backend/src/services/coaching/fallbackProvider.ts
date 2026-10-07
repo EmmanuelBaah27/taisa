@@ -16,6 +16,7 @@ import {
   type CoachingProviderId,
   type ProviderCoachingInput,
   type ProviderCoachingResult,
+  type ProviderCoachingStreamItem,
   type ProviderRegistry,
 } from './provider';
 
@@ -46,6 +47,13 @@ export interface FallbackCoachingProvider {
   ): Promise<FallbackCoachingResult>;
 }
 
+export interface StreamingFallbackCoachingProvider extends FallbackCoachingProvider {
+  stream(input: ProviderCoachingInput, observer: ProviderAttemptObserver): AsyncIterable<
+    | { kind: 'delta'; delta: string }
+    | { kind: 'completed'; result: ProviderCoachingResult; attempts: readonly ProviderAttemptOutcome[] }
+  >;
+}
+
 export interface ContentFreeFailedAttempt {
   attemptId: AttemptEstimate['attemptId'];
   failureClass?: OperationalFailureClass | 'invalid_output';
@@ -74,6 +82,15 @@ export class ContentFreeFallbackInvalidOutputError extends ContentFreeFallbackEr
 type EstimatingCoachingProvider = CoachingProvider & {
   estimateMaximumUsage(input: ProviderCoachingInput): ProviderCoachingResult['usage'];
 };
+
+type StreamingCoachingProvider = EstimatingCoachingProvider & {
+  streamRespond(input: ProviderCoachingInput): AsyncIterable<ProviderCoachingStreamItem>;
+};
+
+function requireStreamingProvider(providerId: CoachingProviderId, provider: EstimatingCoachingProvider): StreamingCoachingProvider {
+  if (!provider.streamRespond) throw new Error(`${providerId} provider must support streaming`);
+  return provider as StreamingCoachingProvider;
+}
 
 function requireEstimatingProvider(
   providerId: CoachingProviderId,
@@ -129,7 +146,7 @@ async function invokeProviderAttempt(
 export function getConfiguredFallbackProvider(
   environment: CoachingEnvironment = process.env,
   providers?: ProviderRegistry,
-): FallbackCoachingProvider {
+): StreamingFallbackCoachingProvider {
   const { primaryId, fallbackId } = getConfiguredProviderPairSettings(environment);
   const registry: ProviderRegistry = providers ?? {
     openai: createProviderForId('openai', environment),
@@ -190,6 +207,46 @@ export function getConfiguredFallbackProvider(
           ...(fallbackFailureClass ? { failureClass: fallbackFailureClass } : {}),
         },
       ]);
+    },
+    async *stream(input, observer) {
+      const candidates = [
+        { attemptId: 'primary' as const, providerId: primaryId, provider: requireStreamingProvider(primaryId, primary) },
+        { attemptId: 'fallback' as const, providerId: fallbackId, provider: requireStreamingProvider(fallbackId, fallback) },
+      ];
+      const attempts: ProviderAttemptOutcome[] = [];
+      for (const candidate of candidates) {
+        observer.beginAttempt(candidate.attemptId);
+        let emittedDelta = false;
+        let attemptSettled = false;
+        try {
+          for await (const item of candidate.provider.streamRespond(input)) {
+            if (item.kind === 'delta') { emittedDelta = true; yield item; continue; }
+            try {
+              observer.settleAttempt({ attemptId: candidate.attemptId, receipt: item.result.usage });
+              attemptSettled = true;
+            } catch (error) {
+              if (!(error instanceof UsageExceedsReservationError)) throw error;
+              // Settlement records the actual usage before reporting an overrun. Keep the paid
+              // result and do not settle the same attempt a second time.
+              attemptSettled = true;
+              console.warn('[Taisa diagnostic] COACHING_USAGE_EXCEEDED_RESERVATION');
+            }
+            attempts.push({ attemptId: candidate.attemptId, providerId: candidate.providerId, result: item.result });
+            yield { kind: 'completed', result: item.result, attempts } as const;
+            return;
+          }
+          throw new Error('Provider stream ended without a terminal result');
+        } catch (error) {
+          if (!attemptSettled) observer.settleAttempt({ attemptId: candidate.attemptId });
+          const failureClass = classifyOperationalProviderFailure(error);
+          attempts.push({ attemptId: candidate.attemptId, providerId: candidate.providerId, ...(failureClass ? { failureClass } : {}) });
+          if (emittedDelta || candidate.attemptId === 'fallback' || !failureClass) {
+            throw new ContentFreeFallbackError(attempts.map((attempt) => ({
+              attemptId: attempt.attemptId, ...(attempt.failureClass ? { failureClass: attempt.failureClass } : {}),
+            })));
+          }
+        }
+      }
     },
   };
 }

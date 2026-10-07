@@ -2,6 +2,7 @@ import type {
   TranscriptionStreamEvent,
   UsageReceipt,
 } from '@taisa/shared';
+import { normalizeOpenAISdkFailure } from '../coaching/providerSdkFailure';
 
 const MIN_MEAN_TOKEN_LOGPROB = -0.8;
 const MAX_LOW_CONFIDENCE_TOKEN_RATIO = 0.25;
@@ -34,6 +35,40 @@ export type StreamingTranscriptionProvider = (
   },
   options: { maxRetries: 0; signal?: AbortSignal },
 ) => Promise<AsyncIterable<ProviderTranscriptionEvent>>;
+
+export type TranscriptionProviderFailure =
+  | 'AUTHENTICATION'
+  | 'PERMISSION'
+  | 'RATE_LIMIT'
+  | 'INVALID_REQUEST'
+  | 'CONNECTION_TIMEOUT'
+  | 'CONNECTION'
+  | 'HTTP_5XX'
+  | 'HTTP_4XX'
+  | 'UNKNOWN';
+
+export function classifyTranscriptionProviderFailure(
+  error: unknown,
+): TranscriptionProviderFailure {
+  const normalized = normalizeOpenAISdkFailure(error);
+  if (normalized === null || typeof normalized !== 'object') return 'UNKNOWN';
+  const failure = normalized as Readonly<Record<string, unknown>>;
+
+  switch (failure.type) {
+    case 'authentication_error': return 'AUTHENTICATION';
+    case 'permission_error': return 'PERMISSION';
+    case 'rate_limit_error':
+    case 'billing_error': return 'RATE_LIMIT';
+    case 'invalid_request_error': return 'INVALID_REQUEST';
+  }
+  if (failure.name === 'APIConnectionTimeoutError') return 'CONNECTION_TIMEOUT';
+  if (failure.name === 'APIConnectionError') return 'CONNECTION';
+  if (typeof failure.status === 'number') {
+    if (failure.status >= 500 && failure.status <= 599) return 'HTTP_5XX';
+    if (failure.status >= 400 && failure.status <= 499) return 'HTTP_4XX';
+  }
+  return 'UNKNOWN';
+}
 
 export function classifyTranscriptionEvidence(input: {
   transcript: string;
@@ -86,6 +121,7 @@ function revisionRatio(provisional: string, completed: string): number {
 export async function* streamTranscription(
   input: StreamingTranscriptionInput,
   provider: StreamingTranscriptionProvider,
+  onProviderFailure?: (failure: TranscriptionProviderFailure) => void,
 ): AsyncGenerator<TranscriptionStreamEvent> {
   let sequence = 0;
   let provisionalTranscript = '';
@@ -145,7 +181,8 @@ export async function* streamTranscription(
       terminalEmitted = true;
       return;
     }
-  } catch {
+  } catch (error) {
+    onProviderFailure?.(classifyTranscriptionProviderFailure(error));
     // The public stream intentionally carries no provider error details.
   }
 

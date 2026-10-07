@@ -126,6 +126,29 @@ struct SyncEntityShape {
         "evidence": .init(table: "evidence", columns: ["goalID": "goal_id", "actionID": "action_id", "title": "title", "detail": "detail", "occurredAtMS": "occurred_at_ms", "createdAtMS": "created_at_ms"], optional: ["goalID", "actionID"]),
         "memory": .init(table: "memory_items", columns: ["kind": "kind", "content": "content", "status": "status", "createdAtMS": "created_at_ms", "updatedAtMS": "updated_at_ms"]),
         "memory_source": .init(table: "memory_sources", columns: ["memoryItemID": "memory_item_id", "sourceType": "source_type", "sourceID": "source_id", "createdAtMS": "created_at_ms"]),
+        // Local audio identity, fingerprint, duration, and cleanup queue are intentionally
+        // absent. They are device-owned and never enter a sync mutation.
+        "voice_turn": .init(table: "voice_turns", columns: [
+            "conversationID": "conversation_id",
+            "transcriptionRequestID": "transcription_request_id",
+            "transcriptionIdempotencyKey": "transcription_idempotency_key",
+            "coachingRequestID": "coaching_request_id",
+            "coachingIdempotencyKey": "coaching_idempotency_key",
+            "state": "state", "stage": "stage",
+            "acceptedTranscript": "accepted_transcript",
+            "uncertainTranscript": "uncertain_transcript",
+            "retryCount": "retry_count", "nextRetryAtMS": "next_retry_at_ms",
+            "failureCode": "failure_code",
+            "transcriptionReceipt": "transcription_receipt",
+            "coachingReceipt": "coaching_receipt",
+            "userMessageID": "user_message_id",
+            "assistantMessageID": "assistant_message_id",
+            "cleanupState": "cleanup_state",
+            "createdAtMS": "created_at_ms", "updatedAtMS": "updated_at_ms",
+        ], optional: [
+            "acceptedTranscript", "uncertainTranscript", "nextRetryAtMS", "failureCode",
+            "transcriptionReceipt", "coachingReceipt", "userMessageID", "assistantMessageID",
+        ]),
     ]
 
     func completeFields(_ record: [String: Any]) throws -> [String: Data] {
@@ -143,6 +166,7 @@ struct SyncEntityShape {
             case "evidence": _ = try JSONDecoder().decode(EvidenceRecord.self, from: data)
             case "memory_items": _ = try JSONDecoder().decode(MemoryRecord.self, from: data)
             case "memory_sources": _ = try JSONDecoder().decode(MemorySourceRecord.self, from: data)
+            case "voice_turns": _ = try JSONDecoder().decode(VoiceTurnRecord.self, from: data)
             default: throw SyncMergeError.malformedMutation
             }
         } catch { throw SyncMergeError.malformedMutation }
@@ -201,6 +225,11 @@ struct SyncEntityShape {
         case "actions": [("goalID", "goals")]
         case "evidence": [("goalID", "goals"), ("actionID", "actions")]
         case "memory_sources": [("memoryItemID", "memory_items")]
+        case "voice_turns": [
+            ("conversationID", "conversations"),
+            ("userMessageID", "messages"),
+            ("assistantMessageID", "messages"),
+        ]
         default: []
         }
         for (property, parentTable) in relations {

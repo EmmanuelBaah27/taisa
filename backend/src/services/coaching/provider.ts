@@ -10,10 +10,15 @@ export interface ProviderCoachingResult {
   usage: UsageReceipt;
 }
 
+export type ProviderCoachingStreamItem =
+  | { kind: 'delta'; delta: string }
+  | { kind: 'completed'; result: ProviderCoachingResult };
+
 export interface CoachingProvider {
   readonly id: 'openai' | 'anthropic';
   estimateMaximumUsage?(input: ProviderCoachingInput): UsageReceipt;
   respond(input: ProviderCoachingInput): Promise<ProviderCoachingResult>;
+  streamRespond?(input: ProviderCoachingInput): AsyncIterable<ProviderCoachingStreamItem>;
 }
 
 export interface CoachingProviderConfig {
