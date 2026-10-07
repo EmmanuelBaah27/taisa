@@ -40,6 +40,10 @@ struct PersonalDeviceQAView: View {
                     TaisaText(role: .body, content: "Voice platform diagnostics")
                 }
                 .accessibilityIdentifier("foundation.voice-diagnostics.action")
+                NavigationLink { PersonalCombinedHomeQAView() } label: {
+                    TaisaText(role: .body, content: "Combined Home and Insights")
+                }
+                .accessibilityIdentifier("personal-qa.combined-home.action")
             }
             .disabled(busy)
             .padding(TaisaSpacing.page.rawValue)
