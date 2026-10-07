@@ -2,7 +2,7 @@
 
 **Track:** Platform + Product  
 **Tier:** Full  
-**Status:** Scope Approved — Design
+**Status:** Design Approved — Plan
 
 ---
 

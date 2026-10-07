@@ -10,7 +10,7 @@
 
 | Feature | Track | Stage | Branch | Blocked on |
 |---|---|---|---|---|
-| SwiftUI functional Home | Platform + Product | Design | `codex/swiftui-home-scope` | Baah design/spec approval |
+| SwiftUI functional Home | Platform + Product | Plan | `codex/swiftui-home-scope` | Baah plan approval |
 | Light design system | Platform + Product | Review (device QA) | feature/light-design-system | — |
 | Persistent input bar + Chat UI | Platform + Product | Plan | — | Light design system shipped |
 | SwiftUI native rebuild | Platform + Product | Review + QA | `feature/swift-native-foundation` | Baah Ship approval |
