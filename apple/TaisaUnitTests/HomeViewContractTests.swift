@@ -61,4 +61,18 @@ final class HomeViewContractTests: XCTestCase {
         XCTAssertTrue(rootView.contains("openInsights:"))
         XCTAssertTrue(rootView.contains("InsightsView(model:"))
     }
+
+    func testPreviewExercisesCombinedHomeAndNestedInsights() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let preview = root.appendingPathComponent("TaisaPreview")
+        let scenarios = try String(contentsOf: preview.appendingPathComponent("HomeScenarios.swift"), encoding: .utf8)
+        let scenarioView = try String(contentsOf: preview.appendingPathComponent("HomeScenarioView.swift"), encoding: .utf8)
+
+        XCTAssertTrue(scenarios.contains("home.combined"))
+        XCTAssertTrue(scenarios.contains("home.insights"))
+        XCTAssertTrue(scenarios.contains("thisWeek:"))
+        XCTAssertTrue(scenarios.contains("leadInsight:"))
+        XCTAssertTrue(scenarioView.contains("InsightsView(model:"))
+        XCTAssertTrue(scenarioView.contains("openInsights:"))
+    }
 }

@@ -43,6 +43,23 @@ final class TaisaPreviewCatalogTests: XCTestCase {
         }
     }
 
+    func testCombinedHomeOpensNestedInsights() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-TAISAPreviewScenario", "home.combined"]
+        app.launch()
+
+        let weeklyWork = app.staticTexts["Draft the studio lighting plan"]
+        XCTAssertTrue(weeklyWork.waitForExistence(timeout: 5))
+        let insight = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS %@", "Your best planning sessions happen before midday.")
+        ).firstMatch
+        XCTAssertTrue(insight.waitForExistence(timeout: 5))
+        insight.tap()
+        XCTAssertTrue(app.navigationBars["Insights"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Needs review"].exists)
+        XCTAssertTrue(app.staticTexts["History"].exists)
+    }
+
     private func element(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
         app.descendants(matching: .any)[identifier]
     }
