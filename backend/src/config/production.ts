@@ -38,11 +38,16 @@ export function readProductionConfig(environment: Environment = process.env): Pr
   ];
   const uniqueDatabasePaths = new Set(databasePaths);
   const feedbackKey = Buffer.from(environment.TAISA_FEEDBACK_ENCRYPTION_KEY ?? '', 'base64');
+  const coachingReceiptKey = Buffer.from(
+    environment.TAISA_COACHING_RECEIPT_ENCRYPTION_KEY ?? '',
+    'base64',
+  );
   const valid = validOrigin
     && path.isAbsolute(volumePath)
     && databasePaths.every((item) => isWithinVolume(item, volumePath))
     && uniqueDatabasePaths.size === databasePaths.length
     && feedbackKey.length === 32
+    && coachingReceiptKey.length === 32
     && Boolean(environment.OPENAI_API_KEY?.trim())
     && Boolean(environment.ANTHROPIC_API_KEY?.trim())
     && positiveNumber(environment, 'TAISA_AI_COST_CEILING_PER_REQUEST_USD')

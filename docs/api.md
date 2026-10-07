@@ -12,6 +12,8 @@ families belong to the new path:
 | Route | Status | Persistence boundary |
 |---|---|---|
 | `POST /api/v1/coaching/respond` | Current stateless coaching path | Validates bounded supplied context, calls the configured primary and optionally one alternate provider, returns structured coaching/proposals; stores no readable user content |
+| `POST /api/v1/coaching/respond/stream` | Native ordered coaching stream | Requires `Idempotency-Key`; emits live NDJSON deltas and one terminal; stores an encrypted authoritative terminal plus content-free lifecycle/cost records |
+| `GET /api/v1/coaching/requests/:requestId` | Coaching reconciliation | Returns content-free queued/ambiguous/failed state or the encrypted-ledger-backed authoritative completion |
 | `POST /api/v1/transcribe` | Current deliberate voice path | Deletes temporary audio in `finally`; stores only content-free usage/cost metadata |
 | `GET /health` | Current operational health | No user data |
 
@@ -48,6 +50,30 @@ configuration, cost rejection, policy/safety rejection, other invalid provider r
 structured output, and unknown errors do not trigger fallback. If both attempts fail, the public
 error remains content-free. A successful response's existing `usage.provider` identifies which
 adapter produced it; the request and response schema examples are unchanged.
+
+### `POST /api/v1/coaching/respond/stream`
+
+Accepts the same strict `CoachingRequest` and requires a bounded `Idempotency-Key` header. The
+response is `application/x-ndjson`; events have the request UUID, a contiguous non-negative
+sequence, and exactly one terminal. `coaching.delta` carries presentation-only reply text while the
+provider is still producing its structured result. Only a validated final result becomes
+`coaching.completed`. A started failure becomes `coaching.failed` with a public failure code and no
+private provider detail.
+
+The first request persists its request hash and lifecycle before provider work. Reusing the key
+with different content returns `409 IDEMPOTENCY_KEY_REUSED`. A completed duplicate replays the one
+authoritative terminal without another provider attempt. Work found in `provider_started` after a
+restart returns `409 AMBIGUOUS_PAID_WORK`; the client must reconcile and require explicit
+confirmation rather than treating this as an ordinary retry. Cost reservations use the same stable
+idempotency identity. Terminal response content is AES-256-GCM encrypted in the dedicated usage
+ledger with `TAISA_COACHING_RECEIPT_ENCRYPTION_KEY`; production fails closed when the key is absent.
+
+### `GET /api/v1/coaching/requests/:requestId`
+
+Returns the durable state for a previously accepted coaching request. `404 REQUEST_NOT_FOUND`
+means no receipt exists. `ambiguous` means provider work may have started and no automatic retry is
+safe. `completed` includes the authoritative response, receipt, and terminal sequence so the native
+client can reconcile a lost connection without paying twice.
 
 ---
 

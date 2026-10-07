@@ -29,6 +29,21 @@ triggers are enforced locally.
 Readable values in these tables are never replicated into the gateway database. Zustand is view
 state, not durable authority.
 
+## Gateway coaching idempotency ledger
+
+Streaming coaching uses the separate `TAISA_USAGE_LEDGER_PATH`, not the legacy application
+database. `coaching_idempotency_receipts` stores the stable idempotency key, request UUID, request
+hash, lifecycle (`queued`, `provider_started`, `completed`, or `failed`), terminal sequence,
+content-free failure metadata, and idempotency receipt. The authoritative terminal response is an
+AES-256-GCM envelope (`response_encrypted`); readable coaching text is not written to SQLite.
+
+The same idempotency key is the cost-request reservation identity, tying provider-attempt accounting
+to the durable receipt. A completed key is replay-only. A `provider_started` key without a terminal
+is deliberately ambiguous after restart and cannot automatically enter paid work again. The
+encryption key is supplied separately as `TAISA_COACHING_RECEIPT_ENCRYPTION_KEY`; losing or rotating
+it without a migration makes old terminal replay unavailable, so deployment key custody is part of
+the backup/restore procedure.
+
 ### Manual encrypted recovery
 
 An exported SQLCipher database contains the complete local schema plus an encrypted

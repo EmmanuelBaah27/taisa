@@ -48,6 +48,41 @@ export interface CoachingExecution {
   attempts: readonly ProviderAttemptOutcome[];
 }
 
+export type StreamingCoachingProviderItem =
+  | { kind: 'delta'; delta: string }
+  | { kind: 'completed'; result: { payload: unknown; usage: CoachingResponse['usage'] }; attempts: readonly ProviderAttemptOutcome[] };
+
+export interface StreamingFallbackCoachingProvider {
+  stream(
+    input: { systemPrompt: string; userPrompt: string },
+    observer: ProviderAttemptObserver,
+  ): AsyncIterable<StreamingCoachingProviderItem>;
+}
+
+export type StreamingCoachingItem =
+  | { kind: 'delta'; delta: string }
+  | { kind: 'completed'; response: CoachingResponse; attempts: readonly ProviderAttemptOutcome[] };
+
+export async function* requestStreamingCoaching(
+  request: CoachingRequest,
+  provider: StreamingFallbackCoachingProvider,
+  observer: ProviderAttemptObserver = NOOP_ATTEMPT_OBSERVER,
+): AsyncIterable<StreamingCoachingItem> {
+  const prompt = buildSeniorSelfPrompt(request);
+  for await (const item of provider.stream(prompt, observer)) {
+    if (item.kind === 'delta') {
+      yield item;
+      continue;
+    }
+    const payload = CoachingResponsePayloadSchema.parse(item.result.payload);
+    yield {
+      kind: 'completed',
+      response: { requestId: request.requestId, ...payload, usage: item.result.usage },
+      attempts: item.attempts,
+    };
+  }
+}
+
 const NOOP_ATTEMPT_OBSERVER: ProviderAttemptObserver = {
   beginAttempt: () => undefined,
   settleAttempt: () => undefined,

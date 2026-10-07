@@ -49,6 +49,7 @@ export interface UsageLedger {
     estimates: readonly AttemptEstimate[],
     ceilings: CostCeilings,
     reservedAt?: Date,
+    requestIdentity?: string,
   ): MultiAttemptCostReservation;
 }
 
@@ -452,6 +453,7 @@ export class CostLedger implements UsageLedger {
     estimates: readonly AttemptEstimate[],
     ceilings: CostCeilings,
     reservedAt: Date = new Date(),
+    requestIdentity?: string,
   ): MultiAttemptCostReservation {
     const sanitized = sanitizeAttemptEstimates(estimates);
     const totalEstimatedCostUsd =
@@ -459,7 +461,7 @@ export class CostLedger implements UsageLedger {
     const perRequest = finiteNonNegative(ceilings.perRequestUsd, 'perRequestUsd');
     const daily = finiteNonNegative(ceilings.dailyUsd, 'dailyUsd');
     const monthly = finiteNonNegative(ceilings.monthlyUsd, 'monthlyUsd');
-    const id = randomUUID();
+    const id = requestIdentity ?? randomUUID();
     const recordedAt = reservedAt.toISOString();
     const period = utcPeriod(reservedAt);
 
@@ -687,8 +689,8 @@ export const costLedger: UsageLedger & Pick<CostLedger, 'reserveCost'> = {
   listUsage: () => getDefaultLedger().listUsage(),
   reserveUsage: (receipt, ceilings, reservedAt) =>
     getDefaultLedger().reserveUsage(receipt, ceilings, reservedAt),
-  reserveAttempts: (estimates, ceilings, reservedAt) =>
-    getDefaultLedger().reserveAttempts(estimates, ceilings, reservedAt),
+  reserveAttempts: (estimates, ceilings, reservedAt, requestIdentity) =>
+    getDefaultLedger().reserveAttempts(estimates, ceilings, reservedAt, requestIdentity),
   reserveCost: (estimatedCostUsd, ceilings, reservedAt) =>
     getDefaultLedger().reserveCost(estimatedCostUsd, ceilings, reservedAt),
 };
@@ -710,8 +712,9 @@ export function reserveUsage(
 export function reserveAttempts(
   estimates: readonly AttemptEstimate[],
   ceilings: CostCeilings = readCostCeilings(),
+  requestIdentity?: string,
 ): MultiAttemptCostReservation {
-  return getDefaultLedger().reserveAttempts(estimates, ceilings);
+  return getDefaultLedger().reserveAttempts(estimates, ceilings, new Date(), requestIdentity);
 }
 
 export function recordUsage(receipt: UsageReceipt): void {
