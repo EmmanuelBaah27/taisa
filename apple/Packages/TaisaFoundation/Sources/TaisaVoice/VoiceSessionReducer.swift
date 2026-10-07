@@ -208,7 +208,10 @@ public struct VoiceSessionReducer: Sendable {
             guard next.state == .draft, next.stage == .capture,
                   next.conversationID == state.conversationID,
                   next.id != state.id else { throw VoiceSessionReducerError.invalidCommand }
-            return checkpoint(next)
+            return VoiceSessionTransition(
+                next: next,
+                effects: [.conversationReady, .checkpoint(next)]
+            )
         }
     }
 

@@ -150,7 +150,7 @@ struct VoiceSessionReducerTests {
         )
         let prepared = try reducer.reduce(state: cleaned.next, command: .beginNextTurn(next))
         #expect(prepared.next.conversationID == cleaned.next.conversationID)
-        #expect(prepared.effects == [.checkpoint(next)])
+        #expect(prepared.effects == [.conversationReady, .checkpoint(next)])
     }
 
     @Test func illegalCommandThrowsWithoutChangingValue() throws {
