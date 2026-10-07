@@ -36,6 +36,10 @@ struct PersonalDeviceQAView: View {
                 NavigationLink { RecoveryView() } label: {
                     TaisaText(role: .body, content: "Backup and recovery")
                 }
+                NavigationLink { PersonalVoiceSessionView() } label: {
+                    TaisaText(role: .body, content: "Voice gateway and streaming")
+                }
+                .accessibilityIdentifier("personal-qa.voice")
             }
             .disabled(busy)
             .padding(TaisaSpacing.page.rawValue)
