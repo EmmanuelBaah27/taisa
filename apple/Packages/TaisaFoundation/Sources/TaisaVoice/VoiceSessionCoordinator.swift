@@ -189,6 +189,10 @@ public actor VoiceSessionCoordinator {
 
     public func recoverIfAuthorized() async throws {
         guard activeStage == nil else { return }
+        if durable.stage == .capture, durable.state == .cancelled {
+            try await send(.discard)
+            return
+        }
         if durable.stage == .capture,
            (durable.state == .recording || durable.state == .paused) {
             try await send(.captureFailed(code: "CAPTURE_INTERRUPTED"))

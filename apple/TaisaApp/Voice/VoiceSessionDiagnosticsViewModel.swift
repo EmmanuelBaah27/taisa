@@ -62,8 +62,8 @@ struct VoiceSessionDiagnosticsViewModel: Equatable {
     var actions: [VoiceSessionDiagnosticAction] {
         switch state {
         case .draft: [.record]
-        case .recording: [.pause, .send, .cancel, .discard]
-        case .paused: [.resume, .send, .cancel, .discard]
+        case .recording: [.pause, .send, .discard]
+        case .paused: [.resume, .send, .discard]
         case .awaitingTranscriptConfirmation, .transcriptUncertain:
             [.confirmTranscript, .cancel, .discard]
         case .recoverableFailure, .cancelled:

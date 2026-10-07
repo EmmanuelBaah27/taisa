@@ -2,9 +2,25 @@ import Foundation
 import Testing
 import AVFAudio
 import TaisaAudio
+import TaisaStorage
+import TaisaVoice
 @testable import TaisaPersonal
 
 @Suite struct VoiceFailureDiagnosticTests {
+    @Test func captureUsesPauseResumeWithoutOfferingADeadEndCancel() {
+        let recording = VoiceSessionDiagnosticsViewModel(
+            snapshot: diagnosticSnapshot(state: .recording, stage: .capture),
+            reduceMotion: false
+        )
+        let paused = VoiceSessionDiagnosticsViewModel(
+            snapshot: diagnosticSnapshot(state: .paused, stage: .capture),
+            reduceMotion: false
+        )
+
+        #expect(recording.actions == [.pause, .send, .discard])
+        #expect(paused.actions == [.resume, .send, .discard])
+    }
+
     @Test func actionFailureReportsOnlyErrorDomainAndCode() {
         let error = NSError(
             domain: NSOSStatusErrorDomain,
@@ -42,4 +58,26 @@ import TaisaAudio
         #expect(SystemAudioSessionAdapter.captureCategory == .playAndRecord)
         #expect(SystemAudioSessionAdapter.captureMode == .voiceChat)
     }
+}
+
+private func diagnosticSnapshot(
+    state: VoiceTurnState,
+    stage: VoiceTurnStage
+) -> VoiceSessionSnapshot {
+    VoiceSessionSnapshot(
+        durable: VoiceTurnRecord(
+            id: UUID().uuidString,
+            conversationID: UUID().uuidString,
+            transcriptionRequestID: UUID().uuidString,
+            transcriptionIdempotencyKey: "transcription",
+            coachingRequestID: UUID().uuidString,
+            coachingIdempotencyKey: "coaching",
+            state: state,
+            stage: stage,
+            createdAtMS: 1,
+            updatedAtMS: 1
+        ),
+        partialTranscript: "",
+        partialCoaching: ""
+    )
 }
