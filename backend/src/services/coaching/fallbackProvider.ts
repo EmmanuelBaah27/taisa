@@ -24,7 +24,7 @@ export interface ProviderAttemptOutcome {
   attemptId: 'primary' | 'fallback';
   providerId: CoachingProviderId;
   result?: ProviderCoachingResult;
-  failureClass?: OperationalFailureClass;
+  failureClass?: OperationalFailureClass | 'invalid_output';
 }
 
 export interface FallbackCoachingResult {
@@ -57,6 +57,13 @@ export interface StreamingFallbackCoachingProvider extends FallbackCoachingProvi
 export interface ContentFreeFailedAttempt {
   attemptId: AttemptEstimate['attemptId'];
   failureClass?: OperationalFailureClass | 'invalid_output';
+}
+
+function classifyContentFreeProviderFailure(
+  error: unknown,
+): OperationalFailureClass | 'invalid_output' | null {
+  if (error instanceof ZodError) return 'invalid_output';
+  return classifyOperationalProviderFailure(error);
 }
 
 export class ContentFreeFallbackError extends Error {
@@ -238,7 +245,7 @@ export function getConfiguredFallbackProvider(
           throw new Error('Provider stream ended without a terminal result');
         } catch (error) {
           if (!attemptSettled) observer.settleAttempt({ attemptId: candidate.attemptId });
-          const failureClass = classifyOperationalProviderFailure(error);
+          const failureClass = classifyContentFreeProviderFailure(error);
           attempts.push({ attemptId: candidate.attemptId, providerId: candidate.providerId, ...(failureClass ? { failureClass } : {}) });
           if (emittedDelta || candidate.attemptId === 'fallback' || !failureClass) {
             throw new ContentFreeFallbackError(attempts.map((attempt) => ({
