@@ -48,7 +48,7 @@ targets:
         Debug:
           CODE_SIGN_ENTITLEMENTS: Config/TaisaDev.entitlements
         Preview:
-          PRODUCT_BUNDLE_IDENTIFIER: com.taisa.app.preview.unit-host
+          PRODUCT_BUNDLE_IDENTIFIER: com.taisa.app.unit-host
         Release:
           CODE_SIGN_ENTITLEMENTS: Config/Taisa.entitlements
     dependencies:

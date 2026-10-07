@@ -140,6 +140,8 @@ For the approved SwiftUI native-rebuild program, the equivalent order is:
 
 Signed native records are stored in `docs/migration/swiftui/native-builds.md` and validated by `apple/scripts/record-signed-build.mjs`. Development, preview, and Personal builds use isolated bundle identifiers and must never replace the production React Native app during migration. A Personal Team refresh installs over the existing `com.taisa.app.personal` identity; it never uninstalls that identity because its encrypted store is device-local. Personal file transfer is an explicit encrypted replacement from one authoritative device, not synchronization or history merging.
 
+Voice-platform device QA additionally requires a content-free matrix bound to the same exact commit and signed build. The matrix must cover the registered physical iPhone and iPad, identify the fixture revision and database schema, include interruption, audio-route, lifecycle, connectivity, cancellation, accessibility, privacy, multi-turn, and bounded performance cases, and pass `apple/scripts/verify-voice-evidence.mjs`. Simulator-only evidence and fields capable of carrying audio, transcripts, coaching text, private context, or local paths are invalid.
+
 **Verification matrix:**
 
 | Change area | Required checks |

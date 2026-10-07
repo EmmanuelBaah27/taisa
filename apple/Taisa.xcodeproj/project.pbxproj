@@ -1198,7 +1198,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "com.taisa.app.preview.unit-host";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.taisa.app.unit-host";
 				PRODUCT_NAME = Taisa;
 				SDKROOT = iphoneos;
 			};

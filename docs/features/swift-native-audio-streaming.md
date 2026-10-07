@@ -2,7 +2,7 @@
 
 **Tier:** Full
 **Track:** Platform
-**Status:** Scope approved; implementation plan awaiting approval
+**Status:** Review — automated matrix passed; exact signed iPhone/iPad QA pending
 **Depends on:** shipped Swift native foundation and encrypted local persistence/recovery
 
 ---
@@ -21,23 +21,23 @@ The gateway already exposes strict ordered NDJSON transcription events and a val
 
 ## Acceptance criteria
 
-- [ ] A conversation session supports multiple voice turns, and every turn has a stable durable identity beneath one stable conversation-session identity.
-- [ ] Within one turn, the user can record, pause, resume, Send, cancel, or explicitly discard while Taisa accurately communicates the current state.
-- [ ] Nothing leaves the device before Send; pausing and resuming operate only on local audio.
-- [ ] Send durably checkpoints the queued turn before upload, so a network failure or process termination cannot erase an accepted recording.
-- [ ] Post-Send transcription appears incrementally from ordered validated stream events without persisting partial transcript deltas as completed history.
-- [ ] A clear final transcript is committed and automatically begins coaching; an uncertain transcript becomes an editable private draft and waits for confirmation; no-speech creates no user message and starts no coaching request.
-- [ ] Coaching reply text appears incrementally from a real ordered stream, while only the final validated structured response enters encrypted conversation history.
-- [ ] Transcription and coaching use separate retry boundaries under one conversation coordinator: retrying coaching never uploads or transcribes audio again, and retrying transcription never creates a coaching request prematurely.
-- [ ] Stable request identities and gateway idempotency prevent reconnects, relaunches, and manual retries from creating duplicate messages or unintended second paid requests.
-- [ ] Ordinary connectivity loss automatically resumes with bounded backoff when the network returns; an ambiguous potentially chargeable request waits for explicit user action unless the gateway can prove exactly-once reconciliation.
-- [ ] Phone calls, Siri, alarms, audio-route changes, Bluetooth loss, backgrounding, foregrounding, and force-quit resolve to typed recoverable states without silently losing the conversation turn.
-- [ ] Permission denial, low storage, invalid audio, authentication failure, rate or cost rejection, malformed stream data, and incompatible contracts fail safely with actionable user-visible recovery behavior.
-- [ ] Temporary audio remains available while a turn can still be retried and is deleted only after the accepted transcript and terminal outcome are durably committed or the user explicitly discards it.
-- [ ] Unknown, duplicate, missing, or out-of-order stream events cannot corrupt visible text, advance durable state, or create duplicate history.
-- [ ] VoiceOver, Dynamic Type, Reduce Motion, non-colour status communication, and accessible pause/resume/cancel/retry actions work throughout recording and streaming.
-- [ ] Logs, metrics, crash diagnostics, previews, automated artifacts, and signed-build evidence contain no raw audio, transcript text, coaching text, or private context.
-- [ ] Deterministic automated fixtures cover clear, uncertain, no-speech, offline queueing, reconnection, interruption, cancellation, relaunch, retry, completion, cleanup, and the next turn in the same conversation.
+- [x] A conversation session supports multiple voice turns, and every turn has a stable durable identity beneath one stable conversation-session identity.
+- [x] Within one turn, the user can record, pause, resume, Send, cancel, or explicitly discard while Taisa accurately communicates the current state.
+- [x] Nothing leaves the device before Send; pausing and resuming operate only on local audio.
+- [x] Send durably checkpoints the queued turn before upload, so a network failure or process termination cannot erase an accepted recording.
+- [x] Post-Send transcription appears incrementally from ordered validated stream events without persisting partial transcript deltas as completed history.
+- [x] A clear final transcript is committed and automatically begins coaching; an uncertain transcript becomes an editable private draft and waits for confirmation; no-speech creates no user message and starts no coaching request.
+- [x] Coaching reply text appears incrementally from a real ordered stream, while only the final validated structured response enters encrypted conversation history.
+- [x] Transcription and coaching use separate retry boundaries under one conversation coordinator: retrying coaching never uploads or transcribes audio again, and retrying transcription never creates a coaching request prematurely.
+- [x] Stable request identities and gateway idempotency prevent reconnects, relaunches, and manual retries from creating duplicate messages or unintended second paid requests.
+- [x] Ordinary connectivity loss automatically resumes with bounded backoff when the network returns; an ambiguous potentially chargeable request waits for explicit user action unless the gateway can prove exactly-once reconciliation.
+- [x] Phone calls, Siri, alarms, audio-route changes, Bluetooth loss, backgrounding, foregrounding, and force-quit resolve to typed recoverable states without silently losing the conversation turn.
+- [x] Permission denial, low storage, invalid audio, authentication failure, rate or cost rejection, malformed stream data, and incompatible contracts fail safely with actionable user-visible recovery behavior.
+- [x] Temporary audio remains available while a turn can still be retried and is deleted only after the accepted transcript and terminal outcome are durably committed or the user explicitly discards it.
+- [x] Unknown, duplicate, missing, or out-of-order stream events cannot corrupt visible text, advance durable state, or create duplicate history.
+- [x] VoiceOver, Dynamic Type, Reduce Motion, non-colour status communication, and accessible pause/resume/cancel/retry actions work throughout recording and streaming.
+- [x] Logs, metrics, crash diagnostics, previews, automated artifacts, and signed-build evidence contain no raw audio, transcript text, coaching text, or private context.
+- [x] Deterministic automated fixtures cover clear, uncertain, no-speech, offline queueing, reconnection, interruption, cancellation, relaunch, retry, completion, cleanup, and the next turn in the same conversation.
 - [ ] Exact signed builds pass physical-device audio, interruption, route, lifecycle, connectivity, privacy, accessibility, and performance QA on the registered iPhone and iPad.
 
 ## Prerequisites
@@ -60,3 +60,9 @@ The gateway already exposes strict ordered NDJSON transcription events and a val
 - CloudKit activation, Taisa accounts, server-stored conversation history, or readable backend persistence.
 - Indefinite automatic retry or any retry that may create an ambiguous duplicate paid request.
 - Retiring existing backend endpoints or removing React Native code.
+
+## Verification status
+
+Automated verification on 2026-10-07 passed the backend suite (380 tests), backend and shared TypeScript compilation, portable contract/evidence tests (14 tests), Swift foundation suite (380 tests), native design-system checks, development/preview/Personal simulator suites, generic device and Release compilation, native isolation inspection, and workflow verification.
+
+The final acceptance criterion remains open until the reviewed exact commit is integrated into `preview/taisa`, signed as `Taisa-Personal`, installed on both registered physical devices, exercised against every row in `docs/qa/swift-native-audio-streaming-device-matrix.md`, and accepted by `apple/scripts/verify-voice-evidence.mjs`.
