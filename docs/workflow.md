@@ -245,6 +245,44 @@ Status IDs: Todo `8092f145-a7b5-4e09-812e-1d3212fc1c7d`; In Progress
 Linear failure: retry issue creation once, record the failed action, preserve local evidence,
 and continue only work already authorized by readable Scope and Plan.
 
+### Deferred-capability stewardship
+
+When Baah or an approved artifact explicitly defers a capability, search Linear for exact and
+semantic matches before mutation. Continue the matching issue when its intended outcome is
+equivalent; otherwise create one non-duplicate Backlog issue in the relevant milestone. A
+deferral is live Linear state, not a repository backlog and not authorization to scope or build.
+
+Each deferral records origin and reason, user value and reconsideration trigger,
+dependencies/unknowns, architectural guardrails, durable Git and Linear evidence, and dated
+lifecycle history. Lifecycle is **Captured → Watching → Candidate → Planned → Shipped or Dropped**:
+
+- Captured preserves the outcome without prioritizing it.
+- Watching means evidence or dependencies are being monitored.
+- Candidate is a recommendation only and does not authorize Scope.
+- Planned requires explicit Baah Scope and Plan approvals recorded in Linear.
+- Shipped requires canonical `main` merge evidence and applicable acceptance.
+- Dropped requires Baah's explicit decision or documented supersession evidence.
+
+Before Scope or Plan, consult related deferrals for dependency, guardrail, and duplicate
+conflicts. At Review and before Ship, reconcile any lifecycle change against actual code,
+canonical preview, verification, device evidence, and `main`; never promote a deferral merely
+because implementation resembles it. Linear owns live lifecycle; Git owns the durable
+technical constraints and evidence that must version with code.
+
+The current named voice deferrals are hands-free turn-taking, simultaneous playback and capture,
+interruption detection and barge-in, full-duplex conversational voice, and live transcription before Send.
+They remain separate so later Scope can
+evaluate value, privacy, audio-session ownership, dependencies, and failure recovery without
+silently importing the entire duplex stack.
+
+### Monthly reconciliation heartbeat
+
+The monthly stewardship heartbeat runs on the first Monday at 09:00 Africa/Accra. It reads
+the current Taisa Linear issues/milestones and relevant durable Git contracts, reports access
+failure honestly, and surfaces only meaningful dependency, guardrail, evidence, or lifecycle
+contradictions. It remains quiet when there is no meaningful change. It may update safe routine
+evidence, but it never approves Scope, Plan, priority changes, lifecycle promotion into active work, or Ship.
+
 ## QA failure and parked work
 
 For each QA failure, create or update one non-duplicate Linear issue with observed preview
@@ -291,7 +329,9 @@ history unless Baah explicitly approves deletion.
 Run `scripts/verify-doc-freshness.sh` for affected repository artifacts that require Status
 and Last updated metadata. At Review, perform a **Closeout** in Linear: actual outcome,
 deviations, decisions/learnings, exact evidence, remaining debt, canonical docs changed,
-and next gate. Perform the **memory-promotion check**: promote reusable evidence to
+next gate, and any deferred-capability lifecycle changes. Before Ship, read back every
+related deferral and confirm that implementation, canonical preview, and merge evidence
+support its recorded lifecycle. Perform the **memory-promotion check**: promote reusable evidence to
 `docs/learnings.md` or a durable decision/contract only when it benefits future work.
 
 ## Git and shipping

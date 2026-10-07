@@ -19,7 +19,7 @@ with targeted questions, drafts a complete scope doc, and writes it to the right
 ```
 0. TIER    → assess feature size: Quick / Standard / Full          [TAISA: see Feature tiers]
 1. DEDUP   → search Linear for exact and semantic issue matches
-2. READ    → matching Linear issue/milestone + referenced durable Git docs
+2. READ    → matching Linear issue/milestone, related deferrals, and durable Git docs
 3. MAP     → Standard/Full: Work Map with Platform / Product /
              Integration slices, sizes, dependencies, and pickup order
 4. SELECT  → Baah selects the next slice
@@ -34,6 +34,11 @@ with targeted questions, drafts a complete scope doc, and writes it to the right
 ```
 
 Work and Discussion Maps orient; Scope and Plan approvals remain separate.
+
+An explicit deferral discovered during Scope is captured in one matching non-duplicate Linear
+Backlog issue with lifecycle **Captured**. It is not added to a repository backlog and does
+not enter the active Scope unless Baah separately approves that material change. Consult
+related deferrals for guardrails and dependencies before presenting Scope or Plan.
 
 ---
 

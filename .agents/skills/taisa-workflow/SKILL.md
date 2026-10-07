@@ -216,6 +216,30 @@ Parking cancels with reason and preserves branch/worktree/artifacts/history.
 Linear error: retry issue creation once, record the failure, and continue only already-
 approved work with readable Scope and Plan.
 
+### Deferred capabilities
+
+An explicit deferral is captured in one matching non-duplicate Linear Backlog issue, never a
+repository backlog. Search exact and semantic matches first. Record origin/reason, user value
+and reconsideration trigger, dependencies/unknowns, architectural guardrails, durable Git and
+Linear evidence, and dated history. Lifecycle is **Captured → Watching → Candidate → Planned → Shipped or Dropped**.
+Candidate is recommendation only; Planned requires Baah-approved
+Scope and Plan; Shipped requires canonical-main evidence; Dropped requires Baah's explicit
+decision or documented supersession.
+
+Before Scope/Plan, consult related deferrals. At Review/Ship, read them back and reconcile
+lifecycle against implementation, canonical preview, verification, device evidence, and
+`main`. Linear controls live lifecycle; Git controls versioned technical truth. Failed Linear
+access uses the visible offline fallback and must be caught up before a stage or gate.
+
+Named voice deferrals: hands-free turn-taking; simultaneous playback and capture; interruption detection
+and barge-in; full-duplex conversational voice; and live transcription before Send.
+Current audio contracts must not assume capture and playback
+can never coexist, but these records do not authorize implementation.
+
+Monthly reconciliation runs the first Monday at 09:00 Africa/Accra as a thread heartbeat. It
+checks Linear against durable Git contracts, reports access failures, and stays quiet when
+there is no meaningful change. It may record safe routine evidence but never approves Scope, Plan, priority changes, lifecycle promotion into active work, or Ship.
+
 ## 11. Documentation, Closeout, and memory
 
 Repository docs exist only for code-adjacent constraints/contracts/decisions/migrations and
@@ -223,7 +247,9 @@ immutable verification evidence. Historical scopes/specs/plans/QA records remain
 not live authority. New repository feature Scope/Plan documents are not the default.
 
 At Review, record **Closeout** in Linear: actual outcome, deviations, decisions/learnings,
-exact evidence, debt/risk, canonical docs changed, and next gate. Perform a
+exact evidence, debt/risk, canonical docs changed, next gate, and any deferred-capability
+lifecycle changes. Before Ship, read back related deferrals and verify lifecycle against
+actual implementation and merge evidence. Perform a
 **memory-promotion check**; promote reusable findings only to `docs/learnings.md`, a durable
 decision, or the narrow canonical contract they improve.
 
