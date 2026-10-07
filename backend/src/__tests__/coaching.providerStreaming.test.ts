@@ -43,6 +43,8 @@ test('OpenAI adapter emits reply deltas before its validated terminal payload', 
     { kind: 'delta', delta: 'changed?' },
     { kind: 'completed', result: expect.objectContaining({ payload }) },
   ]);
+  const request = (client.beta.chat.completions.stream.mock.calls as any[][])[0][0];
+  expect(typeof request.response_format.$parseRaw).toBe('function');
 });
 
 test('Anthropic adapter emits tool-input reply deltas before its validated terminal payload', async () => {
