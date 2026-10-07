@@ -12,6 +12,7 @@ struct VoiceSessionReviewRegressionTests {
     @Test("relaunch cleans up a legacy cancelled capture and unlocks the next turn")
     func relaunchRecoversCancelledCapture() async throws {
         let capture = ReviewCaptureSpy()
+        let audio = ReviewAudioSpy()
         let initial = VoiceTurnRecord(
             id: ReviewIDs.turn.uuidString,
             conversationID: ReviewIDs.conversation.uuidString,
@@ -21,6 +22,8 @@ struct VoiceSessionReviewRegressionTests {
             coachingIdempotencyKey: "coaching-1",
             state: .cancelled,
             stage: .capture,
+            audioFileID: "00000000-0000-0000-0000-000000000201",
+            cleanupState: .pending,
             createdAtMS: 1,
             updatedAtMS: 1
         )
@@ -32,14 +35,15 @@ struct VoiceSessionReviewRegressionTests {
             connectivity: ReviewConnectivity(),
             reconciliation: ReviewReconciliation(),
             capture: capture,
-            audio: ReviewAudioSpy()
+            audio: audio
         )
 
         try await coordinator.recoverIfAuthorized()
 
         #expect(await coordinator.snapshot().durable.state == .discarded)
         #expect(await coordinator.snapshot().durable.stage == .finished)
-        #expect(await capture.discarded == [ReviewIDs.turn])
+        #expect(await capture.discarded.isEmpty)
+        #expect(await audio.deleted == ["00000000-0000-0000-0000-000000000201"])
     }
 
     @Test("relaunch terminalizes a checkpointed recording even when prepare never produced a file")
