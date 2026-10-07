@@ -13,6 +13,11 @@ For every scoped build, fix, plan, review, or ship task:
 
 Read-only questions require orientation but do not create branches or workflow artifacts.
 
+Bias toward activation: when a request is ambiguous but plausibly asks for a Taisa change,
+investigation, design, process improvement, or delivery action, run lightweight workflow
+orientation and infer the lightest fitting tier. Missing workflow keywords never turns an
+actionable request into a backlog-only idea. Activation does not bypass approval gates.
+
 ## Authority and gates
 
 `docs/workflow.md` is the human-readable process source. The Taisa orchestrator applies it. Baah approves Scope, Plan, and Ship. Codex owns routine status, Git, GitHub, verification, documentation, and Linear housekeeping within those approvals.

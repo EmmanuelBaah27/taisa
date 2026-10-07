@@ -34,14 +34,29 @@ advisory.
 
 State the tier, current stage, current branch, and next Baah approval gate before proceeding.
 
+At session start, run a documentation freshness check for every in-scope Work Map, scope,
+handoff, plan, reference, QA record, and roadmap row against branch, code, Active Work, and
+remote state.
+
+### Activation bias
+
+Default toward activation. A concrete problem, desired behavior, requested change,
+investigation, design, scope, plan, fix, review, validation, Ship request, or process
+improvement activates orientation and the lightest fitting tier without requiring workflow
+keywords. Ambiguous but plausibly change-oriented work also activates lightweight orientation.
+
+Activation never authorizes Build or bypasses gates. Explicit precedence: requested action or
+advancement → activate; explicit park/backlog-only with no advancement → backlog; purely
+read-only → answer after orientation; anything still ambiguous → lightweight activation.
+
 ---
 
 ## 2. Feature tier — assess at the start of every task
 
 | Tier | Signal | Process |
 |---|---|---|
-| **Quick** (< 1h) | Single change, no new DS components, no Platform work | State intent in one line, build, Baah QAs. No scope doc, no Linear issue. |
-| **Standard** (half day) | New screen or significant component, existing DS only | Scope + plan in one message, one approval gate, Linear issue. |
+| **Quick** (< 1h) | Single change, no new DS components, no Platform work | State intent and impact, build, Baah QAs. No formal Work Map, scope, or Linear issue. Diagram only when architecture, data flow, or behavior changes. |
+| **Standard** (half day) | New screen or significant component, existing DS only | Inline Work Map + Discussion Map, then separate Scope and Plan approvals. Linear issue after Scope approval. |
 | **Full** (multi-day / multi-track) | New Platform work, new DS components, or complex build | Full workflow — all stages, all gates, full Linear tracking. |
 
 State the tier: "This is a Standard build — [what it does]."
@@ -53,6 +68,10 @@ Baah can override at any time: "treat this as Quick" or "go Full."
 
 ```
 Baah initiates scoping
+  → create the Work Map (Platform / Product / Integration slices)
+  → Baah selects the next slice
+  → show its track-specific Discussion Map before substantive questions
+  → maintain current / next / remaining-decisions progress
   → invoke scope-writer
   → Baah agrees scope doc
   → [Full/Standard] create Linear issue (Todo, track label)
@@ -71,6 +90,8 @@ Baah initiates scoping
   → Baah QAs on device, confirms
   → Linear status → Done, comment merge SHA
 ```
+
+Work Maps orient and Discussion Maps structure decisions. Neither is an approval gate.
 
 ### Superpowers process routing
 
@@ -105,9 +126,49 @@ Clear Ship approval authorizes the complete verified merge and safe branch-clean
 
 ---
 
-## 5. Design stage — three paths, same output
+## 5. Visual orientation and discussion contract
+
+### Work Map — before detailed discussion
+
+For Standard and Full work, decompose uniquely owned Platform, Product, and Integration
+slices. Integration is shared cross-track wiring and verification, not a third product track.
+Show a linked table of contents plus outcome, `XS / S / M / L / XL` size, dependency,
+approval point, pickup order, parallel work, critical path, progress count, and architecture
+diagram. Full maps live at `docs/features/<name>-work-map.md`; Standard maps may be inline.
+
+### Discussion Map — after selecting a slice
+
+Show the agenda before substantive questions and keep `current / next / remaining decisions`
+visible.
+
+**Platform discussion:** outcome; current system; ownership/persistence; behavior; Product
+contract; privacy/security; failure/recovery; dependencies; validation.
+
+**Product discussion:** outcome; journey and information priorities; required states;
+interaction intent; accessibility; Platform capability; device QA. Do not map components,
+tokens, or exact layouts here.
+
+**Integration discussion:** contract compatibility; end-to-end flow; cross-track states and
+failures; preview strategy; combined verification; release readiness.
+
+### Architecture diagrams — layman meaning plus technical truth
+
+Use Mermaid by default. Primary labels explain product meaning; secondary labels name the
+real service, store, component, route, or boundary. Label arrows with what moves and show
+relevant ownership, storage, trust, failure, and offline boundaries. Update diagrams in the
+same change as their architecture or dependencies.
+
+Every Full Work Map, scope, and plan overview has an appropriate diagram. Standard work has
+one unless a sentence fully expresses the relationship. Quick work follows its tier rule.
+
+---
+
+## 6. Product design handoff between Scope and Plan — three paths, same output
 
 All paths invoke `design-handoff`. Brief produced is the DS layer of the plan.
+Discussion decides what the experience must accomplish. The handoff maps approved
+requirements to layouts, components, tokens, and interaction evidence. Material differences
+return to Scope.
 
 | Path | Trigger | Latitude |
 |---|---|---|
@@ -117,7 +178,7 @@ All paths invoke `design-handoff`. Brief produced is the DS layer of the plan.
 
 ---
 
-## 6. DS foundation layer rules
+## 7. DS foundation layer rules
 
 **Token check before any Product BUILD:**
 - Defined → proceed
@@ -162,7 +223,7 @@ Uncertain? Make the safer call (DS), note it: "Treated X as DS — check at REVI
 
 ---
 
-## 7. BTS learning notes
+## 8. BTS learning notes
 
 Add a `> **BTS:**` note when:
 - Non-obvious architectural choice made (why this over the alternative)
@@ -197,7 +258,7 @@ closeout in its PR description or final commit. Closeout adds no approval gate.
 
 ---
 
-## 8. Translation rule — design language always
+## 9. Translation rule — design language always
 
 - Platform work → "what it enables for the UI" (never just the file or function name)
 - Plan approval → present a plain-English build summary. Baah approves the summary, not the plan doc.
@@ -209,7 +270,7 @@ closeout in its PR description or final commit. Closeout adds no approval gate.
 
 ---
 
-## 9. Backlog rule
+## 10. Backlog rule
 
 Idea mentioned → add one line to `docs/backlog.md`:
 ```
@@ -228,7 +289,7 @@ Confirm: "Found existing backlog issue — [title]. Scoping from there." or "Cre
 
 ---
 
-## 10. Linear actions
+## 11. Linear actions
 
 **Project:** `31b0d99c-6f74-4c9c-af2a-12e6e25aabe0` (Taisa - career guide)
 **Team:** `e95356d8-17f7-4700-bdfe-222782bea546` (A Playing Field)
@@ -254,14 +315,14 @@ Confirm: "Found existing backlog issue — [title]. Scoping from there." or "Cre
 | Ship | Status → Done, comment: "Merged [SHA]" |
 | Parked | Status → Canceled, comment: reason |
 | Standalone DS feedback | Create issue: Design System label |
-| Backlog idea | Create issue: Backlog status (no Todo), Feature label |
+| Backlog idea | No Linear action until Baah promotes it to scoping |
 
 **Error handling:** MCP call fails → log "Linear update failed — [action]. Continuing."
 Build proceeds. List all failures at end of session. Retry issue creation once before logging.
 
 ---
 
-## 11. Rollback protocol
+## 12. Rollback protocol
 
 BUILD fails QA:
 1. Baah notes specific failures in chat
@@ -274,35 +335,63 @@ QA documents may retain immutable verification history and device checklists, bu
 
 ---
 
-## 12. Parked state
+## 13. Parked state
 
 Feature deprioritised mid-pipeline:
 - Remove from Active Work table
 - Linear → Canceled, comment reason
 - Branch preserved (do not delete)
-- Scope doc + plan remain in `docs/features/` and `docs/superpowers/plans/`
+- Work Map, scope, handoff, and plan remain with `Status: Parked`
 
 ---
 
-## 13. Skeleton pattern
+## 14. Skeleton pattern
 
 Platform dependency not yet in BUILD when Product is ready to plan:
 - Flag to Baah: "Platform dependency [X] is in [current stage] — not in BUILD yet"
 - Baah decides:
   - **Wait** → feature stays in SCOPE, nothing written
-  - **Skeleton** → write plan for shell-only: DS components + screen layout + mock data
-    Mark blocked tasks: `[BLOCKED: needs <Platform feature> in BUILD]`
-    When Platform ships → write follow-up plan for wiring tasks only
+  - **Skeleton** → after Product Plan approval, build independent Product foundation only:
+    DS components + layout + mock data. Contract wiring and live-data integration remain
+    `[BLOCKED: needs <Platform feature> in BUILD]` until the contract is ready.
 
 ---
 
-## 14. Claude owns all housekeeping
+## 15. Claude owns all housekeeping
 
 Baah never updates these — Claude does:
 - `docs/workflow.md` Active Work table → updated at every stage transition
 - `docs/backlog.md` → updated when ideas are mentioned
+- Full-tier Work Maps → updated when slices, dependencies, architecture, or progress change
 - Linear issue status + comments → updated at every gate
 - Plan doc `**Status:**` field → updated when approved
 - Project-memory links and the Review/Ship memory-promotion check
 - Standard and Full closeouts, finalized with PR and merge evidence after Ship
 - Session re-orientation → Claude reads current state, tells Baah where we are
+
+### Documentation update cadence
+
+Use events, not a calendar. Refresh Active Work on every stage/blocker/branch/handoff change;
+Work Maps on every slice/size/dependency/order/architecture/progress change; discussion
+decisions when made/deferred/reopened; scope/design/plan at approval and in the same change as
+material decisions; references alongside implementation; QA evidence every fail/retest cycle;
+and roadmap/Linear at their defined events.
+
+Standard and Full Work Maps, scopes, plans, and handoffs carry `Status` and
+`Last updated: YYYY-MM-DD`. Embedded diagrams belong to their host artifact.
+
+**Canonical documentation authority:** proposed docs belong to the owning work branch;
+`main` becomes canonical after merge; `preview/taisa` is never documentation authority.
+Reconcile overlapping branches against `origin/main` and the owner before the next gate.
+
+**Material change:** changes to outcome, acceptance criteria, exclusions, visible behavior,
+architecture, public contract, persistence/ownership, dependency order, security/privacy,
+verification, or approval responsibility return to Scope or Plan.
+
+**Superseded artifacts:** set `Status: Superseded`, add
+`Superseded by: <path or merge SHA>`, update references, and retain history unless deletion is
+explicitly approved.
+
+Before Scope, Plan, and Ship gates, run
+`bash scripts/verify-doc-freshness.sh <affected artifacts...>`. Metadata validation supplements
+semantic reconciliation; stale material content blocks the gate.

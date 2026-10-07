@@ -20,16 +20,20 @@ with targeted questions, drafts a complete scope doc, and writes it to the right
 0. TIER    → assess feature size: Quick / Standard / Full          [TAISA: see Feature tiers]
 1. DEDUP   → check docs/backlog.md for existing capture            [TAISA: docs/backlog.md]
 2. READ    → roadmap + any docs mentioned in the feature idea      [TAISA: docs/roadmap.md]
-3. CLASSIFY → which track? Platform / Product / both              [TAISA: see Track definitions]
-4. ASK     → max 5 questions, only what's genuinely missing
-5. DRAFT   → complete scope doc using the format below
-6. FLAG    → check every AC against the quality rules before showing
-7. WRITE   → output to correct location                           [TAISA: docs/features/<name>.md]
-8. UPDATE  → roadmap status: "Needs scoping" → "Ready to plan"   [TAISA: docs/roadmap.md]
-9. CHAIN   → after Baah agrees scope doc:
+3. MAP     → Standard/Full: Work Map with Platform / Product /
+             Integration slices, sizes, dependencies, and pickup order
+4. SELECT  → Baah selects the next slice
+5. DISCUSS → show its track-specific Discussion Map; ask one question at a time
+6. DRAFT   → complete scope doc using the format below
+7. FLAG    → check every AC against the quality rules before showing
+8. WRITE   → output to correct location                           [TAISA: docs/features/<name>.md]
+9. UPDATE  → roadmap status: "Needs scoping" → "Ready to plan"   [TAISA: docs/roadmap.md]
+10. CHAIN  → after Baah agrees scope doc:
              Platform track → invoke writing-plans directly
              Product track  → prompt Baah for design, then invoke design-handoff
 ```
+
+Work and Discussion Maps orient; Scope and Plan approvals remain separate.
 
 ---
 
@@ -54,8 +58,18 @@ Ask only what's missing from the idea. Never interrogate a clear request.
 
 **Track:** Platform / Product / Both
 **Status:** Ready to plan
+**Last updated:** YYYY-MM-DD
+**Work Map:** [path, or "Inline — Standard tier"]
 
 ---
+
+## At a glance
+[Mermaid architecture diagram with layman-first labels and real technical components in
+secondary labels. Show ownership, data movement, storage, and failure boundaries.]
+
+## Discussion decisions
+- [Decision reached]
+- [Deferred question, owner, and resolution point]
 
 ## What is it?
 [2–4 sentences. What this does and why it matters to the user.]
@@ -113,8 +127,12 @@ These are blocked by design in v1. Flag the AC to Baah before including it.
 
 ### Track definitions
 
-- **Platform** — AI, backend, API, DB. Runs one phase ahead of Product.
-- **Product** — UI, screens, components. Cannot enter Build until its Platform dependency is in Build.
+- **Platform** — AI, backend, API, persistence, infrastructure, and Product-facing contracts.
+- **Product** — UI, screens, components, interaction, and device experience.
+- **Integration** — shared cross-track wiring and verification, not a third track.
+
+Independent Product foundation may proceed after Product Plan approval. Contract wiring and
+live-data integration wait for the named Platform dependency.
 
 ### Roadmap status vocabulary
 
@@ -139,7 +157,7 @@ These are blocked by design in v1. Flag the AC to Baah before including it.
 | Tier | Signal | Scope doc? |
 |---|---|---|
 | Quick (< 1h) | Single change, no new DS components, no Platform work | No — Claude states intent in one line and builds |
-| Standard (half day) | New screen or significant component | Lightweight note — scope + plan in one message |
+| Standard (half day) | New screen or significant component | Inline Work and Discussion Maps; lightweight scope and plan with separate approvals |
 | Full (multi-day) | New Platform work, new DS components, complex Product | Full scope doc, all gates |
 
 Claude states tier before scoping: "This is a Standard build."
@@ -148,7 +166,7 @@ Baah can override: "treat this as Quick" or "go Full on this."
 ### Workflow stage context
 
 ```
-SCOPE → DESIGN → PLAN → BUILD → REVIEW + QA
+ORIENT → DISCUSS → SCOPE → PLAN → BUILD → REVIEW + QA
 ```
 
 This skill handles **SCOPE**. After scope is agreed:
