@@ -3,7 +3,7 @@ import TaisaVoice
 
 enum VoiceSessionDiagnosticAction: String, Equatable, Identifiable {
     case record, pause, resume, send, cancel, discard
-    case confirmTranscript, retry, confirmResume
+    case confirmTranscript, retry, confirmResume, nextTurn
 
     var id: String { rawValue }
 
@@ -18,6 +18,7 @@ enum VoiceSessionDiagnosticAction: String, Equatable, Identifiable {
         case .confirmTranscript: "Confirm transcript"
         case .retry: "Retry"
         case .confirmResume: "Resume coaching"
+        case .nextTurn: "Next turn"
         }
     }
 }
@@ -66,7 +67,8 @@ struct VoiceSessionDiagnosticsViewModel: Equatable {
         case .recoverableFailure, .cancelled: [.retry, .cancel, .discard]
         case .resumeRequiresConfirmation: [.confirmResume, .cancel, .discard]
         case .queued, .transcribing, .transcriptClear, .coaching: [.cancel, .discard]
-        case .completed, .noSpeech, .terminalFailure, .discarded: []
+        case .completed, .noSpeech, .terminalFailure, .discarded:
+            stage == .finished ? [.nextTurn] : []
         }
     }
 }

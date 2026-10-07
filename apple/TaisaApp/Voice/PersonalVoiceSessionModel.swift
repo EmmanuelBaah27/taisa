@@ -13,6 +13,7 @@ final class PersonalVoiceSessionModel: ObservableObject {
     private var coordinator: VoiceSessionCoordinator?
     private var connectivityTask: Task<Void, Never>?
     private var refreshTask: Task<Void, Never>?
+    private var conversationID: UUID?
     private var started = false
 
     deinit {
@@ -34,6 +35,7 @@ final class PersonalVoiceSessionModel: ObservableObject {
                 ownerID: deviceID.uuidString.lowercased()
             )
             let conversationID = stableConversationID()
+            self.conversationID = conversationID
             try await ensureConversation(conversationID, store: context.store, deviceID: deviceID)
             let files = try ProtectedAudioFileStore()
             let capture = AudioCaptureController(
@@ -87,6 +89,9 @@ final class PersonalVoiceSessionModel: ObservableObject {
                     try await coordinator.send(.confirmTranscript(text: text, userMessageID: UUID().uuidString))
                 case .retry: try await coordinator.send(.retry)
                 case .confirmResume: try await coordinator.send(.confirmResume)
+                case .nextTurn:
+                    guard let conversationID else { return }
+                    try await coordinator.send(.beginNextTurn(makeTurn(conversationID: conversationID)))
                 }
                 await refresh()
                 beginRefreshing()

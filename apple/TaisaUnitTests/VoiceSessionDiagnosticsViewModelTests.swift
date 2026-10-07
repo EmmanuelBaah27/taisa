@@ -41,6 +41,18 @@ final class VoiceSessionDiagnosticsViewModelTests: XCTestCase {
         XCTAssertFalse(model(.paused, .capture, reduceMotion: false).animatesWaveform)
     }
 
+    func testFinishedTerminalTurnCanContinueSameConversation() {
+        for state in [
+            VoiceTurnState.completed,
+            .noSpeech,
+            .terminalFailure,
+            .discarded,
+        ] {
+            XCTAssertEqual(model(state, .finished).actions, [.nextTurn])
+        }
+        XCTAssertEqual(model(.completed, .cleanup).actions, [])
+    }
+
     private func model(
         _ state: VoiceTurnState,
         _ stage: VoiceTurnStage,

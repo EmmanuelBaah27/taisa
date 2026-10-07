@@ -56,7 +56,7 @@ struct VoiceSessionDiagnosticsView: View {
 
     private func role(for action: VoiceSessionDiagnosticAction) -> TaisaButtonRole {
         switch action {
-        case .record, .send, .confirmTranscript, .retry, .confirmResume: .primary
+        case .record, .send, .confirmTranscript, .retry, .confirmResume, .nextTurn: .primary
         case .pause, .resume, .cancel, .discard: .secondary
         }
     }
