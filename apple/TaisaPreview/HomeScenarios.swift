@@ -11,6 +11,7 @@ enum HomeScenarios {
         scenario("home.content", "Home content", .adaptive, mode: .content),
         scenario("home.refreshing", "Home refreshing", .adaptive, mode: .refreshing),
         scenario("home.failure", "Home failure", .adaptive, mode: .failure),
+        scenario("home.recovery", "Home recovery", .adaptive, mode: .recovery),
         scenario(
             "home.accessibilityText",
             "Home accessibility text",
@@ -46,6 +47,7 @@ enum HomeScenarioMode: Sendable {
     case content
     case refreshing
     case failure
+    case recovery
 }
 
 extension HomeSnapshot {

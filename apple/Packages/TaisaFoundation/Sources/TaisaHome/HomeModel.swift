@@ -5,14 +5,15 @@ import TaisaStorage
 @MainActor
 @Observable
 public final class HomeModel {
-    public private(set) var state: HomeState = .idle
+    public private(set) var state: HomeState
 
     @ObservationIgnored private let client: HomeClient
     @ObservationIgnored private var generation = 0
     @ObservationIgnored private var loadTask: Task<LoadOutcome, Never>?
 
-    public init(client: HomeClient) {
+    public init(client: HomeClient, initialState: HomeState = .idle) {
         self.client = client
+        state = initialState
     }
 
     public func load() async {

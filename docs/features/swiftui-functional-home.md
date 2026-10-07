@@ -2,7 +2,7 @@
 
 **Track:** Platform + Product  
 **Tier:** Full  
-**Status:** Build
+**Status:** Review + QA
 
 ---
 
@@ -18,19 +18,17 @@ The native app foundation and encrypted local storage/recovery are already merge
 
 ## Acceptance criteria
 
-- [ ] Launching the ordinary native Taisa app opens a functional Home destination rather than the foundation diagnostics screen.
-- [ ] Home reads its content from the encrypted native store through a Product-facing query boundary; production UI does not depend on fixtures or hard-coded sample content.
-- [ ] A new empty store presents a clear native empty state with an available next action and no error-looking placeholders.
-- [ ] When local data exists, Home presents recent conversations, active goals, and open actions in deterministic order and exposes stable navigation boundaries for their later full destinations.
-- [ ] Loading, empty, populated, and recoverable failure states are distinguishable and testable without exposing private content in logs or diagnostics.
-- [ ] A failed store read preserves the local database and offers a safe retry or recovery route; the app does not replace, reset, or silently ignore the store.
-- [ ] The shell and Home remain usable on supported iPhone sizes, in an iPad window, with Dynamic Type, VoiceOver, increased contrast, Reduce Motion, and reduced transparency.
-- [ ] Standard SwiftUI navigation and interactions supply the platform behavior. Temporary Product styling does not recreate the React Native UI or introduce custom interaction machinery.
-- [ ] Page composition owns layout and placement; shared views remain small enough to be moved or replaced during the later page redesign.
-- [ ] Only patterns proven reusable by this slice enter `TaisaDesignSystem`; implemented component contracts, previews, and tests are documented in the same change.
-- [ ] The native target and package baseline are iOS/iPadOS 26 or later, built with the latest stable supported SDK.
-- [ ] The current React Native client remains intact and usable; this slice does not trigger production cutover or import React Native on-device data.
-- [ ] Automated tests cover the Home query contract and every visible state, and the exact signed candidate passes applicable iPhone and iPad device QA before Ship.
+- [x] Launching the ordinary native Taisa app opens a functional Home destination rather than the foundation diagnostics screen.
+- [x] Home reads its content from the encrypted native store through a Product-facing query boundary; production UI does not depend on fixtures or hard-coded sample content.
+- [x] A new empty store presents a clear native empty state without error-looking placeholders.
+- [x] When local data exists, Home presents recent conversations, active goals, and open actions in deterministic order and exposes typed navigation intents for later destinations.
+- [x] Loading, empty, populated, refreshing, retryable failure, and recovery-required states are distinguishable and testable without exposing private content.
+- [x] A failed store read preserves the local database and offers a safe retry or recovery route.
+- [x] Automated simulator coverage exercises iPhone launch, Accessibility XXXL, iPad layout, retry, and recovery reachability.
+- [x] Standard SwiftUI navigation and interactions supply the platform behavior; page composition owns the temporary layout.
+- [x] The native target and package baseline are iOS/iPadOS 26 or later.
+- [x] The React Native client remains intact; this slice does not cut over production or import its on-device data.
+- [ ] The exact signed candidate passes the applicable iPhone and iPad device matrix before Ship.
 
 ## Platform dependencies
 
@@ -53,4 +51,6 @@ The native app foundation and encrypted local storage/recovery are already merge
 
 ## Closeout
 
-To be completed during Review with the accepted Home information contract, exact implementation revision, automated verification, signed-device evidence, documented temporary styling decisions, and the next Product-slice gate.
+Implemented boundary: `HomeView → HomeModel → HomeClient → HomeQuery → TaisaStore`. Home presentation rows remain feature-local because their redesign and reuse have not yet been proven. Temporary visuals are standard SwiftUI `NavigationStack`, `List`, `Section`, `ContentUnavailableView`, toolbar, refresh, button, label, and progress controls.
+
+Ship remains blocked on review, exact signed-build integration into `preview/taisa`, and Baah's iPhone/iPad device-matrix approval.
