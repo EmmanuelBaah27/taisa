@@ -10,7 +10,7 @@
 
 | Feature | Track | Stage | Branch | Blocked on |
 |---|---|---|---|---|
-| Native conversation experience | Platform + Product | Design | `docs/native-conversation-experience-scope` | Baah design-handoff confirmation |
+| Native conversation experience | Platform + Product | Plan | `docs/native-conversation-experience-scope` | Baah Plan approval; Home and native voice prerequisite revisions must be accounted for before Build |
 | SwiftUI functional Home | Platform + Product | Review + QA | `codex/swiftui-home-scope` | review, exact `preview/taisa` integration, signed iPhone/iPad QA, then Baah Ship approval |
 | Light design system | Platform + Product | Review (device QA) | feature/light-design-system | — |
 | Persistent input bar + Chat UI | Platform + Product | Plan | — | Light design system shipped |

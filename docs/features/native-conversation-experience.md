@@ -2,11 +2,13 @@
 
 **Track:** Platform + Product
 **Tier:** Full
-**Status:** Scope approved — design handoff in review
+**Status:** Scope approved — Plan in review
 **Last updated:** 2026-10-07
 **Work Map:** `docs/features/native-conversation-experience-work-map.md`
 
 **Scope approved by Baah:** 2026-10-07
+
+**Design handoff approved by Baah:** 2026-10-07
 
 ## At a glance
 

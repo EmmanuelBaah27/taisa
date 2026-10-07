@@ -1,6 +1,6 @@
 # Native Conversation Experience — Work Map
 
-**Status:** Active — Scope approved; design handoff in review
+**Status:** Active — Scope and design approved; Plan in review
 **Last updated:** 2026-10-07
 **Tier:** Full
 
@@ -51,7 +51,7 @@ Platform slices 1–2 and the Product design handoff may proceed in parallel aft
 
 **Critical path:** durable records → turn orchestration → live conversation wiring → recovery/privacy verification → canonical preview → Baah device QA.
 
-**Progress:** overall 0/6 · Platform 0/2 · Product 0/3 · Integration 0/1. Scope gate approved; design handoff is in review.
+**Progress:** overall 0/6 · Platform 0/2 · Product 0/3 · Integration 0/1. Scope and design gates are approved; the implementation plan is in review.
 
 ## 1. Platform — durable conversation and draft records
 
