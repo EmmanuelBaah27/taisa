@@ -1,6 +1,6 @@
 # Native Conversation Experience — Work Map
 
-**Status:** Active — scope draft
+**Status:** Active — Scope approved; design handoff in review
 **Last updated:** 2026-10-07
 **Tier:** Full
 
@@ -41,18 +41,17 @@ flowchart LR
 
 ## Recommended pickup order
 
-1. Approve the shared scope.
-2. Complete Product design handoff for navigation, dock, history, drafts, and conversation states while Platform plans slices 1–2.
-3. Build slice 1, then slice 2.
-4. Build Product foundation for slices 3–5 against typed fixtures once the Product Plan is approved.
-5. Wire Product to the live Platform contract after slices 1–2 reach Build exit.
-6. Complete integration verification and canonical-preview device QA.
+1. Complete Product design handoff for navigation, dock, history, drafts, and conversation states while Platform planning prepares for slices 1–2.
+2. Build slice 1, then slice 2 after Plan approval.
+3. Build Product foundation for slices 3–5 against typed fixtures once the Product Plan is approved.
+4. Wire Product to the live Platform contract after slices 1–2 reach Build exit.
+5. Complete integration verification and canonical-preview device QA.
 
 Platform slices 1–2 and the Product design handoff may proceed in parallel after Scope approval. Product foundation may begin after Product Plan approval, but live wiring waits for the named Platform contracts.
 
 **Critical path:** durable records → turn orchestration → live conversation wiring → recovery/privacy verification → canonical preview → Baah device QA.
 
-**Progress:** overall 0/6 · Platform 0/2 · Product 0/3 · Integration 0/1.
+**Progress:** overall 0/6 · Platform 0/2 · Product 0/3 · Integration 0/1. Scope gate approved; design handoff is in review.
 
 ## 1. Platform — durable conversation and draft records
 
