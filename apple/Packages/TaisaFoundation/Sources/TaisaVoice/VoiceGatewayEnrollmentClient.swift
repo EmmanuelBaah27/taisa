@@ -7,6 +7,18 @@ public protocol VoiceGatewayEnrolling: Sendable {
     func enroll(baseURL: URL, code: String) async throws -> VoiceGatewayCredential
 }
 
+final class EnrollmentRedirectDelegate: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
+    func urlSession(
+        _ session: URLSession,
+        task: URLSessionTask,
+        willPerformHTTPRedirection response: HTTPURLResponse,
+        newRequest request: URLRequest,
+        completionHandler: @escaping @Sendable (URLRequest?) -> Void
+    ) {
+        completionHandler(nil)
+    }
+}
+
 public enum VoiceGatewayEnrollmentError: Error, Equatable, Sendable, CustomStringConvertible {
     case invalidGatewayOrigin
     case invalidOrExpiredCode
@@ -68,7 +80,10 @@ public actor VoiceGatewayEnrollmentClient: VoiceGatewayEnrolling {
         let data: Data
         let response: URLResponse
         do {
-            (data, response) = try await session.data(for: request)
+            (data, response) = try await session.data(
+                for: request,
+                delegate: EnrollmentRedirectDelegate()
+            )
         } catch let error as URLError where error.code == .timedOut {
             throw VoiceGatewayEnrollmentError.timedOut
         } catch is CancellationError {

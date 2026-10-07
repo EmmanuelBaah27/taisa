@@ -128,6 +128,34 @@ struct VoiceGatewayEnrollmentClientTests {
             )
         }
     }
+
+    @Test("never follows redirects that could replay the enrollment code", arguments: [
+        "https://approved.example.com/alternate",
+        "https://redirect-target.example.com/capture",
+    ])
+    func rejectsRedirects(location: String) async throws {
+        let source = try #require(URL(string: "https://approved.example.com/api/v1/device-enrollments"))
+        let response = try #require(HTTPURLResponse(
+            url: source,
+            statusCode: 307,
+            httpVersion: "HTTP/1.1",
+            headerFields: ["Location": location]
+        ))
+        let task = URLSession.shared.dataTask(with: source)
+        let redirected = URLRequest(url: try #require(URL(string: location)))
+
+        let decision = await withCheckedContinuation { continuation in
+            EnrollmentRedirectDelegate().urlSession(
+                .shared,
+                task: task,
+                willPerformHTTPRedirection: response,
+                newRequest: redirected,
+                completionHandler: { continuation.resume(returning: $0) }
+            )
+        }
+
+        #expect(decision == nil)
+    }
 }
 
 private actor RequestCounter {
