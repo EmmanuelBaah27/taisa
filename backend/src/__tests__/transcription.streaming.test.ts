@@ -432,4 +432,32 @@ describe('streaming transcription route', () => {
       await fs.promises.rm(fixturePath, { force: true });
     }
   });
+
+  test('reports a missing receipt encryption key as configuration failure before provider spend', async () => {
+    const fixturePath = createAudioFixture();
+    const create = jest.fn();
+    const app = express();
+    app.use(requestContext);
+    app.use((_req, res, next) => {
+      res.locals.deviceCredentialId = 'test-device';
+      next();
+    });
+    app.use('/api/v1/transcribe', createTranscribeRouter({
+      client: { audio: { transcriptions: { create } } } as never,
+      environment,
+    }));
+
+    try {
+      const response = await request(app)
+        .post('/api/v1/transcribe')
+        .set('x-request-id', requestId)
+        .attach('audio', fixturePath);
+
+      expect(response.status).toBe(503);
+      expect(response.body.error.code).toBe('TRANSCRIPTION_CONFIG_ERROR');
+      expect(create).not.toHaveBeenCalled();
+    } finally {
+      await fs.promises.rm(fixturePath, { force: true });
+    }
+  });
 });
