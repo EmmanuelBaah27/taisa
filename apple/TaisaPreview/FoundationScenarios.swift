@@ -94,3 +94,4 @@ private struct FoundationScenarioView: View {
         .background(TaisaColor.background.color)
     }
 }
+
