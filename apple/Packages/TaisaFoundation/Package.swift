@@ -5,7 +5,7 @@ import PackageDescription
 let package = Package(
     name: "TaisaFoundation",
     platforms: [
-        .iOS(.v17),
+        .iOS(.v26),
         .macOS(.v14),
     ],
     products: [
