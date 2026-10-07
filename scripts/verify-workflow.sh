@@ -19,6 +19,7 @@ node scripts/canonical-origin.mjs "$(git remote get-url origin)" || fail "origin
 # Linear is the sole live delivery authority. These checks intentionally stay
 # offline: they verify repository contracts without reading or mutating Linear.
 test ! -e docs/roadmap.md || fail "repository roadmap duplicates Linear live authority"
+test ! -e docs/backlog.md || fail "repository backlog duplicates Linear task intake"
 
 for authority_file in AGENTS.md CLAUDE.md docs/workflow.md .claude/skills/taisa-workflow/SKILL.md; do
   rg -qi 'Linear.*sole live authority|sole live authority.*Linear' "$authority_file" ||
@@ -27,7 +28,7 @@ for authority_file in AGENTS.md CLAUDE.md docs/workflow.md .claude/skills/taisa-
     fail "$authority_file is missing the Linear-unavailable fallback"
 done
 
-if rg -n 'Active Work table|docs/roadmap\.md' \
+if rg -n 'Active Work table|docs/roadmap\.md|docs/backlog\.md' \
   AGENTS.md CLAUDE.md docs/workflow.md .claude/skills/taisa-workflow/SKILL.md docs/project-memory.md; then
   fail "active repository instructions still reference duplicate live authority"
 fi
