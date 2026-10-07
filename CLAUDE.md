@@ -1,8 +1,11 @@
 # Taisa — Claude Code Context
 
-Taisa is a personal AI career companion for a solo designer (Baah). Users log daily work via voice; Claude analyses it as a senior career coach, extracts wins/challenges/action items, and surfaces CV-worthy moments. The v1 loop is fully functional. The next major build is the chat interface + four-mode Senior Self agent.
+Taisa is a personal AI career companion for Baah. The shipping direction is a native SwiftUI
+iPhone/iPad product with encrypted device-authoritative data. The React Native client remains
+legacy migration source until its required behavior and unique work are safely accounted for.
 
-**Stack:** React Native/Expo + NativeWind, Node/Express, SQLite, Anthropic SDK (claude-sonnet-4-6), OpenAI Whisper.
+**Stack:** Swift 6/SwiftUI, encrypted SQLite/GRDB/SQLCipher, Node/Express services where still
+required, plus the legacy React Native/Expo client during migration.
 
 ---
 
@@ -59,9 +62,18 @@ Load these shared workflow files at the start of every scope, plan, build, revie
 3. `docs/project-memory.md` — durable context entry point
 4. `AGENTS.md` — Codex automatic entry point
 
-The orchestrator maps Taisa's stages to the required Superpowers process skills. Baah approves Scope, Plan, and Ship; agents handle routine Active Work, Git/GitHub, verification, documentation, and Linear housekeeping within those approvals.
+Linear is the sole live authority. It owns roadmap, actionable work, stage, ownership,
+dependencies, blockers, Scope, Plan, acceptance, discussion, and gate evidence. Git remains
+authoritative for code-coupled constraints, contracts, decisions, migrations, and verification.
+The orchestrator maps Taisa's stages to required Superpowers skills. Baah approves Scope,
+Plan, physical-device judgment, and Ship; agents handle routine Linear, Git/GitHub,
+verification, and code-coupled documentation within those approvals.
 After reading the memory index, load only the accepted decisions, reusable learnings, and
 canonical domain documents relevant to the current task.
+
+If Linear is unavailable, use the offline fallback in `docs/workflow.md`: continue only
+already-approved work supported by trusted recent Scope/Plan context and Git evidence, and do
+not start or advance work until Linear is reconciled.
 
 ---
 
