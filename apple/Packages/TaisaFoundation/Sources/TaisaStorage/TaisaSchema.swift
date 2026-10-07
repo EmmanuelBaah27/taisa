@@ -281,7 +281,7 @@ enum TaisaSchema {
         """
         CREATE TABLE insight_revisions (
             id TEXT PRIMARY KEY NOT NULL CHECK (length(id) = 36),
-            insight_id TEXT NOT NULL REFERENCES insights(id) ON DELETE CASCADE,
+            insight_id TEXT REFERENCES insights(id) ON DELETE CASCADE,
             proposed_body TEXT NOT NULL,
             status TEXT NOT NULL CHECK (status IN ('proposed', 'accepted', 'rejected')),
             source_type TEXT NOT NULL,

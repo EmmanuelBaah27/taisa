@@ -107,46 +107,54 @@ struct RepositoryCore<Record: DomainRecord>: Sendable {
     }
 
     func create(_ record: Record, context: MutationContext) async throws {
-        let record = try canonicalRecord(record), context = try canonicalContext(context)
-        try validate(record: record, context: context)
         try await safeWrite { db in
-            let fields = try properties(record)
-            let storedFields = try storageFields(fields, db: db)
-            if try isDuplicate(context, entityID: record.id, operation: "create", record: record, db: db) { return }
-            try validateSourceTuple(fields, excluding: nil, db: db)
-            guard try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM \(spec.table) WHERE id = ? COLLATE NOCASE", arguments: [record.id]) == 0 else { throw RepositoryError.alreadyExists }
-            let columns = spec.fields.map(\.column)
-            let placeholders = Array(repeating: "?", count: columns.count).joined(separator: ", ")
-            try db.execute(sql: "INSERT INTO \(spec.table) (\(columns.joined(separator: ", "))) VALUES (\(placeholders))", arguments: StatementArguments(columns.map { value(storedFields, for: $0) }))
-            let causality = try versions(fields: fields, previous: [:], id: record.id, context: context, db: db)
-            try ChangeJournal.insert(db: db, context: context, entity: spec.entity, entityID: record.id, operation: "create", record: record, causality: causality)
+            try create(record, context: context, db: db)
         }
     }
 
+    func create(_ input: Record, context inputContext: MutationContext, db: Database) throws {
+        let record = try canonicalRecord(input), context = try canonicalContext(inputContext)
+        try validate(record: record, context: context)
+        let fields = try properties(record)
+        let storedFields = try storageFields(fields, db: db)
+        if try isDuplicate(context, entityID: record.id, operation: "create", record: record, db: db) { return }
+        try validateSourceTuple(fields, excluding: nil, db: db)
+        guard try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM \(spec.table) WHERE id = ? COLLATE NOCASE", arguments: [record.id]) == 0 else { throw RepositoryError.alreadyExists }
+        let columns = spec.fields.map(\.column)
+        let placeholders = Array(repeating: "?", count: columns.count).joined(separator: ", ")
+        try db.execute(sql: "INSERT INTO \(spec.table) (\(columns.joined(separator: ", "))) VALUES (\(placeholders))", arguments: StatementArguments(columns.map { value(storedFields, for: $0) }))
+        let causality = try versions(fields: fields, previous: [:], id: record.id, context: context, db: db)
+        try ChangeJournal.insert(db: db, context: context, entity: spec.entity, entityID: record.id, operation: "create", record: record, causality: causality)
+    }
+
     func update(_ record: Record, context: MutationContext) async throws {
-        let record = try canonicalRecord(record), context = try canonicalContext(context)
+        try await safeWrite { db in
+            try update(record, context: context, db: db)
+        }
+    }
+
+    func update(_ input: Record, context inputContext: MutationContext, db: Database) throws {
+        let record = try canonicalRecord(input), context = try canonicalContext(inputContext)
         guard !spec.appendOnly else { throw RepositoryError.immutableRecord }
         try validate(record: record, context: context)
-        try await safeWrite { db in
-            let fields = try properties(record)
-            let storedFields = try storageFields(fields, db: db)
-            if try isDuplicate(context, entityID: record.id, operation: "update", record: record, db: db) { return }
-            try validateSourceTuple(fields, excluding: record.id, db: db)
-            let matches = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM \(spec.table) WHERE id = ? COLLATE NOCASE", arguments: [record.id]) ?? 0
-            guard matches <= 1 else { throw RepositoryError.persistenceFailed }
-            guard let row = try Row.fetchOne(db, sql: "SELECT * FROM \(spec.table) WHERE id = ? COLLATE NOCASE", arguments: [record.id]),
-                  try !isDeleted(record.id, db: db) else { throw RepositoryError.notFound }
-            let old = try properties(decode(row))
-            for key in spec.immutable where !equal(fields[key], old[key]) { throw RepositoryError.immutableRecord }
-            let changed = spec.fields.filter { $0.property != "id" && !equal(fields[$0.property], old[$0.property]) }
-            if !changed.isEmpty {
-                let assignments = changed.map { "\($0.column) = ?" }.joined(separator: ", ")
-                let args = changed.map { value(storedFields, for: $0.column) } + [record.id.databaseValue]
-                try db.execute(sql: "UPDATE \(spec.table) SET \(assignments) WHERE id = ? COLLATE NOCASE", arguments: StatementArguments(args))
-            }
-            let causality = try versions(fields: fields, previous: old, id: record.id, context: context, db: db)
-            try ChangeJournal.insert(db: db, context: context, entity: spec.entity, entityID: record.id, operation: "update", record: record, causality: causality)
+        let fields = try properties(record)
+        let storedFields = try storageFields(fields, db: db)
+        if try isDuplicate(context, entityID: record.id, operation: "update", record: record, db: db) { return }
+        try validateSourceTuple(fields, excluding: record.id, db: db)
+        let matches = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM \(spec.table) WHERE id = ? COLLATE NOCASE", arguments: [record.id]) ?? 0
+        guard matches <= 1 else { throw RepositoryError.persistenceFailed }
+        guard let row = try Row.fetchOne(db, sql: "SELECT * FROM \(spec.table) WHERE id = ? COLLATE NOCASE", arguments: [record.id]),
+              try !isDeleted(record.id, db: db) else { throw RepositoryError.notFound }
+        let old = try properties(decode(row))
+        for key in spec.immutable where !equal(fields[key], old[key]) { throw RepositoryError.immutableRecord }
+        let changed = spec.fields.filter { $0.property != "id" && !equal(fields[$0.property], old[$0.property]) }
+        if !changed.isEmpty {
+            let assignments = changed.map { "\($0.column) = ?" }.joined(separator: ", ")
+            let args = changed.map { value(storedFields, for: $0.column) } + [record.id.databaseValue]
+            try db.execute(sql: "UPDATE \(spec.table) SET \(assignments) WHERE id = ? COLLATE NOCASE", arguments: StatementArguments(args))
         }
+        let causality = try versions(fields: fields, previous: old, id: record.id, context: context, db: db)
+        try ChangeJournal.insert(db: db, context: context, entity: spec.entity, entityID: record.id, operation: "update", record: record, causality: causality)
     }
 
     func delete(id: String, context: MutationContext) async throws {

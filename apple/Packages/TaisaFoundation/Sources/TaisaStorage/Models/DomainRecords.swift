@@ -215,15 +215,15 @@ public struct InsightSourceRecord: Codable, Sendable, Equatable {
 
 public struct InsightRevisionRecord: Codable, Sendable, Equatable {
     public let id: String
-    public let insightID: String
+    public let insightID: String?
     public let proposedBody: String
     public let status: InsightRevisionStatus
     public let sourceType: String
     public let sourceID: String?
     public let createdAtMS: Int64
     public let resolvedAtMS: Int64?
-    public init(id: String, insightID: String, proposedBody: String, status: InsightRevisionStatus, sourceType: String, sourceID: String?, createdAtMS: Int64, resolvedAtMS: Int64?) {
-        self.id = UUIDIdentity.normalizedOrOriginal(id); self.insightID = UUIDIdentity.normalizedOrOriginal(insightID); self.proposedBody = proposedBody
+    public init(id: String, insightID: String?, proposedBody: String, status: InsightRevisionStatus, sourceType: String, sourceID: String?, createdAtMS: Int64, resolvedAtMS: Int64?) {
+        self.id = UUIDIdentity.normalizedOrOriginal(id); self.insightID = insightID.map(UUIDIdentity.normalizedOrOriginal); self.proposedBody = proposedBody
         self.status = status; self.sourceType = sourceType; self.sourceID = sourceID.map(UUIDIdentity.normalizedOrOriginal)
         self.createdAtMS = createdAtMS; self.resolvedAtMS = resolvedAtMS
     }
