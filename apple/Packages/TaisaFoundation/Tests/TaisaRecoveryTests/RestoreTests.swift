@@ -36,6 +36,8 @@ private struct RestoreFixture {
     let recovery: RecoveryKey
     let keys = RestoreKeys()
     let store: TaisaStore
+    let placementID: String
+    let insightID: String
     init() async throws {
         directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
@@ -43,6 +45,16 @@ private struct RestoreFixture {
         archive = directory.appendingPathComponent("backup.taisa-backup")
         recovery = try RecoveryKey.generate()
         store = try await TaisaStore.open(at: active, keyStore: keys)
+        let deviceID = UUID().uuidString
+        let action = ActionRecord(id: UUID().uuidString, goalID: nil, title: "Archived week", detail: "", status: "open", dueAtMS: nil, createdAtMS: 1, updatedAtMS: 1)
+        placementID = UUID().uuidString
+        let conversation = ConversationRecord(id: UUID().uuidString, title: "Archived source", createdAtMS: 1, updatedAtMS: 1)
+        try await ActionRepository(store: store).create(action, context: .init(id: UUID().uuidString, deviceID: deviceID, timestamp: 1))
+        try await WeeklyPlacementRepository(store: store).create(.init(id: placementID, actionID: action.id, weekStartMS: 100, plannedDayMS: nil, createdAtMS: 2, updatedAtMS: 2), context: .init(id: UUID().uuidString, deviceID: deviceID, timestamp: 2))
+        try await ConversationRepository(store: store).create(conversation, context: .init(id: UUID().uuidString, deviceID: deviceID, timestamp: 3))
+        let commands = InsightCommandRepository(store: store)
+        let proposal = try await commands.propose(body: "Archived insight", sourceType: "conversation", sourceID: conversation.id, context: .init(id: UUID().uuidString, deviceID: deviceID, timestamp: 4))
+        insightID = try await commands.confirm(proposalID: proposal.id, editedBody: nil, isTimeSensitive: false, homeEligibleUntilMS: nil, context: .init(id: UUID().uuidString, deviceID: deviceID, timestamp: 5)).id
         try await store.write { try $0.execute(sql: "INSERT INTO profile (id, display_name, updated_at_ms) VALUES (?, 'ARCHIVED', 1)", arguments: [UUID().uuidString]) }
         _ = try await SnapshotService(store: store, audioGuard: RestoreAudio(), sourceInstallationID: UUID()).createPortableArchive(at: archive, recoveryKey: recovery)
         try await store.write { try $0.execute(sql: "UPDATE profile SET display_name = 'ORIGINAL'") }
@@ -79,6 +91,10 @@ private struct RestoreFixture {
         await #expect(throws: Error.self) { try await second.read { try Int.fetchOne($0, sql: "SELECT count(*) FROM profile") } }
         let restored = try await TaisaStore.open(at: f.active, keyStore: f.keys)
         #expect(try await restored.read { try String.fetchOne($0, sql: "SELECT display_name FROM profile") } == "ARCHIVED")
+        #expect(try await WeeklyPlacementRepository(store: restored).get(id: f.placementID)?.weekStartMS == 100)
+        #expect(try await InsightQuery(store: restored).current().map(\.id) == [f.insightID])
+        #expect(try await InsightQuery(store: restored).sources(insightID: f.insightID).count == 1)
+        #expect(try await InsightQuery(store: restored).revisions(insightID: f.insightID).map(\.status) == [.accepted])
         #expect(!FileManager.default.fileExists(atPath: coordinator.journalURL.path))
     }
 

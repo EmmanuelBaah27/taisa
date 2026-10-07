@@ -4,7 +4,8 @@ import Foundation
 public struct EnvelopeMetadata: Codable, Equatable, Sendable, CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
     private static let allowedEntityTypes: Set<String> = [
         "profile", "conversation", "message", "goal", "milestone", "action",
-        "evidence", "memory", "memory_source", "snapshot",
+        "evidence", "memory", "memory_source", "weekly_placement", "work_event",
+        "insight", "insight_source", "insight_revision", "snapshot",
     ]
     public var vaultID: UUID
     public var recordID: UUID

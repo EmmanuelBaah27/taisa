@@ -126,6 +126,11 @@ struct SyncEntityShape {
         "evidence": .init(table: "evidence", columns: ["goalID": "goal_id", "actionID": "action_id", "title": "title", "detail": "detail", "occurredAtMS": "occurred_at_ms", "createdAtMS": "created_at_ms"], optional: ["goalID", "actionID"]),
         "memory": .init(table: "memory_items", columns: ["kind": "kind", "content": "content", "status": "status", "createdAtMS": "created_at_ms", "updatedAtMS": "updated_at_ms"]),
         "memory_source": .init(table: "memory_sources", columns: ["memoryItemID": "memory_item_id", "sourceType": "source_type", "sourceID": "source_id", "createdAtMS": "created_at_ms"]),
+        "weekly_placement": .init(table: "weekly_placements", columns: ["actionID": "action_id", "weekStartMS": "week_start_ms", "plannedDayMS": "planned_day_ms", "createdAtMS": "created_at_ms", "updatedAtMS": "updated_at_ms"], optional: ["plannedDayMS"]),
+        "work_event": .init(table: "work_events", columns: ["actionID": "action_id", "kind": "kind", "fromWeekStartMS": "from_week_start_ms", "toWeekStartMS": "to_week_start_ms", "sourceType": "source_type", "sourceID": "source_id", "occurredAtMS": "occurred_at_ms"], optional: ["fromWeekStartMS", "toWeekStartMS", "sourceID"]),
+        "insight": .init(table: "insights", columns: ["body": "body", "status": "status", "isTimeSensitive": "is_time_sensitive", "homeEligibleUntilMS": "home_eligible_until_ms", "createdAtMS": "created_at_ms", "updatedAtMS": "updated_at_ms"], optional: ["homeEligibleUntilMS"]),
+        "insight_source": .init(table: "insight_sources", columns: ["insightID": "insight_id", "sourceType": "source_type", "sourceID": "source_id", "excerpt": "excerpt", "createdAtMS": "created_at_ms"]),
+        "insight_revision": .init(table: "insight_revisions", columns: ["insightID": "insight_id", "proposedBody": "proposed_body", "status": "status", "sourceType": "source_type", "sourceID": "source_id", "createdAtMS": "created_at_ms", "resolvedAtMS": "resolved_at_ms"], optional: ["insightID", "sourceID", "resolvedAtMS"]),
     ]
 
     func completeFields(_ record: [String: Any]) throws -> [String: Data] {
@@ -143,6 +148,11 @@ struct SyncEntityShape {
             case "evidence": _ = try JSONDecoder().decode(EvidenceRecord.self, from: data)
             case "memory_items": _ = try JSONDecoder().decode(MemoryRecord.self, from: data)
             case "memory_sources": _ = try JSONDecoder().decode(MemorySourceRecord.self, from: data)
+            case "weekly_placements": _ = try JSONDecoder().decode(WeeklyPlacementRecord.self, from: data)
+            case "work_events": _ = try JSONDecoder().decode(WorkEventRecord.self, from: data)
+            case "insights": _ = try JSONDecoder().decode(InsightRecord.self, from: data)
+            case "insight_sources": _ = try JSONDecoder().decode(InsightSourceRecord.self, from: data)
+            case "insight_revisions": _ = try JSONDecoder().decode(InsightRevisionRecord.self, from: data)
             default: throw SyncMergeError.malformedMutation
             }
         } catch { throw SyncMergeError.malformedMutation }
@@ -201,12 +211,33 @@ struct SyncEntityShape {
         case "actions": [("goalID", "goals")]
         case "evidence": [("goalID", "goals"), ("actionID", "actions")]
         case "memory_sources": [("memoryItemID", "memory_items")]
+        case "weekly_placements", "work_events": [("actionID", "actions")]
+        case "insight_sources", "insight_revisions": [("insightID", "insights")]
         default: []
         }
         for (property, parentTable) in relations {
             guard let encoded = fields[property],
                   let parent = try JSONSerialization.jsonObject(with: encoded, options: [.fragmentsAllowed]) as? String else { continue }
             let exists = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM \(parentTable) WHERE id = ? COLLATE NOCASE", arguments: [parent]) ?? 0
+            guard exists == 1 else { throw SyncProjectionError.dependencyPending }
+        }
+        if shape.table == "insight_sources" || shape.table == "insight_revisions" {
+            guard let sourceTypeData = fields["sourceType"],
+                  let sourceType = try JSONSerialization.jsonObject(with: sourceTypeData, options: [.fragmentsAllowed]) as? String else {
+                throw SyncMergeError.malformedMutation
+            }
+            guard let sourceIDData = fields["sourceID"] else { throw SyncMergeError.malformedMutation }
+            let sourceValue = try JSONSerialization.jsonObject(with: sourceIDData, options: [.fragmentsAllowed])
+            guard !(sourceValue is NSNull) else { return }
+            guard let sourceID = sourceValue as? String else { throw SyncMergeError.malformedMutation }
+            let sourceTable: String = switch sourceType {
+            case "conversation": "conversations"
+            case "message": "messages"
+            case "evidence": "evidence"
+            case "action": "actions"
+            default: throw SyncMergeError.malformedMutation
+            }
+            let exists = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM \(sourceTable) WHERE id = ? COLLATE NOCASE", arguments: [sourceID]) ?? 0
             guard exists == 1 else { throw SyncProjectionError.dependencyPending }
         }
     }
