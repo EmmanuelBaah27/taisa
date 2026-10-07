@@ -1,6 +1,6 @@
 # SwiftUI Functional Home — Device Matrix
 
-**Status:** Pending exact signed candidate  
+**Status:** Pending exact signed candidate
 **Required gate:** Baah device approval before Ship
 
 Record the candidate SHA, signed-build record, device model, OS version, result, and notes for every applicable row. Do not reuse evidence from another revision.
@@ -10,6 +10,9 @@ Record the candidate SHA, signed-build record, device model, OS version, result,
 | Exact launch | Pending | Pending | Installed build identity matches candidate; Home is ordinary root |
 | Empty store | Pending | Pending | Native empty state is clear and non-error-like |
 | Populated Home | Pending | Pending | Conversations, active goals, and open actions are ordered and readable |
+| This Week | Pending | Pending | Weekly work, deliberate carry-over review, completion, undo, and replanning remain reachable |
+| Lead insight | Pending | Pending | At most one grounded lead insight appears and opens the nested Insights destination |
+| Insights | Pending | Pending | Current, Needs review, and History remain nested; Sources and Revisions are inspectable in detail |
 | Refresh success | Pending | Pending | Existing content remains visible while refreshing |
 | Refresh failure | Pending | Pending | Existing content remains; retry is reachable |
 | Recovery routing | Pending | Pending | Unsafe store state opens recovery without replacing local data |
