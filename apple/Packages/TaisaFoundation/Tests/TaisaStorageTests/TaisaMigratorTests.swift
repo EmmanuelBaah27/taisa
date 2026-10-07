@@ -700,3 +700,4 @@ private actor FixedDatabaseKeyStore: DatabaseKeyStore {
     func loadKey() async throws -> Data? { key }
     func saveKey(_ key: Data) async throws { Issue.record("Existing fixture key must not be replaced") }
 }
+

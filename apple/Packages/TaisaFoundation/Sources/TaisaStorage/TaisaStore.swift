@@ -552,3 +552,4 @@ private final class WeakStoreQueue {
     weak var value: DatabaseQueue?
     init(_ value: DatabaseQueue) { self.value = value }
 }
+

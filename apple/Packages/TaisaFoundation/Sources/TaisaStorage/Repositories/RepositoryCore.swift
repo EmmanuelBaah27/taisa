@@ -35,6 +35,11 @@ extension ActionRecord: DomainRecord {}
 extension EvidenceRecord: DomainRecord {}
 extension MemoryRecord: DomainRecord {}
 extension MemorySourceRecord: DomainRecord {}
+extension WeeklyPlacementRecord: DomainRecord {}
+extension WorkEventRecord: DomainRecord {}
+extension InsightRecord: DomainRecord {}
+extension InsightSourceRecord: DomainRecord {}
+extension InsightRevisionRecord: DomainRecord {}
 
 struct RepositorySpec: Sendable {
     let table: String
@@ -48,6 +53,7 @@ struct RepositorySpec: Sendable {
 /// v1 storage tables and their identity-bearing parent references.
 enum DomainEntity: String, CaseIterable {
     case profile, conversation, message, goal, milestone, action, evidence, memory, memory_source, voice_turn
+    case weekly_placement, work_event, insight, insight_source, insight_revision
 
     var table: String {
         switch self {
@@ -61,6 +67,11 @@ enum DomainEntity: String, CaseIterable {
         case .memory: "memory_items"
         case .memory_source: "memory_sources"
         case .voice_turn: "voice_turns"
+        case .weekly_placement: "weekly_placements"
+        case .work_event: "work_events"
+        case .insight: "insights"
+        case .insight_source: "insight_sources"
+        case .insight_revision: "insight_revisions"
         }
     }
 
@@ -76,6 +87,8 @@ enum DomainEntity: String, CaseIterable {
             ("userMessageID", "user_message_id", "messages"),
             ("assistantMessageID", "assistant_message_id", "messages"),
         ]
+        case .weekly_placement, .work_event: [("actionID", "action_id", "actions")]
+        case .insight_source, .insight_revision: [("insightID", "insight_id", "insights")]
         default: []
         }
     }
