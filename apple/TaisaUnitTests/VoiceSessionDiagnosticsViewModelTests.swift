@@ -36,6 +36,18 @@ final class VoiceSessionDiagnosticsViewModelTests: XCTestCase {
         XCTAssertFalse(viewModel.announcesPrivateContent)
     }
 
+    func testActionFailureStatusIsVisibleWhileRoutineReadyStatusIsHidden() {
+        XCTAssertNil(model(.recording, .capture, actionStatus: "Ready").actionStatusTitle)
+        XCTAssertEqual(
+            model(
+                .recording,
+                .capture,
+                actionStatus: "Voice action failed (TaisaAudio.AudioCaptureError 3)."
+            ).actionStatusTitle,
+            "Voice action failed (TaisaAudio.AudioCaptureError 3)."
+        )
+    }
+
     func testReduceMotionDisablesWaveformAnimation() {
         XCTAssertTrue(model(.recording, .capture, reduceMotion: false).animatesWaveform)
         XCTAssertFalse(model(.recording, .capture, reduceMotion: true).animatesWaveform)
@@ -57,7 +69,8 @@ final class VoiceSessionDiagnosticsViewModelTests: XCTestCase {
     private func model(
         _ state: VoiceTurnState,
         _ stage: VoiceTurnStage,
-        reduceMotion: Bool = false
+        reduceMotion: Bool = false,
+        actionStatus: String = "Ready"
     ) -> VoiceSessionDiagnosticsViewModel {
         VoiceSessionDiagnosticsViewModel(
             snapshot: VoiceSessionSnapshot(
@@ -72,7 +85,8 @@ final class VoiceSessionDiagnosticsViewModelTests: XCTestCase {
                 partialTranscript: "private transcript",
                 partialCoaching: "private response"
             ),
-            reduceMotion: reduceMotion
+            reduceMotion: reduceMotion,
+            actionStatus: actionStatus
         )
     }
 }

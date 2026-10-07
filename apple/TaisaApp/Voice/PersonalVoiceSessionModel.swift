@@ -87,6 +87,7 @@ final class PersonalVoiceSessionModel: ObservableObject {
 
     func perform(_ action: VoiceSessionDiagnosticAction) {
         guard let coordinator else { return }
+        status = "\(action.title)…"
         Task {
             do {
                 switch action {
@@ -106,6 +107,7 @@ final class PersonalVoiceSessionModel: ObservableObject {
                     try await coordinator.send(.beginNextTurn(makeTurn(conversationID: conversationID)))
                 }
                 await refresh()
+                status = "Ready"
                 beginRefreshing()
             } catch {
                 status = voiceActionFailureStatus(error)

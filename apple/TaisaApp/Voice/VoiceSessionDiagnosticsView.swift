@@ -4,6 +4,7 @@ import TaisaVoice
 
 struct VoiceSessionDiagnosticsView: View {
     let snapshot: VoiceSessionSnapshot
+    let actionStatus: String
     let onAction: @MainActor (VoiceSessionDiagnosticAction) -> Void
     private let reduceMotionOverride: Bool?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -11,17 +12,20 @@ struct VoiceSessionDiagnosticsView: View {
     init(
         snapshot: VoiceSessionSnapshot,
         reduceMotionOverride: Bool? = nil,
+        actionStatus: String = "Ready",
         onAction: @escaping @MainActor (VoiceSessionDiagnosticAction) -> Void = { _ in }
     ) {
         self.snapshot = snapshot
         self.reduceMotionOverride = reduceMotionOverride
+        self.actionStatus = actionStatus
         self.onAction = onAction
     }
 
     var body: some View {
         let model = VoiceSessionDiagnosticsViewModel(
             snapshot: snapshot,
-            reduceMotion: reduceMotionOverride ?? reduceMotion
+            reduceMotion: reduceMotionOverride ?? reduceMotion,
+            actionStatus: actionStatus
         )
         ScrollView {
             VStack(alignment: .leading, spacing: TaisaSpacing.section.rawValue) {
@@ -36,6 +40,14 @@ struct VoiceSessionDiagnosticsView: View {
                         color: .mutedForeground,
                         content: "Stage: \(model.stage.rawValue)"
                     )
+                    if let actionStatusTitle = model.actionStatusTitle {
+                        TaisaText(
+                            role: .metadata,
+                            color: .mutedForeground,
+                            content: actionStatusTitle
+                        )
+                        .accessibilityIdentifier("voice.action.status")
+                    }
                 }
                 VoiceActivityIndicator(isAnimated: model.animatesWaveform)
                 VStack(spacing: TaisaSpacing.standard.rawValue) {
