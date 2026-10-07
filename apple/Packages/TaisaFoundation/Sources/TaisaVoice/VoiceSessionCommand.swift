@@ -28,6 +28,7 @@ public enum VoiceSessionCommand: Sendable, Equatable {
     case coachingBegan
     case coachingCompleted(receipt: String, assistantMessageID: String)
     case fail(code: String, retryable: Bool, ambiguous: Bool)
+    case scheduleRetry(code: String, nextRetryAtMS: Int64)
     case retry
     case confirmResume
     case cancel

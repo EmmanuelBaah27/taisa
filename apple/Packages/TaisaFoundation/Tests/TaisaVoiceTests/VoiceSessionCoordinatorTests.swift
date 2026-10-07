@@ -15,7 +15,8 @@ struct VoiceSessionCoordinatorTests {
         let coordinator = VoiceSessionCoordinator(
             initial: turn(state: .recording, stage: .capture), checkpoints: store,
             transcription: transcription, coaching: coaching,
-            connectivity: connectivity, reconciliation: ReconciliationSpy(.safeToRetry)
+            connectivity: connectivity, reconciliation: ReconciliationSpy(.safeToRetry),
+            capture: NoopCapture(), audio: NoopAudio()
         )
 
         try await coordinator.send(.send(.init(fileID: "audio-1", sha256: "abc", durationMS: 1000)))
@@ -24,6 +25,7 @@ struct VoiceSessionCoordinatorTests {
 
         await connectivity.setAvailable(true)
         try await coordinator.connectivityChanged(isAvailable: true)
+        await coordinator.waitForIdle()
 
         #expect(await transcription.calls == 1)
         #expect(await coaching.calls == 0)
@@ -38,10 +40,13 @@ struct VoiceSessionCoordinatorTests {
         let coordinator = VoiceSessionCoordinator(
             initial: turn(state: .recoverableFailure, stage: .coaching, transcript: "accepted"),
             checkpoints: CheckpointSpy(), transcription: transcription, coaching: coaching,
-            connectivity: ConnectivitySpy(available: true), reconciliation: ReconciliationSpy(.safeToRetry)
+            connectivity: ConnectivitySpy(available: true), reconciliation: ReconciliationSpy(.safeToRetry),
+            capture: NoopCapture(), audio: NoopAudio(),
+            retryScheduler: .init(maximumAttempts: 0)
         )
 
         try await coordinator.recoverIfAuthorized()
+        await coordinator.waitForIdle()
 
         #expect(await transcription.calls == 0)
         #expect(await coaching.calls == 1)
@@ -53,7 +58,8 @@ struct VoiceSessionCoordinatorTests {
         let coordinator = VoiceSessionCoordinator(
             initial: turn(state: .recoverableFailure, stage: .coaching, transcript: "accepted"),
             checkpoints: CheckpointSpy(), transcription: TranscriptionSpy(events: []), coaching: coaching,
-            connectivity: ConnectivitySpy(available: true), reconciliation: ReconciliationSpy(.ambiguous)
+            connectivity: ConnectivitySpy(available: true), reconciliation: ReconciliationSpy(.ambiguous),
+            capture: NoopCapture(), audio: NoopAudio()
         )
 
         try await coordinator.recoverIfAuthorized()
@@ -94,7 +100,11 @@ private func turn(state: VoiceTurnState, stage: VoiceTurnStage, transcript: Stri
 
 private actor CheckpointSpy: VoiceTurnCheckpointing {
     private(set) var states: [VoiceTurnState] = []
-    func checkpoint(_ record: VoiceTurnRecord) async throws { states.append(record.state) }
+    func checkpoint(
+        _ record: VoiceTurnRecord,
+        messages: [MessageRecord],
+        cleanup: VoiceTurnCleanup?
+    ) async throws { states.append(record.state) }
 }
 
 private actor ConnectivitySpy: ConnectivityMonitoring {
@@ -132,4 +142,19 @@ private struct ReconciliationSpy: CoachingReconciliationLookingUp {
     let result: CoachingReconciliationResult
     init(_ result: CoachingReconciliationResult) { self.result = result }
     func reconcile(requestID: UUID) async throws -> CoachingReconciliationResult { result }
+    func authorizeRetry(requestID: UUID) async throws {}
+}
+
+private actor NoopCapture: VoiceCaptureControlling {
+    func start(turnID: UUID) async throws {}
+    func pause(turnID: UUID) async throws {}
+    func resume(turnID: UUID) async throws {}
+    func finalize(turnID: UUID) async throws -> FinalizedVoiceAudio {
+        .init(fileID: "audio-1", sha256: "abc", durationMS: 1_000)
+    }
+    func cancel(turnID: UUID) async throws {}
+}
+
+private actor NoopAudio: VoiceAudioDeleting {
+    func delete(fileID: String) async throws {}
 }

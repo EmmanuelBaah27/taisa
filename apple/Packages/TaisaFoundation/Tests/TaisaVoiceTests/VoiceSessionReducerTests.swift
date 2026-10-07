@@ -116,7 +116,7 @@ struct VoiceSessionReducerTests {
         #expect(ambiguous.effects == [.checkpoint(ambiguous.next), .requestResumeConfirmation])
         let approved = try reducer.reduce(state: ambiguous.next, command: .confirmResume)
         #expect(approved.next.state == .coaching)
-        #expect(approved.effects == [.checkpoint(approved.next), .startCoaching])
+        #expect(approved.effects == [.checkpoint(approved.next), .authorizeCoachingRetry])
 
         let cancelled = try reducer.reduce(state: coaching, command: .cancel)
         let resumed = try reducer.reduce(state: cancelled.next, command: .retry)

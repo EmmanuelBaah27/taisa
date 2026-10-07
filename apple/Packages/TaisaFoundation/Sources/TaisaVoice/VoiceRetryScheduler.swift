@@ -25,3 +25,15 @@ public struct VoiceRetryScheduler: Sendable {
         return min(maximumDelay, max(0, backoff + jitter(attempt)))
     }
 }
+
+public protocol VoiceRetrySleeping: Sendable {
+    func sleep(for seconds: TimeInterval) async throws
+}
+
+public struct SystemVoiceRetrySleeper: VoiceRetrySleeping {
+    public init() {}
+
+    public func sleep(for seconds: TimeInterval) async throws {
+        try await Task.sleep(for: .seconds(max(0, seconds)))
+    }
+}

@@ -111,20 +111,39 @@ public struct VoiceSessionReducer: Sendable {
                 ? transition(next, .requestResumeConfirmation)
                 : checkpoint(next)
 
+        case let .scheduleRetry(code, nextRetryAtMS):
+            guard !state.state.isTerminal, !code.isEmpty, nextRetryAtMS >= 0 else {
+                throw VoiceSessionReducerError.invalidCommand
+            }
+            return checkpoint(copy(
+                state, state: .recoverableFailure, stage: state.stage,
+                retryCount: state.retryCount + 1,
+                nextRetryAtMS: .some(nextRetryAtMS), failureCode: .some(code)
+            ))
+
         case .retry:
             try require(state.state == .recoverableFailure || state.state == .cancelled)
             switch state.stage {
             case .transcription:
-                return transition(copy(state, state: .transcribing, stage: .transcription), .startTranscription)
+                return transition(copy(
+                    state, state: .transcribing, stage: .transcription,
+                    nextRetryAtMS: .some(nil)
+                ), .startTranscription)
             case .coaching:
-                return transition(copy(state, state: .coaching, stage: .coaching), .startCoaching)
+                return transition(copy(
+                    state, state: .coaching, stage: .coaching,
+                    nextRetryAtMS: .some(nil)
+                ), .startCoaching)
             default:
                 throw VoiceSessionReducerError.illegalTransition
             }
 
         case .confirmResume:
             try require(state.state == .resumeRequiresConfirmation && state.stage == .coaching)
-            return transition(copy(state, state: .coaching, stage: .coaching), .startCoaching)
+            return transition(
+                copy(state, state: .coaching, stage: .coaching),
+                .authorizeCoachingRetry
+            )
 
         case .cancel:
             try require(!state.state.isTerminal)
@@ -183,6 +202,8 @@ public struct VoiceSessionReducer: Sendable {
         audioDurationMS: Int64?? = nil,
         acceptedTranscript: String?? = nil,
         uncertainTranscript: String?? = nil,
+        retryCount: Int? = nil,
+        nextRetryAtMS: Int64?? = nil,
         failureCode: String?? = nil,
         transcriptionReceipt: String?? = nil,
         coachingReceipt: String?? = nil,
@@ -205,8 +226,8 @@ public struct VoiceSessionReducer: Sendable {
             audioDurationMS: resolve(audioDurationMS, source.audioDurationMS),
             acceptedTranscript: resolve(acceptedTranscript, source.acceptedTranscript),
             uncertainTranscript: resolve(uncertainTranscript, source.uncertainTranscript),
-            retryCount: source.retryCount,
-            nextRetryAtMS: source.nextRetryAtMS,
+            retryCount: retryCount ?? source.retryCount,
+            nextRetryAtMS: resolve(nextRetryAtMS, source.nextRetryAtMS),
             failureCode: resolve(failureCode, source.failureCode),
             transcriptionReceipt: resolve(transcriptionReceipt, source.transcriptionReceipt),
             coachingReceipt: resolve(coachingReceipt, source.coachingReceipt),

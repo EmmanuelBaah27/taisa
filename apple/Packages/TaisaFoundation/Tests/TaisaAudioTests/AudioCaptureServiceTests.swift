@@ -113,6 +113,26 @@ struct AudioCaptureServiceTests {
         #expect(finalized.byteCount == 5)
         #expect(finalized.duration == 1.5)
         #expect(finalized.sha256 == "6ed8919ce20490a5e3ad8630a4fab69475297abd07db73918dd5f36fcfaeb11b")
+        #expect(try pending.url.resourceValues(forKeys: [.isExcludedFromBackupKey]).isExcludedFromBackup == true)
+        #expect(try directory.resourceValues(forKeys: [.isExcludedFromBackupKey]).isExcludedFromBackup == true)
+    }
+
+    @Test("audio session notifications map to content-free lifecycle events")
+    func audioSessionNotificationsMapToLifecycleEvents() {
+        let interruption = Notification.Name("test.interruption")
+        let route = Notification.Name("test.route")
+        let reset = Notification.Name("test.reset")
+        let mapper = AudioSessionNotificationMapper(
+            interruption: interruption, routeChange: route, mediaServicesReset: reset,
+            interruptionTypeKey: "type", routeChangeReasonKey: "reason",
+            interruptionBeganValue: 1, oldDeviceUnavailableValue: 2
+        )
+
+        #expect(mapper.event(for: .init(name: interruption, userInfo: ["type": 1])) == .interruptionBegan)
+        #expect(mapper.event(for: .init(name: interruption, userInfo: ["type": 0])) == .interruptionEnded)
+        #expect(mapper.event(for: .init(name: route, userInfo: ["reason": 2])) == .routeLost)
+        #expect(mapper.event(for: .init(name: route, userInfo: ["reason": 1])) == nil)
+        #expect(mapper.event(for: .init(name: reset)) == .mediaServicesReset)
     }
 }
 

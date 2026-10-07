@@ -61,7 +61,10 @@ let package = Package(
         .testTarget(name: "TaisaRecoveryTests", dependencies: ["TaisaRecovery", "TaisaStorage", "TaisaSecurity", .product(name: "GRDB", package: "GRDB.swift")]),
         .testTarget(name: "TaisaSyncTests", dependencies: ["TaisaSync", "TaisaStorage", "TaisaSecurity"]),
         .testTarget(name: "TaisaCloudKitTests", dependencies: ["TaisaCloudKit", "TaisaSync", "TaisaSecurity", "TaisaStorage", .product(name: "GRDB", package: "GRDB.swift")]),
-        .testTarget(name: "TaisaVoiceTests", dependencies: ["TaisaVoice", "TaisaStorage", "TaisaAudio", "TaisaNetworking"]),
+        .testTarget(name: "TaisaVoiceTests", dependencies: [
+            "TaisaVoice", "TaisaStorage", "TaisaAudio", "TaisaNetworking",
+            .product(name: "GRDB", package: "GRDB.swift"),
+        ]),
         .testTarget(name: "TaisaAudioTests", dependencies: ["TaisaAudio"]),
     ]
 )

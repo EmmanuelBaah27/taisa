@@ -52,6 +52,7 @@ public actor ProtectedAudioFileStore: AudioFileStoring {
             ).appendingPathComponent("Taisa/Audio", isDirectory: true)
         }
         try fileManager.createDirectory(at: self.directory, withIntermediateDirectories: true)
+        try Self.excludeFromBackup(self.directory)
         #if os(iOS)
         try fileManager.setAttributes([.protectionKey: FileProtectionType.complete], ofItemAtPath: self.directory.path)
         #endif
@@ -70,6 +71,7 @@ public actor ProtectedAudioFileStore: AudioFileStoring {
         #if os(iOS)
         try fileManager.setAttributes([.protectionKey: FileProtectionType.complete], ofItemAtPath: pending.url.path)
         #endif
+        try Self.excludeFromBackup(pending.url)
         return FinalizedAudio(
             fileID: pending.fileID,
             url: pending.url,
@@ -94,5 +96,12 @@ public actor ProtectedAudioFileStore: AudioFileStoring {
             hasher.update(data: chunk)
         }
         return hasher.finalize().map { String(format: "%02x", $0) }.joined()
+    }
+
+    nonisolated private static func excludeFromBackup(_ url: URL) throws {
+        var values = URLResourceValues()
+        values.isExcludedFromBackup = true
+        var mutableURL = url
+        try mutableURL.setResourceValues(values)
     }
 }
