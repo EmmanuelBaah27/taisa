@@ -136,6 +136,7 @@ test('preview support is linked only by the preview target', async () => {
     'TaisaCore',
     'TaisaContracts',
     'TaisaDesignSystem',
+    'TaisaHome',
     'TaisaStorage',
     'TaisaCloudKit',
     'TaisaRecovery',
@@ -145,6 +146,7 @@ test('preview support is linked only by the preview target', async () => {
     'TaisaCore',
     'TaisaContracts',
     'TaisaDesignSystem',
+    'TaisaHome',
     'TaisaPreviewSupport',
     'TaisaStorage',
   ]);

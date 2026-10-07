@@ -6,29 +6,50 @@ struct HomeView: View {
     @State private var model: HomeModel
     var send: (HomeIntent) -> Void = { _ in }
     var openRecovery: () -> Void = {}
+    var openPersonalQA: (() -> Void)?
+    private let ownsNavigation: Bool
 
     init(
         model: HomeModel,
         send: @escaping (HomeIntent) -> Void = { _ in },
-        openRecovery: @escaping () -> Void = {}
+        openRecovery: @escaping () -> Void = {},
+        openPersonalQA: (() -> Void)? = nil,
+        ownsNavigation: Bool = true
     ) {
         _model = State(initialValue: model)
         self.send = send
         self.openRecovery = openRecovery
+        self.openPersonalQA = openPersonalQA
+        self.ownsNavigation = ownsNavigation
     }
 
     var body: some View {
-        NavigationStack {
-            content
-                .navigationTitle("Home")
-                .toolbar {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button("Refresh", systemImage: "arrow.clockwise") { Task { await model.load() } }
-                    }
-                }
+        Group {
+            if ownsNavigation { NavigationStack { homeContent } }
+            else { homeContent }
         }
         .accessibilityIdentifier("home.root")
         .task { if model.state == .idle { await model.load() } }
+    }
+
+    private var homeContent: some View {
+        content
+            .navigationTitle("Home")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Refresh", systemImage: "arrow.clockwise") { Task { await model.load() } }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Backup and recovery", systemImage: "lock.shield", action: openRecovery)
+                        .accessibilityIdentifier("foundation.recovery.action")
+                }
+                if let openPersonalQA {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Personal device QA", action: openPersonalQA)
+                            .accessibilityIdentifier("foundation.personal-qa.action")
+                    }
+                }
+            }
     }
 
     @ViewBuilder private var content: some View {

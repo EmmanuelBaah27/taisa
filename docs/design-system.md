@@ -3,6 +3,14 @@
 Living reference for all UI work. Update when a new component is added or a token changes.
 Full token definitions and decision rules: `foundations.md` (root of repo).
 
+## Native SwiftUI product boundary
+
+The native client targets iOS/iPadOS 26+ and defaults to standard SwiftUI controls, interactions, accessibility behavior, and Apple visual language. Product pages own composition so functionality can move quickly and remain adaptable while Baah redesigns each page in context.
+
+Current shipped native Home presentation uses feature-local `ConversationRow`, `GoalRow`, and `ActionRow` views plus standard `NavigationStack`, `List`, `Section`, `ContentUnavailableView`, `Button`, `Label`, `ProgressView`, `.task`, and `.refreshable`. These rows are not design-system components yet. Extract a native shared component only after a redesigned pattern is proven reusable; update this document, its previews, and tests in the same change that implements it.
+
+The React Native inventory below remains authoritative for the existing mobile client during the controlled migration. It is not a specification for recreating React Native visuals in SwiftUI.
+
 ---
 
 ## Status

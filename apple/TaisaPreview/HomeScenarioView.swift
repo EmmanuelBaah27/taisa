@@ -8,42 +8,26 @@ struct HomeScenarioView: View {
 
     init(mode: HomeScenarioMode) {
         self.mode = mode
-        let client: HomeClient
+        let state: HomeState
         switch mode {
         case .loading:
-            client = HomeClient { try await Task.sleep(for: .seconds(3_600)); return .previewEmpty }
+            state = .loading
         case .empty:
-            client = HomeClient { .previewEmpty }
+            state = .empty
         case .content:
-            client = HomeClient { .previewContent }
+            state = .content(.previewContent, isRefreshing: false, issue: nil)
         case .refreshing:
-            let loader = RefreshingPreviewLoader()
-            client = HomeClient { try await loader.load() }
+            state = .content(.previewContent, isRefreshing: true, issue: nil)
         case .failure:
-            client = HomeClient { throw HomeQueryError.readFailed }
+            state = .failure(.storageUnavailable)
+        case .recovery:
+            state = .failure(.recoveryRequired)
         }
-        _model = State(initialValue: HomeModel(client: client))
+        _model = State(initialValue: HomeModel(client: HomeClient { .previewEmpty }, initialState: state))
     }
 
     var body: some View {
-        HomeView(model: model)
-            .task {
-                guard case .refreshing = mode else { return }
-                while model.state != .content(.previewContent, isRefreshing: false, issue: nil) {
-                    await Task.yield()
-                }
-                await model.load()
-            }
-    }
-}
-
-private actor RefreshingPreviewLoader {
-    private var count = 0
-
-    func load() async throws -> HomeSnapshot {
-        count += 1
-        if count == 1 { return .previewContent }
-        try await Task.sleep(for: .seconds(3_600))
-        return .previewContent
+        HomeView(model: model, ownsNavigation: false)
+            .frame(minHeight: 700)
     }
 }

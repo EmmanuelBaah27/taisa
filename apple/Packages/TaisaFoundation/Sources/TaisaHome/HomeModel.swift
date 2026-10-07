@@ -5,7 +5,7 @@ import TaisaStorage
 @MainActor
 @Observable
 public final class HomeModel {
-    public private(set) var state: HomeState = .idle
+    public private(set) var state: HomeState
     public private(set) var completionUndoToken: WeeklyWorkUndoToken?
     public var canUndoCompletion: Bool { completionUndoToken != nil }
 
@@ -14,8 +14,9 @@ public final class HomeModel {
     @ObservationIgnored private var mutationGeneration = 0
     @ObservationIgnored private var loadTask: Task<LoadOutcome, Never>?
 
-    public init(client: HomeClient) {
+    public init(client: HomeClient, initialState: HomeState = .idle) {
         self.client = client
+        state = initialState
     }
 
     public func load() async {
