@@ -83,6 +83,9 @@ import AVFoundation
 import UIKit
 
 public actor SystemAudioSessionAdapter: AudioSessionAdapting {
+    public static let captureCategory: AVAudioSession.Category = .playAndRecord
+    public static let captureMode: AVAudioSession.Mode = .voiceChat
+
     public init() {}
 
     public func requestRecordPermission() async -> Bool {
@@ -98,7 +101,11 @@ public actor SystemAudioSessionAdapter: AudioSessionAdapting {
 
     public func activate() async throws {
         let session = AVAudioSession.sharedInstance()
-        try session.setCategory(.record, mode: .spokenAudio, options: [.allowBluetoothHFP])
+        try session.setCategory(
+            Self.captureCategory,
+            mode: Self.captureMode,
+            options: [.allowBluetoothHFP]
+        )
         try session.setActive(true)
     }
 
