@@ -113,6 +113,10 @@ struct AudioCaptureServiceTests {
         #expect(finalized.byteCount == 5)
         #expect(finalized.duration == 1.5)
         #expect(finalized.sha256 == "6ed8919ce20490a5e3ad8630a4fab69475297abd07db73918dd5f36fcfaeb11b")
+        let relaunched = try await store.load(
+            turnID: pending.turnID, fileID: pending.fileID, duration: finalized.duration
+        )
+        #expect(relaunched == finalized)
         #expect(try pending.url.resourceValues(forKeys: [.isExcludedFromBackupKey]).isExcludedFromBackup == true)
         #expect(try directory.resourceValues(forKeys: [.isExcludedFromBackupKey]).isExcludedFromBackup == true)
     }
@@ -175,4 +179,11 @@ private actor FileStoreSpy: AudioFileStoring {
     }
 
     func delete(_ pending: PendingAudioFile) async throws { deleteCount += 1 }
+    func load(turnID: UUID, fileID: UUID, duration: TimeInterval) async throws -> FinalizedAudio {
+        FinalizedAudio(
+            fileID: fileID, url: URL(fileURLWithPath: "/tmp/taisa-test-audio.m4a"),
+            duration: duration, byteCount: 64, sha256: String(repeating: "a", count: 64)
+        )
+    }
+    func delete(fileID: UUID) async throws { deleteCount += 1 }
 }

@@ -33,6 +33,8 @@ public protocol AudioFileStoring: Sendable {
     func allocate(turnID: UUID) async throws -> PendingAudioFile
     func finalize(_ pending: PendingAudioFile, duration: TimeInterval) async throws -> FinalizedAudio
     func delete(_ pending: PendingAudioFile) async throws
+    func load(turnID: UUID, fileID: UUID, duration: TimeInterval) async throws -> FinalizedAudio
+    func delete(fileID: UUID) async throws
 }
 
 public actor ProtectedAudioFileStore: AudioFileStoring {
@@ -84,6 +86,35 @@ public actor ProtectedAudioFileStore: AudioFileStoring {
     public func delete(_ pending: PendingAudioFile) async throws {
         guard fileManager.fileExists(atPath: pending.url.path) else { return }
         try fileManager.removeItem(at: pending.url)
+    }
+
+    public func load(
+        turnID: UUID,
+        fileID: UUID,
+        duration: TimeInterval
+    ) async throws -> FinalizedAudio {
+        let url = fileURL(turnID: turnID, fileID: fileID)
+        let attributes = try fileManager.attributesOfItem(atPath: url.path)
+        let bytes = (attributes[.size] as? NSNumber)?.int64Value ?? 0
+        guard bytes > 0, duration >= 0 else { throw AudioCaptureError.audioNotFinalized }
+        return FinalizedAudio(
+            fileID: fileID, url: url, duration: duration,
+            byteCount: bytes, sha256: try hash(at: url)
+        )
+    }
+
+    public func delete(fileID: UUID) async throws {
+        let suffix = "-\(fileID.uuidString).m4a"
+        let matches = try fileManager.contentsOfDirectory(
+            at: directory, includingPropertiesForKeys: nil,
+            options: [.skipsHiddenFiles, .skipsSubdirectoryDescendants]
+        ).filter { $0.lastPathComponent.hasSuffix(suffix) }
+        guard matches.count <= 1 else { throw AudioCaptureError.invalidState }
+        if let url = matches.first { try fileManager.removeItem(at: url) }
+    }
+
+    private func fileURL(turnID: UUID, fileID: UUID) -> URL {
+        directory.appendingPathComponent("\(turnID.uuidString)-\(fileID.uuidString).m4a")
     }
 
     private func hash(at url: URL) throws -> String {

@@ -40,10 +40,18 @@ public struct RepositoryVoiceTurnCheckpointer: VoiceTurnCheckpointing {
     }
 }
 
-public actor AudioCaptureController: VoiceCaptureControlling {
-    private let service: AudioCaptureService
+public protocol VoiceFinalizedAudioLoading: Sendable {
+    func audio(for turn: VoiceTurnRecord) async throws -> FinalizedAudio
+}
 
-    public init(service: AudioCaptureService) { self.service = service }
+public actor AudioCaptureController: VoiceCaptureControlling, VoiceAudioDeleting, VoiceFinalizedAudioLoading {
+    private let service: AudioCaptureService
+    private let files: any AudioFileStoring
+
+    public init(service: AudioCaptureService, files: any AudioFileStoring) {
+        self.service = service
+        self.files = files
+    }
 
     public func start(turnID: UUID) async throws { _ = try await service.start(turnID: turnID) }
     public func pause(turnID: UUID) async throws { try await service.pause(turnID: turnID) }
@@ -57,4 +65,22 @@ public actor AudioCaptureController: VoiceCaptureControlling {
         )
     }
     public func cancel(turnID: UUID) async throws { _ = try await service.cancel(turnID: turnID) }
+
+    public func audio(for turn: VoiceTurnRecord) async throws -> FinalizedAudio {
+        guard let turnID = UUID(uuidString: turn.id),
+              let file = turn.audioFileID.flatMap(UUID.init(uuidString:)),
+              let durationMS = turn.audioDurationMS else {
+            throw AudioCaptureError.audioNotFinalized
+        }
+        let audio = try await files.load(
+            turnID: turnID, fileID: file, duration: TimeInterval(durationMS) / 1_000
+        )
+        guard audio.sha256 == turn.audioSHA256 else { throw AudioCaptureError.audioNotFinalized }
+        return audio
+    }
+
+    public func delete(fileID: String) async throws {
+        guard let id = UUID(uuidString: fileID) else { throw AudioCaptureError.invalidState }
+        try await files.delete(fileID: id)
+    }
 }
