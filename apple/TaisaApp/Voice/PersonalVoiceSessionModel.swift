@@ -5,6 +5,11 @@ import TaisaNetworking
 import TaisaStorage
 import TaisaVoice
 
+func voiceActionFailureStatus(_ error: any Error) -> String {
+    let failure = error as NSError
+    return "Voice action failed (\(failure.domain) \(failure.code))."
+}
+
 @MainActor
 final class PersonalVoiceSessionModel: ObservableObject {
     @Published private(set) var snapshot: VoiceSessionSnapshot?
@@ -103,7 +108,7 @@ final class PersonalVoiceSessionModel: ObservableObject {
                 await refresh()
                 beginRefreshing()
             } catch {
-                status = "Voice action could not be completed."
+                status = voiceActionFailureStatus(error)
                 await refresh()
             }
         }
