@@ -32,6 +32,7 @@ targets:
       path: Config/TaisaInfo.plist
       properties:
         UIBackgroundModes: [remote-notification]
+        NSMicrophoneUsageDescription: "Taisa uses the microphone only when you choose to record a conversation."
     sources:
       - path: TaisaApp
       - path: Generated
@@ -63,6 +64,8 @@ targets:
         product: TaisaRecovery
       - package: TaisaFoundation
         product: TaisaSecurity
+      - package: TaisaFoundation
+        product: TaisaAudio
   TaisaPreview:
     type: application
     platform: iOS
@@ -100,6 +103,7 @@ targets:
       properties:
         TaisaEnvironment: "$(TAISA_ENVIRONMENT)"
         NSFaceIDUsageDescription: "Authenticate to use your Taisa recovery key."
+        NSMicrophoneUsageDescription: "Taisa uses the microphone only when you choose to record a conversation."
         LSSupportsOpeningDocumentsInPlace: true
         UTExportedTypeDeclarations:
           - UTTypeIdentifier: com.taisa.encrypted-backup
@@ -139,6 +143,8 @@ targets:
         product: TaisaSecurity
       - package: TaisaFoundation
         product: TaisaRecovery
+      - package: TaisaFoundation
+        product: TaisaAudio
   TaisaPersonalTests:
     type: bundle.unit-test
     platform: iOS

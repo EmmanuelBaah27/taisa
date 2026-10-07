@@ -14,7 +14,7 @@
 | Persistent input bar + Chat UI | Platform + Product | Plan | — | Light design system shipped |
 | SwiftUI native rebuild | Platform + Product | Shipped | `main` | — |
 | Swift native encrypted storage and recovery | Platform | Shipped (Personal lane) | `main` | Automatic CloudKit sync remains deferred pending paid capabilities and separate approval |
-| Swift native audio and conversation streaming | Platform | Scope | `docs/swift-native-audio-streaming` | Baah written-spec review; implementation plan is not yet approved |
+| Swift native audio and conversation streaming | Platform | Build | `feature/swift-native-audio-streaming` | Agent implementation and verification; signed-device QA follows |
 
 The native foundation and Personal encrypted persistence/recovery lane are shipped. Audio and conversation streaming is the active separately scoped foundation; advanced resources and platform services follow. Product slices remain gated until their required foundations are approved and built.
 
