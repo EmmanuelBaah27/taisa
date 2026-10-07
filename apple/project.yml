@@ -47,6 +47,8 @@ targets:
       configs:
         Debug:
           CODE_SIGN_ENTITLEMENTS: Config/TaisaDev.entitlements
+        Preview:
+          PRODUCT_BUNDLE_IDENTIFIER: com.taisa.app.preview.unit-host
         Release:
           CODE_SIGN_ENTITLEMENTS: Config/Taisa.entitlements
     dependencies:
@@ -65,12 +67,13 @@ targets:
       - package: TaisaFoundation
         product: TaisaSecurity
       - package: TaisaFoundation
-        product: TaisaAudio
+        product: TaisaVoice
   TaisaPreview:
     type: application
     platform: iOS
     sources:
       - path: TaisaPreview
+      - path: TaisaApp/Voice
       - path: Generated
     settings:
       base:
@@ -95,6 +98,8 @@ targets:
         product: TaisaPreviewSupport
       - package: TaisaFoundation
         product: TaisaStorage
+      - package: TaisaFoundation
+        product: TaisaVoice
   TaisaPersonal:
     type: application
     platform: iOS
@@ -144,7 +149,7 @@ targets:
       - package: TaisaFoundation
         product: TaisaRecovery
       - package: TaisaFoundation
-        product: TaisaAudio
+        product: TaisaVoice
   TaisaPersonalTests:
     type: bundle.unit-test
     platform: iOS
@@ -174,6 +179,8 @@ targets:
         product: TaisaRecovery
       - package: TaisaFoundation
         product: TaisaSecurity
+      - package: TaisaFoundation
+        product: TaisaVoice
   TaisaUITests:
     type: bundle.ui-testing
     platform: iOS
@@ -220,6 +227,7 @@ schemes:
     test:
       config: Preview
       targets:
+        - TaisaUnitTests
         - TaisaPreviewUITests
   Taisa-Personal:
     build:
