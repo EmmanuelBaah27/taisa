@@ -25,13 +25,39 @@ public protocol CoachingReconciliationLookingUp: Sendable {
     func reconcile(requestID: UUID) async throws -> CoachingReconciliationResult
 }
 
-public struct VoiceSessionSnapshot: Sendable, Equatable {
+public struct VoiceSessionSnapshot: Sendable, Equatable, CustomStringConvertible, CustomReflectable {
     public let durable: VoiceTurnRecord
     public let partialTranscript: String
     public let partialCoaching: String
 
+    public init(
+        durable: VoiceTurnRecord,
+        partialTranscript: String,
+        partialCoaching: String
+    ) {
+        self.durable = durable
+        self.partialTranscript = partialTranscript
+        self.partialCoaching = partialCoaching
+    }
+
     public var requiresResumeConfirmation: Bool {
         durable.state == .resumeRequiresConfirmation
+    }
+
+    public var description: String {
+        "VoiceSessionSnapshot(state: \(durable.state.rawValue), stage: \(durable.stage.rawValue), content: redacted)"
+    }
+
+    public var customMirror: Mirror {
+        Mirror(
+            self,
+            children: [
+                "state": durable.state.rawValue,
+                "stage": durable.stage.rawValue,
+                "content": "redacted",
+            ],
+            displayStyle: .struct
+        )
     }
 }
 
