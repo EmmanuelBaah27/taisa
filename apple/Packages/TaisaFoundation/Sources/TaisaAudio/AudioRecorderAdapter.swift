@@ -26,22 +26,31 @@ public actor SystemAudioRecorderAdapter: AudioRecorderAdapting {
         ]
         let recorder = try AVAudioRecorder(url: url, settings: settings)
         recorder.isMeteringEnabled = true
-        guard recorder.prepareToRecord() else { throw AudioCaptureError.invalidState }
-        guard recorder.record() else { throw AudioCaptureError.invalidState }
+        let prepared = recorder.prepareToRecord()
+        print("TAISA_CAPTURE recorder.prepare result=\(prepared)")
+        guard prepared else { throw AudioCaptureError.invalidState }
+        let started = recorder.record()
+        print("TAISA_CAPTURE recorder.start result=\(started) isRecording=\(recorder.isRecording)")
+        guard started else { throw AudioCaptureError.invalidState }
         self.recorder = recorder
     }
 
     public func pause() async {
+        print("TAISA_CAPTURE recorder.pause before=\(recorder?.isRecording == true)")
         recorder?.pause()
+        print("TAISA_CAPTURE recorder.pause after=\(recorder?.isRecording == true)")
     }
 
     public func resume() async throws {
-        guard recorder?.record() == true else { throw AudioCaptureError.invalidState }
+        let resumed = recorder?.record() == true
+        print("TAISA_CAPTURE recorder.resume result=\(resumed) isRecording=\(recorder?.isRecording == true)")
+        guard resumed else { throw AudioCaptureError.invalidState }
     }
 
     public func stop() async throws -> AudioRecordingSummary {
         guard let recorder else { throw AudioCaptureError.invalidState }
         let duration = recorder.currentTime
+        print("TAISA_CAPTURE recorder.stop isRecording=\(recorder.isRecording) durationMS=\(Int(duration * 1_000))")
         recorder.stop()
         self.recorder = nil
         return AudioRecordingSummary(duration: duration)
