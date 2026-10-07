@@ -284,6 +284,30 @@ struct VoiceSessionReviewRegressionTests {
         #expect(await coordinator.snapshot().durable.state == .paused)
     }
 
+    @Test("connectivity updates do not treat an active recording as relaunch recovery")
+    func connectivityUpdatePreservesActiveRecording() async throws {
+        let capture = ReviewCaptureSpy()
+        let audio = ReviewAudioSpy()
+        let coordinator = VoiceSessionCoordinator(
+            initial: reviewTurn(state: .draft, stage: .capture),
+            checkpoints: ReviewCheckpointSpy(),
+            transcription: ReviewTranscriptionRunner(events: []),
+            coaching: ReviewCoachingRunner(events: []),
+            connectivity: ReviewConnectivity(), reconciliation: ReviewReconciliation(),
+            capture: capture, audio: audio
+        )
+
+        try await coordinator.send(.startRecording)
+        try await coordinator.connectivityChanged(isAvailable: true)
+
+        let snapshot = await coordinator.snapshot()
+        #expect(snapshot.durable.state == .recording)
+        #expect(snapshot.durable.stage == .capture)
+        #expect(snapshot.durable.failureCode == nil)
+        #expect(await audio.deleted.isEmpty)
+        #expect(await capture.released.isEmpty)
+    }
+
     @Test("relaunch of interrupted capture deletes retained audio and unlocks the next turn")
     func interruptedCaptureRelaunchCleansUp() async throws {
         let audio = ReviewAudioSpy()
