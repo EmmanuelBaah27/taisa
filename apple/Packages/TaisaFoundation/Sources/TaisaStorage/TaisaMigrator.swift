@@ -20,7 +20,7 @@ enum TaisaMigrator {
                 let applied = hasGRDBMarkers
                     ? try String.fetchAll(db, sql: "SELECT identifier FROM grdb_migrations ORDER BY identifier")
                     : []
-                guard applied.allSatisfy({ $0 == "v1" || $0 == "v2" }) else {
+                guard applied.allSatisfy({ $0 == "v1" || $0 == "v2" || $0 == "v3" }) else {
                     throw StorageError.unsupportedMigration
                 }
                 if version == 1 {
@@ -33,6 +33,11 @@ enum TaisaMigrator {
                     try TaisaSchema.validateVersion2(in: db)
                     let states = try Int.fetchAll(db, sql: "SELECT version FROM migration_state ORDER BY version")
                     guard states == [1, 2] else { throw StorageError.schemaMismatch }
+                } else if version == 3 {
+                    guard applied == ["v1", "v2", "v3"] else { throw StorageError.schemaMismatch }
+                    try TaisaSchema.validateVersion3(in: db)
+                    let states = try Int.fetchAll(db, sql: "SELECT version FROM migration_state ORDER BY version")
+                    guard states == [1, 2, 3] else { throw StorageError.schemaMismatch }
                 } else {
                     let objects = try String.fetchAll(
                         db,
@@ -75,6 +80,14 @@ enum TaisaMigrator {
                 arguments: [2, Int64(Date().timeIntervalSince1970 * 1_000)]
             )
             try db.execute(sql: "PRAGMA user_version = 2")
+        }
+        migrator.registerMigration("v3", foreignKeyChecks: .immediate) { db in
+            try TaisaSchema.createVersion3(in: db)
+            try db.execute(
+                sql: "INSERT INTO migration_state (version, applied_at_ms) VALUES (?, ?)",
+                arguments: [3, Int64(Date().timeIntervalSince1970 * 1_000)]
+            )
+            try db.execute(sql: "PRAGMA user_version = 3")
         }
         do {
             try migrator.migrate(queue)

@@ -1,7 +1,7 @@
 import GRDB
 
 enum TaisaSchema {
-    static let currentVersion = 2
+    static let currentVersion = 3
 
     static func createVersion1(in db: Database) throws {
         for statement in version1Statements { try db.execute(sql: statement) }
@@ -9,6 +9,10 @@ enum TaisaSchema {
 
     static func createVersion2(in db: Database) throws {
         for statement in version2Statements { try db.execute(sql: statement) }
+    }
+
+    static func createVersion3(in db: Database) throws {
+        for statement in version3Statements { try db.execute(sql: statement) }
     }
 
     // The stored DDL is also the canonical v1 integrity contract. Comparing it
@@ -273,7 +277,39 @@ enum TaisaSchema {
         "CREATE INDEX voice_turns_by_state ON voice_turns(state, next_retry_at_ms)",
     ]
 
-    static func validateVersion1(in db: Database) throws {
+    private static let version3Statements: [String] = [
+        "ALTER TABLE conversations ADD COLUMN lifecycle TEXT NOT NULL DEFAULT 'completed' CHECK (lifecycle IN ('draft', 'active', 'completed'))",
+        "ALTER TABLE conversations ADD COLUMN title_authority TEXT NOT NULL DEFAULT 'user' CHECK (title_authority IN ('localFallback', 'assistantSuggested', 'user'))",
+        """
+        CREATE TABLE conversation_drafts (
+            id TEXT PRIMARY KEY NOT NULL CHECK (length(id) = 36),
+            conversation_id TEXT NOT NULL UNIQUE REFERENCES conversations(id) ON DELETE CASCADE,
+            input_mode TEXT NOT NULL CHECK (input_mode IN ('voice', 'text')),
+            text TEXT,
+            voice_turn_id TEXT UNIQUE REFERENCES voice_turns(id) ON DELETE CASCADE,
+            recovery_kind TEXT NOT NULL CHECK (recovery_kind IN ('saved', 'recovered', 'retryableTranscription', 'retryableCoaching')),
+            created_at_ms INTEGER NOT NULL CHECK (created_at_ms >= 0),
+            updated_at_ms INTEGER NOT NULL CHECK (updated_at_ms >= created_at_ms),
+            CHECK (
+                (input_mode = 'text' AND text IS NOT NULL AND voice_turn_id IS NULL)
+                OR (input_mode = 'voice' AND text IS NULL AND voice_turn_id IS NOT NULL)
+            )
+        )
+        """,
+        """
+        CREATE TABLE message_revisions (
+            id TEXT PRIMARY KEY NOT NULL CHECK (length(id) = 36),
+            message_id TEXT NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+            original_body TEXT NOT NULL,
+            replacement_message_id TEXT REFERENCES messages(id) ON DELETE SET NULL,
+            created_at_ms INTEGER NOT NULL CHECK (created_at_ms >= 0)
+        )
+        """,
+        "CREATE INDEX conversation_drafts_by_updated ON conversation_drafts(updated_at_ms DESC, created_at_ms DESC)",
+        "CREATE INDEX message_revisions_by_message ON message_revisions(message_id, created_at_ms)",
+    ]
+
+    static func validateVersion1(in db: Database, allowingConversationExtensions: Bool = false) throws {
         let requiredColumns: [String: Set<String>] = [
             "profile": ["id", "display_name", "headline", "biography", "updated_at_ms"],
             "conversations": ["id", "title", "created_at_ms", "updated_at_ms"],
@@ -299,13 +335,42 @@ enum TaisaSchema {
             for (table, expected) in requiredColumns {
                 guard try db.tableExists(table) else { throw StorageError.schemaMismatch }
                 let actual = Set(try db.columns(in: table).map(\.name))
-                guard actual == expected else { throw StorageError.schemaMismatch }
+                guard actual == expected || (allowingConversationExtensions && table == "conversations" && actual.isSuperset(of: expected)) else {
+                    throw StorageError.schemaMismatch
+                }
             }
             // V1's supported producer is this canonical migration. SQLite can
             // rewrite equivalent CREATE text during manual ALTER/restore; such
             // rewritten schemas require an explicit migration, not guessed
             // normalization that could erase constraint differences.
             for statement in version1Statements where statement.hasPrefix("CREATE TABLE ") {
+                let name = String(statement.split(separator: " ", maxSplits: 3)[2])
+                if allowingConversationExtensions && name == "conversations" { continue }
+                let stored = try String.fetchOne(
+                    db,
+                    sql: "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?",
+                    arguments: [name]
+                )
+                guard stored == statement else { throw StorageError.schemaMismatch }
+            }
+        } catch {
+            throw StorageError.schemaMismatch
+        }
+    }
+
+    static func validateVersion2(in db: Database, allowingConversationExtensions: Bool = false) throws {
+        try validateVersion1(in: db, allowingConversationExtensions: allowingConversationExtensions)
+        let requiredColumns: [String: Set<String>] = [
+            "voice_turns": ["id", "conversation_id", "transcription_request_id", "transcription_idempotency_key", "coaching_request_id", "coaching_idempotency_key", "state", "stage", "audio_file_id", "audio_sha256", "audio_duration_ms", "accepted_transcript", "uncertain_transcript", "retry_count", "next_retry_at_ms", "failure_code", "transcription_receipt", "coaching_receipt", "user_message_id", "assistant_message_id", "cleanup_state", "created_at_ms", "updated_at_ms"],
+            "audio_cleanup_queue": ["turn_id", "audio_file_id", "completed_at_ms"],
+        ]
+        do {
+            for (table, expected) in requiredColumns {
+                guard try db.tableExists(table), Set(try db.columns(in: table).map(\.name)) == expected else {
+                    throw StorageError.schemaMismatch
+                }
+            }
+            for statement in version2Statements where statement.hasPrefix("CREATE TABLE ") {
                 let name = String(statement.split(separator: " ", maxSplits: 3)[2])
                 let stored = try String.fetchOne(
                     db,
@@ -319,19 +384,22 @@ enum TaisaSchema {
         }
     }
 
-    static func validateVersion2(in db: Database) throws {
-        try validateVersion1(in: db)
+    static func validateVersion3(in db: Database) throws {
+        try validateVersion2(in: db, allowingConversationExtensions: true)
         let requiredColumns: [String: Set<String>] = [
-            "voice_turns": ["id", "conversation_id", "transcription_request_id", "transcription_idempotency_key", "coaching_request_id", "coaching_idempotency_key", "state", "stage", "audio_file_id", "audio_sha256", "audio_duration_ms", "accepted_transcript", "uncertain_transcript", "retry_count", "next_retry_at_ms", "failure_code", "transcription_receipt", "coaching_receipt", "user_message_id", "assistant_message_id", "cleanup_state", "created_at_ms", "updated_at_ms"],
-            "audio_cleanup_queue": ["turn_id", "audio_file_id", "completed_at_ms"],
+            "conversation_drafts": ["id", "conversation_id", "input_mode", "text", "voice_turn_id", "recovery_kind", "created_at_ms", "updated_at_ms"],
+            "message_revisions": ["id", "message_id", "original_body", "replacement_message_id", "created_at_ms"],
         ]
         do {
+            guard Set(try db.columns(in: "conversations").map(\.name)) == [
+                "id", "title", "lifecycle", "title_authority", "created_at_ms", "updated_at_ms",
+            ] else { throw StorageError.schemaMismatch }
             for (table, expected) in requiredColumns {
                 guard try db.tableExists(table), Set(try db.columns(in: table).map(\.name)) == expected else {
                     throw StorageError.schemaMismatch
                 }
             }
-            for statement in version2Statements where statement.hasPrefix("CREATE TABLE ") {
+            for statement in version3Statements where statement.hasPrefix("CREATE TABLE ") {
                 let name = String(statement.split(separator: " ", maxSplits: 3)[2])
                 let stored = try String.fetchOne(
                     db,

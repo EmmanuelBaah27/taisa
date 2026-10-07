@@ -109,7 +109,7 @@ git commit -m "docs: freeze native conversation build baseline"
 
 **Interfaces:**
 - Consumes: existing `ConversationRecord`, `MessageRecord`, and `VoiceTurnRecord`.
-- Produces: `ConversationLifecycle`, `ConversationInputMode`, `TitleAuthority`, `ConversationDraftRecord`, and `MessageRevisionRecord` persisted under schema version 2.
+- Produces: `ConversationLifecycle`, `ConversationInputMode`, `TitleAuthority`, `ConversationDraftRecord`, and `MessageRevisionRecord` persisted under schema version 3. The build baseline already owns schema version 2 for durable voice turns, so this approved feature advances the next migration rather than rewriting that history.
 
 - [ ] **Step 1: Write failing migration and round-trip tests**
 
