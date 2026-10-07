@@ -40,15 +40,17 @@ In all paths: DS tokens carry the precision the design source doesn't provide.
 
 ```
 1. READ  → scope doc for the feature                    [TAISA: docs/features/<name>.md]
-2. READ  → design system tokens                         [TAISA: docs/design-system.md]
-3. SCAN  → existing components                          [TAISA: mobile/src/components/]
-4. MAP   → every design element to: reuse / modify / new
+2. READ  → Work Map and Product Discussion decisions
+3. READ  → design system tokens                         [TAISA: docs/design-system.md]
+4. SCAN  → existing components                          [TAISA: mobile/src/components/]
+5. MAP   → every design element to: reuse / modify / new
            (this output becomes the DS layer of the implementation plan)
-5. CHECK → token coverage — does the design use tokens that exist?
-6. FLAG  → backend implications the design reveals
-7. ASK   → max 3 questions, only genuine ambiguities
-8. OUTPUT → structured handoff brief (format below)
-9. CHAIN → after Baah confirms brief, invoke writing-plans automatically
+6. CHECK → token coverage — does the design use tokens that exist?
+7. FLAG  → backend implications the design reveals
+8. DRAW  → Product architecture/state diagram with layman-first labels
+9. ASK   → max 3 questions, only genuine ambiguities
+10. OUTPUT → structured handoff brief (format below)
+11. CHAIN → after Baah confirms brief, invoke writing-plans automatically
 ```
 
 ---
@@ -102,6 +104,8 @@ List any gaps. These go into the plan as platform prerequisites if not already c
 
 **Scope doc:** docs/features/<name>.md
 **Design source:** [Figma link or screenshot reference]
+**Status:** Draft / Confirmed
+**Last updated:** YYYY-MM-DD
 
 ---
 
@@ -112,6 +116,10 @@ List any gaps. These go into the plan as platform prerequisites if not already c
 | [element] | Reuse | mobile/src/components/... |
 | [element] | Modify | mobile/src/components/... — add [prop] |
 | [element] | New | mobile/src/components/ui/[Name].tsx |
+
+## Product architecture and states
+[Mermaid diagram showing the user-visible flow and real screens, components, Platform
+contract, states, and failure boundaries.]
 
 ## Token gaps
 - [List any design values not covered by existing tokens, or "None — all values covered"]
@@ -148,10 +156,12 @@ Only ask what would block the plan. Never ask about things that are clear.
 ### Workflow stage context
 
 ```
-SCOPE → DESIGN → PLAN → BUILD → REVIEW + QA
+ORIENT → DISCUSS → SCOPE → PRODUCT DESIGN HANDOFF → PLAN → BUILD → REVIEW + QA
 ```
 
-This skill sits at the **Design → Plan handoff**. It fires automatically when:
+This skill sits between approved **Scope and Plan** for Product slices. Discussion establishes
+experience requirements; this skill maps visual evidence to layouts, components, tokens, and
+interactions. It fires automatically when:
 - Baah shares a Figma link or screenshots (Path A)
 - A visual companion brainstorming session ends and Baah agrees the mockups (Path B)
 
