@@ -56,6 +56,8 @@ targets:
       - package: TaisaFoundation
         product: TaisaDesignSystem
       - package: TaisaFoundation
+        product: TaisaHome
+      - package: TaisaFoundation
         product: TaisaStorage
       - package: TaisaFoundation
         product: TaisaCloudKit
@@ -88,6 +90,8 @@ targets:
         product: TaisaContracts
       - package: TaisaFoundation
         product: TaisaDesignSystem
+      - package: TaisaFoundation
+        product: TaisaHome
       - package: TaisaFoundation
         product: TaisaPreviewSupport
       - package: TaisaFoundation
@@ -136,6 +140,8 @@ targets:
       - package: TaisaFoundation
         product: TaisaStorage
       - package: TaisaFoundation
+        product: TaisaHome
+      - package: TaisaFoundation
         product: TaisaSecurity
       - package: TaisaFoundation
         product: TaisaRecovery
@@ -164,6 +170,8 @@ targets:
       - target: Taisa
       - package: TaisaFoundation
         product: TaisaStorage
+      - package: TaisaFoundation
+        product: TaisaHome
       - package: TaisaFoundation
         product: TaisaRecovery
       - package: TaisaFoundation

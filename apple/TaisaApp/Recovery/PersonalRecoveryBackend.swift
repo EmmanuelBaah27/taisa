@@ -27,18 +27,9 @@ actor PersonalRecoveryBackend {
     deinit { if let transferLock { Darwin.close(transferLock) } }
 
     static func personal() throws -> PersonalRecoveryBackend {
-        let root = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask,
-                                               appropriateFor: nil, create: true).appendingPathComponent("Taisa", isDirectory: true)
-        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true,
-                                               attributes: [.posixPermissions: 0o700, .protectionKey: FileProtectionType.complete])
-        var protectedRoot = root
-        var values = URLResourceValues(); values.isExcludedFromBackup = true
-        try protectedRoot.setResourceValues(values)
-        let defaults = UserDefaults.standard
-        let id = defaults.string(forKey: "taisa.personal.installation").flatMap(UUID.init(uuidString:)) ?? UUID()
-        defaults.set(id.uuidString, forKey: "taisa.personal.installation")
-        return .init(storeURL: root.appendingPathComponent("taisa.sqlite"), keyStore: KeychainStore(),
-                     installationID: id, transferRoot: FileManager.default.temporaryDirectory.appendingPathComponent("TaisaTransfers"),
+        let location = try PersonalStoreLocation.live()
+        return .init(storeURL: location.storeURL, keyStore: location.keyStore,
+                     installationID: location.installationID, transferRoot: location.transferRoot,
                      audioGuard: FoundationAudioGuard())
     }
 
