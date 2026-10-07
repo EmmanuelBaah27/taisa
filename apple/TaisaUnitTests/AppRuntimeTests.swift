@@ -167,11 +167,24 @@ final class AppRuntimeTests: XCTestCase {
 
         XCTAssertNil(configuration)
     }
+
+    func testLiveRuntimeUsesMutationCapableLocalHomeClient() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let source = try String(
+            contentsOf: root.appendingPathComponent("TaisaApp/App/AppRuntime.swift"),
+            encoding: .utf8
+        )
+        XCTAssertTrue(source.contains("let context = try await backend.voiceStoreContext()"))
+        XCTAssertTrue(source.contains("HomeClient.local(store: store, deviceID: context.deviceID.uuidString)"))
+        XCTAssertFalse(source.contains("HomeClient { try await HomeQuery"))
+    }
+
     func testSuccessfulStartBuildsHomeModel() async {
-        let runtime = AppRuntime(start: { HomeClient { HomeSnapshot(conversations: [], goals: [], actions: []) } })
+        let runtime = AppRuntime(start: { .test(home: HomeClient { HomeSnapshot(conversations: [], goals: [], actions: []) }) })
         let state = await runtime.start()
         XCTAssertEqual(state, .ready)
         XCTAssertNotNil(runtime.homeModel)
+        XCTAssertNotNil(runtime.insightsModel)
     }
 
     func testStorageFailuresRouteToRecovery() async {
@@ -180,6 +193,7 @@ final class AppRuntimeTests: XCTestCase {
             let state = await runtime.start()
             XCTAssertEqual(state, .recoveryRequired)
             XCTAssertNil(runtime.homeModel)
+            XCTAssertNil(runtime.insightsModel)
         }
     }
 
@@ -187,7 +201,7 @@ final class AppRuntimeTests: XCTestCase {
         let attempts = StartAttempts()
         let runtime = AppRuntime(start: {
             guard await attempts.next() > 1 else { throw StorageError.authenticationFailed }
-            return HomeClient { HomeSnapshot(conversations: [], goals: [], actions: []) }
+            return .test(home: HomeClient { HomeSnapshot(conversations: [], goals: [], actions: []) })
         })
 
         let failedState = await runtime.start()
@@ -235,7 +249,19 @@ final class AppRuntimeTests: XCTestCase {
     }
 }
 
+private extension AppRuntime.Clients {
+    static func test(home: HomeClient) -> Self {
+        .init(
+            home: home,
+            insights: InsightsClient(load: { .empty }, detail: { insight in
+                .init(insight: insight, sources: [], revisions: [])
+            })
+        )
+    }
+}
+
 private actor StartAttempts {
     private var count = 0
     func next() -> Int { count += 1; return count }
 }
+

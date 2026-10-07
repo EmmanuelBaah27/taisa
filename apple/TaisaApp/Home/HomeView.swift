@@ -4,9 +4,11 @@ import TaisaStorage
 
 struct HomeView: View {
     @State private var model: HomeModel
+    @State private var activeSheet: ThisWeekSheet?
     var send: (HomeIntent) -> Void = { _ in }
     var openRecovery: () -> Void = {}
     var openPersonalQA: (() -> Void)?
+    var openInsights: () -> Void = {}
     private let ownsNavigation: Bool
     private let showsRecentConversations: Bool
 
@@ -15,6 +17,7 @@ struct HomeView: View {
         send: @escaping (HomeIntent) -> Void = { _ in },
         openRecovery: @escaping () -> Void = {},
         openPersonalQA: (() -> Void)? = nil,
+        openInsights: @escaping () -> Void = {},
         ownsNavigation: Bool = true,
         showsRecentConversations: Bool = true
     ) {
@@ -22,6 +25,7 @@ struct HomeView: View {
         self.send = send
         self.openRecovery = openRecovery
         self.openPersonalQA = openPersonalQA
+        self.openInsights = openInsights
         self.ownsNavigation = ownsNavigation
         self.showsRecentConversations = showsRecentConversations
     }
@@ -33,6 +37,14 @@ struct HomeView: View {
         }
         .accessibilityIdentifier("home.root")
         .task { if model.state == .idle { await model.load() } }
+        .sheet(item: $activeSheet) { sheet in
+            switch sheet {
+            case let .planning(item):
+                WeeklyPlanningSheet(item: item, model: model)
+            case let .priorWeekReview(unresolvedCount):
+                PriorWeekReviewSheet(unresolvedCount: unresolvedCount)
+            }
+        }
     }
 
     private var homeContent: some View {
@@ -69,20 +81,39 @@ struct HomeView: View {
         case let .content(snapshot, isRefreshing, issue):
             List {
                 if let issue { issueRow(issue) }
-                if showsRecentConversations {
+                if let leadInsight = snapshot.leadInsight {
+                    LeadInsightSection(insight: leadInsight, openInsights: openInsights)
+                }
+                ThisWeekSection(
+                    items: snapshot.thisWeek,
+                    unresolvedPriorWeekCount: snapshot.unresolvedPriorWeekCount,
+                    model: model,
+                    openPlanning: { activeSheet = .planning($0) },
+                    openPriorWeekReview: { activeSheet = .priorWeekReview(unresolvedCount: $0) }
+                )
+                if snapshot.leadInsight == nil && snapshot.hasConfirmedInsightHistory {
+                    Button("View insights", systemImage: "lightbulb", action: openInsights)
+                        .font(.subheadline)
+                        .accessibilityIdentifier("home.insights.link")
+                }
+                if showsRecentConversations && !snapshot.conversations.isEmpty {
                     Section("Recent conversations") {
                         ForEach(snapshot.conversations, id: \.id) { ConversationRow(conversation: $0, send: send) }
                     }
                     .accessibilityIdentifier("home.conversations")
                 }
-                Section("Active goals") {
-                    ForEach(snapshot.goals, id: \.id) { GoalRow(goal: $0, send: send) }
+                if !snapshot.goals.isEmpty {
+                    Section("Active goals") {
+                        ForEach(snapshot.goals, id: \.id) { GoalRow(goal: $0, send: send) }
+                    }
+                    .accessibilityIdentifier("home.goals")
                 }
-                .accessibilityIdentifier("home.goals")
-                Section("Open actions") {
-                    ForEach(snapshot.actions, id: \.id) { ActionRow(action: $0, send: send) }
+                if !snapshot.actions.isEmpty {
+                    Section("Open actions") {
+                        ForEach(snapshot.actions, id: \.id) { ActionRow(action: $0, send: send) }
+                    }
+                    .accessibilityIdentifier("home.actions")
                 }
-                .accessibilityIdentifier("home.actions")
                 if isRefreshing { ProgressView().frame(maxWidth: .infinity) }
             }
             .refreshable { await model.load() }
@@ -115,3 +146,4 @@ struct HomeView: View {
         .accessibilityIdentifier(issue == .recoveryRequired ? "home.recovery" : "home.retry")
     }
 }
+
