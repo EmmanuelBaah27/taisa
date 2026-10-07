@@ -14,6 +14,7 @@ public struct CheckpointMetadata: Equatable, Sendable {
 /// Serialized SQLCipher access for local repositories. Returned values cross a
 /// concurrency boundary, so callers must return Sendable data, never a GRDB row.
 public final class TaisaStore: Sendable {
+    public static var currentSchemaVersion: Int { TaisaSchema.currentVersion }
     private let queue: DatabaseQueue
     private let lifecycle: StoreLifecycle
 

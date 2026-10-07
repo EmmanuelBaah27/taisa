@@ -3,9 +3,10 @@
 > Open this when touching anything data-related. The local schema below is authoritative for the
 > new coaching path. The backend schema remains mounted only during the gated BUILD transition.
 
-## Authoritative on-device database (schema version 1)
+## Authoritative on-device database (schema version 2)
 
-`mobile/src/db/schema.ts` is the executable source. The file is encrypted by SQLCipher with a
+`apple/Packages/TaisaFoundation/Sources/TaisaStorage/TaisaSchema.swift` is the native executable
+source. The file is encrypted by SQLCipher with a
 random 256-bit key stored as `WHEN_UNLOCKED_THIS_DEVICE_ONLY` in iOS Keychain. IDs and timestamps
 are supplied by the client. Foreign keys, lifecycle checks, unique idempotency receipts, and FTS5
 triggers are enforced locally.
@@ -21,6 +22,7 @@ triggers are enforced locally.
 | `memory_confirmations` | Payload-bound pending/confirmed/consumed user decisions |
 | `coaching_requests` | Stable local text/voice request, retry, transcript, and response state |
 | `audio_cleanup_queue` | Content-free, recoverable local audio deletion work |
+| `voice_turns` | Native stable turn/request identities, durable stage/state, terminal receipts, retry and cleanup checkpoints; no ephemeral deltas or audio bytes |
 | `usage_receipts` | Provider/model/token/audio/cost metadata without readable content |
 | `mutation_receipts` | Idempotency fingerprint for local mutations |
 | `migration_state` | Reserved schema-v1 authority metadata; no legacy import is shipped or required |
@@ -52,10 +54,12 @@ fingerprint. The manifest exists inside the encrypted backup only. Restore valid
 archive and a device-key candidate before promotion. A rollback copy and marker preserve the prior
 active archive across recoverable failures or interruption.
 
-The archive is database-only. It preserves completed transcripts but does not bundle the files
-referenced by `coaching_requests.audio_uri` or `audio_cleanup_queue.audio_uri`. Export therefore
-fails closed while any nonterminal coaching request still references audio; pending voice work must
-be finished or abandoned before a portable backup can be created.
+The archive is database-only. It preserves completed transcripts but does not bundle local audio
+files. Export therefore fails closed when either the filesystem guard or the encrypted
+`voice_turns.audio_file_id` / `audio_cleanup_queue` state reports an audio reference. Cleanup clears
+the turn reference and queue atomically before portable backup can proceed. Version-1 archives are
+authenticated and validated at their declared schema, migrated privately to version 2, and only
+then promoted.
 
 This is manual recovery, not sync. Losing the phone before moving an export outside the app,
 forgetting the separate passphrase, uninstalling without a backup, or losing both phone and backup

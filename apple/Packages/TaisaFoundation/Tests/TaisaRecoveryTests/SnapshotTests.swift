@@ -53,12 +53,12 @@ private struct Fixture {
         let checkpoint = fixture.directory.appendingPathComponent("checkpoint.sqlite")
         let key = Data(repeating: 0x72, count: 32)
         let metadata = try await store.exportCheckpoint(to: checkpoint, archiveDatabaseKey: key)
-        #expect(metadata.schemaVersion == 1)
+        #expect(metadata.schemaVersion == 2)
         #expect(metadata.entityCounts["profile"] == 1)
         #expect(metadata.entityCounts["messages"] == 1)
         #expect(metadata.entityCounts["conversations"] == 1)
         #expect(metadata.entityCounts["goals"] == 0)
-        #expect(metadata.entityCounts.count == 20)
+        #expect(metadata.entityCounts.count == 22)
         let bytes = try Data(contentsOf: checkpoint)
         #expect(metadata.plaintextByteCount == bytes.count)
         #expect(metadata.plaintextSHA256 == Data(SHA256.hash(data: bytes)))
@@ -73,6 +73,37 @@ private struct Fixture {
         var wrong = Configuration(); wrong.readonly = true
         wrong.prepareDatabase { try $0.usePassphrase(Data(("x'" + String(repeating: "51", count: 32) + "'").utf8)) }
         #expect(throws: Error.self) { let db = try DatabaseQueue(path: checkpoint.path, configuration: wrong); try db.read { _ = try Int.fetchOne($0, sql: "PRAGMA user_version") } }
+    }
+
+    @Test func databaseAudioReferenceBlocksArchiveEvenWhenInjectedGuardIsClear() async throws {
+        let fixture = try Fixture(); defer { fixture.remove() }
+        let store = try await fixture.store()
+        try await store.write { db in
+            try db.execute(sql: """
+                INSERT INTO voice_turns (
+                    id, conversation_id, transcription_request_id, transcription_idempotency_key,
+                    coaching_request_id, coaching_idempotency_key, state, stage, audio_file_id,
+                    retry_count, cleanup_state, created_at_ms, updated_at_ms
+                ) VALUES (?, ?, ?, 'transcription-key', ?, 'coaching-key', 'queued',
+                    'transcription', 'PRIVATE-LOCAL-AUDIO-REFERENCE', 0, 'pending', 1, 1)
+                """, arguments: [
+                    "00000000-0000-0000-0000-000000000201",
+                    "00000000-0000-0000-0000-000000000001",
+                    "00000000-0000-0000-0000-000000000202",
+                    "00000000-0000-0000-0000-000000000203",
+                ])
+        }
+        let service = SnapshotService(
+            store: store, audioGuard: AudioGuard(),
+            sourceInstallationID: installationID, clock: { instant }
+        )
+
+        await #expect(throws: SnapshotError.pendingAudio) {
+            try await service.createPortableArchive(
+                at: fixture.destination, recoveryKey: try RecoveryKey.generate()
+            )
+        }
+        #expect(!FileManager.default.fileExists(atPath: fixture.destination.path))
     }
 
     @Test func checkpointWaitsForStoreLifecycleOwnership() async throws {
