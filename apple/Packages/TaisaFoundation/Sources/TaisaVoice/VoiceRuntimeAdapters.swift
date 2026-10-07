@@ -47,24 +47,47 @@ public protocol VoiceFinalizedAudioLoading: Sendable {
 public actor AudioCaptureController: VoiceCaptureControlling, VoiceAudioDeleting, VoiceFinalizedAudioLoading {
     private let service: AudioCaptureService
     private let files: any AudioFileStoring
+    private let lifecycle: (any AudioSessionLifecycleObserving)?
+    private var lifecycleTask: Task<Void, Never>?
 
-    public init(service: AudioCaptureService, files: any AudioFileStoring) {
+    public init(
+        service: AudioCaptureService,
+        files: any AudioFileStoring,
+        lifecycle: (any AudioSessionLifecycleObserving)? = nil
+    ) {
         self.service = service
         self.files = files
+        self.lifecycle = lifecycle
     }
 
-    public func start(turnID: UUID) async throws { _ = try await service.start(turnID: turnID) }
+    public func start(turnID: UUID) async throws {
+        _ = try await service.start(turnID: turnID)
+        lifecycleTask?.cancel()
+        guard let lifecycle else { return }
+        lifecycleTask = Task {
+            for await event in lifecycle.events() {
+                guard !Task.isCancelled else { return }
+                _ = try? await service.handle(event, turnID: turnID)
+            }
+        }
+    }
     public func pause(turnID: UUID) async throws { try await service.pause(turnID: turnID) }
     public func resume(turnID: UUID) async throws { try await service.resume(turnID: turnID) }
     public func finalize(turnID: UUID) async throws -> FinalizedVoiceAudio {
         let audio = try await service.finalize(turnID: turnID)
+        lifecycleTask?.cancel()
+        lifecycleTask = nil
         return .init(
             fileID: audio.fileID.uuidString.lowercased(),
             sha256: audio.sha256,
             durationMS: Int64(audio.duration * 1_000)
         )
     }
-    public func cancel(turnID: UUID) async throws { _ = try await service.cancel(turnID: turnID) }
+    public func cancel(turnID: UUID) async throws {
+        lifecycleTask?.cancel()
+        lifecycleTask = nil
+        _ = try await service.cancel(turnID: turnID)
+    }
 
     public func audio(for turn: VoiceTurnRecord) async throws -> FinalizedAudio {
         guard let turnID = UUID(uuidString: turn.id),

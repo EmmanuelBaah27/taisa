@@ -107,6 +107,7 @@ targets:
       path: Config/TaisaPersonalInfo.plist
       properties:
         TaisaEnvironment: "$(TAISA_ENVIRONMENT)"
+        TaisaVoiceGatewayURL: "$(TAISA_VOICE_GATEWAY_URL)"
         NSFaceIDUsageDescription: "Authenticate to use your Taisa recovery key."
         NSMicrophoneUsageDescription: "Taisa uses the microphone only when you choose to record a conversation."
         LSSupportsOpeningDocumentsInPlace: true
@@ -150,6 +151,10 @@ targets:
         product: TaisaRecovery
       - package: TaisaFoundation
         product: TaisaVoice
+      - package: TaisaFoundation
+        product: TaisaAudio
+      - package: TaisaFoundation
+        product: TaisaNetworking
   TaisaPersonalTests:
     type: bundle.unit-test
     platform: iOS

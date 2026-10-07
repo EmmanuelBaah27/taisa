@@ -19,6 +19,8 @@ Encrypted local persistence and recovery are shipped, so Taisa can safely checkp
 
 The gateway already exposes strict ordered NDJSON transcription events and a validated structured coaching response. This scope extends those portable contracts to real coaching-response streaming while preserving the local-first privacy boundary and exactly-once paid-request behavior.
 
+`Taisa-Personal` may connect only to an explicitly configured HTTPS Taisa voice gateway (or localhost for simulator development). Durable conversation history remains encrypted and device-local, temporary audio remains excluded from backup/sync/export, and the Personal target still has no CloudKit capability. Production ownership comes from authenticated device middleware; the legacy `X-User-ID` QA fallback is disabled in production.
+
 ## Acceptance criteria
 
 - [x] A conversation session supports multiple voice turns, and every turn has a stable durable identity beneath one stable conversation-session identity.

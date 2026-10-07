@@ -236,3 +236,21 @@ test('reconciliation requires ownership and explicit resolution authorizes one r
   expect(paidExecution).toHaveBeenCalledTimes(1);
   store.close();
 });
+
+test('production ownership ignores spoofable legacy headers', async () => {
+  const store = createStore();
+  const app = express();
+  app.use(express.json());
+  app.use('/api/v1/coaching', createCoachingRouter({
+    idempotencyStore: store,
+    allowLegacyOwnerHeader: false,
+    paidExecution: jest.fn(),
+  }));
+
+  const result = await supertest(app).post('/api/v1/coaching/respond/stream')
+    .set('X-User-ID', ownerId).set('Idempotency-Key', 'spoofed-owner').send(request);
+
+  expect(result.status).toBe(401);
+  expect(result.body.error.code).toBe('DEVICE_AUTHENTICATION_REQUIRED');
+  store.close();
+});

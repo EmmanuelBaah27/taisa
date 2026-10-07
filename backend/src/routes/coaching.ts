@@ -63,6 +63,7 @@ async function* defaultPaidExecution(
 
 export function createCoachingRouter(options: {
   idempotencyStore?: CoachingIdempotencyStore;
+  allowLegacyOwnerHeader?: boolean;
   paidExecution?: (
     request: CoachingRequest,
     context: { idempotencyKey: string },
@@ -73,7 +74,9 @@ const router = Router();
 function requestOwner(req: Request, res: Response): string | null {
   const authenticated = typeof res.locals.deviceCredentialId === 'string'
     ? res.locals.deviceCredentialId.trim() : '';
-  const legacy = req.header('X-User-ID')?.trim() ?? '';
+  const legacyAllowed = options.allowLegacyOwnerHeader
+    ?? process.env.NODE_ENV !== 'production';
+  const legacy = legacyAllowed ? req.header('X-User-ID')?.trim() ?? '' : '';
   const owner = authenticated || legacy;
   if (!owner || owner.length > 200) {
     res.status(401).json({

@@ -70,7 +70,9 @@ struct FoundationRootView: View {
             .accessibilityIdentifier("foundation.root")
             .navigationDestination(isPresented: $showsRecovery) { RecoveryView(importURL: recoveryImportURL) }
             .navigationDestination(isPresented: $showsVoiceDiagnostics) {
-#if DEBUG || TAISA_PREVIEW
+#if TAISA_PERSONAL
+                PersonalVoiceSessionView()
+#elseif DEBUG || TAISA_PREVIEW
                 VoiceSessionDiagnosticsView(snapshot: diagnosticVoiceSnapshot)
 #else
                 EmptyView()
