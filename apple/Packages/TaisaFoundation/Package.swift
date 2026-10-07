@@ -18,6 +18,7 @@ let package = Package(
         .library(name: "TaisaRecovery", targets: ["TaisaRecovery"]),
         .library(name: "TaisaSync", targets: ["TaisaSync"]),
         .library(name: "TaisaCloudKit", targets: ["TaisaCloudKit"]),
+        .library(name: "TaisaVoice", targets: ["TaisaVoice"]),
     ],
     dependencies: [
         .package(url: "https://github.com/sqlcipher/GRDB.swift.git", exact: "7.11.1"),
@@ -38,6 +39,7 @@ let package = Package(
             .product(name: "GRDB", package: "GRDB.swift"),
         ]),
         .target(name: "TaisaCloudKit", dependencies: ["TaisaSync", "TaisaStorage", "TaisaSecurity"]),
+        .target(name: "TaisaVoice", dependencies: ["TaisaStorage", "TaisaContracts"]),
         .testTarget(name: "TaisaCoreTests", dependencies: ["TaisaCore"]),
         .testTarget(name: "TaisaContractsTests", dependencies: ["TaisaContracts"]),
         .testTarget(name: "TaisaDesignSystemTests", dependencies: ["TaisaDesignSystem"]),
@@ -50,5 +52,6 @@ let package = Package(
         .testTarget(name: "TaisaRecoveryTests", dependencies: ["TaisaRecovery", "TaisaStorage", "TaisaSecurity", .product(name: "GRDB", package: "GRDB.swift")]),
         .testTarget(name: "TaisaSyncTests", dependencies: ["TaisaSync", "TaisaStorage", "TaisaSecurity"]),
         .testTarget(name: "TaisaCloudKitTests", dependencies: ["TaisaCloudKit", "TaisaSync", "TaisaSecurity", "TaisaStorage", .product(name: "GRDB", package: "GRDB.swift")]),
+        .testTarget(name: "TaisaVoiceTests", dependencies: ["TaisaVoice", "TaisaStorage"]),
     ]
 )
