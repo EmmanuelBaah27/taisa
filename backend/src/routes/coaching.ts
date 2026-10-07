@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, type Request, type Response } from 'express';
 import { CoachingRequestSchema } from '../schemas/coaching';
 import {
   estimateConfiguredCoachingAttempts,
@@ -7,7 +7,11 @@ import {
 } from '../services/coaching/coachingGateway';
 import { getConfiguredFallbackProvider } from '../services/coaching/fallbackProvider';
 import type { CoachingRequest, CoachingStreamFailureCode } from '@taisa/shared';
-import { CoachingIdempotencyStore, IdempotencyConflictError } from '../services/coaching/coachingIdempotencyStore';
+import {
+  CoachingIdempotencyStore,
+  CoachingRequestNotFoundError,
+  IdempotencyConflictError,
+} from '../services/coaching/coachingIdempotencyStore';
 import {
   AmbiguousPaidWorkError,
   executeCoachingStream,
@@ -65,6 +69,21 @@ export function createCoachingRouter(options: {
   ) => AsyncIterable<PaidCoachingStreamItem>;
 } = {}) {
 const router = Router();
+
+function requestOwner(req: Request, res: Response): string | null {
+  const authenticated = typeof res.locals.deviceCredentialId === 'string'
+    ? res.locals.deviceCredentialId.trim() : '';
+  const legacy = req.header('X-User-ID')?.trim() ?? '';
+  const owner = authenticated || legacy;
+  if (!owner || owner.length > 200) {
+    res.status(401).json({
+      success: false,
+      error: { code: 'DEVICE_AUTHENTICATION_REQUIRED', message: 'Device authentication required' },
+    });
+    return null;
+  }
+  return owner;
+}
 
 function operationalFailureCode(error: unknown): string {
   if (error instanceof ContentFreeFallbackError) {
@@ -151,6 +170,8 @@ router.post('/respond', async (req, res) => {
 });
 
 router.post('/respond/stream', async (req, res) => {
+  const ownerId = requestOwner(req, res);
+  if (!ownerId) return;
   const parsed = CoachingRequestSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({
@@ -172,6 +193,7 @@ router.post('/respond/stream', async (req, res) => {
     const events = executeCoachingStream({
       request: parsed.data,
       idempotencyKey,
+      ownerId,
       store,
       paidExecution: options.paidExecution ?? defaultPaidExecution,
     });
@@ -209,12 +231,41 @@ router.post('/respond/stream', async (req, res) => {
 });
 
 router.get('/requests/:requestId', (req, res) => {
+  const ownerId = requestOwner(req, res);
+  if (!ownerId) return;
   const result = (options.idempotencyStore ?? getDefaultIdempotencyStore())
-    .reconcile(req.params.requestId);
+    .reconcile(req.params.requestId, ownerId);
   if (result.status === 'missing') {
     return res.status(404).json({ success: false, error: { code: 'REQUEST_NOT_FOUND', message: 'Coaching request not found' } });
   }
   return res.json({ success: true, data: result });
+});
+
+router.post('/requests/:requestId/resolve', (req, res) => {
+  const ownerId = requestOwner(req, res);
+  if (!ownerId) return;
+  if (req.body?.decision !== 'retry') {
+    return res.status(400).json({
+      success: false,
+      error: { code: 'INVALID_RESOLUTION', message: 'A retry decision is required' },
+    });
+  }
+  try {
+    const result = (options.idempotencyStore ?? getDefaultIdempotencyStore())
+      .authorizeRetry(req.params.requestId, ownerId);
+    return res.json({ success: true, data: result });
+  } catch (error) {
+    if (error instanceof CoachingRequestNotFoundError) {
+      return res.status(404).json({
+        success: false,
+        error: { code: error.code, message: 'Coaching request not found' },
+      });
+    }
+    return res.status(409).json({
+      success: false,
+      error: { code: 'IDEMPOTENCY_STATE_CONFLICT', message: 'Request is not awaiting resolution' },
+    });
+  }
 });
 
 return router;

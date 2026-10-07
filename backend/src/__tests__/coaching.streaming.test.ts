@@ -29,6 +29,7 @@ const response: CoachingResponse = {
 };
 
 const receiptEncryptionKey = Buffer.alloc(32, 9).toString('base64');
+const ownerId = 'device-owner-1';
 
 function createStore() {
   return new CoachingIdempotencyStore({
@@ -51,8 +52,8 @@ test('duplicate stream request replays one authoritative terminal without a seco
     yield { kind: 'completed' as const, response };
   });
 
-  const first = await collect(executeCoachingStream({ request, idempotencyKey: 'turn-1', store, paidExecution }));
-  const second = await collect(executeCoachingStream({ request, idempotencyKey: 'turn-1', store, paidExecution }));
+  const first = await collect(executeCoachingStream({ request, idempotencyKey: 'turn-1', ownerId, store, paidExecution }));
+  const second = await collect(executeCoachingStream({ request, idempotencyKey: 'turn-1', ownerId, store, paidExecution }));
 
   expect(paidExecution).toHaveBeenCalledTimes(1);
   expect(second.at(-1)).toEqual(first.at(-1));
@@ -62,13 +63,14 @@ test('duplicate stream request replays one authoritative terminal without a seco
 
 test('ambiguous provider-started work does not invoke paid execution', async () => {
   const store = createStore();
-  store.begin({ key: 'turn-2', requestId: request.requestId, requestHash: 'forced-hash' });
+  store.begin({ key: 'turn-2', requestId: request.requestId, requestHash: 'forced-hash', ownerId });
   store.markProviderStarted('turn-2');
   const paidExecution = jest.fn();
 
   await expect(collect(executeCoachingStream({
     request,
     idempotencyKey: 'turn-2',
+    ownerId,
     requestHash: 'forced-hash',
     store,
     paidExecution,
@@ -85,7 +87,7 @@ test('executor exposes the first delta before paid execution reaches its termina
     terminalReleased = true;
     yield { kind: 'completed' as const, response };
   };
-  const stream = executeCoachingStream({ request, idempotencyKey: 'turn-live-1', store, paidExecution });
+  const stream = executeCoachingStream({ request, idempotencyKey: 'turn-live-1', ownerId, store, paidExecution });
   const iterator = stream[Symbol.asyncIterator]();
 
   expect(await iterator.next()).toMatchObject({
@@ -147,10 +149,11 @@ test('stream endpoint emits ordered NDJSON and replays its terminal without a se
   app.use('/api/v1/coaching', createCoachingRouter({ idempotencyStore: store, paidExecution }));
 
   const first = await supertest(app).post('/api/v1/coaching/respond/stream')
-    .set('Idempotency-Key', 'turn-http-1').send(request);
+    .set('X-User-ID', ownerId).set('Idempotency-Key', 'turn-http-1').send(request);
   const replay = await supertest(app).post('/api/v1/coaching/respond/stream')
-    .set('Idempotency-Key', 'turn-http-1').send(request);
-  const reconciliation = await supertest(app).get(`/api/v1/coaching/requests/${request.requestId}`);
+    .set('X-User-ID', ownerId).set('Idempotency-Key', 'turn-http-1').send(request);
+  const reconciliation = await supertest(app).get(`/api/v1/coaching/requests/${request.requestId}`)
+    .set('X-User-ID', ownerId);
 
   expect(first.status).toBe(200);
   expect(first.headers['content-type']).toContain('application/x-ndjson');
@@ -166,13 +169,14 @@ test('stream endpoint emits ordered NDJSON and replays its terminal without a se
 test('stream endpoint returns a conflict before committing headers for ambiguous paid work', async () => {
   const store = createStore();
   const requestHash = createHash('sha256').update(JSON.stringify(request)).digest('hex');
-  store.begin({ key: 'turn-http-ambiguous', requestId: request.requestId, requestHash });
+  store.begin({ key: 'turn-http-ambiguous', requestId: request.requestId, requestHash, ownerId });
   store.markProviderStarted('turn-http-ambiguous');
   const app = express();
   app.use(express.json());
   app.use('/api/v1/coaching', createCoachingRouter({ idempotencyStore: store, paidExecution: jest.fn() }));
 
   const result = await supertest(app).post('/api/v1/coaching/respond/stream')
+    .set('X-User-ID', ownerId)
     .set('Idempotency-Key', 'turn-http-ambiguous')
     .send(request);
 
@@ -192,7 +196,7 @@ test('stream endpoint terminates a started stream with a typed durable failure e
   app.use('/api/v1/coaching', createCoachingRouter({ idempotencyStore: store, paidExecution }));
 
   const result = await supertest(app).post('/api/v1/coaching/respond/stream')
-    .set('Idempotency-Key', 'turn-http-failure').send(request);
+    .set('X-User-ID', ownerId).set('Idempotency-Key', 'turn-http-failure').send(request);
   const events = result.text.trim().split('\n').map((line) => JSON.parse(line));
 
   expect(result.status).toBe(200);
@@ -200,8 +204,35 @@ test('stream endpoint terminates a started stream with a typed durable failure e
     expect.objectContaining({ type: 'coaching.delta', sequence: 0 }),
     expect.objectContaining({ type: 'coaching.failed', sequence: 1, code: 'COACHING_UNAVAILABLE', retryable: false }),
   ]);
-  expect(store.reconcile(request.requestId)).toMatchObject({
+  expect(store.reconcile(request.requestId, ownerId)).toMatchObject({
     status: 'failed', code: 'COACHING_UNAVAILABLE', retryable: false,
   });
+  store.close();
+});
+
+test('reconciliation requires ownership and explicit resolution authorizes one replacement attempt', async () => {
+  const store = createStore();
+  const requestHash = createHash('sha256').update(JSON.stringify(request)).digest('hex');
+  store.begin({ key: 'turn-http-resolve', requestId: request.requestId, requestHash, ownerId });
+  store.markProviderStarted('turn-http-resolve');
+  const paidExecution = jest.fn(async function* () {
+    yield { kind: 'completed' as const, response };
+  });
+  const app = express();
+  app.use(express.json());
+  app.use('/api/v1/coaching', createCoachingRouter({ idempotencyStore: store, paidExecution }));
+
+  expect((await supertest(app).get(`/api/v1/coaching/requests/${request.requestId}`)).status).toBe(401);
+  expect((await supertest(app).get(`/api/v1/coaching/requests/${request.requestId}`)
+    .set('X-User-ID', 'other-device')).status).toBe(404);
+  expect((await supertest(app).post(`/api/v1/coaching/requests/${request.requestId}/resolve`)
+    .set('X-User-ID', 'other-device').send({ decision: 'retry' })).status).toBe(404);
+  expect((await supertest(app).post(`/api/v1/coaching/requests/${request.requestId}/resolve`)
+    .set('X-User-ID', ownerId).send({ decision: 'retry' })).status).toBe(200);
+
+  const retried = await supertest(app).post('/api/v1/coaching/respond/stream')
+    .set('X-User-ID', ownerId).set('Idempotency-Key', 'turn-http-resolve').send(request);
+  expect(retried.status).toBe(200);
+  expect(paidExecution).toHaveBeenCalledTimes(1);
   store.close();
 });

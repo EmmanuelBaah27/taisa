@@ -57,6 +57,7 @@ function receiptFor(key: string, requestHash: string): string {
 export async function* executeCoachingStream(input: {
   request: CoachingRequest;
   idempotencyKey: string;
+  ownerId: string;
   requestHash?: string;
   store: CoachingIdempotencyStore;
   paidExecution: (
@@ -69,6 +70,7 @@ export async function* executeCoachingStream(input: {
     key: input.idempotencyKey,
     requestId: input.request.requestId,
     requestHash,
+    ownerId: input.ownerId,
   });
   if (existing.status === 'ambiguous') throw new AmbiguousPaidWorkError();
   if (existing.status === 'failed') {

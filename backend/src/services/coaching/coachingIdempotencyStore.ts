@@ -7,6 +7,7 @@ type StoredStatus = 'queued' | 'provider_started' | 'completed' | 'failed';
 interface IdempotencyRow {
   idempotency_key: string;
   request_id: string;
+  owner_id: string | null;
   request_hash: string;
   status: StoredStatus;
   response_encrypted: string | null;
@@ -27,6 +28,11 @@ export class IdempotencyConflictError extends Error {
   constructor() { super('IDEMPOTENCY_KEY_REUSED'); }
 }
 
+export class CoachingRequestNotFoundError extends Error {
+  readonly code = 'REQUEST_NOT_FOUND';
+  constructor() { super('REQUEST_NOT_FOUND'); }
+}
+
 export class CoachingIdempotencyStore {
   private readonly database: Database.Database;
   private readonly encryptionKey: Buffer;
@@ -43,6 +49,7 @@ export class CoachingIdempotencyStore {
       CREATE TABLE IF NOT EXISTS coaching_idempotency_receipts (
         idempotency_key TEXT PRIMARY KEY,
         request_id TEXT NOT NULL UNIQUE,
+        owner_id TEXT NOT NULL,
         request_hash TEXT NOT NULL,
         status TEXT NOT NULL CHECK(status IN ('queued', 'provider_started', 'completed', 'failed')),
         response_encrypted TEXT,
@@ -56,13 +63,20 @@ export class CoachingIdempotencyStore {
       CREATE INDEX IF NOT EXISTS idx_coaching_idempotency_request
         ON coaching_idempotency_receipts(request_id);
     `);
+    const columns = this.database.prepare(
+      'PRAGMA table_info(coaching_idempotency_receipts)',
+    ).all() as Array<{ name: string }>;
+    if (!columns.some((column) => column.name === 'owner_id')) {
+      this.database.exec('ALTER TABLE coaching_idempotency_receipts ADD COLUMN owner_id TEXT');
+    }
   }
 
-  begin(input: { key: string; requestId: string; requestHash: string }): IdempotencyResult {
+  begin(input: { key: string; requestId: string; requestHash: string; ownerId: string }): IdempotencyResult {
     return this.database.transaction(() => {
       const existing = this.rowForKey(input.key);
       if (existing) {
-        if (existing.request_id !== input.requestId || existing.request_hash !== input.requestHash) {
+        if (existing.request_id !== input.requestId || existing.request_hash !== input.requestHash
+          || existing.owner_id !== input.ownerId) {
           throw new IdempotencyConflictError();
         }
         return this.result(existing);
@@ -70,9 +84,9 @@ export class CoachingIdempotencyStore {
       const now = new Date().toISOString();
       this.database.prepare(`
         INSERT INTO coaching_idempotency_receipts (
-          idempotency_key, request_id, request_hash, status, created_at, updated_at
-        ) VALUES (?, ?, ?, 'queued', ?, ?)
-      `).run(input.key, input.requestId, input.requestHash, now, now);
+          idempotency_key, request_id, owner_id, request_hash, status, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, 'queued', ?, ?)
+      `).run(input.key, input.requestId, input.ownerId, input.requestHash, now, now);
       return { status: 'start' } as const;
     }).immediate();
   }
@@ -110,11 +124,27 @@ export class CoachingIdempotencyStore {
     if (result.changes !== 1) throw new Error('IDEMPOTENCY_STATE_CONFLICT');
   }
 
-  reconcile(requestId: string): IdempotencyResult | { status: 'missing'; requestId: string } {
+  reconcile(requestId: string, ownerId: string): IdempotencyResult | { status: 'missing'; requestId: string } {
     const row = this.database.prepare(
-      'SELECT * FROM coaching_idempotency_receipts WHERE request_id = ?',
-    ).get(requestId) as IdempotencyRow | undefined;
+      'SELECT * FROM coaching_idempotency_receipts WHERE request_id = ? AND owner_id = ?',
+    ).get(requestId, ownerId) as IdempotencyRow | undefined;
     return row ? this.result(row) : { status: 'missing', requestId };
+  }
+
+  authorizeRetry(requestId: string, ownerId: string): { status: 'authorized'; requestId: string } {
+    return this.database.transaction(() => {
+      const row = this.database.prepare(
+        'SELECT status FROM coaching_idempotency_receipts WHERE request_id = ? AND owner_id = ?',
+      ).get(requestId, ownerId) as { status: StoredStatus } | undefined;
+      if (!row) throw new CoachingRequestNotFoundError();
+      if (row.status !== 'provider_started') throw new Error('IDEMPOTENCY_STATE_CONFLICT');
+      const result = this.database.prepare(`
+        UPDATE coaching_idempotency_receipts SET status = 'queued', updated_at = ?
+        WHERE request_id = ? AND owner_id = ? AND status = 'provider_started'
+      `).run(new Date().toISOString(), requestId, ownerId);
+      if (result.changes !== 1) throw new Error('IDEMPOTENCY_STATE_CONFLICT');
+      return { status: 'authorized', requestId } as const;
+    }).immediate();
   }
 
   close(): void { this.database.close(); }
