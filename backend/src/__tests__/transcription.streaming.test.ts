@@ -19,6 +19,7 @@ jest.mock(
 import { requestContext } from '../middleware/requestContext';
 import { createTranscribeRouter } from '../routes/transcribe';
 import {
+  classifyTranscriptionProviderFailure,
   classifyTranscriptionEvidence,
   streamTranscription,
   type ProviderTranscriptionEvent,
@@ -208,6 +209,44 @@ describe('provider streaming adapter', () => {
       maxRetries: 0,
       signal: abortController.signal,
     });
+  });
+
+  test.each([
+    [{ type: 'authentication_error', message: 'private provider detail' }, 'AUTHENTICATION'],
+    [{ type: 'permission_error', message: 'private provider detail' }, 'PERMISSION'],
+    [{ type: 'rate_limit_error', message: 'private provider detail' }, 'RATE_LIMIT'],
+    [{ type: 'invalid_request_error', message: 'private provider detail' }, 'INVALID_REQUEST'],
+    [{ name: 'APIConnectionTimeoutError', message: 'private provider detail' }, 'CONNECTION_TIMEOUT'],
+    [{ name: 'APIConnectionError', message: 'private provider detail' }, 'CONNECTION'],
+    [{ status: 503, message: 'private provider detail' }, 'HTTP_5XX'],
+    [new Error('private provider detail'), 'UNKNOWN'],
+  ])('classifies provider failures without retaining private details: %#', (error, expected) => {
+    const classification = classifyTranscriptionProviderFailure(error);
+
+    expect(classification).toBe(expected);
+    expect(classification).not.toContain('private provider detail');
+  });
+
+  test('reports a content-free provider failure classification to diagnostics', async () => {
+    const onProviderFailure = jest.fn();
+    const provider = jest.fn().mockRejectedValue({
+      type: 'authentication_error',
+      message: 'private provider detail',
+    });
+
+    const events = [];
+    for await (const event of streamTranscription(input, provider, onProviderFailure)) {
+      events.push(event);
+    }
+
+    expect(onProviderFailure).toHaveBeenCalledWith('AUTHENTICATION');
+    expect(JSON.stringify(onProviderFailure.mock.calls)).not.toContain('private provider detail');
+    expect(events).toEqual([{
+      type: 'transcript.failed',
+      requestId,
+      sequence: 0,
+      code: 'TRANSCRIPTION_FAILED',
+    }]);
   });
 });
 

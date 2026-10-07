@@ -360,7 +360,9 @@ export function createTranscribeRouter(options: TranscribeRouterOptions = {}) {
         durationSeconds: measuredDurationSeconds,
         usage: estimatedUsage,
         abortSignal: providerAbort.signal,
-      }, provider)) {
+      }, provider, (failure) => {
+        logRequestError(req, `TRANSCRIPTION_PROVIDER_${failure}`, new Error(failure));
+      })) {
         if (res.destroyed) break;
         if (event.type !== 'transcript.delta') {
           terminalWritten = true;
