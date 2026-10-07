@@ -26,6 +26,7 @@ public actor SystemAudioRecorderAdapter: AudioRecorderAdapting {
         ]
         let recorder = try AVAudioRecorder(url: url, settings: settings)
         recorder.isMeteringEnabled = true
+        guard recorder.prepareToRecord() else { throw AudioCaptureError.invalidState }
         guard recorder.record() else { throw AudioCaptureError.invalidState }
         self.recorder = recorder
     }

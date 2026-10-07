@@ -259,7 +259,13 @@ public actor VoiceSessionCoordinator {
                 launchCoaching()
             case .startRecording:
                 let turnID = try currentTurnID()
-                let fileID = try await capture.prepare(turnID: turnID)
+                let fileID: String
+                do {
+                    fileID = try await capture.prepare(turnID: turnID)
+                } catch {
+                    try? await send(.captureFailed(code: "CAPTURE_PREPARE_FAILED"))
+                    throw error
+                }
                 do {
                     try await send(.captureStarted(fileID: fileID))
                 } catch {
