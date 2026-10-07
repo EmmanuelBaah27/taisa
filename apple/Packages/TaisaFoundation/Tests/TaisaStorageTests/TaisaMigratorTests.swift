@@ -4,6 +4,57 @@ import Testing
 @testable import TaisaStorage
 
 @Suite(.serialized) struct TaisaMigratorTests {
+    @Test func populatedVersionOneStoreUpgradesLosslesslyToVersionTwo() async throws {
+        let fixture = try MigrationFixture()
+        defer { fixture.remove() }
+        let queue = try fixture.makeKeyedQueue()
+        let profileID = UUID().uuidString
+        let actionID = UUID().uuidString
+
+        var legacyMigrator = DatabaseMigrator()
+        legacyMigrator.registerMigration("v1", foreignKeyChecks: .immediate) { db in
+            try TaisaSchema.createVersion1(in: db)
+            try db.execute(
+                sql: "INSERT INTO migration_state (version, applied_at_ms) VALUES (1, 1)"
+            )
+            try db.execute(sql: "PRAGMA user_version = 1")
+        }
+        try legacyMigrator.migrate(queue)
+        try await queue.write { db in
+            try db.execute(
+                sql: "INSERT INTO profile (id, display_name, updated_at_ms) VALUES (?, 'Baah', 10)",
+                arguments: [profileID]
+            )
+            try db.execute(
+                sql: "INSERT INTO actions (id, title, status, created_at_ms, updated_at_ms) VALUES (?, 'Preserve me', 'open', 10, 10)",
+                arguments: [actionID]
+            )
+        }
+
+        let reopened = try await TaisaStore.open(at: fixture.url, keyStore: fixture.keys)
+        let state = try await reopened.read { db in
+            (
+                try Int.fetchOne(db, sql: "PRAGMA user_version"),
+                try String.fetchOne(db, sql: "SELECT display_name FROM profile WHERE id = ?", arguments: [profileID]),
+                try String.fetchOne(db, sql: "SELECT title FROM actions WHERE id = ?", arguments: [actionID]),
+                try db.tableExists("weekly_placements"),
+                try db.tableExists("work_events"),
+                try db.tableExists("insights"),
+                try db.tableExists("insight_sources"),
+                try db.tableExists("insight_revisions")
+            )
+        }
+
+        #expect(state.0 == 2)
+        #expect(state.1 == "Baah")
+        #expect(state.2 == "Preserve me")
+        #expect(state.3)
+        #expect(state.4)
+        #expect(state.5)
+        #expect(state.6)
+        #expect(state.7)
+    }
+
     @Test func migrationIsIdempotentAndCreatesAllDomainTables() async throws {
         let fixture = try MigrationFixture()
         defer { fixture.remove() }
@@ -20,9 +71,9 @@ import Testing
         let state = try await reopened.read { db in
             (try Int.fetchOne(db, sql: "PRAGMA user_version"), try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM profile"), try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM grdb_migrations"))
         }
-        #expect(state.0 == 1)
+        #expect(state.0 == TaisaSchema.currentVersion)
         #expect(state.1 == 1)
-        #expect(state.2 == 1)
+        #expect(state.2 == TaisaSchema.currentVersion)
         #expect(!tables.contains("recordings"))
     }
 
@@ -42,6 +93,45 @@ import Testing
         #expect(state.0 == 0)
         #expect(state.1 == nil)
         #expect(state.2 == nil)
+    }
+
+    @Test func interruptedVersionTwoMigrationLeavesVersionOneUnchanged() async throws {
+        let fixture = try MigrationFixture()
+        defer { fixture.remove() }
+        let queue = try fixture.makeKeyedQueue()
+        var legacyMigrator = DatabaseMigrator()
+        legacyMigrator.registerMigration("v1", foreignKeyChecks: .immediate) { db in
+            try TaisaSchema.createVersion1(in: db)
+            try db.execute(sql: "INSERT INTO migration_state (version, applied_at_ms) VALUES (1, 1)")
+            try db.execute(sql: "PRAGMA user_version = 1")
+        }
+        try legacyMigrator.migrate(queue)
+        let actionID = UUID().uuidString
+        try await queue.write { db in
+            try db.execute(
+                sql: "INSERT INTO actions (id, title, status, created_at_ms, updated_at_ms) VALUES (?, 'Keep me', 'open', 1, 1)",
+                arguments: [actionID]
+            )
+        }
+
+        #expect(throws: StorageError.migrationFailed) {
+            try TaisaMigrator.migrate(queue, from: 1, createVersion2: { db in
+                try TaisaSchema.createVersion2(in: db)
+                throw MigrationInterruption.injected
+            })
+        }
+        let state = try await queue.read { db in
+            (
+                try Int.fetchOne(db, sql: "PRAGMA user_version"),
+                try String.fetchOne(db, sql: "SELECT title FROM actions WHERE id = ?", arguments: [actionID]),
+                try db.tableExists("weekly_placements"),
+                try String.fetchAll(db, sql: "SELECT identifier FROM grdb_migrations ORDER BY identifier")
+            )
+        }
+        #expect(state.0 == 1)
+        #expect(state.1 == "Keep me")
+        #expect(!state.2)
+        #expect(state.3 == ["v1"])
     }
 
     @Test func futureSchemaIsRejectedWithoutMutation() async throws {
@@ -308,7 +398,7 @@ import Testing
         let restarted = try fixture.restartCopy()
         let store = try await TaisaStore.open(at: restarted, keyStore: fixture.keys)
         #expect(try await store.read { db in try db.tableExists("profile") })
-        #expect(try await store.read { db in try Int.fetchOne(db, sql: "PRAGMA user_version") } == 1)
+        #expect(try await store.read { db in try Int.fetchOne(db, sql: "PRAGMA user_version") } == TaisaSchema.currentVersion)
         #expect(try await fixture.keys.loadKey() == fixture.key)
     }
 

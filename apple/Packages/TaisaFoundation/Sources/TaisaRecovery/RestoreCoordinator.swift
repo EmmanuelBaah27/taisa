@@ -85,9 +85,9 @@ public struct RestoreCoordinator: Sendable {
         let manifest = try PortableArchive.verify(file: input, recoveryKey: recoveryKey, maximumPayloadBytes: 1_073_741_824,
             receiveSalt: { salt = $0 }, receivePayload: { try output.write(contentsOf: $0) })
         try output.synchronize(); try output.close()
-        // v1 is the only supported snapshot schema; opening may never silently
+        // The current schema is the only supported snapshot schema; opening may never silently
         // upgrade a manifest into something different from what was verified.
-        guard manifest.schemaVersion == 1 else { throw RestoreError.incompatibleSchema }
+        guard manifest.schemaVersion == TaisaStore.currentSchemaVersion else { throw RestoreError.incompatibleSchema }
         let archiveKey = try recoveryKey.derivePortableBackupKey(salt: salt, purpose: .database).withUnsafeBytes { Data($0) }
         try directory.require("candidate.sqlite", initialID); try directory.check(); try root.check()
         try TaisaStore.validateReplacement(at: databaseURL, key: archiveKey, expectedSchemaVersion: manifest.schemaVersion)

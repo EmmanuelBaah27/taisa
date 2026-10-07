@@ -1,16 +1,20 @@
 import GRDB
 
 enum TaisaSchema {
-    static let currentVersion = 1
+    static let currentVersion = 2
 
     static func createVersion1(in db: Database) throws {
-        for statement in statements { try db.execute(sql: statement) }
+        for statement in version1Statements { try db.execute(sql: statement) }
+    }
+
+    static func createVersion2(in db: Database) throws {
+        for statement in version2Statements { try db.execute(sql: statement) }
     }
 
     // The stored DDL is also the canonical v1 integrity contract. Comparing it
     // on reopen catches removed FKs, checks, PKs, types, and unique constraints
     // even when the table still has every expected column name.
-    private static let statements: [String] = [
+    private static let version1Statements: [String] = [
         // IDs are opaque UUID strings; every persisted time is UTC milliseconds.
         // This database-only schema deliberately has no audio path or URI column.
             """
@@ -228,6 +232,71 @@ enum TaisaSchema {
             "CREATE INDEX snapshots_by_date ON snapshot_manifests(created_at_ms)",
     ]
 
+    private static let version2Statements: [String] = [
+        """
+        CREATE TABLE weekly_placements (
+            id TEXT PRIMARY KEY NOT NULL CHECK (length(id) = 36),
+            action_id TEXT NOT NULL REFERENCES actions(id) ON DELETE CASCADE,
+            week_start_ms INTEGER NOT NULL CHECK (week_start_ms >= 0),
+            planned_day_ms INTEGER CHECK (planned_day_ms >= week_start_ms),
+            created_at_ms INTEGER NOT NULL CHECK (created_at_ms >= 0),
+            updated_at_ms INTEGER NOT NULL CHECK (updated_at_ms >= created_at_ms),
+            UNIQUE (action_id, week_start_ms)
+        )
+        """,
+        """
+        CREATE TABLE work_events (
+            id TEXT PRIMARY KEY NOT NULL CHECK (length(id) = 36),
+            action_id TEXT NOT NULL REFERENCES actions(id) ON DELETE CASCADE,
+            kind TEXT NOT NULL CHECK (kind IN ('created', 'placed', 'moved', 'completed', 'restored', 'removed')),
+            from_week_start_ms INTEGER CHECK (from_week_start_ms >= 0),
+            to_week_start_ms INTEGER CHECK (to_week_start_ms >= 0),
+            source_type TEXT NOT NULL,
+            source_id TEXT CHECK (source_id IS NULL OR length(source_id) = 36),
+            occurred_at_ms INTEGER NOT NULL CHECK (occurred_at_ms >= 0)
+        )
+        """,
+        """
+        CREATE TABLE insights (
+            id TEXT PRIMARY KEY NOT NULL CHECK (length(id) = 36),
+            body TEXT NOT NULL,
+            status TEXT NOT NULL CHECK (status IN ('confirmed', 'review_needed', 'superseded', 'retired')),
+            is_time_sensitive INTEGER NOT NULL DEFAULT 0 CHECK (is_time_sensitive IN (0, 1)),
+            home_eligible_until_ms INTEGER CHECK (home_eligible_until_ms >= 0),
+            created_at_ms INTEGER NOT NULL CHECK (created_at_ms >= 0),
+            updated_at_ms INTEGER NOT NULL CHECK (updated_at_ms >= created_at_ms)
+        )
+        """,
+        """
+        CREATE TABLE insight_sources (
+            id TEXT PRIMARY KEY NOT NULL CHECK (length(id) = 36),
+            insight_id TEXT NOT NULL REFERENCES insights(id) ON DELETE CASCADE,
+            source_type TEXT NOT NULL,
+            source_id TEXT NOT NULL CHECK (length(source_id) = 36),
+            excerpt TEXT NOT NULL DEFAULT '',
+            created_at_ms INTEGER NOT NULL CHECK (created_at_ms >= 0),
+            UNIQUE (insight_id, source_type, source_id)
+        )
+        """,
+        """
+        CREATE TABLE insight_revisions (
+            id TEXT PRIMARY KEY NOT NULL CHECK (length(id) = 36),
+            insight_id TEXT NOT NULL REFERENCES insights(id) ON DELETE CASCADE,
+            proposed_body TEXT NOT NULL,
+            status TEXT NOT NULL CHECK (status IN ('proposed', 'accepted', 'rejected')),
+            source_type TEXT NOT NULL,
+            source_id TEXT CHECK (source_id IS NULL OR length(source_id) = 36),
+            created_at_ms INTEGER NOT NULL CHECK (created_at_ms >= 0),
+            resolved_at_ms INTEGER CHECK (resolved_at_ms >= created_at_ms)
+        )
+        """,
+        "CREATE INDEX weekly_placements_by_week ON weekly_placements(week_start_ms, planned_day_ms)",
+        "CREATE INDEX work_events_by_action ON work_events(action_id, occurred_at_ms)",
+        "CREATE INDEX insights_by_status ON insights(status, updated_at_ms)",
+        "CREATE INDEX insight_sources_by_insight ON insight_sources(insight_id)",
+        "CREATE INDEX insight_revisions_by_insight ON insight_revisions(insight_id, created_at_ms)",
+    ]
+
     static func validateVersion1(in db: Database) throws {
         let requiredColumns: [String: Set<String>] = [
             "profile": ["id", "display_name", "headline", "biography", "updated_at_ms"],
@@ -260,7 +329,24 @@ enum TaisaSchema {
             // rewrite equivalent CREATE text during manual ALTER/restore; such
             // rewritten schemas require an explicit migration, not guessed
             // normalization that could erase constraint differences.
-            for statement in statements where statement.hasPrefix("CREATE TABLE ") {
+            for statement in version1Statements where statement.hasPrefix("CREATE TABLE ") {
+                let name = String(statement.split(separator: " ", maxSplits: 3)[2])
+                let stored = try String.fetchOne(
+                    db,
+                    sql: "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?",
+                    arguments: [name]
+                )
+                guard stored == statement else { throw StorageError.schemaMismatch }
+            }
+        } catch {
+            throw StorageError.schemaMismatch
+        }
+    }
+
+    static func validateVersion2(in db: Database) throws {
+        try validateVersion1(in: db)
+        do {
+            for statement in version2Statements where statement.hasPrefix("CREATE TABLE ") {
                 let name = String(statement.split(separator: " ", maxSplits: 3)[2])
                 let stored = try String.fetchOne(
                     db,
