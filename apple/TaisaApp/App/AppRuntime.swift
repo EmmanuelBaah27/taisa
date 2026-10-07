@@ -23,7 +23,7 @@ final class AppRuntime {
         AppRuntime {
             let backend = try PersonalRecoveryBackend.personal()
             let store = try await backend.openStore()
-            return HomeClient { try await HomeQuery(store: store).load() }
+            return HomeClient.local(store: store, deviceID: await backend.deviceID())
         }
     }
 

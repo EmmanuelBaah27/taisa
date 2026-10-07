@@ -6,6 +6,16 @@ import TaisaStorage
 
 @MainActor
 final class AppRuntimeTests: XCTestCase {
+    func testLiveRuntimeUsesMutationCapableLocalHomeClient() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let source = try String(
+            contentsOf: root.appendingPathComponent("TaisaApp/App/AppRuntime.swift"),
+            encoding: .utf8
+        )
+        XCTAssertTrue(source.contains("HomeClient.local(store: store, deviceID: await backend.deviceID())"))
+        XCTAssertFalse(source.contains("HomeClient { try await HomeQuery"))
+    }
+
     func testSuccessfulStartBuildsHomeModel() async {
         let runtime = AppRuntime(start: { HomeClient { HomeSnapshot(conversations: [], goals: [], actions: []) } })
         let state = await runtime.start()

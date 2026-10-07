@@ -7,6 +7,7 @@ struct HomeView: View {
     var send: (HomeIntent) -> Void = { _ in }
     var openRecovery: () -> Void = {}
     var openPersonalQA: (() -> Void)?
+    var openInsights: () -> Void = {}
     private let ownsNavigation: Bool
 
     init(
@@ -14,12 +15,14 @@ struct HomeView: View {
         send: @escaping (HomeIntent) -> Void = { _ in },
         openRecovery: @escaping () -> Void = {},
         openPersonalQA: (() -> Void)? = nil,
+        openInsights: @escaping () -> Void = {},
         ownsNavigation: Bool = true
     ) {
         _model = State(initialValue: model)
         self.send = send
         self.openRecovery = openRecovery
         self.openPersonalQA = openPersonalQA
+        self.openInsights = openInsights
         self.ownsNavigation = ownsNavigation
     }
 
@@ -66,18 +69,37 @@ struct HomeView: View {
         case let .content(snapshot, isRefreshing, issue):
             List {
                 if let issue { issueRow(issue) }
-                Section("Recent conversations") {
-                    ForEach(snapshot.conversations, id: \.id) { ConversationRow(conversation: $0, send: send) }
+                if let leadInsight = snapshot.leadInsight {
+                    LeadInsightSection(insight: leadInsight, openInsights: openInsights)
                 }
-                .accessibilityIdentifier("home.conversations")
-                Section("Active goals") {
-                    ForEach(snapshot.goals, id: \.id) { GoalRow(goal: $0, send: send) }
+                ThisWeekSection(
+                    items: snapshot.thisWeek,
+                    unresolvedPriorWeekCount: snapshot.unresolvedPriorWeekCount,
+                    model: model
+                )
+                if snapshot.leadInsight == nil && snapshot.hasConfirmedInsightHistory {
+                    Button("View insights", systemImage: "lightbulb", action: openInsights)
+                        .font(.subheadline)
+                        .accessibilityIdentifier("home.insights.link")
                 }
-                .accessibilityIdentifier("home.goals")
-                Section("Open actions") {
-                    ForEach(snapshot.actions, id: \.id) { ActionRow(action: $0, send: send) }
+                if !snapshot.conversations.isEmpty {
+                    Section("Recent conversations") {
+                        ForEach(snapshot.conversations, id: \.id) { ConversationRow(conversation: $0, send: send) }
+                    }
+                    .accessibilityIdentifier("home.conversations")
                 }
-                .accessibilityIdentifier("home.actions")
+                if !snapshot.goals.isEmpty {
+                    Section("Active goals") {
+                        ForEach(snapshot.goals, id: \.id) { GoalRow(goal: $0, send: send) }
+                    }
+                    .accessibilityIdentifier("home.goals")
+                }
+                if !snapshot.actions.isEmpty {
+                    Section("Open actions") {
+                        ForEach(snapshot.actions, id: \.id) { ActionRow(action: $0, send: send) }
+                    }
+                    .accessibilityIdentifier("home.actions")
+                }
                 if isRefreshing { ProgressView().frame(maxWidth: .infinity) }
             }
             .refreshable { await model.load() }

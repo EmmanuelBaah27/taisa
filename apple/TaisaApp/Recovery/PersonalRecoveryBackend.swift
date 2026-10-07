@@ -39,6 +39,8 @@ actor PersonalRecoveryBackend {
         return try await TaisaStore.open(at: storeURL, keyStore: keyStore)
     }
 
+    func deviceID() -> String { installationID.uuidString }
+
     func createBackup(key: RecoveryKey) async throws -> TaisaBackupDocument {
         let directory = try makeTransferDirectory()
         do {
