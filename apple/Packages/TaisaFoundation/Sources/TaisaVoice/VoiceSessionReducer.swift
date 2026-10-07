@@ -188,6 +188,9 @@ public struct VoiceSessionReducer: Sendable {
         case .discard:
             try require(!state.state.isTerminal)
             let next = copy(state, state: .discarded, stage: .cleanup, cleanupState: .pending)
+            if state.state == .cancelled, state.stage == .capture {
+                return transition(next, deleteEffect(state))
+            }
             var effects: [VoiceSessionEffect] = [.checkpoint(next), .cancelWork]
             if state.stage != .capture {
                 effects.append(state.audioFileID.map(VoiceSessionEffect.deleteAudio) ?? .completeCleanup)
