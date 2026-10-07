@@ -47,8 +47,10 @@
 		456350405E9B8AC9184AB126 /* VoiceSessionScenarios.swift in Sources */ = {isa = PBXBuildFile; fileRef = 022B79237BF857BBC39C4E77 /* VoiceSessionScenarios.swift */; };
 		4C501F4AE644C0CB992030F9 /* InsightsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09FF4AF48190A145ED9F8694 /* InsightsView.swift */; };
 		4E9C7C4A9B317988D683DA1E /* TaisaCore in Frameworks */ = {isa = PBXBuildFile; productRef = A72C408F4F7BE22C7A7A5119 /* TaisaCore */; };
+		518FC0410E534B728B8209C5 /* PersonalCombinedHomeQA.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF3CF6857F247C8075C0E478 /* PersonalCombinedHomeQA.swift */; };
 		5424D4851C6A34AD682A1992 /* HomeViewContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66D126C7392BE051E45EF386 /* HomeViewContractTests.swift */; };
 		54C447F0AB3A057C5F0D619F /* TaisaHome in Frameworks */ = {isa = PBXBuildFile; productRef = 8F03A9525A2F8389BF08DB53 /* TaisaHome */; };
+		55B6B4178C42BC8B73A8F96B /* PersonalCombinedHomeQA.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF3CF6857F247C8075C0E478 /* PersonalCombinedHomeQA.swift */; };
 		5775B0E7899FB76C4B5FC9BF /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0B8739884148E1FFE9C9B1C /* HomeView.swift */; };
 		594A5ECCE433E011BAC72840 /* HomeScenarioView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DE603EA1A17036021FA0FF9 /* HomeScenarioView.swift */; };
 		59562F765C4446D20C1091CA /* TaisaPreviewCatalogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 913DBB6F0D16BF6173604367 /* TaisaPreviewCatalogTests.swift */; };
@@ -93,6 +95,7 @@
 		AFF3C70017F0490B65BE1C0D /* HomeSectionViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DE282C2E35864B24E4EE76E /* HomeSectionViews.swift */; };
 		B1093913D5665590CA1953EE /* RecoveryViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5B97AC1D5F21A3BF7F7BFA3 /* RecoveryViewModelTests.swift */; };
 		B4D5E79232FA07135208B36F /* PreviewRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C860AF058EBC0DCFBFBE7C15 /* PreviewRootView.swift */; };
+		B825A1D80EF92A6A1CBD4830 /* PersonalCombinedHomeQATests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0A6420BF09020369B41FD1F /* PersonalCombinedHomeQATests.swift */; };
 		BBFC26F78DE7211426CBE771 /* TaisaContracts in Frameworks */ = {isa = PBXBuildFile; productRef = C314463D60AD54DD62726CEE /* TaisaContracts */; };
 		BC05599BCB16F2E72FB9E01E /* BuildDiagnosticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B59487963D8B0F07F92A741 /* BuildDiagnosticsView.swift */; };
 		BD1A1B3017AB700297235CDA /* TaisaAudio in Frameworks */ = {isa = PBXBuildFile; productRef = 5A284C439BF302F372B6C93E /* TaisaAudio */; };
@@ -205,6 +208,8 @@
 		C2F0C223EB506445708E8270 /* TaisaUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = TaisaUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		C860AF058EBC0DCFBFBE7C15 /* PreviewRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewRootView.swift; sourceTree = "<group>"; };
 		CC2678E7883E8BACE8D29B43 /* Taisa.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Taisa.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		CF3CF6857F247C8075C0E478 /* PersonalCombinedHomeQA.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalCombinedHomeQA.swift; sourceTree = "<group>"; };
+		D0A6420BF09020369B41FD1F /* PersonalCombinedHomeQATests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalCombinedHomeQATests.swift; sourceTree = "<group>"; };
 		D0B8739884148E1FFE9C9B1C /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		D98709FA19C97713E47DCC11 /* PersonalVoiceSessionModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalVoiceSessionModel.swift; sourceTree = "<group>"; };
 		DFC7614DA2D104B9F3C9FC4C /* TaisaPreview.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = TaisaPreview.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -382,6 +387,7 @@
 				6B59487963D8B0F07F92A741 /* BuildDiagnosticsView.swift */,
 				EDD926DEBBEEBABEDDE1BCE4 /* CloudKitRuntimeConfiguration.swift */,
 				F0AD55CA9F552FE71F09A49D /* FoundationRootView.swift */,
+				CF3CF6857F247C8075C0E478 /* PersonalCombinedHomeQA.swift */,
 				84B4FC6A6B65DD3C62F773B1 /* PersonalDeviceQA.swift */,
 				92D5594A142F5C6089D8C7E2 /* PersonalDeviceQAView.swift */,
 				E79CF0C618833217451F645C /* TaisaApp.swift */,
@@ -473,6 +479,7 @@
 		DF3F74FDFC8EDE9B9AA0C6D7 /* TaisaPersonalTests */ = {
 			isa = PBXGroup;
 			children = (
+				D0A6420BF09020369B41FD1F /* PersonalCombinedHomeQATests.swift */,
 				3A19D945D21AC83D8AF47BED /* PersonalDeviceQATests.swift */,
 				E5A6963E5BEC4FF073F86F31 /* PersonalIsolationTests.swift */,
 				F903B811129986113206457E /* PersonalVoiceGatewayEnrollmentTests.swift */,
@@ -770,6 +777,7 @@
 				79815773A345577758E50B26 /* InsightDetailView.swift in Sources */,
 				0DD1C832FDFC93C59D572AC4 /* InsightsView.swift in Sources */,
 				AD2036C60D1429682A541314 /* LeadInsightSection.swift in Sources */,
+				518FC0410E534B728B8209C5 /* PersonalCombinedHomeQA.swift in Sources */,
 				E142786C2D3010C4A93CF144 /* PersonalDeviceQA.swift in Sources */,
 				264ACBC992C077312BF36A7F /* PersonalDeviceQAView.swift in Sources */,
 				355485AD163D89FD5B0CBCA5 /* PersonalRecoveryBackend.swift in Sources */,
@@ -822,6 +830,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B825A1D80EF92A6A1CBD4830 /* PersonalCombinedHomeQATests.swift in Sources */,
 				357DAF31314ED4F1B0C5F912 /* PersonalDeviceQATests.swift in Sources */,
 				75C41727467C062CC7EA09D4 /* PersonalIsolationTests.swift in Sources */,
 				132DEDB24FA15D3B111375FC /* PersonalVoiceGatewayEnrollmentTests.swift in Sources */,
@@ -852,6 +861,7 @@
 				0AA4AD7C2E56F4FB0FEEE0C6 /* InsightDetailView.swift in Sources */,
 				4C501F4AE644C0CB992030F9 /* InsightsView.swift in Sources */,
 				FA036FCD2A28026DEEF945B5 /* LeadInsightSection.swift in Sources */,
+				55B6B4178C42BC8B73A8F96B /* PersonalCombinedHomeQA.swift in Sources */,
 				32C4DA62AEB52085E487E64F /* PersonalDeviceQA.swift in Sources */,
 				2704C585225D9C8902B3B338 /* PersonalDeviceQAView.swift in Sources */,
 				391B21B781EBCDB921226163 /* PersonalRecoveryBackend.swift in Sources */,
