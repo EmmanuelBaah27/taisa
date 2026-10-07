@@ -1,6 +1,6 @@
 # Linear Roadmap Authority Design
 
-**Status:** Draft — revised after Baah feedback; awaiting renewed review
+**Status:** Approved by Baah — 2026-10-07
 **Last updated:** 2026-10-07
 **Track:** Workflow
 **Tier:** Full
