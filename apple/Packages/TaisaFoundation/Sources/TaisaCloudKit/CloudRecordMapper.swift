@@ -20,7 +20,8 @@ public enum CloudRecordMapper {
     ]
     private static let entityTypes: Set<String> = [
         "profile", "conversation", "message", "goal", "milestone", "action",
-        "evidence", "memory", "memory_source", "snapshot",
+        "evidence", "memory", "memory_source", "weekly_placement", "work_event",
+        "insight", "insight_source", "insight_revision", "snapshot",
     ]
 
     public static var zoneID: CKRecordZone.ID {

@@ -5,7 +5,11 @@ public struct InsightQuery: Sendable {
     private let store: TaisaStore
     public init(store: TaisaStore) { self.store = store }
 
-    public func current() async throws -> [InsightRecord] { try await insights(status: "confirmed") }
+    public func current() async throws -> [InsightRecord] {
+        try await store.read { db in
+            try Row.fetchAll(db, sql: baseInsightSQL + " AND i.status = 'confirmed' AND " + groundedSQL + " ORDER BY i.updated_at_ms DESC, i.id").map(Self.insight)
+        }
+    }
     public func reviewNeeded() async throws -> [InsightRecord] { try await insights(status: "review_needed") }
     public func history() async throws -> [InsightRecord] {
         try await store.read { db in
@@ -14,7 +18,7 @@ public struct InsightQuery: Sendable {
     }
     public func lead(atMS: Int64) async throws -> InsightRecord? {
         try await store.read { db in
-            try Row.fetchOne(db, sql: baseInsightSQL + " AND i.status = 'confirmed' AND i.is_time_sensitive = 1 AND i.home_eligible_until_ms >= ? ORDER BY i.home_eligible_until_ms, i.updated_at_ms DESC, i.id LIMIT 1", arguments: [atMS]).map(Self.insight)
+            try Row.fetchOne(db, sql: baseInsightSQL + " AND i.status = 'confirmed' AND " + groundedSQL + " AND i.is_time_sensitive = 1 AND i.home_eligible_until_ms >= ? ORDER BY i.home_eligible_until_ms, i.updated_at_ms DESC, i.id LIMIT 1", arguments: [atMS]).map(Self.insight)
         }
     }
     public func sources(insightID: String) async throws -> [InsightSourceRecord] {
@@ -46,11 +50,13 @@ public struct InsightQuery: Sendable {
         }
     }
     private var baseInsightSQL: String { Self.baseInsightSQL }
+    private var groundedSQL: String { Self.groundedSQL }
     private static let baseInsightSQL = """
         SELECT i.* FROM insights i WHERE NOT EXISTS (
             SELECT 1 FROM tombstones t WHERE t.entity_type = 'insight' AND t.entity_id = i.id COLLATE NOCASE
         )
         """
+    private static let groundedSQL = "EXISTS (SELECT 1 FROM insight_sources s WHERE s.insight_id = i.id COLLATE NOCASE AND NOT EXISTS (SELECT 1 FROM tombstones t WHERE t.entity_type = 'insight_source' AND t.entity_id = s.id COLLATE NOCASE))"
     private static func insight(_ row: Row) -> InsightRecord {
         InsightRecord(id: row["id"], body: row["body"], status: InsightStatus(rawValue: row["status"])!, isTimeSensitive: (row["is_time_sensitive"] as Int64) == 1, homeEligibleUntilMS: row["home_eligible_until_ms"], createdAtMS: row["created_at_ms"], updatedAtMS: row["updated_at_ms"])
     }
