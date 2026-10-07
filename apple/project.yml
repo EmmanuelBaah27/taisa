@@ -1,0 +1,269 @@
+name: Taisa
+options:
+  minimumXcodeGenVersion: 2.46.0
+  deploymentTarget:
+    iOS: "17.0"
+  generateEmptyDirectories: true
+configs:
+  Debug: debug
+  Preview: debug
+  Personal: debug
+  Release: release
+configFiles:
+  Debug: Config/Debug.xcconfig
+  Preview: Config/Preview.xcconfig
+  Personal: Config/Personal.xcconfig
+  Release: Config/Release.xcconfig
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    TARGETED_DEVICE_FAMILY: "1,2"
+    SUPPORTS_MACCATALYST: NO
+    GENERATE_INFOPLIST_FILE: YES
+    CODE_SIGN_STYLE: Automatic
+packages:
+  TaisaFoundation:
+    path: Packages/TaisaFoundation
+targets:
+  Taisa:
+    type: application
+    platform: iOS
+    info:
+      path: Config/TaisaInfo.plist
+      properties:
+        UIBackgroundModes: [remote-notification]
+        NSMicrophoneUsageDescription: "Taisa uses the microphone only when you choose to record a conversation."
+    sources:
+      - path: TaisaApp
+      - path: Generated
+    settings:
+      base:
+        PRODUCT_NAME: Taisa
+        INFOPLIST_KEY_CFBundleDisplayName: Taisa
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+        INFOPLIST_KEY_TaisaEnvironment: "$(TAISA_ENVIRONMENT)"
+      configs:
+        Debug:
+          CODE_SIGN_ENTITLEMENTS: Config/TaisaDev.entitlements
+        Preview:
+          PRODUCT_BUNDLE_IDENTIFIER: com.taisa.app.unit-host
+        Release:
+          CODE_SIGN_ENTITLEMENTS: Config/Taisa.entitlements
+    dependencies:
+      - package: TaisaFoundation
+        product: TaisaCore
+      - package: TaisaFoundation
+        product: TaisaContracts
+      - package: TaisaFoundation
+        product: TaisaDesignSystem
+      - package: TaisaFoundation
+        product: TaisaStorage
+      - package: TaisaFoundation
+        product: TaisaCloudKit
+      - package: TaisaFoundation
+        product: TaisaRecovery
+      - package: TaisaFoundation
+        product: TaisaSecurity
+      - package: TaisaFoundation
+        product: TaisaVoice
+  TaisaPreview:
+    type: application
+    platform: iOS
+    sources:
+      - path: TaisaPreview
+      - path: TaisaApp/Voice
+      - path: Generated
+    settings:
+      base:
+        PRODUCT_NAME: TaisaPreview
+        PRODUCT_BUNDLE_IDENTIFIER: com.taisa.app.preview
+        TAISA_ENVIRONMENT: preview
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) DEBUG TAISA_PREVIEW"
+        INFOPLIST_KEY_CFBundleDisplayName: Taisa Preview
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+        INFOPLIST_KEY_TaisaEnvironment: "$(TAISA_ENVIRONMENT)"
+        CODE_SIGN_ENTITLEMENTS: Config/TaisaPreview.entitlements
+    dependencies:
+      - package: TaisaFoundation
+        product: TaisaCore
+      - package: TaisaFoundation
+        product: TaisaContracts
+      - package: TaisaFoundation
+        product: TaisaDesignSystem
+      - package: TaisaFoundation
+        product: TaisaPreviewSupport
+      - package: TaisaFoundation
+        product: TaisaStorage
+      - package: TaisaFoundation
+        product: TaisaVoice
+  TaisaPersonal:
+    type: application
+    platform: iOS
+    info:
+      path: Config/TaisaPersonalInfo.plist
+      properties:
+        TaisaEnvironment: "$(TAISA_ENVIRONMENT)"
+        TaisaVoiceGatewayURL: "$(TAISA_VOICE_GATEWAY_URL)"
+        NSFaceIDUsageDescription: "Authenticate to use your Taisa recovery key."
+        NSMicrophoneUsageDescription: "Taisa uses the microphone only when you choose to record a conversation."
+        LSSupportsOpeningDocumentsInPlace: true
+        UTExportedTypeDeclarations:
+          - UTTypeIdentifier: com.taisa.encrypted-backup
+            UTTypeDescription: Taisa Encrypted Backup
+            UTTypeConformsTo: [public.data]
+            UTTypeTagSpecification:
+              public.filename-extension: [taisa-backup]
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: Taisa Encrypted Backup
+            LSItemContentTypes: [com.taisa.encrypted-backup]
+            CFBundleTypeRole: Viewer
+    sources:
+      - path: TaisaApp
+      - path: Generated
+    settings:
+      base:
+        PRODUCT_NAME: TaisaPersonal
+        PRODUCT_BUNDLE_IDENTIFIER: com.taisa.app.personal
+        TAISA_ENVIRONMENT: personal
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) DEBUG TAISA_PERSONAL"
+        INFOPLIST_KEY_CFBundleDisplayName: Taisa Personal
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+        INFOPLIST_KEY_TaisaEnvironment: "$(TAISA_ENVIRONMENT)"
+        CODE_SIGN_ENTITLEMENTS: Config/TaisaPersonal.entitlements
+    dependencies:
+      - package: TaisaFoundation
+        product: TaisaCore
+      - package: TaisaFoundation
+        product: TaisaContracts
+      - package: TaisaFoundation
+        product: TaisaDesignSystem
+      - package: TaisaFoundation
+        product: TaisaStorage
+      - package: TaisaFoundation
+        product: TaisaSecurity
+      - package: TaisaFoundation
+        product: TaisaRecovery
+      - package: TaisaFoundation
+        product: TaisaVoice
+      - package: TaisaFoundation
+        product: TaisaAudio
+      - package: TaisaFoundation
+        product: TaisaNetworking
+  TaisaPersonalTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: TaisaPersonalTests
+    dependencies:
+      - target: TaisaPersonal
+      - package: TaisaFoundation
+        product: TaisaCore
+  TaisaPersonalUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: TaisaPersonalUITests
+    dependencies:
+      - target: TaisaPersonal
+  TaisaUnitTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: TaisaUnitTests
+    dependencies:
+      - target: Taisa
+      - package: TaisaFoundation
+        product: TaisaStorage
+      - package: TaisaFoundation
+        product: TaisaRecovery
+      - package: TaisaFoundation
+        product: TaisaSecurity
+      - package: TaisaFoundation
+        product: TaisaVoice
+  TaisaUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: TaisaUITests
+    dependencies:
+      - target: Taisa
+  TaisaPreviewUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: TaisaPreviewUITests
+    dependencies:
+      - target: TaisaPreview
+schemes:
+  Taisa-Dev:
+    build:
+      targets:
+        Taisa: all
+    run:
+      config: Debug
+    analyze:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - TaisaUnitTests
+        - TaisaUITests
+    profile:
+      config: Debug
+    archive:
+      config: Debug
+  Taisa-Preview:
+    build:
+      targets:
+        TaisaPreview:
+          - run
+          - test
+          - analyze
+    run:
+      config: Preview
+    analyze:
+      config: Preview
+    test:
+      config: Preview
+      targets:
+        - TaisaUnitTests
+        - TaisaPreviewUITests
+  Taisa-Personal:
+    build:
+      targets:
+        TaisaPersonal:
+          - run
+          - test
+          - analyze
+    run:
+      config: Personal
+    analyze:
+      config: Personal
+    test:
+      config: Personal
+      targets:
+        - TaisaPersonalTests
+        - TaisaPersonalUITests
+  Taisa:
+    build:
+      targets:
+        Taisa: all
+    run:
+      config: Release
+    analyze:
+      config: Release
+    test:
+      config: Debug
+      targets:
+        - TaisaUnitTests
+        - TaisaUITests
+    profile:
+      config: Release
+    archive:
+      config: Release

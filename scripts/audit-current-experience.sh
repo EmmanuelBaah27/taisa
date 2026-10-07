@@ -17,6 +17,10 @@ git branch -avv
 
 for branch in "${branches[@]}"; do
   printf '\nBRANCH %s\n' "$branch"
+  if ! git rev-parse --verify --quiet "${branch}^{commit}" >/dev/null; then
+    printf 'MISSING\n'
+    continue
+  fi
   git rev-parse "$branch"
   git merge-base main "$branch"
   git log --oneline "main..$branch"

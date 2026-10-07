@@ -13,15 +13,16 @@ relevant to the task.
 
 | Feature | Track | Stage | Branch | Blocked on |
 |---|---|---|---|---|
+| Swift native audio and conversation streaming | Platform | Review + QA | `feature/swift-native-audio-streaming` | canonical preview integration and exact signed iPhone/iPad QA |
 | Local-first coaching platform | Platform | Build | `feature/local-first-coaching-platform` | Managed-device recovery/privacy QA is next; paid live provider evaluation remains gated; legacy-route retirement requires later explicit approval |
 | Personal alpha release | Platform + Product | Build | `feature/local-first-coaching-platform` | Code-only build complete at `850b3d6`; next gate is Baah approval to create Railway resources, add billing/secrets, and deploy. Signed iPhone installation follows as a separate gate. |
 | Post-Send streaming transcription | Platform + Product | Review + QA | `feature/local-first-coaching-platform` | Managed-device clear/uncertain/no-speech calibration before Ship approval |
 | Taisa system architecture | Platform | Review + QA | `docs/reimagine-product-scope` | Baah document review |
-| Design system foundation and enforcement | Product | Build | `feature/design-system-foundation-and-enforcement` | Verified canonical preview and Baah device QA |
 | Secondary icon button | Product | Review + QA | `feature/secondary-icon-button` | Baah device QA |
 | Recording page | Product | Review + QA | `feature/secondary-icon-button` | Baah device QA |
 | Shared chat and recording shell | Product | Build | `codex/chat-close-auth-handoff` | Baah paired-device QA after preview integration |
 | Glass elevation, alignment, and interaction feedback | Product | Review + QA | `fix/glass-elevation-keyboard-surfaces` | canonical preview integration + Baah device QA |
+| SwiftUI native rebuild | Platform + Product | Shipped | `main` | — |
 
 ---
 
@@ -114,8 +115,8 @@ dependency stage. If not yet in BUILD:
 **Output:** Working code, committed to `feature/<name>`
 
 **DS build order (strict — never deviate):**
-1. DS layer → `mobile/src/components/ui/` (NativeWind, typed props, no business logic)
-2. Screen layer → imports only from `mobile/src/components/ui/`, no inline primitive styles
+1. Native DS layer → `apple/DesignSystem/` (typed semantic tokens and components, no business logic)
+2. Native feature layer → consumes `apple/DesignSystem/`; raw visual values require a documented, verified exception
 
 **Token check before BUILD:**
 - Tokens defined → proceed normally
@@ -129,7 +130,11 @@ dependency stage. If not yet in BUILD:
 ### 5. Review + QA
 **Who:** Claude (`requesting-code-review` + `verification-before-completion`) + Baah (device QA)
 
-**Canonical phone preview:** Only Metro started from `.worktrees/preview-taisa/mobile` on `preview/taisa` may own port `8082` for device QA. Before Beats is asked to device-QA any feature, integrate that feature's committed work into `preview/taisa`; feature worktrees remain isolated implementation environments and are not device-QA targets.
+**Canonical native Apple preview:** SwiftUI device feedback is authoritative only from a signed build record containing the native Git commit, Xcode build number, bundle identifier, distribution/TestFlight version, backend environment, database schema version, parity-catalog revision, and confirmation that the tested device installed that exact build. A simulator, Xcode Preview, or feature worktree is not a device-QA target.
+
+Signed native records are stored in `docs/migration/swiftui/native-builds.md` and validated by `apple/scripts/record-signed-build.mjs`. Development, Preview, Personal, and production Swift builds use separate bundle identities. A Personal Team refresh installs over the existing `com.taisa.app.personal` identity; it never uninstalls that identity because its encrypted store is device-local. Personal file transfer is an explicit encrypted replacement from one authoritative device, not synchronization or history merging.
+
+Voice-platform device QA additionally requires a content-free matrix bound to the same exact commit and signed build. The matrix must cover the registered physical iPhone and iPad, identify the fixture revision and database schema, include interruption, audio-route, lifecycle, connectivity, cancellation, accessibility, privacy, multi-turn, and bounded performance cases, and pass `apple/scripts/verify-voice-evidence.mjs`. Simulator-only evidence and fields capable of carrying audio, transcripts, coaching text, private context, or local paths are invalid.
 
 **Verification matrix:**
 
@@ -137,22 +142,19 @@ dependency stage. If not yet in BUILD:
 |---|---|
 | Backend | Backend Jest suite + backend TypeScript build |
 | Shared types | Shared type-check/build + affected backend tests |
-| Mobile logic | Mobile TypeScript check + relevant available tests |
-| Mobile UI | Mobile TypeScript check + DS compliance + relevant Storybook checks + device QA |
-| Cross-stack | Backend tests/build + shared checks + mobile TypeScript check |
+| Native Apple logic | Swift build + relevant Swift Testing/XCTest suites |
+| Native Apple UI | Swift build + native DS compliance + preview/snapshot checks + exact signed-build device QA |
+| Native Apple cross-stack | Backend tests/build + shared contract fixtures + Swift build/tests + exact signed-build device QA |
+| Cross-stack | Backend tests/build + shared contract checks + Swift build/tests |
 | Docs/workflow | Path/link consistency + workflow verification + clean diff |
 
-Run the narrowest relevant check throughout BUILD, then run the complete applicable row before PR or Ship. Missing test infrastructure is a reported gap, not a passing test. Mobile-facing changes require Baah's device QA unless explicitly classified as non-visual and non-device-sensitive.
+Run the narrowest relevant check throughout BUILD, then run the complete applicable row before PR or Ship. Missing test infrastructure is a reported gap, not a passing test. Device-sensitive Swift changes require Baah's signed-device QA unless explicitly classified as non-visual and non-device-sensitive.
 
-**DS compliance check (blocks PR if any fail):**
-- Build — run `npm run verify:design-system` throughout Product implementation and resolve every finding.
-- Review — run `npm run verify:design-system` before requesting code review or opening a PR.
-- Preview — run `npm run verify:design-system` before integrating a candidate into `preview/taisa`.
-- Ship — run `npm run verify:design-system` again on the exact revision proposed for merge.
-- [ ] All visual primitives in screens import from `mobile/src/components/ui/`
-- [ ] No `StyleSheet.create()` in new or changed files
-- [ ] New DS components: typed + exported props, documented in `docs/design-system.md`
-- [ ] No business logic inside DS components
+**Native Apple DS compliance check (blocks PR if any fail):**
+- [ ] Product views consume typed components/tokens from `apple/DesignSystem/`
+- [ ] Raw visual values have a narrow documented exception and verification coverage
+- [ ] New native DS components expose typed semantic APIs and preview states
+- [ ] No business logic, networking, persistence, or navigation inside native DS components
 
 **If build fails QA:**
 1. Baah notes specific failures in chat.
@@ -198,7 +200,7 @@ agent-owned housekeeping within the existing approvals; it does not add another 
 **Feedback routing — where changes land:**
 ```
 Feedback touches a DS component or token?
-  YES → update mobile/src/components/ui/<Component>.tsx + docs/design-system.md
+  YES → update the native Swift design-system owner + docs/design-system.md
         change propagates to every screen that uses it
   NO  → update the screen directly (layout, positioning, screen-specific logic)
 ```

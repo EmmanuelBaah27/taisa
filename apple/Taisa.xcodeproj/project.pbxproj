@@ -1,0 +1,1820 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		009B5D0E668DB349CF67C57E /* TaisaDesignSystem in Frameworks */ = {isa = PBXBuildFile; productRef = FEF8E8A324CF703C89D9D4A7 /* TaisaDesignSystem */; };
+		00EBB8A65CFC9CCEBB9F96A4 /* CloudKitIsolationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D00619E9662054AA0D87AB3 /* CloudKitIsolationTests.swift */; };
+		02CE99A4B9EAB09D6A730B67 /* VoiceSessionDiagnosticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37D6181795E1F88B04691E7E /* VoiceSessionDiagnosticsView.swift */; };
+		0C8E71835C74BC814F59AC1C /* TaisaPreviewSupport in Frameworks */ = {isa = PBXBuildFile; productRef = 8FA686B6DCB4A6884B2DBA33 /* TaisaPreviewSupport */; };
+		0E0F162C7E603373770D80EA /* VoiceSessionDiagnosticsViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AB82F356059A4761E465BC9 /* VoiceSessionDiagnosticsViewModelTests.swift */; };
+		10558363B760A0814005644A /* RecoveryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E8B118B86D060B608C88EC8 /* RecoveryView.swift */; };
+		14CE1254613B51B8A732F31E /* VoiceSessionAccessibilityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB678CC682AABEFD72A2A63D /* VoiceSessionAccessibilityTests.swift */; };
+		1748385DCE8300004A2B4F94 /* TaisaDesignSystem in Frameworks */ = {isa = PBXBuildFile; productRef = 90EA0964036021A700C04142 /* TaisaDesignSystem */; };
+		197EBF42D4B740F8909FB5C9 /* TaisaLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 542BC8FE972594371B0E82B8 /* TaisaLaunchTests.swift */; };
+		1A9AA4F6A3D6FB605A972CB2 /* TaisaCore in Frameworks */ = {isa = PBXBuildFile; productRef = D2ACC0C577B5AEDE6763EFE5 /* TaisaCore */; };
+		1C3C0759308495D3F89AD423 /* BuildDiagnosticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B59487963D8B0F07F92A741 /* BuildDiagnosticsView.swift */; };
+		1E9F46005B09D3CCFF0801E6 /* VoiceSessionDiagnosticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37D6181795E1F88B04691E7E /* VoiceSessionDiagnosticsView.swift */; };
+		23F902852DA35474CB0D79D0 /* TaisaContracts in Frameworks */ = {isa = PBXBuildFile; productRef = 3D8E0B5042A6307078A2815B /* TaisaContracts */; };
+		264ACBC992C077312BF36A7F /* PersonalDeviceQAView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92D5594A142F5C6089D8C7E2 /* PersonalDeviceQAView.swift */; };
+		2704C585225D9C8902B3B338 /* PersonalDeviceQAView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92D5594A142F5C6089D8C7E2 /* PersonalDeviceQAView.swift */; };
+		27647A73DE2201D81A1724E9 /* PreviewCatalogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E29E857D33A087D16F65BB2C /* PreviewCatalogView.swift */; };
+		2C4953C9F7A77AFE60369188 /* BuildMetadata.generated.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5247C0A0A8695277E1212A3 /* BuildMetadata.generated.swift */; };
+		2F8325E955C7D322F3A85195 /* VoiceSessionDiagnosticsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79B1393C1FED95ECECC487CB /* VoiceSessionDiagnosticsViewModel.swift */; };
+		32C4DA62AEB52085E487E64F /* PersonalDeviceQA.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84B4FC6A6B65DD3C62F773B1 /* PersonalDeviceQA.swift */; };
+		34003D9D1C8966A752A3A7E2 /* PersonalVoiceSessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68CC4A35117BE0C1981CF4E2 /* PersonalVoiceSessionView.swift */; };
+		355485AD163D89FD5B0CBCA5 /* PersonalRecoveryBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3369C3B07B2C81C17D16BFFB /* PersonalRecoveryBackend.swift */; };
+		357DAF31314ED4F1B0C5F912 /* PersonalDeviceQATests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A19D945D21AC83D8AF47BED /* PersonalDeviceQATests.swift */; };
+		391B21B781EBCDB921226163 /* PersonalRecoveryBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3369C3B07B2C81C17D16BFFB /* PersonalRecoveryBackend.swift */; };
+		3AD4E8D286F8319496162CEE /* CloudKitRuntimeConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDD926DEBBEEBABEDDE1BCE4 /* CloudKitRuntimeConfiguration.swift */; };
+		44BD30D2329C67910E146E33 /* PersonalVoiceSessionModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D98709FA19C97713E47DCC11 /* PersonalVoiceSessionModel.swift */; };
+		453968367E2C069858A27195 /* TaisaSecurity in Frameworks */ = {isa = PBXBuildFile; productRef = 42B0308E32320DD4D331FF0B /* TaisaSecurity */; };
+		456350405E9B8AC9184AB126 /* VoiceSessionScenarios.swift in Sources */ = {isa = PBXBuildFile; fileRef = 022B79237BF857BBC39C4E77 /* VoiceSessionScenarios.swift */; };
+		4E9C7C4A9B317988D683DA1E /* TaisaCore in Frameworks */ = {isa = PBXBuildFile; productRef = A72C408F4F7BE22C7A7A5119 /* TaisaCore */; };
+		54C447F0AB3A057C5F0D619F /* TaisaStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 37302F854332C0799EC455A7 /* TaisaStorage */; };
+		59562F765C4446D20C1091CA /* TaisaPreviewCatalogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 913DBB6F0D16BF6173604367 /* TaisaPreviewCatalogTests.swift */; };
+		5B0AA018E7F5C851901458DF /* FoundationRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0AD55CA9F552FE71F09A49D /* FoundationRootView.swift */; };
+		5D3E2CD7D9A522B3FC372CFC /* RecoveryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E8B118B86D060B608C88EC8 /* RecoveryView.swift */; };
+		5D593FD43F48E001D8FEE749 /* TaisaCore in Frameworks */ = {isa = PBXBuildFile; productRef = C4574000EFC848D85BD35725 /* TaisaCore */; };
+		5DCEA91D737FD27D788EEF53 /* TaisaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E79CF0C618833217451F645C /* TaisaApp.swift */; };
+		622B88198B1966A9E8BA2716 /* TaisaVoice in Frameworks */ = {isa = PBXBuildFile; productRef = FDEFAC7298DC6A2773CC1955 /* TaisaVoice */; };
+		6A8C01721A57C6BF44E6802F /* BuildMetadata.generated.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5247C0A0A8695277E1212A3 /* BuildMetadata.generated.swift */; };
+		7123CE009420812A33170858 /* TaisaCloudKit in Frameworks */ = {isa = PBXBuildFile; productRef = F244CD17C07591605E35309D /* TaisaCloudKit */; };
+		7140D458E177D716DDF995ED /* TaisaRecovery in Frameworks */ = {isa = PBXBuildFile; productRef = C92D9DF8F24BA40AAB6BC2C5 /* TaisaRecovery */; };
+		7236186363DA6E89483D248C /* TaisaStorage in Frameworks */ = {isa = PBXBuildFile; productRef = B6433508F77896BF3BB8142E /* TaisaStorage */; };
+		735261FA7E7C99694A4BADF2 /* TaisaVoice in Frameworks */ = {isa = PBXBuildFile; productRef = B4AF963C3CB1ACBE917F55B6 /* TaisaVoice */; };
+		753F597C11D6E06916123006 /* PersonalRecoveryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 163DACBEE83EA3467C0A3AE7 /* PersonalRecoveryUITests.swift */; };
+		75C41727467C062CC7EA09D4 /* PersonalIsolationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5A6963E5BEC4FF073F86F31 /* PersonalIsolationTests.swift */; };
+		7C05CA124CB12956C757090D /* TaisaAccessibilityLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D8CAD9BE68E8343796C4A99 /* TaisaAccessibilityLayoutTests.swift */; };
+		7C4B091373DAF738EF0378F3 /* TaisaDesignSystem in Frameworks */ = {isa = PBXBuildFile; productRef = AEE5FF205DE32DC66F518228 /* TaisaDesignSystem */; };
+		7E3D6773D21722D0D33FD661 /* TaisaBackupDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = A27ABA4FC2F66A76681F60EA /* TaisaBackupDocument.swift */; };
+		80CF9E6838CF407418A720B5 /* TaisaBackupDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = A27ABA4FC2F66A76681F60EA /* TaisaBackupDocument.swift */; };
+		82C2C450FA3F72FA1A85F916 /* VoiceSessionDiagnosticsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79B1393C1FED95ECECC487CB /* VoiceSessionDiagnosticsViewModel.swift */; };
+		85C567721275F369CD53177E /* TaisaCore in Frameworks */ = {isa = PBXBuildFile; productRef = FFB07053D3A453E2945166B9 /* TaisaCore */; };
+		8EA94BF84706F6197B9CB847 /* TaisaPreviewApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D1AF7F2E4A4A980D0791D4A /* TaisaPreviewApp.swift */; };
+		928167D0A53DD357C0CDF629 /* TaisaStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 4B15CC5B19E1268F48019E88 /* TaisaStorage */; };
+		92AC13DEA84CC891F4654F4C /* RecoveryViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A01B83066FC36CB8726EE5C8 /* RecoveryViewModel.swift */; };
+		980EFD6B050D14F51379E3F9 /* PersonalVoiceSessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68CC4A35117BE0C1981CF4E2 /* PersonalVoiceSessionView.swift */; };
+		994E9601F13E58AD25705A77 /* VoiceSessionDiagnosticsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79B1393C1FED95ECECC487CB /* VoiceSessionDiagnosticsViewModel.swift */; };
+		9BD10D6AEBDB181476582D27 /* TaisaRecovery in Frameworks */ = {isa = PBXBuildFile; productRef = E84FDD4ABFDEEE55C48646E6 /* TaisaRecovery */; };
+		9BF2208710111D39A2826689 /* TaisaAudio in Frameworks */ = {isa = PBXBuildFile; productRef = 5A284C439BF302F372B6C93E /* TaisaAudio */; };
+		A6FF8788973A629BC856829E /* TaisaStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 542567F2D107C03E3EEEEBA7 /* TaisaStorage */; };
+		B1093913D5665590CA1953EE /* RecoveryViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5B97AC1D5F21A3BF7F7BFA3 /* RecoveryViewModelTests.swift */; };
+		B4D5E79232FA07135208B36F /* PreviewRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C860AF058EBC0DCFBFBE7C15 /* PreviewRootView.swift */; };
+		BBFC26F78DE7211426CBE771 /* TaisaContracts in Frameworks */ = {isa = PBXBuildFile; productRef = C314463D60AD54DD62726CEE /* TaisaContracts */; };
+		BC05599BCB16F2E72FB9E01E /* BuildDiagnosticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B59487963D8B0F07F92A741 /* BuildDiagnosticsView.swift */; };
+		BD1A1B3017AB700297235CDA /* TaisaNetworking in Frameworks */ = {isa = PBXBuildFile; productRef = DB8B86318CA6204FB4E99DA2 /* TaisaNetworking */; };
+		C2DBE85A614BA9BA5CB5D2E7 /* FoundationRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0AD55CA9F552FE71F09A49D /* FoundationRootView.swift */; };
+		C31E95B09D5F04842A0BF4E7 /* TaisaContracts in Frameworks */ = {isa = PBXBuildFile; productRef = ABB29DAC3609B4A787D34141 /* TaisaContracts */; };
+		C706F833D6F085BA07123280 /* BuildMetadata.generated.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5247C0A0A8695277E1212A3 /* BuildMetadata.generated.swift */; };
+		D0A68EEFFB6A44CA52380838 /* TaisaVoice in Frameworks */ = {isa = PBXBuildFile; productRef = 59F6EB601F04E46C4F72469B /* TaisaVoice */; };
+		D1445280AAB7B076CF960071 /* FoundationSmokeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C9D4835226A0691261B0E56 /* FoundationSmokeTests.swift */; };
+		D23CB4A7E400C56447E31548 /* RecoveryViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A01B83066FC36CB8726EE5C8 /* RecoveryViewModel.swift */; };
+		D65CD3C640F6A696D18DD9A9 /* VoiceSessionDiagnosticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37D6181795E1F88B04691E7E /* VoiceSessionDiagnosticsView.swift */; };
+		D78923F4CFD4918C2BC107BC /* TaisaSecurity in Frameworks */ = {isa = PBXBuildFile; productRef = 02B15911AB05FD1D79A8F89B /* TaisaSecurity */; };
+		DBA10E146CE606FED896C76D /* PersonalVoiceSessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68CC4A35117BE0C1981CF4E2 /* PersonalVoiceSessionView.swift */; };
+		DF8C3E5BCC13F767A50E6CA6 /* TaisaVoice in Frameworks */ = {isa = PBXBuildFile; productRef = 00B3AC12985BA98D50112E70 /* TaisaVoice */; };
+		E142786C2D3010C4A93CF144 /* PersonalDeviceQA.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84B4FC6A6B65DD3C62F773B1 /* PersonalDeviceQA.swift */; };
+		E417A17D0B99B34A5154D18D /* TaisaRecovery in Frameworks */ = {isa = PBXBuildFile; productRef = C557FCD4DF05EE6AE9DA5AEF /* TaisaRecovery */; };
+		EB27A0A8339056CA57C45029 /* PersonalVoiceSessionModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D98709FA19C97713E47DCC11 /* PersonalVoiceSessionModel.swift */; };
+		F204440FEA96C5FC1F7A9A7C /* TaisaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E79CF0C618833217451F645C /* TaisaApp.swift */; };
+		F44EFB8183B89F4BCC1DFE50 /* PersonalVoiceSessionModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D98709FA19C97713E47DCC11 /* PersonalVoiceSessionModel.swift */; };
+		F87EBD9C8CC414815088AD95 /* FoundationScenarios.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA84D91BC150697897986EF9 /* FoundationScenarios.swift */; };
+		FB2D8A8DB4B4D5D7D7918DBE /* TaisaSecurity in Frameworks */ = {isa = PBXBuildFile; productRef = 55DB264F2B6F35AF316AF968 /* TaisaSecurity */; };
+		FB493A279C19DB59E570EEC2 /* AppleCapabilityAvailabilityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 538DFC0F6334FDEC4DB6DE3E /* AppleCapabilityAvailabilityTests.swift */; };
+		FFAA066E0649D55DCCFDE268 /* CloudKitRuntimeConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDD926DEBBEEBABEDDE1BCE4 /* CloudKitRuntimeConfiguration.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		134CBA39BCE402029C7D6BB6 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 1F69AC39B00EED61FAF1BDC8 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 66FFAFFD3FAF5E994E443BD4;
+			remoteInfo = Taisa;
+		};
+		61818A55166100F367C198BF /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 1F69AC39B00EED61FAF1BDC8 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 66FFAFFD3FAF5E994E443BD4;
+			remoteInfo = Taisa;
+		};
+		640639339522E7EFE0854668 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 1F69AC39B00EED61FAF1BDC8 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 944EA23BD99A5A4A0464FA71;
+			remoteInfo = TaisaPreview;
+		};
+		9370C201D8968756810CAB41 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 1F69AC39B00EED61FAF1BDC8 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 118A724EB47736BF0B5316E0;
+			remoteInfo = TaisaPersonal;
+		};
+		AFD1208985472A927235DCBE /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 1F69AC39B00EED61FAF1BDC8 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 118A724EB47736BF0B5316E0;
+			remoteInfo = TaisaPersonal;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		022B79237BF857BBC39C4E77 /* VoiceSessionScenarios.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceSessionScenarios.swift; sourceTree = "<group>"; };
+		0410D10BD12CA11BFC1FA6C0 /* TaisaPersonalTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = TaisaPersonalTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		1436FAD8AE09F2E408377FE1 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
+		163DACBEE83EA3467C0A3AE7 /* PersonalRecoveryUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalRecoveryUITests.swift; sourceTree = "<group>"; };
+		1D8CAD9BE68E8343796C4A99 /* TaisaAccessibilityLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaisaAccessibilityLayoutTests.swift; sourceTree = "<group>"; };
+		2C67580C7BC2D92BA207D078 /* TaisaPreviewUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = TaisaPreviewUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		3369C3B07B2C81C17D16BFFB /* PersonalRecoveryBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalRecoveryBackend.swift; sourceTree = "<group>"; };
+		37D6181795E1F88B04691E7E /* VoiceSessionDiagnosticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceSessionDiagnosticsView.swift; sourceTree = "<group>"; };
+		391BEE70ED9DB4D5A40CEF12 /* Preview.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Preview.xcconfig; sourceTree = "<group>"; };
+		3A19D945D21AC83D8AF47BED /* PersonalDeviceQATests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalDeviceQATests.swift; sourceTree = "<group>"; };
+		4545C373898A484014E37320 /* TaisaFoundation */ = {isa = PBXFileReference; lastKnownFileType = folder; name = TaisaFoundation; path = Packages/TaisaFoundation; sourceTree = SOURCE_ROOT; };
+		4D1AF7F2E4A4A980D0791D4A /* TaisaPreviewApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaisaPreviewApp.swift; sourceTree = "<group>"; };
+		538DFC0F6334FDEC4DB6DE3E /* AppleCapabilityAvailabilityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleCapabilityAvailabilityTests.swift; sourceTree = "<group>"; };
+		542BC8FE972594371B0E82B8 /* TaisaLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaisaLaunchTests.swift; sourceTree = "<group>"; };
+		5C9D4835226A0691261B0E56 /* FoundationSmokeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoundationSmokeTests.swift; sourceTree = "<group>"; };
+		5D00619E9662054AA0D87AB3 /* CloudKitIsolationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudKitIsolationTests.swift; sourceTree = "<group>"; };
+		5E8B118B86D060B608C88EC8 /* RecoveryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecoveryView.swift; sourceTree = "<group>"; };
+		65924125DDA0CEF804FDC976 /* TaisaPersonal.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = TaisaPersonal.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		68CC4A35117BE0C1981CF4E2 /* PersonalVoiceSessionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalVoiceSessionView.swift; sourceTree = "<group>"; };
+		6B59487963D8B0F07F92A741 /* BuildDiagnosticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildDiagnosticsView.swift; sourceTree = "<group>"; };
+		79B1393C1FED95ECECC487CB /* VoiceSessionDiagnosticsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceSessionDiagnosticsViewModel.swift; sourceTree = "<group>"; };
+		7D827F52A6D59761BA92F0B6 /* TaisaPersonalUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = TaisaPersonalUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		84B4FC6A6B65DD3C62F773B1 /* PersonalDeviceQA.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalDeviceQA.swift; sourceTree = "<group>"; };
+		913DBB6F0D16BF6173604367 /* TaisaPreviewCatalogTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaisaPreviewCatalogTests.swift; sourceTree = "<group>"; };
+		92D5594A142F5C6089D8C7E2 /* PersonalDeviceQAView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalDeviceQAView.swift; sourceTree = "<group>"; };
+		9AB82F356059A4761E465BC9 /* VoiceSessionDiagnosticsViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceSessionDiagnosticsViewModelTests.swift; sourceTree = "<group>"; };
+		A01B83066FC36CB8726EE5C8 /* RecoveryViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecoveryViewModel.swift; sourceTree = "<group>"; };
+		A27ABA4FC2F66A76681F60EA /* TaisaBackupDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaisaBackupDocument.swift; sourceTree = "<group>"; };
+		BD29E560E6C8098B625BCAEA /* TaisaUnitTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = TaisaUnitTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		C2F0C223EB506445708E8270 /* TaisaUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = TaisaUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		C860AF058EBC0DCFBFBE7C15 /* PreviewRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewRootView.swift; sourceTree = "<group>"; };
+		CC2678E7883E8BACE8D29B43 /* Taisa.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Taisa.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D98709FA19C97713E47DCC11 /* PersonalVoiceSessionModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalVoiceSessionModel.swift; sourceTree = "<group>"; };
+		DFC7614DA2D104B9F3C9FC4C /* TaisaPreview.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = TaisaPreview.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		E29E857D33A087D16F65BB2C /* PreviewCatalogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewCatalogView.swift; sourceTree = "<group>"; };
+		E5A6963E5BEC4FF073F86F31 /* PersonalIsolationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalIsolationTests.swift; sourceTree = "<group>"; };
+		E73285977200D46D5C6A739F /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
+		E79CF0C618833217451F645C /* TaisaApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaisaApp.swift; sourceTree = "<group>"; };
+		EA84D91BC150697897986EF9 /* FoundationScenarios.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoundationScenarios.swift; sourceTree = "<group>"; };
+		EB678CC682AABEFD72A2A63D /* VoiceSessionAccessibilityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceSessionAccessibilityTests.swift; sourceTree = "<group>"; };
+		EDD926DEBBEEBABEDDE1BCE4 /* CloudKitRuntimeConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudKitRuntimeConfiguration.swift; sourceTree = "<group>"; };
+		F0AD55CA9F552FE71F09A49D /* FoundationRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoundationRootView.swift; sourceTree = "<group>"; };
+		F5247C0A0A8695277E1212A3 /* BuildMetadata.generated.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildMetadata.generated.swift; sourceTree = "<group>"; };
+		F5B97AC1D5F21A3BF7F7BFA3 /* RecoveryViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecoveryViewModelTests.swift; sourceTree = "<group>"; };
+		F85D7A73226CB6E9770D24D6 /* Personal.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Personal.xcconfig; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		3CA043D9D9C23199E785A038 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5D593FD43F48E001D8FEE749 /* TaisaCore in Frameworks */,
+				C31E95B09D5F04842A0BF4E7 /* TaisaContracts in Frameworks */,
+				7C4B091373DAF738EF0378F3 /* TaisaDesignSystem in Frameworks */,
+				A6FF8788973A629BC856829E /* TaisaStorage in Frameworks */,
+				453968367E2C069858A27195 /* TaisaSecurity in Frameworks */,
+				9BD10D6AEBDB181476582D27 /* TaisaRecovery in Frameworks */,
+				DF8C3E5BCC13F767A50E6CA6 /* TaisaVoice in Frameworks */,
+				9BF2208710111D39A2826689 /* TaisaAudio in Frameworks */,
+				BD1A1B3017AB700297235CDA /* TaisaNetworking in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B0FFF6A66DE948009C735467 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7236186363DA6E89483D248C /* TaisaStorage in Frameworks */,
+				E417A17D0B99B34A5154D18D /* TaisaRecovery in Frameworks */,
+				D78923F4CFD4918C2BC107BC /* TaisaSecurity in Frameworks */,
+				735261FA7E7C99694A4BADF2 /* TaisaVoice in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B605B215A495938EA165DC32 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4E9C7C4A9B317988D683DA1E /* TaisaCore in Frameworks */,
+				23F902852DA35474CB0D79D0 /* TaisaContracts in Frameworks */,
+				009B5D0E668DB349CF67C57E /* TaisaDesignSystem in Frameworks */,
+				54C447F0AB3A057C5F0D619F /* TaisaStorage in Frameworks */,
+				7123CE009420812A33170858 /* TaisaCloudKit in Frameworks */,
+				7140D458E177D716DDF995ED /* TaisaRecovery in Frameworks */,
+				FB2D8A8DB4B4D5D7D7918DBE /* TaisaSecurity in Frameworks */,
+				622B88198B1966A9E8BA2716 /* TaisaVoice in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D68079F98A88818D74D5975D /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1A9AA4F6A3D6FB605A972CB2 /* TaisaCore in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E084E96DCDB78EF5E35182D2 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				85C567721275F369CD53177E /* TaisaCore in Frameworks */,
+				BBFC26F78DE7211426CBE771 /* TaisaContracts in Frameworks */,
+				1748385DCE8300004A2B4F94 /* TaisaDesignSystem in Frameworks */,
+				0C8E71835C74BC814F59AC1C /* TaisaPreviewSupport in Frameworks */,
+				928167D0A53DD357C0CDF629 /* TaisaStorage in Frameworks */,
+				D0A68EEFFB6A44CA52380838 /* TaisaVoice in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		0CA79807F37BD8DFE3979FEB /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				CC2678E7883E8BACE8D29B43 /* Taisa.app */,
+				65924125DDA0CEF804FDC976 /* TaisaPersonal.app */,
+				0410D10BD12CA11BFC1FA6C0 /* TaisaPersonalTests.xctest */,
+				7D827F52A6D59761BA92F0B6 /* TaisaPersonalUITests.xctest */,
+				DFC7614DA2D104B9F3C9FC4C /* TaisaPreview.app */,
+				2C67580C7BC2D92BA207D078 /* TaisaPreviewUITests.xctest */,
+				C2F0C223EB506445708E8270 /* TaisaUITests.xctest */,
+				BD29E560E6C8098B625BCAEA /* TaisaUnitTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		16BB71C41EFB62EE6336932F /* TaisaPreview */ = {
+			isa = PBXGroup;
+			children = (
+				EA84D91BC150697897986EF9 /* FoundationScenarios.swift */,
+				E29E857D33A087D16F65BB2C /* PreviewCatalogView.swift */,
+				C860AF058EBC0DCFBFBE7C15 /* PreviewRootView.swift */,
+				4D1AF7F2E4A4A980D0791D4A /* TaisaPreviewApp.swift */,
+				022B79237BF857BBC39C4E77 /* VoiceSessionScenarios.swift */,
+			);
+			path = TaisaPreview;
+			sourceTree = "<group>";
+		};
+		2E894D1E47C0090DB61C975D /* TaisaPersonalUITests */ = {
+			isa = PBXGroup;
+			children = (
+				163DACBEE83EA3467C0A3AE7 /* PersonalRecoveryUITests.swift */,
+			);
+			path = TaisaPersonalUITests;
+			sourceTree = "<group>";
+		};
+		4F8F3D9EE97CEA0B954B5C6E /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				4545C373898A484014E37320 /* TaisaFoundation */,
+			);
+			path = Packages;
+			sourceTree = "<group>";
+		};
+		6C8147F0F2BBC50811874CA3 /* TaisaPreviewUITests */ = {
+			isa = PBXGroup;
+			children = (
+				1D8CAD9BE68E8343796C4A99 /* TaisaAccessibilityLayoutTests.swift */,
+				913DBB6F0D16BF6173604367 /* TaisaPreviewCatalogTests.swift */,
+				EB678CC682AABEFD72A2A63D /* VoiceSessionAccessibilityTests.swift */,
+			);
+			path = TaisaPreviewUITests;
+			sourceTree = "<group>";
+		};
+		73BDC3C6D2994C65D83D10EF /* Recovery */ = {
+			isa = PBXGroup;
+			children = (
+				3369C3B07B2C81C17D16BFFB /* PersonalRecoveryBackend.swift */,
+				5E8B118B86D060B608C88EC8 /* RecoveryView.swift */,
+				A01B83066FC36CB8726EE5C8 /* RecoveryViewModel.swift */,
+				A27ABA4FC2F66A76681F60EA /* TaisaBackupDocument.swift */,
+			);
+			path = Recovery;
+			sourceTree = "<group>";
+		};
+		76C6C7C70CD322B9872D7674 /* TaisaUnitTests */ = {
+			isa = PBXGroup;
+			children = (
+				538DFC0F6334FDEC4DB6DE3E /* AppleCapabilityAvailabilityTests.swift */,
+				5D00619E9662054AA0D87AB3 /* CloudKitIsolationTests.swift */,
+				5C9D4835226A0691261B0E56 /* FoundationSmokeTests.swift */,
+				F5B97AC1D5F21A3BF7F7BFA3 /* RecoveryViewModelTests.swift */,
+				9AB82F356059A4761E465BC9 /* VoiceSessionDiagnosticsViewModelTests.swift */,
+			);
+			path = TaisaUnitTests;
+			sourceTree = "<group>";
+		};
+		8383E1528B799AC12D21FB59 /* TaisaApp */ = {
+			isa = PBXGroup;
+			children = (
+				6B59487963D8B0F07F92A741 /* BuildDiagnosticsView.swift */,
+				EDD926DEBBEEBABEDDE1BCE4 /* CloudKitRuntimeConfiguration.swift */,
+				F0AD55CA9F552FE71F09A49D /* FoundationRootView.swift */,
+				84B4FC6A6B65DD3C62F773B1 /* PersonalDeviceQA.swift */,
+				92D5594A142F5C6089D8C7E2 /* PersonalDeviceQAView.swift */,
+				E79CF0C618833217451F645C /* TaisaApp.swift */,
+				73BDC3C6D2994C65D83D10EF /* Recovery */,
+				9AFDEDE275BEE8DC3DB7EA29 /* Voice */,
+			);
+			path = TaisaApp;
+			sourceTree = "<group>";
+		};
+		9AFDEDE275BEE8DC3DB7EA29 /* Voice */ = {
+			isa = PBXGroup;
+			children = (
+				D98709FA19C97713E47DCC11 /* PersonalVoiceSessionModel.swift */,
+				68CC4A35117BE0C1981CF4E2 /* PersonalVoiceSessionView.swift */,
+				37D6181795E1F88B04691E7E /* VoiceSessionDiagnosticsView.swift */,
+				79B1393C1FED95ECECC487CB /* VoiceSessionDiagnosticsViewModel.swift */,
+			);
+			path = Voice;
+			sourceTree = "<group>";
+		};
+		B89EB78B2C706127A44F1607 /* TaisaUITests */ = {
+			isa = PBXGroup;
+			children = (
+				542BC8FE972594371B0E82B8 /* TaisaLaunchTests.swift */,
+			);
+			path = TaisaUITests;
+			sourceTree = "<group>";
+		};
+		C191D2E94CBA117F4E9E765C /* Generated */ = {
+			isa = PBXGroup;
+			children = (
+				F5247C0A0A8695277E1212A3 /* BuildMetadata.generated.swift */,
+			);
+			path = Generated;
+			sourceTree = "<group>";
+		};
+		D1F74BCB089FEBAE6BD022E3 = {
+			isa = PBXGroup;
+			children = (
+				D4CB250D4357A7E294F8C2E6 /* Config */,
+				C191D2E94CBA117F4E9E765C /* Generated */,
+				4F8F3D9EE97CEA0B954B5C6E /* Packages */,
+				8383E1528B799AC12D21FB59 /* TaisaApp */,
+				DF3F74FDFC8EDE9B9AA0C6D7 /* TaisaPersonalTests */,
+				2E894D1E47C0090DB61C975D /* TaisaPersonalUITests */,
+				16BB71C41EFB62EE6336932F /* TaisaPreview */,
+				6C8147F0F2BBC50811874CA3 /* TaisaPreviewUITests */,
+				B89EB78B2C706127A44F1607 /* TaisaUITests */,
+				76C6C7C70CD322B9872D7674 /* TaisaUnitTests */,
+				0CA79807F37BD8DFE3979FEB /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		D4CB250D4357A7E294F8C2E6 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				E73285977200D46D5C6A739F /* Debug.xcconfig */,
+				F85D7A73226CB6E9770D24D6 /* Personal.xcconfig */,
+				391BEE70ED9DB4D5A40CEF12 /* Preview.xcconfig */,
+				1436FAD8AE09F2E408377FE1 /* Release.xcconfig */,
+			);
+			path = Config;
+			sourceTree = "<group>";
+		};
+		DF3F74FDFC8EDE9B9AA0C6D7 /* TaisaPersonalTests */ = {
+			isa = PBXGroup;
+			children = (
+				3A19D945D21AC83D8AF47BED /* PersonalDeviceQATests.swift */,
+				E5A6963E5BEC4FF073F86F31 /* PersonalIsolationTests.swift */,
+			);
+			path = TaisaPersonalTests;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		0E4CB3E4A7973D8D85BD97CF /* TaisaUnitTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CE5F7D4F175AAA5F39793785 /* Build configuration list for PBXNativeTarget "TaisaUnitTests" */;
+			buildPhases = (
+				94C9A1BC97612CC88E9E9EC2 /* Sources */,
+				B0FFF6A66DE948009C735467 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				BCE8669AF00C893CF96E6DD5 /* PBXTargetDependency */,
+			);
+			name = TaisaUnitTests;
+			packageProductDependencies = (
+				B6433508F77896BF3BB8142E /* TaisaStorage */,
+				C557FCD4DF05EE6AE9DA5AEF /* TaisaRecovery */,
+				02B15911AB05FD1D79A8F89B /* TaisaSecurity */,
+				B4AF963C3CB1ACBE917F55B6 /* TaisaVoice */,
+			);
+			productName = TaisaUnitTests;
+			productReference = BD29E560E6C8098B625BCAEA /* TaisaUnitTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		118A724EB47736BF0B5316E0 /* TaisaPersonal */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FD69A2EC75F970936BFEAD45 /* Build configuration list for PBXNativeTarget "TaisaPersonal" */;
+			buildPhases = (
+				877F347F4AA6DD95264963CD /* Sources */,
+				3CA043D9D9C23199E785A038 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = TaisaPersonal;
+			packageProductDependencies = (
+				C4574000EFC848D85BD35725 /* TaisaCore */,
+				ABB29DAC3609B4A787D34141 /* TaisaContracts */,
+				AEE5FF205DE32DC66F518228 /* TaisaDesignSystem */,
+				542567F2D107C03E3EEEEBA7 /* TaisaStorage */,
+				42B0308E32320DD4D331FF0B /* TaisaSecurity */,
+				E84FDD4ABFDEEE55C48646E6 /* TaisaRecovery */,
+				00B3AC12985BA98D50112E70 /* TaisaVoice */,
+				5A284C439BF302F372B6C93E /* TaisaAudio */,
+				DB8B86318CA6204FB4E99DA2 /* TaisaNetworking */,
+			);
+			productName = TaisaPersonal;
+			productReference = 65924125DDA0CEF804FDC976 /* TaisaPersonal.app */;
+			productType = "com.apple.product-type.application";
+		};
+		66FFAFFD3FAF5E994E443BD4 /* Taisa */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 68E979BED0F9F61F2E898BF6 /* Build configuration list for PBXNativeTarget "Taisa" */;
+			buildPhases = (
+				F697230EA83A6555EFAC728D /* Sources */,
+				B605B215A495938EA165DC32 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Taisa;
+			packageProductDependencies = (
+				A72C408F4F7BE22C7A7A5119 /* TaisaCore */,
+				3D8E0B5042A6307078A2815B /* TaisaContracts */,
+				FEF8E8A324CF703C89D9D4A7 /* TaisaDesignSystem */,
+				37302F854332C0799EC455A7 /* TaisaStorage */,
+				F244CD17C07591605E35309D /* TaisaCloudKit */,
+				C92D9DF8F24BA40AAB6BC2C5 /* TaisaRecovery */,
+				55DB264F2B6F35AF316AF968 /* TaisaSecurity */,
+				FDEFAC7298DC6A2773CC1955 /* TaisaVoice */,
+			);
+			productName = Taisa;
+			productReference = CC2678E7883E8BACE8D29B43 /* Taisa.app */;
+			productType = "com.apple.product-type.application";
+		};
+		944EA23BD99A5A4A0464FA71 /* TaisaPreview */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 219F967F5DE4862C3199F819 /* Build configuration list for PBXNativeTarget "TaisaPreview" */;
+			buildPhases = (
+				4D589187A1AF0F20BBD366FF /* Sources */,
+				E084E96DCDB78EF5E35182D2 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = TaisaPreview;
+			packageProductDependencies = (
+				FFB07053D3A453E2945166B9 /* TaisaCore */,
+				C314463D60AD54DD62726CEE /* TaisaContracts */,
+				90EA0964036021A700C04142 /* TaisaDesignSystem */,
+				8FA686B6DCB4A6884B2DBA33 /* TaisaPreviewSupport */,
+				4B15CC5B19E1268F48019E88 /* TaisaStorage */,
+				59F6EB601F04E46C4F72469B /* TaisaVoice */,
+			);
+			productName = TaisaPreview;
+			productReference = DFC7614DA2D104B9F3C9FC4C /* TaisaPreview.app */;
+			productType = "com.apple.product-type.application";
+		};
+		B7582BFFACE3024637C84554 /* TaisaUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 6C4356A2643AA827B322A0EF /* Build configuration list for PBXNativeTarget "TaisaUITests" */;
+			buildPhases = (
+				E52D9E4DEECFA48E1ABF0EB5 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				326861F25D59E15F0D59722F /* PBXTargetDependency */,
+			);
+			name = TaisaUITests;
+			packageProductDependencies = (
+			);
+			productName = TaisaUITests;
+			productReference = C2F0C223EB506445708E8270 /* TaisaUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		E2608AF89C4A30E946949247 /* TaisaPreviewUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E105F31DFE2A1DB467F02CA3 /* Build configuration list for PBXNativeTarget "TaisaPreviewUITests" */;
+			buildPhases = (
+				9FCDE1710554DDB4C2FF6E80 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				1168442478C3F17AB05038A0 /* PBXTargetDependency */,
+			);
+			name = TaisaPreviewUITests;
+			packageProductDependencies = (
+			);
+			productName = TaisaPreviewUITests;
+			productReference = 2C67580C7BC2D92BA207D078 /* TaisaPreviewUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		E4EA2E988FC6D4B332D0C363 /* TaisaPersonalUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 5BD83C92D9620583F198DDEC /* Build configuration list for PBXNativeTarget "TaisaPersonalUITests" */;
+			buildPhases = (
+				91CAD1F5755D66697E88C7CC /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				5F339EC5584B4C532F9C6BE2 /* PBXTargetDependency */,
+			);
+			name = TaisaPersonalUITests;
+			packageProductDependencies = (
+			);
+			productName = TaisaPersonalUITests;
+			productReference = 7D827F52A6D59761BA92F0B6 /* TaisaPersonalUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		F9B6D0908E37C4A8F4F5ED34 /* TaisaPersonalTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FCAC08636CB07891C7BD0694 /* Build configuration list for PBXNativeTarget "TaisaPersonalTests" */;
+			buildPhases = (
+				B0D4549C642A2E82B652284D /* Sources */,
+				D68079F98A88818D74D5975D /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				05FBDAD39D5FDA22EB3FC2C7 /* PBXTargetDependency */,
+			);
+			name = TaisaPersonalTests;
+			packageProductDependencies = (
+				D2ACC0C577B5AEDE6763EFE5 /* TaisaCore */,
+			);
+			productName = TaisaPersonalTests;
+			productReference = 0410D10BD12CA11BFC1FA6C0 /* TaisaPersonalTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		1F69AC39B00EED61FAF1BDC8 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					0E4CB3E4A7973D8D85BD97CF = {
+						ProvisioningStyle = Automatic;
+					};
+					118A724EB47736BF0B5316E0 = {
+						ProvisioningStyle = Automatic;
+					};
+					66FFAFFD3FAF5E994E443BD4 = {
+						ProvisioningStyle = Automatic;
+					};
+					944EA23BD99A5A4A0464FA71 = {
+						ProvisioningStyle = Automatic;
+					};
+					B7582BFFACE3024637C84554 = {
+						ProvisioningStyle = Automatic;
+						TestTargetID = 66FFAFFD3FAF5E994E443BD4;
+					};
+					E2608AF89C4A30E946949247 = {
+						ProvisioningStyle = Automatic;
+						TestTargetID = 944EA23BD99A5A4A0464FA71;
+					};
+					E4EA2E988FC6D4B332D0C363 = {
+						ProvisioningStyle = Automatic;
+						TestTargetID = 118A724EB47736BF0B5316E0;
+					};
+					F9B6D0908E37C4A8F4F5ED34 = {
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 31D50B5DEF904024BD609686 /* Build configuration list for PBXProject "Taisa" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = D1F74BCB089FEBAE6BD022E3;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				0BB10D82E0D11E1C1D1C55DF /* XCLocalSwiftPackageReference "Packages/TaisaFoundation" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 0CA79807F37BD8DFE3979FEB /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				66FFAFFD3FAF5E994E443BD4 /* Taisa */,
+				944EA23BD99A5A4A0464FA71 /* TaisaPreview */,
+				118A724EB47736BF0B5316E0 /* TaisaPersonal */,
+				F9B6D0908E37C4A8F4F5ED34 /* TaisaPersonalTests */,
+				E4EA2E988FC6D4B332D0C363 /* TaisaPersonalUITests */,
+				0E4CB3E4A7973D8D85BD97CF /* TaisaUnitTests */,
+				B7582BFFACE3024637C84554 /* TaisaUITests */,
+				E2608AF89C4A30E946949247 /* TaisaPreviewUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		4D589187A1AF0F20BBD366FF /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2C4953C9F7A77AFE60369188 /* BuildMetadata.generated.swift in Sources */,
+				F87EBD9C8CC414815088AD95 /* FoundationScenarios.swift in Sources */,
+				EB27A0A8339056CA57C45029 /* PersonalVoiceSessionModel.swift in Sources */,
+				980EFD6B050D14F51379E3F9 /* PersonalVoiceSessionView.swift in Sources */,
+				27647A73DE2201D81A1724E9 /* PreviewCatalogView.swift in Sources */,
+				B4D5E79232FA07135208B36F /* PreviewRootView.swift in Sources */,
+				8EA94BF84706F6197B9CB847 /* TaisaPreviewApp.swift in Sources */,
+				D65CD3C640F6A696D18DD9A9 /* VoiceSessionDiagnosticsView.swift in Sources */,
+				994E9601F13E58AD25705A77 /* VoiceSessionDiagnosticsViewModel.swift in Sources */,
+				456350405E9B8AC9184AB126 /* VoiceSessionScenarios.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		877F347F4AA6DD95264963CD /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1C3C0759308495D3F89AD423 /* BuildDiagnosticsView.swift in Sources */,
+				C706F833D6F085BA07123280 /* BuildMetadata.generated.swift in Sources */,
+				3AD4E8D286F8319496162CEE /* CloudKitRuntimeConfiguration.swift in Sources */,
+				C2DBE85A614BA9BA5CB5D2E7 /* FoundationRootView.swift in Sources */,
+				E142786C2D3010C4A93CF144 /* PersonalDeviceQA.swift in Sources */,
+				264ACBC992C077312BF36A7F /* PersonalDeviceQAView.swift in Sources */,
+				355485AD163D89FD5B0CBCA5 /* PersonalRecoveryBackend.swift in Sources */,
+				F44EFB8183B89F4BCC1DFE50 /* PersonalVoiceSessionModel.swift in Sources */,
+				34003D9D1C8966A752A3A7E2 /* PersonalVoiceSessionView.swift in Sources */,
+				5D3E2CD7D9A522B3FC372CFC /* RecoveryView.swift in Sources */,
+				D23CB4A7E400C56447E31548 /* RecoveryViewModel.swift in Sources */,
+				F204440FEA96C5FC1F7A9A7C /* TaisaApp.swift in Sources */,
+				80CF9E6838CF407418A720B5 /* TaisaBackupDocument.swift in Sources */,
+				1E9F46005B09D3CCFF0801E6 /* VoiceSessionDiagnosticsView.swift in Sources */,
+				82C2C450FA3F72FA1A85F916 /* VoiceSessionDiagnosticsViewModel.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		91CAD1F5755D66697E88C7CC /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				753F597C11D6E06916123006 /* PersonalRecoveryUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		94C9A1BC97612CC88E9E9EC2 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FB493A279C19DB59E570EEC2 /* AppleCapabilityAvailabilityTests.swift in Sources */,
+				00EBB8A65CFC9CCEBB9F96A4 /* CloudKitIsolationTests.swift in Sources */,
+				D1445280AAB7B076CF960071 /* FoundationSmokeTests.swift in Sources */,
+				B1093913D5665590CA1953EE /* RecoveryViewModelTests.swift in Sources */,
+				0E0F162C7E603373770D80EA /* VoiceSessionDiagnosticsViewModelTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9FCDE1710554DDB4C2FF6E80 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7C05CA124CB12956C757090D /* TaisaAccessibilityLayoutTests.swift in Sources */,
+				59562F765C4446D20C1091CA /* TaisaPreviewCatalogTests.swift in Sources */,
+				14CE1254613B51B8A732F31E /* VoiceSessionAccessibilityTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B0D4549C642A2E82B652284D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				357DAF31314ED4F1B0C5F912 /* PersonalDeviceQATests.swift in Sources */,
+				75C41727467C062CC7EA09D4 /* PersonalIsolationTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E52D9E4DEECFA48E1ABF0EB5 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				197EBF42D4B740F8909FB5C9 /* TaisaLaunchTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F697230EA83A6555EFAC728D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BC05599BCB16F2E72FB9E01E /* BuildDiagnosticsView.swift in Sources */,
+				6A8C01721A57C6BF44E6802F /* BuildMetadata.generated.swift in Sources */,
+				FFAA066E0649D55DCCFDE268 /* CloudKitRuntimeConfiguration.swift in Sources */,
+				5B0AA018E7F5C851901458DF /* FoundationRootView.swift in Sources */,
+				32C4DA62AEB52085E487E64F /* PersonalDeviceQA.swift in Sources */,
+				2704C585225D9C8902B3B338 /* PersonalDeviceQAView.swift in Sources */,
+				391B21B781EBCDB921226163 /* PersonalRecoveryBackend.swift in Sources */,
+				44BD30D2329C67910E146E33 /* PersonalVoiceSessionModel.swift in Sources */,
+				DBA10E146CE606FED896C76D /* PersonalVoiceSessionView.swift in Sources */,
+				10558363B760A0814005644A /* RecoveryView.swift in Sources */,
+				92AC13DEA84CC891F4654F4C /* RecoveryViewModel.swift in Sources */,
+				5DCEA91D737FD27D788EEF53 /* TaisaApp.swift in Sources */,
+				7E3D6773D21722D0D33FD661 /* TaisaBackupDocument.swift in Sources */,
+				02CE99A4B9EAB09D6A730B67 /* VoiceSessionDiagnosticsView.swift in Sources */,
+				2F8325E955C7D322F3A85195 /* VoiceSessionDiagnosticsViewModel.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		05FBDAD39D5FDA22EB3FC2C7 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 118A724EB47736BF0B5316E0 /* TaisaPersonal */;
+			targetProxy = AFD1208985472A927235DCBE /* PBXContainerItemProxy */;
+		};
+		1168442478C3F17AB05038A0 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 944EA23BD99A5A4A0464FA71 /* TaisaPreview */;
+			targetProxy = 640639339522E7EFE0854668 /* PBXContainerItemProxy */;
+		};
+		326861F25D59E15F0D59722F /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 66FFAFFD3FAF5E994E443BD4 /* Taisa */;
+			targetProxy = 134CBA39BCE402029C7D6BB6 /* PBXContainerItemProxy */;
+		};
+		5F339EC5584B4C532F9C6BE2 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 118A724EB47736BF0B5316E0 /* TaisaPersonal */;
+			targetProxy = 9370C201D8968756810CAB41 /* PBXContainerItemProxy */;
+		};
+		BCE8669AF00C893CF96E6DD5 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 66FFAFFD3FAF5E994E443BD4 /* Taisa */;
+			targetProxy = 61818A55166100F367C198BF /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		0292BD2C554D7A3B6946E3E0 /* Preview */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Config/TaisaPreview.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_KEY_CFBundleDisplayName = "Taisa Preview";
+				INFOPLIST_KEY_TaisaEnvironment = "$(TAISA_ENVIRONMENT)";
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.taisa.app.preview;
+				PRODUCT_NAME = TaisaPreview;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG TAISA_PREVIEW";
+				TAISA_ENVIRONMENT = preview;
+			};
+			name = Preview;
+		};
+		0AA91C842207C76B1C1CD192 /* Personal */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = Config/TaisaInfo.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Taisa;
+				INFOPLIST_KEY_TaisaEnvironment = "$(TAISA_ENVIRONMENT)";
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_NAME = Taisa;
+				SDKROOT = iphoneos;
+			};
+			name = Personal;
+		};
+		19C65E9F5C30EA95509CAB2F /* Preview */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				SDKROOT = iphoneos;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Taisa.app/Taisa";
+			};
+			name = Preview;
+		};
+		1ACC7D079EA30C561DF27EA6 /* Personal */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Config/TaisaPreview.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_KEY_CFBundleDisplayName = "Taisa Preview";
+				INFOPLIST_KEY_TaisaEnvironment = "$(TAISA_ENVIRONMENT)";
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.taisa.app.preview;
+				PRODUCT_NAME = TaisaPreview;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG TAISA_PREVIEW";
+				TAISA_ENVIRONMENT = preview;
+			};
+			name = Personal;
+		};
+		1BDD5ED729CC95B608B43FC6 /* Preview */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				SDKROOT = iphoneos;
+				TEST_TARGET_NAME = Taisa;
+			};
+			name = Preview;
+		};
+		2735ED7B4A9D0DF82117C360 /* Personal */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				SDKROOT = iphoneos;
+				TEST_TARGET_NAME = Taisa;
+			};
+			name = Personal;
+		};
+		2FEDAAF565E81C9C793717EB /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				SDKROOT = iphoneos;
+				TEST_TARGET_NAME = TaisaPersonal;
+			};
+			name = Debug;
+		};
+		346F2333522F3DADDF7BE50F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Config/TaisaPersonal.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = Config/TaisaPersonalInfo.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Taisa Personal";
+				INFOPLIST_KEY_TaisaEnvironment = "$(TAISA_ENVIRONMENT)";
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.taisa.app.personal;
+				PRODUCT_NAME = TaisaPersonal;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG TAISA_PERSONAL";
+				TAISA_ENVIRONMENT = personal;
+			};
+			name = Debug;
+		};
+		3A2D6CE42FA11CAD8DF6AA61 /* Personal */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				SDKROOT = iphoneos;
+				TEST_TARGET_NAME = TaisaPersonal;
+			};
+			name = Personal;
+		};
+		3B81F80E5670208E9D63D1AC /* Preview */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				SDKROOT = iphoneos;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/TaisaPersonal.app/TaisaPersonal";
+			};
+			name = Preview;
+		};
+		43E1C9BC77D1C424384584D9 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 1436FAD8AE09F2E408377FE1 /* Release.xcconfig */;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		44B77FFD0977C27BD447C6D4 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Config/TaisaPersonal.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = Config/TaisaPersonalInfo.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Taisa Personal";
+				INFOPLIST_KEY_TaisaEnvironment = "$(TAISA_ENVIRONMENT)";
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.taisa.app.personal;
+				PRODUCT_NAME = TaisaPersonal;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG TAISA_PERSONAL";
+				TAISA_ENVIRONMENT = personal;
+			};
+			name = Release;
+		};
+		49CAF9FE48C4435527B3E877 /* Preview */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				SDKROOT = iphoneos;
+				TEST_TARGET_NAME = TaisaPersonal;
+			};
+			name = Preview;
+		};
+		4CAB8FBD92C54A3C3BB58675 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Config/TaisaPreview.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_KEY_CFBundleDisplayName = "Taisa Preview";
+				INFOPLIST_KEY_TaisaEnvironment = "$(TAISA_ENVIRONMENT)";
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.taisa.app.preview;
+				PRODUCT_NAME = TaisaPreview;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG TAISA_PREVIEW";
+				TAISA_ENVIRONMENT = preview;
+			};
+			name = Debug;
+		};
+		4CE061D89E70E453CA354EA7 /* Personal */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				SDKROOT = iphoneos;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/TaisaPersonal.app/TaisaPersonal";
+			};
+			name = Personal;
+		};
+		4DB98F5D7BD3242B472B4738 /* Personal */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = F85D7A73226CB6E9770D24D6 /* Personal.xcconfig */;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Personal;
+		};
+		5E3F18BC6F053B27EBA0BA5C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				SDKROOT = iphoneos;
+				TEST_TARGET_NAME = Taisa;
+			};
+			name = Debug;
+		};
+		5EBD0B8211F640D8431E12EF /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Config/TaisaDev.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = Config/TaisaInfo.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Taisa;
+				INFOPLIST_KEY_TaisaEnvironment = "$(TAISA_ENVIRONMENT)";
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_NAME = Taisa;
+				SDKROOT = iphoneos;
+			};
+			name = Debug;
+		};
+		606E71C319FE3C5658C6EFF2 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				SDKROOT = iphoneos;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/TaisaPersonal.app/TaisaPersonal";
+			};
+			name = Release;
+		};
+		66868162F36512DA7CBBE3D7 /* Preview */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = Config/TaisaInfo.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Taisa;
+				INFOPLIST_KEY_TaisaEnvironment = "$(TAISA_ENVIRONMENT)";
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "com.taisa.app.unit-host";
+				PRODUCT_NAME = Taisa;
+				SDKROOT = iphoneos;
+			};
+			name = Preview;
+		};
+		7A800F749B325957313DD67B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				SDKROOT = iphoneos;
+				TEST_TARGET_NAME = TaisaPreview;
+			};
+			name = Release;
+		};
+		8A8595B6E18535149E528851 /* Preview */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				SDKROOT = iphoneos;
+				TEST_TARGET_NAME = TaisaPreview;
+			};
+			name = Preview;
+		};
+		99ADF225F598ECA07E884948 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				SDKROOT = iphoneos;
+				TEST_TARGET_NAME = TaisaPersonal;
+			};
+			name = Release;
+		};
+		9E837B4477D30F78BD97621F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Config/TaisaPreview.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_KEY_CFBundleDisplayName = "Taisa Preview";
+				INFOPLIST_KEY_TaisaEnvironment = "$(TAISA_ENVIRONMENT)";
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.taisa.app.preview;
+				PRODUCT_NAME = TaisaPreview;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG TAISA_PREVIEW";
+				TAISA_ENVIRONMENT = preview;
+			};
+			name = Release;
+		};
+		9EC43CF93902B14B237BFD92 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				SDKROOT = iphoneos;
+				TEST_TARGET_NAME = Taisa;
+			};
+			name = Release;
+		};
+		B2A3F326BD08ECE2A2F6E828 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = E73285977200D46D5C6A739F /* Debug.xcconfig */;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		B8AEE6C781F2FBB990336170 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Config/Taisa.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = Config/TaisaInfo.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Taisa;
+				INFOPLIST_KEY_TaisaEnvironment = "$(TAISA_ENVIRONMENT)";
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_NAME = Taisa;
+				SDKROOT = iphoneos;
+			};
+			name = Release;
+		};
+		C213F71CB1806B5FC0718BAF /* Preview */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Config/TaisaPersonal.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = Config/TaisaPersonalInfo.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Taisa Personal";
+				INFOPLIST_KEY_TaisaEnvironment = "$(TAISA_ENVIRONMENT)";
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.taisa.app.personal;
+				PRODUCT_NAME = TaisaPersonal;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG TAISA_PERSONAL";
+				TAISA_ENVIRONMENT = personal;
+			};
+			name = Preview;
+		};
+		C8F8DA30974200889BE75456 /* Personal */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Config/TaisaPersonal.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = Config/TaisaPersonalInfo.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Taisa Personal";
+				INFOPLIST_KEY_TaisaEnvironment = "$(TAISA_ENVIRONMENT)";
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.taisa.app.personal;
+				PRODUCT_NAME = TaisaPersonal;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG TAISA_PERSONAL";
+				TAISA_ENVIRONMENT = personal;
+			};
+			name = Personal;
+		};
+		D16EF2CFDFA1FF019F7AEA12 /* Personal */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				SDKROOT = iphoneos;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Taisa.app/Taisa";
+			};
+			name = Personal;
+		};
+		E65BC63C97B91133AFA6565F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				SDKROOT = iphoneos;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Taisa.app/Taisa";
+			};
+			name = Debug;
+		};
+		EFF7108980F16118591B4C3F /* Preview */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 391BEE70ED9DB4D5A40CEF12 /* Preview.xcconfig */;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Preview;
+		};
+		F52D19D4C62ADDF5406BF81F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				SDKROOT = iphoneos;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Taisa.app/Taisa";
+			};
+			name = Release;
+		};
+		F8CDFC87D14C1770FA092082 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				SDKROOT = iphoneos;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/TaisaPersonal.app/TaisaPersonal";
+			};
+			name = Debug;
+		};
+		FB748FE8947FD128BE38F4D2 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				SDKROOT = iphoneos;
+				TEST_TARGET_NAME = TaisaPreview;
+			};
+			name = Debug;
+		};
+		FD2EF865B090B6A25D2F7664 /* Personal */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				SDKROOT = iphoneos;
+				TEST_TARGET_NAME = TaisaPreview;
+			};
+			name = Personal;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		219F967F5DE4862C3199F819 /* Build configuration list for PBXNativeTarget "TaisaPreview" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4CAB8FBD92C54A3C3BB58675 /* Debug */,
+				1ACC7D079EA30C561DF27EA6 /* Personal */,
+				0292BD2C554D7A3B6946E3E0 /* Preview */,
+				9E837B4477D30F78BD97621F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		31D50B5DEF904024BD609686 /* Build configuration list for PBXProject "Taisa" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B2A3F326BD08ECE2A2F6E828 /* Debug */,
+				4DB98F5D7BD3242B472B4738 /* Personal */,
+				EFF7108980F16118591B4C3F /* Preview */,
+				43E1C9BC77D1C424384584D9 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		5BD83C92D9620583F198DDEC /* Build configuration list for PBXNativeTarget "TaisaPersonalUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2FEDAAF565E81C9C793717EB /* Debug */,
+				3A2D6CE42FA11CAD8DF6AA61 /* Personal */,
+				49CAF9FE48C4435527B3E877 /* Preview */,
+				99ADF225F598ECA07E884948 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		68E979BED0F9F61F2E898BF6 /* Build configuration list for PBXNativeTarget "Taisa" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5EBD0B8211F640D8431E12EF /* Debug */,
+				0AA91C842207C76B1C1CD192 /* Personal */,
+				66868162F36512DA7CBBE3D7 /* Preview */,
+				B8AEE6C781F2FBB990336170 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		6C4356A2643AA827B322A0EF /* Build configuration list for PBXNativeTarget "TaisaUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5E3F18BC6F053B27EBA0BA5C /* Debug */,
+				2735ED7B4A9D0DF82117C360 /* Personal */,
+				1BDD5ED729CC95B608B43FC6 /* Preview */,
+				9EC43CF93902B14B237BFD92 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		CE5F7D4F175AAA5F39793785 /* Build configuration list for PBXNativeTarget "TaisaUnitTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E65BC63C97B91133AFA6565F /* Debug */,
+				D16EF2CFDFA1FF019F7AEA12 /* Personal */,
+				19C65E9F5C30EA95509CAB2F /* Preview */,
+				F52D19D4C62ADDF5406BF81F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		E105F31DFE2A1DB467F02CA3 /* Build configuration list for PBXNativeTarget "TaisaPreviewUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FB748FE8947FD128BE38F4D2 /* Debug */,
+				FD2EF865B090B6A25D2F7664 /* Personal */,
+				8A8595B6E18535149E528851 /* Preview */,
+				7A800F749B325957313DD67B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		FCAC08636CB07891C7BD0694 /* Build configuration list for PBXNativeTarget "TaisaPersonalTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F8CDFC87D14C1770FA092082 /* Debug */,
+				4CE061D89E70E453CA354EA7 /* Personal */,
+				3B81F80E5670208E9D63D1AC /* Preview */,
+				606E71C319FE3C5658C6EFF2 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		FD69A2EC75F970936BFEAD45 /* Build configuration list for PBXNativeTarget "TaisaPersonal" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				346F2333522F3DADDF7BE50F /* Debug */,
+				C8F8DA30974200889BE75456 /* Personal */,
+				C213F71CB1806B5FC0718BAF /* Preview */,
+				44B77FFD0977C27BD447C6D4 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		0BB10D82E0D11E1C1D1C55DF /* XCLocalSwiftPackageReference "Packages/TaisaFoundation" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/TaisaFoundation;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		00B3AC12985BA98D50112E70 /* TaisaVoice */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = TaisaVoice;
+		};
+		02B15911AB05FD1D79A8F89B /* TaisaSecurity */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = TaisaSecurity;
+		};
+		37302F854332C0799EC455A7 /* TaisaStorage */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = TaisaStorage;
+		};
+		3D8E0B5042A6307078A2815B /* TaisaContracts */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = TaisaContracts;
+		};
+		42B0308E32320DD4D331FF0B /* TaisaSecurity */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = TaisaSecurity;
+		};
+		4B15CC5B19E1268F48019E88 /* TaisaStorage */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = TaisaStorage;
+		};
+		542567F2D107C03E3EEEEBA7 /* TaisaStorage */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = TaisaStorage;
+		};
+		55DB264F2B6F35AF316AF968 /* TaisaSecurity */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = TaisaSecurity;
+		};
+		59F6EB601F04E46C4F72469B /* TaisaVoice */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = TaisaVoice;
+		};
+		5A284C439BF302F372B6C93E /* TaisaAudio */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = TaisaAudio;
+		};
+		8FA686B6DCB4A6884B2DBA33 /* TaisaPreviewSupport */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = TaisaPreviewSupport;
+		};
+		90EA0964036021A700C04142 /* TaisaDesignSystem */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = TaisaDesignSystem;
+		};
+		A72C408F4F7BE22C7A7A5119 /* TaisaCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = TaisaCore;
+		};
+		ABB29DAC3609B4A787D34141 /* TaisaContracts */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = TaisaContracts;
+		};
+		AEE5FF205DE32DC66F518228 /* TaisaDesignSystem */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = TaisaDesignSystem;
+		};
+		B4AF963C3CB1ACBE917F55B6 /* TaisaVoice */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = TaisaVoice;
+		};
+		B6433508F77896BF3BB8142E /* TaisaStorage */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = TaisaStorage;
+		};
+		C314463D60AD54DD62726CEE /* TaisaContracts */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = TaisaContracts;
+		};
+		C4574000EFC848D85BD35725 /* TaisaCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = TaisaCore;
+		};
+		C557FCD4DF05EE6AE9DA5AEF /* TaisaRecovery */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = TaisaRecovery;
+		};
+		C92D9DF8F24BA40AAB6BC2C5 /* TaisaRecovery */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = TaisaRecovery;
+		};
+		D2ACC0C577B5AEDE6763EFE5 /* TaisaCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = TaisaCore;
+		};
+		DB8B86318CA6204FB4E99DA2 /* TaisaNetworking */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = TaisaNetworking;
+		};
+		E84FDD4ABFDEEE55C48646E6 /* TaisaRecovery */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = TaisaRecovery;
+		};
+		F244CD17C07591605E35309D /* TaisaCloudKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = TaisaCloudKit;
+		};
+		FDEFAC7298DC6A2773CC1955 /* TaisaVoice */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = TaisaVoice;
+		};
+		FEF8E8A324CF703C89D9D4A7 /* TaisaDesignSystem */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = TaisaDesignSystem;
+		};
+		FFB07053D3A453E2945166B9 /* TaisaCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = TaisaCore;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 1F69AC39B00EED61FAF1BDC8 /* Project object */;
+}

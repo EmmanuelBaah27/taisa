@@ -1,5 +1,4 @@
 import type { UsageReceipt } from '@taisa/shared';
-import type { z } from 'zod';
 
 export interface ProviderCoachingInput {
   systemPrompt: string;
@@ -11,15 +10,15 @@ export interface ProviderCoachingResult {
   usage: UsageReceipt;
 }
 
+export type ProviderCoachingStreamItem =
+  | { kind: 'delta'; delta: string }
+  | { kind: 'completed'; result: ProviderCoachingResult };
+
 export interface CoachingProvider {
   readonly id: 'openai' | 'anthropic';
   estimateMaximumUsage?(input: ProviderCoachingInput): UsageReceipt;
   respond(input: ProviderCoachingInput): Promise<ProviderCoachingResult>;
-  respondJson?<T>(
-    input: ProviderCoachingInput,
-    schema: z.ZodType<T>,
-    schemaName: string,
-  ): Promise<{ payload: T; usage: UsageReceipt }>;
+  streamRespond?(input: ProviderCoachingInput): AsyncIterable<ProviderCoachingStreamItem>;
 }
 
 export interface CoachingProviderConfig {

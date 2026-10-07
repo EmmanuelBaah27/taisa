@@ -1,0 +1,151 @@
+{
+  "candidateCommit": "3184e9054f022514ad29603528b5093ddebc1222",
+  "installedCommit": "3184e9054f022514ad29603528b5093ddebc1222",
+  "dirty": false,
+  "xcodeVersion": "26.1.1",
+  "xcodeBuild": "17B100",
+  "appBuildNumber": "1",
+  "appVersion": "1.0",
+  "databaseSchemaVersion": "1",
+  "parityCatalogRevision": "719180012de745e3b507ed93eadbe7d8a951331c",
+  "bundleIdentifier": "com.taisa.app.personal",
+  "environment": "personal",
+  "contractRevision": "transcription-fixtures-v1",
+  "deviceName": "Beat's iPhone — iPhone 15 Pro",
+  "deviceIdentifier": "00008130-000834AA34C2001C",
+  "operatingSystem": "iOS 26.6.1 (23G83)",
+  "installed": true,
+  "launched": true,
+  "testerConfirmation": "Baah confirmed on 2026-10-06 that the encrypted canary was present after a same-identity install-over: canary count 1, conversation count 1, SHA-256 ccec885e1c7c69364095415e88d75bb0736224accdb5dad95d9905ba47898d64; the force-reopened app reported device-local storage.",
+  "appPath": "/private/tmp/taisa-task6-signed-ipad/Build/Products/Personal-iphoneos/TaisaPersonal.app",
+  "profilePath": "/private/tmp/taisa-task6-signed-ipad/Build/Products/Personal-iphoneos/TaisaPersonal.app/embedded.mobileprovision",
+  "teamIdentifier": "XH59HG6MSY",
+  "signedEntitlements": {
+    "application-identifier": "XH59HG6MSY.com.taisa.app.personal",
+    "com.apple.developer.team-identifier": "XH59HG6MSY",
+    "get-task-allow": true
+  },
+  "provisioningEntitlements": {
+    "application-identifier": "XH59HG6MSY.com.taisa.app.personal",
+    "keychain-access-groups": [
+      "XH59HG6MSY.*"
+    ],
+    "get-task-allow": true,
+    "com.apple.developer.team-identifier": "XH59HG6MSY"
+  },
+  "backgroundModes": [],
+  "linkedLibraries": [
+    "/System/Library/Frameworks/Combine.framework/Combine",
+    "/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation",
+    "/System/Library/Frameworks/CryptoKit.framework/CryptoKit",
+    "/System/Library/Frameworks/DeveloperToolsSupport.framework/DeveloperToolsSupport",
+    "/System/Library/Frameworks/Foundation.framework/Foundation",
+    "/System/Library/Frameworks/LocalAuthentication.framework/LocalAuthentication",
+    "/System/Library/Frameworks/Security.framework/Security",
+    "/System/Library/Frameworks/SwiftUI.framework/SwiftUI",
+    "/System/Library/Frameworks/UIKit.framework/UIKit",
+    "/usr/lib/libSystem.B.dylib",
+    "/usr/lib/libc++.1.dylib",
+    "/usr/lib/libobjc.A.dylib",
+    "/usr/lib/swift/libswiftCore.dylib",
+    "/usr/lib/swift/libswiftCoreFoundation.dylib",
+    "/usr/lib/swift/libswiftCoreImage.dylib",
+    "/usr/lib/swift/libswiftDarwin.dylib",
+    "/usr/lib/swift/libswiftDispatch.dylib",
+    "/usr/lib/swift/libswiftMetal.dylib",
+    "/usr/lib/swift/libswiftOSLog.dylib",
+    "/usr/lib/swift/libswiftObjectiveC.dylib",
+    "/usr/lib/swift/libswiftObservation.dylib",
+    "/usr/lib/swift/libswiftQuartzCore.dylib",
+    "/usr/lib/swift/libswiftSpatial.dylib",
+    "/usr/lib/swift/libswiftUniformTypeIdentifiers.dylib",
+    "/usr/lib/swift/libswiftXPC.dylib",
+    "/usr/lib/swift/libswift_Concurrency.dylib",
+    "/usr/lib/swift/libswiftos.dylib",
+    "/usr/lib/swift/libswiftsimd.dylib",
+    "@rpath/SQLCipher.framework/SQLCipher",
+    "@rpath/TaisaPersonal.debug.dylib"
+  ],
+  "linksLiveTransport": false,
+  "artifactEvidence": {
+    "executable": "/private/tmp/taisa-task6-signed-ipad/Build/Products/Personal-iphoneos/TaisaPersonal.app/TaisaPersonal",
+    "teamIdentifier": "XH59HG6MSY",
+    "signerCertificateSHA256": "03beb12db528d4cfa991f8e310be538d5de66df0a2080c6e4a7f25079973b945",
+    "profileUUID": "ceef9351-2080-45b2-ba3e-d390247426be",
+    "profileExpiration": "2026-10-13T14:41:05Z",
+    "profileSHA256": "c0431d89c1d5f1f3984f6be62478354413d2fe3c17d6ac2919ca6465a93d3e1e",
+    "infoPlistSHA256": "f55cd30ecda34e758a932278a03c5083a6f746f207283e8c3d26250ec253bfe0",
+    "images": [
+      {
+        "path": "Frameworks/SQLCipher.framework/SQLCipher",
+        "sha256": "255e4ae8918ef78e17a77aa48ca14d5e8ac52aae2c45213d1cbc190eef7c9e75",
+        "linkedLibraries": [
+          "@rpath/SQLCipher.framework/SQLCipher",
+          "/usr/lib/libSystem.B.dylib",
+          "/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation",
+          "/System/Library/Frameworks/Security.framework/Security"
+        ]
+      },
+      {
+        "path": "TaisaPersonal",
+        "sha256": "15728dd3a1f3608d552418c9cf52f1e505e6232a8059422372a539a2f34b8511",
+        "linkedLibraries": [
+          "@rpath/TaisaPersonal.debug.dylib",
+          "/usr/lib/libSystem.B.dylib"
+        ]
+      },
+      {
+        "path": "TaisaPersonal.debug.dylib",
+        "sha256": "06403c783053e9b4f15a45e8b1b97228fae35dfd87bb9d0d94efd2bf71ff4ff8",
+        "linkedLibraries": [
+          "@rpath/TaisaPersonal.debug.dylib",
+          "@rpath/SQLCipher.framework/SQLCipher",
+          "/System/Library/Frameworks/Foundation.framework/Foundation",
+          "/usr/lib/libobjc.A.dylib",
+          "/usr/lib/libSystem.B.dylib",
+          "/System/Library/Frameworks/Combine.framework/Combine",
+          "/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation",
+          "/System/Library/Frameworks/CryptoKit.framework/CryptoKit",
+          "/System/Library/Frameworks/DeveloperToolsSupport.framework/DeveloperToolsSupport",
+          "/System/Library/Frameworks/LocalAuthentication.framework/LocalAuthentication",
+          "/System/Library/Frameworks/Security.framework/Security",
+          "/System/Library/Frameworks/SwiftUI.framework/SwiftUI",
+          "/System/Library/Frameworks/UIKit.framework/UIKit",
+          "/usr/lib/libc++.1.dylib",
+          "/usr/lib/swift/libswiftCore.dylib",
+          "/usr/lib/swift/libswiftCoreFoundation.dylib",
+          "/usr/lib/swift/libswiftCoreImage.dylib",
+          "/usr/lib/swift/libswiftDarwin.dylib",
+          "/usr/lib/swift/libswiftDispatch.dylib",
+          "/usr/lib/swift/libswiftMetal.dylib",
+          "/usr/lib/swift/libswiftOSLog.dylib",
+          "/usr/lib/swift/libswiftObjectiveC.dylib",
+          "/usr/lib/swift/libswiftObservation.dylib",
+          "/usr/lib/swift/libswiftQuartzCore.dylib",
+          "/usr/lib/swift/libswiftSpatial.dylib",
+          "/usr/lib/swift/libswiftUniformTypeIdentifiers.dylib",
+          "/usr/lib/swift/libswiftXPC.dylib",
+          "/usr/lib/swift/libswift_Concurrency.dylib",
+          "/usr/lib/swift/libswiftos.dylib",
+          "/usr/lib/swift/libswiftsimd.dylib"
+        ]
+      },
+      {
+        "path": "__preview.dylib",
+        "sha256": "4ff219452468edb265d17b7ac8ff5c9a641b6ec3af925e153688012d0db55006",
+        "linkedLibraries": [
+          "@rpath/TaisaPersonal.debug.dylib",
+          "/usr/lib/libSystem.B.dylib"
+        ]
+      }
+    ],
+    "inspectedAt": "2026-10-06T15:44:02.880Z",
+    "signatureVerified": true,
+    "attestationType": "live-artifact-inspection"
+  },
+  "evidenceValidation": {
+    "mode": "live-artifact-reinspection",
+    "liveReinspectionPerformed": true,
+    "statement": "The signed artifact was cryptographically reinspected during this validation."
+  }
+}

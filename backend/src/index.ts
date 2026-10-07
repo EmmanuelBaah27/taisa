@@ -18,8 +18,6 @@ import notificationsRouter from './routes/notifications';
 import chatRouter from './routes/chat';
 import todayRouter from './routes/today';
 import coachingRouter from './routes/coaching';
-import { createOrganizationRouter } from './routes/organization';
-import { getConfiguredOrganizationAnalyzer } from './services/organization/organizationGateway';
 import { validateCoachingProviderStartupConfiguration } from './services/coaching/provider';
 import { coachingRateLimit } from './middleware/coachingRateLimit';
 import { contentSafeErrorHandler, requestContext } from './middleware/requestContext';
@@ -113,11 +111,6 @@ app.use('/api/v1/notifications', notificationsRouter);
 app.use('/api/v1/chat', aiRateLimit, chatRouter);
 app.use('/api/v1/today', todayRouter);
 app.use('/api/v1/coaching', coachingRateLimit, coachingRouter);
-app.use(
-  '/api/v1/organization',
-  aiRateLimit,
-  createOrganizationRouter(getConfiguredOrganizationAnalyzer()),
-);
 
 // Health check
 app.get('/health', (_req, res) => {

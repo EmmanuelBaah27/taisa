@@ -1,4 +1,4 @@
-name: Design system compliance
+name: Native design system
 
 on:
   pull_request:
@@ -8,7 +8,7 @@ on:
 jobs:
   verify-design-system:
     name: Design System Compliance
-    runs-on: ubuntu-latest
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -16,4 +16,4 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      - run: npm run verify:design-system
+      - run: npm run verify:native-design-system

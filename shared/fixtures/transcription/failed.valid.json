@@ -1,0 +1,6 @@
+{
+  "type": "transcript.failed",
+  "requestId": "00000000-0000-4000-8000-000000000004",
+  "sequence": 0,
+  "code": "TRANSCRIPTION_FAILED"
+}

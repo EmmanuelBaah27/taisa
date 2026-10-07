@@ -116,3 +116,11 @@ Verified on `feature/current-experience` at `54df7e2` on 2026-08-16:
 - `scripts/audit-current-experience.sh` and `git diff --check` passed; all source branches/worktrees remain preserved.
 
 The root package does not declare `mobile` as an npm workspace, so mobile commands must run from `mobile/`; this is a command/documentation constraint, not a failed product check. `npm audit` currently reports 37 dependency findings (2 low, 17 moderate, 17 high, 1 critical); no automatic audit fix was applied because dependency upgrades require separate review.
+
+## SwiftUI Program 0 refresh — 2026-10-02
+
+Program 0 supersedes the fixed legacy branch list for baseline selection with the machine-captured evidence in `docs/migration/swiftui/baseline-manifest.json`. The capture found 23 local sources and seven Expo routes at candidate `719180012de745e3b507ed93eadbe7d8a951331c`.
+
+The legacy audit remains a historical cross-check. It now reports missing branches and continues rather than aborting. In this refresh, `feature/local-first-coaching-platform` was absent locally and recorded as `MISSING`; its accepted decisions remain represented by canonical documentation and the consolidated main/preview history. No branch or worktree was deleted or modified by the audit.
+
+Baah approved the Program 0 source recommendations on 2026-10-02. The resulting human-owned dispositions are versioned in `docs/migration/swiftui/source-dispositions.json`: 19 sources are accounted and four are explicitly excluded while their branches/worktrees remain preserved. Recapture reproduced those decisions and the source-accounting verifier passed. Program 0 has selected the candidate for cataloging but has not frozen or tagged a baseline.

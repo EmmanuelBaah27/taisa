@@ -23,6 +23,7 @@ import {
   streamTranscription,
   type ProviderTranscriptionEvent,
 } from '../services/transcription/streamingTranscription';
+import { TranscriptionIdempotencyStore } from '../services/transcription/transcriptionIdempotencyStore';
 
 const requestId = '11111111-1111-4111-8111-111111111111';
 
@@ -247,12 +248,25 @@ describe('streaming transcription route', () => {
     yield* events;
   }
 
-  function createApp(create: jest.Mock, environmentOverride = environment) {
+  function createApp(
+    create: jest.Mock,
+    environmentOverride = environment,
+    idempotencyStore = new TranscriptionIdempotencyStore({
+      databasePath: ':memory:',
+      encryptionKeyBase64: Buffer.alloc(32, 0x41).toString('base64'),
+    }),
+  ) {
     const app = express();
     app.use(requestContext);
+    app.use(express.json());
+    app.use((_req, res, next) => {
+      res.locals.deviceCredentialId = 'test-device';
+      next();
+    });
     app.use('/api/v1/transcribe', createTranscribeRouter({
       client: { audio: { transcriptions: { create } } } as never,
       environment: environmentOverride,
+      idempotencyStore,
     }));
     return app;
   }
@@ -285,6 +299,52 @@ describe('streaming transcription route', () => {
     } finally {
       await fs.promises.rm(fixturePath, { force: true });
     }
+  });
+
+  test('replays an encrypted terminal receipt without invoking the provider twice', async () => {
+    const fixturePath = createAudioFixture();
+    const create = jest.fn(async () => routeProviderEvents([
+      { type: 'transcript.text.done', text: 'one result', logprobs: [{ logprob: -0.1 }] },
+    ]));
+    const app = createApp(create);
+
+    try {
+      const first = await request(app).post('/api/v1/transcribe')
+        .set('x-request-id', requestId).set('idempotency-key', 'turn-key')
+        .attach('audio', fixturePath);
+      const replay = await request(app).post('/api/v1/transcribe')
+        .set('x-request-id', requestId).set('idempotency-key', 'turn-key')
+        .attach('audio', fixturePath);
+
+      expect(first.status).toBe(200);
+      expect(replay.status).toBe(200);
+      expect(parseNdjson(replay.text)).toEqual(parseNdjson(first.text).slice(-1));
+      expect(create).toHaveBeenCalledTimes(1);
+    } finally {
+      await fs.promises.rm(fixturePath, { force: true });
+    }
+  });
+
+  test('reconciliation is owner-bound and explicit retry authorization is required', async () => {
+    const store = new TranscriptionIdempotencyStore({
+      databasePath: ':memory:',
+      encryptionKeyBase64: Buffer.alloc(32, 0x43).toString('base64'),
+    });
+    store.begin({
+      key: 'turn-key', requestId, ownerId: 'test-device', audioSHA256: 'audio-hash',
+    });
+    store.markProviderStarted('turn-key');
+    const app = createApp(jest.fn(), environment, store);
+
+    const before = await request(app).get(`/api/v1/transcribe/requests/${requestId}`);
+    expect(before.status).toBe(200);
+    expect(before.body.data.status).toBe('ambiguous');
+
+    const resolved = await request(app)
+      .post(`/api/v1/transcribe/requests/${requestId}/resolve`)
+      .send({ decision: 'retry' });
+    expect(resolved.status).toBe(200);
+    expect(resolved.body.data).toEqual({ status: 'authorized', requestId });
   });
 
   test('returns one content-free failed event when the provider rejects', async () => {

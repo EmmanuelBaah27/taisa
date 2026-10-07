@@ -1,0 +1,14 @@
+{
+  "type": "transcript.completed",
+  "requestId": "00000000-0000-4000-8000-000000000006",
+  "sequence": 0,
+  "transcript": "   ",
+  "durationSeconds": 4,
+  "quality": "clear",
+  "usage": {
+    "provider": "openai",
+    "model": "fixture-transcription",
+    "audioSeconds": 4,
+    "estimatedCostUsd": 0.0004
+  }
+}

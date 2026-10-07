@@ -1,6 +1,5 @@
 import OpenAI from 'openai';
 import { zodResponseFormat } from 'openai/helpers/zod';
-import { z } from 'zod';
 import {
   CoachingResponsePayloadSchema,
   OpenAICoachingResponseEnvelopeSchema,
@@ -12,6 +11,7 @@ import type {
 } from './provider';
 import { estimateCostUsd, estimateMaximumCoachingUsage } from './provider';
 import { normalizeOpenAISdkFailure } from './providerSdkFailure';
+import { extractReplyPrefix } from './streamingCoaching';
 
 type OpenAIClient = Pick<OpenAI, 'beta'>;
 
@@ -128,42 +128,33 @@ export function createOpenAIProvider(
         },
       };
     },
-    async respondJson<T>(
-      input: ProviderCoachingInput,
-      schema: z.ZodType<T>,
-      schemaName: string,
-    ) {
-      const envelope = z.object({ response: schema }).strict();
-      let completion;
+    async *streamRespond(input: ProviderCoachingInput) {
+      const stream = client.beta.chat.completions.stream({
+        model: config.model,
+        messages: [{ role: 'system', content: input.systemPrompt }, { role: 'user', content: input.userPrompt }],
+        response_format: openAIResponseFormat(),
+        max_completion_tokens: config.maxOutputTokens,
+      }, { maxRetries: 0 });
+      let raw = '';
+      let emitted = '';
       try {
-        completion = await client.beta.chat.completions.parse(
-          {
-            model: config.model,
-            messages: [
-              { role: 'system', content: input.systemPrompt },
-              { role: 'user', content: input.userPrompt },
-            ],
-            response_format: zodResponseFormat(envelope, schemaName),
-            max_completion_tokens: config.maxOutputTokens,
-          },
-          { maxRetries: 0 },
-        );
-      } catch (error) {
-        throw normalizeOpenAISdkFailure(error);
-      }
-      const payload = schema.parse(completion.choices[0]?.message.parsed?.response);
-      const inputTokens = completion.usage?.prompt_tokens ?? 0;
-      const outputTokens = completion.usage?.completion_tokens ?? 0;
-      return {
-        payload,
-        usage: {
-          provider: 'openai' as const,
-          model: config.model,
-          inputTokens,
-          outputTokens,
+        for await (const chunk of stream) {
+          raw += chunk.choices[0]?.delta?.content ?? '';
+          const reply = extractReplyPrefix(raw);
+          if (reply.length > emitted.length) {
+            yield { kind: 'delta', delta: reply.slice(emitted.length) } as const;
+            emitted = reply;
+          }
+        }
+        const completion = await stream.finalChatCompletion();
+        const payload = CoachingResponsePayloadSchema.parse(completion.choices[0]?.message.parsed?.response);
+        const inputTokens = completion.usage?.prompt_tokens ?? 0;
+        const outputTokens = completion.usage?.completion_tokens ?? 0;
+        yield { kind: 'completed', result: { payload, usage: {
+          provider: 'openai', model: config.model, inputTokens, outputTokens,
           estimatedCostUsd: estimateCostUsd(inputTokens, outputTokens, config),
-        },
-      };
+        } } } as const;
+      } catch (error) { throw normalizeOpenAISdkFailure(error); }
     },
   };
 }

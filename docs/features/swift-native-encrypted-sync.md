@@ -1,0 +1,66 @@
+# Swift Native Encrypted Storage, Sync, and Recovery
+
+**Tier:** Full
+**Track:** Platform
+**Stage:** Shipped — Personal device lane merged in `8c22c7b`; automatic CloudKit remains deferred
+**Depends on:** accepted Swift native foundation
+
+## What is it?
+
+A native Apple data foundation that keeps Taisa's durable career data encrypted locally, synchronizes end-to-end encrypted records between an iPhone and iPad using the same Apple Account, and provides versioned encrypted disaster-recovery snapshots.
+
+Each device remains fully usable offline. Product features read and write only through local repositories; CloudKit is a replaceable synchronization transport rather than the product's data model. A generated recovery key is the primary way to authorize a new device or restore a backup.
+
+## Why now?
+
+The native shell, build identities, preview lane, contracts, and exact-build device QA are proven. Every real product slice will depend on durable private data. Establishing encryption, synchronization, conflicts, migrations, and recovery first prevents each screen from inventing incompatible storage behavior.
+
+Baah uses both iPhone and iPad, so backup-only behavior is insufficient. The foundation must synchronize both devices without requiring a Taisa account while retaining a path to a future Taisa-account transport.
+
+## Acceptance criteria
+
+- [ ] A fresh device creates an encrypted local store with its database key protected by device Keychain.
+- [ ] Taisa generates a high-entropy recovery key and keeps cloud sync disabled until the user confirms saving it in Passwords and making a separate offline copy.
+- [ ] Private data is encrypted on-device before entering the user's private CloudKit database; neither Apple-visible payloads nor Taisa infrastructure contain readable career content.
+- [ ] Profile, conversations, messages, goals, milestones, actions, evidence, governed memory, and required sync metadata work offline and synchronize incrementally between the registered iPhone and iPad.
+- [ ] Local writes commit immediately and queue sync atomically; network or iCloud failure never loses accepted local work.
+- [ ] Immutable history merges without duplication, non-overlapping edits merge, same-field conflicts preserve both values for explicit review, and tombstones prevent deleted records from reappearing.
+- [ ] A device cannot decrypt synchronized data or recovery snapshots without the recovery key.
+- [ ] Recovery-key rotation preserves data and prevents the old key from authorizing future recovery material.
+- [ ] Versioned database-only snapshots are authenticated, bounded, and restorable without including recordings or temporary audio.
+- [ ] Restore validates key, integrity, schema, and expected data before atomic promotion; every failure preserves the active local store.
+- [ ] iCloud sign-out/account change, quota exhaustion, expired change tokens, interrupted transfers, malformed records, incompatible schemas, keychain reset, and corrupted snapshots become typed recoverable states.
+- [ ] Diagnostics and logs remain content-free.
+- [ ] Exact signed builds pass automated and physical-device encryption, offline, synchronization, conflict, deletion, restore, rotation, privacy, and performance checks on the registered iPhone and iPad.
+- [ ] Storage and sync interfaces do not embed Apple identity into domain records and can support a future Taisa-account transport without rebuilding product repositories.
+
+## Platform dependencies
+
+- Accepted Swift native foundation, deterministic project generation, build identity, preview isolation, and CI.
+- Apple Developer capabilities for Keychain sharing/Password AutoFill as applicable, iCloud, and CloudKit development and production containers.
+- A web-credentials associated domain if the system Passwords save API requires one for the final deployment target.
+
+## Out of scope
+
+- Taisa accounts, email login, server-managed identity, cross-Apple-Account sharing, collaboration, Android/web sync, or a custom Taisa sync server.
+- Live multi-user editing.
+- Recorded audio, temporary audio, attachment backup, or audio synchronization.
+- Importing data from the React Native app or backend.
+- Product-screen redesign beyond narrow setup, status, conflict, and recovery validation surfaces.
+- Deleting React Native code, retiring backend routes, or changing the existing production app.
+- Shipping later audio/streaming or advanced resources/platform-service foundations.
+
+## Interim Personal Team lane
+
+Baah approved an interim free-signing path on 2026-10-06 because an Xcode Personal Team cannot provision the iCloud, CloudKit, and remote-notification capabilities required by the full design. The `Taisa-Personal` lane is local-only, preserves the full CloudKit implementation for later activation, and adds deliberate encrypted file export/import for device transfer. It must never present fake or manual transfer as automatic synchronization.
+
+The interim lane is specified in `docs/superpowers/specs/2026-10-06-personal-device-lane-design.md`. It does not close the original automatic multi-device synchronization acceptance criterion; that criterion remains blocked on paid Apple Developer Program capability access.
+
+## Closeout
+
+- **Actual outcome:** The native encrypted local store, recovery-key ceremony, authenticated database-only snapshot, atomic replacement restore, separate `Taisa-Personal` target, and Files/AirDrop transfer flow are implemented. On 2026-10-06 Baah verified the exact signed Personal candidate on the registered iPhone and iPad: a nonempty canary survived same-identity install-over, restored from iPhone to a clean iPad, retained identical counts and SHA-256 after force-reopen, and both devices reported device-local storage.
+- **Plan deviations:** The free Personal Team cannot provision CloudKit or push, so automatic sync was preserved in code but not activated or claimed. The accepted interim lane uses explicit encrypted snapshot replacement and a manual Passwords recovery-key save flow. Free-profile slot pressure required Baah-approved removal of only the old `com.taisa.app.dev` installations; the production, Preview, and Personal identities were preserved.
+- **Learnings and decisions:** Weekly refresh must install over `com.taisa.app.personal` and never uninstall it. Encrypted file transfer copies one authoritative history and never merges divergent devices. The recovery key is stored separately in Passwords plus an offline copy, and the signed artifact is rejected unless its signer, profile, explicit device authorization, bundle, environment, embedded commit, entitlements, and linkage all match.
+- **Remaining debt:** The original CloudKit criteria—including live development schema creation, real two-device incremental sync/conflict/deletion/offline tests, production schema promotion, and paid-capability signed QA—remain open. Recovery does not include recordings or unfinished audio, and file transfer does not merge histories.
+- **Canonical docs updated:** Personal signed-build records and weekly refresh guidance, CloudKit deferral, workflow evidence rules, and roadmap status are updated on this branch.
+- **PR and merge evidence:** PR #12 merged into `main` as `8c22c7bb89fda5f3a0a57a71e222b0e2ee95a19b` after the native Apple and design-system workflows passed on head `c1a2ab7`.

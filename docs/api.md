@@ -6,14 +6,15 @@
 
 ## Current local-first boundary
 
-The mobile client is authoritative for readable user data. Three content-processing endpoint
+The mobile client is authoritative for readable user data. Only two content-processing endpoint
 families belong to the new path:
 
 | Route | Status | Persistence boundary |
 |---|---|---|
 | `POST /api/v1/coaching/respond` | Current stateless coaching path | Validates bounded supplied context, calls the configured primary and optionally one alternate provider, returns structured coaching/proposals; stores no readable user content |
+| `POST /api/v1/coaching/respond/stream` | Native ordered coaching stream | Requires `Idempotency-Key`; emits live NDJSON deltas and one terminal; stores an encrypted authoritative terminal plus content-free lifecycle/cost records |
+| `GET /api/v1/coaching/requests/:requestId` | Coaching reconciliation | Returns content-free queued/ambiguous/failed state or the encrypted-ledger-backed authoritative completion |
 | `POST /api/v1/transcribe` | Current deliberate voice path | Deletes temporary audio in `finally`; stores only content-free usage/cost metadata |
-| `POST /api/v1/organization/analyze` | Current bounded organization path | Accepts caller-supplied work/conversation summaries, performs one schema-aware provider call, and returns proposals without mutating or persisting records |
 | `GET /health` | Current operational health | No user data |
 
 The gateway still uses `x-user-id` as a device-keyed installation identifier for transport usage
@@ -24,30 +25,8 @@ No migration/export endpoint exists. Baah has no backend archive to migrate, and
 Profile, entries, analyze, reviews, goals, action-items, trajectory, notifications, chat, and today
 routes remain mounted as legacy rollback compatibility during BUILD. They must not receive new
 local-first coaching writes. Removal is separately gated on verified encrypted device recovery and
-Baah's explicit route-retirement approval.
-
-### `POST /api/v1/organization/analyze`
-
-Accepts one strict `OrganizationRequest` from `@taisa/shared`. The request is capped by scope,
-record count, conversation count, title/status/summary lengths, and a caller-generated request ID.
-Conversation scope contains exactly the selected conversation plus confirmed open tasks. Task scope
-contains exactly the selected open task plus at most 20 recent submitted conversations from its
-planned week. Week scope contains only confirmed open tasks and submitted conversations from the
-declared local Monday-Sunday period, at most 30 of each; excess work
-must be narrowed before submission rather than silently truncated. The response must preserve the
-request ID and contain only typed lifecycle-free proposal candidates. The
-provider-neutral gateway makes exactly one schema-aware OpenAI or Anthropic call; it does not read
-backend user tables, persist readable content, or apply proposals. Invalid structured output or
-request correlation returns `INVALID_ORGANIZATION_OUTPUT`. The route is mounted behind the existing
-AI rate limit.
-
-On-device code previews the exact bounded request before submission, then reassembles and requires
-an exact match immediately before transport. Task/week summaries contain only submitted content
-from the declared period. Returned proposals enter the
-local proposal-governance path, which assigns fingerprints, admission, revalidation, resolution,
-and timestamps. Admission rechecks current task, conversation, and relationship state inside its
-local transaction. Strong-link application repeats those checks transactionally. User acceptance applies the authoritative effect and proposal
-resolution atomically; delegated operations additionally require their exact capability permission.
+Baah's explicit route-retirement approval; `backend/src/index.ts` intentionally remains unchanged in this
+slice.
 
 ### `POST /api/v1/coaching/respond`
 
@@ -72,6 +51,30 @@ structured output, and unknown errors do not trigger fallback. If both attempts 
 error remains content-free. A successful response's existing `usage.provider` identifies which
 adapter produced it; the request and response schema examples are unchanged.
 
+### `POST /api/v1/coaching/respond/stream`
+
+Accepts the same strict `CoachingRequest` and requires a bounded `Idempotency-Key` header. The
+response is `application/x-ndjson`; events have the request UUID, a contiguous non-negative
+sequence, and exactly one terminal. `coaching.delta` carries presentation-only reply text while the
+provider is still producing its structured result. Only a validated final result becomes
+`coaching.completed`. A started failure becomes `coaching.failed` with a public failure code and no
+private provider detail.
+
+The first request persists its request hash and lifecycle before provider work. Reusing the key
+with different content returns `409 IDEMPOTENCY_KEY_REUSED`. A completed duplicate replays the one
+authoritative terminal without another provider attempt. Work found in `provider_started` after a
+restart returns `409 AMBIGUOUS_PAID_WORK`; the client must reconcile and require explicit
+confirmation rather than treating this as an ordinary retry. Cost reservations use the same stable
+idempotency identity. Terminal response content is AES-256-GCM encrypted in the dedicated usage
+ledger with `TAISA_COACHING_RECEIPT_ENCRYPTION_KEY`; production fails closed when the key is absent.
+
+### `GET /api/v1/coaching/requests/:requestId`
+
+Returns the durable state for a previously accepted coaching request. `404 REQUEST_NOT_FOUND`
+means no receipt exists. `ambiguous` means provider work may have started and no automatic retry is
+safe. `completed` includes the authoritative response, receipt, and terminal sequence so the native
+client can reconcile a lost connection without paying twice.
+
 ---
 
 ## Legacy route overview (mounted pending retirement)
@@ -88,8 +91,7 @@ adapter produced it; the request and response schema examples are unchanged.
 | Trajectory | `/api/v1/trajectory` | `trajectoryAnalyst` (direct `callClaudeJson`) |
 | Notifications | `/api/v1/notifications` | `trajectoryAnalyst` check-in prompts (direct `callClaude`) |
 | Chat | `/api/v1/chat` | legacy backend-readable chat |
-| Today | `/api/v1/today` | legacy backend-readable summaries; never used by Combined Home |
-| Organization | `/api/v1/organization` | stateless, bounded proposal generation from caller-supplied records |
+| Today | `/api/v1/today` | legacy backend-readable summaries |
 
 Everything below, except the current transcription section, documents the legacy API while it
 remains mounted. It is retained so rollback behavior is explicit rather than silently stale.
@@ -334,6 +336,8 @@ Update an entry's edited transcript or status.
 
 Transcribe an audio file using a streaming-capable OpenAI transcription model. Accepts `multipart/form-data` and, after all pre-provider validation passes, responds as `application/x-ndjson`. The server measures the uploaded audio and uses that measured duration for duration and cost checks before OpenAI is invoked. Disconnecting the client aborts the provider request and temporary audio is deleted when the stream closes.
 
+`X-Request-ID`, `Idempotency-Key`, and authenticated device ownership identify one durable paid request. A completed request replays its encrypted terminal event without invoking the provider again. A request left at `provider_started` returns `409 AMBIGUOUS_PAID_WORK` until the same owner explicitly authorizes retry through `POST /api/v1/transcribe/requests/:requestId/resolve`; current state is available from `GET /api/v1/transcribe/requests/:requestId`.
+
 **Request** — `multipart/form-data`
 | Field | Type | Notes |
 |---|---|---|
@@ -357,7 +361,7 @@ Terminal events are:
 
 Provider confidence arrays, provider errors, and raw provider event shapes never cross the gateway. A clear completion can start coaching automatically. An uncertain completion is editable composer text and creates no coaching interaction. No-speech creates neither a conversation message nor a coaching interaction.
 
-Required runtime settings are `TAISA_TRANSCRIPTION_MODEL`, `TAISA_TRANSCRIPTION_MAX_DURATION_SECONDS`, `TAISA_TRANSCRIPTION_MAX_UPLOAD_BYTES`, `TAISA_TRANSCRIPTION_PRICE_USD_PER_MINUTE`, `TAISA_AI_COST_CEILING_PER_REQUEST_USD`, `TAISA_AI_COST_CEILING_DAILY_USD`, and `TAISA_AI_COST_CEILING_MONTHLY_USD`. `TAISA_TRANSCRIPTION_MODEL` must support streaming and log probabilities (`gpt-4o-transcribe` is the deployment default; `whisper-1` is not supported by this route). Missing or invalid settings fail closed with `503 TRANSCRIPTION_CONFIG_ERROR`; upload or duration overflow returns `413`; a caller-duration mismatch returns `422 AUDIO_DURATION_MISMATCH`; a cost ceiling returns `429 COST_LIMIT_EXCEEDED`. These pre-provider failures remain ordinary JSON because streaming has not begun. Only content-free usage receipts, timestamps, and reservations are stored at `TAISA_USAGE_LEDGER_PATH`; transcripts, prompts, responses, and uploaded audio are never stored there.
+Required runtime settings are `TAISA_TRANSCRIPTION_MODEL`, `TAISA_TRANSCRIPTION_MAX_DURATION_SECONDS`, `TAISA_TRANSCRIPTION_MAX_UPLOAD_BYTES`, `TAISA_TRANSCRIPTION_PRICE_USD_PER_MINUTE`, `TAISA_TRANSCRIPTION_RECEIPT_ENCRYPTION_KEY`, `TAISA_AI_COST_CEILING_PER_REQUEST_USD`, `TAISA_AI_COST_CEILING_DAILY_USD`, and `TAISA_AI_COST_CEILING_MONTHLY_USD`. `TAISA_TRANSCRIPTION_MODEL` must support streaming and log probabilities (`gpt-4o-transcribe` is the deployment default; `whisper-1` is not supported by this route). Missing or invalid settings fail closed with `503 TRANSCRIPTION_CONFIG_ERROR`; upload or duration overflow returns `413`; a caller-duration mismatch returns `422 AUDIO_DURATION_MISMATCH`; a cost ceiling returns `429 COST_LIMIT_EXCEEDED`. These pre-provider failures remain ordinary JSON because streaming has not begun. Usage receipts stay content-free. Terminal transcript events are stored only as AES-256-GCM ciphertext for idempotent replay; uploaded audio is always temporary and is never retained in the receipt database.
 
 The SQLite usage ledger provides transactional reservations and restart recovery for the single-instance MVP. Horizontal replicas require a shared accounting store so reservations remain globally atomic. Coaching providers additionally require their `TAISA_<PROVIDER>_MODEL`, input/output price, and `MAX_OUTPUT_TOKENS` settings; the explicit output cap is included in the conservative pre-call reservation.
 

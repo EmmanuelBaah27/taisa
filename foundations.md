@@ -1,23 +1,21 @@
 # Taisa DS — Foundations
 
-Designer reference for the token system. The authoritative machine-readable values live in
-`mobile/design-system/tokens.json`; this document explains how to apply them.
+Designer reference for the token system. Source of truth for all Taisa DS token decisions.
 
 ---
 
 ## How the token system works
 
-Tokens have three layers. Product UI uses semantic components or utilities; native APIs that
-require resolved values use the typed facade in `mobile/src/design-system/tokens.ts`.
+Tokens have three layers. You always use the **utility** layer — never primitives or semantic aliases directly.
 
 ```
 Primitive  →  Semantic alias  →  Utility class
 neutral.100  →  muted background  →  bg-muted
 ```
 
-**Primitives** (`mobile/design-system/tokens.json`) — raw palette values. Never reference these in components.
+**Primitives** (nested objects in `mobile/tailwind.config.js` under `theme.extend.colors`) — raw palette values like `neutral.100`, `lime.500`. Never reference these in components.
 
-**Semantic aliases** (`color` and `typography` in the registry) — purpose-named mappings. NativeWind and the typed facade consume these exact values.
+**Semantic aliases** (flat entries in the same `colors` object) — purpose-named mappings. E.g. `muted: '#f3f3f3'` maps to `bg-muted`. Swap the value here to retheme the whole system.
 
 **Utilities** — the NativeWind class names components actually use. E.g. `bg-muted`, `text-foreground`, `border-border`. These are generated automatically from the `colors` entries.
 
@@ -27,9 +25,9 @@ neutral.100  →  muted background  →  bg-muted
 
 When choosing a token, always go in this order:
 1. **Semantic utility first** — `text-foreground`, `bg-success-subtle`, `border-border`
-2. **Typed semantic value** — use `colorTokens` only for native APIs that cannot accept a utility or semantic component prop
-3. **Gap** — add an approved semantic role to `mobile/design-system/tokens.json`, then expose it through NativeWind and the typed facade
-4. **Never** — raw hex, raw oklch, arbitrary type sizes, or raw palette utilities in Product code
+2. **Named palette as fallback** — `bg-neutral-100` (only if no semantic alias exists for this role)
+3. **Gap** — if neither exists, add a new entry to `mobile/tailwind.config.js` under `theme.extend.colors` before using it
+4. **Never** — raw hex, raw oklch, arbitrary px, raw Tailwind color utilities like `text-green-700`
 
 ---
 
@@ -84,16 +82,27 @@ Status utilities: add `-subtle` for tinted backgrounds, `-border` for borders, n
 
 ## Typography scale
 
-Product copy uses the closed `Text` roles. Each role binds family, size, weight, line height, and letter spacing.
+Never combine raw Tailwind size + weight utilities. Always use the DS type scale — it encodes size, weight, line-height, and letter-spacing together.
 
-| Role | Size | Weight | Use for |
+| Class | Size | Weight | Use for |
 |---|---|---|---|
-| `display` | 28px | 600 | Rare hero statements |
-| `heading` | 24px | 600 | Page titles |
-| `subheading` | 20px | 600 | Section and card headings |
-| `body`, `bodyStrong` | 16px | 400 / 600 | Default and emphasized copy |
-| `label`, `labelStrong` | 14px | 400 / 600 | Compact controls and supporting labels |
-| `metadata`, `metadataStrong` | 12px | 400 / 600 | Timestamps and tertiary detail |
+| `text-H1` | 28px (desktop) | 600 | Page headings |
+| `text-H2` | 24px (desktop) | 600 | Section headings |
+| `text-H3` | 20px (desktop) | 600 | Sub-headings |
+| `text-xlg-regular` | 18px | 400 | Large body |
+| `text-xlg-medium` | 18px | 500 | Large emphasis |
+| `text-xlg-semibold` | 18px | 600 | Large strong |
+| `text-lg-regular` | 16px | 400 | Default body |
+| `text-lg-medium` | 16px | 500 | Body emphasis |
+| `text-lg-semibold` | 16px | 600 | Body strong |
+| `text-base-regular` | 14px | 400 | UI labels |
+| `text-base-medium` | 14px | 500 | UI emphasis |
+| `text-base-semibold` | 14px | 600 | UI strong |
+| `text-small-regular` | 12px | 400 | Captions, meta |
+| `text-small-medium` | 12px | 500 | Caption emphasis |
+| `text-small-semibold` | 12px | 600 | Caption strong |
+
+Headings are responsive (mobile → tablet → desktop sizes). Body and label sizes are fixed.
 
 ---
 
