@@ -7,7 +7,7 @@ struct PersonalVoiceSessionView: View {
     var body: some View {
         Group {
             if let snapshot = model.snapshot {
-                VoiceSessionDiagnosticsView(snapshot: snapshot) { action in
+                VoiceSessionDiagnosticsView(snapshot: snapshot, actionStatus: model.status) { action in
                     model.perform(action)
                 }
             } else {

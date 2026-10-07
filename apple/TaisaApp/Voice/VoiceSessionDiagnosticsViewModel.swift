@@ -26,11 +26,13 @@ struct VoiceSessionDiagnosticsViewModel: Equatable {
     let state: VoiceTurnState
     let stage: VoiceTurnStage
     let reduceMotion: Bool
+    let actionStatusTitle: String?
 
-    init(snapshot: VoiceSessionSnapshot, reduceMotion: Bool) {
+    init(snapshot: VoiceSessionSnapshot, reduceMotion: Bool, actionStatus: String = "Ready") {
         state = snapshot.durable.state
         stage = snapshot.durable.stage
         self.reduceMotion = reduceMotion
+        actionStatusTitle = actionStatus == "Ready" ? nil : actionStatus
     }
 
     var statusTitle: String {
