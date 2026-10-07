@@ -5,7 +5,8 @@ final class TaisaAccessibilityLayoutTests: XCTestCase {
     func testAccessibilityTextKeepsHomeRowsVisibleAndHittable() {
         assertHomeScenarioFitsVisibleWindow(
             identifier: "home.accessibilityText",
-            requiredText: "Plan the garden studio"
+            requiredText: "Your best planning sessions happen before midday.",
+            actionLabel: "home.lead-insight"
         )
     }
 
@@ -14,6 +15,21 @@ final class TaisaAccessibilityLayoutTests: XCTestCase {
             identifier: "home.narrowIPad",
             requiredText: "Plan the garden studio"
         )
+    }
+
+    func testCombinedHomeKeepsWeeklyWorkAndInsightReachable() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-TAISAPreviewScenario", "home.combined"]
+        app.launch()
+
+        let weeklyWork = app.staticTexts["Draft the studio lighting plan"]
+        XCTAssertTrue(weeklyWork.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Complete Draft the studio lighting plan"].isHittable)
+        let insight = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS %@", "Your best planning sessions happen before midday.")
+        ).firstMatch
+        XCTAssertTrue(insight.waitForExistence(timeout: 5))
+        XCTAssertTrue(insight.isHittable)
     }
 
     func testFailureAndRecoveryActionsRemainReachable() {
@@ -28,12 +44,16 @@ final class TaisaAccessibilityLayoutTests: XCTestCase {
         }
     }
 
-    private func assertHomeScenarioFitsVisibleWindow(identifier: String, requiredText: String) {
+    private func assertHomeScenarioFitsVisibleWindow(
+        identifier: String,
+        requiredText: String,
+        actionLabel: String? = nil
+    ) {
         let app = XCUIApplication()
         openScenario(identifier, in: app)
 
         let title = app.staticTexts[requiredText]
-        let action = app.buttons[requiredText]
+        let action = app.buttons[actionLabel ?? requiredText]
         XCTAssertTrue(title.waitForExistence(timeout: 5))
         XCTAssertTrue(title.exists)
         XCTAssertTrue(action.isHittable)

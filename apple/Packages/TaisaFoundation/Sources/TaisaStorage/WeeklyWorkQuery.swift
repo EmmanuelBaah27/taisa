@@ -4,6 +4,11 @@ import GRDB
 public struct WeeklyWorkItem: Sendable, Equatable {
     public let action: ActionRecord
     public let placement: WeeklyPlacementRecord
+
+    public init(action: ActionRecord, placement: WeeklyPlacementRecord) {
+        self.action = action
+        self.placement = placement
+    }
 }
 
 public struct WeeklyWorkSnapshot: Sendable, Equatable {
