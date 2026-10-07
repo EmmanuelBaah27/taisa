@@ -10,7 +10,7 @@ import XCTest
         XCTAssertTrue(qa.waitForExistence(timeout: 10))
         qa.tap()
         XCTAssertTrue(
-            app.buttons["foundation.voice-diagnostics.action"].waitForExistence(timeout: 10)
+            app.buttons["personal-qa.voice"].waitForExistence(timeout: 10)
         )
     }
 
@@ -80,5 +80,26 @@ import XCTest
         app.activate()
         XCTAssertTrue(app.buttons["Restore Backup"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.secureTextFields["Recovery key"].exists)
+    }
+
+    func testConfiguredGatewayRequiresSecureEnrollmentBeforeRecording() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--taisa-personal-device-qa", "--taisa-voice-gateway-unenrolled"]
+        app.launchEnvironment["TAISA_UI_TEST_VOICE_GATEWAY_URL"] = "https://voice.example.com"
+        app.launch()
+        app.buttons["foundation.personal-qa.action"].tap()
+        app.buttons["personal-qa.voice"].tap()
+
+        XCTAssertTrue(app.secureTextFields["Enrollment code"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["Connect this device"].exists)
+        XCTAssertFalse(app.buttons["Record"].exists)
+
+        app.terminate()
+        app.launchArguments = ["--taisa-personal-device-qa", "--taisa-voice-gateway-ready"]
+        app.launch()
+        app.buttons["foundation.personal-qa.action"].tap()
+        app.buttons["personal-qa.voice"].tap()
+        XCTAssertTrue(app.buttons["Record"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.secureTextFields["Enrollment code"].exists)
     }
 }
