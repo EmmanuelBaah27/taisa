@@ -1,6 +1,19 @@
 import XCTest
 
 @MainActor final class PersonalRecoveryUITests: XCTestCase {
+    func testExplicitQALaunchExposesVoiceDiagnosticsEntry() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--taisa-personal-device-qa"]
+        app.launch()
+
+        let qa = app.buttons["foundation.personal-qa.action"]
+        XCTAssertTrue(qa.waitForExistence(timeout: 10))
+        qa.tap()
+        XCTAssertTrue(
+            app.buttons["foundation.voice-diagnostics.action"].waitForExistence(timeout: 10)
+        )
+    }
+
     func testExplicitQALaunchCanCreateOnceAndInspectAfterRelaunch() {
         let app = XCUIApplication()
         app.launchArguments = ["--taisa-personal-device-qa"]
