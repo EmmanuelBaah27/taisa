@@ -123,7 +123,7 @@ export function validateVoiceEvidence(evidence = {}, { expectedCommit } = {}) {
   return errors;
 }
 
-export function validateSignedBuildBindings(evidence, records = []) {
+export function validateSignedBuildBindings(evidence, records = [], inspectionOptions = {}) {
   const errors = [];
   if (!Array.isArray(records) || records.length !== 2) {
     return ['exactly two signed-build records are required'];
@@ -131,7 +131,7 @@ export function validateSignedBuildBindings(evidence, records = []) {
   const rows = Array.isArray(evidence?.rows) ? evidence.rows : [];
   const seenDevices = new Set();
   for (const source of records) {
-    const inspected = inspectSignedBuild(structuredClone(source));
+    const inspected = inspectSignedBuild(structuredClone(source), inspectionOptions);
     errors.push(...inspected.errors.map((error) => `signed-build record: ${error}`));
     const record = inspected.record;
     if (record.environment !== 'personal') errors.push('signed-build record must be Personal');

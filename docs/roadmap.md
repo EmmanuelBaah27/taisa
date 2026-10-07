@@ -10,6 +10,7 @@
 
 | Feature | Track | Stage | Branch | Blocked on |
 |---|---|---|---|---|
+| SwiftUI functional Home | Platform + Product | Review + QA | `codex/swiftui-home-scope` | review, exact `preview/taisa` integration, signed iPhone/iPad QA, then Baah Ship approval |
 | Light design system | Platform + Product | Review (device QA) | feature/light-design-system | — |
 | Persistent input bar + Chat UI | Platform + Product | Plan | — | Light design system shipped |
 | SwiftUI native rebuild | Platform + Product | Shipped | `main` | — |

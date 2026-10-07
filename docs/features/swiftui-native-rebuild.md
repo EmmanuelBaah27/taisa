@@ -8,18 +8,18 @@
 
 ## What is it?
 
-Rebuild Taisa's iPhone and iPad client as a native SwiftUI application targeting iOS and iPadOS 17 or later. The native client uses accepted product decisions, portable behavior contracts, the existing Node/Express gateway, and the current React Native experience as non-blocking reference evidence.
+Rebuild Taisa's iPhone and iPad client as a native-first SwiftUI application targeting iOS/iPadOS 26 or later. The native client uses accepted product decisions, portable behavior contracts, the existing Node/Express gateway, and the current React Native experience as non-blocking reference evidence.
 
-The rebuild proceeds as complete vertical slices. Swift previews, fixtures, tests, and signed device builds are the implementation authority; React Native remains recoverable reference material only through Git history and frozen migration evidence.
+The rebuild proceeds as functionality-first vertical slices. Pages use standard SwiftUI behavior and minimal temporary styling, then receive deliberate page-level redesign after their functionality is complete. Swift previews, fixtures, tests, and signed device builds are the implementation authority; React Native remains recoverable reference material only through Git history and frozen migration evidence.
 
 ## Why now?
 
-Taisa's current Apple experience depends on a large cross-platform runtime for navigation, local persistence, audio, gestures, shaders, glass effects, and device services. A native client can give those Apple-specific behaviors clearer ownership and a more direct preview, testing, accessibility, and release path. Freezing the existing product first prevents the rewrite from becoming a moving target and separates parity work from future redesign.
+Taisa's current Apple experience depends on a large cross-platform runtime for navigation, local persistence, audio, gestures, shaders, glass effects, and device services. The shipped native foundation gives those Apple-specific behaviors clearer ownership and a direct preview, testing, accessibility, and release path. Product slices can now move quickly on functionality without freezing or reproducing the React Native visual implementation.
 
 ## Acceptance criteria
 
 - [ ] Accepted behavior is captured in platform-neutral contracts covering required screens, states, flows, copy, accessibility, API revision, fixtures, known defects, and deliberate platform adaptations.
-- [ ] The native app runs on iPhone and iPad with a minimum deployment target of iOS/iPadOS 17 and implements those accepted contracts with native platform behavior.
+- [ ] The native app runs on iPhone and iPad with a minimum deployment target of iOS/iPadOS 26 and implements accepted contracts with native platform behavior.
 - [ ] The native app continues to use the existing stateless coaching and transcription gateway contracts; the backend is not rewritten in Swift.
 - [ ] New installs begin with a fresh native local store. The native app does not import React Native SQLite, Keychain, recording, settings, or history data.
 - [ ] Taisa's local-first boundary remains intact: private capture stays on device until deliberate Send, readable user history remains device-authoritative, and the gateway stores no readable coaching content.
@@ -27,7 +27,7 @@ Taisa's current Apple experience depends on a large cross-platform runtime for n
 - [ ] Voice submission preserves the accepted post-Send streaming behavior for clear, uncertain, and no-speech outcomes, including interruption, retry, cleanup, and offline capture behavior.
 - [ ] The native design system has typed semantic tokens and components, SwiftUI previews for meaningful states, and automated enforcement against unapproved raw visual values.
 - [ ] Fonts, app artwork, bespoke icons, the Navii avatar, glass treatments, recording glow, and shader-driven effects have verified native resource strategies and approved fallbacks.
-- [ ] Every migration slice passes unit/contract tests, deterministic flow tests, visual parity review, accessibility checks, and applicable physical-device QA before it is accepted.
+- [ ] Every Product slice passes unit/contract tests, deterministic flow tests, native interaction review, accessibility checks, and applicable physical-device QA before it is accepted.
 - [ ] Every discovered defect follows the recorded reproduce-test-fix-regress-preview loop; unresolved severity-one or severity-two defects block the slice and cutover.
 - [ ] Signed preview builds identify their exact Git revision, environment, and fixture version so device feedback can be traced to the code under review.
 - [ ] Native work is delivered as a migration program with a separately reviewable and approvable implementation plan for each major slice; approval of one slice does not authorize later slices.
@@ -49,7 +49,7 @@ Taisa's current Apple experience depends on a large cross-platform runtime for n
 - Android or web replacement clients.
 - Rewriting the Node/Express backend, provider adapters, prompts, or gateway in Swift.
 - Importing or preserving React Native on-device data, Keychain entries, recordings, preferences, or user history.
-- Redesigning screens, changing product information architecture, or adding new user-facing capability during parity migration.
+- Final visual redesign inside a functionality-first slice unless that redesign is separately scoped and approved.
 - Localization, dark-mode redesign, macOS, visionOS, widgets, and new background-processing capability.
 - Continuing ordinary React Native feature development after the baseline freeze.
 - Retiring legacy backend routes unless separately scoped and approved.
@@ -57,4 +57,4 @@ Taisa's current Apple experience depends on a large cross-platform runtime for n
 
 ## Closeout
 
-To be completed during Review with the frozen baseline commit, native release commit, verification evidence, accepted parity differences, device matrix, and final React Native disposition.
+To be completed during Review with the native release commit, verification evidence, accepted platform adaptations, device matrix, and final React Native disposition.

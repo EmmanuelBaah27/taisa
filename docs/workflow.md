@@ -13,6 +13,7 @@ relevant to the task.
 
 | Feature | Track | Stage | Branch | Blocked on |
 |---|---|---|---|---|
+| SwiftUI functional Home | Platform + Product | Review + QA | `codex/swiftui-home-scope` | exact `preview/taisa` verification, signed iPhone/iPad QA, then Baah Ship approval |
 | Swift native audio and conversation streaming | Platform | Build | `feature/swift-native-audio-streaming` | physical transcription failure after capture; canonical preview diagnosis and repair, then exact signed iPhone/iPad QA |
 | Local-first coaching platform | Platform | Build | `feature/local-first-coaching-platform` | Managed-device recovery/privacy QA is next; paid live provider evaluation remains gated; legacy-route retirement requires later explicit approval |
 | Personal alpha release | Platform + Product | Build | `feature/local-first-coaching-platform` | Code-only build complete at `850b3d6`; next gate is Baah approval to create Railway resources, add billing/secrets, and deploy. Signed iPhone installation follows as a separate gate. |

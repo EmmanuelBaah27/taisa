@@ -253,6 +253,12 @@ See `docs/api.md` for the request/response patterns. See `docs/agent-persona.md`
 | `callClaudeJson` with fallback | Claude sometimes wraps JSON in markdown code fences. The fallback parser strips them before parsing. |
 | One automatic coaching fallback | Keeps coaching available across an operational provider failure without parallel calls; the combined reservation and shared parity gate preserve spend and quality boundaries. |
 
+### Native functional Home
+
+The iOS/iPadOS 26+ product entry point is `AppRootView`. `AppRuntime` opens the protected store once through the same location and interrupted-recovery boundary used by Personal recovery. A safe open produces `HomeModel`; an unsafe open routes directly to recovery without replacing the store.
+
+Home reads one coherent encrypted snapshot through `HomeView → HomeModel → HomeClient → HomeQuery → TaisaStore`. `HomeQuery` owns bounded GRDB reads and tombstone/status filtering; GRDB does not cross into Product targets. `TaisaHome` owns platform-neutral loading, empty, content, refresh, retry, cancellation, stale-result, and recovery-required state. SwiftUI owns only presentation and typed user intents.
+
 ## Personal-alpha hosted boundary
 
 The personal alpha uses one private, single-replica Node service. The iPhone remains the readable

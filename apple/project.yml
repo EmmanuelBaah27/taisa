@@ -2,7 +2,7 @@ name: Taisa
 options:
   minimumXcodeGenVersion: 2.46.0
   deploymentTarget:
-    iOS: "17.0"
+    iOS: "26.0"
   generateEmptyDirectories: true
 configs:
   Debug: debug
@@ -59,6 +59,8 @@ targets:
       - package: TaisaFoundation
         product: TaisaDesignSystem
       - package: TaisaFoundation
+        product: TaisaHome
+      - package: TaisaFoundation
         product: TaisaStorage
       - package: TaisaFoundation
         product: TaisaCloudKit
@@ -74,6 +76,7 @@ targets:
     sources:
       - path: TaisaPreview
       - path: TaisaApp/Voice
+      - path: TaisaApp/Home
       - path: Generated
     settings:
       base:
@@ -94,6 +97,8 @@ targets:
         product: TaisaContracts
       - package: TaisaFoundation
         product: TaisaDesignSystem
+      - package: TaisaFoundation
+        product: TaisaHome
       - package: TaisaFoundation
         product: TaisaPreviewSupport
       - package: TaisaFoundation
@@ -146,6 +151,8 @@ targets:
       - package: TaisaFoundation
         product: TaisaStorage
       - package: TaisaFoundation
+        product: TaisaHome
+      - package: TaisaFoundation
         product: TaisaSecurity
       - package: TaisaFoundation
         product: TaisaRecovery
@@ -180,6 +187,8 @@ targets:
       - target: Taisa
       - package: TaisaFoundation
         product: TaisaStorage
+      - package: TaisaFoundation
+        product: TaisaHome
       - package: TaisaFoundation
         product: TaisaRecovery
       - package: TaisaFoundation
