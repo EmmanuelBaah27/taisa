@@ -125,8 +125,8 @@ All paths invoke `design-handoff`. Brief produced is the DS layer of the plan.
 - None → flag to Baah, get explicit go-ahead
 
 **Build order — never deviate:**
-1. DS layer → `mobile/src/components/ui/` (NativeWind only, typed + exported props, no business logic, add to `docs/design-system.md`)
-2. Screen layer → import only from `mobile/src/components/ui/`, no inline primitive styles
+1. Native DS layer → typed semantic Swift tokens/components, no business logic, documented in `docs/design-system.md`
+2. SwiftUI screen layer → consume native DS APIs; raw visual values require a documented verified exception
 
 **DS vs screen decision tree:**
 ```
@@ -150,9 +150,9 @@ Uncertain? Make the safer call (DS), note it: "Treated X as DS — check at REVI
 - Breaking change (removed prop, renamed export) → always ask, show all usages + impact
 
 **DS compliance check — runs at every REVIEW, blocks PR if any fail:**
-- [ ] All visual primitives in screens import from `mobile/src/components/ui/`
-- [ ] No `StyleSheet.create()` in new or changed files
-- [ ] New DS components: typed + exported props, documented in `docs/design-system.md`
+- [ ] Product views consume typed native DS components/tokens
+- [ ] Raw visual values have a narrow documented exception and verification coverage
+- [ ] New native DS components expose typed semantic APIs and preview states
 - [ ] No business logic inside DS components
 
 **Feedback routing:**

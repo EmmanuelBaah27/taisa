@@ -5,6 +5,11 @@
 
 ## Current authority boundary
 
+The Swift application under `apple/` is the only active client implementation. The former React
+Native client was retired from the working tree on 2026-10-07 and remains recoverable through Git
+history and frozen migration evidence only. References to `mobile/` below are historical behavior
+notes, not runnable architecture or implementation guidance.
+
 The new coaching path is phone-authoritative. Readable profile, conversations, transcripts,
 goals, actions, evidence, governed memory, context manifests, and cached coaching responses live
 in the SQLCipher database on the iPhone. A deliberate submit sends one bounded context package to
@@ -77,24 +82,25 @@ managed iPhone development-build checklist.
 
 ```
 taisa/
-├── mobile/          React Native app (Expo managed workflow)
-│   ├── app/         Expo Router screens (file-based routing)
-│   └── src/         Components, hooks, services, stores, constants
+├── apple/           Canonical SwiftUI iPhone and iPad application
+│   ├── TaisaApp/    Production and Personal application surfaces
+│   └── Packages/    Encrypted storage, sync, recovery, audio, and voice foundations
 ├── backend/         Node.js + Express API
 │   └── src/
 │       ├── routes/           9 route groups
 │       ├── services/claude/  AI agents (journalAgent, performanceReviewAgent)
 │       ├── prompts/system/   Prompt builders (journalProcessor, trajectoryAnalyst, performanceReviewAnalyst)
 │       └── db/               SQLite connection + schema
-└── shared/          TypeScript types shared between backend and mobile
-    └── types/       api.ts, journal.ts, career.ts, goals.ts
+└── shared/          Portable TypeScript gateway contracts
+    └── types/       API, coaching, transcription, and migration contracts
 ```
 
-**Important:** `mobile/` is NOT in the root npm workspace. It has its own `node_modules` and must be run separately. The root workspace covers `backend/` and `shared/` only.
+The root npm workspace covers `backend/` and `shared/`. Apple builds are generated and verified
+through `apple/` and `scripts/native-apple/`.
 
 ---
 
-## Legacy data flow — voice journal to server insight
+## Historical React Native data flow — reference only
 
 This describes the still-mounted pre-cutover route family. It is retained for rollback and old
 screens during BUILD, not as the authority model for the new local coaching flow:
@@ -238,12 +244,12 @@ See `docs/api.md` for the request/response patterns. See `docs/agent-persona.md`
 
 | Decision | Why |
 |---|---|
-| SQLCipher SQLite on iPhone | Single readable authority with a device-only Keychain key. Expo Go cannot validate this native configuration. |
+| SQLCipher SQLite on iPhone | Single readable authority with a device-only Keychain key; signed native builds validate this configuration. |
 | Backend SQLite | Legacy CRUD rollback store plus a content-free usage ledger during BUILD; not a destination for new coaching content. |
 | `ts-node-dev` | Hot-reload TypeScript in dev without a build step. No compiled output needed during development. |
-| Installation ID in `x-user-id` | MVP transport shortcut for usage accounting and rate limiting, not authentication or career-data identity. The authoritative local `profile.id` lives in encrypted SQLite; the separate installation ID is set automatically by `mobile/src/services/api.ts`. |
+| Installation ID in `x-user-id` | Non-production QA transport fallback for usage accounting and rate limiting, not career-data identity. Production uses authenticated device middleware; the authoritative local profile remains in encrypted SQLite. |
 | Zustand (not Redux) | Lightweight global state for a solo mobile app. Three stores: `journalStore`, `careerStore`, `uiStore`. |
-| Expo managed workflow | Native configuration stays managed, but SQLCipher and LocalAuthentication require a development build; Expo Go is insufficient. |
+| Generated Xcode project | Project configuration is generated from `apple/project.yml`; SQLCipher and LocalAuthentication are validated in signed native builds. |
 | `callClaudeJson` with fallback | Claude sometimes wraps JSON in markdown code fences. The fallback parser strips them before parsing. |
 | One automatic coaching fallback | Keeps coaching available across an operational provider failure without parallel calls; the combined reservation and shared parity gate preserve spend and quality boundaries. |
 

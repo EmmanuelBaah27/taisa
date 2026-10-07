@@ -2,7 +2,7 @@
 
 Taisa is a personal AI career companion for a solo designer (Baah). Users log daily work via voice; Claude analyses it as a senior career coach, extracts wins/challenges/action items, and surfaces CV-worthy moments. The v1 loop is fully functional. The next major build is the chat interface + four-mode Senior Self agent.
 
-**Stack:** React Native/Expo + NativeWind, Node/Express, SQLite, Anthropic SDK (claude-sonnet-4-6), OpenAI Whisper.
+**Stack:** SwiftUI, encrypted SQLite/SQLCipher, Node/Express gateway, Anthropic SDK, and OpenAI transcription.
 
 ---
 
@@ -10,11 +10,11 @@ Taisa is a personal AI career companion for a solo designer (Baah). Users log da
 
 Do not violate these without explicit instruction:
 
-- **No auth in v1** — `userId` = device UUID, passed via `x-user-id` header. Set automatically in `mobile/src/services/api.ts` via Axios interceptor reading from expo-secure-store. Do not add auth middleware.
+- **Client authority is Swift** — active iPhone/iPad product code lives under `apple/`; React Native survives only in Git history and frozen migration evidence.
 - **SQLite only** — `backend/src/db/connection.ts`. No migrations system. Add columns via `ALTER TABLE` or update `schema.sql` and note manual migration needed.
-- **Expo managed workflow** — do not run `npx expo run:ios` or `npx expo eject` unless explicitly asked. Use `npx expo start`.
-- **`mobile/` is NOT in root workspace** — it has its own `node_modules`. Run `npm install` inside `mobile/` for mobile deps. Never `npm install` from root for mobile packages. Root workspace: `["backend", "shared"]` only.
-- **NativeWind for all new UI** — no `StyleSheet.create()` in new or rebuilt components. See `docs/design-system.md`.
+- **Native Apple workflow** — use the generated Xcode project and `scripts/native-apple/verify-all.sh`; do not hand-edit generated project output.
+- **Root workspace** — npm covers `backend/` and `shared/` only. Swift packages and Xcode targets live under `apple/`.
+- **Native design system for all new UI** — use typed Swift tokens/components. See `docs/design-system.md`.
 
 ---
 
