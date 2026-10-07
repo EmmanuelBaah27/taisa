@@ -5,6 +5,11 @@ import TaisaStorage
 @MainActor
 @Observable
 final class AppRuntime {
+    struct Clients: Sendable {
+        let home: HomeClient
+        let insights: InsightsClient
+    }
+
     enum State: Equatable {
         case startup
         case ready
@@ -13,9 +18,10 @@ final class AppRuntime {
 
     private(set) var state: State = .startup
     private(set) var homeModel: HomeModel?
-    @ObservationIgnored private let startOperation: @Sendable () async throws -> HomeClient
+    private(set) var insightsModel: InsightsModel?
+    @ObservationIgnored private let startOperation: @Sendable () async throws -> Clients
 
-    init(start: @escaping @Sendable () async throws -> HomeClient) {
+    init(start: @escaping @Sendable () async throws -> Clients) {
         startOperation = start
     }
 
@@ -23,7 +29,10 @@ final class AppRuntime {
         AppRuntime {
             let backend = try PersonalRecoveryBackend.personal()
             let store = try await backend.openStore()
-            return HomeClient.local(store: store, deviceID: await backend.deviceID())
+            return Clients(
+                home: HomeClient.local(store: store, deviceID: await backend.deviceID()),
+                insights: InsightsClient.local(store: store)
+            )
         }
     }
 
@@ -31,10 +40,13 @@ final class AppRuntime {
     func start() async -> State {
         guard state == .startup else { return state }
         do {
-            homeModel = HomeModel(client: try await startOperation())
+            let clients = try await startOperation()
+            homeModel = HomeModel(client: clients.home)
+            insightsModel = InsightsModel(client: clients.insights)
             state = .ready
         } catch {
             homeModel = nil
+            insightsModel = nil
             state = .recoveryRequired
         }
         return state

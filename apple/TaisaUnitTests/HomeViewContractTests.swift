@@ -43,4 +43,22 @@ final class HomeViewContractTests: XCTestCase {
         XCTAssertTrue(thisWeek.contains("await model.undoCompletion()"))
         XCTAssertTrue(leadInsight.contains("home.lead-insight"))
     }
+
+    func testInsightsStayNestedByCurrentReviewAndHistoryWithGroundedDetail() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let home = root.appendingPathComponent("TaisaApp/Home")
+        let view = try String(contentsOf: home.appendingPathComponent("InsightsView.swift"), encoding: .utf8)
+        let detail = try String(contentsOf: home.appendingPathComponent("InsightDetailView.swift"), encoding: .utf8)
+        let rootView = try String(contentsOf: root.appendingPathComponent("TaisaApp/App/AppRootView.swift"), encoding: .utf8)
+
+        for identifier in ["insights.root", "insights.current", "insights.review", "insights.history"] {
+            XCTAssertTrue(view.contains(identifier), "Missing \(identifier)")
+        }
+        XCTAssertTrue(view.contains("NavigationLink"))
+        XCTAssertFalse(view.contains("Section(\"Sources\")"), "Grounding belongs in nested detail")
+        XCTAssertTrue(detail.contains("insight.detail.sources"))
+        XCTAssertTrue(detail.contains("insight.detail.revisions"))
+        XCTAssertTrue(rootView.contains("openInsights:"))
+        XCTAssertTrue(rootView.contains("InsightsView(model:"))
+    }
 }

@@ -3,6 +3,7 @@ import SwiftUI
 struct AppRootView: View {
     @State var runtime: AppRuntime
     @State private var showsPersonalQA = false
+    @State private var showsInsights = false
 
     var body: some View {
         Group {
@@ -14,7 +15,8 @@ struct AppRootView: View {
                     HomeView(
                         model: model,
                         openRecovery: runtime.requireRecovery,
-                        openPersonalQA: personalQAAction
+                        openPersonalQA: personalQAAction,
+                        openInsights: { showsInsights = true }
                     )
                 }
             case .recoveryRequired:
@@ -30,6 +32,11 @@ struct AppRootView: View {
             NavigationStack { PersonalDeviceQAView() }
         }
 #endif
+        .sheet(isPresented: $showsInsights) {
+            if let model = runtime.insightsModel {
+                NavigationStack { InsightsView(model: model) }
+            }
+        }
     }
 
     private var personalQAAction: (() -> Void)? {

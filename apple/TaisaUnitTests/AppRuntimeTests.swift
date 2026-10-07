@@ -17,10 +17,11 @@ final class AppRuntimeTests: XCTestCase {
     }
 
     func testSuccessfulStartBuildsHomeModel() async {
-        let runtime = AppRuntime(start: { HomeClient { HomeSnapshot(conversations: [], goals: [], actions: []) } })
+        let runtime = AppRuntime(start: { .test(home: HomeClient { HomeSnapshot(conversations: [], goals: [], actions: []) }) })
         let state = await runtime.start()
         XCTAssertEqual(state, .ready)
         XCTAssertNotNil(runtime.homeModel)
+        XCTAssertNotNil(runtime.insightsModel)
     }
 
     func testStorageFailuresRouteToRecovery() async {
@@ -29,6 +30,7 @@ final class AppRuntimeTests: XCTestCase {
             let state = await runtime.start()
             XCTAssertEqual(state, .recoveryRequired)
             XCTAssertNil(runtime.homeModel)
+            XCTAssertNil(runtime.insightsModel)
         }
     }
 
@@ -47,5 +49,16 @@ final class AppRuntimeTests: XCTestCase {
         XCTAssertEqual(try Data(contentsOf: storeURL), original)
         XCTAssertEqual(try FileManager.default.attributesOfItem(atPath: storeURL.path)[.systemFileNumber] as? NSNumber,
                        attributes[.systemFileNumber] as? NSNumber)
+    }
+}
+
+private extension AppRuntime.Clients {
+    static func test(home: HomeClient) -> Self {
+        .init(
+            home: home,
+            insights: InsightsClient(load: { .empty }, detail: { insight in
+                .init(insight: insight, sources: [], revisions: [])
+            })
+        )
     }
 }
