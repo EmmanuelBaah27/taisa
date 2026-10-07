@@ -29,3 +29,4 @@ Record the candidate SHA, signed-build record, device model, OS version, result,
 - iPhone simulator launch and native empty state.
 - iPad simulator Accessibility XXXL, adaptable content, retry, and recovery reachability.
 - Deterministic synthetic preview states with no Keychain, SQLCipher, CloudKit, network, or production content.
+

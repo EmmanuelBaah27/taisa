@@ -239,6 +239,12 @@ See `docs/api.md` for the request/response patterns. See `docs/agent-persona.md`
 | Decision | Why |
 |---|---|
 | SQLCipher SQLite on iPhone | Single readable authority with a device-only Keychain key. Expo Go cannot validate this native configuration. |
+
+### Native functional Home
+
+The iOS/iPadOS 26+ product entry point is `AppRootView`. `AppRuntime` opens the protected store once through the same location and interrupted-recovery boundary used by Personal recovery. A safe open produces `HomeModel`; an unsafe open routes directly to recovery without replacing the store.
+
+Home reads one coherent encrypted snapshot through `HomeView → HomeModel → HomeClient → HomeQuery → TaisaStore`. `HomeQuery` owns bounded GRDB reads and tombstone/status filtering; GRDB does not cross into Product targets. `TaisaHome` owns platform-neutral loading, empty, content, refresh, retry, cancellation, stale-result, and recovery-required state. SwiftUI owns only presentation and typed user intents.
 | Backend SQLite | Legacy CRUD rollback store plus a content-free usage ledger during BUILD; not a destination for new coaching content. |
 | `ts-node-dev` | Hot-reload TypeScript in dev without a build step. No compiled output needed during development. |
 | Installation ID in `x-user-id` | MVP transport shortcut for usage accounting and rate limiting, not authentication or career-data identity. The authoritative local `profile.id` lives in encrypted SQLite; the separate installation ID is set automatically by `mobile/src/services/api.ts`. |

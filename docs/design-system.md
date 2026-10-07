@@ -247,3 +247,4 @@ clipboard item. The system document exporter uses the verified file URL through
 `UIDocumentPickerViewController` (iOS 14+, within the iOS 17 baseline), not an
 in-memory `FileDocument`. Its transfer lifetime stays owned until the platform
 reports completion or cancellation; scene changes shield the underlying content.
+
