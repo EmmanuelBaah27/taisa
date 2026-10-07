@@ -17,8 +17,8 @@ The change removes manual status duplication across Linear, `docs/roadmap.md`, t
 |---|---|---|
 | Product direction and milestone sequence | Linear project and milestones | No repository roadmap copy |
 | Task intake, active stage, owner, dependency, blocker, and priority | Linear issues | Queried during workflow orientation; not copied into a manual table |
-| Scope and acceptance criteria | Linear issue description or attached Linear document | Repository file only when the content must version with code |
-| Feature design and implementation plan | Linear issue/document plus sub-issues or checklist | Code-adjacent architectural contracts remain in repository canonical docs |
+| Scope and acceptance criteria | Linear issue description or attached Linear document | No independently maintained repository copy; durable constraints move to the appropriate canonical contract or decision record |
+| Feature design and implementation plan | Linear issue/document plus sub-issues or checklist | No independently maintained repository copy; code-adjacent architectural contracts remain in repository canonical docs |
 | Durable architecture and technical decisions | Repository architecture/contract docs and decision records | Linked from Linear |
 | Verification and device-QA evidence | Commits, repository evidence records when needed, and Linear updates | Exact revision and outcome summarized in Linear |
 | Branch, pull request, and merge identity | Git and GitHub | Linked or commented on the Linear issue |
@@ -106,7 +106,7 @@ Remove the Active Work table and replace it with a session-orientation contract:
 1. read the Taisa Linear project, milestones, and active scoped issues;
 2. inspect the current branch, worktrees, remote tracking, scope, plan, and verification evidence;
 3. reconcile contradictions before modifying product code;
-4. treat repository scope/plan evidence as authoritative for approved content and Linear as authoritative for live stage and blockers; and
+4. treat Linear approval records, Scope, Plan, stage, and blockers as authoritative while repository contracts and decisions remain authoritative for versioned technical truth; and
 5. follow the offline fallback when Linear is unavailable.
 
 Update document conventions, freshness rules, gate actions, parked-work rules, and housekeeping responsibilities so they do not instruct agents to maintain duplicate status tables or create new feature-specific scope and plan files by default.
@@ -148,7 +148,8 @@ At the start of a scoped task, the agent reports:
 
 If Linear and repository evidence disagree:
 
-- approved artifact content remains controlled by the repository;
+- approved Scope, Plan, acceptance, and gate evidence remains controlled by Linear;
+- versioned architecture, public contracts, durable decisions, migrations, and verification evidence remain controlled by the repository;
 - live stage and blocker remain controlled by Linear only when the referenced artifacts and Git state support that stage;
 - the agent stops advancement, identifies the contradiction, and repairs the stale side within existing authority;
 - missing approval evidence cannot be invented from a Linear status; and
@@ -170,7 +171,8 @@ If Linear and repository evidence disagree:
 ## Acceptance criteria
 
 - Linear is explicitly the sole live authority for roadmap sequence, milestones, active stages, priorities, ownership, dependencies, and blockers.
-- The repository remains authoritative for approved scope, architecture, plans, decisions, verification, QA, and Git evidence.
+- The repository remains authoritative only for operating constraints, architecture and public contracts, durable decisions, migrations, verification and QA evidence, and Git evidence that must version with the code.
+- Linear remains authoritative for approved Scope, design intent, implementation Plan, acceptance, and gate evidence; those records are not recreated as independently maintained repository documents.
 - `docs/roadmap.md` is removed and no repository instruction depends on it.
 - `docs/workflow.md`, the Taisa orchestrator, `AGENTS.md`, and `CLAUDE.md` consistently apply the authority split and offline fallback.
 - Every actionable task, including Quick work, design, investigation, planning, documentation, review, and work performed by Baah, has an issue-intake rule before execution.
