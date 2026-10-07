@@ -1,8 +1,10 @@
 # Native Conversation Experience — Work Map
 
-**Status:** Active — Scope and design approved; Plan in review
+**Status:** Active — Build
 **Last updated:** 2026-10-07
 **Tier:** Full
+
+**Build baseline:** `preview/taisa@4582a5e7d1c446275ac2a83c63a33ce335e4f8e5`, with accepted Home ancestor `44b5a08a8727729dea55a6238760d85f2dc0bff3` and native voice ancestor `01063fa725d067e4aa81befafa59f8fb1d995ac7` verified in history.
 
 ## Contents
 
@@ -51,7 +53,7 @@ Platform slices 1–2 and the Product design handoff may proceed in parallel aft
 
 **Critical path:** durable records → turn orchestration → live conversation wiring → recovery/privacy verification → canonical preview → Baah device QA.
 
-**Progress:** overall 0/6 · Platform 0/2 · Product 0/3 · Integration 0/1. Scope and design gates are approved; the implementation plan is in review.
+**Progress:** overall 0/6 · Platform 0/2 · Product 0/3 · Integration 0/1. Scope, design, and Plan are approved; implementation is active on `feature/native-conversation-experience`.
 
 ## 1. Platform — durable conversation and draft records
 

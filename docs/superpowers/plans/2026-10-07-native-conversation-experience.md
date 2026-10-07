@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Status:** Draft — awaiting Baah Plan approval
+**Status:** Approved by Baah — Build active
 **Last updated:** 2026-10-07
 
 **Goal:** Deliver Taisa's complete native voice-first conversation loop with global entry, deliberate Send, multiple recoverable drafts, conversation history, transcript correction, and safe failure recovery.
