@@ -38,10 +38,10 @@ Before modifying product or workflow state:
 
 1. Read the Taisa Linear project, six milestones, active issues, dependencies, blockers,
    priorities, recent updates, Scope/Plan evidence, and approval comments.
-2. Read `AGENTS.md`, `CLAUDE.md`, this file, `.claude/skills/taisa-workflow/SKILL.md`, and
+2. Read `AGENTS.md`, this file, `.agents/skills/taisa-workflow/SKILL.md`, and
    `docs/project-memory.md`.
 3. Inspect the current branch, worktree, all relevant worktrees, remote tracking, exact
-   commits, tests, PRs, canonical preview revision, and related active Codex chats.
+   commits, tests, PRs, canonical preview revision, and related active delivery chats.
 4. Reconcile contradictions before modifying product code or advancing a stage.
 5. State tier, Linear issue and milestone, stage, branch/worktree, blocker/dependency, next
    action, next Baah gate, and whether Linear was unavailable or contradictory.

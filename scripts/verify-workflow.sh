@@ -9,7 +9,7 @@ fail() {
 
 test -f AGENTS.md || fail "AGENTS.md is missing"
 test -f docs/workflow.md || fail "docs/workflow.md is missing"
-test -f .claude/skills/taisa-workflow/SKILL.md || fail "Taisa workflow orchestrator is missing"
+test -f .agents/skills/taisa-workflow/SKILL.md || fail "Taisa workflow orchestrator is missing"
 test -f docs/project-memory.md || fail "project memory index is missing"
 test -f docs/decisions/README.md || fail "decision record guide is missing"
 test -f docs/decisions/0001-use-repository-native-project-memory.md || fail "initial project memory decision is missing"
@@ -43,7 +43,7 @@ done
 test ! -e docs/roadmap.md || fail "repository roadmap duplicates Linear live authority"
 test ! -e docs/backlog.md || fail "repository backlog duplicates Linear task intake"
 
-for authority_file in AGENTS.md CLAUDE.md docs/workflow.md .claude/skills/taisa-workflow/SKILL.md; do
+for authority_file in AGENTS.md CLAUDE.md docs/workflow.md .agents/skills/taisa-workflow/SKILL.md; do
   rg -qi 'Linear.*sole live authority|sole live authority.*Linear' "$authority_file" ||
     fail "$authority_file does not declare Linear as the sole live authority"
   rg -qi 'Linear.*unavailable|offline fallback' "$authority_file" ||
@@ -51,12 +51,12 @@ for authority_file in AGENTS.md CLAUDE.md docs/workflow.md .claude/skills/taisa-
 done
 
 if rg -n 'Active Work table|docs/roadmap\.md|docs/backlog\.md' \
-  AGENTS.md CLAUDE.md docs/workflow.md .claude/skills/taisa-workflow/SKILL.md docs/project-memory.md; then
+  AGENTS.md CLAUDE.md docs/workflow.md .agents/skills/taisa-workflow/SKILL.md docs/project-memory.md; then
   fail "active repository instructions still reference duplicate live authority"
 fi
 
 if rg -n 'No formal Work Map, scope doc, or Linear issue|No Linear issue|Linear issues are created only' \
-  AGENTS.md CLAUDE.md docs/workflow.md .claude/skills/taisa-workflow/SKILL.md docs/project-memory.md; then
+  AGENTS.md CLAUDE.md docs/workflow.md .agents/skills/taisa-workflow/SKILL.md docs/project-memory.md; then
   fail "active repository instructions still permit actionable work without Linear intake"
 fi
 
