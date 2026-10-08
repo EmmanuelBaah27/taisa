@@ -46,11 +46,10 @@ final class AppRuntime {
             let context = try await backend.voiceStoreContext()
             let store = context.store
             let rawURL = Bundle.main.object(forInfoDictionaryKey: "TaisaVoiceGatewayURL") as? String ?? ""
-            let configuration = URL(string: rawURL).flatMap {
-                try? VoiceGatewayConfiguration(baseURL: $0,
-                    bearerToken: context.deviceID.uuidString.lowercased(),
-                    ownerID: context.deviceID.uuidString.lowercased())
-            }
+            let configuration = try await voiceConfiguration(
+                gatewayURLString: rawURL,
+                credentialStore: KeychainVoiceGatewayCredentialStore()
+            )
             return Clients(
                 home: HomeClient.local(store: store, deviceID: context.deviceID.uuidString),
                 insights: InsightsClient.local(store: store),
@@ -58,6 +57,20 @@ final class AppRuntime {
                 conversationFactory: configuration.map { ConversationRuntimeFactory(store: store, deviceID: context.deviceID, configuration: $0) }
             )
         }
+    }
+
+    static func voiceConfiguration(
+        gatewayURLString: String,
+        credentialStore: any VoiceGatewayCredentialStoring
+    ) async throws -> VoiceGatewayConfiguration? {
+        guard let gatewayURL = URL(string: gatewayURLString),
+              let credential = try await credentialStore.load(origin: gatewayURL)
+        else { return nil }
+        return try VoiceGatewayConfiguration(
+            baseURL: credential.origin,
+            bearerToken: credential.bearerToken,
+            ownerID: credential.credentialID
+        )
     }
 
     @discardableResult
