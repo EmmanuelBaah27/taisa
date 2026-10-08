@@ -40,14 +40,6 @@ final class AppRuntime {
         startOperation = start
     }
 
-    init(primaryShellModel: PrimaryAppShellModel = PrimaryAppShellModel(),
-         start: @escaping @Sendable () async throws -> HomeClient) {
-        self.primaryShellModel = primaryShellModel
-        startOperation = {
-            Clients(home: try await start(), insights: InsightsClient(load: { .empty }))
-        }
-    }
-
     static func live() -> AppRuntime {
         AppRuntime {
             let backend = try PersonalRecoveryBackend.personal()
