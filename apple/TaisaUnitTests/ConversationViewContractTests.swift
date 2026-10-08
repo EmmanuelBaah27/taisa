@@ -20,6 +20,8 @@ final class ConversationViewContractTests: XCTestCase {
         }
         XCTAssertTrue(source.contains("interactiveDismissDisabled"))
         XCTAssertTrue(source.contains("confirmationDialog"))
+        XCTAssertTrue(source.contains("ScrollViewReader"))
+        XCTAssertTrue(source.contains("onChange(of: messages.last?.id"))
         XCTAssertFalse(source.contains("import GRDB"))
     }
 }
