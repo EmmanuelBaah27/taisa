@@ -118,8 +118,10 @@ A successful compile is not QA readiness. A transient failure is not a reason to
 - Every failed attempt must produce new evidence, a changed hypothesis, a changed implementation, or a more discriminating test.
 - Never rerun an unchanged failing command more than once solely to see whether it changes.
 - After three unsuccessful attempts against the same supported hypothesis, pause execution, perform a root-cause review, and choose a materially different diagnostic path.
-- After three root-cause paths fail, or when further work would require materially new Scope, credentials, destructive action, inaccessible private data, or an external-state change, enter `BLOCKED` with the accumulated evidence.
+- After three root-cause paths fail, challenge the implementation approach before escalating: simplify or replace the affected component, test a minimal reproduction, compare with the last proven architecture, attempt a safe reversion where available, and obtain independent technical review when authorized.
+- Enter `BLOCKED` only when further progress requires materially new Scope, credentials, destructive action, inaccessible private data, an external-state change, unavailable physical capability, or a Baah-controlled product compromise.
 - A blocked repair does not become a Baah QA request. Baah receives only the smallest decision or external action needed to unblock engineering.
+- `BLOCKED` is not fixed, accepted, complete, deferred, or ready for successor work. The same issue remains open, blocking, and unshippable until the repair-release gate passes or Baah explicitly approves redesign, reversion, deferral/removal, or a documented limitation.
 - CI and external waiting time does not count as a repair attempt and follows the dormancy rules below.
 - The conductor reports cumulative expensive full-suite runs and avoids another unless code, environment, or the release gate materially changed.
 
@@ -158,6 +160,27 @@ The defect enters `REPAIR_QUARANTINE` and may return to `AWAITING_BAAH_QA` only 
 If the agent cannot establish sufficient evidence for any gate item, the issue remains quarantined or becomes `BLOCKED`. It is not returned to Baah as an exploratory test. Instrumentation may be added to the replacement build, but Baah is involved again only when that instrumentation is part of a deliberate, evidence-backed physical-device experiment that cannot be performed elsewhere and whose result unlocks a specific next action.
 
 After the gate passes, Baah retests only the original failed behavior and journeys materially affected by the repair. A different observation creates a distinct defect record; it does not erase the evidence for the original repair.
+
+### Two-outcome notification rule
+
+While meaningful repair work is progressing, the conductor stays quiet except for material gate or safety changes. Baah is notified only when one of two outcomes is reached:
+
+1. **Fixed and proven:** the repair-release gate passed; provide one focused retest request.
+2. **Still unfixed and genuinely blocked:** materially different engineering approaches are exhausted and one specific Baah-controlled decision, capability, credential, external change, or product compromise is required.
+
+The unresolved escalation must state:
+
+- Linear issue and failed acceptance criterion;
+- exact defective commit and preview/build revision;
+- explicit status: `Unfixed; blocking; unshippable`;
+- facts proven and systems ruled out;
+- materially different repair paths attempted and their evidence;
+- the precise reason autonomous progress cannot continue;
+- the recommended redesign, reversion, deferral/removal, added capability, or documented limitation;
+- consequences of each viable alternative; and
+- the single smallest action or decision needed from Baah.
+
+Linear must show `Blocked — unresolved defect`, retain the failed acceptance criterion, and contain no QA-ready or Ship-ready claim. The branch, worktree, evidence, and defective revision remain preserved. The conductor cannot start successor work unless Baah explicitly authorizes a separate cycle.
 
 ## Waiting and resumption
 
@@ -273,6 +296,7 @@ Required targets are one active conductor, one implementation issue, zero unchan
 - A reported defect cannot leave `REPAIR_QUARANTINE` until every repair-release gate item passes or is explicitly marked inapplicable with evidence.
 - Baah is never asked to repeat an unchanged physical test against an unproven repair.
 - Internal repair repetition is evidence-producing and enters `BLOCKED` rather than looping indefinitely without a new hypothesis.
+- An unresolved escalation uses the two-outcome notification contract and states `Unfixed; blocking; unshippable` with one specific Baah-controlled need.
 - Linear receives material evidence and transitions rather than command-level narration.
 - Full orientation is not repeated during a stable issue cycle without a material state change.
 - Current work and history remain preserved while the old loops remain paused.
