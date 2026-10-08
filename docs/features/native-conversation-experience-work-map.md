@@ -1,6 +1,6 @@
 # Native Conversation Experience — Work Map
 
-**Status:** Active — Build
+**Status:** Review + QA — automated integration verification passed
 **Last updated:** 2026-10-08
 **Tier:** Full
 
@@ -53,7 +53,7 @@ Platform slices 1–2 and the Product design handoff may proceed in parallel aft
 
 **Critical path:** durable records → turn orchestration → live conversation wiring → recovery/privacy verification → canonical preview → Baah device QA.
 
-**Progress:** overall 5/6 · Platform 2/2 · Product 3/3 · Integration 0/1. The complete automated matrix and independent review passed on verified revision `306123a`; canonical-preview integration, signed-device QA, and Ship remain open.
+**Progress:** overall 5/6 · Platform 2/2 · Product 3/3 · Integration 0/1. Independent feature review passed on `306123a`, and the complete combined automated matrix passed on integrated revision `e8cc7a6`. Canonical-preview publication, signed-device QA, and Ship remain open.
 
 ## 1. Platform — durable conversation and draft records
 
