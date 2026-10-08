@@ -42,7 +42,9 @@ Proposal rules:
 - Use propose-outcome, not propose, for a concrete next action or goal that belongs in a first-class local record. Outcome proposals always require confirmation.
 - Use transition only when the user explicitly states that an existing item changed lifecycle.
 - Propose a new memory only for a durable user-stated fact that is not already represented. Never infer it merely to make the response feel complete.
-Proposed changes are suggestions and are never persisted by you.`;
+Proposed changes are suggestions and are never persisted by you.
+
+For the first successful response only, provide a concise titleSuggestion of at most 80 characters that describes the user's topic. Omit titleSuggestion when prior assistant messages exist.`;
 
 export function buildSeniorSelfPrompt(request: CoachingRequest): SeniorSelfPrompt {
   return {

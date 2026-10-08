@@ -1,5 +1,21 @@
 import Foundation
 
+public enum ConversationLifecycle: String, Codable, Sendable, CaseIterable {
+    case draft, active, completed
+}
+
+public enum ConversationInputMode: String, Codable, Sendable, CaseIterable {
+    case voice, text
+}
+
+public enum TitleAuthority: String, Codable, Sendable, CaseIterable {
+    case localFallback, assistantSuggested, user
+}
+
+public enum DraftRecoveryKind: String, Codable, Sendable, CaseIterable {
+    case saved, recovered, retryableTranscription, retryableCoaching
+}
+
 public struct MutationContext: Codable, Sendable, Equatable {
     public let id: String
     public let deviceID: String
@@ -24,10 +40,74 @@ public struct ProfileRecord: Codable, Sendable, Equatable {
 public struct ConversationRecord: Codable, Sendable, Equatable {
     public let id: String
     public let title: String
+    public let lifecycle: ConversationLifecycle
+    public let titleAuthority: TitleAuthority
     public let createdAtMS: Int64
     public let updatedAtMS: Int64
-    public init(id: String, title: String, createdAtMS: Int64, updatedAtMS: Int64) {
-        self.id = UUIDIdentity.normalizedOrOriginal(id); self.title = title; self.createdAtMS = createdAtMS; self.updatedAtMS = updatedAtMS
+    public init(
+        id: String,
+        title: String,
+        lifecycle: ConversationLifecycle = .completed,
+        titleAuthority: TitleAuthority = .localFallback,
+        createdAtMS: Int64,
+        updatedAtMS: Int64
+    ) {
+        self.id = UUIDIdentity.normalizedOrOriginal(id); self.title = title
+        self.lifecycle = lifecycle; self.titleAuthority = titleAuthority
+        self.createdAtMS = createdAtMS; self.updatedAtMS = updatedAtMS
+    }
+}
+
+public struct ConversationDraftRecord: Codable, Sendable, Equatable, Identifiable {
+    public let id: String
+    public let conversationID: String
+    public let inputMode: ConversationInputMode
+    public let text: String?
+    public let voiceTurnID: String?
+    public let recoveryKind: DraftRecoveryKind
+    public let createdAtMS: Int64
+    public let updatedAtMS: Int64
+
+    public init(
+        id: String,
+        conversationID: String,
+        inputMode: ConversationInputMode,
+        text: String?,
+        voiceTurnID: String?,
+        recoveryKind: DraftRecoveryKind,
+        createdAtMS: Int64,
+        updatedAtMS: Int64
+    ) {
+        self.id = UUIDIdentity.normalizedOrOriginal(id)
+        self.conversationID = UUIDIdentity.normalizedOrOriginal(conversationID)
+        self.inputMode = inputMode
+        self.text = text
+        self.voiceTurnID = voiceTurnID.map(UUIDIdentity.normalizedOrOriginal)
+        self.recoveryKind = recoveryKind
+        self.createdAtMS = createdAtMS
+        self.updatedAtMS = updatedAtMS
+    }
+}
+
+public struct MessageRevisionRecord: Codable, Sendable, Equatable, Identifiable {
+    public let id: String
+    public let messageID: String
+    public let originalBody: String
+    public let replacementMessageID: String?
+    public let createdAtMS: Int64
+
+    public init(
+        id: String,
+        messageID: String,
+        originalBody: String,
+        replacementMessageID: String?,
+        createdAtMS: Int64
+    ) {
+        self.id = UUIDIdentity.normalizedOrOriginal(id)
+        self.messageID = UUIDIdentity.normalizedOrOriginal(messageID)
+        self.originalBody = originalBody
+        self.replacementMessageID = replacementMessageID.map(UUIDIdentity.normalizedOrOriginal)
+        self.createdAtMS = createdAtMS
     }
 }
 

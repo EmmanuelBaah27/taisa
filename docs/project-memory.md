@@ -8,9 +8,8 @@ work history.
 
 ## Authority order
 
-1. [`AGENTS.md`](../AGENTS.md), [`CLAUDE.md`](../CLAUDE.md),
-   [`docs/workflow.md`](workflow.md), and the
-   [Taisa workflow orchestrator](../.claude/skills/taisa-workflow/SKILL.md) define how
+1. [`AGENTS.md`](../AGENTS.md), [`docs/workflow.md`](workflow.md), and the
+   [Taisa workflow orchestrator](../.agents/skills/taisa-workflow/SKILL.md) define how
    work is performed.
 2. Canonical domain documents describe the system's present behavior.
 3. [Accepted decisions](decisions/README.md) explain why consequential choices were made.

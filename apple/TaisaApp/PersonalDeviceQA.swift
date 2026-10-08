@@ -15,12 +15,25 @@ actor PersonalDeviceQA {
         let hash: String?
     }
 
+    private struct CanaryDigestV1: Encodable {
+        let createdAtMS: Int64
+        let id: String
+        let title: String
+        let updatedAtMS: Int64
+    }
+
     private static let canary = ConversationRecord(
         id: "00000000-0000-4000-8000-000000000601",
         title: "Taisa public device QA canary v1", createdAtMS: 0, updatedAtMS: 0)
     private static let mutation = MutationContext(
         id: "00000000-0000-4000-8000-000000000602",
         deviceID: "00000000-0000-4000-8000-000000000603", timestamp: 0)
+    private static let digestPayload = CanaryDigestV1(
+        createdAtMS: canary.createdAtMS,
+        id: canary.id,
+        title: canary.title,
+        updatedAtMS: canary.updatedAtMS
+    )
     private let backend: PersonalRecoveryBackend
 
     init?(backend: PersonalRecoveryBackend, arguments: [String]) {
@@ -40,7 +53,7 @@ actor PersonalDeviceQA {
         }
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
-        let digest = SHA256.hash(data: try encoder.encode(Self.canary))
+        let digest = SHA256.hash(data: try encoder.encode(Self.digestPayload))
             .map { String(format: "%02x", $0) }.joined()
         return Evidence(canaryCount: 1, conversationCount: count, hash: digest)
     }

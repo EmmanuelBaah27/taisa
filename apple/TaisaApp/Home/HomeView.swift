@@ -9,6 +9,7 @@ struct HomeView: View {
     var openPersonalQA: (() -> Void)?
     var openInsights: () -> Void = {}
     private let ownsNavigation: Bool
+    private let showsRecentConversations: Bool
 
     init(
         model: HomeModel,
@@ -16,7 +17,8 @@ struct HomeView: View {
         openRecovery: @escaping () -> Void = {},
         openPersonalQA: (() -> Void)? = nil,
         openInsights: @escaping () -> Void = {},
-        ownsNavigation: Bool = true
+        ownsNavigation: Bool = true,
+        showsRecentConversations: Bool = true
     ) {
         _model = State(initialValue: model)
         self.send = send
@@ -24,6 +26,7 @@ struct HomeView: View {
         self.openPersonalQA = openPersonalQA
         self.openInsights = openInsights
         self.ownsNavigation = ownsNavigation
+        self.showsRecentConversations = showsRecentConversations
     }
 
     var body: some View {
@@ -82,7 +85,7 @@ struct HomeView: View {
                         .font(.subheadline)
                         .accessibilityIdentifier("home.insights.link")
                 }
-                if !snapshot.conversations.isEmpty {
+                if showsRecentConversations && !snapshot.conversations.isEmpty {
                     Section("Recent conversations") {
                         ForEach(snapshot.conversations, id: \.id) { ConversationRow(conversation: $0, send: send) }
                     }

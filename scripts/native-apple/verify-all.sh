@@ -28,7 +28,11 @@ preview_can_test="$(printf '%s' "${preview_destinations}" | node scripts/native-
 personal_can_test="$(printf '%s' "${personal_destinations}" | node scripts/native-apple/select-simulator.mjs --eligible)"
 
 if [[ "${development_can_test}" == "yes" && "${preview_can_test}" == "yes" ]]; then
+  # UI verification owns deterministic app state. Xcode reinstalls builds but
+  # otherwise retains prior encrypted stores and recovery journals.
+  xcrun simctl uninstall "${iphone_name}" com.taisa.app.dev >/dev/null 2>&1 || true
   xcodebuild test -quiet -project apple/Taisa.xcodeproj -scheme Taisa-Dev -destination "platform=iOS Simulator,name=${iphone_name}" -derivedDataPath "${artifact_root}/DerivedData-Dev" -resultBundlePath "${artifact_root}/Taisa-Dev.xcresult"
+  xcrun simctl uninstall "${ipad_name}" com.taisa.app.preview >/dev/null 2>&1 || true
   xcodebuild test -quiet -project apple/Taisa.xcodeproj -scheme Taisa-Preview -destination "platform=iOS Simulator,name=${ipad_name}" -derivedDataPath "${artifact_root}/DerivedData-Preview" -resultBundlePath "${artifact_root}/Taisa-Preview.xcresult"
 else
   echo "No eligible iOS simulator runtime; compiling test bundles instead."
@@ -38,6 +42,7 @@ fi
 if [[ "${personal_can_test}" == "yes" ]]; then
   # Simulator Keychain needs a locally signed process. Ad-hoc signing does not
   # provision a team or contact Apple; physical-device verification stays unsigned.
+  xcrun simctl uninstall "${iphone_name}" com.taisa.app.personal >/dev/null 2>&1 || true
   xcodebuild test -quiet -project apple/Taisa.xcodeproj -scheme Taisa-Personal -configuration Personal -destination "platform=iOS Simulator,name=${iphone_name}" -derivedDataPath "${artifact_root}/DerivedData-Personal" -resultBundlePath "${artifact_root}/Taisa-Personal.xcresult" CODE_SIGN_IDENTITY=- CODE_SIGNING_ALLOWED=YES
 else
   xcodebuild build-for-testing -quiet -project apple/Taisa.xcodeproj -scheme Taisa-Personal -configuration Personal -destination 'generic/platform=iOS Simulator' -derivedDataPath "${artifact_root}/DerivedData-Personal" CODE_SIGNING_ALLOWED=NO

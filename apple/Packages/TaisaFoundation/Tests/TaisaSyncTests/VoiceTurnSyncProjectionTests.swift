@@ -4,6 +4,24 @@ import TaisaStorage
 @testable import TaisaSync
 
 struct VoiceTurnSyncProjectionTests {
+    @Test func conversationProjectionCarriesLifecycleAndTitleAuthorityWithoutDraftContent() throws {
+        let record = ConversationRecord(
+            id: "00000000-0000-0000-0000-000000000300",
+            title: "Local title",
+            lifecycle: .active,
+            titleAuthority: .localFallback,
+            createdAtMS: 1,
+            updatedAtMS: 1
+        )
+        let data = try JSONEncoder().encode(record)
+        let object = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
+
+        #expect(object["lifecycle"] as? String == "active")
+        #expect(object["titleAuthority"] as? String == "localFallback")
+        #expect(object["text"] == nil)
+        #expect(object["voiceTurnID"] == nil)
+    }
+
     @Test func projectionAcceptsDurableTurnWithoutLocalAudioFields() throws {
         let payload = try payload(recordOverride: nil)
         let projection = try SyncProjection(payload)

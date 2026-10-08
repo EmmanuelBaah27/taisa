@@ -37,9 +37,9 @@ struct PersonalDeviceQAView: View {
                     TaisaText(role: .body, content: "Backup and recovery")
                 }
                 NavigationLink { PersonalVoiceSessionView() } label: {
-                    TaisaText(role: .body, content: "Voice platform diagnostics")
+                    TaisaText(role: .body, content: "Voice gateway and streaming")
                 }
-                .accessibilityIdentifier("foundation.voice-diagnostics.action")
+                .accessibilityIdentifier("personal-qa.voice")
                 NavigationLink { PersonalCombinedHomeQAView() } label: {
                     TaisaText(role: .body, content: "Combined Home and Insights")
                 }

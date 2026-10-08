@@ -8,6 +8,8 @@ final class TaisaLaunchTests: XCTestCase {
 
         XCTAssertTrue(element("home.root", in: app).waitForExistence(timeout: 5))
         XCTAssertTrue(app.navigationBars["Home"].exists)
+        XCTAssertTrue(element("app-shell.primary-navigation", in: app).exists)
+        XCTAssertTrue(element("app-shell.conversation-dock", in: app).exists)
         XCTAssertFalse(element("preview.catalog", in: app).exists)
         XCTAssertFalse(element("foundation.diagnostics", in: app).exists)
         retainScreenshot(of: app, name: "development-home")

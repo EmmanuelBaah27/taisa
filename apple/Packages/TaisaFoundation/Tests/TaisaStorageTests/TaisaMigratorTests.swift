@@ -4,7 +4,7 @@ import Testing
 @testable import TaisaStorage
 
 @Suite(.serialized) struct TaisaMigratorTests {
-    @Test func populatedPreviewVersionTwoStoreUpgradesLosslesslyToVersionThree() async throws {
+    @Test func populatedPreviewVersionTwoStoreUpgradesLosslesslyThroughCombinedVersionFour() async throws {
         let fixture = try MigrationFixture()
         defer { fixture.remove() }
         let queue = try fixture.makeKeyedQueue()
@@ -48,14 +48,20 @@ import Testing
                 try String.fetchOne(db, sql: "SELECT state FROM voice_turns WHERE id = ?", arguments: [turnID]),
                 try db.tableExists("weekly_placements"),
                 try db.tableExists("insights"),
+                try db.tableExists("conversation_drafts"),
+                try db.tableExists("message_revisions"),
+                try String.fetchOne(db, sql: "SELECT lifecycle FROM conversations WHERE id = ?", arguments: [conversationID]),
                 try Int.fetchAll(db, sql: "SELECT version FROM migration_state ORDER BY version")
             )
         }
-        #expect(state.0 == 3)
+        #expect(state.0 == 4)
         #expect(state.1 == "draft")
         #expect(state.2)
         #expect(state.3)
-        #expect(state.4 == [1, 2, 3])
+        #expect(state.4)
+        #expect(state.5)
+        #expect(state.6 == "completed")
+        #expect(state.7 == [1, 2, 3, 4])
     }
 
     @Test func populatedVersionOneStoreUpgradesLosslesslyToCurrentVersion() async throws {

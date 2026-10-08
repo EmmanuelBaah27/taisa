@@ -120,16 +120,19 @@ public actor GatewayCoachingRunner: VoiceCoachingRunning {
     private let configuration: VoiceGatewayConfiguration
     private let client: CoachingStreamClient
     private let submittedAt: @Sendable () -> String
+    private let recentMessages: @Sendable (String) async throws -> [MessageRecord]
 
     public init(
         configuration: VoiceGatewayConfiguration,
         transport: any NDJSONStreamTransporting = URLSessionNDJSONStreamTransport(),
+        recentMessages: @escaping @Sendable (String) async throws -> [MessageRecord] = { _ in [] },
         submittedAt: @escaping @Sendable () -> String = {
             Date().formatted(.iso8601)
         }
     ) {
         self.configuration = configuration
         client = .init(transport: transport)
+        self.recentMessages = recentMessages
         self.submittedAt = submittedAt
     }
 
@@ -140,11 +143,15 @@ public actor GatewayCoachingRunner: VoiceCoachingRunning {
               let transcript = turn.acceptedTranscript else {
             throw VoiceSessionReducerError.invalidCommand
         }
+        let history = try await recentMessages(turn.conversationID)
+            .filter { $0.role == "user" || $0.role == "assistant" }
+            .suffix(20)
+            .map { ["role": $0.role, "content": $0.body] }
         let body = try JSONSerialization.data(withJSONObject: [
             "requestId": requestID.uuidString.lowercased(),
             "submittedAt": submittedAt(),
             "input": transcript,
-            "context": ["profile": NSNull(), "recentMessages": [], "memory": [], "evidence": []],
+            "context": ["profile": NSNull(), "recentMessages": history, "memory": [], "evidence": []],
         ])
         return client.stream(.init(
             endpoint: configuration.endpoint("api/v1/coaching/respond/stream"),
