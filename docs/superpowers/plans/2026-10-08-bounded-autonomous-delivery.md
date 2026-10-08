@@ -38,8 +38,8 @@
 ## File map
 
 - `docs/workflow.md` — human-readable source of truth for bounded cycles, approval paths, track ownership, QA, waiting, closeout, and shipping.
-- `.claude/skills/taisa-workflow/SKILL.md` — operational routing instructions agents execute at runtime.
-- `.claude/skills/taisa-workflow/templates/bounded-goal.md` — canonical reusable objective template for Build, repair, and Ship Goal runs.
+- `.agents/skills/taisa-workflow/SKILL.md` — canonical operational routing instructions agents execute at runtime.
+- `.agents/skills/taisa-workflow/templates/bounded-goal.md` — canonical reusable objective template for Build, repair, and Ship Goal runs.
 - `AGENTS.md` — concise mandatory entry contract for all agents.
 - `CLAUDE.md` — project-context summary pointing agents to the bounded workflow.
 - `scripts/verify-workflow.sh` — executable regression checks for repository-wide workflow invariants.
@@ -52,12 +52,12 @@
 - Test: `scripts/verify-workflow.sh`
 
 **Interfaces:**
-- Consumes: repository workflow files and the future `.claude/skills/taisa-workflow/templates/bounded-goal.md`.
+- Consumes: repository workflow files and the future `.agents/skills/taisa-workflow/templates/bounded-goal.md`.
 - Produces: shell assertions that fail when mandatory bounded-delivery language or the Goal template is absent.
 
 - [ ] **Step 1: Add a required-file assertion for the Goal template**
 
-Add `.claude/skills/taisa-workflow/templates/bounded-goal.md` to the verifier's required workflow paths using the script's existing failure accumulator. The diagnostic must name the missing path.
+Add `.agents/skills/taisa-workflow/templates/bounded-goal.md` to the verifier's required workflow paths using the script's existing failure accumulator. The diagnostic must name the missing path.
 
 - [ ] **Step 2: Add exact invariant groups**
 
@@ -72,7 +72,7 @@ docs/workflow.md:
   Unfixed; blocking; unshippable
   Platform / Product / Integration exclusive ownership
 
-.claude/skills/taisa-workflow/SKILL.md:
+.agents/skills/taisa-workflow/SKILL.md:
   no active Goal solely for waiting
   QA_READY
   MATERIAL_REAPPROVAL_REQUIRED
@@ -208,8 +208,8 @@ git commit -m "docs: define bounded autonomous delivery"
 ### Task 3: Create the bounded Goal template and runtime orchestrator
 
 **Files:**
-- Create: `.claude/skills/taisa-workflow/templates/bounded-goal.md`
-- Modify: `.claude/skills/taisa-workflow/SKILL.md`
+- Create: `.agents/skills/taisa-workflow/templates/bounded-goal.md`
+- Modify: `.agents/skills/taisa-workflow/SKILL.md`
 - Test: `scripts/verify-workflow.sh`
 
 **Interfaces:**
@@ -276,7 +276,7 @@ Expected: Task 1 Goal-template and orchestrator assertions pass; entrypoint asse
 - [ ] **Step 7: Commit the runtime contract**
 
 ```bash
-git add .claude/skills/taisa-workflow/SKILL.md .claude/skills/taisa-workflow/templates/bounded-goal.md
+git add .agents/skills/taisa-workflow/SKILL.md .agents/skills/taisa-workflow/templates/bounded-goal.md
 git commit -m "docs: add bounded delivery goal template"
 ```
 
@@ -304,7 +304,7 @@ State that Platform/Product/Integration remain internal work slices, UI work sti
 Search:
 
 ```bash
-rg -n "every iteration|continue without waiting|select the next|after every material step|separate Scope and Plan" AGENTS.md CLAUDE.md docs/workflow.md .claude/skills/taisa-workflow/SKILL.md
+rg -n "every iteration|continue without waiting|select the next|after every material step|separate Scope and Plan" AGENTS.md CLAUDE.md docs/workflow.md .agents/skills/taisa-workflow/SKILL.md
 ```
 
 For every match, retain it only when bounded by the new issue-specific and gate-specific rules.
@@ -381,8 +381,8 @@ Expected: no new repository file containing mutable transition status; Linear re
 
 **Files:**
 - Verify: `docs/workflow.md`
-- Verify: `.claude/skills/taisa-workflow/SKILL.md`
-- Verify: `.claude/skills/taisa-workflow/templates/bounded-goal.md`
+- Verify: `.agents/skills/taisa-workflow/SKILL.md`
+- Verify: `.agents/skills/taisa-workflow/templates/bounded-goal.md`
 - Verify: `AGENTS.md`
 - Verify: `CLAUDE.md`
 - Verify: `scripts/verify-workflow.sh`
@@ -424,7 +424,7 @@ Expected paths only under `docs/`, `.claude/`, `AGENTS.md`, `CLAUDE.md`, and `sc
 
 ```bash
 rg -n "continue until the complete product ships|select the next highest-priority issue and continue|poll again until complete|silence counts as approval" \
-  docs/workflow.md .claude/skills/taisa-workflow AGENTS.md CLAUDE.md
+  docs/workflow.md .agents/skills/taisa-workflow AGENTS.md CLAUDE.md
 ```
 
 Expected: no matches except explicit forbidden-pattern examples inside verification documentation; the executable Goal template must contain none.
@@ -436,7 +436,7 @@ Confirm every acceptance criterion maps to an operative rule or verifier asserti
 - [ ] **Step 6: Commit any final verification-only corrections**
 
 ```bash
-git add docs/workflow.md .claude/skills/taisa-workflow AGENTS.md CLAUDE.md scripts/verify-workflow.sh
+git add docs/workflow.md .agents/skills/taisa-workflow AGENTS.md CLAUDE.md scripts/verify-workflow.sh
 git commit -m "test: verify bounded delivery workflow"
 ```
 
