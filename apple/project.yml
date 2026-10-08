@@ -83,6 +83,7 @@ targets:
       - path: TaisaPreview
       - path: TaisaApp/Voice
       - path: TaisaApp/Home
+      - path: TaisaApp/AppShell/PrimaryDestination.swift
       - path: TaisaApp/Conversation/ConversationTimeline.swift
       - path: TaisaApp/Conversation/ConversationView.swift
       - path: TaisaApp/Conversation/ConversationViewModel.swift

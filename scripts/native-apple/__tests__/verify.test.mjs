@@ -158,6 +158,12 @@ test('preview support is linked only by the preview target', async () => {
   ]);
 });
 
+test('preview includes the shared conversation entry contract', async () => {
+  const project = await readFile(join(repositoryRoot, 'apple/project.yml'), 'utf8');
+  const preview = project.slice(project.indexOf('  TaisaPreview:'), project.indexOf('  TaisaUnitTests:'));
+  assert.match(preview, /TaisaApp\/AppShell\/PrimaryDestination\.swift/);
+});
+
 test('CloudKit capability is isolated to development and production identities', async () => {
   const result = await inspectNativeProject(repositoryRoot);
   assert.deepEqual(result.cloudKitIsolation, {

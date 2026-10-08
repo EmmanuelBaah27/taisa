@@ -16,6 +16,7 @@
 		0E0F162C7E603373770D80EA /* VoiceSessionDiagnosticsViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AB82F356059A4761E465BC9 /* VoiceSessionDiagnosticsViewModelTests.swift */; };
 		10558363B760A0814005644A /* RecoveryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E8B118B86D060B608C88EC8 /* RecoveryView.swift */; };
 		14CE1254613B51B8A732F31E /* VoiceSessionAccessibilityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB678CC682AABEFD72A2A63D /* VoiceSessionAccessibilityTests.swift */; };
+		16C7A44E431B3A16DB883F3F /* PrimaryDestination.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15559F553404687F14A6B460 /* PrimaryDestination.swift */; };
 		1748385DCE8300004A2B4F94 /* TaisaDesignSystem in Frameworks */ = {isa = PBXBuildFile; productRef = 90EA0964036021A700C04142 /* TaisaDesignSystem */; };
 		185B73ABA185014B9BDF36F6 /* PersonalStoreLocation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DA996E530762AAE8A174A5B /* PersonalStoreLocation.swift */; };
 		197EBF42D4B740F8909FB5C9 /* TaisaLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 542BC8FE972594371B0E82B8 /* TaisaLaunchTests.swift */; };
@@ -838,6 +839,7 @@
 				980EFD6B050D14F51379E3F9 /* PersonalVoiceSessionView.swift in Sources */,
 				27647A73DE2201D81A1724E9 /* PreviewCatalogView.swift in Sources */,
 				B4D5E79232FA07135208B36F /* PreviewRootView.swift in Sources */,
+				16C7A44E431B3A16DB883F3F /* PrimaryDestination.swift in Sources */,
 				8EA94BF84706F6197B9CB847 /* TaisaPreviewApp.swift in Sources */,
 				D374E1D963E6C7AFF28A2CD2 /* TranscriptCorrectionView.swift in Sources */,
 				D65CD3C640F6A696D18DD9A9 /* VoiceSessionDiagnosticsView.swift in Sources */,
