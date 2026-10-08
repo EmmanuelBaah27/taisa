@@ -13,9 +13,14 @@ final class AppRuntime {
 
     private(set) var state: State = .startup
     private(set) var homeModel: HomeModel?
+    let primaryShellModel: PrimaryAppShellModel
     @ObservationIgnored private let startOperation: @Sendable () async throws -> HomeClient
 
-    init(start: @escaping @Sendable () async throws -> HomeClient) {
+    init(
+        primaryShellModel: PrimaryAppShellModel = PrimaryAppShellModel(),
+        start: @escaping @Sendable () async throws -> HomeClient
+    ) {
+        self.primaryShellModel = primaryShellModel
         startOperation = start
     }
 

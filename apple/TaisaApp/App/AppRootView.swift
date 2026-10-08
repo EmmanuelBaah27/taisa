@@ -11,8 +11,9 @@ struct AppRootView: View {
                 ProgressView("Opening Taisa…")
             case .ready:
                 if let model = runtime.homeModel {
-                    HomeView(
-                        model: model,
+                    PrimaryAppShell(
+                        model: runtime.primaryShellModel,
+                        homeModel: model,
                         openRecovery: runtime.requireRecovery,
                         openPersonalQA: personalQAAction
                     )

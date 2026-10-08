@@ -8,19 +8,22 @@ struct HomeView: View {
     var openRecovery: () -> Void = {}
     var openPersonalQA: (() -> Void)?
     private let ownsNavigation: Bool
+    private let showsRecentConversations: Bool
 
     init(
         model: HomeModel,
         send: @escaping (HomeIntent) -> Void = { _ in },
         openRecovery: @escaping () -> Void = {},
         openPersonalQA: (() -> Void)? = nil,
-        ownsNavigation: Bool = true
+        ownsNavigation: Bool = true,
+        showsRecentConversations: Bool = true
     ) {
         _model = State(initialValue: model)
         self.send = send
         self.openRecovery = openRecovery
         self.openPersonalQA = openPersonalQA
         self.ownsNavigation = ownsNavigation
+        self.showsRecentConversations = showsRecentConversations
     }
 
     var body: some View {
@@ -66,10 +69,12 @@ struct HomeView: View {
         case let .content(snapshot, isRefreshing, issue):
             List {
                 if let issue { issueRow(issue) }
-                Section("Recent conversations") {
-                    ForEach(snapshot.conversations, id: \.id) { ConversationRow(conversation: $0, send: send) }
+                if showsRecentConversations {
+                    Section("Recent conversations") {
+                        ForEach(snapshot.conversations, id: \.id) { ConversationRow(conversation: $0, send: send) }
+                    }
+                    .accessibilityIdentifier("home.conversations")
                 }
-                .accessibilityIdentifier("home.conversations")
                 Section("Active goals") {
                     ForEach(snapshot.goals, id: \.id) { GoalRow(goal: $0, send: send) }
                 }
