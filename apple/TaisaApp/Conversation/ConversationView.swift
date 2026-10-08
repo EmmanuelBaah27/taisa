@@ -79,7 +79,22 @@ struct ConversationView: View {
         case .transcribing:
             ConversationProgressState(label: "Transcribing…")
         case .coaching:
-            ConversationProgressState(label: "Preparing coaching…")
+            VStack(alignment: .leading, spacing: 12) {
+                if let transcript = model.latestUserTranscript {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("You")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text(transcript)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .textSelection(.enabled)
+                    }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier("conversation.transcript-preview")
+                }
+                ConversationProgressState(label: "Preparing coaching…")
+            }
+            .padding(.horizontal)
         case .waitingForReply:
             VoiceComposerControls(phase: .waitingForReply, onPrimary: { Task { try? await model.beginVoice() } }, onSend: {})
                 .accessibilityIdentifier("conversation.voice-composer")

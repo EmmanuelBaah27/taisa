@@ -99,6 +99,7 @@ final class ConversationViewModelTests: XCTestCase {
 
         XCTAssertEqual(model.composer, .coaching)
         XCTAssertEqual(model.messages.map(\.body), ["Recorded words"])
+        XCTAssertEqual(model.latestUserTranscript, "Recorded words")
 
         await finishCoaching.open()
         await send.value
