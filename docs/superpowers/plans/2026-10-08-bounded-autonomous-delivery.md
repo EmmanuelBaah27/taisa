@@ -236,6 +236,7 @@ Use this exact field structure:
 - Verification matrix: `<named commands/checks>`
 - Permitted mutations: `<bounded list>`
 - Prohibited actions: `<bounded list>`
+- Repair evidence: `<attempts and quarantine state, or not-a-repair>`
 - Next Baah gate: `<one gate>`
 ```
 
@@ -418,7 +419,9 @@ Expected: exit 0 with valid Status and Last updated metadata. If the plan verifi
 git diff --name-only origin/main...HEAD
 ```
 
-Expected paths only under `docs/`, `.claude/`, `AGENTS.md`, `CLAUDE.md`, and `scripts/verify-workflow.sh`.
+Expected paths only under `docs/`, the canonical `.agents/skills/taisa-workflow/` tree,
+`AGENTS.md`, `CLAUDE.md`, and `scripts/verify-workflow.sh`. The `.claude/` compatibility
+symlink may resolve to canonical files but must not become an independently edited copy.
 
 - [ ] **Step 4: Run forbidden-language audit**
 

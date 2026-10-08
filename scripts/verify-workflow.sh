@@ -90,14 +90,44 @@ done
 goal_template=.agents/skills/taisa-workflow/templates/bounded-goal.md
 for invariant in \
   'Primary Linear issue' \
+  'Milestone context' \
+  'Run type' \
+  'Entry state and evidence' \
   'Terminal outcome' \
   'Approved kickoff or Scope/Plan evidence' \
+  'Work slices' \
   'Branch/worktree' \
+  'Canonical preview baseline' \
   'Acceptance criteria' \
+  'Verification matrix' \
+  'Permitted mutations' \
+  'Prohibited actions' \
+  'Repair evidence' \
   'unchanged polling' \
+  'Never infer approval' \
+  'successor issue' \
+  'do not remain active solely.*wait' \
   'Next Baah gate'; do
   require_workflow_pattern "$goal_template" "$invariant" "Goal-template field: $invariant"
 done
+
+for forbidden_pattern in \
+  '^[[:space:]-]*(continue|loop|work).*(complete|ship).*(product|everything)' \
+  '^[[:space:]-]*(select|start|advance).*(next|successor).*(issue|work)' \
+  '^[[:space:]-]*(poll|retry|check again).*until' \
+  '^[[:space:]-]*(wait|remain active).*(Baah|external state)'; do
+  if rg -ni "$forbidden_pattern" "$goal_template"; then
+    fail "$goal_template contains semantically unbounded instruction: $forbidden_pattern"
+  fi
+done
+
+require_workflow_pattern docs/workflow.md 'inapplicable.*evidence|evidence.*inapplicable' \
+  'evidence-backed repair-gate inapplicability'
+require_workflow_pattern .agents/skills/taisa-workflow/SKILL.md \
+  'inapplicable.*evidence|evidence.*inapplicable' \
+  'evidence-backed repair-gate inapplicability'
+require_workflow_pattern "$goal_template" 'each repair-release.*pass.*inapplicable.*evidence' \
+  'per-item repair-release disposition'
 
 for forbidden in \
   'continue until the complete product ships' \

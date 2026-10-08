@@ -426,7 +426,8 @@ Within the same rank, prefer the outcome that unlocks more downstream work; then
 
 ## Acceptance criteria
 
-- Exactly one goal owns an active delivery cycle.
+- Exactly one Goal owns active execution; zero Goals remain active while the cycle is dormant at
+  a Baah gate or external wait.
 - The goal is bound to a named Linear issue, milestone, approved kickoff bundle or separate Scope and Plan, branch/worktree, completion condition, and next Baah gate.
 - Quick and ordinary Standard work normally requires only one kickoff interaction and one combined acceptance/Ship interaction from Baah.
 - Full and high-risk work uses separate Scope and Plan gates for the explicitly enumerated risk classes.

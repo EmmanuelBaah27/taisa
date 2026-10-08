@@ -170,6 +170,8 @@ cause, failing-before/passing-after evidence where possible, replacement verific
 review, exact preview publication, revision confirmation, and agent smoke checks. Otherwise
 report `Unfixed; blocking; unshippable` with one smallest Baah-controlled need; never claim
 QA-ready, Ship-ready, closure, or successor work.
+Record every repair-release gate item as passed or explicitly inapplicable with evidence.
+An omitted or unsupported item keeps the issue in `REPAIR_QUARANTINE`.
 
 ## 6. Bounded Goal routing
 

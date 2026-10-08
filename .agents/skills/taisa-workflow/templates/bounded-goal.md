@@ -35,6 +35,8 @@ above without asking Baah to say “continue.”
   or a more discriminating test.
 - A Baah defect observation enters `REPAIR_QUARANTINE`; do not request another test until
   the repair-release gate passes.
+- Each repair-release gate item must pass or be explicitly marked inapplicable with evidence;
+  an omitted item does not pass the gate.
 - Device-facing QA requires the exact verified commit on canonical `preview/taisa`, confirmed
   served or installed, plus agent-owned simulator/accessibility/preview smoke checks.
 - Never infer approval, start a successor issue, expand Scope, resume another chat, perform
@@ -69,5 +71,5 @@ above without asking Baah to say “continue.”
 
 Report the terminal outcome, exact branch and commit, PR/CI state, canonical preview revision
 or non-device path, checks and results, unresolved risk, Linear evidence, and next Baah gate.
-For Ship, recommend but do not start the next outcome. Complete the Goal after reporting; do
-not remain active solely to wait for Baah or external state.
+For Ship, recommend but do not start the next outcome. Complete the Goal after reporting.
+Do not remain active solely for waiting on Baah or external state.

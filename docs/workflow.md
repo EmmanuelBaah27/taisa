@@ -278,6 +278,8 @@ simulator/UI, accessibility, and regression checks; the applicable full release 
 resolved blocking review; exact replacement commit integrated and pushed to canonical
 preview; confirmed served/installed revision; agent smoke check; and one concise retest
 request naming the failure, replacement revision, evidence, action, and expected result.
+Every repair-release item must be recorded as passed or explicitly inapplicable with evidence;
+silently skipping an item keeps the issue in `REPAIR_QUARANTINE`.
 
 The authoritative sequence is:
 
