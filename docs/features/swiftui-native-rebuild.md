@@ -2,7 +2,7 @@
 
 **Track:** Platform + Product
 **Tier:** Full
-**Status:** Swift canonical; React Native retained only in Git history and frozen evidence
+**Status:** Foundation Plan; React Native retained as non-blocking reference
 
 ---
 
@@ -10,7 +10,7 @@
 
 Rebuild Taisa's iPhone and iPad client as a native-first SwiftUI application targeting iOS/iPadOS 26 or later. The native client uses accepted product decisions, portable behavior contracts, the existing Node/Express gateway, and the current React Native experience as non-blocking reference evidence.
 
-The rebuild proceeds as functionality-first vertical slices. Pages use standard SwiftUI behavior and minimal temporary styling, then receive deliberate page-level redesign after their functionality is complete. Swift previews, fixtures, tests, and signed device builds are the implementation authority; React Native remains recoverable reference material only through Git history and frozen migration evidence.
+The rebuild proceeds as functionality-first vertical slices beside the React Native client. Pages use standard SwiftUI behavior and minimal temporary styling, then receive deliberate page-level redesign after their functionality is complete. Swift previews, fixtures, tests, and signed device builds are the implementation authority; React Native remains recoverable reference material through native cutover.
 
 ## Why now?
 
@@ -33,7 +33,7 @@ Taisa's current Apple experience depends on a large cross-platform runtime for n
 - [ ] Native work is delivered as a migration program with a separately reviewable and approvable implementation plan for each major slice; approval of one slice does not authorize later slices.
 - [ ] Apple signing, entitlements, App Store Connect/TestFlight access, device registration, CI secrets, and development/production bundle identifiers are proven before Product migration begins.
 - [ ] The production cutover passes clean-install, low-storage, permission-denied, offline, background/foreground, audio-interruption, notification, biometric, export/restore, and iPhone/iPad regression scenarios.
-- [x] The React Native client is retired from the active tree after Baah's 2026-10-07 Swift-canonical decision; its frozen behavior remains recoverable from Git history and migration evidence.
+- [ ] The React Native client is not retired or removed until the native Ship gate passes and its frozen behavior remains recoverable from Git.
 
 ## Platform dependencies
 
@@ -53,7 +53,7 @@ Taisa's current Apple experience depends on a large cross-platform runtime for n
 - Localization, dark-mode redesign, macOS, visionOS, widgets, and new background-processing capability.
 - Continuing ordinary React Native feature development after the baseline freeze.
 - Retiring legacy backend routes unless separately scoped and approved.
-- Deleting historical branches, worktrees, or migration evidence before their commits are accounted for.
+- Deleting current branches, worktrees, or the React Native implementation before all work is accounted for and native Ship is approved.
 
 ## Closeout
 
