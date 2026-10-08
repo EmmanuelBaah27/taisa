@@ -87,7 +87,7 @@ The conductor is in exactly one state at a time:
 | State | Entry | Permitted work | Exit |
 |---|---|---|---|
 | `INTAKE` | prior closeout or Baah direction | recommend outcome, deduplicate, prepare kickoff or high-risk gates | kickoff/Plan approved or Baah stops |
-| `BUILDING` | Plan approved | implementation and narrow checks | stable candidate, material change, or blocker |
+| `BUILDING` | kickoff bundle or separate Plan approved | implementation and narrow checks | stable candidate, material change, or blocker |
 | `VERIFYING` | stable candidate exists | full matrix, review, PR checks | pass, repair needed, or blocker |
 | `PUBLISHING` | verified device-facing commit exists | canonical preview integration and smoke checks | exact revision confirmed or repair needed |
 | `AWAITING_BAAH_QA` | exact candidate passes the QA-readiness gate | no implementation; await named acceptance observation | accepted or defect observed |
@@ -110,7 +110,7 @@ Every transition records its trigger and evidence once. No wake-up may infer a d
 
 ## Agent-owned verification and repair loop
 
-After Plan approval, the conductor owns the complete machine-verifiable loop:
+After kickoff-bundle approval or separate Plan approval, the conductor owns the complete machine-verifiable loop:
 
 1. Implement the smallest coherent increment.
 2. Run the narrowest relevant unit, contract, integration, simulator, UI, accessibility, and static checks.
