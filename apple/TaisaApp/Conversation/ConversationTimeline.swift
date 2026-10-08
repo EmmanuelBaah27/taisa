@@ -2,6 +2,8 @@ import SwiftUI
 import TaisaStorage
 
 struct ConversationTimeline: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     let messages: [MessageRecord]
     let correct: (MessageRecord) -> Void
 
@@ -20,6 +22,8 @@ struct ConversationTimeline: View {
                             }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityElement(children: .contain)
+                        .accessibilityIdentifier("conversation.message.\(message.id)")
                         .id(message.id)
                     }
                 }
@@ -27,7 +31,10 @@ struct ConversationTimeline: View {
             }
             .onAppear { scrollToLatest(using: proxy, animated: false) }
             .onChange(of: messages.last?.id) { _, _ in
-                scrollToLatest(using: proxy, animated: true)
+                scrollToLatest(
+                    using: proxy,
+                    animated: ConversationTimelineMotion.animatesNewMessage(reduceMotion: reduceMotion)
+                )
             }
         }
         .accessibilityIdentifier("conversation.timeline")
@@ -40,5 +47,11 @@ struct ConversationTimeline: View {
         } else {
             proxy.scrollTo(messageID, anchor: .bottom)
         }
+    }
+}
+
+enum ConversationTimelineMotion {
+    static func animatesNewMessage(reduceMotion: Bool) -> Bool {
+        !reduceMotion
     }
 }

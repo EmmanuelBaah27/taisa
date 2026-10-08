@@ -5,6 +5,11 @@ import TaisaStorage
 
 @MainActor
 final class ConversationViewModelTests: XCTestCase {
+    func testTimelineMotionDisablesNewMessageAnimationWhenReduceMotionIsEnabled() {
+        XCTAssertFalse(ConversationTimelineMotion.animatesNewMessage(reduceMotion: true))
+        XCTAssertTrue(ConversationTimelineMotion.animatesNewMessage(reduceMotion: false))
+    }
+
     func testKeyboardReplacementRequiresDiscardAndCancelRestoresPause() {
         let model = ConversationViewModel.preview(composer: .paused)
 

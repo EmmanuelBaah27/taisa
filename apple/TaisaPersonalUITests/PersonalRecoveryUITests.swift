@@ -1,6 +1,16 @@
 import XCTest
 
 @MainActor final class PersonalRecoveryUITests: XCTestCase {
+    func testOverflowingConversationRendersWithLatestMessageVisible() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--taisa-conversation-overflow-qa"]
+        app.launch()
+
+        let latestMessage = app.descendants(matching: .any)["conversation.message.latest-message"]
+        XCTAssertTrue(latestMessage.waitForExistence(timeout: 10))
+        XCTAssertTrue(latestMessage.isHittable)
+    }
+
     func testExplicitQALaunchExposesVoiceDiagnosticsEntry() {
         let app = XCUIApplication()
         app.launchArguments = ["--taisa-personal-device-qa"]
@@ -12,6 +22,33 @@ import XCTest
         XCTAssertTrue(
             app.buttons["foundation.voice-diagnostics.action"].waitForExistence(timeout: 10)
         )
+    }
+
+    func testExplicitQALaunchOpensTheProductConversationForVoiceAcceptance() {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "--taisa-personal-device-qa",
+            "--taisa-conversation-route-qa-fixture",
+        ]
+        app.launch()
+
+        let qa = app.buttons["foundation.personal-qa.action"]
+        XCTAssertTrue(qa.waitForExistence(timeout: 10))
+        qa.tap()
+
+        let productVoice = app.buttons["personal-qa.product-voice"]
+        XCTAssertTrue(productVoice.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["personal-qa.voice-acceptance-guidance"].exists)
+        productVoice.tap()
+
+        XCTAssertTrue(
+            app.descendants(matching: .any)["conversation.root"].waitForExistence(timeout: 10)
+        )
+        XCTAssertTrue(
+            app.descendants(matching: .any)["conversation.voice-composer"].waitForExistence(timeout: 10)
+        )
+        XCTAssertFalse(app.staticTexts["Conversation unavailable"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["voice.diagnostics.root"].exists)
     }
 
     func testExplicitQALaunchCanCreateOnceAndInspectAfterRelaunch() {

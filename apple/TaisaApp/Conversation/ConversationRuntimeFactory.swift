@@ -222,6 +222,13 @@ struct ConversationHostView: View {
         }
         .accessibilityIdentifier("conversation.root")
         .task {
+#if DEBUG || TAISA_PERSONAL
+            if ProcessInfo.processInfo.arguments.contains("--taisa-conversation-route-qa-fixture") {
+                guard entryIntent == .voice else { failed = true; return }
+                model = .preview(composer: .recording)
+                return
+            }
+#endif
             guard model == nil, !failed, let factory else { failed = true; return }
             do { model = try await factory.makeModel(route: route, entryIntent: entryIntent, dismiss: dismiss) }
             catch { failed = true }
