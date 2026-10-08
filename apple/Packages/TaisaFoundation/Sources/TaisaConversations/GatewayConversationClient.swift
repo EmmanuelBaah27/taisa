@@ -84,6 +84,14 @@ public actor GatewayConversationClient: ConversationClient {
         for draft in snapshot.drafts { try await repository.discardDraft(id: draft.id) }
     }
 
+    public func completeVoiceConversation(conversationID: String) async throws {
+        try await completeConversation(
+            id: conversationID,
+            titleSuggestion: nil,
+            updatedAtMS: nowMS()
+        )
+    }
+
     public func correctTranscript(conversationID: String, requestID: String, messageID: String, text: String) async throws -> ConversationReply {
         guard UUID(uuidString: requestID) != nil else { throw ConversationFailure.invalidInput }
         let snapshot = try await query.loadConversation(id: conversationID)

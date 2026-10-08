@@ -32,6 +32,97 @@ struct ConversationQueryTests {
         #expect(snapshot.conversations.map(\.id) == [ids.newestConversation, ids.olderConversation])
     }
 
+    @Test func indexRecoversDraftLifecycleConversationThatAlreadyHasMessages() async throws {
+        let fixture = try await makeFixture()
+        defer { fixture.remove() }
+        let ids = IDs()
+        try await fixture.store.write { db in
+            try insertConversation(
+                db, id: ids.newestDraftConversation,
+                title: "Recovered voice conversation", lifecycle: "draft", updatedAtMS: 30
+            )
+            try insertMessage(
+                db, id: ids.originalUser, conversationID: ids.newestDraftConversation,
+                role: "user", body: "Persisted transcript", createdAtMS: 31
+            )
+        }
+
+        let snapshot = try await ConversationQuery(store: fixture.store).loadIndex()
+
+        #expect(snapshot.drafts.isEmpty)
+        #expect(snapshot.conversations.map(\.id) == [ids.newestDraftConversation])
+    }
+
+    @Test func indexDoesNotDuplicateRecoverableConversationAsDraftAndHistory() async throws {
+        let fixture = try await makeFixture()
+        defer { fixture.remove() }
+        let ids = IDs()
+        try await fixture.store.write { db in
+            try insertConversation(
+                db, id: ids.newestDraftConversation,
+                title: "Retryable conversation", lifecycle: "draft", updatedAtMS: 30
+            )
+            try insertMessage(
+                db, id: ids.originalUser, conversationID: ids.newestDraftConversation,
+                role: "user", body: "Pending transcript", createdAtMS: 31
+            )
+            try insertDraft(
+                db, id: ids.newestDraft, conversationID: ids.newestDraftConversation,
+                text: "Pending transcript", updatedAtMS: 32
+            )
+        }
+
+        let snapshot = try await ConversationQuery(store: fixture.store).loadIndex()
+
+        #expect(snapshot.drafts.map(\.id) == [ids.newestDraft])
+        #expect(snapshot.conversations.isEmpty)
+    }
+
+    @Test func indexDoesNotDuplicateCompletedConversationWithRetainedDraft() async throws {
+        let fixture = try await makeFixture()
+        defer { fixture.remove() }
+        let ids = IDs()
+        try await fixture.store.write { db in
+            try insertConversation(
+                db, id: ids.newestDraftConversation,
+                title: "Interrupted cleanup", lifecycle: "completed", updatedAtMS: 30
+            )
+            try insertDraft(
+                db, id: ids.newestDraft, conversationID: ids.newestDraftConversation,
+                text: "Retained safely", updatedAtMS: 32
+            )
+        }
+
+        let snapshot = try await ConversationQuery(store: fixture.store).loadIndex()
+
+        #expect(snapshot.drafts.map(\.id) == [ids.newestDraft])
+        #expect(snapshot.conversations.isEmpty)
+    }
+
+    @Test func indexDoesNotRecoverConversationWhoseOnlyMessageIsDeleted() async throws {
+        let fixture = try await makeFixture()
+        defer { fixture.remove() }
+        let ids = IDs()
+        try await fixture.store.write { db in
+            try insertConversation(
+                db, id: ids.newestDraftConversation,
+                title: "Deleted message conversation", lifecycle: "draft", updatedAtMS: 30
+            )
+            try insertMessage(
+                db, id: ids.originalUser, conversationID: ids.newestDraftConversation,
+                role: "user", body: "Delete me", createdAtMS: 31
+            )
+        }
+        try await ConversationRepository(store: fixture.store).deleteMessage(
+            id: ids.originalUser,
+            context: .init(id: ids.deleteMutation, deviceID: deviceID, timestamp: 32)
+        )
+
+        let snapshot = try await ConversationQuery(store: fixture.store).loadIndex()
+
+        #expect(snapshot.conversations.isEmpty)
+    }
+
     @Test func correctionSupersedesVisibleExchangeAtomically() async throws {
         let fixture = try await makeFixture()
         defer { fixture.remove() }
