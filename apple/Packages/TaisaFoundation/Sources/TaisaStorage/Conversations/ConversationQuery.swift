@@ -36,7 +36,20 @@ public struct ConversationQuery: ConversationQuerying, Sendable {
                     sql: """
                     SELECT conversations.*
                     FROM conversations
-                    WHERE lifecycle = 'completed'
+                    WHERE (
+                        lifecycle = 'completed' OR EXISTS (
+                            SELECT 1 FROM messages
+                            WHERE messages.conversation_id = conversations.id COLLATE NOCASE
+                              AND NOT EXISTS (
+                                  SELECT 1 FROM tombstones
+                                  WHERE entity_type = 'message'
+                                    AND entity_id = messages.id COLLATE NOCASE
+                              )
+                        )
+                    ) AND NOT EXISTS (
+                        SELECT 1 FROM conversation_drafts
+                        WHERE conversation_drafts.conversation_id = conversations.id COLLATE NOCASE
+                    )
                       AND NOT EXISTS (
                         SELECT 1 FROM tombstones
                         WHERE entity_type = 'conversation'

@@ -6,6 +6,7 @@ public protocol ConversationClient: Sendable {
     func sendText(conversationID: String, requestID: String, text: String) async throws -> ConversationReply
     func saveDraft(conversationID: String, input: ConversationInput) async throws
     func discardDraft(conversationID: String) async throws
+    func completeVoiceConversation(conversationID: String) async throws
     func correctTranscript(conversationID: String, requestID: String, messageID: String, text: String) async throws -> ConversationReply
 }
 
@@ -76,6 +77,10 @@ public struct VoiceSessionConversationAdapter: ConversationVoiceControlling {
             await onTranscriptAvailable()
         }
         await coordinator.waitForIdle()
+        try Self.requireCompleted(await coordinator.snapshot().durable.state)
+    }
+    static func requireCompleted(_ state: VoiceTurnState) throws {
+        guard state == .completed else { throw ConversationFailure.retryable }
     }
     public func retry() async throws { try await coordinator.send(.retry) }
     public func saveDraft() async throws {

@@ -46,6 +46,11 @@ final class PrimaryAppShellModel {
         conversationRoute = nil
     }
 
+    func dismissConversationAndRefresh(_ refresh: @MainActor () async -> Void) async {
+        dismissConversation()
+        await refresh()
+    }
+
     func openConversation(id: String, title: String) {
         guard conversationRoute == nil else { return }
         conversationRoute = ConversationRoute(id: id, localTitle: title)
@@ -95,8 +100,17 @@ struct PrimaryAppShell: View {
                 route: route,
                 entryIntent: model.consumeEntryIntent(),
                 factory: conversationFactory,
-                dismiss: model.dismissConversation
+                dismiss: dismissConversationAndRefresh
             )
+        }
+    }
+
+    @MainActor
+    private func dismissConversationAndRefresh() {
+        Task {
+            await model.dismissConversationAndRefresh {
+                await conversationsModel.load()
+            }
         }
     }
 

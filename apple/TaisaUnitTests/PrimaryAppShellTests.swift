@@ -3,6 +3,17 @@ import XCTest
 
 @MainActor
 final class PrimaryAppShellTests: XCTestCase {
+    func testConversationDismissalRefreshesTheConversationIndex() async {
+        let model = PrimaryAppShellModel()
+        model.presentNewConversation(.voice)
+        var refreshCount = 0
+
+        await model.dismissConversationAndRefresh { refreshCount += 1 }
+
+        XCTAssertNil(model.conversationRoute)
+        XCTAssertEqual(refreshCount, 1)
+    }
+
     func testGlobalDockAppearsOnEveryPrimaryDestinationButNotInsideConversation() {
         let model = PrimaryAppShellModel()
 

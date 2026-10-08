@@ -1,5 +1,6 @@
 import Testing
 import TaisaStorage
+import TaisaVoice
 @testable import TaisaConversations
 
 @Suite("Durable conversation coordinator")
@@ -105,9 +106,10 @@ struct ConversationCoordinatorTests {
 
     @Test func voicePauseResumeAndSendStayOwnedByVoiceAdapter() async throws {
         let voice = VoiceIntentSpy()
+        let client = ConversationClientSpy()
         let coordinator = ConversationCoordinator.new(
             conversationID: "00000000-0000-0000-0000-000000000001",
-            client: ConversationClientSpy(), voice: voice
+            client: client, voice: voice
         )
 
         try await coordinator.beginReply(mode: .voice)
@@ -118,6 +120,30 @@ struct ConversationCoordinatorTests {
         try await coordinator.sendVoice()
         #expect(await coordinator.snapshot().composer == .waitingForReply)
         #expect(await voice.actions == ["begin", "pause", "resume", "send"])
+        #expect(await client.completedVoiceConversationIDs == ["00000000-0000-0000-0000-000000000001"])
+    }
+
+    @Test func failedVoiceSendDoesNotCompleteConversation() async {
+        let client = ConversationClientSpy()
+        let coordinator = ConversationCoordinator.new(
+            conversationID: "00000000-0000-0000-0000-000000000001",
+            client: client, voice: VoiceIntentSpy(sendFails: true)
+        )
+
+        await #expect(throws: ConversationFailure.self) { try await coordinator.sendVoice() }
+        #expect(await client.completedVoiceConversationIDs.isEmpty)
+        #expect(await coordinator.snapshot().composer == .failure(.retryable))
+    }
+
+    @Test func voiceAdapterAcceptsOnlyDurableCompletedState() {
+        #expect(throws: Never.self) {
+            try VoiceSessionConversationAdapter.requireCompleted(.completed)
+        }
+        for state in [VoiceTurnState.recoverableFailure, .terminalFailure, .noSpeech, .paused] {
+            #expect(throws: ConversationFailure.self) {
+                try VoiceSessionConversationAdapter.requireCompleted(state)
+            }
+        }
     }
 
     @Test func correctionRetryUsesTheSamePaidRequestIdentity() async throws {
@@ -141,13 +167,16 @@ struct ConversationCoordinatorTests {
 }
 
 private actor VoiceIntentSpy: ConversationVoiceControlling {
+    private let sendFails: Bool
     private(set) var startCount = 0
     private(set) var actions: [String] = []
+    init(sendFails: Bool = false) { self.sendFails = sendFails }
     func beginReply() async throws { startCount += 1; actions.append("begin") }
     func pauseReply() async throws { actions.append("pause") }
     func resumeReply() async throws { actions.append("resume") }
     func sendReply(onTranscriptAvailable: @escaping @Sendable () async -> Void) async throws {
         actions.append("send")
+        if sendFails { throw ConversationFailure.retryable }
         await onTranscriptAvailable()
     }
 }
@@ -158,6 +187,7 @@ private actor ConversationClientSpy: ConversationClient {
     private let blocked: Bool
     private var remainingCorrectionFailures: Int
     private(set) var correctionRequestIDs: [String] = []
+    private(set) var completedVoiceConversationIDs: [String] = []
     private var continuations: [CheckedContinuation<Void, Never>] = []
 
     init(
@@ -190,5 +220,9 @@ private actor ConversationClientSpy: ConversationClient {
             throw ConversationFailure.retryable
         }
         return ConversationReply(text: "Corrected reply", titleSuggestion: nil)
+    }
+
+    func completeVoiceConversation(conversationID: String) {
+        completedVoiceConversationIDs.append(conversationID)
     }
 }

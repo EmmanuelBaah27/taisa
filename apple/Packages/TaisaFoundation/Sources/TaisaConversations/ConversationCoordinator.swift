@@ -137,6 +137,7 @@ public actor ConversationCoordinator {
         composer = .transcribing
         do {
             try await voice.sendReply(onTranscriptAvailable: onTranscriptAvailable)
+            try await client.completeVoiceConversation(conversationID: conversationID)
             composer = .waitingForReply
         } catch {
             composer = .failure(.retryable)
