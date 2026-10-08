@@ -4,14 +4,14 @@
 
 ## Verified revision
 
-- Product revision: `00d5ac2110cfed2749f4717a9795a0972a50643b`
+- Product revision: `306123a`
 - Branch: `feature/native-conversation-experience`
 - Toolchain: Xcode 26.1.1 (`17B100`), iOS/iPadOS Simulator 26.1
 - Simulator matrix: iPhone 17 Pro and iPad Pro 13-inch (M5)
 
 ## Automated verification
 
-`npm run verify:native-apple:all` passed from the clean verified revision. The matrix included generated-project parity, native contract fixtures, 434 Swift package tests in 59 suites, native design-system enforcement, Development unit and UI tests, Preview unit and UI tests, Personal unit and UI tests, the unsigned generic physical-device build, the Release simulator build, production/Personal isolation inspection, and workflow verification.
+`npm run verify:native-apple:all` passed from the clean verified revision. The matrix included generated-project parity, native contract fixtures, 436 Swift package tests in 59 suites, native design-system enforcement, Development unit and UI tests, Preview unit and UI tests, Personal unit and UI tests, the unsigned generic physical-device build, the Release simulator build, production/Personal isolation inspection, and workflow verification. Independent review reported no remaining findings.
 
 Backend verification also passed before the native matrix: 399 tests in 24 suites and the backend TypeScript build.
 
