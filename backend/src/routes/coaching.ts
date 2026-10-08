@@ -211,6 +211,11 @@ router.post('/respond/stream', async (req, res) => {
     }
     return res.end();
   } catch (error) {
+    if (error instanceof ContentFreeFallbackError) {
+      console.warn('[Taisa diagnostic] COACHING_STREAM_PROVIDER_FAILURE', {
+        attempts: error.attempts,
+      });
+    }
     if (res.headersSent) {
       const code = streamFailureCode(error);
       try { store.fail(idempotencyKey, code, false); } catch { /* Preserve the original failure. */ }

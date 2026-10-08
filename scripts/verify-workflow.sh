@@ -16,6 +16,35 @@ test -f docs/decisions/0001-use-repository-native-project-memory.md || fail "ini
 test -f docs/learnings.md || fail "reusable learning log is missing"
 node scripts/canonical-origin.mjs "$(git remote get-url origin)" || fail "origin does not use the canonical Taisa URL"
 
+# Linear is the sole live delivery authority. These checks intentionally stay
+# offline: they verify repository contracts without reading or mutating Linear.
+test ! -e docs/roadmap.md || fail "repository roadmap duplicates Linear live authority"
+test ! -e docs/backlog.md || fail "repository backlog duplicates Linear task intake"
+
+for authority_file in AGENTS.md CLAUDE.md docs/workflow.md .claude/skills/taisa-workflow/SKILL.md; do
+  rg -qi 'Linear.*sole live authority|sole live authority.*Linear' "$authority_file" ||
+    fail "$authority_file does not declare Linear as the sole live authority"
+  rg -qi 'Linear.*unavailable|offline fallback' "$authority_file" ||
+    fail "$authority_file is missing the Linear-unavailable fallback"
+done
+
+if rg -n 'Active Work table|docs/roadmap\.md|docs/backlog\.md' \
+  AGENTS.md CLAUDE.md docs/workflow.md .claude/skills/taisa-workflow/SKILL.md docs/project-memory.md; then
+  fail "active repository instructions still reference duplicate live authority"
+fi
+
+if rg -n 'No formal Work Map, scope doc, or Linear issue|No Linear issue|Linear issues are created only' \
+  AGENTS.md CLAUDE.md docs/workflow.md .claude/skills/taisa-workflow/SKILL.md docs/project-memory.md; then
+  fail "active repository instructions still permit actionable work without Linear intake"
+fi
+
+rg -q '31b0d99c-6f74-4c9c-af2a-12e6e25aabe0' \
+  .claude/skills/taisa-workflow/SKILL.md || fail "Taisa Linear project ID is missing"
+rg -q 'e95356d8-17f7-4700-bdfe-222782bea546' \
+  .claude/skills/taisa-workflow/SKILL.md || fail "Taisa Linear team ID is missing"
+rg -qi 'every actionable task.*Linear issue|Linear issue.*every actionable task' \
+  .claude/skills/taisa-workflow/SKILL.md || fail "universal Linear issue intake is missing"
+
 rg -q 'main.*only permanent branch|only permanent branch.*main' docs/workflow.md || fail "canonical main policy is missing"
 rg -q '<type>/<short-kebab-case-description>' docs/workflow.md || fail "typed branch naming policy is missing"
 rg -qi 'squash merge' docs/workflow.md || fail "squash merge policy is missing"
@@ -24,6 +53,28 @@ rg -q 'superpowers:brainstorming' .claude/skills/taisa-workflow/SKILL.md || fail
 rg -q 'superpowers:verification-before-completion' .claude/skills/taisa-workflow/SKILL.md || fail "completion verification routing is missing"
 rg -q '\.claude/skills/taisa-workflow/SKILL\.md' AGENTS.md || fail "AGENTS.md does not load the orchestrator"
 rg -q 'docs/workflow\.md' AGENTS.md || fail "AGENTS.md does not load the workflow source"
+rg -q '^### Work Map' docs/workflow.md || fail "pre-planning Work Map contract is missing"
+rg -q '^### Discussion Map' docs/workflow.md || fail "selected-slice Discussion Map contract is missing"
+rg -qi 'layman meaning.*technical truth' docs/workflow.md || fail "balanced architecture-diagram contract is missing"
+rg -q 'Platform discussion' .claude/skills/taisa-workflow/SKILL.md || fail "Platform discussion agenda is missing"
+rg -q 'Product discussion' .claude/skills/taisa-workflow/SKILL.md || fail "Product discussion agenda is missing"
+rg -q 'Integration discussion' .claude/skills/taisa-workflow/SKILL.md || fail "integration discussion agenda is missing"
+rg -q 'XS.*S.*M.*L.*XL' docs/workflow.md || fail "slice sizing scale is missing"
+rg -q 'independent Product foundation' docs/workflow.md || fail "Product skeleton dependency boundary is missing"
+rg -q '^### Activation bias' docs/workflow.md || fail "workflow activation bias is missing"
+rg -qi 'default.*activat|activate.*default' .claude/skills/taisa-workflow/SKILL.md || fail "orchestrator does not default toward activation"
+rg -q '^## Documentation freshness cadence' docs/workflow.md || fail "documentation freshness cadence is missing"
+rg -q 'Explicit precedence|explicit precedence' docs/workflow.md || fail "activation precedence is missing"
+rg -q 'between Scope and Plan' docs/workflow.md || fail "Product design boundary is missing"
+rg -q 'host artifact' docs/workflow.md || fail "embedded diagram ownership is missing"
+rg -q 'Canonical documentation authority' docs/workflow.md || fail "canonical documentation authority is missing"
+rg -q 'Material change' docs/workflow.md || fail "material-change definition is missing"
+rg -q 'Superseded by' docs/workflow.md || fail "superseded-document lifecycle is missing"
+test -f scripts/verify-doc-freshness.sh || fail "documentation freshness verifier is missing"
+
+if rg -n '^\| Backlog idea \| Create issue' .claude/skills/taisa-workflow/SKILL.md; then
+  fail "backlog-to-Linear contradiction remains"
+fi
 for startup_file in AGENTS.md CLAUDE.md docs/workflow.md .claude/skills/taisa-workflow/SKILL.md; do
   rg -q 'docs/project-memory\.md' "$startup_file" || fail "$startup_file does not load the project memory index"
 done

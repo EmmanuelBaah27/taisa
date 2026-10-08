@@ -8,11 +8,11 @@ final class VoiceSessionDiagnosticsViewModelTests: XCTestCase {
         XCTAssertEqual(model(.draft, .capture).actions, [.record])
         XCTAssertEqual(
             model(.recording, .capture).actions,
-            [.pause, .send, .cancel, .discard]
+            [.pause, .send, .discard]
         )
         XCTAssertEqual(
             model(.paused, .capture).actions,
-            [.resume, .send, .cancel, .discard]
+            [.resume, .send, .discard]
         )
         XCTAssertEqual(
             model(.awaitingTranscriptConfirmation, .transcription).actions,

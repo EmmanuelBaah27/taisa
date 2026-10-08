@@ -46,6 +46,63 @@ struct VoiceSessionReviewRegressionTests {
         #expect(await audio.deleted == ["00000000-0000-0000-0000-000000000201"])
     }
 
+    @Test("relaunch finishes local cleanup before connectivity becomes available")
+    func relaunchFinishesCleanupWhileOffline() async throws {
+        let audio = ReviewAudioSpy()
+        let initial = VoiceTurnRecord(
+            id: ReviewIDs.turn.uuidString,
+            conversationID: ReviewIDs.conversation.uuidString,
+            transcriptionRequestID: ReviewIDs.transcription.uuidString,
+            transcriptionIdempotencyKey: "transcription-1",
+            coachingRequestID: ReviewIDs.coaching.uuidString,
+            coachingIdempotencyKey: "coaching-1",
+            state: .discarded,
+            stage: .cleanup,
+            audioFileID: "00000000-0000-0000-0000-000000000201",
+            cleanupState: .pending,
+            createdAtMS: 1,
+            updatedAtMS: 1
+        )
+        let coordinator = VoiceSessionCoordinator(
+            initial: initial,
+            checkpoints: ReviewCheckpointSpy(),
+            transcription: ReviewTranscriptionRunner(events: []),
+            coaching: ReviewCoachingRunner(events: []),
+            connectivity: ReviewConnectivity(available: false),
+            reconciliation: ReviewReconciliation(),
+            capture: ReviewCaptureSpy(),
+            audio: audio
+        )
+
+        try await coordinator.recoverIfAuthorized()
+
+        #expect(await audio.deleted == ["00000000-0000-0000-0000-000000000201"])
+        #expect(await coordinator.snapshot().durable.stage == .finished)
+    }
+
+    @Test("recording preparation failure does not leave a fake recording session")
+    func preparationFailureFinishesTheTurn() async throws {
+        let coordinator = VoiceSessionCoordinator(
+            initial: reviewTurn(state: .draft, stage: .capture),
+            checkpoints: ReviewCheckpointSpy(),
+            transcription: ReviewTranscriptionRunner(events: []),
+            coaching: ReviewCoachingRunner(events: []),
+            connectivity: ReviewConnectivity(),
+            reconciliation: ReviewReconciliation(),
+            capture: FailingPrepareCapture(),
+            audio: ReviewAudioSpy()
+        )
+
+        await #expect(throws: AudioCaptureError.permissionDenied) {
+            try await coordinator.send(.startRecording)
+        }
+
+        let snapshot = await coordinator.snapshot()
+        #expect(snapshot.durable.state == .terminalFailure)
+        #expect(snapshot.durable.stage == .finished)
+        #expect(snapshot.durable.failureCode == "CAPTURE_PREPARE_FAILED")
+    }
+
     @Test("relaunch terminalizes a checkpointed recording even when prepare never produced a file")
     func relaunchRecoversRecordingWithoutPreparedAudio() async throws {
         let capture = ReviewCaptureSpy()
@@ -225,6 +282,30 @@ struct VoiceSessionReviewRegressionTests {
         }
 
         #expect(await coordinator.snapshot().durable.state == .paused)
+    }
+
+    @Test("connectivity updates do not treat an active recording as relaunch recovery")
+    func connectivityUpdatePreservesActiveRecording() async throws {
+        let capture = ReviewCaptureSpy()
+        let audio = ReviewAudioSpy()
+        let coordinator = VoiceSessionCoordinator(
+            initial: reviewTurn(state: .draft, stage: .capture),
+            checkpoints: ReviewCheckpointSpy(),
+            transcription: ReviewTranscriptionRunner(events: []),
+            coaching: ReviewCoachingRunner(events: []),
+            connectivity: ReviewConnectivity(), reconciliation: ReviewReconciliation(),
+            capture: capture, audio: audio
+        )
+
+        try await coordinator.send(.startRecording)
+        try await coordinator.connectivityChanged(isAvailable: true)
+
+        let snapshot = await coordinator.snapshot()
+        #expect(snapshot.durable.state == .recording)
+        #expect(snapshot.durable.stage == .capture)
+        #expect(snapshot.durable.failureCode == nil)
+        #expect(await audio.deleted.isEmpty)
+        #expect(await capture.released.isEmpty)
     }
 
     @Test("relaunch of interrupted capture deletes retained audio and unlocks the next turn")
@@ -470,6 +551,20 @@ private actor ReviewCaptureSpy: VoiceCaptureControlling {
     func release(turnID: UUID) async throws { released.append(turnID) }
 }
 
+private actor FailingPrepareCapture: VoiceCaptureControlling {
+    func events() -> AsyncStream<AudioCaptureEvent> { AsyncStream { $0.finish() } }
+    func prepare(turnID: UUID) async throws -> String { throw AudioCaptureError.permissionDenied }
+    func start(turnID: UUID) async throws {}
+    func pause(turnID: UUID) async throws {}
+    func resume(turnID: UUID) async throws {}
+    func finalize(turnID: UUID) async throws -> FinalizedVoiceAudio {
+        throw AudioCaptureError.audioNotFinalized
+    }
+    func cancel(turnID: UUID) async throws {}
+    func discard(turnID: UUID) async throws {}
+    func release(turnID: UUID) async throws {}
+}
+
 private actor ReviewTranscriptionRunner: VoiceTranscriptionRunning {
     let events: [TranscriptionStreamEvent]
     init(events: [TranscriptionStreamEvent]) { self.events = events }
@@ -531,7 +626,9 @@ private actor ReviewCoachingRunner: VoiceCoachingRunning {
 }
 
 private actor ReviewConnectivity: ConnectivityMonitoring {
-    func isAvailable() async -> Bool { true }
+    private let available: Bool
+    init(available: Bool = true) { self.available = available }
+    func isAvailable() async -> Bool { available }
 }
 
 private actor ReviewReconciliation: CoachingReconciliationLookingUp {

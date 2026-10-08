@@ -79,8 +79,12 @@ public actor AudioCaptureController: VoiceCaptureControlling, VoiceAudioDeleting
         lifecycleTask = Task {
             for await event in lifecycle.events() {
                 guard !Task.isCancelled else { return }
+                print("TAISA_CAPTURE lifecycle.received event=\(String(describing: event))")
                 if let result = try? await service.handle(event, turnID: turnID) {
+                    print("TAISA_CAPTURE lifecycle.handled result=\(String(describing: result))")
                     eventContinuation.yield(result)
+                } else {
+                    print("TAISA_CAPTURE lifecycle.handle-failed")
                 }
             }
         }
