@@ -89,11 +89,32 @@ struct ConversationCoordinatorTests {
         try await first.value
         #expect(await client.requestIDs.count == 1)
     }
+
+    @Test func voicePauseResumeAndSendStayOwnedByVoiceAdapter() async throws {
+        let voice = VoiceIntentSpy()
+        let coordinator = ConversationCoordinator.new(
+            conversationID: "00000000-0000-0000-0000-000000000001",
+            client: ConversationClientSpy(), voice: voice
+        )
+
+        try await coordinator.beginReply(mode: .voice)
+        try await coordinator.pauseVoice()
+        #expect(await coordinator.snapshot().composer == .paused)
+        try await coordinator.resumeVoice()
+        #expect(await coordinator.snapshot().composer == .recording)
+        try await coordinator.sendVoice()
+        #expect(await coordinator.snapshot().composer == .waitingForReply)
+        #expect(await voice.actions == ["begin", "pause", "resume", "send"])
+    }
 }
 
 private actor VoiceIntentSpy: ConversationVoiceControlling {
     private(set) var startCount = 0
-    func beginReply() async throws { startCount += 1 }
+    private(set) var actions: [String] = []
+    func beginReply() async throws { startCount += 1; actions.append("begin") }
+    func pauseReply() async throws { actions.append("pause") }
+    func resumeReply() async throws { actions.append("resume") }
+    func sendReply() async throws { actions.append("send") }
 }
 
 private actor ConversationClientSpy: ConversationClient {

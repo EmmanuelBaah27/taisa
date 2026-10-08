@@ -57,6 +57,7 @@ struct PrimaryAppShell: View {
     @State var model: PrimaryAppShellModel
     let homeModel: HomeModel
     let conversationsModel: ConversationsModel
+    let conversationFactory: ConversationRuntimeFactory?
     var openRecovery: () -> Void = {}
     var openPersonalQA: (() -> Void)?
 
@@ -89,9 +90,10 @@ struct PrimaryAppShell: View {
             get: { model.conversationRoute },
             set: { if $0 == nil { model.dismissConversation() } }
         )) { route in
-            ConversationRoutePlaceholder(
+            ConversationHostView(
                 route: route,
                 entryIntent: model.consumeEntryIntent(),
+                factory: conversationFactory,
                 dismiss: model.dismissConversation
             )
         }
@@ -124,28 +126,5 @@ struct PrimaryAppShell: View {
             .navigationTitle("You")
             .accessibilityIdentifier("you.root")
         }
-    }
-}
-
-private struct ConversationRoutePlaceholder: View {
-    let route: ConversationRoute
-    let entryIntent: ConversationEntryIntent?
-    let dismiss: () -> Void
-
-    var body: some View {
-        NavigationStack {
-            ContentUnavailableView(
-                route.localTitle,
-                systemImage: entryIntent == .voice ? "waveform" : "keyboard",
-                description: Text(entryIntent == .voice ? "Preparing voice conversation…" : "Preparing text conversation…")
-            )
-            .navigationTitle(route.localTitle)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Close", action: dismiss)
-                }
-            }
-        }
-        .accessibilityIdentifier("conversation.root")
     }
 }

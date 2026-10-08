@@ -15,6 +15,7 @@ struct AppRootView: View {
                         model: runtime.primaryShellModel,
                         homeModel: model,
                         conversationsModel: conversationsModel,
+                        conversationFactory: runtime.conversationFactory,
                         openRecovery: runtime.requireRecovery,
                         openPersonalQA: personalQAAction
                     )

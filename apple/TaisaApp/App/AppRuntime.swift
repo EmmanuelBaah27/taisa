@@ -1,7 +1,9 @@
+import Foundation
 import Observation
 import TaisaHome
 import TaisaConversations
 import TaisaStorage
+import TaisaVoice
 
 @MainActor
 @Observable
@@ -15,8 +17,9 @@ final class AppRuntime {
     private(set) var state: State = .startup
     private(set) var homeModel: HomeModel?
     private(set) var conversationsModel: ConversationsModel?
+    private(set) var conversationFactory: ConversationRuntimeFactory?
     let primaryShellModel: PrimaryAppShellModel
-    @ObservationIgnored private let startOperation: @Sendable () async throws -> (HomeClient, ConversationsClient)
+    @ObservationIgnored private let startOperation: @Sendable () async throws -> (HomeClient, ConversationsClient, ConversationRuntimeFactory?)
 
     init(
         primaryShellModel: PrimaryAppShellModel = PrimaryAppShellModel(),
@@ -24,13 +27,13 @@ final class AppRuntime {
     ) {
         self.primaryShellModel = primaryShellModel
         startOperation = {
-            (try await start(), ConversationsClient(load: { ConversationIndexSnapshot(drafts: [], conversations: []) }))
+            (try await start(), ConversationsClient(load: { ConversationIndexSnapshot(drafts: [], conversations: []) }), nil)
         }
     }
 
     private init(
         primaryShellModel: PrimaryAppShellModel = PrimaryAppShellModel(),
-        startServices: @escaping @Sendable () async throws -> (HomeClient, ConversationsClient)
+        startServices: @escaping @Sendable () async throws -> (HomeClient, ConversationsClient, ConversationRuntimeFactory?)
     ) {
         self.primaryShellModel = primaryShellModel
         startOperation = startServices
@@ -39,10 +42,19 @@ final class AppRuntime {
     static func live() -> AppRuntime {
         AppRuntime(startServices: {
             let backend = try PersonalRecoveryBackend.personal()
-            let store = try await backend.openStore()
+            let context = try await backend.voiceStoreContext()
+            let store = context.store
+            let rawURL = Bundle.main.object(forInfoDictionaryKey: "TaisaVoiceGatewayURL") as? String ?? ""
+            let configuration = URL(string: rawURL).flatMap {
+                try? VoiceGatewayConfiguration(
+                    baseURL: $0, bearerToken: context.deviceID.uuidString.lowercased(),
+                    ownerID: context.deviceID.uuidString.lowercased()
+                )
+            }
             return (
                 HomeClient { try await HomeQuery(store: store).load() },
-                ConversationsClient.local(store: store)
+                ConversationsClient.local(store: store),
+                configuration.map { ConversationRuntimeFactory(store: store, deviceID: context.deviceID, configuration: $0) }
             )
         })
     }
@@ -54,10 +66,12 @@ final class AppRuntime {
             let services = try await startOperation()
             homeModel = HomeModel(client: services.0)
             conversationsModel = ConversationsModel(client: services.1)
+            conversationFactory = services.2
             state = .ready
         } catch {
             homeModel = nil
             conversationsModel = nil
+            conversationFactory = nil
             state = .recoveryRequired
         }
         return state

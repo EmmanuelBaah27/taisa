@@ -72,6 +72,10 @@ targets:
         product: TaisaVoice
       - package: TaisaFoundation
         product: TaisaConversations
+      - package: TaisaFoundation
+        product: TaisaAudio
+      - package: TaisaFoundation
+        product: TaisaNetworking
   TaisaPreview:
     type: application
     platform: iOS

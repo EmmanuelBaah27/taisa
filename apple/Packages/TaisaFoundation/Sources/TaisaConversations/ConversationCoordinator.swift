@@ -94,6 +94,27 @@ public actor ConversationCoordinator {
 
     public func switchToText() { composer = .typing("") }
 
+    public func pauseVoice() async throws {
+        try await voice.pauseReply()
+        composer = .paused
+    }
+
+    public func resumeVoice() async throws {
+        try await voice.resumeReply()
+        composer = .recording
+    }
+
+    public func sendVoice() async throws {
+        composer = .transcribing
+        do {
+            try await voice.sendReply()
+            composer = .waitingForReply
+        } catch {
+            composer = .failure(.retryable)
+            throw error
+        }
+    }
+
     public func send(_ input: ConversationInput) async throws {
         switch input {
         case .voice:

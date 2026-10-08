@@ -1,3 +1,5 @@
+import Foundation
+import TaisaStorage
 import TaisaVoice
 
 public protocol ConversationClient: Sendable {
@@ -17,12 +19,18 @@ public extension ConversationClient {
 
 public protocol ConversationVoiceControlling: Sendable {
     func beginReply() async throws
+    func pauseReply() async throws
+    func resumeReply() async throws
+    func sendReply() async throws
     func retry() async throws
     func saveDraft() async throws
     func discardDraft() async throws
 }
 
 public extension ConversationVoiceControlling {
+    func pauseReply() async throws { throw ConversationFailure.unavailable }
+    func resumeReply() async throws { throw ConversationFailure.unavailable }
+    func sendReply() async throws { throw ConversationFailure.unavailable }
     func retry() async throws {}
     func saveDraft() async throws {}
     func discardDraft() async throws {}
@@ -30,10 +38,39 @@ public extension ConversationVoiceControlling {
 
 public struct VoiceSessionConversationAdapter: ConversationVoiceControlling {
     private let coordinator: VoiceSessionCoordinator
+    private let makeTurn: @Sendable (String) -> VoiceTurnRecord
 
-    public init(_ coordinator: VoiceSessionCoordinator) { self.coordinator = coordinator }
+    public init(
+        _ coordinator: VoiceSessionCoordinator,
+        makeTurn: @escaping @Sendable (String) -> VoiceTurnRecord = { conversationID in
+            let now = Int64(Date().timeIntervalSince1970 * 1_000)
+            return VoiceTurnRecord(
+                id: UUID().uuidString, conversationID: conversationID,
+                transcriptionRequestID: UUID().uuidString,
+                transcriptionIdempotencyKey: UUID().uuidString,
+                coachingRequestID: UUID().uuidString,
+                coachingIdempotencyKey: UUID().uuidString,
+                state: .draft, stage: .capture, createdAtMS: now, updatedAtMS: now
+            )
+        }
+    ) {
+        self.coordinator = coordinator
+        self.makeTurn = makeTurn
+    }
 
-    public func beginReply() async throws { try await coordinator.send(.startRecording) }
+    public func beginReply() async throws {
+        let durable = await coordinator.snapshot().durable
+        if durable.state.isTerminal || durable.state == .discarded {
+            try await coordinator.send(.beginNextTurn(makeTurn(durable.conversationID)))
+        }
+        try await coordinator.send(.startRecording)
+    }
+    public func pauseReply() async throws { try await coordinator.send(.pauseRecording) }
+    public func resumeReply() async throws { try await coordinator.send(.resumeRecording) }
+    public func sendReply() async throws {
+        try await coordinator.sendRecordedAudio()
+        await coordinator.waitForIdle()
+    }
     public func retry() async throws { try await coordinator.send(.retry) }
     public func saveDraft() async throws {
         let state = await coordinator.snapshot().durable.state
