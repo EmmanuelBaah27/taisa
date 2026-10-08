@@ -445,7 +445,7 @@ Within the same rank, prefer the outcome that unlocks more downstream work; then
 - Current work and history remain preserved while the old loops remain paused.
 - The pre-Build intake owner, exclusive conductor states, transition ledger, non-device path, and efficiency targets are explicit and verifiable.
 - Goal runs terminate at a named bounded outcome and never remain active solely for a human or external wait.
-- Platform, Product, and Integration tasks have exclusive ownership and stay under one issue-bounded conductor unless Baah explicitly authorizes otherwise.
+- Platform, Product, and Integration tasks have exclusive ownership and stay under one issue-bounded conductor.
 - Fast/high-risk classification, material-change reapproval, first-candidate QA readiness, device coverage, repair transitions, next-outcome ranking, and Goal-template validation are deterministic.
 
 ## Non-goals
