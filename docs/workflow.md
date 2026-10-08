@@ -103,7 +103,8 @@ and Plan approvals.
 
 ## Platform, Product, and Integration ownership
 
-Every planned task has exactly one exclusive owner. **Platform** owns AI, backend,
+Platform, Product, and Integration use exclusive ownership: every planned task has exactly
+one of those owners. **Platform** owns AI, backend,
 infrastructure, persistence, privacy/security enforcement, and Product-facing contracts.
 **Product** owns journeys, screens, interaction, accessibility behavior, design-system
 foundation/consumption, and device experience. **Integration** owns contract wiring between
