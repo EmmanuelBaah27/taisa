@@ -2,10 +2,38 @@ import Foundation
 import XCTest
 import TaisaHome
 import TaisaStorage
+import TaisaVoice
 @testable import Taisa
 
 @MainActor
 final class AppRuntimeTests: XCTestCase {
+    func testVoiceConfigurationUsesEnrolledOriginBoundCredential() async throws {
+        let store = InMemoryVoiceGatewayCredentialStore()
+        let credential = try VoiceGatewayCredential(
+            origin: XCTUnwrap(URL(string: "https://voice.example.com/path?ignored=true")),
+            credentialID: "credential-1",
+            bearerToken: "secret-token"
+        )
+        try await store.save(credential)
+
+        let configuration = try await AppRuntime.voiceConfiguration(
+            gatewayURLString: "https://voice.example.com/another-path",
+            credentialStore: store
+        )
+
+        XCTAssertEqual(configuration?.baseURL, URL(string: "https://voice.example.com"))
+        XCTAssertEqual(configuration?.bearerToken, "secret-token")
+        XCTAssertEqual(configuration?.ownerID, "credential-1")
+    }
+
+    func testVoiceConfigurationIsUnavailableWithoutEnrollment() async throws {
+        let configuration = try await AppRuntime.voiceConfiguration(
+            gatewayURLString: "https://voice.example.com",
+            credentialStore: InMemoryVoiceGatewayCredentialStore()
+        )
+
+        XCTAssertNil(configuration)
+    }
     func testSuccessfulStartBuildsHomeModel() async {
         let runtime = AppRuntime(start: { HomeClient { HomeSnapshot(conversations: [], goals: [], actions: []) } })
         let state = await runtime.start()
