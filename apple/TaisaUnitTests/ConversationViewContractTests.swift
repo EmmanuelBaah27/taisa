@@ -14,7 +14,7 @@ final class ConversationViewContractTests: XCTestCase {
             "conversation.root", "conversation.close", "conversation.timeline",
             "conversation.voice-composer", "conversation.text-composer",
             "conversation.save-draft", "conversation.discard", "conversation.retry",
-            "conversation.correct-transcript"
+            "conversation.correct-transcript", "conversation.transcript-preview"
         ] {
             XCTAssertTrue(source.contains(identifier), "Missing \(identifier)")
         }
@@ -22,6 +22,7 @@ final class ConversationViewContractTests: XCTestCase {
         XCTAssertTrue(source.contains("confirmationDialog"))
         XCTAssertTrue(source.contains("ScrollViewReader"))
         XCTAssertTrue(source.contains("onChange(of: messages.last?.id"))
+        XCTAssertTrue(source.contains("latestUserTranscript"))
         XCTAssertFalse(source.contains("import GRDB"))
     }
 }

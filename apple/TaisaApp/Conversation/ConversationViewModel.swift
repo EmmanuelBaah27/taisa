@@ -63,6 +63,9 @@ final class ConversationViewModel {
     var text: String {
         didSet { if case .typing = composer { composer = .typing(text) } }
     }
+    var latestUserTranscript: String? {
+        messages.last(where: { $0.role == "user" })?.body
+    }
 
     @ObservationIgnored private let entryIntent: ConversationEntryIntent?
     @ObservationIgnored private let client: ConversationScreenClient
