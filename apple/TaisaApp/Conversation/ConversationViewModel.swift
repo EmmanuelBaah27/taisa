@@ -4,6 +4,7 @@ import TaisaStorage
 
 struct ConversationScreenClient: Sendable {
     var loadMessages: @Sendable () async throws -> [MessageRecord]
+    var loadTitle: @Sendable () async throws -> String
     var beginVoice: @Sendable () async throws -> Void
     var pauseVoice: @Sendable () async throws -> Void
     var resumeVoice: @Sendable () async throws -> Void
@@ -12,10 +13,12 @@ struct ConversationScreenClient: Sendable {
     var retry: @Sendable () async throws -> Void
     var saveDraft: @Sendable (ConversationInput) async throws -> Void
     var discardDraft: @Sendable () async throws -> Void
+    var discardEmptyConversation: @Sendable () async throws -> Void
     var correctTranscript: @Sendable (String, String) async throws -> Void
 
     init(
         loadMessages: @escaping @Sendable () async throws -> [MessageRecord] = { [] },
+        loadTitle: @escaping @Sendable () async throws -> String = { "New conversation" },
         beginVoice: @escaping @Sendable () async throws -> Void,
         pauseVoice: @escaping @Sendable () async throws -> Void,
         resumeVoice: @escaping @Sendable () async throws -> Void,
@@ -24,9 +27,11 @@ struct ConversationScreenClient: Sendable {
         retry: @escaping @Sendable () async throws -> Void,
         saveDraft: @escaping @Sendable (ConversationInput) async throws -> Void,
         discardDraft: @escaping @Sendable () async throws -> Void,
+        discardEmptyConversation: @escaping @Sendable () async throws -> Void = {},
         correctTranscript: @escaping @Sendable (String, String) async throws -> Void = { _, _ in }
     ) {
         self.loadMessages = loadMessages
+        self.loadTitle = loadTitle
         self.beginVoice = beginVoice
         self.pauseVoice = pauseVoice
         self.resumeVoice = resumeVoice
@@ -35,6 +40,7 @@ struct ConversationScreenClient: Sendable {
         self.retry = retry
         self.saveDraft = saveDraft
         self.discardDraft = discardDraft
+        self.discardEmptyConversation = discardEmptyConversation
         self.correctTranscript = correctTranscript
     }
 }
@@ -126,7 +132,10 @@ final class ConversationViewModel {
 
     func pause() async { await perform(next: .paused) { try await client.pauseVoice() } }
     func resume() async { await perform(next: .recording) { try await client.resumeVoice() } }
-    func sendVoice() async { await perform(next: .transcribing) { try await client.sendVoice() } }
+    func sendVoice() async {
+        composer = .transcribing
+        await performSuccess { try await client.sendVoice() }
+    }
 
     func sendText() async {
         guard !actionInFlight else { return }
@@ -139,7 +148,10 @@ final class ConversationViewModel {
         actionInFlight = false
     }
 
-    func retry() async { await perform(next: .coaching) { try await client.retry() } }
+    func retry() async {
+        composer = .coaching
+        await performSuccess { try await client.retry() }
+    }
 
     func requestKeyboard() {
         switch composer {
@@ -159,7 +171,20 @@ final class ConversationViewModel {
     }
 
     func requestClose() {
-        if hasUnsentInput { confirmation = .saveDiscardOrCancel } else { dismiss() }
+        if hasUnsentInput {
+            confirmation = .saveDiscardOrCancel
+        } else if messages.isEmpty {
+            Task { @MainActor in
+                do {
+                    try await client.discardEmptyConversation()
+                    dismiss()
+                } catch {
+                    composer = .failure(.unavailable)
+                }
+            }
+        } else {
+            dismiss()
+        }
     }
 
     func cancelConfirmation() {
@@ -170,6 +195,7 @@ final class ConversationViewModel {
     func saveAndClose() async {
         do {
             let input: ConversationInput = {
+                if !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return .text(text) }
                 if case .typing = composer { return .text(text) }
                 return .voice
             }()
@@ -180,7 +206,12 @@ final class ConversationViewModel {
     }
 
     func discardAndClose() async {
-        do { try await client.discardDraft(); confirmation = nil; dismiss() }
+        do {
+            try await client.discardDraft()
+            if messages.isEmpty { try await client.discardEmptyConversation() }
+            confirmation = nil
+            dismiss()
+        }
         catch { composer = .failure(.unavailable); confirmation = nil }
     }
 
@@ -203,7 +234,6 @@ final class ConversationViewModel {
             await reloadMessages()
             composer = .waitingForReply
         } catch {
-            cancelCorrection()
             composer = .failure(.retryable)
         }
     }
@@ -224,7 +254,21 @@ final class ConversationViewModel {
         actionInFlight = false
     }
 
+    private func performSuccess(operation: () async throws -> Void) async {
+        guard !actionInFlight else { return }
+        actionInFlight = true
+        do {
+            try await operation()
+            await reloadMessages()
+            composer = .waitingForReply
+        } catch {
+            composer = .failure(.retryable)
+        }
+        actionInFlight = false
+    }
+
     private func reloadMessages() async {
         if let loaded = try? await client.loadMessages() { messages = loaded }
+        if let loadedTitle = try? await client.loadTitle() { title = loadedTitle }
     }
 }

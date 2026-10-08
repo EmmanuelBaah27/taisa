@@ -6,6 +6,11 @@ public actor ConversationCoordinator {
         let requestID: String
         let text: String
     }
+    private struct PendingCorrection: Sendable {
+        let requestID: String
+        let messageID: String
+        let text: String
+    }
 
     private let conversationID: String
     private let client: any ConversationClient
@@ -13,6 +18,7 @@ public actor ConversationCoordinator {
     private var composer: ComposerState
     private var latestReply: ConversationReply?
     private var pendingText: PendingText?
+    private var pendingCorrection: PendingCorrection?
     private var title: String?
     private var titleAuthority: TitleAuthority
     private var requestInFlight = false
@@ -24,7 +30,8 @@ public actor ConversationCoordinator {
         voice: any ConversationVoiceControlling,
         title: String? = nil,
         titleAuthority: TitleAuthority = .localFallback,
-        pendingText: (requestID: String, text: String)? = nil
+        pendingText: (requestID: String, text: String)? = nil,
+        pendingCorrection: (requestID: String, messageID: String, text: String)? = nil
     ) {
         self.conversationID = conversationID
         self.composer = composer
@@ -33,6 +40,9 @@ public actor ConversationCoordinator {
         self.title = title
         self.titleAuthority = titleAuthority
         self.pendingText = pendingText.map { PendingText(requestID: $0.requestID, text: $0.text) }
+        self.pendingCorrection = pendingCorrection.map {
+            PendingCorrection(requestID: $0.requestID, messageID: $0.messageID, text: $0.text)
+        }
     }
 
     public static func new(
@@ -66,6 +76,23 @@ public actor ConversationCoordinator {
         return ConversationCoordinator(
             conversationID: conversationID, composer: .failure(.retryable),
             client: client, voice: voice, pendingText: (requestID, text)
+        )
+    }
+
+    public static func restoredCorrectionRequest(
+        conversationID: String,
+        requestID: String,
+        messageID: String,
+        text: String,
+        client: any ConversationClient,
+        voice: any ConversationVoiceControlling,
+        title: String? = nil,
+        titleAuthority: TitleAuthority = .localFallback
+    ) -> ConversationCoordinator {
+        return ConversationCoordinator(
+            conversationID: conversationID, composer: .failure(.retryable),
+            client: client, voice: voice, title: title, titleAuthority: titleAuthority,
+            pendingCorrection: (requestID, messageID, text)
         )
     }
 
@@ -130,7 +157,9 @@ public actor ConversationCoordinator {
     }
 
     public func retry() async throws {
-        if let pendingText {
+        if let pendingCorrection {
+            try await perform(pendingCorrection)
+        } else if let pendingText {
             try await perform(pendingText)
         } else {
             try await voice.retry()
@@ -153,11 +182,23 @@ public actor ConversationCoordinator {
     }
 
     public func correctTranscript(messageID: String, text: String) async throws {
+        let pending = PendingCorrection(
+            requestID: UUID().uuidString, messageID: messageID,
+            text: text.trimmingCharacters(in: .whitespacesAndNewlines)
+        )
+        guard !pending.text.isEmpty else { throw ConversationFailure.invalidInput }
+        pendingCorrection = pending
+        try await perform(pending)
+    }
+
+    private func perform(_ pending: PendingCorrection) async throws {
         composer = .coaching
         do {
             let reply = try await client.correctTranscript(
-                conversationID: conversationID, messageID: messageID, text: text
+                conversationID: conversationID, requestID: pending.requestID,
+                messageID: pending.messageID, text: pending.text
             )
+            pendingCorrection = nil
             accept(reply)
         } catch {
             composer = .failure(.retryable)
@@ -187,7 +228,7 @@ public actor ConversationCoordinator {
 
     private func accept(_ reply: ConversationReply) {
         latestReply = reply
-        if titleAuthority != .user, let suggestion = reply.titleSuggestion {
+        if titleAuthority == .localFallback, let suggestion = reply.titleSuggestion {
             title = suggestion
             titleAuthority = .assistantSuggested
         }

@@ -37,6 +37,13 @@ struct GatewayRuntimeAdapterTests {
         )
         let runner = GatewayCoachingRunner(
             configuration: configuration, transport: transport,
+            recentMessages: { _ in [
+                MessageRecord(
+                    id: "55555555-5555-4555-8555-555555555555",
+                    conversationID: "22222222-2222-4222-8222-222222222222",
+                    role: "assistant", body: "Earlier guidance", createdAtMS: 0
+                )
+            ] },
             submittedAt: { "2026-10-07T00:00:00Z" }
         )
         let stream = try await runner.stream(for: gatewayTurn())
@@ -50,6 +57,11 @@ struct GatewayRuntimeAdapterTests {
         let object = try #require(try JSONSerialization.jsonObject(with: body) as? [String: Any])
         #expect(object["input"] as? String == "accepted transcript")
         #expect(object["requestId"] as? String == "44444444-4444-4444-8444-444444444444")
+        let context = try #require(object["context"] as? [String: Any])
+        let messages = try #require(context["recentMessages"] as? [[String: Any]])
+        #expect(messages.count == 1)
+        #expect(messages[0]["role"] as? String == "assistant")
+        #expect(messages[0]["content"] as? String == "Earlier guidance")
     }
 }
 

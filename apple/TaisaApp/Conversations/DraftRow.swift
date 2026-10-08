@@ -12,13 +12,16 @@ struct DraftRow: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(draft.inputMode == .voice ? "Voice" : "Text") draft, \(status)")
         .accessibilityIdentifier("conversation.resume")
     }
 
     private var title: String {
         guard draft.inputMode == .text, let text = draft.text, !text.isEmpty else { return "Voice draft" }
-        return text
+        let normalized = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard normalized.count > 80 else { return normalized }
+        return String(normalized.prefix(77)) + "…"
     }
 
     private var status: String {

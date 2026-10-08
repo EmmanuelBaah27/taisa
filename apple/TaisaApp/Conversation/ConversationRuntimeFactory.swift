@@ -18,6 +18,9 @@ struct ConversationRuntimeFactory: Sendable {
     ) async throws -> ConversationViewModel {
         let conversations = ConversationRepository(store: store)
         let query = ConversationQuery(store: store)
+        let messageHistory: @Sendable (String) async throws -> [MessageRecord] = { conversationID in
+            try await query.loadConversation(id: conversationID).visibleMessages
+        }
         let now = Int64(Date().timeIntervalSince1970 * 1_000)
         if try await conversations.get(id: route.id) == nil {
             try await conversations.create(
@@ -29,9 +32,34 @@ struct ConversationRuntimeFactory: Sendable {
             )
         }
 
-        let history = try await query.loadConversation(id: route.id)
+        var history = try await query.loadConversation(id: route.id)
         let turns = ConversationTurnRepository(store: store)
-        let initial = try await turns.latestResumableTurn(conversationID: route.id) ?? makeTurn(conversationID: route.id)
+        let resumable = try await turns.latestResumableTurn(conversationID: route.id)
+        let pendingConversationRequest = resumable.flatMap { turn in
+            ["pending_text", "pending_correction"].contains(turn.failureCode) ? turn : nil
+        }
+        if pendingConversationRequest == nil {
+            let lastUserMessage = history.visibleMessages.last(where: { $0.role == "user" })
+            for draft in history.drafts {
+                let isCompletedText = draft.inputMode == .text
+                    && draft.recoveryKind == .retryableCoaching
+                    && draft.text == lastUserMessage?.body
+                let isCompletedVoice: Bool
+                if let voiceTurnID = draft.voiceTurnID,
+                   let voiceTurn = try await turns.turn(id: voiceTurnID) {
+                    isCompletedVoice = voiceTurn.state == .completed
+                } else {
+                    isCompletedVoice = false
+                }
+                if isCompletedText || isCompletedVoice {
+                    try await conversations.discardDraft(id: draft.id)
+                }
+            }
+            history = try await query.loadConversation(id: route.id)
+        }
+        let initial = pendingConversationRequest == nil
+            ? (resumable ?? makeTurn(conversationID: route.id))
+            : makeTurn(conversationID: route.id)
         let files = try ProtectedAudioFileStore()
         let capture = AudioCaptureController(
             service: AudioCaptureService(
@@ -46,7 +74,7 @@ struct ConversationRuntimeFactory: Sendable {
             checkpoints: RepositoryVoiceTurnCheckpointer(repository: turns, deviceID: deviceID),
             transcription: GatewayTranscriptionRunner(configuration: configuration, audio: capture),
             transcriptionReconciliation: GatewayTranscriptionReconciliation(configuration: configuration),
-            coaching: GatewayCoachingRunner(configuration: configuration),
+            coaching: GatewayCoachingRunner(configuration: configuration, recentMessages: messageHistory),
             connectivity: connectivity,
             reconciliation: GatewayCoachingReconciliation(configuration: configuration),
             capture: capture,
@@ -54,18 +82,37 @@ struct ConversationRuntimeFactory: Sendable {
         )
         let gatewayClient = GatewayConversationClient(
             store: store, deviceID: deviceID,
-            coaching: GatewayCoachingRunner(configuration: configuration)
+            coaching: GatewayCoachingRunner(configuration: configuration, recentMessages: messageHistory)
         )
-        let coordinator = ConversationCoordinator.completed(
-            conversationID: route.id,
-            client: gatewayClient,
-            voice: VoiceSessionConversationAdapter(voiceCoordinator),
-            title: history.conversation.title,
-            titleAuthority: history.conversation.titleAuthority
-        )
+        let voiceAdapter = VoiceSessionConversationAdapter(voiceCoordinator)
+        let coordinator: ConversationCoordinator
+        if let pending = pendingConversationRequest,
+           let text = pending.acceptedTranscript,
+           pending.failureCode == "pending_correction",
+           let messageID = pending.userMessageID {
+            coordinator = .restoredCorrectionRequest(
+                conversationID: route.id, requestID: pending.coachingRequestID,
+                messageID: messageID, text: text, client: gatewayClient,
+                voice: voiceAdapter, title: history.conversation.title,
+                titleAuthority: history.conversation.titleAuthority
+            )
+        } else if let pending = pendingConversationRequest,
+                  let text = pending.acceptedTranscript {
+            coordinator = .restoredTextRequest(
+                conversationID: route.id, requestID: pending.coachingRequestID,
+                text: text, client: gatewayClient, voice: voiceAdapter
+            )
+        } else {
+            coordinator = .completed(
+                conversationID: route.id, client: gatewayClient, voice: voiceAdapter,
+                title: history.conversation.title,
+                titleAuthority: history.conversation.titleAuthority
+            )
+        }
 
         let restoredDraft = history.drafts.first
         let initialComposer: ComposerState = {
+            if pendingConversationRequest != nil { return .failure(.retryable) }
             guard entryIntent == nil, let restoredDraft else { return .waitingForReply }
             switch restoredDraft.inputMode {
             case .text: return .typing(restoredDraft.text ?? "")
@@ -76,10 +123,15 @@ struct ConversationRuntimeFactory: Sendable {
 
         let client = ConversationScreenClient(
             loadMessages: { try await query.loadConversation(id: route.id).visibleMessages },
+            loadTitle: { try await query.loadConversation(id: route.id).conversation.title },
             beginVoice: { try await coordinator.beginReply(mode: .voice) },
             pauseVoice: { try await coordinator.pauseVoice() },
             resumeVoice: { try await coordinator.resumeVoice() },
-            sendVoice: { try await coordinator.sendVoice() },
+            sendVoice: {
+                try await coordinator.sendVoice()
+                let snapshot = try await query.loadConversation(id: route.id)
+                for draft in snapshot.drafts { try await conversations.discardDraft(id: draft.id) }
+            },
             sendText: { try await coordinator.send(.text($0)) },
             retry: { try await coordinator.retry() },
             saveDraft: { input in
@@ -104,10 +156,17 @@ struct ConversationRuntimeFactory: Sendable {
                 let voice = await voiceCoordinator.snapshot().durable
                 if !voice.state.isTerminal && voice.state != .discarded { try await voiceCoordinator.send(.discard) }
             },
+            discardEmptyConversation: {
+                let snapshot = try await query.loadConversation(id: route.id)
+                guard snapshot.conversation.lifecycle == .draft, snapshot.drafts.isEmpty else { return }
+                let timestamp = Int64(Date().timeIntervalSince1970 * 1_000)
+                for message in snapshot.visibleMessages {
+                    try await conversations.deleteMessage(id: message.id, context: mutation(at: timestamp))
+                }
+                try await conversations.delete(id: route.id, context: mutation(at: timestamp))
+            },
             correctTranscript: { messageID, text in
-                _ = try await gatewayClient.correctTranscript(
-                    conversationID: route.id, messageID: messageID, text: text
-                )
+                try await coordinator.correctTranscript(messageID: messageID, text: text)
             }
         )
         return await ConversationViewModel(

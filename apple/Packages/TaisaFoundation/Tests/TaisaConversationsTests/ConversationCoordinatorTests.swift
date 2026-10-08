@@ -73,6 +73,19 @@ struct ConversationCoordinatorTests {
         #expect(snapshot.titleAuthority == .assistantSuggested)
     }
 
+    @Test func laterSuggestionDoesNotReplaceAcceptedAssistantTitle() async throws {
+        let coordinator = ConversationCoordinator.completed(
+            conversationID: "00000000-0000-0000-0000-000000000001",
+            client: ConversationClientSpy(), voice: VoiceIntentSpy(),
+            title: "Review preparation", titleAuthority: .assistantSuggested
+        )
+
+        try await coordinator.send(.text("Continue"))
+        let snapshot = await coordinator.snapshot()
+        #expect(snapshot.title == "Review preparation")
+        #expect(snapshot.titleAuthority == .assistantSuggested)
+    }
+
     @Test func rapidSendDoesNotStartSecondPaidRequest() async throws {
         let client = ConversationClientSpy(blocked: true)
         let coordinator = ConversationCoordinator.new(
@@ -106,6 +119,25 @@ struct ConversationCoordinatorTests {
         #expect(await coordinator.snapshot().composer == .waitingForReply)
         #expect(await voice.actions == ["begin", "pause", "resume", "send"])
     }
+
+    @Test func correctionRetryUsesTheSamePaidRequestIdentity() async throws {
+        let client = ConversationClientSpy(correctionFailuresBeforeSuccess: 1)
+        let coordinator = ConversationCoordinator.new(
+            conversationID: "00000000-0000-0000-0000-000000000001",
+            client: client, voice: VoiceIntentSpy()
+        )
+
+        await #expect(throws: ConversationFailure.self) {
+            try await coordinator.correctTranscript(
+                messageID: "00000000-0000-0000-0000-000000000002", text: "Corrected"
+            )
+        }
+        try await coordinator.retry()
+
+        let requestIDs = await client.correctionRequestIDs
+        #expect(requestIDs.count == 2)
+        #expect(Set(requestIDs).count == 1)
+    }
 }
 
 private actor VoiceIntentSpy: ConversationVoiceControlling {
@@ -121,10 +153,16 @@ private actor ConversationClientSpy: ConversationClient {
     private var remainingFailures: Int
     private(set) var requestIDs: [String] = []
     private let blocked: Bool
+    private var remainingCorrectionFailures: Int
+    private(set) var correctionRequestIDs: [String] = []
     private var continuations: [CheckedContinuation<Void, Never>] = []
 
-    init(failuresBeforeSuccess: Int = 0, blocked: Bool = false) {
+    init(
+        failuresBeforeSuccess: Int = 0, blocked: Bool = false,
+        correctionFailuresBeforeSuccess: Int = 0
+    ) {
         remainingFailures = failuresBeforeSuccess
+        remainingCorrectionFailures = correctionFailuresBeforeSuccess
         self.blocked = blocked
     }
 
@@ -139,4 +177,15 @@ private actor ConversationClientSpy: ConversationClient {
     }
 
     func release() { continuations.forEach { $0.resume() }; continuations.removeAll() }
+
+    func correctTranscript(
+        conversationID: String, requestID: String, messageID: String, text: String
+    ) async throws -> ConversationReply {
+        correctionRequestIDs.append(requestID)
+        if remainingCorrectionFailures > 0 {
+            remainingCorrectionFailures -= 1
+            throw ConversationFailure.retryable
+        }
+        return ConversationReply(text: "Corrected reply", titleSuggestion: nil)
+    }
 }

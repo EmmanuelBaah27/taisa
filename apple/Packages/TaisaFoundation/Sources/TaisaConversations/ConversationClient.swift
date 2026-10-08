@@ -6,13 +6,13 @@ public protocol ConversationClient: Sendable {
     func sendText(conversationID: String, requestID: String, text: String) async throws -> ConversationReply
     func saveDraft(conversationID: String, input: ConversationInput) async throws
     func discardDraft(conversationID: String) async throws
-    func correctTranscript(conversationID: String, messageID: String, text: String) async throws -> ConversationReply
+    func correctTranscript(conversationID: String, requestID: String, messageID: String, text: String) async throws -> ConversationReply
 }
 
 public extension ConversationClient {
     func saveDraft(conversationID: String, input: ConversationInput) async throws {}
     func discardDraft(conversationID: String) async throws {}
-    func correctTranscript(conversationID: String, messageID: String, text: String) async throws -> ConversationReply {
+    func correctTranscript(conversationID: String, requestID: String, messageID: String, text: String) async throws -> ConversationReply {
         throw ConversationFailure.unavailable
     }
 }
