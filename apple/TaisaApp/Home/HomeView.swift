@@ -4,6 +4,7 @@ import TaisaStorage
 
 struct HomeView: View {
     @State private var model: HomeModel
+    @State private var activeSheet: ThisWeekSheet?
     var send: (HomeIntent) -> Void = { _ in }
     var openRecovery: () -> Void = {}
     var openPersonalQA: (() -> Void)?
@@ -36,6 +37,14 @@ struct HomeView: View {
         }
         .accessibilityIdentifier("home.root")
         .task { if model.state == .idle { await model.load() } }
+        .sheet(item: $activeSheet) { sheet in
+            switch sheet {
+            case let .planning(item):
+                WeeklyPlanningSheet(item: item, model: model)
+            case let .priorWeekReview(unresolvedCount):
+                PriorWeekReviewSheet(unresolvedCount: unresolvedCount)
+            }
+        }
     }
 
     private var homeContent: some View {
@@ -78,7 +87,9 @@ struct HomeView: View {
                 ThisWeekSection(
                     items: snapshot.thisWeek,
                     unresolvedPriorWeekCount: snapshot.unresolvedPriorWeekCount,
-                    model: model
+                    model: model,
+                    openPlanning: { activeSheet = .planning($0) },
+                    openPriorWeekReview: { activeSheet = .priorWeekReview(unresolvedCount: $0) }
                 )
                 if snapshot.leadInsight == nil && snapshot.hasConfirmedInsightHistory {
                     Button("View insights", systemImage: "lightbulb", action: openInsights)
