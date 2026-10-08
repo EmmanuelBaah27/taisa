@@ -1,6 +1,6 @@
 # Bounded Autonomous Delivery Design
 
-**Status:** Proposed
+**Status:** Approved
 **Last updated:** 2026-10-08
 
 ## Purpose
