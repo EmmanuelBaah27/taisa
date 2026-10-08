@@ -1,7 +1,7 @@
 import type { CoachingRequest, CoachingResponse } from '@taisa/shared';
 import { ZodError } from 'zod';
 import { buildSeniorSelfPrompt } from '../../prompts/system/seniorSelf';
-import { CoachingResponsePayloadSchema } from '../../schemas/coaching';
+import { CoachingResponsePayloadSchema, type CoachingResponsePayload } from '../../schemas/coaching';
 import {
   getConfiguredFallbackProvider,
   type FallbackCoachingProvider,
@@ -63,6 +63,12 @@ export type StreamingCoachingItem =
   | { kind: 'delta'; delta: string }
   | { kind: 'completed'; response: CoachingResponse; attempts: readonly ProviderAttemptOutcome[] };
 
+function normalizeTitleSuggestion(request: CoachingRequest, payload: CoachingResponsePayload) {
+  const { titleSuggestion, ...decision } = payload;
+  const isFirstTurn = !request.context.recentMessages.some(({ role }) => role === 'assistant');
+  return { ...decision, ...(isFirstTurn && titleSuggestion ? { titleSuggestion } : {}) };
+}
+
 export async function* requestStreamingCoaching(
   request: CoachingRequest,
   provider: StreamingFallbackCoachingProvider,
@@ -77,7 +83,7 @@ export async function* requestStreamingCoaching(
     const payload = CoachingResponsePayloadSchema.parse(item.result.payload);
     yield {
       kind: 'completed',
-      response: { requestId: request.requestId, ...payload, usage: item.result.usage },
+      response: { requestId: request.requestId, ...normalizeTitleSuggestion(request, payload), usage: item.result.usage },
       attempts: item.attempts,
     };
   }
@@ -101,7 +107,7 @@ export async function requestCoaching(
     return {
       response: {
         requestId: request.requestId,
-        ...payload,
+        ...normalizeTitleSuggestion(request, payload),
         usage: execution.result.usage,
       },
       attempts: execution.attempts,

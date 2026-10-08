@@ -47,12 +47,13 @@ public struct CoachingResponse: Equatable, Sendable, Decodable {
     public let stance: CoachingStance?
     public let proposals: [JSONValue]
     public let usage: UsageReceipt
+    public let titleSuggestion: String?
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: DynamicCodingKey.self)
         try container.requireOnlyKeys([
             "requestId", "reply", "mode", "relevance", "contextSufficiency",
-            "stance", "proposals", "usage",
+            "stance", "proposals", "usage", "titleSuggestion",
         ])
         guard let requestId = UUID(uuidString: try container.decode(String.self, forKey: "requestId")) else {
             throw container.invalid("Coaching response request ID must be a UUID")
@@ -65,9 +66,16 @@ public struct CoachingResponse: Equatable, Sendable, Decodable {
         stance = try container.decodeIfPresent(CoachingStance.self, forKey: "stance")
         proposals = try container.decode([JSONValue].self, forKey: "proposals")
         usage = try container.decode(UsageReceipt.self, forKey: "usage")
+        titleSuggestion = try container.decodeIfPresent(String.self, forKey: "titleSuggestion")
 
         guard !reply.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             throw container.invalid("Coaching reply must not be empty")
+        }
+        if let titleSuggestion {
+            let trimmed = titleSuggestion.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty, trimmed.count <= 80, trimmed == titleSuggestion else {
+                throw container.invalid("Conversation title suggestion must be normalized")
+            }
         }
         switch mode {
         case .coach:
