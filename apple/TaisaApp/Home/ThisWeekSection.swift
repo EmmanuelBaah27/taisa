@@ -7,14 +7,13 @@ struct ThisWeekSection: View {
     let unresolvedPriorWeekCount: Int
     let model: HomeModel
 
-    @State private var planningItem: WeeklyWorkItem?
-    @State private var showsPriorWeekReview = false
+    @State private var activeSheet: ThisWeekSheet?
 
     var body: some View {
         Section {
             if unresolvedPriorWeekCount > 0 {
                 Button {
-                    showsPriorWeekReview = true
+                    activeSheet = .priorWeekReview(unresolvedCount: unresolvedPriorWeekCount)
                 } label: {
                     Label(
                         "Review \(unresolvedPriorWeekCount) unfinished \(unresolvedPriorWeekCount == 1 ? "item" : "items")",
@@ -46,11 +45,13 @@ struct ThisWeekSection: View {
             Text("This Week")
         }
         .accessibilityIdentifier("home.this-week")
-        .sheet(item: $planningItem) { item in
-            WeeklyPlanningSheet(item: item, model: model)
-        }
-        .sheet(isPresented: $showsPriorWeekReview) {
-            PriorWeekReviewSheet(unresolvedCount: unresolvedPriorWeekCount)
+        .sheet(item: $activeSheet) { sheet in
+            switch sheet {
+            case let .planning(item):
+                WeeklyPlanningSheet(item: item, model: model)
+            case let .priorWeekReview(unresolvedCount):
+                PriorWeekReviewSheet(unresolvedCount: unresolvedCount)
+            }
         }
     }
 
@@ -67,7 +68,7 @@ struct ThisWeekSection: View {
             .accessibilityIdentifier("home.this-week.complete")
 
             Button {
-                planningItem = item
+                activeSheet = .planning(item)
             } label: {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(item.action.title)
@@ -88,6 +89,18 @@ struct ThisWeekSection: View {
             }
             .buttonStyle(.plain)
             .accessibilityHint("Change when this is planned")
+        }
+    }
+}
+
+private enum ThisWeekSheet: Identifiable {
+    case planning(WeeklyWorkItem)
+    case priorWeekReview(unresolvedCount: Int)
+
+    var id: String {
+        switch self {
+        case let .planning(item): "planning-\(item.id)"
+        case .priorWeekReview: "prior-week-review"
         }
     }
 }
