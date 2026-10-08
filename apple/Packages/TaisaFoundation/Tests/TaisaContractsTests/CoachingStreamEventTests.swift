@@ -58,4 +58,16 @@ struct CoachingStreamEventTests {
             _ = try decoder.append(Data(repeating: 0x41, count: 33))
         }
     }
+
+    @Test func completionDecodesOptionalTitleSuggestion() throws {
+        let requestID = "00000000-0000-4000-8000-000000000109"
+        let data = Data(#"{"type":"coaching.completed","requestId":"\#(requestID)","sequence":0,"response":{"requestId":"\#(requestID)","reply":"Reply","mode":"coach","relevance":"career-relevant","contextSufficiency":"sufficient","stance":"nudge","proposals":[],"usage":{"provider":"anthropic","model":"fixture","estimatedCostUsd":0},"titleSuggestion":"Design review preparation"},"idempotencyReceipt":"receipt"}"#.utf8)
+
+        let event = try JSONDecoder().decode(CoachingStreamEvent.self, from: data)
+        guard case let .completed(_, _, response, _) = event else {
+            Issue.record("Expected a completed coaching response")
+            return
+        }
+        #expect(response.titleSuggestion == "Design review preparation")
+    }
 }

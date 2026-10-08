@@ -25,6 +25,10 @@ const IdJsonSchema = {
   maxLength: COACHING_GATEWAY_LIMITS.maxIdLength,
   pattern: '\\S',
 };
+const TitleSuggestionJsonSchema = {
+  type: 'string' as const, minLength: 1,
+  maxLength: COACHING_GATEWAY_LIMITS.maxTitleSuggestionLength, pattern: '\\S',
+};
 const TimestampJsonSchema = {
   type: 'string' as const,
   maxLength: COACHING_GATEWAY_LIMITS.maxTimestampLength,
@@ -193,6 +197,7 @@ const COACHING_RESPONSE_INPUT_SCHEMA = {
         ],
           },
         },
+        titleSuggestion: TitleSuggestionJsonSchema,
       },
     },
     {
@@ -206,6 +211,7 @@ const COACHING_RESPONSE_INPUT_SCHEMA = {
         reply: TextJsonSchema,
         stance: { type: 'null' },
         proposals: { type: 'array', minItems: 0, maxItems: 0 },
+        titleSuggestion: TitleSuggestionJsonSchema,
       },
     },
     {
@@ -219,6 +225,7 @@ const COACHING_RESPONSE_INPUT_SCHEMA = {
         reply: TextJsonSchema,
         stance: { type: 'null' },
         proposals: { type: 'array', minItems: 0, maxItems: 0 },
+        titleSuggestion: TitleSuggestionJsonSchema,
       },
     },
   ],

@@ -16,7 +16,10 @@ private actor HomeQueryKeys: DatabaseKeyStore {
         let ids = (1...8).map { _ in UUID().uuidString }.sorted()
         try await fixture.store.write { db in
             for (index, id) in ids.enumerated() {
-                try db.execute(sql: "INSERT INTO conversations VALUES (?, ?, ?, ?)", arguments: [id, "Conversation \(index)", 100, index < 2 ? 500 : 500 - index])
+                try db.execute(
+                    sql: "INSERT INTO conversations (id, title, created_at_ms, updated_at_ms) VALUES (?, ?, ?, ?)",
+                    arguments: [id, "Conversation \(index)", 100, index < 2 ? 500 : 500 - index]
+                )
             }
             try db.execute(sql: "INSERT INTO goals VALUES (?, 'Active newest', '', 'active', 100, 300)", arguments: [ids[0]])
             try db.execute(sql: "INSERT INTO goals VALUES (?, 'Active tie', '', 'active', 100, 300)", arguments: [ids[1]])

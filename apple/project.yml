@@ -70,6 +70,12 @@ targets:
         product: TaisaSecurity
       - package: TaisaFoundation
         product: TaisaVoice
+      - package: TaisaFoundation
+        product: TaisaConversations
+      - package: TaisaFoundation
+        product: TaisaAudio
+      - package: TaisaFoundation
+        product: TaisaNetworking
   TaisaPreview:
     type: application
     platform: iOS
@@ -77,6 +83,12 @@ targets:
       - path: TaisaPreview
       - path: TaisaApp/Voice
       - path: TaisaApp/Home
+      - path: TaisaApp/AppShell/PrimaryDestination.swift
+      - path: TaisaApp/Conversation/ConversationTimeline.swift
+      - path: TaisaApp/Conversation/ConversationView.swift
+      - path: TaisaApp/Conversation/ConversationViewModel.swift
+      - path: TaisaApp/Conversation/TranscriptCorrectionView.swift
+      - path: TaisaApp/Conversations
       - path: Generated
     settings:
       base:
@@ -105,6 +117,8 @@ targets:
         product: TaisaStorage
       - package: TaisaFoundation
         product: TaisaVoice
+      - package: TaisaFoundation
+        product: TaisaConversations
   TaisaPersonal:
     type: application
     platform: iOS
@@ -162,6 +176,8 @@ targets:
         product: TaisaAudio
       - package: TaisaFoundation
         product: TaisaNetworking
+      - package: TaisaFoundation
+        product: TaisaConversations
   TaisaPersonalTests:
     type: bundle.unit-test
     platform: iOS
@@ -195,6 +211,8 @@ targets:
         product: TaisaSecurity
       - package: TaisaFoundation
         product: TaisaVoice
+      - package: TaisaFoundation
+        product: TaisaConversations
   TaisaUITests:
     type: bundle.ui-testing
     platform: iOS

@@ -49,7 +49,7 @@ enum FoundationScenarios {
             deviceFamily: .adaptive,
             detail: "Synthetic build details are available for exact-preview review."
         ),
-    ] + HomeScenarios.scenarios + VoiceSessionScenarios.scenarios
+    ] + HomeScenarios.scenarios + VoiceSessionScenarios.scenarios + ConversationScenarios.scenarios
 
     private static func scenario(
         identifier: String,

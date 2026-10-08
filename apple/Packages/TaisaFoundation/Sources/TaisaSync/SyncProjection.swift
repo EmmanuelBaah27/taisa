@@ -118,7 +118,7 @@ struct SyncEntityShape {
 
     static let shapes: [String: SyncEntityShape] = [
         "profile": .init(table: "profile", columns: ["displayName": "display_name", "headline": "headline", "biography": "biography", "updatedAtMS": "updated_at_ms"], optional: []),
-        "conversation": .init(table: "conversations", columns: ["title": "title", "createdAtMS": "created_at_ms", "updatedAtMS": "updated_at_ms"]),
+        "conversation": .init(table: "conversations", columns: ["title": "title", "lifecycle": "lifecycle", "titleAuthority": "title_authority", "createdAtMS": "created_at_ms", "updatedAtMS": "updated_at_ms"]),
         "message": .init(table: "messages", columns: ["conversationID": "conversation_id", "role": "role", "body": "body", "createdAtMS": "created_at_ms"]),
         "goal": .init(table: "goals", columns: ["title": "title", "detail": "detail", "status": "status", "createdAtMS": "created_at_ms", "updatedAtMS": "updated_at_ms"]),
         "milestone": .init(table: "milestones", columns: ["goalID": "goal_id", "title": "title", "status": "status", "targetAtMS": "target_at_ms", "updatedAtMS": "updated_at_ms"], optional: ["targetAtMS"]),
