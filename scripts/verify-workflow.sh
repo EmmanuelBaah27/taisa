@@ -10,6 +10,8 @@ fail() {
 test -f AGENTS.md || fail "AGENTS.md is missing"
 test -f docs/workflow.md || fail "docs/workflow.md is missing"
 test -f .agents/skills/taisa-workflow/SKILL.md || fail "Taisa workflow orchestrator is missing"
+test -f .agents/skills/taisa-workflow/templates/bounded-goal.md ||
+  fail ".agents/skills/taisa-workflow/templates/bounded-goal.md is missing"
 test -f docs/project-memory.md || fail "project memory index is missing"
 test -f docs/decisions/README.md || fail "decision record guide is missing"
 test -f docs/decisions/0001-use-repository-native-project-memory.md || fail "initial project memory decision is missing"
@@ -58,6 +60,54 @@ if rg -n 'No formal Work Map, scope doc, or Linear issue|No Linear issue|Linear 
   AGENTS.md CLAUDE.md docs/workflow.md .agents/skills/taisa-workflow/SKILL.md docs/project-memory.md; then
   fail "active repository instructions still permit actionable work without Linear intake"
 fi
+
+require_workflow_pattern() {
+  local file="$1" pattern="$2" description="$3"
+  rg -qi "$pattern" "$file" || fail "$file is missing $description"
+}
+
+for invariant in \
+  'bounded Goal run' \
+  'kickoff bundle' \
+  'high-risk predicates' \
+  'REPAIR_QUARANTINE' \
+  'Unfixed; blocking; unshippable'; do
+  require_workflow_pattern docs/workflow.md "$invariant" "bounded-delivery invariant: $invariant"
+done
+require_workflow_pattern docs/workflow.md 'Platform.*Product.*Integration.*exclusive|exclusive.*Platform.*Product.*Integration' \
+  'exclusive Platform/Product/Integration ownership'
+
+for invariant in \
+  'active Goal.*solely.*wait|no active Goal.*wait' \
+  'QA_READY' \
+  'MATERIAL_REAPPROVAL_REQUIRED' \
+  'repair-release gate' \
+  'no successor issue|never select.*successor'; do
+  require_workflow_pattern .agents/skills/taisa-workflow/SKILL.md "$invariant" \
+    "bounded Goal routing: $invariant"
+done
+
+goal_template=.agents/skills/taisa-workflow/templates/bounded-goal.md
+for invariant in \
+  'Primary Linear issue' \
+  'Terminal outcome' \
+  'Approved kickoff or Scope/Plan evidence' \
+  'Branch/worktree' \
+  'Acceptance criteria' \
+  'unchanged polling' \
+  'Next Baah gate'; do
+  require_workflow_pattern "$goal_template" "$invariant" "Goal-template field: $invariant"
+done
+
+for forbidden in \
+  'continue until the complete product ships' \
+  'select the next highest-priority issue and continue' \
+  'poll again until complete' \
+  'silence counts as approval'; do
+  if rg -n -F "$forbidden" "$goal_template"; then
+    fail "$goal_template contains forbidden unbounded instruction: $forbidden"
+  fi
+done
 
 rg -q '31b0d99c-6f74-4c9c-af2a-12e6e25aabe0' \
   .agents/skills/taisa-workflow/SKILL.md || fail "Taisa Linear project ID is missing"
