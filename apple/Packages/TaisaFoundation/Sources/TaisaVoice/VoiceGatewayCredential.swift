@@ -42,7 +42,6 @@ public struct VoiceGatewayCredential: Equatable, Sendable, CustomStringConvertib
         return normalized
     }
 }
-
 public enum VoiceGatewayCredentialStoreError: Error, Equatable, Sendable, CustomStringConvertible {
     case invalidOrigin
     case invalidCredential
@@ -60,4 +59,3 @@ public enum VoiceGatewayCredentialStoreError: Error, Equatable, Sendable, Custom
         }
     }
 }
-
