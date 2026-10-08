@@ -1,348 +1,366 @@
 # Taisa Build Workflow
 
-How work moves from idea to shipped. Read this at the start of every feature session.
-Claude maintains the Active Work table — Baah never needs to update it.
+**Status:** Active
+**Last updated:** 2026-10-07
 
-After this file and the Taisa workflow orchestrator, read `docs/project-memory.md` and
-then load only the accepted decisions, reusable learnings, and canonical domain documents
-relevant to the task.
+How Taisa work moves from intake to shipped. Linear is the sole live authority.
+Linear project `Taisa`
+(`31b0d99c-6f74-4c9c-af2a-12e6e25aabe0`) is the sole live authority for roadmap
+milestones, actionable task intake, priority, ownership, stage, dependencies, blockers,
+Scope, Plan, acceptance, discussion, and gate evidence. The repository owns only operating
+constraints, architecture and public contracts, durable decisions, migrations, and
+verification evidence that must version atomically with code.
 
----
+Read [`docs/project-memory.md`](project-memory.md) during orientation and then load only the
+domain documents relevant to the active Linear issue.
 
-## Active work
+## Workflow activation
 
-| Feature | Track | Stage | Branch | Blocked on |
-|---|---|---|---|---|
-| Native conversation experience | Platform + Product | Build | `feature/native-conversation-experience` | implementation, review, exact `preview/taisa` integration, signed iPhone/iPad QA, then Baah Ship approval |
-| SwiftUI functional Home | Platform + Product | Review + QA | `codex/swiftui-home-scope` | exact `preview/taisa` verification, signed iPhone/iPad QA, then Baah Ship approval |
-| Swift native audio and conversation streaming | Platform | Build | `feature/swift-native-audio-streaming` | physical transcription failure after capture; canonical preview diagnosis and repair, then exact signed iPhone/iPad QA |
-| Local-first coaching platform | Platform | Build | `feature/local-first-coaching-platform` | Managed-device recovery/privacy QA is next; paid live provider evaluation remains gated; legacy-route retirement requires later explicit approval |
-| Personal alpha release | Platform + Product | Build | `feature/local-first-coaching-platform` | Code-only build complete at `850b3d6`; next gate is Baah approval to create Railway resources, add billing/secrets, and deploy. Signed iPhone installation follows as a separate gate. |
-| Post-Send streaming transcription | Platform + Product | Review + QA | `feature/local-first-coaching-platform` | Managed-device clear/uncertain/no-speech calibration before Ship approval |
-| Taisa system architecture | Platform | Review + QA | `docs/reimagine-product-scope` | Baah document review |
-| Secondary icon button | Product | Review + QA | `feature/secondary-icon-button` | Baah device QA |
-| Recording page | Product | Review + QA | `feature/secondary-icon-button` | Baah device QA |
-| Shared chat and recording shell | Product | Build | `codex/chat-close-auth-handoff` | Baah paired-device QA after preview integration |
-| Glass elevation, alignment, and interaction feedback | Product | Review + QA | `fix/glass-elevation-keyboard-surfaces` | canonical preview integration + Baah device QA |
-| SwiftUI native rebuild | Platform + Product | Shipped | `main` | — |
+### Activation bias
 
----
+Default toward activation. A concrete change, investigation, design, scope, plan, fix,
+review, validation, delivery, or process improvement activates the workflow and the
+lightest fitting tier. Activation never authorizes Build or bypasses Scope, Plan, or Ship.
+
+**Explicit precedence:** requested action or advancement activates; explicit future-only
+direction is recorded in the relevant Linear milestone until someone owns actionable work;
+a purely read-only/status request receives orientation and an answer only; anything still
+ambiguous receives lightweight orientation.
+
+Every actionable task receives a non-duplicate Linear issue before investigation, design,
+planning, implementation, documentation, review, release work, chores, or work Baah will
+perform. Read-only questions and orientation commands within an existing issue are the only
+exceptions. Search exact and semantic matches, including archived work, before creation.
+
+## Session orientation
+
+Before modifying product or workflow state:
+
+1. Read the Taisa Linear project, six milestones, active issues, dependencies, blockers,
+   priorities, recent updates, Scope/Plan evidence, and approval comments.
+2. Read `AGENTS.md`, this file, `.agents/skills/taisa-workflow/SKILL.md`, and
+   `docs/project-memory.md`.
+3. Inspect the current branch, worktree, all relevant worktrees, remote tracking, exact
+   commits, tests, PRs, canonical preview revision, and related active delivery chats.
+4. Reconcile contradictions before modifying product code or advancing a stage.
+5. State tier, Linear issue and milestone, stage, branch/worktree, blocker/dependency, next
+   action, next Baah gate, and whether Linear was unavailable or contradictory.
+
+### Offline fallback
+
+If Linear is unavailable, continue only already-approved work whose current Scope and Plan
+are available in recent trusted context and supported by Git evidence. Do not create a new
+actionable task, infer a stage transition, change a blocker, or claim approval while Linear
+is unavailable. Record evidence locally only when it must version with code, then reconcile
+Linear before the next stage or gate.
+
+### Contradiction repair
+
+- Linear owns live stage, priority, owner, dependencies, blockers, Scope, Plan, acceptance,
+  discussion, and gate evidence.
+- Git owns code, branch/commit identity, versioned architecture/public contracts, durable
+  decisions, migrations, and code-coupled verification evidence.
+- A Linear status cannot override missing approval evidence or a Draft technical artifact.
+- When the systems disagree, stop advancement, identify the stale side, repair it within
+  existing authority, and re-read both. Never invent missing approval.
 
 ## Feature tiers
 
-Not every feature needs the full workflow. Claude assesses tier at task start and states it.
-
 | Tier | Signal | Process |
 |---|---|---|
-| **Quick** (< 1h) | Single change, no new DS components, no Platform work | No scope doc. No Linear issue. Claude states intent, builds, Baah QAs. Done in one session. |
-| **Standard** (half day) | New screen or significant component, existing DS only | Scope + plan in one message. One approval gate. Linear issue created. |
-| **Full** (multi-day / multi-track) | New Platform work, new DS components, or complex Product | Full workflow — all stages, all gates, all Linear tracking. |
+| **Quick** (< 1h) | One bounded change, no new DS component or Platform boundary | Compact Linear issue with intent, acceptance, checks, and gate; build only after applicable approval. |
+| **Standard** (half day) | New screen or significant component using existing contracts | Inline Work Map and Discussion Map; separate Scope and Plan evidence in Linear. |
+| **Full** (multi-day / multi-track) | New Platform work, DS components, migration, or complex Product | Full workflow, Linear documents/sub-issues where useful, all gates and tracking. |
 
-Baah can override: "treat this as Quick" or "go Full on this."
+## Tracks and dependency model
 
----
+**Platform** owns AI, backend, infrastructure, persistence, and Product-facing contracts.
+**Product** owns journeys, screens, interaction, design system, and device experience.
+**Integration** proves the two tracks work end-to-end; it is not a third product track.
+Design System is a mandatory foundation layer inside Product work, not a separate track.
 
-## The Two Tracks
-
-**Platform** — AI, backend, infrastructure. Runs one phase ahead of Product.
-**Product** — UI, screens, components. Cannot enter BUILD until its Platform dependency is in BUILD.
-
-**Design System** is not a separate track. It is a mandatory foundation layer inside every
-Product BUILD — confirmed at PLAN, built first during BUILD, ships in the same PR.
-
-```
-Platform  →  SCOPE → PLAN → BUILD → REVIEW
-Product   →  SCOPE → DESIGN → PLAN → BUILD (DS layer → screens) → REVIEW
-```
-
----
-
-## The Five Stages
-
-```
-SCOPE → DESIGN → PLAN → BUILD → REVIEW + QA
+```mermaid
+flowchart LR
+  O["Orient in Linear"] --> D["Discuss one slice"]
+  D --> S["Scope approval"]
+  S --> PP["Platform Plan"]
+  S --> DH["Product design handoff"]
+  DH --> PRP["Product Plan"]
+  PP --> PB["Platform Build"]
+  PRP --> PF["independent Product foundation"]
+  PB --> I["Integration"]
+  PF --> I
+  I --> R["Review + QA"]
+  R --> SH["Ship approval"]
 ```
 
-### 1. Scope
-**Who:** Baah (product decisions) + Claude (`scope-writer` skill)
-**Output:** Scope doc in `docs/features/<name>.md` (Full tier) or inline note (Standard)
-**Auto-chain:** After scope agreed → Platform: `writing-plans` fires. Product: Claude prompts for design.
+## The six stages
 
-Scope doc format:
-- What is it?
-- Why now?
-- Acceptance criteria (checkboxes — observable behaviour, not implementation)
-- Platform dependencies (Product features only)
-- Out of scope
+`ORIENT → DISCUSS → SCOPE → PLAN → BUILD → REVIEW + QA`
 
-A feature is not ready to plan until its scope is written and agreed.
+### Work Map
 
-### 2. Design
-**Who:** Baah (provides design) + Claude (`design-handoff` skill)
-**Applies to:** Product track only.
-**Auto-chain:** When Baah shares any design reference → `design-handoff` fires → brief produced → `writing-plans` fires automatically after brief confirmed.
+Before detailed discussion for Standard and Full work, store or link a Work Map in Linear.
+It includes a table of contents, one Platform/Product/Integration owner per slice, outcome,
+dependency, approval point, size (`XS / S / M / L / XL`), pickup order, parallel work,
+critical path, progress counters, and a pace forecast only after repository inspection.
 
-Three design paths — same `design-handoff` process, same brief output:
+### Discussion Map
 
-| Path | Trigger | Implementation latitude |
-|---|---|---|
-| Figma / screenshots | Baah shares Figma URL or exported image | Highest precision |
-| Sketch | Baah shares sketch photo or scan | Directional — DS tokens fill gaps |
-| Visual Companion | Brainstorming session ends with agreed mockups | Most directional — device QA is real sign-off |
+After selecting a slice, present its agenda before the first substantive question and keep
+`current / next / remaining decisions` visible.
 
-Minimum design handoff (all paths):
-- Layout intent for all screens in the flow (happy path + key error/empty states)
-- Component states (default, active, disabled, empty) — even just described in words
-- Which DS tokens apply (or note that tokens are TBD)
-- Interactions that affect build decisions (gestures, animations)
+- **Platform discussion:** outcome, current system, ownership/persistence, core behavior,
+  Product contract, privacy/security, failure/recovery, dependencies, validation.
+- **Product discussion:** outcome, journey/information priorities, states, interaction,
+  accessibility, Platform capability, device-QA expectations. Exact layout belongs after
+  Scope, between Scope and Plan.
+- **Integration discussion:** contract compatibility, end-to-end flow, cross-track states
+  and failures, preview strategy, combined verification, release readiness.
 
-### 3. Plan
-**Who:** Claude (`writing-plans` skill) + Baah (approves summary)
-**Output:** Implementation plan in `docs/superpowers/plans/<name>.md`
-**Auto-chain:** After Baah approves plan summary → BUILD starts.
+### Architecture diagrams
 
-Every Product plan includes a DS components section (sourced from the design-handoff brief):
-- Existing DS components (reuse, no build needed)
-- New DS components (confirmed by Baah at plan approval)
+Diagrams communicate **layman meaning plus technical truth**. Primary labels explain user
+meaning; secondary labels name real services, stores, components, routes, and boundaries.
+Arrows describe information/control; storage, trust, failure, ownership, and offline
+boundaries are visible. Mermaid is the default. A diagram is embedded content owned by its
+host artifact; update it when the host artifact changes.
 
-**Platform dependency check:** Before writing a Product plan, Claude verifies Platform
-dependency stage. If not yet in BUILD:
-- **Wait** → feature stays in SCOPE
-- **Skeleton** → plan written for shell-only build (DS + layout + mock data). Blocked tasks
-  marked `[BLOCKED: needs <Platform feature>]`. Follow-up plan written when Platform ships.
+### Scope
 
-### 4. Build
-**Who:** Claude (`executing-plans` skill, `dispatching-parallel-agents` if multi-track)
-**Input:** Approved plan + design reference
-**Output:** Working code, committed to `feature/<name>`
+Scope lives in the Linear issue or attached Linear document and contains outcome, why now,
+observable acceptance criteria, dependencies, architecture, unresolved questions, and
+exclusions. Baah approves material Scope. Issue creation or a status change is not approval.
 
-**DS build order (strict — never deviate):**
-1. Native DS layer → `apple/DesignSystem/` (typed semantic tokens and components, no business logic)
-2. Native feature layer → consumes `apple/DesignSystem/`; raw visual values require a documented, verified exception
+### Product design between Scope and Plan
 
-**Token check before BUILD:**
-- Tokens defined → proceed normally
-- Tokens partial → proceed, mark gaps `// TOKEN-TBD: needs <value>`, refine at REVIEW
-- No tokens at all → flag to Baah, get explicit go-ahead before building
+After Product Scope approval, use `design-handoff` for Figma/screenshots, sketch, or a
+Visual Companion result. Record layout intent, key states, token/component mapping,
+interaction evidence, accessibility, and device-QA expectations in Linear. Material
+differences return to Scope.
 
-**Mid-build DS discovery:** Component found that should be in DS but wasn't in the plan:
-- No existing usage affected → move to DS immediately, note in commit message
-- Moving it affects already-built screens → finish inline, flag at REVIEW for extraction
+### Plan
 
-### 5. Review + QA
-**Who:** Claude (`requesting-code-review` + `verification-before-completion`) + Baah (device QA)
+Plan lives in the Linear issue or attached Linear document. It names tasks, tests,
+dependencies, interfaces, integration, verification, and for Product work the existing/new
+DS components. Baah approves the plain-language Plan summary. A material change to build
+path, public contract, persistence, security/privacy, verification, or approval ownership
+returns to Plan.
 
-**Canonical native Apple preview:** SwiftUI device feedback is authoritative only from a signed build record containing the native Git commit, Xcode build number, bundle identifier, distribution/TestFlight version, backend environment, database schema version, parity-catalog revision, and confirmation that the tested device installed that exact build. A simulator, Xcode Preview, or feature worktree is not a device-QA target.
+If a Product dependency is not in Build, Baah chooses Wait or an approved skeleton:
+independent Product foundation may proceed, while contract wiring remains blocked.
 
-Signed native records are stored in `docs/migration/swiftui/native-builds.md` and validated by `apple/scripts/record-signed-build.mjs`. Development, Preview, Personal, and production Swift builds use separate bundle identities. A Personal Team refresh installs over the existing `com.taisa.app.personal` identity; it never uninstalls that identity because its encrypted store is device-local. Personal file transfer is an explicit encrypted replacement from one authoritative device, not synchronization or history merging.
+### Build
 
-Voice-platform device QA additionally requires a content-free matrix bound to the same exact commit and signed build. The matrix must cover the registered physical iPhone and iPad, identify the fixture revision and database schema, include interruption, audio-route, lifecycle, connectivity, cancellation, accessibility, privacy, multi-turn, and bounded performance cases, and pass `apple/scripts/verify-voice-evidence.mjs`. Simulator-only evidence and fields capable of carrying audio, transcripts, coaching text, private context, or local paths are invalid.
+After Plan approval, set the issue In Progress and use `executing-plans` with TDD where
+practical. Use subagents only when Baah explicitly authorizes them and tasks are independent.
 
-**Verification matrix:**
+Product DS order is strict:
+
+1. DS layer (`mobile/src/components/ui/` for React Native; native design-system package for
+   SwiftUI), typed and documented, no business logic.
+2. Screen layer imports shared primitives and owns navigation/data/state logic.
+
+For cross-track work, Platform and independent Product foundation may run in parallel.
+Integration begins only when both named sides are ready.
+
+### Review + QA
+
+Invoke `requesting-code-review` and `verification-before-completion`. Resolve blocking
+findings. Record exact checks, revisions, PR, preview, device observations, remaining risk,
+and approval state in Linear.
 
 | Change area | Required checks |
 |---|---|
 | Backend | Backend Jest suite + backend TypeScript build |
 | Shared types | Shared type-check/build + affected backend tests |
-| Native Apple logic | Swift build + relevant Swift Testing/XCTest suites |
-| Native Apple UI | Swift build + native DS compliance + preview/snapshot checks + exact signed-build device QA |
-| Native Apple cross-stack | Backend tests/build + shared contract fixtures + Swift build/tests + exact signed-build device QA |
-| Cross-stack | Backend tests/build + shared contract checks + Swift build/tests |
-| Docs/workflow | Path/link consistency + workflow verification + clean diff |
+| React Native logic | Mobile TypeScript check + relevant tests |
+| React Native UI | Mobile TypeScript, DS compliance, Storybook checks, device QA |
+| Native Apple | Applicable package tests, project/contracts/DS verification, target builds, device QA |
+| Cross-stack | All affected backend/shared/client checks |
+| Docs/workflow | Link/path consistency, workflow verifier, freshness where applicable, clean diff |
 
-Run the narrowest relevant check throughout BUILD, then run the complete applicable row before PR or Ship. Missing test infrastructure is a reported gap, not a passing test. Device-sensitive Swift changes require Baah's signed-device QA unless explicitly classified as non-visual and non-device-sensitive.
+Missing infrastructure is a reported gap, never a passing test.
 
-**Native Apple DS compliance check (blocks PR if any fail):**
-- [ ] Product views consume typed components/tokens from `apple/DesignSystem/`
-- [ ] Raw visual values have a narrow documented exception and verification coverage
-- [ ] New native DS components expose typed semantic APIs and preview states
-- [ ] No business logic, networking, persistence, or navigation inside native DS components
+## Canonical preview and feedback authority
 
-**If build fails QA:**
-1. Baah notes specific failures in chat.
-2. Claude creates or updates one Linear issue per distinct failure, including the observed preview revision, reproduction context, severity, and acceptance criteria; the issue is linked to the feature work.
-3. Active Work reverts to Build for release-blocking failures. Non-blocking failures remain prioritized Linear work and require Baah's explicit acceptance if the feature proceeds to Ship with them unresolved.
-4. Claude fixes selected issues, comments verification evidence on the Linear issue, reruns `verification-before-completion`, and re-raises for QA.
+Baah’s UI/mobile feedback is assumed to come from canonical `preview/taisa`. Before using it
+as evidence:
 
-QA documents may retain immutable verification history and device checklists, but they are not the active bug queue. Current status, discussion, ownership, and resolution live in Linear.
+1. Read preview worktree commit and dirty state.
+2. Confirm `origin/preview/taisa` and the served/signed runtime revision.
+3. Confirm the component and behavior exist there with the same architecture as the owning
+   implementation worktree.
+4. If any check differs, stop, reconcile/port, verify, republish, and only then request QA.
 
-A feature is not merged until both checks pass.
+Never ask Baah to test a mobile change until its exact verified commit is integrated into
+`preview/taisa`, pushed, and confirmed as the revision served or installed.
 
-### Memory promotion and closeout
+## Product and design-system quality
 
-During Review and again before Ship, classify non-routine context using this routing:
+- Cover loading, empty, populated, stale, offline, failure, recovery, disabled, permission,
+  and accessibility states where relevant.
+- Prefer native SwiftUI and Apple platform behavior for the native product; target iOS and
+  iPadOS 26 or later.
+- Use real encrypted local data in production UI; never production mocks.
+- No AI/network request during ordinary local browsing unless approved behavior requires it.
+- Keep business logic outside presentation components.
+- Support Dynamic Type, VoiceOver, increased contrast, Reduce Motion, reduced transparency,
+  safe areas, keyboard use, and suitable touch targets.
+- DS breaking changes always require Baah confirmation with affected usages; global behavior
+  changes require confirmation; backward-compatible variants may proceed autonomously.
 
-```text
-Feature-specific context -> scope, plan, QA note, or PR
-Reusable evidence -> docs/learnings.md
-Accepted cross-cutting choice -> docs/decisions/
-Current-behavior change -> canonical domain document
-```
+## AI and data quality
 
-Conversational BTS notes are optional and skippable. The memory-promotion check is not:
-it runs even when BTS is skipped. Link between destinations instead of duplicating long
-explanations.
+- The phone remains authoritative for readable personal data unless Baah approves otherwise.
+- Send bounded content only after deliberate user action.
+- Preserve provenance and distinguish confirmed facts, interpretations, recommendations,
+  proposals, and user-accepted work.
+- AI output never silently mutates authoritative records.
+- Paid or irreversible retries are idempotent.
+- Logs and diagnostics contain no private content or credentials.
+- Test invalid responses, unavailable providers, timeouts, partial streams, retries,
+  relaunch, conflicts, and recovery; expose uncertainty.
 
-Every Standard and Full scope or plan receives a `Closeout` section during Review with:
+## Linear operating rules
 
-- Actual outcome
-- Plan deviations
-- Learnings and decisions
-- Remaining debt
-- Canonical docs updated
-- PR and merge evidence
+Project: `31b0d99c-6f74-4c9c-af2a-12e6e25aabe0` (Taisa)
+Team: `e95356d8-17f7-4700-bdfe-222782bea546` (A Playing Field)
 
-Quick work records material closeout in its PR description or final commit. Closeout is
-agent-owned housekeeping within the existing approvals; it does not add another gate.
+- Milestones represent strategic outcomes, not authorization.
+- Issues represent independently valuable actionable work.
+- Sub-issues represent distinct review, owner, dependency, or approval boundaries.
+- Checklists/comments hold commands and small steps.
+- Relations express blockers/dependencies; project updates report program health.
+- Before creation, search exact and semantic matches; continue an equivalent outcome.
+- Purely prospective direction stays in a milestone description until someone owns action.
+- Update the issue after every material step with exact branch/commit/PR/preview revision,
+  checks, result, risk, next action, and next Baah gate.
 
----
+Status IDs: Todo `8092f145-a7b5-4e09-812e-1d3212fc1c7d`; In Progress
+`ad545d06-1ef1-4c5d-86c7-44e1e3724409`; Done
+`b2c07c6b-bf80-40d1-8e08-9c941b04f137`; Canceled
+`e2a4cb1f-daf0-4269-8acc-9b0fed9224f5`.
 
-## DS update rules
+Linear failure: retry issue creation once, record the failed action, preserve local evidence,
+and continue only work already authorized by readable Scope and Plan.
 
-**Feedback routing — where changes land:**
-```
-Feedback touches a DS component or token?
-  YES → update the native Swift design-system owner + docs/design-system.md
-        change propagates to every screen that uses it
-  NO  → update the screen directly (layout, positioning, screen-specific logic)
-```
+### Deferred-capability stewardship
 
-**DS update threshold:**
-| Change type | Action |
-|---|---|
-| New variant / backwards-compatible prop | Autonomous — add it, document it |
-| Behaviour change affecting all usages | Surface to Baah: "This changes [X] everywhere — confirm?" |
-| Breaking change (removed prop, renamed export) | Always ask — show all usages and impact |
+When Baah or an approved artifact explicitly defers a capability, search Linear for exact and
+semantic matches before mutation. Continue the matching issue when its intended outcome is
+equivalent; otherwise create one non-duplicate Backlog issue in the relevant milestone. A
+deferral is live Linear state, not a repository backlog and not authorization to scope or build.
 
----
+Each deferral records origin and reason, user value and reconsideration trigger,
+dependencies/unknowns, architectural guardrails, durable Git and Linear evidence, and dated
+lifecycle history. Lifecycle is **Captured → Watching → Candidate → Planned → Shipped or Dropped**:
 
-## Idea backlog
+- Captured preserves the outcome without prioritizing it.
+- Watching means evidence or dependencies are being monitored.
+- Candidate is a recommendation only and does not authorize Scope.
+- Planned requires explicit Baah Scope and Plan approvals recorded in Linear.
+- Shipped requires canonical `main` merge evidence and applicable acceptance.
+- Dropped requires Baah's explicit decision or documented supersession evidence.
 
-Before a feature enters the workflow, it must be captured.
+Before Scope or Plan, consult related deferrals for dependency, guardrail, and duplicate
+conflicts. At Review and before Ship, reconcile any lifecycle change against actual code,
+canonical preview, verification, device evidence, and `main`; never promote a deferral merely
+because implementation resembles it. Linear owns live lifecycle; Git owns the durable
+technical constraints and evidence that must version with code.
 
-**Trigger:** Baah mentions a new idea, improvement, or "we should…" in any session.
-**Claude's response:** One line added to `docs/backlog.md`. Confirmed in chat. Nothing else.
+Deferring concurrent voice behavior must not hard-code permanent mutual exclusion between
+capture and playback into current audio/session contracts. Linear holds the mutable outcome
+inventory and lifecycle; Git retains only this durable architectural guardrail.
 
-Linear issues are created only when a Backlog item enters active scoping.
-To promote: "let's scope [idea]" → Claude checks Linear for existing Backlog issue first.
-To batch sync: "sync the backlog" → Claude creates Linear issues for all unsynced rows.
+### Monthly reconciliation heartbeat
 
----
+The monthly stewardship heartbeat runs on the first Monday at 09:00 Africa/Accra. It reads
+the current Taisa Linear issues/milestones and relevant durable Git contracts, reports access
+failure honestly, and surfaces only meaningful dependency, guardrail, evidence, or lifecycle
+contradictions. It remains quiet when there is no meaningful change. It may update safe routine
+evidence, but it never approves Scope, Plan, priority changes, lifecycle promotion into active work, or Ship.
 
-## Parked features
+## QA failure and parked work
 
-Feature deprioritised mid-pipeline:
-- Active Work table → remove row
-- Linear → Canceled, comment with reason
-- Branch preserved (do not delete)
-- Scope doc + plan remain in place
+For each QA failure, create or update one non-duplicate Linear issue with observed preview
+revision, reproduction, severity, acceptance criteria, ownership, and relation to the feature.
+Release-blocking failure returns the feature to Build. After a fix, repeat full verification
+and preview publication before renewed device QA.
 
----
+Parking sets the issue Canceled with reason and preserves branches, worktrees, artifacts, and
+history. Do not delete or rewrite parked work.
 
-## Document conventions
+## Repository documentation
 
-| Document | Location | Written by |
-|---|---|---|
-| Project memory index | `docs/project-memory.md` | Claude (links and authority map) |
-| Decision records | `docs/decisions/NNNN-<name>.md` | Baah + Claude (approval rules apply) |
-| Reusable learnings | `docs/learnings.md` | Claude (evidence-backed, append-only) |
-| Roadmap | `docs/roadmap.md` | Both — kept current |
-| Backlog | `docs/backlog.md` | Claude (auto-maintained) |
-| Scope docs | `docs/features/<name>.md` | Claude + Baah |
-| Implementation plans | `docs/superpowers/plans/<name>.md` | Claude |
-| Design system | `docs/design-system.md` | Baah + Claude (DS components) |
-| API reference | `docs/api.md` | Claude (updated on every route change) |
-| Workflow | `docs/workflow.md` | Claude (Active Work table) + Baah |
-| QA evidence | `docs/features/<name>-qa.md` | Claude (verification history only; active bugs live in Linear) |
-| Work closeout | Standard/Full scope or plan | Claude (completed during Review and Ship) |
+Keep only information that must version with code: operating/safety constraints;
+architecture/public contracts; data models/migrations; API contracts; design-system
+contracts used by code; durable decisions; and immutable verification/release evidence.
 
-**Skills invoked per stage:**
-| Stage | Skill |
-|---|---|
-| Scoping | `scope-writer` |
-| Design handoff | `design-handoff` |
-| Planning | `writing-plans` |
-| Building | `executing-plans` / `dispatching-parallel-agents` |
-| Review | `requesting-code-review` + `verification-before-completion` |
-| All of the above | `taisa-workflow` (master orchestrator — read at session start) |
+Historical scopes, specifications, plans, and QA records remain history, not live stage or
+roadmap authority. New feature-specific repository Scope/Plan documents are not the default.
 
----
+### Canonical documentation authority
 
-## Gate definitions
+The owning work branch contains proposed code-coupled documentation; `main` becomes
+canonical after approval and merge. `preview/taisa` is never documentation authority.
+When branches overlap an artifact, reconcile against `origin/main`, the owning branch, and
+Linear before the next gate.
 
-| Gate | Artifact | Baah signal |
-|---|---|---|
-| Scope agreed | `docs/features/<name>.md` exists | Any approval intent |
-| Plan approved | `docs/superpowers/plans/<name>.md` exists | Any approval intent |
-| Ship | Code review + verification passed | Baah confirms device QA in chat |
+### Material change
 
-Claude reads intent, not keywords. Ambiguous → one yes/no question.
+A material change alters outcome, acceptance criteria, exclusions, user-visible behavior,
+architecture/public contract, persistence/ownership, dependency order, security/privacy,
+verification, or approval responsibility. Return to Scope or Plan. Formatting, clearer
+wording, evidence links, and status metadata are non-material.
 
----
+### Superseded documents
+
+For a retained code-coupled document, set `Status: Superseded`, add
+`Superseded by: <Linear URL, path, or merge SHA>`, and update active references. Preserve
+history unless Baah explicitly approves deletion.
+
+## Documentation freshness cadence
+
+### Freshness and Closeout
+
+Run `scripts/verify-doc-freshness.sh` for affected repository artifacts that require Status
+and Last updated metadata. At Review, perform a **Closeout** in Linear: actual outcome,
+deviations, decisions/learnings, exact evidence, remaining debt, canonical docs changed,
+next gate, and any deferred-capability lifecycle changes. Before Ship, read back every
+related deferral and confirm that implementation, canonical preview, and merge evidence
+support its recorded lifecycle. Perform the **memory-promotion check**: promote reusable evidence to
+`docs/learnings.md` or a durable decision/contract only when it benefits future work.
 
 ## Git and shipping
 
-### Canonical branch
+### Canonical branch and naming
 
-`main` is the only permanent branch and the only shipping branch. It is the GitHub default and the base for every pull request. `preview/taisa` is the integration-only branch for combined phone previews; it is never a shipping base and must not be merged to `main` as part of device-QA setup. Platform and Product are workflow tracks, not Git branches; there is no long-lived `develop` branch.
+`main` is the only permanent branch and the only shipping branch. `preview/taisa` is a permanent integration-only
+preview branch and never a PR base. Branches use `<type>/<short-kebab-case-description>` with
+`feature/`, `fix/`, `chore/`, `docs/`, `refactor/`, `test/`, or `spike/` as appropriate.
 
-### Branch naming
+Branch setup: resolve a clean isolated worktree, fetch/prune, fast-forward local `main`, branch
+from `main`, then record branch ownership in Linear. Never develop on `main`.
 
-Every work branch uses `<type>/<short-kebab-case-description>`.
+### PR and Ship gate
 
-| Prefix | Use |
-|---|---|
-| `feature/` | New user-facing capability |
-| `fix/` | Defect correction |
-| `chore/` | Tooling, dependencies, configuration, and maintenance |
-| `docs/` | Documentation-only changes |
-| `refactor/` | Internal restructuring with no intended behavior change |
-| `test/` | Test-only work |
-| `spike/` | Disposable investigation; promote before merging or delete explicitly |
+Create the PR only after applicable checks pass; target `main`; link the Linear issue and
+acceptance evidence. Squash merge by default. A clear Ship approval authorizes the complete
+verified merge and safe cleanup transaction, but not force-pushes, history rewrites,
+unmerged-work deletion, or unrelated-worktree removal.
 
-Names are lowercase kebab case and describe one deliverable. Do not use agent/person namespaces, generic names, needless nesting, or combine unrelated scopes.
+After Ship approval:
 
-### Branch creation and commits
+1. Confirm clean branch/worktree and correct PR base.
+2. Fetch and reconcile with `origin/main` safely.
+3. Run the complete verification matrix and final review.
+4. Confirm required device QA and exact preview evidence.
+5. Push branch and create/update the PR.
+6. Squash-merge to `main`.
+7. Fast-forward local `main` and verify local/remote/PR merge SHA agreement.
+8. Delete only the accounted merged remote/local branch and safe disposable worktree.
+9. Prune refs; update Linear issue, milestone/project status, and Closeout with merge SHA.
 
-Codex owns branch setup: confirm a clean worktree, fetch and prune, fast-forward local `main`, create the typed branch from `main`, then update Active Work for Standard and Full work. Feature development never starts directly on `main`.
-
-Commits use `feat:`, `feat(ds):`, `fix:`, `fix(ds):`, `test:`, `docs:`, `refactor:`, or `chore:` and contain one coherent change. Work-in-progress commits may exist on the work branch because squash merge is standard.
-
-### Pull requests and merge
-
-- Create the PR after applicable local checks pass, not before.
-- Target `main`; link scope/spec/plan artifacts, list acceptance criteria, and include verification evidence.
-- Resolve blocking review findings and complete required device QA before Ship.
-- Squash merge by default with a conventional commit title. Merge commits and rebase merges require a stated reason.
-- Do not push feature development directly to `main`, force-push, or rewrite shared history without separate explicit approval.
-
-### Ship gate
-
-Clear Ship approval such as “ship it” or “merge it” authorizes Codex to perform this complete transaction without repeated prompts:
-
-1. Confirm the feature branch and worktree are clean.
-2. Fetch and confirm the branch is current with `origin/main`, or reconcile it safely.
-3. Run the complete applicable verification matrix.
-4. Run final code review and confirm there are no blocking findings.
-5. Confirm required device QA has passed.
-6. Push the work branch.
-7. Create or update its pull request.
-8. Squash-merge the PR into `main`.
-9. Fast-forward local `main` to `origin/main`.
-10. Verify local `main`, remote `main`, the PR, and the merge SHA agree.
-11. Delete the merged remote work branch.
-12. Delete the merged local work branch from another checked-out branch/worktree.
-13. Prune stale remote refs and remove disposable worktrees when safe.
-14. Update Active Work, roadmap/plan status, and Linear with the merge SHA.
-15. Report verification evidence and final branch state.
-
-Ship approval does not authorize force-pushes, history rewrites, deletion of unmerged work, or removal of unrelated worktrees. Stop cleanup and report the exact blocker if the tree is dirty, checks fail, conflicts exist, a branch contains unaccounted unique commits, another worktree owns it, the PR targets an unexpected base, or remote state cannot be verified. Never force-delete a branch merely because its name looks obsolete.
-
----
-
-## Roadmap hygiene
-
-- Roadmap updated when a feature changes phase
-- Active Work table in this file updated at every stage transition (Claude owns this)
-- Scope docs for the next phase written while current phase is in Build
-- If a dependency slips, the blocked feature stays in its current phase
+Stop cleanup on dirty state, failed checks, conflicts, unexpected base, unique commits,
+unverifiable remote state, or another worktree owning the branch. Never force-delete.
