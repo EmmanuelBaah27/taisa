@@ -142,6 +142,9 @@ test('preview support is linked only by the preview target', async () => {
     'TaisaRecovery',
     'TaisaSecurity',
     'TaisaVoice',
+    'TaisaConversations',
+    'TaisaAudio',
+    'TaisaNetworking',
   ]);
   assert.deepEqual(result.previewProducts, [
     'TaisaCore',
@@ -151,6 +154,7 @@ test('preview support is linked only by the preview target', async () => {
     'TaisaPreviewSupport',
     'TaisaStorage',
     'TaisaVoice',
+    'TaisaConversations',
   ]);
 });
 
@@ -244,6 +248,10 @@ test('combined native verification and CI pin every required gate', async () => 
     resolve(repositoryRoot, '.github/workflows/design-system.yml'),
     'utf8',
   );
+  const combinedScript = await readFile(
+    resolve(repositoryRoot, 'scripts/native-apple/verify-all.sh'),
+    'utf8',
+  );
   const combined = packageJSON.scripts['verify:native-apple:all'];
 
   for (const required of [
@@ -276,6 +284,13 @@ test('combined native verification and CI pin every required gate', async () => 
 
   assert.match(designSystemWorkflow, /name: Design System Compliance/);
   assert.match(designSystemWorkflow, /npm run verify:native-design-system/);
+  for (const bundleIdentifier of [
+    'com.taisa.app.dev',
+    'com.taisa.app.preview',
+    'com.taisa.app.personal',
+  ]) {
+    assert.match(combinedScript, new RegExp(`simctl uninstall.*${bundleIdentifier}`));
+  }
 });
 
 test('rejects unexpanded build identity placeholders', () => {
