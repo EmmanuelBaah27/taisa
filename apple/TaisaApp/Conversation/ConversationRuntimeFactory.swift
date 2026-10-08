@@ -127,8 +127,8 @@ struct ConversationRuntimeFactory: Sendable {
             beginVoice: { try await coordinator.beginReply(mode: .voice) },
             pauseVoice: { try await coordinator.pauseVoice() },
             resumeVoice: { try await coordinator.resumeVoice() },
-            sendVoice: {
-                try await coordinator.sendVoice()
+            sendVoice: { transcriptAvailable in
+                try await coordinator.sendVoice(onTranscriptAvailable: transcriptAvailable)
                 let snapshot = try await query.loadConversation(id: route.id)
                 for draft in snapshot.drafts { try await conversations.discardDraft(id: draft.id) }
             },

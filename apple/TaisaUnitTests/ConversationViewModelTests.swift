@@ -66,6 +66,46 @@ final class ConversationViewModelTests: XCTestCase {
         XCTAssertEqual(model.messages.map(\.body), ["Ready"])
     }
 
+    func testVoiceTranscriptAppearsBeforeCoachingCompletes() async {
+        let transcriptShown = AsyncGate()
+        let finishCoaching = AsyncGate()
+        let messages = MessageSequence([
+            [message(role: "user", body: "Recorded words")],
+            [
+                message(role: "user", body: "Recorded words"),
+                message(role: "assistant", body: "Coaching reply"),
+            ],
+        ])
+        let client = ConversationScreenClient(
+            loadMessages: { await messages.next() },
+            beginVoice: {}, pauseVoice: {}, resumeVoice: {},
+            sendVoice: { transcriptAvailable in
+                await transcriptAvailable()
+                await transcriptShown.open()
+                await finishCoaching.wait()
+            },
+            sendText: { _ in }, retry: {}, saveDraft: { _ in }, discardDraft: {}
+        )
+        let model = ConversationViewModel(
+            conversationID: UUID().uuidString,
+            title: "New conversation",
+            entryIntent: nil,
+            composer: .recording,
+            client: client
+        )
+
+        let send = Task { await model.sendVoice() }
+        await transcriptShown.wait()
+
+        XCTAssertEqual(model.composer, .coaching)
+        XCTAssertEqual(model.messages.map(\.body), ["Recorded words"])
+
+        await finishCoaching.open()
+        await send.value
+        XCTAssertEqual(model.composer, .waitingForReply)
+        XCTAssertEqual(model.messages.map(\.body), ["Recorded words", "Coaching reply"])
+    }
+
     func testRetryCompletionReloadsMessagesAndWaitsForReply() async {
         let client = ConversationScreenClientSpy()
         let model = ConversationViewModel(
@@ -121,6 +161,36 @@ final class ConversationViewModelTests: XCTestCase {
     }
 }
 
+private actor AsyncGate {
+    private var isOpen = false
+    private var waiters: [CheckedContinuation<Void, Never>] = []
+
+    func wait() async {
+        if isOpen { return }
+        await withCheckedContinuation { waiters.append($0) }
+    }
+
+    func open() {
+        isOpen = true
+        let pending = waiters
+        waiters.removeAll()
+        pending.forEach { $0.resume() }
+    }
+}
+
+private actor MessageSequence {
+    private let snapshots: [[MessageRecord]]
+    private var index = 0
+
+    init(_ snapshots: [[MessageRecord]]) { self.snapshots = snapshots }
+
+    func next() -> [MessageRecord] {
+        let value = snapshots[min(index, snapshots.count - 1)]
+        index += 1
+        return value
+    }
+}
+
 private actor ConversationScreenClientSpy {
     let messages: [MessageRecord]
     let correctionFails: Bool
@@ -137,7 +207,7 @@ private actor ConversationScreenClientSpy {
         return ConversationScreenClient(
             loadMessages: { loaded },
             beginVoice: { [self] in await recordBegin() },
-            pauseVoice: {}, resumeVoice: {}, sendVoice: {},
+            pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
             sendText: { _ in }, retry: {}, saveDraft: { [self] input in await save(input) }, discardDraft: {},
             correctTranscript: { [correctionFails] _, _ in
                 if correctionFails { throw ConversationFailure.retryable }

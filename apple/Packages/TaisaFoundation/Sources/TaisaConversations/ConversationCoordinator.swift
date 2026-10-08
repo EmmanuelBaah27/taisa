@@ -131,10 +131,12 @@ public actor ConversationCoordinator {
         composer = .recording
     }
 
-    public func sendVoice() async throws {
+    public func sendVoice(
+        onTranscriptAvailable: @escaping @Sendable () async -> Void = {}
+    ) async throws {
         composer = .transcribing
         do {
-            try await voice.sendReply()
+            try await voice.sendReply(onTranscriptAvailable: onTranscriptAvailable)
             composer = .waitingForReply
         } catch {
             composer = .failure(.retryable)

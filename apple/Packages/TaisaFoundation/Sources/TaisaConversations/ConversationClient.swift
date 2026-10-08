@@ -21,7 +21,7 @@ public protocol ConversationVoiceControlling: Sendable {
     func beginReply() async throws
     func pauseReply() async throws
     func resumeReply() async throws
-    func sendReply() async throws
+    func sendReply(onTranscriptAvailable: @escaping @Sendable () async -> Void) async throws
     func retry() async throws
     func saveDraft() async throws
     func discardDraft() async throws
@@ -30,7 +30,9 @@ public protocol ConversationVoiceControlling: Sendable {
 public extension ConversationVoiceControlling {
     func pauseReply() async throws { throw ConversationFailure.unavailable }
     func resumeReply() async throws { throw ConversationFailure.unavailable }
-    func sendReply() async throws { throw ConversationFailure.unavailable }
+    func sendReply(onTranscriptAvailable: @escaping @Sendable () async -> Void) async throws {
+        throw ConversationFailure.unavailable
+    }
     func retry() async throws {}
     func saveDraft() async throws {}
     func discardDraft() async throws {}
@@ -67,8 +69,12 @@ public struct VoiceSessionConversationAdapter: ConversationVoiceControlling {
     }
     public func pauseReply() async throws { try await coordinator.send(.pauseRecording) }
     public func resumeReply() async throws { try await coordinator.send(.resumeRecording) }
-    public func sendReply() async throws {
+    public func sendReply(onTranscriptAvailable: @escaping @Sendable () async -> Void) async throws {
         try await coordinator.sendRecordedAudio()
+        await coordinator.waitForTranscriptOutcome()
+        if await coordinator.snapshot().durable.acceptedTranscript != nil {
+            await onTranscriptAvailable()
+        }
         await coordinator.waitForIdle()
     }
     public func retry() async throws { try await coordinator.send(.retry) }
