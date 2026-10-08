@@ -103,6 +103,7 @@ final class ConversationViewModel {
             composer: composer,
             text: { if case .typing(let value) = composer { value } else { "" } }(),
             client: ConversationScreenClient(
+                loadMessages: { messages },
                 beginVoice: {}, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
                 sendText: { _ in }, retry: {}, saveDraft: { _ in }, discardDraft: {}
             ),
@@ -110,6 +111,20 @@ final class ConversationViewModel {
         )
         model.messages = messages
         return model
+    }
+
+    static func overflowQAPreview() -> ConversationViewModel {
+        let conversationID = "00000000-0000-0000-0000-000000000002"
+        let messages = (1...18).map { index in
+            MessageRecord(
+                id: index == 18 ? "latest-message" : "overflow-message-\(index)",
+                conversationID: conversationID,
+                role: index.isMultiple(of: 2) ? "assistant" : "user",
+                body: "Rendered conversation message \(index). This content makes the timeline overflow the visible screen.",
+                createdAtMS: Int64(index)
+            )
+        }
+        return preview(composer: .waitingForReply, messages: messages)
     }
 
     func start() async {
