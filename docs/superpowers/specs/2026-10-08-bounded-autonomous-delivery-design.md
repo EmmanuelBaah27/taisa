@@ -7,7 +7,7 @@
 
 Taisa delivery should require Baah for product authority and physical judgment, not for routine testing, repair, tracking, or coordination. The current persistent Product and Linear goals overlap ownership, repeatedly reconcile global state, poll long-running checks, and create adjacent work while the approved work is waiting. This design replaces that pattern with one accountable, issue-bounded conductor.
 
-Success means the agent can take one approved issue from Plan approval through implementation, automated repair, canonical preview, and QA readiness without asking Baah to keep saying “continue.” Baah enters at material Scope and Plan decisions, unavoidable physical-device questions, final acceptance QA, and Ship.
+Success means the agent can take one approved issue from kickoff through implementation, automated repair, canonical preview, and QA readiness without asking Baah to keep saying “continue.” In the ordinary path, Baah interacts twice: one kickoff approval, then one final acceptance-and-Ship decision. Separate Scope, Plan, physical-device, or Ship interactions remain only when risk or Baah's wording requires them.
 
 ## Approaches considered
 
@@ -27,12 +27,11 @@ Run one conductor for one approved delivery slice. It owns implementation and ho
 
 Each delivery cycle has exactly one primary Linear issue and one accountable conductor. The issue supplies the approved outcome, stage, acceptance criteria, dependencies, and evidence. Git supplies versioned technical truth. The conductor may maintain Linear, Git, GitHub, documentation, tests, preview state, and review evidence only for the active issue and its approved sub-issues.
 
-The normal lifecycle is:
+The normal internal lifecycle is:
 
 ```mermaid
 flowchart LR
-  S["Baah approves Scope"] --> P["Baah approves Plan"]
-  P --> B["Agent builds one issue"]
+  K["Baah approves kickoff bundle"] --> B["Agent builds one issue"]
   B --> N["Narrow automated checks"]
   N -->|failure| B
   N --> V["Full release-boundary verification"]
@@ -40,14 +39,14 @@ flowchart LR
   V --> C["Publish exact commit to canonical preview"]
   C --> Q["Agent preview smoke check"]
   Q -->|failure| B
-  Q --> H["Baah acceptance or physical-device QA"]
+  Q --> H["Baah final acceptance QA"]
   H -->|defect| R["Agent reproduces, covers, fixes, and republishes"]
   R --> H
-  H -->|accepted| G["Baah Ship approval"]
+  H -->|accepted and Ship intent| G["Ship authorized"]
   G --> X["Merge, close out, stop"]
 ```
 
-The conductor does not select a new issue after closeout. Baah begins the next cycle. A milestone may supply context and ordering, but never expands one cycle beyond one primary issue or authorizes automatic successor selection.
+The conductor does not start a new issue after closeout. It derives and presents the next recommended outcome from unresolved release blockers, Linear milestone priority and dependencies, the release critical path, approved product gaps, recent Baah feedback, and material product risk. Baah approves, rejects, reprioritizes, or pauses that recommendation. A milestone may supply context and ordering, but never expands one cycle beyond one primary issue or authorizes automatic successor implementation.
 
 ## Cycle control
 
@@ -55,15 +54,31 @@ The conductor does not select a new issue after closeout. Baah begins the next c
 
 One lightweight intake session owns the front half of delivery:
 
-1. Baah names an outcome, defect, or issue to advance.
+1. The agent derives and recommends the highest-value outcome from Linear, critical-path evidence, approved product gaps, current blockers, risk, and Baah's latest feedback. Baah may also name an outcome directly.
 2. The agent searches Linear for one matching non-duplicate issue and recommends the lightest fitting tier.
-3. The agent conducts only the discovery needed to make Scope decidable.
-4. Baah approves material Scope.
-5. The agent prepares the implementation Plan and verification strategy.
-6. Baah approves the Plan.
-7. The issue-bounded conductor starts with the named issue, milestone context, approved Scope and Plan, branch/worktree, completion condition, and next Baah gate.
+3. The agent conducts only the discovery needed to make the work decidable.
+4. For Quick and ordinary Standard work, the agent presents one compact kickoff bundle containing the recommended outcome, user-visible result, inclusions, exclusions, key risks, implementation direction, and verification approach.
+5. Baah's approval of that explicit bundle approves Scope and Plan together for that bounded issue.
+6. For Full or high-risk work, the agent presents separate Scope and Plan gates.
+7. The issue-bounded conductor starts with the named issue, milestone context, approved kickoff or separate Scope and Plan evidence, branch/worktree, completion condition, and next Baah gate.
 
-Intake may recommend the next issue but cannot start it without Baah selecting or explicitly advancing that issue. Approval of a milestone does not approve every issue inside it.
+Intake recommends the next issue by default; Baah does not need to search the roadmap or invent an outcome. The conductor cannot start it without Baah approving the explicit kickoff bundle or separate gates. Approval of a milestone does not approve every issue inside it.
+
+### Fast path and high-risk path
+
+The common path minimizes Baah's involvement:
+
+```text
+Agent: recommended outcome + compact kickoff bundle
+Baah: approve
+Agent: build → verify → repair → preview → smoke test
+Baah: final acceptance; “looks good, ship it” may approve acceptance and Ship together
+Agent: merge → close out → recommend next outcome → stop
+```
+
+Separate Scope and Plan approvals are required only for work involving data migration or loss risk, privacy/security boundaries, destructive or irreversible operations, major architecture/public-contract changes, paid services or credentials, materially ambiguous product behavior, or another reason Baah explicitly requests separation.
+
+An earlier physical-device interaction is exceptional and must satisfy the instrumented-checkpoint rule. Internal CI, service, approval-processing, and preview-publication waits never create Baah interactions.
 
 ### Exclusive conductor states
 
@@ -71,13 +86,13 @@ The conductor is in exactly one state at a time:
 
 | State | Entry | Permitted work | Exit |
 |---|---|---|---|
-| `INTAKE` | Baah asks to advance a named outcome | discovery, deduplication, Scope/Plan preparation | approved Plan or Baah stops |
+| `INTAKE` | prior closeout or Baah direction | recommend outcome, deduplicate, prepare kickoff or high-risk gates | kickoff/Plan approved or Baah stops |
 | `BUILDING` | Plan approved | implementation and narrow checks | stable candidate, material change, or blocker |
 | `VERIFYING` | stable candidate exists | full matrix, review, PR checks | pass, repair needed, or blocker |
 | `PUBLISHING` | verified device-facing commit exists | canonical preview integration and smoke checks | exact revision confirmed or repair needed |
 | `AWAITING_BAAH_QA` | exact candidate passes the QA-readiness gate | no implementation; await named acceptance observation | accepted or defect observed |
 | `REPAIR_QUARANTINE` | Baah reports a defect | reproduce, instrument, test, fix, verify, republish | replacement passes the repair-release gate |
-| `AWAITING_SHIP` | acceptance QA complete | preserve state and await Ship decision | Ship approval or reopened defect |
+| `AWAITING_SHIP` | acceptance QA complete without clear Ship intent | preserve state and await Ship decision | Ship approval or reopened defect |
 | `EXTERNAL_WAIT` | healthy CI/service/device dependency is pending | one checkpoint, then dormancy | meaningful terminal change |
 | `BLOCKED` | progress requires a user decision, credential, external change, or exhausted repair budget | preserve evidence; no adjacent work | blocker resolved or Baah stops |
 | `CLOSEOUT` | Ship approved and merge conditions pass | merge, safe cleanup, evidence update | cycle complete and conductor stops |
@@ -192,6 +207,7 @@ Waiting is a state, not work. At CI, approval, device, credential, or external-s
 - Do not reread global workflow, all milestones, all worktrees, or unrelated chats when the active issue and relevant revisions have not changed.
 - Resume only on meaningful state change, Baah input, terminal check result, or an explicitly scheduled bounded wake-up.
 - Unchanged state produces no Linear comment and no user notification.
+- Internal CI, hosted review, preview publication, and service waits are silent to Baah unless they fail terminally or require his action.
 
 All CI, service, credential, device, and approval waits use this section as the single authority. Failure handling may decide that a wait is necessary but cannot define a separate polling policy.
 
@@ -287,7 +303,10 @@ Required targets are one active conductor, one implementation issue, zero unchan
 ## Acceptance criteria
 
 - Exactly one goal owns an active delivery cycle.
-- The goal is bound to a named Linear issue, milestone, approved Scope, approved Plan, branch/worktree, completion condition, and next Baah gate.
+- The goal is bound to a named Linear issue, milestone, approved kickoff bundle or separate Scope and Plan, branch/worktree, completion condition, and next Baah gate.
+- Quick and ordinary Standard work normally requires only one kickoff interaction and one combined acceptance/Ship interaction from Baah.
+- Full and high-risk work uses separate Scope and Plan gates for the explicitly enumerated risk classes.
+- The agent recommends the next outcome from authoritative evidence; Baah does not need to search Linear or invent the next task.
 - No loop automatically selects adjacent or successor work.
 - The agent autonomously repairs all machine-verifiable failures inside approved scope.
 - Unchanged CI or external state does not generate repeated reasoning turns, comments, or notifications.
