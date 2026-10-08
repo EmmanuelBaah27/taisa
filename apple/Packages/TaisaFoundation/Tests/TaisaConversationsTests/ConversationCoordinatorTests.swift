@@ -146,7 +146,10 @@ private actor VoiceIntentSpy: ConversationVoiceControlling {
     func beginReply() async throws { startCount += 1; actions.append("begin") }
     func pauseReply() async throws { actions.append("pause") }
     func resumeReply() async throws { actions.append("resume") }
-    func sendReply() async throws { actions.append("send") }
+    func sendReply(onTranscriptAvailable: @escaping @Sendable () async -> Void) async throws {
+        actions.append("send")
+        await onTranscriptAvailable()
+    }
 }
 
 private actor ConversationClientSpy: ConversationClient {

@@ -8,7 +8,7 @@ struct ConversationScreenClient: Sendable {
     var beginVoice: @Sendable () async throws -> Void
     var pauseVoice: @Sendable () async throws -> Void
     var resumeVoice: @Sendable () async throws -> Void
-    var sendVoice: @Sendable () async throws -> Void
+    var sendVoice: @Sendable (@escaping @MainActor @Sendable () async -> Void) async throws -> Void
     var sendText: @Sendable (String) async throws -> Void
     var retry: @Sendable () async throws -> Void
     var saveDraft: @Sendable (ConversationInput) async throws -> Void
@@ -22,7 +22,7 @@ struct ConversationScreenClient: Sendable {
         beginVoice: @escaping @Sendable () async throws -> Void,
         pauseVoice: @escaping @Sendable () async throws -> Void,
         resumeVoice: @escaping @Sendable () async throws -> Void,
-        sendVoice: @escaping @Sendable () async throws -> Void,
+        sendVoice: @escaping @Sendable (@escaping @MainActor @Sendable () async -> Void) async throws -> Void,
         sendText: @escaping @Sendable (String) async throws -> Void,
         retry: @escaping @Sendable () async throws -> Void,
         saveDraft: @escaping @Sendable (ConversationInput) async throws -> Void,
@@ -100,7 +100,7 @@ final class ConversationViewModel {
             composer: composer,
             text: { if case .typing(let value) = composer { value } else { "" } }(),
             client: ConversationScreenClient(
-                beginVoice: {}, pauseVoice: {}, resumeVoice: {}, sendVoice: {},
+                beginVoice: {}, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
                 sendText: { _ in }, retry: {}, saveDraft: { _ in }, discardDraft: {}
             ),
             dismiss: dismiss
@@ -133,8 +133,21 @@ final class ConversationViewModel {
     func pause() async { await perform(next: .paused) { try await client.pauseVoice() } }
     func resume() async { await perform(next: .recording) { try await client.resumeVoice() } }
     func sendVoice() async {
+        guard !actionInFlight else { return }
+        actionInFlight = true
         composer = .transcribing
-        await performSuccess { try await client.sendVoice() }
+        do {
+            try await client.sendVoice { [weak self] in
+                guard let self else { return }
+                await self.reloadMessages()
+                self.composer = .coaching
+            }
+            await reloadMessages()
+            composer = .waitingForReply
+        } catch {
+            composer = .failure(.retryable)
+        }
+        actionInFlight = false
     }
 
     func sendText() async {
