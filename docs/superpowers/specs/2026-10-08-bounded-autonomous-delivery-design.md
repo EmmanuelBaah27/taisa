@@ -27,6 +27,8 @@ Run one conductor for one approved delivery slice. It owns implementation and ho
 
 Each delivery cycle has exactly one primary Linear issue and one accountable conductor. The issue supplies the approved outcome, stage, acceptance criteria, dependencies, and evidence. Git supplies versioned technical truth. The conductor may maintain Linear, Git, GitHub, documentation, tests, preview state, and review evidence only for the active issue and its approved sub-issues.
 
+One delivery **cycle** may contain several bounded Goal runs separated by Baah-controlled gates. A Goal run always performs useful autonomous work toward one terminal handoff and then completes; it never remains active merely to await Baah, CI, a device, or an external service.
+
 The normal internal lifecycle is:
 
 ```mermaid
@@ -39,9 +41,10 @@ flowchart LR
   V --> C["Publish exact commit to canonical preview"]
   C --> Q["Agent preview smoke check"]
   Q -->|failure| B
-  Q --> H["Baah final acceptance QA"]
-  H -->|defect| R["Agent reproduces, covers, fixes, and republishes"]
-  R --> H
+  Q --> T["QA-readiness Goal completes"]
+  T --> H["Baah final acceptance QA"]
+  H -->|defect| R["New repair Goal: reproduce, fix, verify, republish"]
+  R --> T
   H -->|accepted and Ship intent| G["Ship authorized"]
   G --> X["Merge, close out, stop"]
 ```
@@ -49,6 +52,20 @@ flowchart LR
 The conductor does not start a new issue after closeout. It derives and presents the next recommended outcome from unresolved release blockers, Linear milestone priority and dependencies, the release critical path, approved product gaps, recent Baah feedback, and material product risk. Baah approves, rejects, reprioritizes, or pauses that recommendation. A milestone may supply context and ordering, but never expands one cycle beyond one primary issue or authorizes automatic successor implementation.
 
 ## Cycle control
+
+### Goal runtime boundary
+
+The Codex Goal is a bounded execution mechanism, not the permanent owner of an entire product or an idle approval queue.
+
+- Before kickoff approval, ordinary chat/intake prepares the recommendation and approval bundle; no continuous Goal runs while Baah decides.
+- After kickoff or separate Plan approval, create one issue-specific Goal whose terminal condition is the next Baah-controlled gate or completed external action.
+- A Build Goal completes at one of four outcomes: `QA_READY`, `UNRESOLVED_ESCALATION`, `MATERIAL_REAPPROVAL_REQUIRED`, or `NON_DEVICE_SHIP_READY`.
+- A repair Goal is a new bounded Goal on the same Linear issue and completes only at `QA_READY`, `UNRESOLVED_ESCALATION`, or `MATERIAL_REAPPROVAL_REQUIRED`.
+- A Ship Goal begins only after clear Ship approval and completes after verified merge, cleanup, evidence, and next-outcome recommendation.
+- Healthy CI or service work that can report completion asynchronously is awaited inside the same run without repeated reasoning. If no event-capable wait exists, the current Goal completes at `EXTERNAL_WAIT_RECORDED`; one scheduled or user-triggered continuation checks it later.
+- A completed Goal does not auto-restart, select a successor issue, or infer approval. Baah's response or a meaningful external completion starts the next bounded run.
+
+This preserves one accountable delivery cycle in Linear while preventing an active Goal from burning credits at human or external waits.
 
 ### Entry before Build
 
@@ -76,7 +93,16 @@ Baah: final acceptance; “looks good, ship it” may approve acceptance and Shi
 Agent: merge → close out → recommend next outcome → stop
 ```
 
-Separate Scope and Plan approvals are required only for work involving data migration or loss risk, privacy/security boundaries, destructive or irreversible operations, major architecture/public-contract changes, paid services or credentials, materially ambiguous product behavior, or another reason Baah explicitly requests separation.
+Path selection is deterministic:
+
+| Condition | Approval path |
+|---|---|
+| Quick or Standard, and no high-risk predicate below | One compact kickoff approval covers Scope and Plan |
+| Full tier | Separate Scope and Plan approvals |
+| Any tier with one or more high-risk predicates | Separate Scope and Plan approvals |
+| Baah explicitly requests separate review | Separate Scope and Plan approvals |
+
+High-risk predicates are: data migration or loss risk; privacy/security/trust-boundary changes; destructive or irreversible operations; public-contract or major architecture changes; paid services, credentials, or new external infrastructure; materially ambiguous product behavior; regulatory or consent changes; release strategy changes; or verification changes that could weaken an existing safety gate.
 
 An earlier physical-device interaction is exceptional and must satisfy the instrumented-checkpoint rule. Internal CI, service, approval-processing, and preview-publication waits never create Baah interactions.
 
@@ -99,10 +125,40 @@ The conductor is in exactly one state at a time:
 
 Every transition records its trigger and evidence once. No wake-up may infer a different state from elapsed time alone.
 
+The state table describes the Linear delivery cycle. Goal runtime uses the bounded terminal outcomes above; therefore `AWAITING_BAAH_QA`, `AWAITING_SHIP`, `EXTERNAL_WAIT`, and `BLOCKED` never require an active Goal to spin while waiting.
+
+### Material change during the fast path
+
+When execution discovers a material change, the conductor stops mutation, preserves the branch and evidence, and completes the current Goal as `MATERIAL_REAPPROVAL_REQUIRED`.
+
+- If the revised work remains Quick/Standard and no high-risk predicate applies, present an amended compact kickoff bundle showing the exact delta.
+- If it becomes Full or high-risk, replace the fast-path approval with separate revised Scope and Plan approvals.
+- Prior approval remains historical evidence but does not authorize the changed outcome.
+- After approval, start a new bounded Goal on the same Linear issue and preserved worktree.
+
+## Work decomposition: Platform, Product, and Integration
+
+These categories remain mandatory internal slices for Standard and Full cross-stack work. They are work ownership types, not separate persistent Goals, permanent branches, or automatic approval gates.
+
+| Slice | Exclusive responsibility | Does not own |
+|---|---|---|
+| **Platform** | AI/backend behavior, storage, data ownership, infrastructure, privacy/security enforcement, and Product-facing contracts | screen layout, interaction presentation, or end-to-end release proof |
+| **Product** | user journey, screens, interaction, accessibility behavior, and design-system consumption/foundation | backend persistence, service contracts, or cross-track release proof |
+| **Integration** | contract wiring between completed Platform and Product slices, end-to-end states/failures, canonical preview, combined verification, and release readiness | inventing Platform capability or Product experience already owned by another slice |
+
+Placement rules:
+
+- Every planned task has exactly one slice owner.
+- Cross-cutting concerns such as privacy, accessibility, performance, and verification are acceptance constraints applied to the owning task; they are not additional slices.
+- Platform precedes Product only when Product depends on an unsettled contract. Independent Product foundation may proceed when its inputs are stable.
+- Integration starts only when its named Platform producer and Product consumer are ready.
+- Use one primary Linear issue and one conductor by default. Create a sub-issue or separate worktree only for an independently reviewable outcome, distinct owner, real dependency boundary, or separately shippable slice; it remains under the same cycle and conductor and cannot create another persistent Goal.
+- Quick single-area work may state its single slice in one line instead of producing a Work Map.
+
 ## Work-in-progress boundaries
 
 - One active implementation issue at a time.
-- At most one discovery-only issue may coexist when it has no overlapping files, decisions, dependencies, or approval path.
+- Discovery required for the active outcome stays inside the same primary issue. A second discovery issue cannot coexist in the active cycle.
 - No new Scope, Plan, bug, cleanup, or documentation initiative merely because CI, a device check, or Baah is unavailable.
 - Newly discovered adjacent work is recorded once in Linear and left unstarted unless it blocks the active acceptance criteria.
 - A blocker may justify a bounded repair inside the same approved outcome. A materially different outcome returns to Scope.
@@ -153,6 +209,29 @@ Baah is asked to assess only matters the agent cannot establish reliably through
 
 An earlier physical-device checkpoint is allowed only when a named hardware uncertainty blocks further implementation. The request must identify the exact revision, action, expected observation, and decision unlocked.
 
+### Initial QA-readiness gate
+
+The first candidate may reach Baah only when all applicable items pass:
+
+1. Approved acceptance criteria are mapped to concrete evidence.
+2. Narrow and complete applicable verification layers pass on the candidate revision.
+3. Blocking code-review findings are resolved.
+4. Platform, Product, and Integration slices required by the issue are complete.
+5. Device-facing work is committed, integrated, and pushed to canonical preview.
+6. The served or installed build is confirmed as that exact revision.
+7. Agent-owned simulator, accessibility, preview, and smoke checks pass for the affected journey.
+8. Known limitations and intentionally inapplicable checks are explicit and do not contradict acceptance.
+9. Linear records the candidate revision, evidence, remaining risk, and exact Baah observation requested.
+
+Failure of any applicable item returns to autonomous Build/repair. It does not produce a partial QA request.
+
+### Device coverage
+
+- Automated and simulator evidence covers every supported iPhone/iPad configuration named by the verification matrix.
+- Baah performs physical QA only on device classes whose acceptance depends on hardware or perceptual judgment not otherwise established.
+- One final interaction may contain a short, explicitly separated checklist for more than one required device; this remains one QA gate, not repeated exploratory rounds.
+- A defect on either device class quarantines the affected acceptance criterion and follows the same repair-release gate before another request.
+
 ### One-observation defect quarantine
 
 When Baah reports a defect once, that observation is sufficient to quarantine the candidate. The conductor must not ask Baah to repeat, reconfirm, further characterize, or periodically retest the same defect while engineering evidence remains incomplete.
@@ -171,6 +250,21 @@ The defect enters `REPAIR_QUARANTINE` and may return to `AWAITING_BAAH_QA` only 
 10. Commit, integrate, and push the exact replacement revision to canonical preview.
 11. Confirm the served/installed revision and complete an agent-owned smoke test of the failed journey.
 12. Provide Baah one concise retest request naming the original failure, replacement revision, evidence, exact action, and expected result.
+
+The authoritative repair transition sequence is:
+
+```text
+Baah defect observation
+→ REPAIR_QUARANTINE
+→ bounded repair Goal
+→ targeted reproduction and diagnosis
+→ BUILDING replacement
+→ VERIFYING repair-release evidence
+→ PUBLISHING exact replacement
+→ agent smoke check
+→ QA_READY Goal completion
+→ Baah focused retest
+```
 
 If the agent cannot establish sufficient evidence for any gate item, the issue remains quarantined or becomes `BLOCKED`. It is not returned to Baah as an exploratory test. Instrumentation may be added to the replacement build, but Baah is involved again only when that instrumentation is part of a deliberate, evidence-backed physical-device experiment that cannot be performed elsewhere and whose result unlocks a specific next action.
 
@@ -252,6 +346,23 @@ Implementation of this design will:
 - encode the work-in-progress limits and verification layers in `docs/workflow.md`, `AGENTS.md`, `CLAUDE.md`, and the Taisa orchestrator skill;
 - add workflow verification checks for the new invariants.
 
+The reusable Goal template must require:
+
+- primary Linear issue and milestone context;
+- one terminal outcome for the current run;
+- current cycle state and exact entry evidence;
+- approved kickoff or separate Scope/Plan evidence;
+- Platform/Product/Integration slice ownership where applicable;
+- branch/worktree and canonical preview baseline;
+- acceptance criteria and verification matrix;
+- permitted external mutations and prohibited actions;
+- repair-attempt evidence and quarantine state when applicable;
+- next Baah-controlled gate;
+- explicit no-successor-work, no-unchanged-polling, and no-silent-approval clauses; and
+- completion output with exact commits, checks, unresolved risk, and recommended next outcome when closing out.
+
+Workflow verification must reject a Goal template that lacks any mandatory field, contains an unbounded product-completion objective, instructs automatic successor selection, permits unchanged-state polling, or leaves a Goal active solely to wait for Baah/external state.
+
 Existing active work, branches, worktrees, approvals, and Linear history will be preserved. The redesign changes how future work advances; it does not silently approve, merge, delete, or restart current work.
 
 ## Transition from the paused goals
@@ -293,6 +404,19 @@ The transition ledger records a baseline from the two retired goals, and each bo
 
 Required targets are one active conductor, one implementation issue, zero unchanged-state polling turns, zero unverified QA requests, and no more than one Baah retest request per repair-release-gate pass. Credit consumption is reviewed at cycle closeout when account-level usage is available, but delivery decisions do not consume credits merely to measure credits.
 
+## Next-outcome priority
+
+At closeout, rank candidate outcomes in this order:
+
+1. Unresolved release-blocking defect or data/security/privacy risk.
+2. Dependency required by an already approved or committed milestone outcome.
+3. Missing acceptance criterion preventing the current milestone from completing.
+4. Highest user value among otherwise unblocked approved work.
+5. Reliability, accessibility, maintainability, or cost reduction with concrete evidence.
+6. Cosmetic refinement and optional enhancement.
+
+Within the same rank, prefer the outcome that unlocks more downstream work; then the one with lower delivery risk; then the smaller independently valuable slice. The recommendation names the evidence and tie-breaker used.
+
 ## Non-device terminal paths
 
 - Backend, infrastructure, tooling, and non-visual documentation issues skip canonical device preview and Baah physical QA unless their approved acceptance criteria require it.
@@ -320,6 +444,9 @@ Required targets are one active conductor, one implementation issue, zero unchan
 - Full orientation is not repeated during a stable issue cycle without a material state change.
 - Current work and history remain preserved while the old loops remain paused.
 - The pre-Build intake owner, exclusive conductor states, transition ledger, non-device path, and efficiency targets are explicit and verifiable.
+- Goal runs terminate at a named bounded outcome and never remain active solely for a human or external wait.
+- Platform, Product, and Integration tasks have exclusive ownership and stay under one issue-bounded conductor unless Baah explicitly authorizes otherwise.
+- Fast/high-risk classification, material-change reapproval, first-candidate QA readiness, device coverage, repair transitions, next-outcome ranking, and Goal-template validation are deterministic.
 
 ## Non-goals
 
