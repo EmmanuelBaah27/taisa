@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Status:** Proposed
+**Status:** Approved
 **Last updated:** 2026-10-08
 
 **Goal:** Replace Taisa's overlapping persistent Product and Linear loops with one verified, issue-bounded delivery workflow that minimizes Baah touchpoints and never consumes active Goal turns merely to wait.
