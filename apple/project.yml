@@ -70,6 +70,8 @@ targets:
         product: TaisaSecurity
       - package: TaisaFoundation
         product: TaisaVoice
+      - package: TaisaFoundation
+        product: TaisaConversations
   TaisaPreview:
     type: application
     platform: iOS
@@ -162,6 +164,8 @@ targets:
         product: TaisaAudio
       - package: TaisaFoundation
         product: TaisaNetworking
+      - package: TaisaFoundation
+        product: TaisaConversations
   TaisaPersonalTests:
     type: bundle.unit-test
     platform: iOS
@@ -195,6 +199,8 @@ targets:
         product: TaisaSecurity
       - package: TaisaFoundation
         product: TaisaVoice
+      - package: TaisaFoundation
+        product: TaisaConversations
   TaisaUITests:
     type: bundle.ui-testing
     platform: iOS

@@ -10,10 +10,11 @@ struct AppRootView: View {
             case .startup:
                 ProgressView("Opening Taisa…")
             case .ready:
-                if let model = runtime.homeModel {
+                if let model = runtime.homeModel, let conversationsModel = runtime.conversationsModel {
                     PrimaryAppShell(
                         model: runtime.primaryShellModel,
                         homeModel: model,
+                        conversationsModel: conversationsModel,
                         openRecovery: runtime.requireRecovery,
                         openPersonalQA: personalQAAction
                     )

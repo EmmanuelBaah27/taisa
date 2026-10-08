@@ -2,6 +2,8 @@ import Observation
 import SwiftUI
 import TaisaDesignSystem
 import TaisaHome
+import TaisaConversations
+import TaisaStorage
 
 @MainActor
 @Observable
@@ -43,11 +45,18 @@ final class PrimaryAppShellModel {
         pendingEntryIntent = nil
         conversationRoute = nil
     }
+
+    func openConversation(id: String, title: String) {
+        guard conversationRoute == nil else { return }
+        conversationRoute = ConversationRoute(id: id, localTitle: title)
+        pendingEntryIntent = nil
+    }
 }
 
 struct PrimaryAppShell: View {
     @State var model: PrimaryAppShellModel
     let homeModel: HomeModel
+    let conversationsModel: ConversationsModel
     var openRecovery: () -> Void = {}
     var openPersonalQA: (() -> Void)?
 
@@ -100,13 +109,12 @@ struct PrimaryAppShell: View {
                 showsRecentConversations: false
             )
         case .conversations:
-            ContentUnavailableView(
-                "No conversations yet",
-                systemImage: "bubble.left.and.bubble.right",
-                description: Text("Completed conversations and saved drafts will appear here.")
+            ConversationsView(
+                model: conversationsModel,
+                resume: { model.openConversation(id: $0.conversationID, title: "Draft") },
+                open: { model.openConversation(id: $0.id, title: $0.title) },
+                openRecovery: openRecovery
             )
-            .navigationTitle("Conversations")
-            .accessibilityIdentifier("conversations.root")
         case .you:
             ContentUnavailableView(
                 "You",
