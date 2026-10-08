@@ -14,6 +14,30 @@ import XCTest
         )
     }
 
+    func testPriorWeekReviewStaysPresented() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--taisa-personal-device-qa"]
+        app.launch()
+
+        let qa = app.buttons["foundation.personal-qa.action"]
+        XCTAssertTrue(qa.waitForExistence(timeout: 10))
+        qa.tap()
+
+        let combinedHome = app.buttons["personal-qa.combined-home.action"]
+        XCTAssertTrue(combinedHome.waitForExistence(timeout: 10))
+        combinedHome.tap()
+
+        let review = app.buttons["Review 2 unfinished items"]
+        XCTAssertTrue(review.waitForExistence(timeout: 10))
+        review.tap()
+
+        let done = app.buttons["Done"]
+        XCTAssertTrue(done.waitForExistence(timeout: 2))
+        _ = XCTWaiter.wait(for: [XCTestExpectation(description: "presentation stability interval")], timeout: 2)
+        XCTAssertTrue(done.exists)
+        XCTAssertTrue(done.isHittable)
+    }
+
     func testExplicitQALaunchCanCreateOnceAndInspectAfterRelaunch() {
         let app = XCUIApplication()
         app.launchArguments = ["--taisa-personal-device-qa"]

@@ -21,13 +21,14 @@ test('native Product baseline is iOS 26 and functionality-first', async () => {
   assert.doesNotMatch(scope, /baseline freeze.*prerequisite/i);
 });
 
-test('This Week uses one stable sheet route for planning and prior-week review', async () => {
-  const source = await readFile('apple/TaisaApp/Home/ThisWeekSection.swift', 'utf8');
+test('Home owns one stable sheet route for planning and prior-week review', async () => {
+  const home = await readFile('apple/TaisaApp/Home/HomeView.swift', 'utf8');
+  const section = await readFile('apple/TaisaApp/Home/ThisWeekSection.swift', 'utf8');
 
-  assert.match(source, /@State private var activeSheet: ThisWeekSheet\?/);
-  assert.match(source, /case planning\(WeeklyWorkItem\)/);
-  assert.match(source, /case priorWeekReview\(unresolvedCount: Int\)/);
-  assert.equal(source.match(/\.sheet\(/g)?.length, 1);
-  assert.match(source, /\.sheet\(item: \$activeSheet\)/);
-  assert.doesNotMatch(source, /showsPriorWeekReview|planningItem/);
+  assert.match(home, /@State private var activeSheet: ThisWeekSheet\?/);
+  assert.match(home, /\.sheet\(item: \$activeSheet\)/);
+  assert.equal(home.match(/\.sheet\(/g)?.length, 1);
+  assert.doesNotMatch(section, /@State|\.sheet\(/);
+  assert.match(section, /openPlanning: \(WeeklyWorkItem\) -> Void/);
+  assert.match(section, /openPriorWeekReview: \(Int\) -> Void/);
 });
