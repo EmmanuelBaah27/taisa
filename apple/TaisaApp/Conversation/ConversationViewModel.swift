@@ -84,9 +84,10 @@ final class ConversationViewModel {
 
     static func preview(
         composer: ComposerState,
+        messages: [MessageRecord] = [],
         dismiss: @escaping @MainActor () -> Void = {}
     ) -> ConversationViewModel {
-        ConversationViewModel(
+        let model = ConversationViewModel(
             conversationID: "00000000-0000-0000-0000-000000000001",
             title: "New conversation",
             entryIntent: nil,
@@ -98,6 +99,8 @@ final class ConversationViewModel {
             ),
             dismiss: dismiss
         )
+        model.messages = messages
+        return model
     }
 
     func start() async {

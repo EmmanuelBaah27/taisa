@@ -19,6 +19,8 @@ The approved native conversation experience adds business-free SwiftUI surfaces 
 
 Native semantic additions are `raisedSurface`, `selectedSurface`, `destructive`, and `warning`; `TaisaRadius` supplies control, panel, composer, and circular roles. Composer/dock material falls back to `raisedSurface` when Reduce Transparency is enabled. Frequent composer actions do not add decorative motion; Product presentation may use restrained native opacity/state transitions and must honor Reduce Motion.
 
+The native preview catalog registers deterministic, network-free conversation fixtures for list, draft, history, recording, paused, typing, transcription, coaching, Reply, permission, retry, correction, Accessibility XXXL, and iPad-width states. Preview composition uses injected local clients only; it never constructs `ConversationRuntimeFactory`, audio capture, or gateway transports. These fixtures are the inspectable visual baseline before an exact revision is integrated into `preview/taisa` for signed-device QA.
+
 The React Native inventory below remains authoritative for the existing mobile client during the controlled migration. It is not a specification for recreating React Native visuals in SwiftUI.
 
 ---

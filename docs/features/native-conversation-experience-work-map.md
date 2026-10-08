@@ -1,7 +1,7 @@
 # Native Conversation Experience — Work Map
 
 **Status:** Active — Build
-**Last updated:** 2026-10-07
+**Last updated:** 2026-10-08
 **Tier:** Full
 
 **Build baseline:** `preview/taisa@4582a5e7d1c446275ac2a83c63a33ce335e4f8e5`, with accepted Home ancestor `44b5a08a8727729dea55a6238760d85f2dc0bff3` and native voice ancestor `01063fa725d067e4aa81befafa59f8fb1d995ac7` verified in history.
@@ -34,12 +34,12 @@ flowchart LR
 
 | Slice | Owner | Outcome | Depends on | Approval point | Size | Status |
 |---|---|---|---|---|---|---|
-| 1. Durable conversation and draft records | Platform | Multiple voice/text drafts, lifecycle state, titles, corrections, and deletion survive relaunch securely | encrypted native storage | Scope + Plan | L | Not started |
-| 2. Text and voice turn orchestration | Platform | Existing voice coordinator and a text companion expose one durable conversation contract without duplicate paid work | Slice 1; native audio/streaming foundation | Scope + Plan | L | Not started |
-| 3. Primary navigation and global dock | Product | Home, Conversations, and You share one persistent Talk to Taisa affordance | functional Home; Product design handoff | Plan | M | Not started |
-| 4. Conversations history and drafts | Product | Drafts appear above completed conversations and support resume, discard, rename, and delete paths | Slice 1; Product design handoff | Plan | M | Not started |
-| 5. Live conversation experience | Product | Voice-first full-screen conversation supports keyboard replacement, deliberate Send, Reply, correction, and accessible states | Slice 2; Product design handoff | Plan | XL | Not started |
-| 6. Recovery, privacy, and end-to-end verification | Integration | Interruption, failure, cleanup, navigation, and device behavior work as one verified flow | Slices 1–5 | Review + QA + Ship | L | Not started |
+| 1. Durable conversation and draft records | Platform | Multiple voice/text drafts, lifecycle state, titles, corrections, and deletion survive relaunch securely | encrypted native storage | Scope + Plan | L | Complete |
+| 2. Text and voice turn orchestration | Platform | Existing voice coordinator and a text companion expose one durable conversation contract without duplicate paid work | Slice 1; native audio/streaming foundation | Scope + Plan | L | Complete |
+| 3. Primary navigation and global dock | Product | Home, Conversations, and You share one persistent Talk to Taisa affordance | functional Home; Product design handoff | Plan | M | Complete |
+| 4. Conversations history and drafts | Product | Drafts appear above completed conversations and support resume, discard, rename, and delete paths | Slice 1; Product design handoff | Plan | M | Complete |
+| 5. Live conversation experience | Product | Voice-first full-screen conversation supports keyboard replacement, deliberate Send, Reply, correction, and accessible states | Slice 2; Product design handoff | Plan | XL | Complete |
+| 6. Recovery, privacy, and end-to-end verification | Integration | Interruption, failure, cleanup, navigation, and device behavior work as one verified flow | Slices 1–5 | Review + QA + Ship | L | In progress |
 
 ## Recommended pickup order
 
@@ -53,7 +53,7 @@ Platform slices 1–2 and the Product design handoff may proceed in parallel aft
 
 **Critical path:** durable records → turn orchestration → live conversation wiring → recovery/privacy verification → canonical preview → Baah device QA.
 
-**Progress:** overall 0/6 · Platform 0/2 · Product 0/3 · Integration 0/1. Scope, design, and Plan are approved; implementation is active on `feature/native-conversation-experience`.
+**Progress:** overall 5/6 · Platform 2/2 · Product 3/3 · Integration 0/1. Deterministic preview verification is active on `feature/native-conversation-experience`; signed-device QA and Ship remain open.
 
 ## 1. Platform — durable conversation and draft records
 
