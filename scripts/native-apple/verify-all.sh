@@ -10,7 +10,7 @@ mkdir -p "${artifact_root}"
 reset_simulator_app() {
   local simulator="$1"
   local bundle_identifier="$2"
-  local boot_timeout_seconds="${TAISA_SIMULATOR_BOOT_TIMEOUT_SECONDS:-90}"
+  local boot_timeout_seconds="${TAISA_SIMULATOR_BOOT_TIMEOUT_SECONDS:-300}"
   xcrun simctl boot "${simulator}" >/dev/null 2>&1 || true
   if ! /usr/bin/perl -e 'alarm shift; exec @ARGV' "${boot_timeout_seconds}" xcrun simctl bootstatus "${simulator}" -b >/dev/null; then
     echo "Simulator ${simulator} did not finish booting within ${boot_timeout_seconds}s." >&2
