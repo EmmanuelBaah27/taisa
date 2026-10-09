@@ -63,6 +63,13 @@ function classifyContentFreeProviderFailure(
   error: unknown,
 ): OperationalFailureClass | 'invalid_output' | null {
   if (error instanceof ZodError) return 'invalid_output';
+  if (
+    error !== null
+    && typeof error === 'object'
+    && (error as Record<string, unknown>).type === 'length_finish_reason_error'
+  ) {
+    return 'invalid_output';
+  }
   return classifyOperationalProviderFailure(error);
 }
 

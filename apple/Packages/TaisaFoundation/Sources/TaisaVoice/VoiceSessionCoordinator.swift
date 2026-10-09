@@ -182,6 +182,10 @@ public actor VoiceSessionCoordinator {
         try await send(.send(finalized))
     }
 
+    public func restartFailedCoaching(with replacement: VoiceTurnRecord) async throws {
+        try await send(.restartFailedCoaching(replacement))
+    }
+
     public func connectivityChanged(isAvailable: Bool) async throws {
         guard isAvailable else { return }
         if durable.stage == .capture,

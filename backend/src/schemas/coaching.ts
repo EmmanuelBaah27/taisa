@@ -154,8 +154,10 @@ const CoachingProposalSchema = z
   .array(z.union([MemoryDeltaSchema, OutcomeDeltaSchema]))
   .max(COACHING_GATEWAY_LIMITS.maxProposals);
 const EmptyProposalSchema = z.tuple([]);
-const TitleSuggestionSchema = z.string().trim().min(1)
-  .max(COACHING_GATEWAY_LIMITS.maxTitleSuggestionLength).nullable().optional();
+function titleSuggestionSchema() {
+  return z.string().trim().min(1)
+    .max(COACHING_GATEWAY_LIMITS.maxTitleSuggestionLength).nullable().optional();
+}
 
 export type CoachingResponsePayload = CoachingResponseDecision & {
   reply: string;
@@ -170,7 +172,7 @@ export const CoachingResponsePayloadSchema = z.discriminatedUnion('mode', [
     reply: StatementSchema,
     stance: CoachingStanceSchema,
     proposals: CoachingProposalSchema,
-    titleSuggestion: TitleSuggestionSchema,
+    titleSuggestion: titleSuggestionSchema(),
   }).strict(),
   z.object({
     mode: z.literal('clarify'),
@@ -179,7 +181,7 @@ export const CoachingResponsePayloadSchema = z.discriminatedUnion('mode', [
     reply: StatementSchema,
     stance: z.null(),
     proposals: EmptyProposalSchema,
-    titleSuggestion: TitleSuggestionSchema,
+    titleSuggestion: titleSuggestionSchema(),
   }).strict(),
   z.object({
     mode: z.literal('redirect'),
@@ -188,7 +190,7 @@ export const CoachingResponsePayloadSchema = z.discriminatedUnion('mode', [
     reply: StatementSchema,
     stance: z.null(),
     proposals: EmptyProposalSchema,
-    titleSuggestion: TitleSuggestionSchema,
+    titleSuggestion: titleSuggestionSchema(),
   }).strict(),
 ]) as z.ZodType<CoachingResponsePayload>;
 
