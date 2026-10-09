@@ -2,7 +2,7 @@
 
 ## Mandatory startup
 
-For every scoped build, fix, plan, review, or ship task:
+At the start of every scoped delivery cycle:
 
 1. Read `docs/workflow.md` and `.agents/skills/taisa-workflow/SKILL.md` completely.
 2. Read `docs/project-memory.md`, then inspect only the accepted decisions, reusable learnings, and canonical domain documents relevant to the task.
@@ -11,6 +11,10 @@ For every scoped build, fix, plan, review, or ship task:
 5. Reconcile contradictions before modifying product code.
 6. State the work tier, Linear issue/milestone, current stage, branch, blocker, next action, and next Baah approval gate.
 7. Invoke the Superpowers process skill required by the Taisa orchestrator.
+
+Within a stable cycle, re-read only state whose issue, approval, dependency, branch/worktree,
+PR, CI, preview, or remote revision changed. Do not repeat global orientation merely because
+a new turn or bounded Goal run began.
 
 Read-only questions require orientation but do not create branches or workflow artifacts.
 
@@ -25,9 +29,26 @@ non-duplicate Linear issue before work; activation does not bypass approval gate
 Linear is the sole live authority. It owns roadmap, task intake, priority, ownership, stage,
 dependencies, blockers, Scope, Plan, acceptance, discussion, and gate evidence.
 `docs/workflow.md` and the Taisa orchestrator define how work is performed; Git owns
-versioned technical truth. Baah approves Scope, Plan, physical-device judgment, and Ship.
+versioned technical truth. Quick and ordinary Standard work uses one explicit kickoff bundle
+to approve Scope and Plan together. Full or high-risk work uses separate Scope and Plan
+approval. Baah retains physical-device judgment and Ship.
 The agent owns routine Linear, Git, GitHub, verification, and code-coupled documentation
 housekeeping within those approvals.
+
+One delivery cycle has one primary Linear issue and one accountable conductor. Platform,
+Product, and Integration remain exclusive internal work slices under that conductor, not
+separate persistent Goals. Product work still uses the design-handoff process for UI design
+and implementation readiness.
+
+After approval, use `.agents/skills/taisa-workflow/templates/bounded-goal.md` for one BUILD,
+REPAIR, or SHIP run. A Goal completes at its named terminal outcome and never stays active
+solely to wait for Baah or unchanged CI, device, or service state. It never selects successor
+work or infers approval.
+
+One Baah defect observation enters `REPAIR_QUARANTINE`. The agent owns reproduction,
+diagnosis, fix, verification, exact preview publication, and smoke testing before one focused
+retest. Until the repair-release gate passes, the issue is `Unfixed; blocking; unshippable`.
+Do not use Baah as a repeated exploratory tester.
 
 If Linear is unavailable, continue only already-approved work supported by trusted recent
 Scope/Plan context and Git evidence. Do not start or advance work, change a blocker, or claim

@@ -8,5 +8,9 @@ Linear is the sole live authority for roadmap, task intake, priority, ownership,
 dependencies, blockers, Scope, Plan, acceptance, discussion, and gates. If Linear is
 unavailable, follow the offline fallback in `AGENTS.md`; do not infer or advance approvals.
 
+Taisa uses one issue-bounded conductor and bounded Goal runs that terminate at human or
+external gates. Platform, Product, and Integration are internal work slices; UI design and
+implementation readiness remains part of Product work through the canonical workflow.
+
 This file exists only for supported consumers that discover `CLAUDE.md`. Do not add product,
 architecture, workflow, or package instructions here; update the canonical source instead.
