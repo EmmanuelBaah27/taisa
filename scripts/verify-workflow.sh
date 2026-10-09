@@ -139,6 +139,40 @@ for forbidden in \
   fi
 done
 
+for recommendation_file in \
+  docs/workflow.md \
+  .agents/skills/taisa-workflow/SKILL.md \
+  .agents/skills/taisa-workflow/templates/bounded-goal.md; do
+  require_workflow_pattern "$recommendation_file" 'exactly one.*Recommended next outcome|Recommended next outcome.*exactly one' \
+    'exactly-one Recommended next outcome contract'
+  require_workflow_pattern "$recommendation_file" 'exactly one.*No next outcome recommended|No next outcome recommended.*exactly one' \
+    'exactly-one no-safe-candidate recommendation form'
+  require_workflow_pattern "$recommendation_file" 'priorit(y|ies).*blocker.*dependenc.*approval|approval.*dependenc.*blocker.*priorit' \
+    'Linear recommendation evidence inputs'
+  require_workflow_pattern "$recommendation_file" 'Recommended next outcome.*Reason:.*Next Baah gate:' \
+    'recommended-outcome reason and gate form'
+  require_workflow_pattern "$recommendation_file" 'No next outcome recommended.*Reason:.*Next Baah gate:' \
+    'no-outcome reason and gate form'
+  require_workflow_pattern "$recommendation_file" 'never provide an alternatives list' \
+    'no-alternatives recommendation boundary'
+  require_workflow_pattern "$recommendation_file" 'explicit.*kickoff|kickoff.*explicit' \
+    'explicit successor kickoff boundary'
+done
+
+for recommendation_file in \
+  docs/workflow.md \
+  .agents/skills/taisa-workflow/SKILL.md \
+  .agents/skills/taisa-workflow/templates/bounded-goal.md; do
+  for mutation_boundary in \
+    'never reopen or start the successor issue' \
+    'never create the successor branch or Goal' \
+    'never change the successor status' \
+    'never begin the successor work'; do
+    require_workflow_pattern "$recommendation_file" "$mutation_boundary" \
+      "successor mutation prohibition: $mutation_boundary"
+  done
+done
+
 rg -q '31b0d99c-6f74-4c9c-af2a-12e6e25aabe0' \
   .agents/skills/taisa-workflow/SKILL.md || fail "Taisa Linear project ID is missing"
 rg -q 'e95356d8-17f7-4700-bdfe-222782bea546' \
