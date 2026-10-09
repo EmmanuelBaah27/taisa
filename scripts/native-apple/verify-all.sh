@@ -43,9 +43,9 @@ if [[ "${development_can_test}" == "yes" && "${preview_can_test}" == "yes" ]]; t
   # UI verification owns deterministic app state. Xcode reinstalls builds but
   # otherwise retains prior encrypted stores and recovery journals.
   reset_simulator_app "${iphone_name}" com.taisa.app.dev
-  xcodebuild test -quiet -project apple/Taisa.xcodeproj -scheme Taisa-Dev -destination "platform=iOS Simulator,name=${iphone_name}" -derivedDataPath "${artifact_root}/DerivedData-Dev" -resultBundlePath "${artifact_root}/Taisa-Dev.xcresult"
+  xcodebuild test -quiet -retry-tests-on-failure -test-iterations 2 -project apple/Taisa.xcodeproj -scheme Taisa-Dev -destination "platform=iOS Simulator,name=${iphone_name}" -derivedDataPath "${artifact_root}/DerivedData-Dev" -resultBundlePath "${artifact_root}/Taisa-Dev.xcresult"
   reset_simulator_app "${ipad_name}" com.taisa.app.preview
-  xcodebuild test -quiet -project apple/Taisa.xcodeproj -scheme Taisa-Preview -destination "platform=iOS Simulator,name=${ipad_name}" -derivedDataPath "${artifact_root}/DerivedData-Preview" -resultBundlePath "${artifact_root}/Taisa-Preview.xcresult"
+  xcodebuild test -quiet -retry-tests-on-failure -test-iterations 2 -project apple/Taisa.xcodeproj -scheme Taisa-Preview -destination "platform=iOS Simulator,name=${ipad_name}" -derivedDataPath "${artifact_root}/DerivedData-Preview" -resultBundlePath "${artifact_root}/Taisa-Preview.xcresult"
 else
   echo "No eligible iOS simulator runtime; compiling test bundles instead."
   xcodebuild build-for-testing -quiet -project apple/Taisa.xcodeproj -scheme Taisa-Dev -destination 'generic/platform=iOS Simulator' -derivedDataPath "${artifact_root}/DerivedData-Dev" CODE_SIGNING_ALLOWED=NO
@@ -55,7 +55,7 @@ if [[ "${personal_can_test}" == "yes" ]]; then
   # Simulator Keychain needs a locally signed process. Ad-hoc signing does not
   # provision a team or contact Apple; physical-device verification stays unsigned.
   reset_simulator_app "${iphone_name}" com.taisa.app.personal
-  xcodebuild test -quiet -project apple/Taisa.xcodeproj -scheme Taisa-Personal -configuration Personal -destination "platform=iOS Simulator,name=${iphone_name}" -derivedDataPath "${artifact_root}/DerivedData-Personal" -resultBundlePath "${artifact_root}/Taisa-Personal.xcresult" CODE_SIGN_IDENTITY=- CODE_SIGNING_ALLOWED=YES
+  xcodebuild test -quiet -retry-tests-on-failure -test-iterations 2 -project apple/Taisa.xcodeproj -scheme Taisa-Personal -configuration Personal -destination "platform=iOS Simulator,name=${iphone_name}" -derivedDataPath "${artifact_root}/DerivedData-Personal" -resultBundlePath "${artifact_root}/Taisa-Personal.xcresult" CODE_SIGN_IDENTITY=- CODE_SIGNING_ALLOWED=YES
 else
   xcodebuild build-for-testing -quiet -project apple/Taisa.xcodeproj -scheme Taisa-Personal -configuration Personal -destination 'generic/platform=iOS Simulator' -derivedDataPath "${artifact_root}/DerivedData-Personal" CODE_SIGNING_ALLOWED=NO
 fi

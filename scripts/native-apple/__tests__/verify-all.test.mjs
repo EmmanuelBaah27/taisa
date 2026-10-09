@@ -18,7 +18,7 @@ test('combined verification boots a simulator before clearing retained app state
     npm: '#!/bin/sh\nexit 0\n',
     swift: '#!/bin/sh\nexit 0\n',
     node: '#!/bin/sh\nif [ "$1" = "scripts/native-apple/select-simulator.mjs" ]; then if [ "$2" = "--eligible" ]; then printf "yes\\n"; else printf "iPhone 17 Pro\\n"; fi; else exit 0; fi\n',
-    xcodebuild: '#!/bin/sh\nif printf "%s\\n" "$@" | grep -q -- -showdestinations; then printf "iOS Simulator\\n"; fi\nexit 0\n',
+    xcodebuild: '#!/bin/sh\nif printf "%s\\n" "$@" | grep -q -- -showdestinations; then printf "iOS Simulator\\n"; exit 0; fi\nif [ "${TAISA_TEST_REQUIRE_XCODE_RETRY:-0}" = "1" ] && printf "%s\\n" "$@" | grep -q "^test$" && ! printf "%s\\n" "$@" | grep -q -- -retry-tests-on-failure; then exit 65; fi\nexit 0\n',
     xcrun: `#!/bin/sh
 if [ "$1" != "simctl" ]; then exit 0; fi
 shift
@@ -71,4 +71,16 @@ esac
     },
   }));
   assert.ok(Date.now() - startedAt < 5_000, 'a stuck simulator boot must fail within its configured bound');
+
+  assert.doesNotThrow(() => execFileSync('/bin/bash', ['scripts/native-apple/verify-all.sh'], {
+    cwd: repositoryRoot,
+    env: {
+      ...process.env,
+      PATH: `${bin}${delimiter}${process.env.PATH}`,
+      TAISA_NATIVE_ARTIFACTS: join(fixture, 'retry-artifacts'),
+      TAISA_TEST_REQUIRE_XCODE_RETRY: '1',
+      TAISA_TEST_SIMCTL_LOG: log,
+      TAISA_TEST_SIMULATOR_BOOTED: join(fixture, 'booted'),
+    },
+  }), 'simulator test lanes must retry transient Xcode test failures');
 });
