@@ -78,7 +78,7 @@ then output exactly one **Recommended next outcome** or exactly one **No next ou
 - **Recommended next outcome:** `<one outcome>` — **Reason:** `<evidence>` — **Next Baah gate:** `<explicit gate>`
 - **No next outcome recommended:** `<blocking condition>` — **Reason:** `<evidence>` — **Next Baah gate:** `<explicit gate>`
 
-Never output both forms or an alternatives list. A recommendation is advisory: do not reopen or start
-the successor issue; do not create its branch or Goal, change its status, or begin its work
-without Baah explicitly approving the successor kickoff. Complete the Goal after reporting.
+Never output both forms. Never provide an alternatives list. A recommendation is advisory.
+Never reopen or start the successor issue. Never create the successor branch or Goal.
+Never change the successor status. Never begin the successor work without Baah explicitly approving the successor kickoff. Complete the Goal after reporting.
 Do not remain active solely for waiting on Baah or external state.

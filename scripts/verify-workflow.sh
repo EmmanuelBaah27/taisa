@@ -153,7 +153,7 @@ for recommendation_file in \
     'recommended-outcome reason and gate form'
   require_workflow_pattern "$recommendation_file" 'No next outcome recommended.*Reason:.*Next Baah gate:' \
     'no-outcome reason and gate form'
-  require_workflow_pattern "$recommendation_file" 'alternatives? list|list alternative' \
+  require_workflow_pattern "$recommendation_file" 'never provide an alternatives list' \
     'no-alternatives recommendation boundary'
   require_workflow_pattern "$recommendation_file" 'explicit.*kickoff|kickoff.*explicit' \
     'explicit successor kickoff boundary'
@@ -164,10 +164,10 @@ for recommendation_file in \
   .agents/skills/taisa-workflow/SKILL.md \
   .agents/skills/taisa-workflow/templates/bounded-goal.md; do
   for mutation_boundary in \
-    'must not reopen or start|never reopen or start|do not reopen or start' \
-    'successor branch or Goal|branch or Goal.*successor|its branch or Goal' \
-    'change successor status|successor status.*change|change its status' \
-    'begin successor work|successor work.*begin|begin its work'; do
+    'never reopen or start the successor issue' \
+    'never create the successor branch or Goal' \
+    'never change the successor status' \
+    'never begin the successor work'; do
     require_workflow_pattern "$recommendation_file" "$mutation_boundary" \
       "successor mutation prohibition: $mutation_boundary"
   done
