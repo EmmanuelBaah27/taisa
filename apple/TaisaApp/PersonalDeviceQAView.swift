@@ -3,10 +3,15 @@ import SwiftUI
 import TaisaDesignSystem
 
 struct PersonalDeviceQAView: View {
+    var openProductVoice: (() -> Void)?
     @State private var harness: PersonalDeviceQA?
     @State private var evidence: PersonalDeviceQA.Evidence?
     @State private var busy = false
     @State private var failed = false
+
+    init(openProductVoice: (() -> Void)? = nil) {
+        self.openProductVoice = openProductVoice
+    }
 
     var body: some View {
         ScrollView {
@@ -33,6 +38,17 @@ struct PersonalDeviceQAView: View {
                     Task { await perform(create: true) }
                 }
                 .accessibilityIdentifier("personal-qa.create")
+                if let openProductVoice {
+                    TaisaText(
+                        role: .body,
+                        content: "Use the Product conversation to verify the recognized transcript and Taisa’s response. Platform diagnostics intentionally do not show conversation content."
+                    )
+                    .accessibilityIdentifier("personal-qa.voice-acceptance-guidance")
+                    TaisaButton(role: .primary, label: "Test transcript and response") {
+                        openProductVoice()
+                    }
+                    .accessibilityIdentifier("personal-qa.product-voice")
+                }
                 NavigationLink { RecoveryView() } label: {
                     TaisaText(role: .body, content: "Backup and recovery")
                 }

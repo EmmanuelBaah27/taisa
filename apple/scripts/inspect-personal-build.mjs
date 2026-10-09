@@ -241,6 +241,10 @@ export function inspectPersonalBuild(record, { run = runCommand, now = new Date(
   const appIdentifier = `${team}.${bundle}`;
   requireFact(info.CFBundleIdentifier === bundle, 'artifact bundle identifier must be com.taisa.app.personal');
   requireFact(info.TaisaEnvironment === 'personal', 'artifact environment must be personal');
+  let gatewayURL;
+  try { gatewayURL = new URL(info.TaisaVoiceGatewayURL); } catch {}
+  requireFact(gatewayURL?.protocol === 'https:' && Boolean(gatewayURL.hostname),
+    'artifact voice gateway must be a non-empty HTTPS URL');
   requireFact(String(info.CFBundleVersion) === record.appBuildNumber, 'artifact app build number mismatch');
   requireFact(String(info.CFBundleShortVersionString) === record.appVersion,
     'artifact app marketing version mismatch');

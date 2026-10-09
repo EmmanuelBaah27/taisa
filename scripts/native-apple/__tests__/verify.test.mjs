@@ -136,20 +136,32 @@ test('preview support is linked only by the preview target', async () => {
     'TaisaCore',
     'TaisaContracts',
     'TaisaDesignSystem',
+    'TaisaHome',
     'TaisaStorage',
     'TaisaCloudKit',
     'TaisaRecovery',
     'TaisaSecurity',
     'TaisaVoice',
+    'TaisaConversations',
+    'TaisaAudio',
+    'TaisaNetworking',
   ]);
   assert.deepEqual(result.previewProducts, [
     'TaisaCore',
     'TaisaContracts',
     'TaisaDesignSystem',
+    'TaisaHome',
     'TaisaPreviewSupport',
     'TaisaStorage',
     'TaisaVoice',
+    'TaisaConversations',
   ]);
+});
+
+test('preview includes the shared conversation entry contract', async () => {
+  const project = await readFile(join(repositoryRoot, 'apple/project.yml'), 'utf8');
+  const preview = project.slice(project.indexOf('  TaisaPreview:'), project.indexOf('  TaisaUnitTests:'));
+  assert.match(preview, /TaisaApp\/AppShell\/PrimaryDestination\.swift/);
 });
 
 test('CloudKit capability is isolated to development and production identities', async () => {
@@ -242,6 +254,10 @@ test('combined native verification and CI pin every required gate', async () => 
     resolve(repositoryRoot, '.github/workflows/design-system.yml'),
     'utf8',
   );
+  const combinedScript = await readFile(
+    resolve(repositoryRoot, 'scripts/native-apple/verify-all.sh'),
+    'utf8',
+  );
   const combined = packageJSON.scripts['verify:native-apple:all'];
 
   for (const required of [
@@ -274,6 +290,13 @@ test('combined native verification and CI pin every required gate', async () => 
 
   assert.match(designSystemWorkflow, /name: Design System Compliance/);
   assert.match(designSystemWorkflow, /npm run verify:native-design-system/);
+  for (const bundleIdentifier of [
+    'com.taisa.app.dev',
+    'com.taisa.app.preview',
+    'com.taisa.app.personal',
+  ]) {
+    assert.match(combinedScript, new RegExp(`reset_simulator_app.*${bundleIdentifier}`));
+  }
 });
 
 test('rejects unexpanded build identity placeholders', () => {

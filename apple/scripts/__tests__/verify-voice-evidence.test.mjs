@@ -136,7 +136,7 @@ test('rejects voice evidence that is not bound to signed Personal artifacts', ()
     durationMS: caseID.startsWith('performance.') ? 1_000 : null,
     peakMemoryMB: caseID.startsWith('performance.') ? 128 : null,
   })));
-  assert.deepEqual(validateSignedBuildBindings(evidence, records), []);
+  assert.deepEqual(validateSignedBuildBindings(evidence, records, { preferRetainedEvidence: true }), []);
   records[1].installedCommit = 'abcdefabcdefabcdefabcdefabcdefabcdefabcd';
   assert.match(validateSignedBuildBindings(evidence, records).join('\n'), /commit|installed/i);
 });

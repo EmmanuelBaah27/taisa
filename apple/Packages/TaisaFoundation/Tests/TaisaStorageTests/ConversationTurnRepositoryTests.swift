@@ -15,6 +15,107 @@ struct ConversationTurnRepositoryTests {
     private let turnID = "00000000-0000-0000-0000-000000000002"
     private let deviceID = "00000000-0000-0000-0000-000000000003"
 
+    @Test func voiceDraftRoundTripsItsTurnIdentityWithoutEnteringSyncJournal() async throws {
+        let fixture = try await makeFixture()
+        defer { fixture.remove() }
+        let turns = ConversationTurnRepository(store: fixture.store)
+        let conversations = ConversationRepository(store: fixture.store)
+        let turn = queuedTurn()
+        try await turns.checkpoint(
+            turn,
+            messages: [],
+            cleanup: nil,
+            context: .init(
+                id: "00000000-0000-0000-0000-000000000090",
+                deviceID: deviceID,
+                timestamp: 1
+            )
+        )
+        let journalCountBeforeDraft = try await ChangeJournal(store: fixture.store).pending(limit: 10).count
+        let draft = ConversationDraftRecord(
+            id: "00000000-0000-0000-0000-000000000091",
+            conversationID: conversationID,
+            inputMode: .voice,
+            text: nil,
+            voiceTurnID: turnID,
+            recoveryKind: .saved,
+            createdAtMS: 2,
+            updatedAtMS: 2
+        )
+
+        try await conversations.saveDraft(draft)
+
+        #expect(try await conversations.draft(id: draft.id) == draft)
+        #expect(try await ChangeJournal(store: fixture.store).pending(limit: 10).count == journalCountBeforeDraft)
+    }
+
+    @Test func deletingVoiceTurnCascadesItsDraft() async throws {
+        let fixture = try await makeFixture()
+        defer { fixture.remove() }
+        let turns = ConversationTurnRepository(store: fixture.store)
+        let conversations = ConversationRepository(store: fixture.store)
+        let turn = queuedTurn()
+        try await turns.checkpoint(
+            turn,
+            messages: [],
+            cleanup: nil,
+            context: .init(
+                id: "00000000-0000-0000-0000-000000000095",
+                deviceID: deviceID,
+                timestamp: 1
+            )
+        )
+        let draft = ConversationDraftRecord(
+            id: "00000000-0000-0000-0000-000000000096",
+            conversationID: conversationID,
+            inputMode: .voice,
+            text: nil,
+            voiceTurnID: turnID,
+            recoveryKind: .saved,
+            createdAtMS: 2,
+            updatedAtMS: 2
+        )
+        try await conversations.saveDraft(draft)
+
+        try await fixture.store.write { db in
+            try db.execute(sql: "DELETE FROM voice_turns WHERE id = ?", arguments: [turnID])
+        }
+
+        #expect(try await conversations.draft(id: draft.id) == nil)
+    }
+
+    @Test func messageRevisionRoundTripsOriginalBodyAndReplacementIdentity() async throws {
+        let fixture = try await makeFixture()
+        defer { fixture.remove() }
+        let conversations = ConversationRepository(store: fixture.store)
+        let message = MessageRecord(
+            id: "00000000-0000-0000-0000-000000000092",
+            conversationID: conversationID,
+            role: "user",
+            body: "Original",
+            createdAtMS: 2
+        )
+        try await conversations.createMessage(
+            message,
+            context: .init(
+                id: "00000000-0000-0000-0000-000000000093",
+                deviceID: deviceID,
+                timestamp: 2
+            )
+        )
+        let revision = MessageRevisionRecord(
+            id: "00000000-0000-0000-0000-000000000094",
+            messageID: message.id,
+            originalBody: message.body,
+            replacementMessageID: nil,
+            createdAtMS: 3
+        )
+
+        try await conversations.saveRevision(revision)
+
+        #expect(try await conversations.revision(id: revision.id) == revision)
+    }
+
     @Test func checkpointQueuesTurnBeforeAnyTransportStarts() async throws {
         let fixture = try await makeFixture()
         defer { fixture.remove() }

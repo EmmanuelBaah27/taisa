@@ -2,31 +2,26 @@ import XCTest
 
 @MainActor
 final class TaisaLaunchTests: XCTestCase {
-    func testProductionDevelopmentShellLaunchesWithoutPreviewCatalog() {
+    func testProductionDevelopmentShellLaunchesHomeWithoutPreviewCatalog() {
         let app = XCUIApplication()
         app.launch()
 
-        XCTAssertTrue(element("foundation.root", in: app).waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["foundation.title"].exists)
-        XCTAssertTrue(app.buttons["foundation.diagnostics.action"].isHittable)
+        XCTAssertTrue(element("home.root", in: app).waitForExistence(timeout: 5))
+        XCTAssertTrue(app.navigationBars["Home"].exists)
+        XCTAssertTrue(element("app-shell.primary-navigation", in: app).exists)
+        XCTAssertTrue(element("app-shell.conversation-dock", in: app).exists)
         XCTAssertFalse(element("preview.catalog", in: app).exists)
-        retainScreenshot(of: app, name: "development-shell")
+        XCTAssertFalse(element("foundation.diagnostics", in: app).exists)
+        retainScreenshot(of: app, name: "development-home")
     }
 
-    func testDiagnosticsShowsExactBuildIdentity() {
+    func testNewStoreShowsNativeEmptyState() {
         let app = XCUIApplication()
         app.launch()
 
-        let diagnostics = app.buttons["foundation.diagnostics.action"]
-        XCTAssertTrue(diagnostics.waitForExistence(timeout: 5))
-        diagnostics.tap()
-        XCTAssertTrue(
-            element("foundation.diagnostics", in: app).waitForExistence(timeout: 5)
-        )
-        XCTAssertTrue(app.staticTexts["Source"].exists)
-        XCTAssertTrue(app.staticTexts["Build"].exists)
-        XCTAssertTrue(app.staticTexts["Bundle"].exists)
-        retainScreenshot(of: app, name: "build-diagnostics")
+        XCTAssertTrue(app.staticTexts["Nothing here yet"].waitForExistence(timeout: 5))
+        XCTAssertFalse(element("preview.catalog", in: app).exists)
+        retainScreenshot(of: app, name: "development-home-empty")
     }
 
     private func element(_ identifier: String, in app: XCUIApplication) -> XCUIElement {

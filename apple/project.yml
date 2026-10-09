@@ -2,7 +2,7 @@ name: Taisa
 options:
   minimumXcodeGenVersion: 2.46.0
   deploymentTarget:
-    iOS: "17.0"
+    iOS: "26.0"
   generateEmptyDirectories: true
 configs:
   Debug: debug
@@ -59,6 +59,8 @@ targets:
       - package: TaisaFoundation
         product: TaisaDesignSystem
       - package: TaisaFoundation
+        product: TaisaHome
+      - package: TaisaFoundation
         product: TaisaStorage
       - package: TaisaFoundation
         product: TaisaCloudKit
@@ -68,12 +70,25 @@ targets:
         product: TaisaSecurity
       - package: TaisaFoundation
         product: TaisaVoice
+      - package: TaisaFoundation
+        product: TaisaConversations
+      - package: TaisaFoundation
+        product: TaisaAudio
+      - package: TaisaFoundation
+        product: TaisaNetworking
   TaisaPreview:
     type: application
     platform: iOS
     sources:
       - path: TaisaPreview
       - path: TaisaApp/Voice
+      - path: TaisaApp/Home
+      - path: TaisaApp/AppShell/PrimaryDestination.swift
+      - path: TaisaApp/Conversation/ConversationTimeline.swift
+      - path: TaisaApp/Conversation/ConversationView.swift
+      - path: TaisaApp/Conversation/ConversationViewModel.swift
+      - path: TaisaApp/Conversation/TranscriptCorrectionView.swift
+      - path: TaisaApp/Conversations
       - path: Generated
     settings:
       base:
@@ -95,11 +110,15 @@ targets:
       - package: TaisaFoundation
         product: TaisaDesignSystem
       - package: TaisaFoundation
+        product: TaisaHome
+      - package: TaisaFoundation
         product: TaisaPreviewSupport
       - package: TaisaFoundation
         product: TaisaStorage
       - package: TaisaFoundation
         product: TaisaVoice
+      - package: TaisaFoundation
+        product: TaisaConversations
   TaisaPersonal:
     type: application
     platform: iOS
@@ -146,6 +165,8 @@ targets:
       - package: TaisaFoundation
         product: TaisaStorage
       - package: TaisaFoundation
+        product: TaisaHome
+      - package: TaisaFoundation
         product: TaisaSecurity
       - package: TaisaFoundation
         product: TaisaRecovery
@@ -155,6 +176,8 @@ targets:
         product: TaisaAudio
       - package: TaisaFoundation
         product: TaisaNetworking
+      - package: TaisaFoundation
+        product: TaisaConversations
   TaisaPersonalTests:
     type: bundle.unit-test
     platform: iOS
@@ -181,11 +204,15 @@ targets:
       - package: TaisaFoundation
         product: TaisaStorage
       - package: TaisaFoundation
+        product: TaisaHome
+      - package: TaisaFoundation
         product: TaisaRecovery
       - package: TaisaFoundation
         product: TaisaSecurity
       - package: TaisaFoundation
         product: TaisaVoice
+      - package: TaisaFoundation
+        product: TaisaConversations
   TaisaUITests:
     type: bundle.ui-testing
     platform: iOS

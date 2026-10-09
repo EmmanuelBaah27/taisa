@@ -3,6 +3,26 @@
 Living reference for all UI work. Update when a new component is added or a token changes.
 Full token definitions and decision rules: `foundations.md` (root of repo).
 
+## Native SwiftUI product boundary
+
+The native client targets iOS/iPadOS 26+ and defaults to standard SwiftUI controls, interactions, accessibility behavior, and Apple visual language. Product pages own composition so functionality can move quickly and remain adaptable while Baah redesigns each page in context.
+
+Current shipped native Home presentation uses feature-local `ConversationRow`, `GoalRow`, and `ActionRow` views plus standard `NavigationStack`, `List`, `Section`, `ContentUnavailableView`, `Button`, `Label`, `ProgressView`, `.task`, and `.refreshable`. These rows are not design-system components yet. Extract a native shared component only after a redesigned pattern is proven reusable; update this document, its previews, and tests in the same change that implements it.
+
+The approved native conversation experience adds business-free SwiftUI surfaces shared by Home, Conversations, You, and full-screen conversation composition:
+
+- `ConversationEntryDock` exposes distinct voice and keyboard actions; only the voice action states that it starts recording.
+- `PrimaryNavigation` renders caller-owned destination identities without owning route state.
+- `VoiceComposerControls` preserves stable recording, paused, and Reply geometry.
+- `TextComposer` uses native multiline input and switches from voice to Send only when non-whitespace text exists.
+- `ConversationProgressState` and `ConversationFailureActions` expose progress, retry, save, and destructive discard semantics without owning workflow state.
+
+Native semantic additions are `raisedSurface`, `selectedSurface`, `destructive`, and `warning`; `TaisaRadius` supplies control, panel, composer, and circular roles. Composer/dock material falls back to `raisedSurface` when Reduce Transparency is enabled. Frequent composer actions do not add decorative motion; Product presentation may use restrained native opacity/state transitions and must honor Reduce Motion.
+
+The native preview catalog registers deterministic, network-free conversation fixtures for list, draft, history, recording, paused, typing, transcription, coaching, Reply, permission, retry, correction, Accessibility XXXL, and iPad-width states. Preview composition uses injected local clients only; it never constructs `ConversationRuntimeFactory`, audio capture, or gateway transports. These fixtures are the inspectable visual baseline before an exact revision is integrated into `preview/taisa` for signed-device QA.
+
+The React Native inventory below remains authoritative for the existing mobile client during the controlled migration. It is not a specification for recreating React Native visuals in SwiftUI.
+
 ---
 
 ## Status

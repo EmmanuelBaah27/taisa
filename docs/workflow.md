@@ -32,9 +32,9 @@ planning, implementation, documentation, review, release work, chores, or work B
 perform. Read-only questions and orientation commands within an existing issue are the only
 exceptions. Search exact and semantic matches, including archived work, before creation.
 
-## Session orientation
+## Cycle orientation
 
-Before modifying product or workflow state:
+At the start of one approved delivery cycle, before modifying product or workflow state:
 
 1. Read the Taisa Linear project, six milestones, active issues, dependencies, blockers,
    priorities, recent updates, Scope/Plan evidence, and approval comments.
@@ -45,6 +45,11 @@ Before modifying product or workflow state:
 4. Reconcile contradictions before modifying product code or advancing a stage.
 5. State tier, Linear issue and milestone, stage, branch/worktree, blocker/dependency, next
    action, next Baah gate, and whether Linear was unavailable or contradictory.
+
+Within a stable cycle, orientation is incremental. Re-read only state whose issue, approval,
+dependency, branch/worktree, PR, CI, preview, or remote revision changed since the last
+checkpoint. Do not reread all milestones, worktrees, or related chats when their relevant
+revision markers are unchanged.
 
 ### Offline fallback
 
@@ -68,16 +73,50 @@ Linear before the next stage or gate.
 
 | Tier | Signal | Process |
 |---|---|---|
-| **Quick** (< 1h) | One bounded change, no new DS component or Platform boundary | Compact Linear issue with intent, acceptance, checks, and gate; build only after applicable approval. |
-| **Standard** (half day) | New screen or significant component using existing contracts | Inline Work Map and Discussion Map; separate Scope and Plan evidence in Linear. |
-| **Full** (multi-day / multi-track) | New Platform work, DS components, migration, or complex Product | Full workflow, Linear documents/sub-issues where useful, all gates and tracking. |
+| **Quick** (< 1h) | One bounded change, no new DS component or Platform boundary | One compact kickoff bundle approves Scope and Plan when no high-risk predicate applies. |
+| **Standard** (half day) | New screen or significant component using existing contracts | Inline Work Map and Discussion Map; one kickoff bundle approves Scope and Plan when no high-risk predicate applies. |
+| **Full** (multi-day / multi-track) | New Platform work, DS components, migration, or complex Product | Separate Scope and Plan approvals, Linear documents/sub-issues where useful, all gates and tracking. |
 
-## Tracks and dependency model
+### Approval-path decision
 
-**Platform** owns AI, backend, infrastructure, persistence, and Product-facing contracts.
-**Product** owns journeys, screens, interaction, design system, and device experience.
-**Integration** proves the two tracks work end-to-end; it is not a third product track.
+The path is deterministic:
+
+| Condition | Approval path |
+|---|---|
+| Quick or Standard with no high-risk predicate | One explicit kickoff bundle approves Scope and Plan |
+| Full | Separate Scope and Plan approvals |
+| Any tier with a high-risk predicate | Separate Scope and Plan approvals |
+| Baah requests separate review | Separate Scope and Plan approvals |
+
+High-risk predicates are data migration or loss risk; privacy, security, trust-boundary,
+regulatory, or consent changes; destructive or irreversible operations; public-contract or
+major architecture changes; paid services, credentials, or new external infrastructure;
+materially ambiguous product behavior; release-strategy changes; or verification changes
+that could weaken an existing safety gate.
+
+For Quick and Standard fast-path work, the kickoff bundle contains the recommended outcome,
+user-visible result, inclusions, exclusions, key risks, implementation direction, and
+verification approach. During Build, a material change completes the active Goal as
+`MATERIAL_REAPPROVAL_REQUIRED`. Present an amended kickoff bundle only when the work remains
+Quick/Standard and no high-risk predicate applies; otherwise obtain separate revised Scope
+and Plan approvals.
+
+## Platform, Product, and Integration ownership
+
+Platform, Product, and Integration use exclusive ownership: every planned task has exactly
+one of those owners. **Platform** owns AI, backend,
+infrastructure, persistence, privacy/security enforcement, and Product-facing contracts.
+**Product** owns journeys, screens, interaction, accessibility behavior, design-system
+foundation/consumption, and device experience. **Integration** owns contract wiring between
+completed Platform and Product slices, end-to-end states and failures, canonical preview,
+combined verification, and release readiness; it never duplicates capability or experience
+implementation owned by the other slices.
 Design System is a mandatory foundation layer inside Product work, not a separate track.
+Cross-cutting privacy, accessibility, performance, and verification requirements are
+acceptance constraints on the owning task, not additional slices. These slices stay inside
+one primary Linear issue and one conductor. A sub-issue or separate worktree requires an
+independently reviewable outcome, distinct owner, real dependency boundary, or independently
+shippable slice, and it cannot create another persistent Goal.
 
 ```mermaid
 flowchart LR
@@ -97,6 +136,29 @@ flowchart LR
 ## The six stages
 
 `ORIENT → DISCUSS → SCOPE → PLAN → BUILD → REVIEW + QA`
+
+## Bounded Goal runs
+
+A delivery cycle may use several **bounded Goal runs**, but exactly one Goal may own active
+execution. A Goal never stays active solely to wait for Baah, CI, a device, or an external
+service.
+
+- Intake and approval preparation happen in ordinary chat; no continuous Goal runs while
+  Baah decides.
+- A Build Goal starts after kickoff-bundle approval or separate Plan approval. It terminates
+  at `QA_READY`, `UNRESOLVED_ESCALATION`, `MATERIAL_REAPPROVAL_REQUIRED`,
+  `NON_DEVICE_SHIP_READY`, or `EXTERNAL_WAIT_RECORDED`.
+- A repair Goal stays on the same Linear issue and terminates at `QA_READY`,
+  `UNRESOLVED_ESCALATION`, `MATERIAL_REAPPROVAL_REQUIRED`, or
+  `EXTERNAL_WAIT_RECORDED`.
+- A Ship Goal starts only after clear Ship approval and terminates after verified merge,
+  safe cleanup, evidence update, and next-outcome recommendation.
+- A completed Goal never auto-restarts, infers approval, or selects successor work.
+
+Prefer event-capable waits that return on terminal change without repeated reasoning. When
+none exists, record `EXTERNAL_WAIT_RECORDED`, complete the Goal, and use one scheduled or
+user-triggered continuation near the normal completion window. Unchanged state produces no
+reasoning turn, Linear comment, or user notification.
 
 ### Work Map
 
@@ -182,6 +244,54 @@ and approval state in Linear.
 
 Missing infrastructure is a reported gap, never a passing test.
 
+### Initial QA-readiness gate
+
+Before the first Baah QA request, all applicable requirements must pass:
+
+1. Acceptance criteria map to concrete evidence.
+2. Narrow and complete applicable verification layers pass on the candidate revision.
+3. Blocking review findings are resolved.
+4. Required Platform, Product, and Integration slices are complete.
+5. Device-facing work is committed, integrated, and pushed to canonical preview.
+6. The served or installed build is confirmed as that exact revision.
+7. Agent-owned simulator, accessibility, preview, and smoke checks pass.
+8. Known limitations and inapplicable checks are explicit and do not contradict acceptance.
+9. Linear records the candidate revision, evidence, remaining risk, and exact requested
+   observation.
+
+Failure of an applicable item returns to autonomous Build; it never produces partial QA.
+Automated/simulator evidence covers every supported configuration in the verification matrix.
+Physical QA is requested only for hardware or perceptual judgment that automation cannot
+establish. One final interaction may contain separated iPhone/iPad checks without becoming
+multiple exploratory rounds.
+
+### One-observation repair quarantine
+
+One Baah defect observation is sufficient. Record the exact preview/build revision and enter
+`REPAIR_QUARANTINE`; do not ask Baah to repeat, reconfirm, characterize, or periodically
+retest the same defect while engineering evidence is incomplete.
+
+The repair-release gate requires: authority/revision confirmation; stable reproduction,
+diagnostic trace, or explicit contract assertion; supported root cause; failing-before and
+passing-after evidence where technically possible; the fix; affected integration,
+simulator/UI, accessibility, and regression checks; the applicable full release matrix;
+resolved blocking review; exact replacement commit integrated and pushed to canonical
+preview; confirmed served/installed revision; agent smoke check; and one concise retest
+request naming the failure, replacement revision, evidence, action, and expected result.
+Every repair-release item must be recorded as passed or explicitly inapplicable with evidence;
+silently skipping an item keeps the issue in `REPAIR_QUARANTINE`.
+
+The authoritative sequence is:
+
+`Baah observation → REPAIR_QUARANTINE → repair Goal → reproduce/diagnose → BUILDING → VERIFYING → PUBLISHING → agent smoke check → QA_READY → focused Baah retest`.
+
+If the repair cannot be proven, the issue remains **Unfixed; blocking; unshippable**. It is
+not QA-ready, Ship-ready, complete, deferred, or eligible for successor work. Baah receives
+only one of two material notifications: `fixed and proven` with one focused retest, or
+`still unfixed and genuinely blocked` with evidence, materially different approaches tried,
+the recommended redesign/reversion/deferral/capability, consequences, and one smallest
+Baah-controlled decision or action.
+
 ## Canonical preview and feedback authority
 
 Baah’s UI/mobile feedback is assumed to come from canonical `preview/taisa`. Before using it
@@ -234,8 +344,10 @@ Team: `e95356d8-17f7-4700-bdfe-222782bea546` (A Playing Field)
 - Relations express blockers/dependencies; project updates report program health.
 - Before creation, search exact and semantic matches; continue an equivalent outcome.
 - Purely prospective direction stays in a milestone description until someone owns action.
-- Update the issue after every material step with exact branch/commit/PR/preview revision,
-  checks, result, risk, next action, and next Baah gate.
+- Update the issue only for material events: approval evidence; Build start; blocker change;
+  stable candidate and verification; canonical preview and QA request; QA failure and verified
+  replacement; Ship, merge, and Closeout. Do not narrate commands, polls, retries, or passing
+  narrow tests.
 
 Status IDs: Todo `8092f145-a7b5-4e09-812e-1d3212fc1c7d`; In Progress
 `ad545d06-1ef1-4c5d-86c7-44e1e3724409`; Done
@@ -331,6 +443,14 @@ next gate, and any deferred-capability lifecycle changes. Before Ship, read back
 related deferral and confirm that implementation, canonical preview, and merge evidence
 support its recorded lifecycle. Perform the **memory-promotion check**: promote reusable evidence to
 `docs/learnings.md` or a durable decision/contract only when it benefits future work.
+
+At Closeout, recommend but do not start the next outcome. Rank candidates in this order:
+release-blocking defect or data/security/privacy risk; dependency for an approved milestone;
+missing milestone acceptance; highest user value among unblocked approved work; evidenced
+reliability/accessibility/maintainability/cost improvement; cosmetic refinement. Within a
+rank, prefer the outcome unlocking more downstream work, then lower delivery risk, then the
+smaller independently valuable slice. State the evidence and tie-breaker. Baah approves,
+rejects, reprioritizes, or pauses it before any new Scope or Build begins.
 
 ## Git and shipping
 

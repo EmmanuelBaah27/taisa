@@ -69,7 +69,7 @@ export function inspectSignedBuild(record = {}, options = {}) {
     try {
       const appExists = typeof record.appPath === 'string' && existsSync(record.appPath);
       const profileExists = typeof record.profilePath === 'string' && existsSync(record.profilePath);
-      const inspected = !appExists && !profileExists
+      const inspected = options.preferRetainedEvidence || (!appExists && !profileExists)
         ? validateRetainedPersonalEvidence(record)
         : inspectPersonalBuild(record, options);
       errors.push(...inspected.errors);

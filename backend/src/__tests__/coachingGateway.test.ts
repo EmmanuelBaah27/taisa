@@ -77,6 +77,37 @@ const coachingPayloadFixture = {
   ],
 };
 
+test('only a first-turn response returns a trimmed bounded title suggestion', async () => {
+  const provider: FallbackCoachingProvider = {
+    primaryId: 'openai',
+    fallbackId: 'anthropic',
+    estimateMaximumAttempts: jest.fn(),
+    respond: jest.fn().mockResolvedValue({
+      result: {
+        payload: { ...coachingPayloadFixture, titleSuggestion: '  Design review preparation  ' },
+        usage: { provider: 'openai', model: 'fixture', inputTokens: 10, outputTokens: 4, estimatedCostUsd: 0 },
+      },
+      attempts: [{ attemptId: 'primary', providerId: 'openai' }],
+    }),
+  };
+
+  const first = await requestCoaching(requestFixture, provider);
+  expect(first.response.titleSuggestion).toBe('Design review preparation');
+
+  const later = await requestCoaching({
+    ...requestFixture,
+    context: {
+      ...requestFixture.context,
+      recentMessages: [
+        ...requestFixture.context.recentMessages,
+        { role: 'assistant' as const, content: 'Earlier reply' },
+      ],
+    },
+  }, provider);
+  expect(later.response.titleSuggestion).toBeUndefined();
+  expect(provider.respond).toHaveBeenCalledTimes(2);
+});
+
 const validPayloadFixtures = [
   ['coach', coachingPayloadFixture],
   [

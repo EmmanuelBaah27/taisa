@@ -12,6 +12,7 @@ export const COACHING_GATEWAY_LIMITS = Object.freeze({
   maxMemoryItems: 50,
   maxEvidenceItems: 8,
   maxProposals: 20,
+  maxTitleSuggestionLength: 80,
 } as const);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -360,6 +361,7 @@ export function firstCoachingResponseContractViolation(
       'stance',
       'proposals',
       'usage',
+      'titleSuggestion',
     ])
   ) return 'response';
   if (!isUuid(response.requestId) || (
@@ -371,6 +373,12 @@ export function firstCoachingResponseContractViolation(
     return 'contextSufficiency';
   }
   if (!isStatement(response.reply)) return 'reply';
+  if (response.titleSuggestion !== undefined && (
+    typeof response.titleSuggestion !== 'string'
+    || response.titleSuggestion.trim() !== response.titleSuggestion
+    || response.titleSuggestion.length === 0
+    || response.titleSuggestion.length > COACHING_GATEWAY_LIMITS.maxTitleSuggestionLength
+  )) return 'titleSuggestion';
 
   if (response.mode === 'coach') {
     if (!isOneOf(response.relevance, ['career-relevant', 'adjacent'])) return 'relevance';

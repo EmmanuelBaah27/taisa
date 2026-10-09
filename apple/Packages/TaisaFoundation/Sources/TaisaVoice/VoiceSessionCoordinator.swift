@@ -249,6 +249,16 @@ public actor VoiceSessionCoordinator {
         }
     }
 
+    public func waitForTranscriptOutcome() async {
+        while activeStage == .transcription {
+            if let task = activeTask {
+                await task.value
+            } else {
+                await Task.yield()
+            }
+        }
+    }
+
     private func apply(_ transition: VoiceSessionTransition) async throws {
         let prior = durable
         for effect in transition.effects {

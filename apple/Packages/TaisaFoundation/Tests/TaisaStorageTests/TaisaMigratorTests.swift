@@ -11,7 +11,7 @@ import Testing
         let tables = try await store.read { db in
             try String.fetchAll(db, sql: "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
         }
-        let expected = ["profile", "conversations", "messages", "goals", "milestones", "actions", "evidence", "memory_items", "memory_sources", "sync_devices", "field_versions", "conflicts", "outbox", "inbox_quarantine", "tombstones", "sync_state", "vault_metadata", "snapshot_manifests", "migration_state", "voice_turns", "audio_cleanup_queue"]
+        let expected = ["profile", "conversations", "messages", "goals", "milestones", "actions", "evidence", "memory_items", "memory_sources", "sync_devices", "field_versions", "conflicts", "outbox", "inbox_quarantine", "tombstones", "sync_state", "vault_metadata", "snapshot_manifests", "migration_state", "voice_turns", "audio_cleanup_queue", "conversation_drafts", "message_revisions"]
         for name in expected { #expect(tables.contains(name)) }
         try await store.write { db in
             try db.execute(sql: "INSERT INTO profile (id, display_name, updated_at_ms) VALUES (?, ?, ?)", arguments: [UUID().uuidString, "preserved", 123])
@@ -20,9 +20,9 @@ import Testing
         let state = try await reopened.read { db in
             (try Int.fetchOne(db, sql: "PRAGMA user_version"), try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM profile"), try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM grdb_migrations"))
         }
-        #expect(state.0 == 2)
+        #expect(state.0 == 3)
         #expect(state.1 == 1)
-        #expect(state.2 == 2)
+        #expect(state.2 == 3)
         #expect(!tables.contains("recordings"))
     }
 
@@ -74,10 +74,43 @@ import Testing
                 try Int.fetchAll(db, sql: "SELECT version FROM migration_state ORDER BY version")
             )
         }
-        #expect(state.0 == 2)
+        #expect(state.0 == 3)
         #expect(state.1 == "preserved-v1")
         #expect(state.2)
-        #expect(state.3 == [1, 2])
+        #expect(state.3 == [1, 2, 3])
+    }
+
+    @Test func existingVersionTwoStoreMigratesWithoutInventingDraftsOrRevisions() async throws {
+        let fixture = try MigrationFixture()
+        defer { fixture.remove() }
+        let queue = try fixture.makeKeyedQueue()
+        var legacy = DatabaseMigrator()
+        legacy.registerMigration("v1", foreignKeyChecks: .immediate) { db in
+            try TaisaSchema.createVersion1(in: db)
+            try db.execute(sql: "INSERT INTO migration_state (version, applied_at_ms) VALUES (1, 1)")
+            try db.execute(sql: "PRAGMA user_version = 1")
+        }
+        legacy.registerMigration("v2", foreignKeyChecks: .immediate) { db in
+            try TaisaSchema.createVersion2(in: db)
+            try db.execute(sql: "INSERT INTO migration_state (version, applied_at_ms) VALUES (2, 2)")
+            try db.execute(sql: "PRAGMA user_version = 2")
+        }
+        try legacy.migrate(queue)
+        try queue.close()
+
+        let store = try await TaisaStore.open(at: fixture.url, keyStore: fixture.keys)
+        let state = try await store.read { db in
+            (
+                try Int.fetchOne(db, sql: "PRAGMA user_version"),
+                try Int.fetchOne(db, sql: "SELECT count(*) FROM conversation_drafts"),
+                try Int.fetchOne(db, sql: "SELECT count(*) FROM message_revisions"),
+                try String.fetchOne(db, sql: "SELECT lifecycle FROM conversations LIMIT 1")
+            )
+        }
+        #expect(state.0 == 3)
+        #expect(state.1 == 0)
+        #expect(state.2 == 0)
+        #expect(state.3 == nil)
     }
 
     @Test func futureSchemaIsRejectedWithoutMutation() async throws {
@@ -344,7 +377,7 @@ import Testing
         let restarted = try fixture.restartCopy()
         let store = try await TaisaStore.open(at: restarted, keyStore: fixture.keys)
         #expect(try await store.read { db in try db.tableExists("profile") })
-        #expect(try await store.read { db in try Int.fetchOne(db, sql: "PRAGMA user_version") } == 2)
+        #expect(try await store.read { db in try Int.fetchOne(db, sql: "PRAGMA user_version") } == 3)
         #expect(try await fixture.keys.loadKey() == fixture.key)
     }
 
