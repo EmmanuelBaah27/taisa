@@ -7,6 +7,26 @@ import TaisaStorage
 
 @Suite("Voice session coordinator")
 struct VoiceSessionCoordinatorTests {
+    @Test("explicit retry restarts terminal coaching without retranscribing")
+    func explicitRetryRestartsTerminalCoachingWithoutRetranscribing() async throws {
+        let transcription = TranscriptionSpy(events: [])
+        let coaching = SuccessfulCoachingSpy()
+        let failed = turn(state: .terminalFailure, stage: .finished, transcript: "accepted")
+        let coordinator = VoiceSessionCoordinator(
+            initial: failed,
+            checkpoints: CheckpointSpy(), transcription: transcription, coaching: coaching,
+            connectivity: ConnectivitySpy(available: true), reconciliation: ReconciliationSpy(.safeToRetry),
+            capture: NoopCapture(), audio: NoopAudio()
+        )
+
+        try await coordinator.restartFailedCoaching(with: replacementTurn(from: failed))
+        await coordinator.waitForIdle()
+
+        #expect(await transcription.calls == 0)
+        #expect(await coaching.calls == 1)
+        #expect(await coordinator.snapshot().durable.state == .completed)
+    }
+
     @Test("offline Send checkpoints once and resumes one upload when network returns")
     func offlineSendQueuesThenAutoResumesOnceWhenNetworkReturns() async throws {
         let store = CheckpointSpy()
@@ -95,7 +115,26 @@ private func turn(state: VoiceTurnState, stage: VoiceTurnStage, transcript: Stri
         transcriptionRequestID: IDs.transcription.uuidString, transcriptionIdempotencyKey: "transcription-1",
         coachingRequestID: IDs.coaching.uuidString, coachingIdempotencyKey: "coaching-1",
         state: state, stage: stage, audioFileID: "audio-1", audioSHA256: "abc", audioDurationMS: 1000,
-        acceptedTranscript: transcript, createdAtMS: 1, updatedAtMS: 1
+        acceptedTranscript: transcript,
+        transcriptionReceipt: transcript == nil ? nil : IDs.transcription.uuidString,
+        userMessageID: transcript == nil ? nil : "77777777-7777-4777-8777-777777777777",
+        createdAtMS: 1, updatedAtMS: 1
+    )
+}
+
+private func replacementTurn(from failed: VoiceTurnRecord) -> VoiceTurnRecord {
+    VoiceTurnRecord(
+        id: "55555555-5555-4555-8555-555555555555",
+        conversationID: failed.conversationID,
+        transcriptionRequestID: failed.transcriptionRequestID,
+        transcriptionIdempotencyKey: failed.transcriptionIdempotencyKey,
+        coachingRequestID: "66666666-6666-4666-8666-666666666666",
+        coachingIdempotencyKey: "coaching-retry-1",
+        state: .transcriptClear, stage: .coaching,
+        acceptedTranscript: failed.acceptedTranscript,
+        transcriptionReceipt: failed.transcriptionReceipt,
+        userMessageID: nil,
+        createdAtMS: 2, updatedAtMS: 2
     )
 }
 
@@ -134,6 +173,23 @@ private actor CoachingSpy: VoiceCoachingRunning {
         calls += 1
         return AsyncThrowingStream<CoachingStreamEvent, Error> { continuation in
             continuation.yield(.failed(requestId: IDs.coaching, sequence: 0, code: .coachingUnavailable, retryable: true))
+            continuation.finish()
+        }
+    }
+}
+
+private actor SuccessfulCoachingSpy: VoiceCoachingRunning {
+    private(set) var calls = 0
+    func stream(for turn: VoiceTurnRecord) async throws -> AsyncThrowingStream<CoachingStreamEvent, Error> {
+        calls += 1
+        let response = try JSONDecoder().decode(CoachingResponse.self, from: Data("""
+            {"requestId":"\(turn.coachingRequestID)","reply":"Recovered coaching","mode":"coach","relevance":"career-relevant","contextSufficiency":"sufficient","stance":"nudge","proposals":[],"usage":{"provider":"openai","model":"test","inputTokens":1,"outputTokens":1,"estimatedCostUsd":0},"titleSuggestion":null}
+            """.utf8))
+        return AsyncThrowingStream<CoachingStreamEvent, Error> { continuation in
+            continuation.yield(.completed(
+                requestId: UUID(uuidString: turn.coachingRequestID)!, sequence: 0,
+                response: response, idempotencyReceipt: "coaching-receipt"
+            ))
             continuation.finish()
         }
     }

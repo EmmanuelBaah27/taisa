@@ -164,6 +164,22 @@ public struct VoiceSessionReducer: Sendable {
                 throw VoiceSessionReducerError.illegalTransition
             }
 
+        case .restartFailedCoaching(let next):
+            try require(state.state == .terminalFailure && state.stage == .finished)
+            guard next.state == .transcriptClear, next.stage == .coaching,
+                  next.conversationID == state.conversationID,
+                  next.id != state.id,
+                  next.acceptedTranscript == state.acceptedTranscript,
+                  next.userMessageID == nil,
+                  next.acceptedTranscript?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false,
+                  UUID(uuidString: next.coachingRequestID) != nil else {
+                throw VoiceSessionReducerError.invalidCommand
+            }
+            return VoiceSessionTransition(
+                next: next,
+                effects: [.checkpoint(next), .startCoaching]
+            )
+
         case .confirmResume:
             try require(state.state == .resumeRequiresConfirmation)
             switch state.stage {
