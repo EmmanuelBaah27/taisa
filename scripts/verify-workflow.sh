@@ -156,13 +156,18 @@ done
 require_workflow_pattern "$goal_template" 'reason.*next Baah gate|next Baah gate.*reason' \
   'recommendation reason and gate output'
 
-for mutation_boundary in \
-  'must not reopen or start|never reopen or start' \
-  'successor branch or Goal|branch or Goal.*successor' \
-  'change successor status|successor status.*change' \
-  'begin successor work|successor work.*begin'; do
-  require_workflow_pattern docs/workflow.md "$mutation_boundary" \
-    "successor mutation prohibition: $mutation_boundary"
+for recommendation_file in \
+  docs/workflow.md \
+  .agents/skills/taisa-workflow/SKILL.md \
+  .agents/skills/taisa-workflow/templates/bounded-goal.md; do
+  for mutation_boundary in \
+    'must not reopen or start|never reopen or start|do not reopen or start' \
+    'successor branch or Goal|branch or Goal.*successor|its branch or Goal' \
+    'change successor status|successor status.*change|change its status' \
+    'begin successor work|successor work.*begin|begin its work'; do
+    require_workflow_pattern "$recommendation_file" "$mutation_boundary" \
+      "successor mutation prohibition: $mutation_boundary"
+  done
 done
 
 rg -q '31b0d99c-6f74-4c9c-af2a-12e6e25aabe0' \

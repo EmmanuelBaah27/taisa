@@ -80,7 +80,7 @@ then output exactly one **Recommended next outcome** or one
   gate:** `<explicit gate>`
 - **No next outcome recommended:** `<blocking reason>` — **Next Baah gate:** `<explicit gate>`
 
-Never output both forms or an alternatives list. A recommendation is advisory: do not reopen
-or start the successor issue, create its branch or Goal, change its status, or begin its work
+Never output both forms or an alternatives list. A recommendation is advisory: do not reopen or start
+the successor issue; do not create its branch or Goal, change its status, or begin its work
 without Baah explicitly approving the successor kickoff. Complete the Goal after reporting.
 Do not remain active solely for waiting on Baah or external state.
