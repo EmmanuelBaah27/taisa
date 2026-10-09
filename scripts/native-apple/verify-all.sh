@@ -19,6 +19,11 @@ reset_simulator_app() {
   xcrun simctl uninstall "${simulator}" "${bundle_identifier}" >/dev/null 2>&1 || true
 }
 
+shutdown_simulator() {
+  local simulator="$1"
+  xcrun simctl shutdown "${simulator}" >/dev/null 2>&1 || true
+}
+
 cd "${repository_root}"
 bash scripts/native-apple/verify-generated-project.sh
 bash apple/scripts/generate-build-metadata.sh
@@ -44,8 +49,10 @@ if [[ "${development_can_test}" == "yes" && "${preview_can_test}" == "yes" ]]; t
   # otherwise retains prior encrypted stores and recovery journals.
   reset_simulator_app "${iphone_name}" com.taisa.app.dev
   xcodebuild test -quiet -retry-tests-on-failure -test-iterations 2 -project apple/Taisa.xcodeproj -scheme Taisa-Dev -destination "platform=iOS Simulator,name=${iphone_name}" -derivedDataPath "${artifact_root}/DerivedData-Dev" -resultBundlePath "${artifact_root}/Taisa-Dev.xcresult"
+  shutdown_simulator "${iphone_name}"
   reset_simulator_app "${ipad_name}" com.taisa.app.preview
   xcodebuild test -quiet -retry-tests-on-failure -test-iterations 2 -project apple/Taisa.xcodeproj -scheme Taisa-Preview -destination "platform=iOS Simulator,name=${ipad_name}" -derivedDataPath "${artifact_root}/DerivedData-Preview" -resultBundlePath "${artifact_root}/Taisa-Preview.xcresult"
+  shutdown_simulator "${ipad_name}"
 else
   echo "No eligible iOS simulator runtime; compiling test bundles instead."
   xcodebuild build-for-testing -quiet -project apple/Taisa.xcodeproj -scheme Taisa-Dev -destination 'generic/platform=iOS Simulator' -derivedDataPath "${artifact_root}/DerivedData-Dev" CODE_SIGNING_ALLOWED=NO
@@ -56,6 +63,7 @@ if [[ "${personal_can_test}" == "yes" ]]; then
   # provision a team or contact Apple; physical-device verification stays unsigned.
   reset_simulator_app "${iphone_name}" com.taisa.app.personal
   xcodebuild test -quiet -retry-tests-on-failure -test-iterations 2 -project apple/Taisa.xcodeproj -scheme Taisa-Personal -configuration Personal -destination "platform=iOS Simulator,name=${iphone_name}" -derivedDataPath "${artifact_root}/DerivedData-Personal" -resultBundlePath "${artifact_root}/Taisa-Personal.xcresult" CODE_SIGN_IDENTITY=- CODE_SIGNING_ALLOWED=YES
+  shutdown_simulator "${iphone_name}"
 else
   xcodebuild build-for-testing -quiet -project apple/Taisa.xcodeproj -scheme Taisa-Personal -configuration Personal -destination 'generic/platform=iOS Simulator' -derivedDataPath "${artifact_root}/DerivedData-Personal" CODE_SIGNING_ALLOWED=NO
 fi
