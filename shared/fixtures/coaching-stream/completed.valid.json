@@ -1,0 +1,4 @@
+[
+  {"type":"coaching.delta","requestId":"00000000-0000-4000-8000-000000000101","sequence":0,"delta":"Keep going."},
+  {"type":"coaching.completed","requestId":"00000000-0000-4000-8000-000000000101","sequence":1,"response":{"requestId":"00000000-0000-4000-8000-000000000101","reply":"Keep going.","mode":"coach","relevance":"career-relevant","contextSufficiency":"sufficient","stance":"nudge","proposals":[],"usage":{"provider":"anthropic","model":"fixture","inputTokens":10,"outputTokens":3,"estimatedCostUsd":0.001}},"idempotencyReceipt":"receipt-101"}
+]

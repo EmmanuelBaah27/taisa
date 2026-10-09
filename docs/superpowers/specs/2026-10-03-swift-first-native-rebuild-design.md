@@ -32,7 +32,7 @@ A new shared runtime could reduce some future duplication, but it would add anot
 ## Approved priorities
 
 1. Ship an excellent native Apple experience before investing further in React Native parity infrastructure.
-2. Support iPhone and iPad on iOS/iPadOS 17 or later.
+2. Support iPhone and iPad on iOS/iPadOS 26 or later, using the newest Apple visual language through standard SwiftUI behavior.
 3. Keep the existing Node/Express gateway and canonical TypeScript runtime schemas.
 4. Preserve the local-first privacy boundary and accepted post-Send streaming transcription behavior.
 5. Build deterministic Swift previews, fixtures, tests, and signed-device verification from the beginning.
@@ -171,7 +171,7 @@ Voice remains local before Send. Clear transcription creates the submitted messa
 
 ## Design system, assets, and platform adaptation
 
-The Swift design system ports semantic intent, not NativeWind implementation. Typed tokens cover color, typography, spacing, radius, elevation, motion, materials, and accessibility. Product views consume `apple/DesignSystem/`; raw visual values require a narrow documented exception and verification.
+The Swift design system evolves from implementation rather than porting NativeWind. Functionality-first pages use native SwiftUI controls and system semantic styling; a shared Taisa component is extracted only after a redesigned reusable pattern is proven. Implemented shared contracts update their documentation, previews, and tests in the same change.
 
 - Raster images move into asset catalogs with correct scales.
 - Compatible vectors use single-scale PDF assets or Swift paths.

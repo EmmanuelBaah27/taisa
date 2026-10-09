@@ -29,6 +29,7 @@ import {
   CostLimitError,
   UsageExceedsReservationError,
 } from '../services/usage/costLedger';
+import { TranscriptionIdempotencyStore } from '../services/transcription/transcriptionIdempotencyStore';
 
 jest.mock('../services/coaching/coachingGateway', () => ({
   estimateConfiguredCoachingAttempts: jest.fn().mockReturnValue([
@@ -147,12 +148,20 @@ function createTranscriptionApp(options: {
 }) {
   const app = express();
   app.use(requestContext);
+  app.use((_req, res, next) => {
+    res.locals.deviceCredentialId = 'test-device';
+    next();
+  });
   app.use(
     '/api/v1/transcribe',
     createTranscribeRouter({
       client: { audio: { transcriptions: { create: options.create } } } as any,
       ledger: options.ledger ?? new CostLedger(),
       environment: options.environment ?? transcriptionEnvironment,
+      idempotencyStore: new TranscriptionIdempotencyStore({
+        databasePath: ':memory:',
+        encryptionKeyBase64: Buffer.alloc(32, 0x42).toString('base64'),
+      }),
     }),
   );
   return app;

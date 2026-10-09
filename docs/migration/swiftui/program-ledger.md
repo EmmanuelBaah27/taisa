@@ -1,19 +1,18 @@
 # SwiftUI Migration Program Ledger
 
-**Updated:** 2026-10-02
+**Updated:** 2026-10-07
 **Candidate:** `origin/preview/taisa` at `719180012de745e3b507ed93eadbe7d8a951331c`
-**Status:** Program 0 Build; source reconciliation complete, parity catalog next
+**Status:** Native foundation shipped; encrypted storage/recovery merged; functionality-first Product slices active
 
 ## Program stages
 
 | Program | Scope | Status | Prerequisite | Branch / plan | Next gate | Evidence |
 |---|---|---|---|---|---|---|
-| 0 | Baseline freeze and parity evidence | Build | Approved native-rebuild design | `docs/swiftui-native-rebuild`; `2026-10-02-swiftui-program-0-baseline-freeze.md` | Baah baseline-freeze approval after catalog/media evidence | `baseline-manifest.json`; `source-dispositions.json`; this ledger |
-| 1 | Native foundation and feasibility | Not planned | Program 0 Ship | — | Separate Scope and Plan approval | — |
-| 2 | Shared local platform | Not planned | Program 1 Ship | — | Separate Scope and Plan approval | — |
-| 3 | Product vertical slices | Not planned | Required Program 1–2 capabilities | — | Separate plan approval for each major slice | — |
-| 4 | Motion and visual parity | Not planned | Applicable Product slices | — | Separate Scope and Plan approval | — |
-| 5 | Release and cutover | Not planned | Programs 0–4 accepted | — | Separate Plan and Ship approval | — |
+| 0 | Native foundation and feasibility | Shipped | Approved native-rebuild design | `main`; `2026-10-03-swift-native-foundation.md` | — | signed iPhone/iPad native build records |
+| 1 | Shared encrypted local platform | Merged; remaining CloudKit capability QA tracked separately | Native foundation | `main`; `2026-10-04-swift-native-encrypted-sync.md` | Separate Ship gate for deferred live CloudKit criteria | encrypted recovery and device-transfer evidence |
+| 2 | Product vertical slices | Build authorized per approved slice | Required concrete platform capability | `codex/swiftui-home-scope` | Separate Plan and Ship approval per slice | slice tests, previews, exact-device QA |
+| 3 | Page redesign and native polish | Deferred per completed functional page | Functional Product slice | — | Separate design/scope approval | native design review and device QA |
+| 4 | Release and cutover | Not planned | Programs 0–3 accepted | — | Separate Plan and Ship approval | — |
 
 Approval of Program 0 does not authorize any later program, slice, dependency selection, Swift implementation, release, or cutover.
 

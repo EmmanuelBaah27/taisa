@@ -20,7 +20,7 @@ enum TaisaMigrator {
                 let applied = hasGRDBMarkers
                     ? try String.fetchAll(db, sql: "SELECT identifier FROM grdb_migrations ORDER BY identifier")
                     : []
-                guard applied.allSatisfy({ $0 == "v1" }) else {
+                guard applied.allSatisfy({ $0 == "v1" || $0 == "v2" || $0 == "v3" }) else {
                     throw StorageError.unsupportedMigration
                 }
                 if version == 1 {
@@ -28,6 +28,16 @@ enum TaisaMigrator {
                     try TaisaSchema.validateVersion1(in: db)
                     let states = try Int.fetchAll(db, sql: "SELECT version FROM migration_state ORDER BY version")
                     guard states == [1] else { throw StorageError.schemaMismatch }
+                } else if version == 2 {
+                    guard applied == ["v1", "v2"] else { throw StorageError.schemaMismatch }
+                    try TaisaSchema.validateVersion2(in: db)
+                    let states = try Int.fetchAll(db, sql: "SELECT version FROM migration_state ORDER BY version")
+                    guard states == [1, 2] else { throw StorageError.schemaMismatch }
+                } else if version == 3 {
+                    guard applied == ["v1", "v2", "v3"] else { throw StorageError.schemaMismatch }
+                    try TaisaSchema.validateVersion3(in: db)
+                    let states = try Int.fetchAll(db, sql: "SELECT version FROM migration_state ORDER BY version")
+                    guard states == [1, 2, 3] else { throw StorageError.schemaMismatch }
                 } else {
                     let objects = try String.fetchAll(
                         db,
@@ -52,7 +62,7 @@ enum TaisaMigrator {
         createSchema: @escaping @Sendable (Database) throws -> Void = TaisaSchema.createVersion1
     ) throws {
         // The caller completes a read-only preflight on any existing file.
-        if version == 1 { return }
+        if version == TaisaSchema.currentVersion { return }
 
         var migrator = DatabaseMigrator()
         migrator.registerMigration("v1", foreignKeyChecks: .immediate) { db in
@@ -62,6 +72,22 @@ enum TaisaMigrator {
                 arguments: [1, Int64(Date().timeIntervalSince1970 * 1_000)]
             )
             try db.execute(sql: "PRAGMA user_version = 1")
+        }
+        migrator.registerMigration("v2", foreignKeyChecks: .immediate) { db in
+            try TaisaSchema.createVersion2(in: db)
+            try db.execute(
+                sql: "INSERT INTO migration_state (version, applied_at_ms) VALUES (?, ?)",
+                arguments: [2, Int64(Date().timeIntervalSince1970 * 1_000)]
+            )
+            try db.execute(sql: "PRAGMA user_version = 2")
+        }
+        migrator.registerMigration("v3", foreignKeyChecks: .immediate) { db in
+            try TaisaSchema.createVersion3(in: db)
+            try db.execute(
+                sql: "INSERT INTO migration_state (version, applied_at_ms) VALUES (?, ?)",
+                arguments: [3, Int64(Date().timeIntervalSince1970 * 1_000)]
+            )
+            try db.execute(sql: "PRAGMA user_version = 3")
         }
         do {
             try migrator.migrate(queue)

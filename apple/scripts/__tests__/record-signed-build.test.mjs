@@ -61,7 +61,7 @@ function fixture(t) {
   writeFileSync(executable, image);
   const facts = {
     signerCertificate: signerCertificate.raw,
-    info: { CFBundleIdentifier: 'com.taisa.app.personal', TaisaEnvironment: 'personal', CFBundleExecutable: 'TaisaPersonal', CFBundleVersion: '1', CFBundleShortVersionString: '1.0' },
+    info: { CFBundleIdentifier: 'com.taisa.app.personal', TaisaEnvironment: 'personal', TaisaVoiceGatewayURL: 'https://voice.example.com', CFBundleExecutable: 'TaisaPersonal', CFBundleVersion: '1', CFBundleShortVersionString: '1.0' },
     rights: { 'application-identifier': 'XH59HG6MSY.com.taisa.app.personal', 'com.apple.developer.team-identifier': 'XH59HG6MSY', 'get-task-allow': true },
     profile: { UUID: '11111111-1111-4111-8111-111111111111', TeamIdentifier: ['XH59HG6MSY'], ApplicationIdentifierPrefix: ['XH59HG6MSY'], ExpirationDate: '2099-01-01T00:00:00Z', ProvisionedDevices: ['device-id'], Entitlements: { 'application-identifier': 'XH59HG6MSY.com.taisa.app.personal', 'com.apple.developer.team-identifier': 'XH59HG6MSY', 'get-task-allow': true } },
     signature: 'Identifier=com.taisa.app.personal\nAuthority=Apple Development: Synthetic Test\nTeamIdentifier=XH59HG6MSY\n',
@@ -110,6 +110,14 @@ function fixture(t) {
 
 test('Personal rejects empty self-reported evidence without real artifacts', () => {
   assert.match(validateSignedBuild({ ...personalRecord, signedEntitlements: {}, provisioningEntitlements: {}, backgroundModes: [], linkedLibraries: [], linksLiveTransport: false }).join('\n'), /appPath|artifact/);
+});
+
+test('Personal rejects missing or non-HTTPS voice gateway configuration', t => {
+  for (const gatewayURL of ['', 'http://voice.example.com', 'not-a-url']) {
+    const f = fixture(t);
+    f.facts.info.TaisaVoiceGatewayURL = gatewayURL;
+    assert.match(validateSignedBuild(f.record, f.options).join('\n'), /voice gateway/i);
+  }
 });
 
 test('Personal rejects caller evidence contradicting inspected facts', t => {

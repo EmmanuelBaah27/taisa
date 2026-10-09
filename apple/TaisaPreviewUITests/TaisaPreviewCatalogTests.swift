@@ -26,6 +26,23 @@ final class TaisaPreviewCatalogTests: XCTestCase {
         retainScreenshot(of: app, name: "preview-accessibility-text")
     }
 
+    func testRepresentativeHomeScenariosOpenDeterministically() {
+        for scenario in ["home.empty", "home.content", "home.failure"] {
+            let app = XCUIApplication()
+            app.launch()
+            let search = app.searchFields["Search scenarios"]
+            XCTAssertTrue(search.waitForExistence(timeout: 5), scenario)
+            search.tap()
+            search.typeText(scenario)
+            let title = scenario.replacingOccurrences(of: "home.", with: "Home ")
+            let row = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", title)).firstMatch
+            XCTAssertTrue(row.waitForExistence(timeout: 5), scenario)
+            row.tap()
+            XCTAssertFalse(search.waitForExistence(timeout: 2), scenario)
+            app.terminate()
+        }
+    }
+
     private func element(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
         app.descendants(matching: .any)[identifier]
     }
