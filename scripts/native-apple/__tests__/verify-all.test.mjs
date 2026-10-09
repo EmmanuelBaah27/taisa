@@ -26,7 +26,7 @@ printf '%s\\n' "$*" >> "$TAISA_TEST_SIMCTL_LOG"
 case "$1" in
   list) printf '{"devices":{}}\\n' ;;
   boot) : > "$TAISA_TEST_SIMULATOR_BOOTED" ;;
-  bootstatus) test -f "$TAISA_TEST_SIMULATOR_BOOTED" ;;
+  bootstatus) sleep "\${TAISA_TEST_BOOTSTATUS_DELAY:-0}"; test -f "$TAISA_TEST_SIMULATOR_BOOTED" ;;
   uninstall) test -f "$TAISA_TEST_SIMULATOR_BOOTED" ;;
 esac
 `,
@@ -56,4 +56,19 @@ esac
   assert.ok(boot >= 0, 'the verifier must boot the selected simulator');
   assert.ok(bootstatus > boot, 'the verifier must wait for the simulator to finish booting');
   assert.ok(uninstall > bootstatus, 'the verifier must clear app state only after the simulator is booted');
+
+  const startedAt = Date.now();
+  assert.throws(() => execFileSync('/bin/bash', ['scripts/native-apple/verify-all.sh'], {
+    cwd: repositoryRoot,
+    env: {
+      ...process.env,
+      PATH: `${bin}${delimiter}${process.env.PATH}`,
+      TAISA_NATIVE_ARTIFACTS: join(fixture, 'timeout-artifacts'),
+      TAISA_SIMULATOR_BOOT_TIMEOUT_SECONDS: '1',
+      TAISA_TEST_BOOTSTATUS_DELAY: '3',
+      TAISA_TEST_SIMCTL_LOG: log,
+      TAISA_TEST_SIMULATOR_BOOTED: join(fixture, 'booted'),
+    },
+  }));
+  assert.ok(Date.now() - startedAt < 5_000, 'a stuck simulator boot must fail within its configured bound');
 });
