@@ -65,11 +65,22 @@ above without asking Baah to say “continue.”
 
 ### SHIP
 
-- Verified merge, safe cleanup, Linear Closeout, and next-outcome recommendation completed.
+- Verified merge, safe cleanup, Linear Closeout, and exactly one next-outcome recommendation
+  completed.
 
 ## Completion report
 
 Report the terminal outcome, exact branch and commit, PR/CI state, canonical preview revision
 or non-device path, checks and results, unresolved risk, Linear evidence, and next Baah gate.
-For Ship, recommend but do not start the next outcome. Complete the Goal after reporting.
+For Ship, reconcile current Linear priorities, blockers, dependencies, and approval readiness,
+then output exactly one **Recommended next outcome** or one
+**No next outcome recommended** result using these forms:
+
+- **Recommended next outcome:** `<one outcome>` — `<evidence-based reason>` — **Next Baah
+  gate:** `<explicit gate>`
+- **No next outcome recommended:** `<blocking reason>` — **Next Baah gate:** `<explicit gate>`
+
+Never output both forms or an alternatives list. A recommendation is advisory: do not reopen
+or start the successor issue, create its branch or Goal, change its status, or begin its work
+without Baah explicitly approving the successor kickoff. Complete the Goal after reporting.
 Do not remain active solely for waiting on Baah or external state.

@@ -139,6 +139,32 @@ for forbidden in \
   fi
 done
 
+for recommendation_file in \
+  docs/workflow.md \
+  .agents/skills/taisa-workflow/SKILL.md \
+  .agents/skills/taisa-workflow/templates/bounded-goal.md; do
+  require_workflow_pattern "$recommendation_file" 'exactly one.*Recommended next outcome|Recommended next outcome.*exactly one' \
+    'exactly-one Recommended next outcome contract'
+  require_workflow_pattern "$recommendation_file" 'No next outcome recommended' \
+    'no-safe-candidate recommendation form'
+  require_workflow_pattern "$recommendation_file" 'priorit(y|ies).*blocker.*dependenc.*approval|approval.*dependenc.*blocker.*priorit' \
+    'Linear recommendation evidence inputs'
+  require_workflow_pattern "$recommendation_file" 'explicit.*kickoff|kickoff.*explicit' \
+    'explicit successor kickoff boundary'
+done
+
+require_workflow_pattern "$goal_template" 'reason.*next Baah gate|next Baah gate.*reason' \
+  'recommendation reason and gate output'
+
+for mutation_boundary in \
+  'must not reopen or start|never reopen or start' \
+  'successor branch or Goal|branch or Goal.*successor' \
+  'change successor status|successor status.*change' \
+  'begin successor work|successor work.*begin'; do
+  require_workflow_pattern docs/workflow.md "$mutation_boundary" \
+    "successor mutation prohibition: $mutation_boundary"
+done
+
 rg -q '31b0d99c-6f74-4c9c-af2a-12e6e25aabe0' \
   .agents/skills/taisa-workflow/SKILL.md || fail "Taisa Linear project ID is missing"
 rg -q 'e95356d8-17f7-4700-bdfe-222782bea546' \

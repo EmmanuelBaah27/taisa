@@ -1,7 +1,7 @@
 # Taisa Build Workflow
 
 **Status:** Active
-**Last updated:** 2026-10-07
+**Last updated:** 2026-10-09
 
 How Taisa work moves from intake to shipped. Linear is the sole live authority.
 Linear project `Taisa`
@@ -444,13 +444,21 @@ related deferral and confirm that implementation, canonical preview, and merge e
 support its recorded lifecycle. Perform the **memory-promotion check**: promote reusable evidence to
 `docs/learnings.md` or a durable decision/contract only when it benefits future work.
 
-At Closeout, recommend but do not start the next outcome. Rank candidates in this order:
+At Ship Closeout, reconcile current Linear priorities, blockers, dependencies, and approval
+readiness, then publish exactly one **Recommended next outcome**. Give the evidence-based
+reason and name the next Baah gate. Rank candidates in this order:
 release-blocking defect or data/security/privacy risk; dependency for an approved milestone;
 missing milestone acceptance; highest user value among unblocked approved work; evidenced
 reliability/accessibility/maintainability/cost improvement; cosmetic refinement. Within a
 rank, prefer the outcome unlocking more downstream work, then lower delivery risk, then the
-smaller independently valuable slice. State the evidence and tie-breaker. Baah approves,
-rejects, reprioritizes, or pauses it before any new Scope or Build begins.
+smaller independently valuable slice. State the evidence and tie-breaker; do not list
+alternative outcomes. When no candidate is safely actionable, publish exactly one
+**No next outcome recommended** result with the blocking reason and next Baah gate.
+
+A recommendation is advisory, not authorization. It must not reopen or start a successor
+issue, create a successor branch or Goal, change successor status, or begin successor work.
+Baah explicitly approves the successor kickoff before any of those mutations or execution
+may begin.
 
 ## Git and shipping
 
