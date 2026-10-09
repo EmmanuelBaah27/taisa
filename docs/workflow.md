@@ -451,14 +451,15 @@ release-blocking defect or data/security/privacy risk; dependency for an approve
 missing milestone acceptance; highest user value among unblocked approved work; evidenced
 reliability/accessibility/maintainability/cost improvement; cosmetic refinement. Within a
 rank, prefer the outcome unlocking more downstream work, then lower delivery risk, then the
-smaller independently valuable slice. State the evidence and tie-breaker; do not list
-alternative outcomes. When no candidate is safely actionable, publish exactly one
-**No next outcome recommended** result with the blocking reason and next Baah gate.
+smaller independently valuable slice. State the evidence and tie-breaker; do not provide an
+alternatives list. When no candidate is safely actionable, publish exactly one **No next outcome recommended** result with the blocking reason and next Baah gate.
 
 A recommendation is advisory, not authorization. It must not reopen or start a successor
 issue, create a successor branch or Goal, change successor status, or begin successor work.
 Baah explicitly approves the successor kickoff before any of those mutations or execution
 may begin.
+
+Use exactly one form: **Recommended next outcome:** `<one outcome>` — **Reason:** `<evidence>` — **Next Baah gate:** `<explicit gate>`; or **No next outcome recommended:** `<blocking condition>` — **Reason:** `<evidence>` — **Next Baah gate:** `<explicit gate>`.
 
 ## Git and shipping
 

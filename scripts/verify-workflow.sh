@@ -145,16 +145,19 @@ for recommendation_file in \
   .agents/skills/taisa-workflow/templates/bounded-goal.md; do
   require_workflow_pattern "$recommendation_file" 'exactly one.*Recommended next outcome|Recommended next outcome.*exactly one' \
     'exactly-one Recommended next outcome contract'
-  require_workflow_pattern "$recommendation_file" 'No next outcome recommended' \
-    'no-safe-candidate recommendation form'
+  require_workflow_pattern "$recommendation_file" 'exactly one.*No next outcome recommended|No next outcome recommended.*exactly one' \
+    'exactly-one no-safe-candidate recommendation form'
   require_workflow_pattern "$recommendation_file" 'priorit(y|ies).*blocker.*dependenc.*approval|approval.*dependenc.*blocker.*priorit' \
     'Linear recommendation evidence inputs'
+  require_workflow_pattern "$recommendation_file" 'Recommended next outcome.*Reason:.*Next Baah gate:' \
+    'recommended-outcome reason and gate form'
+  require_workflow_pattern "$recommendation_file" 'No next outcome recommended.*Reason:.*Next Baah gate:' \
+    'no-outcome reason and gate form'
+  require_workflow_pattern "$recommendation_file" 'alternatives? list|list alternative' \
+    'no-alternatives recommendation boundary'
   require_workflow_pattern "$recommendation_file" 'explicit.*kickoff|kickoff.*explicit' \
     'explicit successor kickoff boundary'
 done
-
-require_workflow_pattern "$goal_template" 'reason.*next Baah gate|next Baah gate.*reason' \
-  'recommendation reason and gate output'
 
 for recommendation_file in \
   docs/workflow.md \

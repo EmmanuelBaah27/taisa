@@ -73,12 +73,10 @@ above without asking Baah to say “continue.”
 Report the terminal outcome, exact branch and commit, PR/CI state, canonical preview revision
 or non-device path, checks and results, unresolved risk, Linear evidence, and next Baah gate.
 For Ship, reconcile current Linear priorities, blockers, dependencies, and approval readiness,
-then output exactly one **Recommended next outcome** or one
-**No next outcome recommended** result using these forms:
+then output exactly one **Recommended next outcome** or exactly one **No next outcome recommended** result. Each form includes its reason and next Baah gate:
 
-- **Recommended next outcome:** `<one outcome>` — `<evidence-based reason>` — **Next Baah
-  gate:** `<explicit gate>`
-- **No next outcome recommended:** `<blocking reason>` — **Next Baah gate:** `<explicit gate>`
+- **Recommended next outcome:** `<one outcome>` — **Reason:** `<evidence>` — **Next Baah gate:** `<explicit gate>`
+- **No next outcome recommended:** `<blocking condition>` — **Reason:** `<evidence>` — **Next Baah gate:** `<explicit gate>`
 
 Never output both forms or an alternatives list. A recommendation is advisory: do not reopen or start
 the successor issue; do not create its branch or Goal, change its status, or begin its work

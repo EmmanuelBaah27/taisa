@@ -189,11 +189,12 @@ No active Goal may exist solely to wait for Baah or unchanged external state.
 
 At SHIP Closeout, reconcile current Linear priorities, blockers, dependencies, and approval
 readiness. Emit exactly one **Recommended next outcome**, its evidence-based reason, and the
-next Baah gate. If no candidate is safely actionable, emit exactly one
-**No next outcome recommended** result with the blocking reason and next Baah gate. Do not
+next Baah gate. If no candidate is safely actionable, emit exactly one **No next outcome recommended** result with the blocking reason and next Baah gate. Do not
 offer an alternatives list. The recommendation is advisory: never reopen or start the
 successor issue, create its branch or Goal, change its status, or begin its work until Baah
 explicitly approves a new kickoff.
+
+Use exactly one form: **Recommended next outcome:** `<one outcome>` — **Reason:** `<evidence>` — **Next Baah gate:** `<explicit gate>`; or **No next outcome recommended:** `<blocking condition>` — **Reason:** `<evidence>` — **Next Baah gate:** `<explicit gate>`.
 
 Prefer event-capable waits. Otherwise record one external wait and complete the Goal. Never
 select a successor issue, auto-restart, infer approval, or emit updates for unchanged state.
