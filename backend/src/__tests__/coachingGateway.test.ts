@@ -625,6 +625,7 @@ test.each(validPayloadFixtures)(
   expect(objectPropertyCount).toBeLessThanOrEqual(5000);
   expect(openAISchema.definitions?.coaching_response).toBeUndefined();
   expect(JSON.stringify(openAISchema)).not.toMatch(/\"(?:minLength|maxLength)\":/);
+  expect(JSON.stringify(openAISchema)).not.toContain('\"not\":{}');
   const arraysUseSingleItemSchemas = (value: unknown): boolean => {
     if (Array.isArray(value)) return value.every(arraysUseSingleItemSchemas);
     if (!value || typeof value !== 'object') return true;
