@@ -9,6 +9,108 @@ import TaisaStorage
 
 @Suite("Voice review regressions")
 struct VoiceSessionReviewRegressionTests {
+    @Test("terminal coaching retry satisfies encrypted repository uniqueness")
+    func terminalCoachingRetryPersistsBeforeNetwork() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("taisa-terminal-retry-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = try await TaisaStore.open(
+            at: directory.appendingPathComponent("store.sqlite"),
+            keyStore: ReviewDatabaseKeys()
+        )
+        try await store.write { database in
+            try database.execute(
+                sql: "INSERT INTO conversations (id, title, created_at_ms, updated_at_ms) VALUES (?, ?, 1, 1)",
+                arguments: [ReviewIDs.conversation.uuidString.lowercased(), "Review"]
+            )
+        }
+        let userMessageID = "77777777-7777-4777-8777-777777777771"
+        let failed = VoiceTurnRecord(
+            id: ReviewIDs.turn.uuidString, conversationID: ReviewIDs.conversation.uuidString,
+            transcriptionRequestID: ReviewIDs.transcription.uuidString,
+            transcriptionIdempotencyKey: "transcription-terminal",
+            coachingRequestID: ReviewIDs.coaching.uuidString,
+            coachingIdempotencyKey: "coaching-terminal",
+            state: .terminalFailure, stage: .finished,
+            acceptedTranscript: "I led the critique.", failureCode: "COACHING_UNAVAILABLE",
+            transcriptionReceipt: "transcription-receipt", userMessageID: userMessageID,
+            cleanupState: .completed, createdAtMS: 1, updatedAtMS: 2
+        )
+        let repository = ConversationTurnRepository(store: store)
+        try await repository.checkpoint(
+            failed,
+            messages: [.init(
+                id: userMessageID, conversationID: failed.conversationID,
+                role: "user", body: "I led the critique.", createdAtMS: 1
+            )],
+            cleanup: nil,
+            context: .init(
+                id: "77777777-7777-4777-8777-777777777772",
+                deviceID: "77777777-7777-4777-8777-777777777773", timestamp: 2
+            )
+        )
+        let coaching = ReviewCoachingRunner(events: [
+            .failed(
+                requestId: ReviewIDs.coaching, sequence: 0,
+                code: .coachingUnavailable, retryable: false
+            ),
+        ])
+        let coordinator = VoiceSessionCoordinator(
+            initial: failed,
+            checkpoints: RepositoryVoiceTurnCheckpointer(
+                repository: repository,
+                deviceID: UUID(uuidString: "77777777-7777-4777-8777-777777777773")!,
+                nowMS: { 3 }
+            ),
+            transcription: ReviewTranscriptionRunner(events: []), coaching: coaching,
+            connectivity: ReviewConnectivity(), reconciliation: ReviewReconciliation(),
+            capture: ReviewCaptureSpy(), audio: ReviewAudioSpy(), nowMS: { 3 }
+        )
+        let replacement = VoiceTurnRecord(
+            id: "77777777-7777-4777-8777-777777777774",
+            conversationID: failed.conversationID,
+            transcriptionRequestID: "77777777-7777-4777-8777-777777777775",
+            transcriptionIdempotencyKey: "transcription-replacement",
+            coachingRequestID: "77777777-7777-4777-8777-777777777776",
+            coachingIdempotencyKey: "coaching-replacement",
+            state: .transcriptClear, stage: .coaching,
+            acceptedTranscript: failed.acceptedTranscript,
+            transcriptionReceipt: failed.transcriptionReceipt,
+            createdAtMS: 3, updatedAtMS: 3
+        )
+
+        try await coordinator.restartFailedCoaching(with: replacement)
+        await coordinator.waitForIdle()
+        #expect(await coordinator.snapshot().durable.state == .terminalFailure)
+        let secondReplacement = VoiceTurnRecord(
+            id: "77777777-7777-4777-8777-777777777777",
+            conversationID: failed.conversationID,
+            transcriptionRequestID: "77777777-7777-4777-8777-777777777778",
+            transcriptionIdempotencyKey: "transcription-replacement-2",
+            coachingRequestID: "77777777-7777-4777-8777-777777777779",
+            coachingIdempotencyKey: "coaching-replacement-2",
+            state: .transcriptClear, stage: .coaching,
+            acceptedTranscript: failed.acceptedTranscript,
+            transcriptionReceipt: failed.transcriptionReceipt,
+            createdAtMS: 4, updatedAtMS: 4
+        )
+        try await coordinator.restartFailedCoaching(with: secondReplacement)
+        await coordinator.waitForIdle()
+
+        #expect(await coaching.calls == 2)
+        let counts = try await store.read { database in
+            (
+                try Int.fetchOne(database, sql: "SELECT count(*) FROM voice_turns") ?? -1,
+                try Int.fetchOne(database, sql: "SELECT count(*) FROM voice_turns WHERE user_message_id IS NOT NULL") ?? -1,
+                try Int.fetchOne(database, sql: "SELECT count(*) FROM messages") ?? -1
+            )
+        }
+        #expect(counts.0 == 3)
+        #expect(counts.1 == 1)
+        #expect(counts.2 == 1)
+    }
+
     @Test("relaunch cleans up a legacy cancelled capture and unlocks the next turn")
     func relaunchRecoversCancelledCapture() async throws {
         let capture = ReviewCaptureSpy()

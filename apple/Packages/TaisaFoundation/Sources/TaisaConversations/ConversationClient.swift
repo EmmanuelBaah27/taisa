@@ -82,7 +82,32 @@ public struct VoiceSessionConversationAdapter: ConversationVoiceControlling {
     static func requireCompleted(_ state: VoiceTurnState) throws {
         guard state == .completed else { throw ConversationFailure.retryable }
     }
-    public func retry() async throws { try await coordinator.send(.retry) }
+    public func retry() async throws {
+        let failed = await coordinator.snapshot().durable
+        if failed.state == .terminalFailure, failed.stage == .finished {
+            try await coordinator.restartFailedCoaching(with: retryTurn(for: failed))
+        } else {
+            try await coordinator.send(.retry)
+        }
+        await coordinator.waitForIdle()
+        try Self.requireCompleted(await coordinator.snapshot().durable.state)
+    }
+
+    private func retryTurn(for failed: VoiceTurnRecord) -> VoiceTurnRecord {
+        let seed = makeTurn(failed.conversationID)
+        return VoiceTurnRecord(
+            id: seed.id, conversationID: failed.conversationID,
+            transcriptionRequestID: seed.transcriptionRequestID,
+            transcriptionIdempotencyKey: seed.transcriptionIdempotencyKey,
+            coachingRequestID: seed.coachingRequestID,
+            coachingIdempotencyKey: seed.coachingIdempotencyKey,
+            state: .transcriptClear, stage: .coaching,
+            acceptedTranscript: failed.acceptedTranscript,
+            transcriptionReceipt: failed.transcriptionReceipt,
+            userMessageID: nil,
+            createdAtMS: seed.createdAtMS, updatedAtMS: seed.updatedAtMS
+        )
+    }
     public func saveDraft() async throws {
         let state = await coordinator.snapshot().durable.state
         if state == .recording { try await coordinator.send(.pauseRecording) }

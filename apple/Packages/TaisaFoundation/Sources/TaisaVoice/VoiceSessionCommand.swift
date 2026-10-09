@@ -33,6 +33,7 @@ public enum VoiceSessionCommand: Sendable, Equatable {
     case fail(code: String, retryable: Bool, ambiguous: Bool)
     case scheduleRetry(code: String, nextRetryAtMS: Int64)
     case retry
+    case restartFailedCoaching(VoiceTurnRecord)
     case confirmResume
     case cancel
     case discard
