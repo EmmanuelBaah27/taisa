@@ -15,6 +15,7 @@
 		0C8E71835C74BC814F59AC1C /* TaisaHome in Frameworks */ = {isa = PBXBuildFile; productRef = 0DF31A4B9370F4FDAEA3315E /* TaisaHome */; };
 		0E0F162C7E603373770D80EA /* VoiceSessionDiagnosticsViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AB82F356059A4761E465BC9 /* VoiceSessionDiagnosticsViewModelTests.swift */; };
 		10558363B760A0814005644A /* RecoveryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E8B118B86D060B608C88EC8 /* RecoveryView.swift */; };
+		132DEDB24FA15D3B111375FC /* PersonalVoiceGatewayEnrollmentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F903B811129986113206457E /* PersonalVoiceGatewayEnrollmentTests.swift */; };
 		14CE1254613B51B8A732F31E /* VoiceSessionAccessibilityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB678CC682AABEFD72A2A63D /* VoiceSessionAccessibilityTests.swift */; };
 		16C7A44E431B3A16DB883F3F /* PrimaryDestination.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15559F553404687F14A6B460 /* PrimaryDestination.swift */; };
 		1748385DCE8300004A2B4F94 /* TaisaDesignSystem in Frameworks */ = {isa = PBXBuildFile; productRef = 90EA0964036021A700C04142 /* TaisaDesignSystem */; };
@@ -262,6 +263,7 @@
 		F5B97AC1D5F21A3BF7F7BFA3 /* RecoveryViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecoveryViewModelTests.swift; sourceTree = "<group>"; };
 		F85D7A73226CB6E9770D24D6 /* Personal.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Personal.xcconfig; sourceTree = "<group>"; };
 		FB7D5832060268C72A352DB1 /* AppRuntimeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRuntimeTests.swift; sourceTree = "<group>"; };
+		F903B811129986113206457E /* PersonalVoiceGatewayEnrollmentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalVoiceGatewayEnrollmentTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -546,6 +548,7 @@
 			children = (
 				3A19D945D21AC83D8AF47BED /* PersonalDeviceQATests.swift */,
 				E5A6963E5BEC4FF073F86F31 /* PersonalIsolationTests.swift */,
+				F903B811129986113206457E /* PersonalVoiceGatewayEnrollmentTests.swift */,
 				7FDC2B51AA253FE5071AA1D1 /* VoiceFailureDiagnosticTests.swift */,
 			);
 			path = TaisaPersonalTests;
@@ -928,6 +931,7 @@
 			files = (
 				357DAF31314ED4F1B0C5F912 /* PersonalDeviceQATests.swift in Sources */,
 				75C41727467C062CC7EA09D4 /* PersonalIsolationTests.swift in Sources */,
+				132DEDB24FA15D3B111375FC /* PersonalVoiceGatewayEnrollmentTests.swift in Sources */,
 				1B01DF3A74C8A8F9C879C132 /* VoiceFailureDiagnosticTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

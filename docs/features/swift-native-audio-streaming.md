@@ -58,9 +58,10 @@ The gateway already exposes strict ordered NDJSON transcription events and a val
 - Text-to-speech playback or voice selection for coaching responses.
 - Synchronizing, backing up, exporting, or restoring recorded or temporary audio.
 - Redesigning the coaching personality, prompt, four stance modes, memory policy, proposals, or product information architecture.
+- React Native implementation or parity work.
 - CloudKit activation, Taisa accounts, server-stored conversation history, or readable backend persistence.
 - Indefinite automatic retry or any retry that may create an ambiguous duplicate paid request.
-- Retiring existing backend endpoints.
+- Retiring existing backend endpoints or removing React Native code.
 
 ## Verification status
 

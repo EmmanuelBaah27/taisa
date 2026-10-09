@@ -41,7 +41,7 @@ Acceptance: **passed — Baah confirmed both builds on both devices on 2026-10-0
 - Preview: `com.taisa.app.preview` — installed and launched
 - Tester confirmation: passed; development shell, isolated preview catalog, required scenarios, readable accessibility text, centered iPad layout, and exact diagnostics confirmed
 
-The development, Preview, Personal, and production bundle identifiers remain distinct so test installations do not overwrite one another.
+The development and preview bundle identifiers are separate from `com.taisa.app`, so these installations do not overwrite the existing production React Native app.
 
 ## 2026-10-06 — Personal encrypted recovery candidate
 

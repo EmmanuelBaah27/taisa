@@ -117,6 +117,11 @@ test('rejects voice evidence that is not bound to signed Personal artifacts', ()
   const records = ['iphone', 'ipad'].map((family) => JSON.parse(readFileSync(
     new URL(`../../../docs/migration/swiftui/native-build-records/2026-10-06-${family}-personal.json`, import.meta.url),
   )));
+  for (const [index, record] of records.entries()) {
+    record.appPath = `/nonexistent/retained-personal-${index}/TaisaPersonal.app`;
+    record.profilePath = `${record.appPath}/embedded.mobileprovision`;
+    record.artifactEvidence.executable = `${record.appPath}/TaisaPersonal`;
+  }
   evidence.candidateCommit = records[0].candidateCommit;
   evidence.installedCommit = records[0].installedCommit;
   evidence.appVersion = records[0].appVersion;

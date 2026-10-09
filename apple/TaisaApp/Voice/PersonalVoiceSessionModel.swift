@@ -24,14 +24,54 @@ func voiceActionFailureStatus(_ error: any Error) -> String {
 
 @MainActor
 final class PersonalVoiceSessionModel: ObservableObject {
+    enum GatewayState: Equatable {
+        case notConfigured
+        case enrollmentRequired
+        case enrolling
+        case ready
+        case invalidOrExpiredCode
+        case credentialRejected
+        case reEnrollmentRequired
+    }
+
+    typealias RuntimeStarter = @MainActor (VoiceGatewayCredential) async throws -> Void
+
     @Published private(set) var snapshot: VoiceSessionSnapshot?
     @Published private(set) var status = "Configure an approved HTTPS Taisa voice gateway for this build."
+    @Published private(set) var gatewayState: GatewayState = .notConfigured
 
+    private let gatewayURLString: String
+    private let enrollmentClient: any VoiceGatewayEnrolling
+    private let credentialStore: any VoiceGatewayCredentialStoring
+    private let runtimeStarter: RuntimeStarter?
+    private var gatewayOrigin: URL?
     private var coordinator: VoiceSessionCoordinator?
     private var connectivityTask: Task<Void, Never>?
     private var refreshTask: Task<Void, Never>?
     private var conversationID: UUID?
     private var started = false
+
+    init(
+        gatewayURLString: String? = nil,
+        enrollmentClient: (any VoiceGatewayEnrolling)? = nil,
+        credentialStore: (any VoiceGatewayCredentialStoring)? = nil,
+        runtimeStarter: RuntimeStarter? = nil
+    ) {
+        let arguments = ProcessInfo.processInfo.arguments
+        let forcesUnenrolledUITest = arguments.contains("--taisa-voice-gateway-unenrolled")
+        let usesUITestGateway = forcesUnenrolledUITest
+            || arguments.contains("--taisa-voice-gateway-ready")
+        self.gatewayURLString = gatewayURLString
+            ?? (usesUITestGateway
+                ? ProcessInfo.processInfo.environment["TAISA_UI_TEST_VOICE_GATEWAY_URL"] ?? ""
+                : Bundle.main.object(forInfoDictionaryKey: "TaisaVoiceGatewayURL") as? String ?? "")
+        self.enrollmentClient = enrollmentClient ?? VoiceGatewayEnrollmentClient()
+        self.credentialStore = credentialStore
+            ?? (usesUITestGateway
+                ? InMemoryVoiceGatewayCredentialStore()
+                : KeychainVoiceGatewayCredentialStore())
+        self.runtimeStarter = runtimeStarter
+    }
 
     deinit {
         connectivityTask?.cancel()
@@ -41,60 +81,69 @@ final class PersonalVoiceSessionModel: ObservableObject {
     func start() async {
         guard !started else { return }
         started = true
-        do {
-            let rawURL = Bundle.main.object(forInfoDictionaryKey: "TaisaVoiceGatewayURL") as? String ?? ""
-            guard let url = URL(string: rawURL), !rawURL.isEmpty else { return }
-            let backend = try PersonalRecoveryBackend.personal()
-            let context = try await backend.voiceStoreContext()
-            let deviceID = context.deviceID
-            let configuration = try VoiceGatewayConfiguration(
-                baseURL: url, bearerToken: deviceID.uuidString.lowercased(),
-                ownerID: deviceID.uuidString.lowercased()
-            )
-            let conversationID = stableConversationID()
-            self.conversationID = conversationID
-            try await ensureConversation(conversationID, store: context.store, deviceID: deviceID)
-            let turns = ConversationTurnRepository(store: context.store)
-            let initial = try await turns.latestResumableTurn(
-                conversationID: conversationID.uuidString
-            ) ?? makeTurn(conversationID: conversationID)
-            let files = try ProtectedAudioFileStore()
-            let capture = AudioCaptureController(
-                service: AudioCaptureService(
-                    session: SystemAudioSessionAdapter(), recorder: SystemAudioRecorderAdapter(), files: files
-                ),
-                files: files, lifecycle: SystemAudioSessionLifecycleSource()
-            )
-            let connectivity = SystemConnectivityMonitor()
-            let coordinator = VoiceSessionCoordinator(
-                initial: initial,
-                checkpoints: RepositoryVoiceTurnCheckpointer(
-                    repository: turns, deviceID: deviceID
-                ),
-                transcription: GatewayTranscriptionRunner(configuration: configuration, audio: capture),
-                transcriptionReconciliation: GatewayTranscriptionReconciliation(
-                    configuration: configuration
-                ),
-                coaching: GatewayCoachingRunner(configuration: configuration),
-                connectivity: connectivity,
-                reconciliation: GatewayCoachingReconciliation(configuration: configuration),
-                capture: capture, audio: capture
-            )
-            self.coordinator = coordinator
-            snapshot = await coordinator.snapshot()
-            status = "Ready"
-            connectivityTask = Task { [weak self] in
-                for await available in await connectivity.changes() {
-                    guard !Task.isCancelled else { return }
-                    try? await coordinator.connectivityChanged(isAvailable: available)
-                    await self?.refresh()
-                }
-            }
-            try await coordinator.recoverIfAuthorized()
-            beginRefreshing()
-        } catch {
-            status = "Voice runtime configuration failed."
+        let rawURL = gatewayURLString.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !rawURL.isEmpty,
+              let suppliedURL = URL(string: rawURL),
+              let origin = try? VoiceGatewayCredential(
+                origin: suppliedURL, credentialID: "origin-validation", bearerToken: "origin-validation"
+              ).origin
+        else {
+            gatewayState = .notConfigured
+            status = "Configure an approved HTTPS Taisa voice gateway for this build."
+            return
         }
+        gatewayOrigin = origin
+#if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("--taisa-voice-gateway-ready") {
+            gatewayState = .ready
+            status = "Ready"
+            snapshot = VoiceSessionSnapshot(
+                durable: makeTurn(conversationID: UUID()),
+                partialTranscript: "",
+                partialCoaching: ""
+            )
+            return
+        }
+#endif
+        do {
+            guard let credential = try await credentialStore.load(origin: origin) else {
+                gatewayState = .enrollmentRequired
+                status = "Connect this device to the approved voice gateway."
+                return
+            }
+            try await activate(credential)
+        } catch {
+            gatewayState = .enrollmentRequired
+            status = "Connect this device to the approved voice gateway."
+        }
+    }
+
+    func connect(code: String) async {
+        guard let gatewayOrigin else { return }
+        gatewayState = .enrolling
+        status = "Connecting this device…"
+        do {
+            let credential = try await enrollmentClient.enroll(baseURL: gatewayOrigin, code: code)
+            try await credentialStore.save(credential)
+            try await activate(credential)
+        } catch VoiceGatewayEnrollmentError.invalidOrExpiredCode {
+            gatewayState = .invalidOrExpiredCode
+            status = "That enrollment code is invalid or expired. Request a new code and try again."
+        } catch {
+            gatewayState = .enrollmentRequired
+            status = "Unable to connect this device. Check the gateway and try again."
+        }
+    }
+
+    func credentialWasRejected() async {
+        guard let gatewayOrigin else { return }
+        try? await credentialStore.delete(origin: gatewayOrigin)
+        coordinator = nil
+        connectivityTask?.cancel()
+        refreshTask?.cancel()
+        snapshot = nil
+        gatewayState = .reEnrollmentRequired
+        status = "This device credential was rejected. Connect this device again."
     }
 
     func perform(_ action: VoiceSessionDiagnosticAction) {
@@ -122,10 +171,76 @@ final class PersonalVoiceSessionModel: ObservableObject {
                 status = "Ready"
                 beginRefreshing()
             } catch {
-                status = voiceActionFailureStatus(error)
-                await refresh()
+                if error as? StreamTransportError == .authentication {
+                    gatewayState = .credentialRejected
+                    await credentialWasRejected()
+                } else {
+                    status = voiceActionFailureStatus(error)
+                    await refresh()
+                }
             }
         }
+    }
+
+    private func activate(_ credential: VoiceGatewayCredential) async throws {
+        if let runtimeStarter {
+            try await runtimeStarter(credential)
+        } else {
+            try await startRuntime(credential: credential)
+        }
+        gatewayState = .ready
+        status = "Ready"
+    }
+
+    private func startRuntime(credential: VoiceGatewayCredential) async throws {
+        let backend = try PersonalRecoveryBackend.personal()
+        let context = try await backend.voiceStoreContext()
+        let deviceID = context.deviceID
+        let configuration = try VoiceGatewayConfiguration(
+            baseURL: credential.origin,
+            bearerToken: credential.bearerToken,
+            ownerID: deviceID.uuidString.lowercased()
+        )
+        let conversationID = stableConversationID()
+        self.conversationID = conversationID
+        try await ensureConversation(conversationID, store: context.store, deviceID: deviceID)
+        let turns = ConversationTurnRepository(store: context.store)
+        let initial = try await turns.latestResumableTurn(
+            conversationID: conversationID.uuidString
+        ) ?? makeTurn(conversationID: conversationID)
+        let files = try ProtectedAudioFileStore()
+        let capture = AudioCaptureController(
+            service: AudioCaptureService(
+                session: SystemAudioSessionAdapter(), recorder: SystemAudioRecorderAdapter(), files: files
+            ),
+            files: files, lifecycle: SystemAudioSessionLifecycleSource()
+        )
+        let connectivity = SystemConnectivityMonitor()
+        let coordinator = VoiceSessionCoordinator(
+            initial: initial,
+            checkpoints: RepositoryVoiceTurnCheckpointer(
+                repository: turns, deviceID: deviceID
+            ),
+            transcription: GatewayTranscriptionRunner(configuration: configuration, audio: capture),
+            transcriptionReconciliation: GatewayTranscriptionReconciliation(
+                configuration: configuration
+            ),
+            coaching: GatewayCoachingRunner(configuration: configuration),
+            connectivity: connectivity,
+            reconciliation: GatewayCoachingReconciliation(configuration: configuration),
+            capture: capture, audio: capture
+        )
+        self.coordinator = coordinator
+        snapshot = await coordinator.snapshot()
+        connectivityTask = Task { [weak self] in
+            for await available in await connectivity.changes() {
+                guard !Task.isCancelled else { return }
+                try? await coordinator.connectivityChanged(isAvailable: available)
+                await self?.refresh()
+            }
+        }
+        try await coordinator.recoverIfAuthorized()
+        beginRefreshing()
     }
 
     private func beginRefreshing() {

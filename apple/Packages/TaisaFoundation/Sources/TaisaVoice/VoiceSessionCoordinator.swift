@@ -184,6 +184,10 @@ public actor VoiceSessionCoordinator {
 
     public func connectivityChanged(isAvailable: Bool) async throws {
         guard isAvailable else { return }
+        if durable.stage == .capture,
+           durable.state == .recording || durable.state == .paused {
+            return
+        }
         try await recoverIfAuthorized()
     }
 
@@ -198,15 +202,24 @@ public actor VoiceSessionCoordinator {
             try await send(.captureFailed(code: "CAPTURE_INTERRUPTED"))
             return
         }
+        let recovery = VoiceSessionRecovery.action(for: durable)
+        if recovery == .cleanupOnly {
+            guard durable.cleanupState == .pending else { return }
+            if let fileID = durable.audioFileID {
+                try await deleteAudio(fileID)
+            } else if durable.state.isTerminal {
+                try await send(.cleanupCompleted)
+            }
+            return
+        }
+
         guard await connectivity.isAvailable() else { return }
 
-        switch VoiceSessionRecovery.action(for: durable) {
+        switch recovery {
         case .none, .requireConfirmation:
             return
         case .cleanupOnly:
-            if let fileID = durable.audioFileID, durable.cleanupState == .pending {
-                try await deleteAudio(fileID)
-            }
+            return
         case .retryTranscription:
             if durable.state == .recoverableFailure {
                 scheduleDurableRetry(stage: .transcription)
@@ -260,7 +273,13 @@ public actor VoiceSessionCoordinator {
                 launchCoaching()
             case .startRecording:
                 let turnID = try currentTurnID()
-                let fileID = try await capture.prepare(turnID: turnID)
+                let fileID: String
+                do {
+                    fileID = try await capture.prepare(turnID: turnID)
+                } catch {
+                    try? await send(.captureFailed(code: "CAPTURE_PREPARE_FAILED"))
+                    throw error
+                }
                 do {
                     try await send(.captureStarted(fileID: fileID))
                 } catch {
@@ -310,6 +329,7 @@ public actor VoiceSessionCoordinator {
     }
 
     private func persist(_ candidate: VoiceTurnRecord) async throws {
+        print("TAISA_VOICE persist.begin state=\(candidate.state.rawValue) stage=\(candidate.stage.rawValue) failure=\(candidate.failureCode ?? "none")")
         let timestamp = max(
             nowMS(), durable.updatedAtMS == Int64.max ? Int64.max : durable.updatedAtMS + 1
         )
@@ -341,6 +361,7 @@ public actor VoiceSessionCoordinator {
         }
         try await checkpoints.checkpoint(record, messages: messages, cleanup: cleanup)
         durable = record
+        print("TAISA_VOICE persist.end state=\(record.state.rawValue) stage=\(record.stage.rawValue)")
         if messages.contains(where: { $0.role == "assistant" }) { pendingAssistantReply = nil }
     }
 
@@ -372,6 +393,7 @@ public actor VoiceSessionCoordinator {
                 case .delta(_, _, let delta):
                     partialTranscript += delta
                 case .completed(let requestID, _, let text, _, let quality, _):
+                    print("TAISA_VOICE transcription.completed quality=\(String(describing: quality))")
                     partialTranscript = ""
                     let receipt = requestID.uuidString.lowercased()
                     switch quality {
@@ -386,6 +408,7 @@ public actor VoiceSessionCoordinator {
                     finishStage(generation)
                     return
                 case .noSpeech(let requestID, _):
+                    print("TAISA_VOICE transcription.no-speech")
                     partialTranscript = ""
                     try await send(.transcriptCompleted(.noSpeech(
                         receipt: requestID.uuidString.lowercased()
@@ -393,6 +416,7 @@ public actor VoiceSessionCoordinator {
                     finishStage(generation)
                     return
                 case .failed:
+                    print("TAISA_VOICE transcription.failed-event")
                     partialTranscript = ""
                     try await scheduleRetryOrFail(
                         code: "TRANSCRIPTION_FAILED", generation: generation
@@ -409,6 +433,7 @@ public actor VoiceSessionCoordinator {
             }
             finishStage(generation)
         } catch {
+            print("TAISA_VOICE transcription.catch type=\(String(reflecting: type(of: error)))")
             partialTranscript = ""
             if isCurrent(generation), !Task.isCancelled, durable.state == .transcribing {
                 try? await scheduleRetryOrFail(
@@ -448,6 +473,7 @@ public actor VoiceSessionCoordinator {
                 case .delta(_, _, let delta):
                     partialCoaching += delta
                 case .completed(_, _, let response, let receipt):
+                    print("TAISA_VOICE coaching.completed")
                     partialCoaching = ""
                     pendingAssistantReply = response.reply
                     try await send(.coachingCompleted(
@@ -456,6 +482,7 @@ public actor VoiceSessionCoordinator {
                     finishStage(generation)
                     return
                 case .failed(_, _, let code, let retryable):
+                    print("TAISA_VOICE coaching.failed-event code=\(code.rawValue) retryable=\(retryable)")
                     partialCoaching = ""
                     if retryable {
                         try await scheduleRetryOrFail(code: code.rawValue, generation: generation)
@@ -469,6 +496,7 @@ public actor VoiceSessionCoordinator {
                 }
             }
         } catch {
+            print("TAISA_VOICE coaching.catch type=\(String(reflecting: type(of: error))) state=\(durable.state.rawValue) stage=\(durable.stage.rawValue)")
             partialCoaching = ""
             if isCurrent(generation), !Task.isCancelled, durable.state == .coaching {
                 try? await send(.fail(

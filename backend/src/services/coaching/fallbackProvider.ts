@@ -24,7 +24,7 @@ export interface ProviderAttemptOutcome {
   attemptId: 'primary' | 'fallback';
   providerId: CoachingProviderId;
   result?: ProviderCoachingResult;
-  failureClass?: OperationalFailureClass;
+  failureClass?: OperationalFailureClass | 'invalid_output';
 }
 
 export interface FallbackCoachingResult {
@@ -57,6 +57,13 @@ export interface StreamingFallbackCoachingProvider extends FallbackCoachingProvi
 export interface ContentFreeFailedAttempt {
   attemptId: AttemptEstimate['attemptId'];
   failureClass?: OperationalFailureClass | 'invalid_output';
+}
+
+function classifyContentFreeProviderFailure(
+  error: unknown,
+): OperationalFailureClass | 'invalid_output' | null {
+  if (error instanceof ZodError) return 'invalid_output';
+  return classifyOperationalProviderFailure(error);
 }
 
 export class ContentFreeFallbackError extends Error {
@@ -216,11 +223,14 @@ export function getConfiguredFallbackProvider(
       const attempts: ProviderAttemptOutcome[] = [];
       for (const candidate of candidates) {
         observer.beginAttempt(candidate.attemptId);
-        let emittedDelta = false;
+        const bufferedDeltas: string[] = [];
         let attemptSettled = false;
         try {
           for await (const item of candidate.provider.streamRespond(input)) {
-            if (item.kind === 'delta') { emittedDelta = true; yield item; continue; }
+            if (item.kind === 'delta') {
+              bufferedDeltas.push(item.delta);
+              continue;
+            }
             try {
               observer.settleAttempt({ attemptId: candidate.attemptId, receipt: item.result.usage });
               attemptSettled = true;
@@ -232,15 +242,18 @@ export function getConfiguredFallbackProvider(
               console.warn('[Taisa diagnostic] COACHING_USAGE_EXCEEDED_RESERVATION');
             }
             attempts.push({ attemptId: candidate.attemptId, providerId: candidate.providerId, result: item.result });
+            for (const delta of bufferedDeltas) {
+              yield { kind: 'delta', delta } as const;
+            }
             yield { kind: 'completed', result: item.result, attempts } as const;
             return;
           }
           throw new Error('Provider stream ended without a terminal result');
         } catch (error) {
           if (!attemptSettled) observer.settleAttempt({ attemptId: candidate.attemptId });
-          const failureClass = classifyOperationalProviderFailure(error);
+          const failureClass = classifyContentFreeProviderFailure(error);
           attempts.push({ attemptId: candidate.attemptId, providerId: candidate.providerId, ...(failureClass ? { failureClass } : {}) });
-          if (emittedDelta || candidate.attemptId === 'fallback' || !failureClass) {
+          if (candidate.attemptId === 'fallback' || !failureClass) {
             throw new ContentFreeFallbackError(attempts.map((attempt) => ({
               attemptId: attempt.attemptId, ...(attempt.failureClass ? { failureClass: attempt.failureClass } : {}),
             })));
