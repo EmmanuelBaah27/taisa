@@ -7,6 +7,14 @@ repository_root="$(cd "${script_directory}/../.." && pwd)"
 artifact_root="${TAISA_NATIVE_ARTIFACTS:-$(mktemp -d "${TMPDIR:-/tmp}/taisa-native-verification.XXXXXX")}"
 mkdir -p "${artifact_root}"
 
+reset_simulator_app() {
+  local simulator="$1"
+  local bundle_identifier="$2"
+  xcrun simctl boot "${simulator}" >/dev/null 2>&1 || true
+  xcrun simctl bootstatus "${simulator}" -b >/dev/null
+  xcrun simctl uninstall "${simulator}" "${bundle_identifier}" >/dev/null 2>&1 || true
+}
+
 cd "${repository_root}"
 bash scripts/native-apple/verify-generated-project.sh
 bash apple/scripts/generate-build-metadata.sh
@@ -30,9 +38,9 @@ personal_can_test="$(printf '%s' "${personal_destinations}" | node scripts/nativ
 if [[ "${development_can_test}" == "yes" && "${preview_can_test}" == "yes" ]]; then
   # UI verification owns deterministic app state. Xcode reinstalls builds but
   # otherwise retains prior encrypted stores and recovery journals.
-  xcrun simctl uninstall "${iphone_name}" com.taisa.app.dev >/dev/null 2>&1 || true
+  reset_simulator_app "${iphone_name}" com.taisa.app.dev
   xcodebuild test -quiet -project apple/Taisa.xcodeproj -scheme Taisa-Dev -destination "platform=iOS Simulator,name=${iphone_name}" -derivedDataPath "${artifact_root}/DerivedData-Dev" -resultBundlePath "${artifact_root}/Taisa-Dev.xcresult"
-  xcrun simctl uninstall "${ipad_name}" com.taisa.app.preview >/dev/null 2>&1 || true
+  reset_simulator_app "${ipad_name}" com.taisa.app.preview
   xcodebuild test -quiet -project apple/Taisa.xcodeproj -scheme Taisa-Preview -destination "platform=iOS Simulator,name=${ipad_name}" -derivedDataPath "${artifact_root}/DerivedData-Preview" -resultBundlePath "${artifact_root}/Taisa-Preview.xcresult"
 else
   echo "No eligible iOS simulator runtime; compiling test bundles instead."
@@ -42,7 +50,7 @@ fi
 if [[ "${personal_can_test}" == "yes" ]]; then
   # Simulator Keychain needs a locally signed process. Ad-hoc signing does not
   # provision a team or contact Apple; physical-device verification stays unsigned.
-  xcrun simctl uninstall "${iphone_name}" com.taisa.app.personal >/dev/null 2>&1 || true
+  reset_simulator_app "${iphone_name}" com.taisa.app.personal
   xcodebuild test -quiet -project apple/Taisa.xcodeproj -scheme Taisa-Personal -configuration Personal -destination "platform=iOS Simulator,name=${iphone_name}" -derivedDataPath "${artifact_root}/DerivedData-Personal" -resultBundlePath "${artifact_root}/Taisa-Personal.xcresult" CODE_SIGN_IDENTITY=- CODE_SIGNING_ALLOWED=YES
 else
   xcodebuild build-for-testing -quiet -project apple/Taisa.xcodeproj -scheme Taisa-Personal -configuration Personal -destination 'generic/platform=iOS Simulator' -derivedDataPath "${artifact_root}/DerivedData-Personal" CODE_SIGNING_ALLOWED=NO

@@ -11,7 +11,7 @@ import XCTest
         XCTAssertTrue(latestMessage.isHittable)
     }
 
-    func testExplicitQALaunchExposesVoiceDiagnosticsEntry() {
+    func testExplicitQALaunchExposesVoiceGatewayEntry() {
         let app = XCUIApplication()
         app.launchArguments = ["--taisa-personal-device-qa"]
         app.launch()
@@ -20,7 +20,7 @@ import XCTest
         XCTAssertTrue(qa.waitForExistence(timeout: 10))
         qa.tap()
         XCTAssertTrue(
-            app.buttons["foundation.voice-diagnostics.action"].waitForExistence(timeout: 10)
+            app.buttons["personal-qa.voice"].waitForExistence(timeout: 10)
         )
     }
 

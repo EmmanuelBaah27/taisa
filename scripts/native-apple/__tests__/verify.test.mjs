@@ -295,7 +295,7 @@ test('combined native verification and CI pin every required gate', async () => 
     'com.taisa.app.preview',
     'com.taisa.app.personal',
   ]) {
-    assert.match(combinedScript, new RegExp(`simctl uninstall.*${bundleIdentifier}`));
+    assert.match(combinedScript, new RegExp(`reset_simulator_app.*${bundleIdentifier}`));
   }
 });
 
