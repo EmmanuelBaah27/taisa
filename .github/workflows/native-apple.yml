@@ -1,19 +1,31 @@
-name: Native Apple foundation
+name: Native Apple Full Verification
 
 on:
   pull_request:
+    types: [opened, reopened, synchronize, ready_for_review, labeled, unlabeled]
   push:
-    branches: [main]
+    tags: ['v*']
+  schedule:
+    - cron: '23 2 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: native-full-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.event_name == 'schedule' && 'nightly' || github.event_name == 'workflow_dispatch' && format('manual-{0}', github.run_id) || format('release-{0}', github.ref) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   verify-native-apple:
+    name: Native Apple Full Verification
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'merge-ready')
     runs-on: macos-26
     timeout-minutes: 75
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
       - name: Select pinned Xcode
         run: |
@@ -34,6 +46,11 @@ jobs:
           test "$(xcodegen version)" = "Version: 2.46.0"
       - name: Install workflow verifier dependencies
         run: brew install ripgrep
+      - uses: actions/cache@v4
+        with:
+          path: apple/Packages/TaisaFoundation/.build
+          key: native-full-swift-${{ runner.os }}-${{ hashFiles('apple/Packages/TaisaFoundation/Package.resolved') }}
+          restore-keys: native-full-swift-${{ runner.os }}-
       - run: npm ci
       - name: Verify native Apple foundation
         env:
@@ -48,3 +65,25 @@ jobs:
             ${{ runner.temp }}/native-apple-artifacts/*.xcresult
             ${{ runner.temp }}/native-apple-artifacts/**/*.png
           if-no-files-found: warn
+
+  native-merge-gate:
+    name: Native Merge Gate
+    if: always() && github.event_name == 'pull_request'
+    needs: [verify-native-apple]
+    runs-on: ubuntu-latest
+    env:
+      FULL_RESULT: ${{ needs.verify-native-apple.result }}
+      HAS_MERGE_READY: ${{ contains(github.event.pull_request.labels.*.name, 'merge-ready') }}
+      PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - name: Require full verification for this pull request head
+        run: |
+          echo "Evaluating native verification for ${PR_HEAD_SHA}"
+          test "${HAS_MERGE_READY}" = "true" || {
+            echo "Apply the merge-ready label to start full native verification." >&2
+            exit 1
+          }
+          test "${FULL_RESULT}" = "success" || {
+            echo "Full native verification result: ${FULL_RESULT}" >&2
+            exit 1
+          }

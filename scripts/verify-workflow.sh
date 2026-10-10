@@ -218,6 +218,16 @@ for topology_mode in build ship preview-sync; do
     fail "orchestrator is missing the ${topology_mode} topology gate"
 done
 rg -q 'merge-tree' scripts/verify-branch-topology.sh || fail "Ship topology gate lacks a conflict dry run"
+for efficiency_invariant in \
+  'smallest applicable verification' \
+  'reuse fresh evidence' \
+  'independent checks concurrently' \
+  'three materially distinct unsuccessful approaches'; do
+  rg -qi "$efficiency_invariant" docs/workflow.md ||
+    fail "workflow is missing efficiency invariant: $efficiency_invariant"
+  rg -qi "$efficiency_invariant" .agents/skills/taisa-workflow/SKILL.md ||
+    fail "orchestrator is missing efficiency invariant: $efficiency_invariant"
+done
 rg -q 'superpowers:brainstorming' .agents/skills/taisa-workflow/SKILL.md || fail "brainstorming routing is missing"
 rg -q 'superpowers:verification-before-completion' .agents/skills/taisa-workflow/SKILL.md || fail "completion verification routing is missing"
 rg -q '\.agents/skills/taisa-workflow/SKILL\.md' AGENTS.md || fail "AGENTS.md does not load the canonical orchestrator"
