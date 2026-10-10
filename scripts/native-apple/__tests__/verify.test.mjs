@@ -308,6 +308,52 @@ test('combined native verification and CI pin every required gate', async () => 
   assert.ok(resetBody.indexOf('simctl bootstatus') < resetBody.indexOf('simctl uninstall'));
 });
 
+test('tiered native CI keeps fast feedback separate from exact-head full verification', async () => {
+  const packageJSON = JSON.parse(await readFile(resolve(repositoryRoot, 'package.json'), 'utf8'));
+  const fastScript = await readFile(
+    resolve(repositoryRoot, 'scripts/native-apple/verify-fast.sh'),
+    'utf8',
+  );
+  const fastWorkflow = await readFile(
+    resolve(repositoryRoot, '.github/workflows/native-fast.yml'),
+    'utf8',
+  );
+  const fullWorkflow = await readFile(
+    resolve(repositoryRoot, '.github/workflows/native-apple.yml'),
+    'utf8',
+  );
+
+  assert.match(packageJSON.scripts['verify:native-apple:fast'], /verify-fast\.sh/);
+  for (const required of [
+    'verify-generated-project.sh',
+    'generate-build-metadata.sh',
+    'verify:native-contracts',
+    'swift test',
+    'verify:native-design-system',
+    'verify:workflow',
+  ]) assert.match(fastScript, new RegExp(required.replaceAll('.', '\\.')));
+  assert.doesNotMatch(fastScript, /xcodebuild (test|build|build-for-testing)/);
+
+  assert.match(fastWorkflow, /name: Native Fast Checks/);
+  assert.match(fastWorkflow, /pull_request:/);
+  assert.match(fastWorkflow, /branches: \[main\]/);
+  assert.match(fastWorkflow, /verify:native-apple:fast/);
+  assert.match(fastWorkflow, /native-fast-\$\{\{/);
+  assert.match(fastWorkflow, /cancel-in-progress: true/);
+
+  assert.match(fullWorkflow, /name: Native Apple Full Verification/);
+  assert.match(fullWorkflow, /types: \[opened, reopened, synchronize, ready_for_review, labeled, unlabeled\]/);
+  assert.match(fullWorkflow, /schedule:/);
+  assert.match(fullWorkflow, /workflow_dispatch:/);
+  assert.match(fullWorkflow, /tags: \['v\*'\]/);
+  assert.match(fullWorkflow, /merge-ready/);
+  assert.match(fullWorkflow, /name: Native Merge Gate/);
+  assert.match(fullWorkflow, /needs\.verify-native-apple\.result/);
+  assert.match(fullWorkflow, /github\.event\.pull_request\.head\.sha/);
+  assert.match(fullWorkflow, /cancel-in-progress: \$\{\{ github\.event_name == 'pull_request' \}\}/);
+  assert.match(fullWorkflow, /npm run verify:native-apple:all/);
+});
+
 test('rejects unexpanded build identity placeholders', () => {
   assert.deepEqual(
     unresolvedBuildIdentityPlaceholders(

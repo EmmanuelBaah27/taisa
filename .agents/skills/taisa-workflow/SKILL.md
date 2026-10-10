@@ -240,6 +240,17 @@ served or installed. Repeat for every QA revision.
 
 ## 9. Verification matrix
 
+Start with the smallest applicable verification that can disprove the change. Reuse fresh evidence
+only when revision, code, toolchain, configuration, and coverage are unchanged. Run
+independent checks concurrently when they do not share mutable state, and reserve the full
+matrix for its named merge, release, repair-release, or high-risk gate. Never weaken a named
+gate or claim that a narrower check proves a broader surface.
+
+Do not rerun an unchanged failed approach or narrate unchanged waits. After three materially distinct unsuccessful approaches
+without new diagnostic evidence, terminate the bounded Goal as `UNRESOLVED_ESCALATION` with
+the root blocker and smallest Baah-controlled decision. Otherwise continue autonomously
+until the outcome is proven.
+
 | Area | Checks |
 |---|---|
 | Backend | Jest + TypeScript build |
@@ -320,6 +331,17 @@ change returns to Scope/Plan. Mark retained obsolete docs `Status: Superseded` w
 `main` is the only permanent shipping branch. `preview/taisa` is integration-only and never
 a PR base. Use `<type>/<short-kebab-case-description>`, isolated worktrees, conventional
 commits, and squash merge by default.
+
+Run the repository topology gate at each boundary:
+
+- Pre-Build: `bash scripts/verify-branch-topology.sh build --main-ref origin/main --preview-ref origin/preview/taisa`.
+- Pre-Ship: `bash scripts/verify-branch-topology.sh ship --pr-base main --main-ref origin/main --preview-ref origin/preview/taisa`.
+- Post-Ship: after the one-way `main` → `preview/taisa` integration, run
+  `bash scripts/verify-branch-topology.sh preview-sync --shipped-ref <merge-sha> --main-ref origin/main --preview-ref origin/preview/taisa`.
+
+The pre-Ship mode performs a non-mutating conflict dry run. A failed topology check is a
+blocking contradiction: stop before implementation or merge, preserve both histories, and
+reconcile from a fresh main-based branch without force-pushing.
 
 Clear Ship approval authorizes: re-fetch/reconcile; full verification/review/device evidence;
 push; PR to `main`; squash merge; verify local/remote/PR SHA agreement; delete only the

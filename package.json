@@ -14,6 +14,7 @@
     "verify:design-system": "node scripts/design-system/verify.mjs",
     "verify:native-apple": "node scripts/native-apple/verify.mjs && bash apple/scripts/verify-project.sh",
     "verify:native-apple:all": "bash scripts/native-apple/verify-all.sh # verify-generated-project.sh verify:native-contracts swift test verify:native-design-system Taisa-Dev Taisa-Preview Taisa-Personal Release verify:workflow",
+    "verify:native-apple:fast": "bash scripts/native-apple/verify-fast.sh",
     "verify:native-contracts": "node --test scripts/native-contracts/__tests__/verify-transcription-fixtures.test.mjs scripts/native-contracts/__tests__/verify-coaching-fixtures.test.mjs && node scripts/native-contracts/verify-transcription-fixtures.mjs && node scripts/native-contracts/verify-coaching-fixtures.mjs",
     "verify:native-design-system": "node --test scripts/native-apple/__tests__/verify-design-system.test.mjs && node scripts/native-apple/verify-design-system.mjs",
     "verify:swiftui-baseline": "node scripts/swiftui-baseline/verify.mjs",
