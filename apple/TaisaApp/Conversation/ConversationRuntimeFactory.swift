@@ -7,6 +7,12 @@ import TaisaStorage
 import TaisaVoice
 
 struct ConversationRuntimeFactory: Sendable {
+    struct Restoration {
+        let voiceTurn: VoiceTurnRecord
+        let composer: ComposerState
+        let text: String
+    }
+
     let store: TaisaStore
     let deviceID: UUID
     let configuration: VoiceGatewayConfiguration
@@ -57,9 +63,21 @@ struct ConversationRuntimeFactory: Sendable {
             }
             history = try await query.loadConversation(id: route.id)
         }
-        let initial = pendingConversationRequest == nil
-            ? (resumable ?? makeTurn(conversationID: route.id))
-            : makeTurn(conversationID: route.id)
+        let restoredDraft = history.drafts.first
+        let linkedVoiceTurn: VoiceTurnRecord?
+        if restoredDraft?.inputMode == .voice, let voiceTurnID = restoredDraft?.voiceTurnID {
+            linkedVoiceTurn = try await turns.turn(id: voiceTurnID)
+        } else {
+            linkedVoiceTurn = nil
+        }
+        let fallbackTurn = makeTurn(conversationID: route.id)
+        let restoration = Self.restoration(
+            draft: restoredDraft,
+            linkedVoiceTurn: linkedVoiceTurn,
+            resumableVoiceTurn: resumable,
+            fallbackVoiceTurn: fallbackTurn
+        )
+        let initial = pendingConversationRequest == nil ? restoration.voiceTurn : fallbackTurn
         let files = try ProtectedAudioFileStore()
         let capture = AudioCaptureController(
             service: AudioCaptureService(
@@ -110,16 +128,10 @@ struct ConversationRuntimeFactory: Sendable {
             )
         }
 
-        let restoredDraft = history.drafts.first
-        let initialComposer: ComposerState = {
-            if pendingConversationRequest != nil { return .failure(.retryable) }
-            guard entryIntent == nil, let restoredDraft else { return .waitingForReply }
-            switch restoredDraft.inputMode {
-            case .text: return .typing(restoredDraft.text ?? "")
-            case .voice: return .paused
-            }
-        }()
-        let initialText = restoredDraft?.inputMode == .text ? (restoredDraft?.text ?? "") : ""
+        let initialComposer = pendingConversationRequest == nil
+            ? (entryIntent == nil ? restoration.composer : .waitingForReply)
+            : .failure(.retryable)
+        let initialText = restoration.text
 
         let client = ConversationScreenClient(
             loadMessages: { try await query.loadConversation(id: route.id).visibleMessages },
@@ -182,6 +194,32 @@ struct ConversationRuntimeFactory: Sendable {
 
     private func mutation(at timestamp: Int64) -> MutationContext {
         .init(id: UUID().uuidString, deviceID: deviceID.uuidString, timestamp: timestamp)
+    }
+
+    static func restoration(
+        draft: ConversationDraftRecord?,
+        linkedVoiceTurn: VoiceTurnRecord?,
+        resumableVoiceTurn: VoiceTurnRecord?,
+        fallbackVoiceTurn: VoiceTurnRecord
+    ) -> Restoration {
+        let voiceTurn = linkedVoiceTurn ?? resumableVoiceTurn ?? fallbackVoiceTurn
+        guard let draft else {
+            return Restoration(voiceTurn: voiceTurn, composer: .waitingForReply, text: "")
+        }
+        switch draft.inputMode {
+        case .text:
+            let text = draft.text ?? ""
+            return Restoration(voiceTurn: voiceTurn, composer: .typing(text), text: text)
+        case .voice:
+            let composer: ComposerState
+            switch linkedVoiceTurn?.state {
+            case .recoverableFailure, .terminalFailure:
+                composer = .failure(.retryable)
+            default:
+                composer = .paused
+            }
+            return Restoration(voiceTurn: voiceTurn, composer: composer, text: "")
+        }
     }
 
     private func makeTurn(conversationID: String) -> VoiceTurnRecord {

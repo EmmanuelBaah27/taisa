@@ -7,6 +7,45 @@ import TaisaVoice
 
 @MainActor
 final class AppRuntimeTests: XCTestCase {
+    func testSavedTerminalVoiceFailureRestoresTheLinkedTurnForRetry() {
+        let conversationID = UUID().uuidString
+        let linkedTurn = voiceTurn(
+            conversationID: conversationID,
+            state: .terminalFailure,
+            stage: .finished
+        )
+        let unrelatedResumableTurn = voiceTurn(
+            conversationID: conversationID,
+            state: .paused,
+            stage: .capture
+        )
+        let fallbackTurn = voiceTurn(
+            conversationID: conversationID,
+            state: .draft,
+            stage: .capture
+        )
+        let draft = ConversationDraftRecord(
+            id: UUID().uuidString,
+            conversationID: conversationID,
+            inputMode: .voice,
+            text: nil,
+            voiceTurnID: linkedTurn.id,
+            recoveryKind: .saved,
+            createdAtMS: 1,
+            updatedAtMS: 2
+        )
+
+        let restoration = ConversationRuntimeFactory.restoration(
+            draft: draft,
+            linkedVoiceTurn: linkedTurn,
+            resumableVoiceTurn: unrelatedResumableTurn,
+            fallbackVoiceTurn: fallbackTurn
+        )
+
+        XCTAssertEqual(restoration.voiceTurn.id, linkedTurn.id)
+        XCTAssertEqual(restoration.composer, .failure(.retryable))
+    }
+
     func testVoiceConfigurationUsesEnrolledOriginBoundCredential() async throws {
         let store = InMemoryVoiceGatewayCredentialStore()
         let credential = try VoiceGatewayCredential(
@@ -65,5 +104,25 @@ final class AppRuntimeTests: XCTestCase {
         XCTAssertEqual(try Data(contentsOf: storeURL), original)
         XCTAssertEqual(try FileManager.default.attributesOfItem(atPath: storeURL.path)[.systemFileNumber] as? NSNumber,
                        attributes[.systemFileNumber] as? NSNumber)
+    }
+
+    private func voiceTurn(
+        conversationID: String,
+        state: VoiceTurnState,
+        stage: VoiceTurnStage
+    ) -> VoiceTurnRecord {
+        VoiceTurnRecord(
+            id: UUID().uuidString,
+            conversationID: conversationID,
+            transcriptionRequestID: UUID().uuidString,
+            transcriptionIdempotencyKey: UUID().uuidString,
+            coachingRequestID: UUID().uuidString,
+            coachingIdempotencyKey: UUID().uuidString,
+            state: state,
+            stage: stage,
+            acceptedTranscript: "Recorded words",
+            createdAtMS: 1,
+            updatedAtMS: 2
+        )
     }
 }
