@@ -1,7 +1,14 @@
 import GRDB
 
 enum TaisaSchema {
-    static let currentVersion = 3
+    struct MigrationLedgerEntry: Equatable, Sendable {
+        let version: Int
+        let identifier: String
+        let predecessor: String?
+        let body: [String]
+    }
+
+    static let currentVersion = 4
 
     static func createVersion1(in db: Database) throws {
         for statement in version1Statements { try db.execute(sql: statement) }
@@ -13,6 +20,38 @@ enum TaisaSchema {
 
     static func createVersion3(in db: Database) throws {
         for statement in version3Statements { try db.execute(sql: statement) }
+    }
+
+    static func createVersion4(in db: Database) throws {
+        for statement in version4Statements { try db.execute(sql: statement) }
+    }
+
+    static var migrationLedger: [MigrationLedgerEntry] {
+        [
+            .init(version: 1, identifier: "v1", predecessor: nil, body: version1Statements),
+            .init(version: 2, identifier: "v2", predecessor: "v1", body: version2Statements),
+            .init(version: 3, identifier: "v3", predecessor: "v2", body: version3Statements),
+            .init(version: 4, identifier: "v4", predecessor: "v3", body: version4Statements),
+        ]
+    }
+
+    static func validateMigrationLedger(_ entries: [MigrationLedgerEntry]) throws {
+        guard !entries.isEmpty else { throw StorageError.unsupportedMigration }
+        var versions = Set<Int>()
+        var identifiers = Set<String>()
+        for (index, entry) in entries.enumerated() {
+            let expectedVersion = index + 1
+            let expectedIdentifier = "v\(expectedVersion)"
+            let expectedPredecessor = index == 0 ? nil : "v\(index)"
+            guard entry.version == expectedVersion,
+                  entry.identifier == expectedIdentifier,
+                  entry.predecessor == expectedPredecessor,
+                  !entry.body.isEmpty,
+                  versions.insert(entry.version).inserted,
+                  identifiers.insert(entry.identifier).inserted else {
+                throw StorageError.unsupportedMigration
+            }
+        }
     }
 
     // The stored DDL is also the canonical v1 integrity contract. Comparing it
@@ -309,6 +348,71 @@ enum TaisaSchema {
         "CREATE INDEX message_revisions_by_message ON message_revisions(message_id, created_at_ms)",
     ]
 
+    private static let version4Statements: [String] = [
+        """
+        CREATE TABLE career_work_events (
+            id TEXT PRIMARY KEY NOT NULL CHECK (length(id) = 36),
+            entity_type TEXT NOT NULL CHECK (entity_type IN ('goal', 'milestone', 'action')),
+            entity_id TEXT NOT NULL CHECK (length(entity_id) = 36),
+            transition TEXT NOT NULL CHECK (transition IN ('created', 'paused', 'resumed', 'completed', 'reopened', 'archived', 'restored')),
+            from_status TEXT,
+            to_status TEXT NOT NULL,
+            source_type TEXT NOT NULL CHECK (source_type IN ('user', 'proposal', 'undo', 'migration')),
+            source_id TEXT CHECK (source_id IS NULL OR length(source_id) = 36),
+            occurred_at_ms INTEGER NOT NULL CHECK (occurred_at_ms >= 0),
+            UNIQUE (entity_type, entity_id, occurred_at_ms, transition)
+        )
+        """,
+        """
+        CREATE TABLE career_work_archives (
+            id TEXT PRIMARY KEY NOT NULL CHECK (length(id) = 36),
+            entity_type TEXT NOT NULL CHECK (entity_type IN ('goal', 'milestone', 'action')),
+            entity_id TEXT NOT NULL CHECK (length(entity_id) = 36),
+            archived_at_ms INTEGER NOT NULL CHECK (archived_at_ms >= 0),
+            restored_at_ms INTEGER CHECK (restored_at_ms IS NULL OR restored_at_ms >= archived_at_ms),
+            UNIQUE (entity_type, entity_id, archived_at_ms)
+        )
+        """,
+        """
+        CREATE TABLE evidence_provenance (
+            evidence_id TEXT PRIMARY KEY NOT NULL REFERENCES evidence(id) ON DELETE CASCADE,
+            origin_type TEXT NOT NULL CHECK (origin_type IN ('user', 'action', 'conversation', 'import')),
+            origin_id TEXT CHECK (origin_id IS NULL OR length(origin_id) = 36),
+            supersedes_evidence_id TEXT REFERENCES evidence(id) ON DELETE SET NULL,
+            created_at_ms INTEGER NOT NULL CHECK (created_at_ms >= 0),
+            CHECK (supersedes_evidence_id IS NULL OR supersedes_evidence_id != evidence_id)
+        )
+        """,
+        """
+        CREATE TABLE career_work_proposal_receipts (
+            id TEXT PRIMARY KEY NOT NULL CHECK (length(id) = 36),
+            proposal_id TEXT NOT NULL UNIQUE CHECK (length(proposal_id) = 36),
+            target_type TEXT NOT NULL CHECK (target_type IN ('goal', 'milestone', 'action', 'evidence')),
+            target_id TEXT NOT NULL CHECK (length(target_id) = 36),
+            target_version_id TEXT NOT NULL CHECK (length(target_version_id) = 36),
+            payload_digest TEXT NOT NULL CHECK (length(payload_digest) > 0),
+            decision TEXT NOT NULL CHECK (decision IN ('accepted', 'corrected', 'rejected', 'undone')),
+            resolved_at_ms INTEGER NOT NULL CHECK (resolved_at_ms >= 0)
+        )
+        """,
+        """
+        CREATE TABLE capability_states (
+            capability_id TEXT PRIMARY KEY NOT NULL CHECK (length(capability_id) > 0),
+            state TEXT NOT NULL CHECK (state IN ('learning', 'ready', 'trial', 'trusted')),
+            decision_source TEXT NOT NULL CHECK (decision_source = 'user'),
+            transport_source TEXT NOT NULL CHECK (transport_source IN ('direct', 'import', 'restore')),
+            decided_at_ms INTEGER NOT NULL CHECK (decided_at_ms >= 0),
+            updated_at_ms INTEGER NOT NULL CHECK (updated_at_ms >= decided_at_ms)
+        )
+        """,
+        "CREATE INDEX career_work_events_by_entity ON career_work_events(entity_type, entity_id, occurred_at_ms)",
+        "CREATE INDEX career_work_archives_by_entity ON career_work_archives(entity_type, entity_id, archived_at_ms)",
+        "CREATE UNIQUE INDEX career_work_one_active_archive ON career_work_archives(entity_type, entity_id) WHERE restored_at_ms IS NULL",
+        "CREATE INDEX evidence_provenance_by_origin ON evidence_provenance(origin_type, origin_id)",
+        "CREATE INDEX career_work_receipts_by_target ON career_work_proposal_receipts(target_type, target_id, resolved_at_ms)",
+        "CREATE INDEX capability_states_by_state ON capability_states(state, updated_at_ms)",
+    ]
+
     static func validateVersion1(in db: Database, allowingConversationExtensions: Bool = false) throws {
         let requiredColumns: [String: Set<String>] = [
             "profile": ["id", "display_name", "headline", "biography", "updated_at_ms"],
@@ -404,6 +508,45 @@ enum TaisaSchema {
                 let stored = try String.fetchOne(
                     db,
                     sql: "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?",
+                    arguments: [name]
+                )
+                guard stored == statement else { throw StorageError.schemaMismatch }
+            }
+        } catch {
+            throw StorageError.schemaMismatch
+        }
+    }
+
+    static func validateVersion4(in db: Database) throws {
+        try validateVersion3(in: db)
+        let requiredColumns: [String: Set<String>] = [
+            "career_work_events": ["id", "entity_type", "entity_id", "transition", "from_status", "to_status", "source_type", "source_id", "occurred_at_ms"],
+            "career_work_archives": ["id", "entity_type", "entity_id", "archived_at_ms", "restored_at_ms"],
+            "evidence_provenance": ["evidence_id", "origin_type", "origin_id", "supersedes_evidence_id", "created_at_ms"],
+            "career_work_proposal_receipts": ["id", "proposal_id", "target_type", "target_id", "target_version_id", "payload_digest", "decision", "resolved_at_ms"],
+            "capability_states": ["capability_id", "state", "decision_source", "transport_source", "decided_at_ms", "updated_at_ms"],
+        ]
+        do {
+            for (table, expected) in requiredColumns {
+                guard try db.tableExists(table), Set(try db.columns(in: table).map(\.name)) == expected else {
+                    throw StorageError.schemaMismatch
+                }
+            }
+            for statement in version4Statements where statement.hasPrefix("CREATE TABLE ") {
+                let name = String(statement.split(separator: " ", maxSplits: 3)[2])
+                let stored = try String.fetchOne(
+                    db,
+                    sql: "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?",
+                    arguments: [name]
+                )
+                guard stored == statement else { throw StorageError.schemaMismatch }
+            }
+            for statement in version4Statements where statement.hasPrefix("CREATE INDEX ") || statement.hasPrefix("CREATE UNIQUE INDEX ") {
+                let parts = statement.split(separator: " ", maxSplits: 4)
+                let name = String(statement.hasPrefix("CREATE UNIQUE INDEX ") ? parts[3] : parts[2])
+                let stored = try String.fetchOne(
+                    db,
+                    sql: "SELECT sql FROM sqlite_master WHERE type = 'index' AND name = ?",
                     arguments: [name]
                 )
                 guard stored == statement else { throw StorageError.schemaMismatch }
