@@ -232,6 +232,21 @@ Invoke `requesting-code-review` and `verification-before-completion`. Resolve bl
 findings. Record exact checks, revisions, PR, preview, device observations, remaining risk,
 and approval state in Linear.
 
+### Verification economy
+
+Use the smallest applicable verification that can falsify the current change first, then
+expand only after focused checks pass or the risk boundary requires it. Reuse fresh evidence
+when the code, toolchain, configuration, and covered revision are unchanged; do not rerun an
+identical expensive command merely to produce another transcript. Run independent checks concurrently
+when they do not share mutable state. The complete release matrix remains mandatory at its
+named merge, release, repair-release, or high-risk gate.
+
+Autonomous repair remains outcome-based, not attempt-based. Do not repeat the same failed
+approach or unchanged verification. After three materially distinct unsuccessful approaches
+without new diagnostic evidence, record `UNRESOLVED_ESCALATION` with the root blocker and
+smallest Baah-controlled decision; otherwise continue the repair loop until it is proven.
+Unchanged CI, device, or service waits produce no narration or repeated reasoning turns.
+
 | Change area | Required checks |
 |---|---|
 | Backend | Backend Jest suite + backend TypeScript build |
