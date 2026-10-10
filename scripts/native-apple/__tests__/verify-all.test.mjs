@@ -26,7 +26,13 @@ printf '%s\\n' "$*" >> "$TAISA_TEST_SIMCTL_LOG"
 case "$1" in
   list) printf '{"devices":{}}\\n' ;;
   boot) : > "$TAISA_TEST_SIMULATOR_BOOTED" ;;
-  bootstatus) sleep "\${TAISA_TEST_BOOTSTATUS_DELAY:-0}"; test -f "$TAISA_TEST_SIMULATOR_BOOTED" ;;
+  bootstatus)
+    sleep "\${TAISA_TEST_BOOTSTATUS_DELAY:-0}" &
+    bootstatus_child=$!
+    trap 'kill "$bootstatus_child" 2>/dev/null || true; exit 1' ALRM TERM HUP INT
+    wait "$bootstatus_child"
+    test -f "$TAISA_TEST_SIMULATOR_BOOTED"
+    ;;
   uninstall) test -f "$TAISA_TEST_SIMULATOR_BOOTED" ;;
 esac
 `,
@@ -69,12 +75,15 @@ esac
       PATH: `${bin}${delimiter}${process.env.PATH}`,
       TAISA_NATIVE_ARTIFACTS: join(fixture, 'timeout-artifacts'),
       TAISA_SIMULATOR_BOOT_TIMEOUT_SECONDS: '1',
-      TAISA_TEST_BOOTSTATUS_DELAY: '3',
+      TAISA_TEST_BOOTSTATUS_DELAY: '30',
       TAISA_TEST_SIMCTL_LOG: log,
       TAISA_TEST_SIMULATOR_BOOTED: join(fixture, 'booted'),
     },
   }));
-  assert.ok(Date.now() - startedAt < 5_000, 'a stuck simulator boot must fail within its configured bound');
+  assert.ok(
+    Date.now() - startedAt < 10_000,
+    'a stuck simulator boot must fail before the simulated 30-second boot completes',
+  );
 
   assert.doesNotThrow(() => execFileSync('/bin/bash', ['scripts/native-apple/verify-all.sh'], {
     cwd: repositoryRoot,

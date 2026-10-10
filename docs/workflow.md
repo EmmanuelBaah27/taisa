@@ -486,6 +486,18 @@ preview branch and never a PR base. Branches use `<type>/<short-kebab-case-descr
 Branch setup: resolve a clean isolated worktree, fetch/prune, fast-forward local `main`, branch
 from `main`, then record branch ownership in Linear. Never develop on `main`.
 
+Run the mechanical topology gate immediately after branch creation and before Build:
+
+```bash
+git fetch --prune origin
+bash scripts/verify-branch-topology.sh build \
+  --main-ref origin/main --preview-ref origin/preview/taisa
+```
+
+The gate rejects `main` or `preview/taisa` as a work branch, a branch missing current
+`origin/main`, and any branch containing preview-only history. Do not begin implementation
+until it passes.
+
 ### PR and Ship gate
 
 Create the PR only after applicable checks pass; target `main`; link the Linear issue and
@@ -495,7 +507,8 @@ unmerged-work deletion, or unrelated-worktree removal.
 
 After Ship approval:
 
-1. Confirm clean branch/worktree and correct PR base.
+1. Confirm clean branch/worktree and correct PR base, then run the conflict-free Ship gate:
+   `bash scripts/verify-branch-topology.sh ship --pr-base main --main-ref origin/main --preview-ref origin/preview/taisa`.
 2. Fetch and reconcile with `origin/main` safely.
 3. Run the complete verification matrix and final review.
 4. Confirm required device QA and exact preview evidence.
@@ -503,7 +516,14 @@ After Ship approval:
 6. Squash-merge to `main`.
 7. Fast-forward local `main` and verify local/remote/PR merge SHA agreement.
 8. Delete only the accounted merged remote/local branch and safe disposable worktree.
-9. Prune refs; update Linear issue, milestone/project status, and Closeout with merge SHA.
+9. Merge the shipped `main` revision one way into `preview/taisa`, push it, then prove the
+   exact shipped revision is present with
+   `bash scripts/verify-branch-topology.sh preview-sync --shipped-ref <merge-sha> --main-ref origin/main --preview-ref origin/preview/taisa`.
+10. Prune refs; update Linear issue, milestone/project status, and Closeout with merge SHA.
+
+The Ship gate uses `git merge-tree` as a non-mutating preview-integration dry run. Any
+conflict stops Ship before the pull request merge; preview is never repaired by developing
+on it or by rewriting shared history.
 
 Stop cleanup on dirty state, failed checks, conflicts, unexpected base, unique commits,
 unverifiable remote state, or another worktree owning the branch. Never force-delete.

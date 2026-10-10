@@ -208,6 +208,16 @@ rg -q 'main.*only permanent branch|only permanent branch.*main' docs/workflow.md
 rg -q '<type>/<short-kebab-case-description>' docs/workflow.md || fail "typed branch naming policy is missing"
 rg -qi 'squash merge' docs/workflow.md || fail "squash merge policy is missing"
 rg -q 'Ship approval|Ship gate' docs/workflow.md || fail "Ship authorization policy is missing"
+test -f scripts/verify-branch-topology.sh || fail "branch topology verifier is missing"
+test -f scripts/__tests__/verify-branch-topology.test.mjs || fail "branch topology verifier tests are missing"
+node --test scripts/__tests__/verify-branch-topology.test.mjs
+for topology_mode in build ship preview-sync; do
+  rg -q "verify-branch-topology.sh ${topology_mode}" docs/workflow.md ||
+    fail "workflow is missing the ${topology_mode} topology gate"
+  rg -q "verify-branch-topology.sh ${topology_mode}" .agents/skills/taisa-workflow/SKILL.md ||
+    fail "orchestrator is missing the ${topology_mode} topology gate"
+done
+rg -q 'merge-tree' scripts/verify-branch-topology.sh || fail "Ship topology gate lacks a conflict dry run"
 for efficiency_invariant in \
   'smallest applicable verification' \
   'reuse fresh evidence' \
