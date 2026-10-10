@@ -10,7 +10,7 @@
 
 Rebuild Taisa's iPhone and iPad client as a native-first SwiftUI application targeting iOS/iPadOS 26 or later. The native client uses accepted product decisions, portable behavior contracts, the existing Node/Express gateway, and the current React Native experience as non-blocking reference evidence.
 
-The rebuild proceeds as functionality-first vertical slices beside the React Native client. Pages use standard SwiftUI behavior and minimal temporary styling, then receive deliberate page-level redesign after their functionality is complete. Swift previews, fixtures, tests, and signed device builds are the implementation authority; React Native remains recoverable reference material through native cutover.
+The rebuild proceeds as functionality-first vertical slices. Pages use standard SwiftUI behavior and minimal temporary styling, then receive deliberate page-level redesign after their functionality is complete. Swift previews, fixtures, tests, and signed device builds are the implementation authority; React Native remains recoverable reference material only through Git history and frozen migration evidence.
 
 ## Why now?
 

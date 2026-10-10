@@ -132,6 +132,17 @@ private struct RestoreFixture {
         #expect(v5.2 == f.evidenceID)
         #expect(v5.3 == f.proposalReceiptID)
         #expect(v5.4 == "ready")
+        await #expect(throws: DatabaseError.self) {
+            try await restored.write { db in
+                try db.execute(
+                    sql: """
+                        INSERT INTO career_work_archives (id, entity_type, entity_id, archived_at_ms)
+                        SELECT ?, entity_type, entity_id, 11 FROM career_work_archives WHERE id = ?
+                        """,
+                    arguments: [UUID().uuidString, f.careerArchiveID]
+                )
+            }
+        }
         #expect(!FileManager.default.fileExists(atPath: coordinator.journalURL.path))
     }
 

@@ -14,7 +14,7 @@ code.
 Project: `31b0d99c-6f74-4c9c-af2a-12e6e25aabe0`
 Team: `e95356d8-17f7-4700-bdfe-222782bea546`
 
-## 1. Mandatory session start
+## 1. Cycle start and incremental orientation
 
 Read completely:
 
@@ -33,6 +33,10 @@ Then:
 3. Reconcile contradictions before product or workflow mutation.
 4. State tier, issue/milestone, stage, branch/worktree, blocker/dependency, next action,
    next Baah gate, and Linear availability.
+
+Perform this full reconciliation once at delivery-cycle entry. Within a stable cycle, re-read
+only state whose issue, approval, dependency, branch/worktree, PR, CI, preview, or remote
+revision changed. Never repeat global orientation merely because another Goal turn began.
 
 Preserve dirty worktrees and user changes. Never develop on `main`.
 
@@ -73,11 +77,18 @@ orientation and an answer only. Explicit future-only ideas go to the relevant mi
 
 | Tier | Treatment |
 |---|---|
-| Quick | Compact issue with intent, acceptance, checks, and gate. |
-| Standard | Inline Work Map + Discussion Map; separate Scope and Plan evidence in Linear. |
+| Quick | Compact kickoff bundle approves Scope and Plan when no high-risk predicate applies. |
+| Standard | Inline Work Map + Discussion Map; kickoff bundle approves Scope and Plan when no high-risk predicate applies. |
 | Full | Full track decomposition, Linear documents/sub-issues as useful, every gate. |
 
-## 4. Work Map and Discussion Map
+Quick/Standard fast path requires one explicit kickoff bundle: outcome, user-visible result,
+inclusions, exclusions, risks, implementation direction, and verification. Full work, or any
+tier involving migration/data loss, privacy/security/trust, consent/regulation, destructive
+action, public contracts/major architecture, paid services/credentials/infrastructure,
+ambiguous product behavior, release strategy, or weakened verification, requires separate
+Scope and Plan approval.
+
+## 4. Work ownership and maps
 
 Standard/Full work begins with a Linear-linked Work Map: slices, Platform/Product/Integration
 owner, outcome, dependency, approval, `XS / S / M / L / XL`, pickup order, parallel work,
@@ -94,6 +105,11 @@ Show a Discussion Map before the first substantive question:
 
 Diagrams use layman meaning plus technical truth, real component/service/store labels, plain
 language arrows, and visible ownership, trust, storage, failure, and offline boundaries.
+
+Every task has exactly one owner: Platform owns capability/contracts; Product owns
+experience/accessibility/design-system work; Integration owns wiring, combined states,
+preview, and end-to-end proof. They remain under one issue and conductor. Cross-cutting
+quality is an acceptance constraint, never a duplicate slice.
 
 ## 5. Stages and automatic skill routing
 
@@ -132,9 +148,10 @@ changes return to Plan.
 
 ### Build
 
-After Plan approval, set In Progress and execute continuously. Platform and independent
+After kickoff or separate Plan approval, set In Progress and execute within one bounded Goal.
+Platform and independent
 Product foundation may run in parallel; Integration waits for both sides. Use TDD and record
-exact commits/checks after each material step.
+exact commits/checks at material evidence transitions.
 
 ### Review + QA
 
@@ -142,12 +159,52 @@ Use requesting-code-review and verification-before-completion. Resolve blockers,
 exact verified mobile revision to canonical preview, record QA, prepare a PR to `main`, and
 stop at Ship.
 
-## 6. Approval gates
+Before initial QA, require mapped acceptance evidence, applicable narrow/full verification,
+resolved blocking review, complete required slices, exact canonical preview, confirmed
+served/installed revision, agent-owned simulator/accessibility/preview smoke checks, explicit
+limitations, and a Linear evidence summary. Failure returns to autonomous Build.
+
+One Baah defect observation enters `REPAIR_QUARANTINE`. A repair Goal stays on the same issue
+and cannot return to Baah until the repair-release gate proves authority, reproduction/root
+cause, failing-before/passing-after evidence where possible, replacement verification,
+review, exact preview publication, revision confirmation, and agent smoke checks. Otherwise
+report `Unfixed; blocking; unshippable` with one smallest Baah-controlled need; never claim
+QA-ready, Ship-ready, closure, or successor work.
+Record every repair-release gate item as passed or explicitly inapplicable with evidence.
+An omitted or unsupported item keeps the issue in `REPAIR_QUARANTINE`.
+
+## 6. Bounded Goal routing
+
+Intake prepares approvals in ordinary chat. After approval, instantiate
+`templates/bounded-goal.md` for exactly one BUILD, REPAIR, or SHIP run.
+No active Goal may exist solely to wait for Baah or unchanged external state.
+
+- BUILD ends at `QA_READY`, `UNRESOLVED_ESCALATION`,
+  `MATERIAL_REAPPROVAL_REQUIRED`, `NON_DEVICE_SHIP_READY`, or
+  `EXTERNAL_WAIT_RECORDED`.
+- REPAIR ends at `QA_READY`, `UNRESOLVED_ESCALATION`,
+  `MATERIAL_REAPPROVAL_REQUIRED`, or `EXTERNAL_WAIT_RECORDED`.
+- SHIP begins only after Ship approval and ends after verified merge, cleanup, Closeout, and
+  next-outcome recommendation.
+
+At SHIP Closeout, reconcile current Linear priorities, blockers, dependencies, and approval
+readiness. Emit exactly one **Recommended next outcome**, its evidence-based reason, and the
+next Baah gate. If no candidate is safely actionable, emit exactly one **No next outcome recommended** result with the blocking reason and next Baah gate. Never provide an alternatives list. The recommendation is advisory. Never reopen or start the successor issue.
+Never create the successor branch or Goal. Never change the successor status. Never begin the successor work until Baah explicitly approves a new kickoff.
+
+Use exactly one form: **Recommended next outcome:** `<one outcome>` — **Reason:** `<evidence>` — **Next Baah gate:** `<explicit gate>`; or **No next outcome recommended:** `<blocking condition>` — **Reason:** `<evidence>` — **Next Baah gate:** `<explicit gate>`.
+
+Prefer event-capable waits. Otherwise record one external wait and complete the Goal. Never
+select a successor issue, auto-restart, infer approval, or emit updates for unchanged state.
+No successor issue may start without a new Baah-approved kickoff or separate gates.
+
+## 7. Approval gates
 
 | Gate | Required evidence | Baah signal |
 |---|---|---|
-| Scope | Linear Scope with acceptance/exclusions/dependencies | approval intent |
-| Plan | Linear Plan with tasks/tests/integration | approval intent |
+| Kickoff | Quick/Standard bundle with Scope, build direction, and checks | approval intent |
+| Scope | Full/high-risk Scope with acceptance/exclusions/dependencies | approval intent |
+| Plan | Full/high-risk Plan with tasks/tests/integration | approval intent |
 | Ship | review, verification, PR, applicable device QA | explicit Ship intent |
 
 Never treat silence, issue status, or previous-stage approval as the next gate.
@@ -203,9 +260,10 @@ Status IDs:
 - Done: `b2c07c6b-bf80-40d1-8e08-9c941b04f137`
 - Canceled: `e2a4cb1f-daf0-4269-8acc-9b0fed9224f5`
 
-After every material step, comment exact branch/commit/PR/preview revision, checks/result,
-risk/blocker, next action, and next Baah gate. Relations hold dependencies. Project updates
-hold milestone-level health.
+Comment only for approval, Build start, blocker change, stable candidate, preview/QA request,
+QA defect and verified replacement, Ship/merge, and Closeout. Never narrate commands, polls,
+retries, or passing narrow tests. Relations hold dependencies. Project updates hold
+milestone-level health.
 
 QA failure creates/updates one non-duplicate issue per distinct outcome with preview revision,
 reproduction, severity, acceptance, and relation. Release blockers return the feature to
