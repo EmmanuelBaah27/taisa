@@ -13,6 +13,10 @@ concurrency:
   group: native-full-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.event_name == 'schedule' && 'nightly' || github.event_name == 'workflow_dispatch' && format('manual-{0}', github.run_id) || format('release-{0}', github.ref) }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+concurrency:
+  group: native-apple-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   verify-native-apple:
     name: Native Apple Full Verification
