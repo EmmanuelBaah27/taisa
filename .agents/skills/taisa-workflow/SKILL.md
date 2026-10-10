@@ -240,6 +240,17 @@ served or installed. Repeat for every QA revision.
 
 ## 9. Verification matrix
 
+Start with the smallest applicable verification that can disprove the change. Reuse fresh evidence
+only when revision, code, toolchain, configuration, and coverage are unchanged. Run
+independent checks concurrently when they do not share mutable state, and reserve the full
+matrix for its named merge, release, repair-release, or high-risk gate. Never weaken a named
+gate or claim that a narrower check proves a broader surface.
+
+Do not rerun an unchanged failed approach or narrate unchanged waits. After three materially distinct unsuccessful approaches
+without new diagnostic evidence, terminate the bounded Goal as `UNRESOLVED_ESCALATION` with
+the root blocker and smallest Baah-controlled decision. Otherwise continue autonomously
+until the outcome is proven.
+
 | Area | Checks |
 |---|---|
 | Backend | Jest + TypeScript build |
