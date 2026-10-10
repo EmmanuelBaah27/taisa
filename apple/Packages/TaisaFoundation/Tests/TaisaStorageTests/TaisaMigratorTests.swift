@@ -4,7 +4,51 @@ import Testing
 @testable import TaisaStorage
 
 @Suite(.serialized) struct TaisaMigratorTests {
-    @Test func populatedPreviewVersionTwoStoreUpgradesLosslesslyThroughCombinedVersionFour() async throws {
+    @Test func coordinatedVersionFiveContainsCareerWorkAndCapabilityContracts() async throws {
+        let fixture = try MigrationFixture()
+        defer { fixture.remove() }
+        let store = try await TaisaStore.open(at: fixture.url, keyStore: fixture.keys)
+
+        let state = try await store.read { db in
+            (
+                try Int.fetchOne(db, sql: "PRAGMA user_version"),
+                try db.tableExists("career_work_events"),
+                try db.tableExists("career_work_archives"),
+                try db.tableExists("evidence_provenance"),
+                try db.tableExists("career_work_proposal_receipts"),
+                try db.tableExists("capability_states"),
+                try String.fetchAll(db, sql: "SELECT identifier FROM grdb_migrations ORDER BY identifier"),
+                try Int.fetchAll(db, sql: "SELECT version FROM migration_state ORDER BY version")
+            )
+        }
+
+        #expect(TaisaSchema.currentVersion == 5)
+        #expect(state.0 == 5)
+        #expect(state.1)
+        #expect(state.2)
+        #expect(state.3)
+        #expect(state.4)
+        #expect(state.5)
+        #expect(state.6 == ["v1", "v2", "v3", "v4", "v5"])
+        #expect(state.7 == [1, 2, 3, 4, 5])
+    }
+
+    @Test func migrationLedgerRejectsDivergentDuplicateAndSkippedVersion() {
+        let canonical = TaisaSchema.migrationLedger
+        #expect(throws: StorageError.unsupportedMigration) {
+            try TaisaSchema.validateMigrationLedger(canonical + [
+                .init(version: 5, identifier: "v5", predecessor: "v4", body: ["SELECT 'different'"])
+            ])
+        }
+        #expect(throws: StorageError.unsupportedMigration) {
+            try TaisaSchema.validateMigrationLedger([
+                canonical[0], canonical[1], canonical[2], canonical[3],
+                .init(version: 6, identifier: "v6", predecessor: "v4", body: ["SELECT 1"]),
+            ])
+        }
+    }
+
+    @Test func populatedPreviewVersionTwoStoreUpgradesLosslesslyThroughCoordinatedVersionFive() async throws {
         let fixture = try MigrationFixture()
         defer { fixture.remove() }
         let queue = try fixture.makeKeyedQueue()
@@ -54,14 +98,14 @@ import Testing
                 try Int.fetchAll(db, sql: "SELECT version FROM migration_state ORDER BY version")
             )
         }
-        #expect(state.0 == 4)
+        #expect(state.0 == TaisaSchema.currentVersion)
         #expect(state.1 == "draft")
         #expect(state.2)
         #expect(state.3)
         #expect(state.4)
         #expect(state.5)
         #expect(state.6 == "completed")
-        #expect(state.7 == [1, 2, 3, 4])
+        #expect(state.7 == [1, 2, 3, 4, 5])
     }
 
     @Test func populatedVersionOneStoreUpgradesLosslesslyToCurrentVersion() async throws {
@@ -197,6 +241,53 @@ import Testing
         #expect(state.1 == "Keep me")
         #expect(!state.2)
         #expect(state.3 == ["v1", "v2"])
+    }
+
+    @Test func interruptedVersionFiveMigrationLeavesVersionFourAndUserDataUnchanged() async throws {
+        let fixture = try MigrationFixture()
+        defer { fixture.remove() }
+        let queue = try fixture.makeKeyedQueue()
+        var legacy = DatabaseMigrator()
+        for entry in TaisaSchema.migrationLedger.prefix(4) {
+            legacy.registerMigration(entry.identifier, foreignKeyChecks: .immediate) { db in
+                switch entry.version {
+                case 1: try TaisaSchema.createVersion1(in: db)
+                case 2: try TaisaSchema.createVersion2(in: db)
+                case 3: try TaisaSchema.createVersion3(in: db)
+                case 4: try TaisaSchema.createVersion4(in: db)
+                default: throw MigrationInterruption.injected
+                }
+                try db.execute(sql: "INSERT INTO migration_state (version, applied_at_ms) VALUES (?, ?)", arguments: [entry.version, entry.version])
+                try db.execute(sql: "PRAGMA user_version = \(entry.version)")
+            }
+        }
+        try legacy.migrate(queue)
+        let goalID = UUID().uuidString
+        try await queue.write { db in
+            try db.execute(
+                sql: "INSERT INTO goals (id, title, status, created_at_ms, updated_at_ms) VALUES (?, 'Preserve me', 'active', 1, 1)",
+                arguments: [goalID]
+            )
+        }
+
+        #expect(throws: StorageError.migrationFailed) {
+            try TaisaMigrator.migrate(queue, from: 4, createVersion5: { db in
+                try TaisaSchema.createVersion5(in: db)
+                throw MigrationInterruption.injected
+            })
+        }
+        let state = try await queue.read { db in
+            (
+                try Int.fetchOne(db, sql: "PRAGMA user_version"),
+                try String.fetchOne(db, sql: "SELECT title FROM goals WHERE id = ?", arguments: [goalID]),
+                try db.tableExists("capability_states"),
+                try String.fetchAll(db, sql: "SELECT identifier FROM grdb_migrations ORDER BY identifier")
+            )
+        }
+        #expect(state.0 == 4)
+        #expect(state.1 == "Preserve me")
+        #expect(!state.2)
+        #expect(state.3 == ["v1", "v2", "v3", "v4"])
     }
 
     @Test func futureSchemaIsRejectedWithoutMutation() async throws {
