@@ -46,6 +46,39 @@ final class AppRuntimeTests: XCTestCase {
         XCTAssertEqual(restoration.composer, .failure(.retryable))
     }
 
+    func testSavedVoiceDraftWithUnreadableTurnRestoresRetryFromPersistedTranscript() {
+        let conversationID = UUID().uuidString
+        let fallbackTurn = voiceTurn(
+            conversationID: conversationID,
+            state: .draft,
+            stage: .capture
+        )
+        let draft = ConversationDraftRecord(
+            id: UUID().uuidString,
+            conversationID: conversationID,
+            inputMode: .voice,
+            text: nil,
+            voiceTurnID: UUID().uuidString,
+            recoveryKind: .saved,
+            createdAtMS: 1,
+            updatedAtMS: 2
+        )
+
+        let restoration = ConversationRuntimeFactory.restoration(
+            draft: draft,
+            linkedVoiceTurn: nil,
+            resumableVoiceTurn: nil,
+            fallbackVoiceTurn: fallbackTurn,
+            recoveryTranscript: "Persisted transcript"
+        )
+
+        XCTAssertEqual(restoration.voiceTurn.id, fallbackTurn.id)
+        XCTAssertEqual(restoration.voiceTurn.state, .terminalFailure)
+        XCTAssertEqual(restoration.voiceTurn.stage, .finished)
+        XCTAssertEqual(restoration.voiceTurn.acceptedTranscript, "Persisted transcript")
+        XCTAssertEqual(restoration.composer, .failure(.retryable))
+    }
+
     func testVoiceConfigurationUsesEnrolledOriginBoundCredential() async throws {
         let store = InMemoryVoiceGatewayCredentialStore()
         let credential = try VoiceGatewayCredential(
