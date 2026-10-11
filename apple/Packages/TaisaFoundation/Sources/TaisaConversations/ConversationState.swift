@@ -19,6 +19,7 @@ public enum ComposerState: Sendable, Equatable {
     case preparingVoice
     case recording
     case paused
+    case savedVoiceDraft
     case typing(String)
     case transcribing
     case coaching

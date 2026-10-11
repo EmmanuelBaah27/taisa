@@ -349,6 +349,9 @@ struct ConversationRuntimeFactory: Sendable {
             switch linkedVoiceTurn?.state {
             case .recoverableFailure, .terminalFailure:
                 composer = .failure(.retryable)
+            case .paused where linkedVoiceTurn?.audioSHA256 != nil
+                && linkedVoiceTurn?.audioDurationMS != nil:
+                composer = .savedVoiceDraft
             default:
                 if linkedVoiceTurn == nil,
                    let transcript = recoveryTranscript?.trimmingCharacters(in: .whitespacesAndNewlines),

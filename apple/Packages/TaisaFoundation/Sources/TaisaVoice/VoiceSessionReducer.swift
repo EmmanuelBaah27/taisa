@@ -34,6 +34,17 @@ public struct VoiceSessionReducer: Sendable {
             try require(state.state == .paused)
             return transition(copy(state, state: .recording, stage: .capture), .resumeRecording)
 
+        case .preserveDraft(let audio):
+            try require((state.state == .recording || state.state == .paused) && state.stage == .capture)
+            guard !audio.fileID.isEmpty, !audio.sha256.isEmpty, audio.durationMS >= 0 else {
+                throw VoiceSessionReducerError.invalidCommand
+            }
+            return checkpoint(copy(
+                state, state: .paused, stage: .capture,
+                audioFileID: .some(audio.fileID), audioSHA256: .some(audio.sha256),
+                audioDurationMS: .some(audio.durationMS), cleanupState: .pending
+            ))
+
         case .capturePaused:
             try require(state.state == .recording && state.stage == .capture)
             return checkpoint(copy(state, state: .paused, stage: .capture))
@@ -223,6 +234,16 @@ public struct VoiceSessionReducer: Sendable {
         case .discard:
             try require(!state.state.isTerminal)
             let next = copy(state, state: .discarded, stage: .cleanup, cleanupState: .pending)
+            if state.state == .paused,
+               state.stage == .capture,
+               let fileID = state.audioFileID,
+               state.audioSHA256 != nil,
+               state.audioDurationMS != nil {
+                return VoiceSessionTransition(
+                    next: next,
+                    effects: [.checkpoint(next), .deleteAudio(fileID)]
+                )
+            }
             if state.state == .cancelled, state.stage == .capture {
                 return transition(next, deleteEffect(state))
             }

@@ -186,7 +186,7 @@ final class ConversationViewModel {
 
     func requestKeyboard() {
         switch composer {
-        case .recording, .paused, .preparingVoice:
+        case .recording, .paused, .savedVoiceDraft, .preparingVoice:
             confirmation = .discardVoiceForKeyboard(returnTo: composer)
         case .waitingForReply:
             composer = .typing("")
@@ -272,7 +272,7 @@ final class ConversationViewModel {
     private var hasUnsentInput: Bool {
         switch composer {
         case .typing: !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        case .preparingVoice, .recording, .paused, .transcribing, .coaching, .failure: true
+        case .preparingVoice, .recording, .paused, .savedVoiceDraft, .transcribing, .coaching, .failure: true
         case .waitingForReply: false
         }
     }
