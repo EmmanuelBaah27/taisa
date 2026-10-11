@@ -180,6 +180,138 @@ struct ConversationTurnRepositoryTests {
         #expect(counts.1 == 1)
     }
 
+    @Test func recoveryTranscriptUsesTurnLinkedMessageWhenFullTurnDecodeFails() async throws {
+        let fixture = try await makeFixture()
+        defer { fixture.remove() }
+        let repository = ConversationTurnRepository(store: fixture.store)
+        let user = MessageRecord(
+            id: "00000000-0000-0000-0000-000000000014",
+            conversationID: conversationID,
+            role: "user",
+            body: "Transcript owned by this turn",
+            createdAtMS: 20
+        )
+        let assistant = MessageRecord(
+            id: "00000000-0000-0000-0000-000000000015",
+            conversationID: conversationID,
+            role: "assistant",
+            body: "Coaching reply",
+            createdAtMS: 21
+        )
+        let completed = queuedTurn().completing(
+            acceptedTranscript: user.body,
+            transcriptionReceipt: "transcript-receipt",
+            coachingReceipt: "coaching-receipt",
+            userMessageID: user.id,
+            assistantMessageID: assistant.id,
+            updatedAtMS: 22
+        )
+        try await repository.checkpoint(
+            completed,
+            messages: [user, assistant],
+            cleanup: nil,
+            context: .init(
+                id: "00000000-0000-0000-0000-000000000016",
+                deviceID: deviceID,
+                timestamp: 22
+            )
+        )
+        try await fixture.store.write { db in
+            try db.execute(sql: "PRAGMA ignore_check_constraints = ON")
+            try db.execute(
+                sql: "UPDATE voice_turns SET state = 'legacy-unreadable' WHERE id = ?",
+                arguments: [turnID]
+            )
+            try db.execute(sql: "PRAGMA ignore_check_constraints = OFF")
+        }
+
+        await #expect(throws: RepositoryError.persistenceFailed) {
+            try await repository.turn(id: turnID)
+        }
+        #expect(try await repository.recoveryTranscript(
+            turnID: turnID,
+            conversationID: conversationID
+        ) == user.body)
+    }
+
+    @Test func recoveryTranscriptDoesNotUseUnlinkedLaterConversationMessage() async throws {
+        let fixture = try await makeFixture()
+        defer { fixture.remove() }
+        let turns = ConversationTurnRepository(store: fixture.store)
+        let conversations = ConversationRepository(store: fixture.store)
+        try await turns.checkpoint(
+            queuedTurn(),
+            messages: [],
+            cleanup: nil,
+            context: .init(
+                id: "00000000-0000-0000-0000-000000000017",
+                deviceID: deviceID,
+                timestamp: 10
+            )
+        )
+        try await conversations.createMessage(
+            .init(
+                id: "00000000-0000-0000-0000-000000000018",
+                conversationID: conversationID,
+                role: "user",
+                body: "Later but unrelated",
+                createdAtMS: 30
+            ),
+            context: .init(
+                id: "00000000-0000-0000-0000-000000000019",
+                deviceID: deviceID,
+                timestamp: 30
+            )
+        )
+
+        #expect(try await turns.recoveryTranscript(
+            turnID: turnID,
+            conversationID: conversationID
+        ) == nil)
+    }
+
+    @Test func recoveryTranscriptRejectsTurnFromAnotherConversation() async throws {
+        let fixture = try await makeFixture()
+        defer { fixture.remove() }
+        let repository = ConversationTurnRepository(store: fixture.store)
+        let user = MessageRecord(
+            id: "00000000-0000-0000-0000-000000000024",
+            conversationID: conversationID,
+            role: "user",
+            body: "Private transcript from another conversation",
+            createdAtMS: 20
+        )
+        let assistant = MessageRecord(
+            id: "00000000-0000-0000-0000-000000000025",
+            conversationID: conversationID,
+            role: "assistant",
+            body: "Coaching reply",
+            createdAtMS: 21
+        )
+        try await repository.checkpoint(
+            queuedTurn().completing(
+                acceptedTranscript: user.body,
+                transcriptionReceipt: "transcript-receipt",
+                coachingReceipt: "coaching-receipt",
+                userMessageID: user.id,
+                assistantMessageID: assistant.id,
+                updatedAtMS: 22
+            ),
+            messages: [user, assistant],
+            cleanup: nil,
+            context: .init(
+                id: "00000000-0000-0000-0000-000000000026",
+                deviceID: deviceID,
+                timestamp: 22
+            )
+        )
+
+        #expect(try await repository.recoveryTranscript(
+            turnID: turnID,
+            conversationID: "00000000-0000-0000-0000-000000000027"
+        ) == nil)
+    }
+
     @Test func checkpointRollsBackTurnMessagesAndCleanupTogether() async throws {
         let fixture = try await makeFixture()
         defer { fixture.remove() }

@@ -20,6 +20,38 @@ public struct ConversationTurnRepository: Sendable {
         catch { throw RepositoryError.persistenceFailed }
     }
 
+    public func recoveryTranscript(turnID: String, conversationID: String) async throws -> String? {
+        guard let turnID = UUIDIdentity.canonical(turnID),
+              let conversationID = UUIDIdentity.canonical(conversationID) else {
+            throw RepositoryError.invalidIdentifier
+        }
+        do {
+            return try await store.read { db in
+                try String.fetchOne(
+                    db,
+                    sql: """
+                        SELECT messages.body
+                        FROM voice_turns
+                        JOIN messages
+                          ON messages.id = voice_turns.user_message_id COLLATE NOCASE
+                         AND messages.conversation_id = voice_turns.conversation_id COLLATE NOCASE
+                        WHERE voice_turns.id = ? COLLATE NOCASE
+                          AND voice_turns.conversation_id = ? COLLATE NOCASE
+                          AND messages.role = 'user'
+                          AND NOT EXISTS (
+                              SELECT 1 FROM tombstones
+                              WHERE entity_type = 'message'
+                                AND entity_id = messages.id COLLATE NOCASE
+                          )
+                        LIMIT 1
+                        """,
+                    arguments: [turnID, conversationID]
+                )
+            }
+        } catch let error as RepositoryError { throw error }
+        catch { throw RepositoryError.persistenceFailed }
+    }
+
     public func latestResumableTurn(conversationID: String) async throws -> VoiceTurnRecord? {
         guard let conversationID = UUIDIdentity.canonical(conversationID) else {
             throw RepositoryError.invalidIdentifier

@@ -70,12 +70,24 @@ struct ConversationRuntimeFactory: Sendable {
         } else {
             linkedVoiceTurn = nil
         }
+        let recoveryTranscript: String?
+        if linkedVoiceTurn == nil,
+           restoredDraft?.inputMode == .voice,
+           let voiceTurnID = restoredDraft?.voiceTurnID {
+            recoveryTranscript = try? await turns.recoveryTranscript(
+                turnID: voiceTurnID,
+                conversationID: route.id
+            )
+        } else {
+            recoveryTranscript = nil
+        }
         let fallbackTurn = makeTurn(conversationID: route.id)
         let restoration = Self.restoration(
             draft: restoredDraft,
             linkedVoiceTurn: linkedVoiceTurn,
             resumableVoiceTurn: resumable,
-            fallbackVoiceTurn: fallbackTurn
+            fallbackVoiceTurn: fallbackTurn,
+            recoveryTranscript: recoveryTranscript
         )
         let initial = pendingConversationRequest == nil ? restoration.voiceTurn : fallbackTurn
         let files = try ProtectedAudioFileStore()
@@ -200,9 +212,10 @@ struct ConversationRuntimeFactory: Sendable {
         draft: ConversationDraftRecord?,
         linkedVoiceTurn: VoiceTurnRecord?,
         resumableVoiceTurn: VoiceTurnRecord?,
-        fallbackVoiceTurn: VoiceTurnRecord
+        fallbackVoiceTurn: VoiceTurnRecord,
+        recoveryTranscript: String? = nil
     ) -> Restoration {
-        let voiceTurn = linkedVoiceTurn ?? resumableVoiceTurn ?? fallbackVoiceTurn
+        var voiceTurn = linkedVoiceTurn ?? resumableVoiceTurn ?? fallbackVoiceTurn
         guard let draft else {
             return Restoration(voiceTurn: voiceTurn, composer: .waitingForReply, text: "")
         }
@@ -216,7 +229,27 @@ struct ConversationRuntimeFactory: Sendable {
             case .recoverableFailure, .terminalFailure:
                 composer = .failure(.retryable)
             default:
-                composer = .paused
+                if linkedVoiceTurn == nil,
+                   let transcript = recoveryTranscript?.trimmingCharacters(in: .whitespacesAndNewlines),
+                   !transcript.isEmpty {
+                    voiceTurn = VoiceTurnRecord(
+                        id: fallbackVoiceTurn.id,
+                        conversationID: fallbackVoiceTurn.conversationID,
+                        transcriptionRequestID: fallbackVoiceTurn.transcriptionRequestID,
+                        transcriptionIdempotencyKey: fallbackVoiceTurn.transcriptionIdempotencyKey,
+                        coachingRequestID: fallbackVoiceTurn.coachingRequestID,
+                        coachingIdempotencyKey: fallbackVoiceTurn.coachingIdempotencyKey,
+                        state: .terminalFailure,
+                        stage: .finished,
+                        acceptedTranscript: transcript,
+                        failureCode: "legacy_voice_turn_unavailable",
+                        createdAtMS: fallbackVoiceTurn.createdAtMS,
+                        updatedAtMS: fallbackVoiceTurn.updatedAtMS
+                    )
+                    composer = .failure(.retryable)
+                } else {
+                    composer = .paused
+                }
             }
             return Restoration(voiceTurn: voiceTurn, composer: composer, text: "")
         }
