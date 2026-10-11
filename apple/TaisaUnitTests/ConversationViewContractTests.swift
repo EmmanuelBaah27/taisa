@@ -44,6 +44,9 @@ final class ConversationViewContractTests: XCTestCase {
         XCTAssertTrue(appRoot.contains("TAISA_CONVERSATION_RETRY_PROBE"))
         XCTAssertTrue(factory.contains("retryLatestPreservedDraftProbe"))
         XCTAssertTrue(factory.contains("await model.retry()"))
+        XCTAssertTrue(appRoot.contains("--taisa-cleanup-completed-preserved-draft"))
+        XCTAssertTrue(appRoot.contains("TAISA_CONVERSATION_CLEANUP_PROBE"))
+        XCTAssertTrue(factory.contains("cleanupCompletedPreservedDraftProbe"))
     }
 
     func testLegacyVoiceDraftDecodeFailureFallsThroughToTranscriptRecovery() throws {

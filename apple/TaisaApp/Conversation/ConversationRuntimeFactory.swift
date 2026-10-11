@@ -83,6 +83,21 @@ struct ConversationRuntimeFactory: Sendable {
         }
     }
 
+    func cleanupCompletedPreservedDraftProbe() async -> String {
+        do {
+            let snapshot = try await ConversationQuery(store: store).loadIndex()
+            guard let draft = snapshot.drafts.first else { return "result=no-draft" }
+            _ = try await makeModel(
+                route: .init(id: draft.conversationID, localTitle: "Draft"),
+                entryIntent: nil,
+                dismiss: {}
+            )
+            return await contentFreeLatestDraftDiagnostic()
+        } catch {
+            return "result=cleanup-probe-failed type=\(String(reflecting: type(of: error)))"
+        }
+    }
+
     func makeModel(
         route: ConversationRoute,
         entryIntent: ConversationEntryIntent?,
