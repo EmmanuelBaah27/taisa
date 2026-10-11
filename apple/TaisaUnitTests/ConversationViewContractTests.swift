@@ -16,6 +16,29 @@ final class ConversationViewContractTests: XCTestCase {
         XCTAssertFalse(source.contains("error.localizedDescription"))
     }
 
+    func testLatestDraftDiagnosticReportsOnlyContentFreeFields() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let factory = try String(
+            contentsOf: root.appendingPathComponent("TaisaApp/Conversation/ConversationRuntimeFactory.swift"),
+            encoding: .utf8
+        )
+        let appRoot = try String(
+            contentsOf: root.appendingPathComponent("TaisaApp/App/AppRootView.swift"),
+            encoding: .utf8
+        )
+        let diagnosticStart = try XCTUnwrap(factory.range(of: "func contentFreeLatestDraftDiagnostic"))
+        let remainder = factory[diagnosticStart.lowerBound...]
+        let diagnosticEnd = try XCTUnwrap(remainder.range(of: "\n    func makeModel"))
+        let diagnostic = String(remainder[..<diagnosticEnd.lowerBound])
+
+        XCTAssertTrue(factory.contains("contentFreeLatestDraftDiagnostic"))
+        XCTAssertTrue(diagnostic.contains("state=\\(turn.state.rawValue) stage=\\(turn.stage.rawValue) failure=\\(turn.failureCode ?? \"none\")"))
+        XCTAssertFalse(diagnostic.contains("acceptedTranscript"))
+        XCTAssertFalse(diagnostic.contains("requestID"))
+        XCTAssertTrue(appRoot.contains("--taisa-diagnose-latest-preserved-draft"))
+        XCTAssertTrue(appRoot.contains("TAISA_CONVERSATION_DRAFT_DIAGNOSTIC"))
+    }
+
     func testLegacyVoiceDraftDecodeFailureFallsThroughToTranscriptRecovery() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let source = try String(
