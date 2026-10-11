@@ -53,12 +53,12 @@ private struct Fixture {
         let checkpoint = fixture.directory.appendingPathComponent("checkpoint.sqlite")
         let key = Data(repeating: 0x72, count: 32)
         let metadata = try await store.exportCheckpoint(to: checkpoint, archiveDatabaseKey: key)
-        #expect(metadata.schemaVersion == 4)
+        #expect(metadata.schemaVersion == 5)
         #expect(metadata.entityCounts["profile"] == 1)
         #expect(metadata.entityCounts["messages"] == 1)
         #expect(metadata.entityCounts["conversations"] == 1)
         #expect(metadata.entityCounts["goals"] == 0)
-        #expect(metadata.entityCounts.count == 29)
+        #expect(metadata.entityCounts.count == 34)
         let bytes = try Data(contentsOf: checkpoint)
         #expect(metadata.plaintextByteCount == bytes.count)
         #expect(metadata.plaintextSHA256 == Data(SHA256.hash(data: bytes)))
@@ -457,4 +457,3 @@ private actor CheckpointPause {
     }
     func release() { releaseWaiter?.resume() }
 }
-

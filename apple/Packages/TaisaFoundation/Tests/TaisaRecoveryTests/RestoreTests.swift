@@ -64,7 +64,6 @@ private struct RestoreFixture {
         let commands = InsightCommandRepository(store: store)
         let proposal = try await commands.propose(body: "Archived insight", sourceType: "conversation", sourceID: conversation.id, context: .init(id: UUID().uuidString, deviceID: deviceID, timestamp: 4))
         insightID = try await commands.confirm(proposalID: proposal.id, editedBody: nil, isTimeSensitive: false, homeEligibleUntilMS: nil, context: .init(id: UUID().uuidString, deviceID: deviceID, timestamp: 5)).id
-        try await store.write { try $0.execute(sql: "INSERT INTO profile (id, display_name, updated_at_ms) VALUES (?, 'ARCHIVED', 1)", arguments: [UUID().uuidString]) }
         _ = try await SnapshotService(store: store, audioGuard: RestoreAudio(), sourceInstallationID: UUID()).createPortableArchive(at: archive, recoveryKey: recovery)
         try await store.write { try $0.execute(sql: "UPDATE profile SET display_name = 'ORIGINAL'") }
     }
@@ -481,4 +480,3 @@ private struct RestoreFixture {
         return result
     }
 }
-
