@@ -274,8 +274,7 @@ struct ConversationRuntimeFactory: Sendable {
                 case .text:
                     try await gatewayClient.saveDraft(conversationID: route.id, input: input)
                 case .voice:
-                    let snapshot = await voiceCoordinator.snapshot()
-                    if snapshot.durable.state == .recording { try await coordinator.pauseVoice() }
+                    try await voiceAdapter.saveDraft()
                     let paused = await voiceCoordinator.snapshot().durable
                     try await conversations.saveDraft(.init(
                         id: Self.derivedUUID(from: paused.id, salt: 4),
