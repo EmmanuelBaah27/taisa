@@ -181,7 +181,10 @@ public struct VoiceSessionReducer: Sendable {
             )
 
         case .restartSafeCoaching(let next):
-            try require(state.state == .resumeRequiresConfirmation && state.stage == .coaching)
+            try require(
+                (state.state == .resumeRequiresConfirmation || state.state == .coaching)
+                    && state.stage == .coaching
+            )
             guard next.state == .transcriptClear, next.stage == .coaching,
                   next.conversationID == state.conversationID,
                   next.id != state.id,

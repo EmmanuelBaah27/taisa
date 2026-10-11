@@ -187,7 +187,7 @@ public actor VoiceSessionCoordinator {
     }
 
     public func restartCoachingIfServerSafe(with replacement: VoiceTurnRecord) async throws {
-        guard durable.state == .resumeRequiresConfirmation,
+        guard durable.state == .resumeRequiresConfirmation || durable.state == .coaching,
               durable.stage == .coaching,
               let requestID = UUID(uuidString: durable.coachingRequestID),
               case .safeToRetry = try await reconciliation.reconcile(requestID: requestID) else {
