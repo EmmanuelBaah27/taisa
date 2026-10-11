@@ -178,8 +178,23 @@ public actor VoiceSessionCoordinator {
     }
 
     public func sendRecordedAudio() async throws {
-        let finalized = try await capture.finalize(turnID: currentTurnID())
+        let finalized: FinalizedVoiceAudio
+        if let fileID = durable.audioFileID,
+           let sha256 = durable.audioSHA256,
+           let durationMS = durable.audioDurationMS {
+            finalized = .init(fileID: fileID, sha256: sha256, durationMS: durationMS)
+        } else {
+            finalized = try await capture.finalize(turnID: currentTurnID())
+        }
         try await send(.send(finalized))
+    }
+
+    public func preserveDraftAudio() async throws {
+        guard durable.stage == .capture,
+              durable.state == .recording || durable.state == .paused else { return }
+        if durable.audioSHA256 != nil, durable.audioDurationMS != nil { return }
+        let finalized = try await capture.finalize(turnID: currentTurnID())
+        try await send(.preserveDraft(finalized))
     }
 
     public func restartFailedCoaching(with replacement: VoiceTurnRecord) async throws {

@@ -22,6 +22,7 @@ public enum VoiceSessionCommand: Sendable, Equatable {
     case captureStarted(fileID: String)
     case pauseRecording
     case resumeRecording
+    case preserveDraft(FinalizedVoiceAudio)
     case capturePaused
     case captureFailed(code: String)
     case send(FinalizedVoiceAudio)
