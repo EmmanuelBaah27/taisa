@@ -43,8 +43,7 @@ struct GatewayRuntimeAdapterTests {
                     conversationID: "22222222-2222-4222-8222-222222222222",
                     role: "assistant", body: "Earlier guidance", createdAtMS: 0
                 )
-            ] },
-            submittedAt: { "2026-10-07T00:00:00Z" }
+            ] }
         )
         let stream = try await runner.stream(for: gatewayTurn())
         for try await _ in stream {}
@@ -63,6 +62,32 @@ struct GatewayRuntimeAdapterTests {
         #expect(messages[0]["role"] as? String == "assistant")
         #expect(messages[0]["content"] as? String == "Earlier guidance")
     }
+
+    @Test("coaching retry rebuilds the exact original idempotent payload")
+    func coachingRetryPayloadIsStable() async throws {
+        let first = GatewayTransportSpy(response: coachingFailureResponse())
+        let second = GatewayTransportSpy(response: coachingFailureResponse())
+        let configuration = try VoiceGatewayConfiguration(
+            baseURL: URL(string: "https://voice.example.com")!, bearerToken: "token", ownerID: "owner"
+        )
+        let firstRunner = GatewayCoachingRunner(configuration: configuration, transport: first)
+        let retryRunner = GatewayCoachingRunner(configuration: configuration, transport: second)
+
+        for try await _ in try await firstRunner.stream(for: gatewayTurn()) {}
+        for try await _ in try await retryRunner.stream(for: gatewayTurn()) {}
+
+        #expect(await first.request?.httpBody == second.request?.httpBody)
+    }
+}
+
+private func coachingFailureResponse() -> NDJSONHTTPResponse {
+    NDJSONHTTPResponse(
+        statusCode: 200, contentType: "application/x-ndjson",
+        chunks: [Data("""
+        {"type":"coaching.failed","requestId":"44444444-4444-4444-8444-444444444444","sequence":0,"code":"COACHING_UNAVAILABLE","retryable":false}
+
+        """.utf8)]
+    )
 }
 
 private actor GatewayTransportSpy: NDJSONStreamTransporting {

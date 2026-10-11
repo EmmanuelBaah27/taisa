@@ -90,6 +90,13 @@ public struct VoiceSessionConversationAdapter: ConversationVoiceControlling {
             try await coordinator.send(Self.retryCommand(for: failed.state))
         }
         await coordinator.waitForIdle()
+        let afterRetry = await coordinator.snapshot().durable
+        if failed.state == .resumeRequiresConfirmation,
+           afterRetry.state == .resumeRequiresConfirmation,
+           afterRetry.stage == .coaching {
+            try await coordinator.restartCoachingIfServerSafe(with: retryTurn(for: afterRetry))
+            await coordinator.waitForIdle()
+        }
         try Self.requireCompleted(await coordinator.snapshot().durable.state)
     }
 
