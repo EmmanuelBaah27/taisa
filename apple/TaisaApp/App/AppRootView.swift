@@ -34,7 +34,10 @@ struct AppRootView: View {
                 }
             }
         }
-        .task { await runtime.start() }
+        .task {
+            await runtime.start()
+            await openPreservedDraftProbeIfRequested()
+        }
 #if TAISA_PERSONAL
         .sheet(isPresented: $showsPersonalQA, onDismiss: openPendingProductVoiceQA) {
             NavigationStack {
@@ -68,5 +71,22 @@ struct AppRootView: View {
         guard startsProductVoiceAfterQA else { return }
         startsProductVoiceAfterQA = false
         runtime.primaryShellModel.presentNewConversation(.voice)
+    }
+
+    @MainActor
+    private func openPreservedDraftProbeIfRequested() async {
+#if DEBUG || TAISA_PERSONAL
+        guard ProcessInfo.processInfo.arguments.contains("--taisa-open-first-preserved-draft"),
+              runtime.state == .ready,
+              let conversations = runtime.conversationsModel
+        else { return }
+        await conversations.load()
+        guard let draft = conversations.snapshot.drafts.first else {
+            print("TAISA_CONVERSATION_OPEN_PROBE result=no-draft")
+            return
+        }
+        print("TAISA_CONVERSATION_OPEN_PROBE result=opening-draft")
+        runtime.primaryShellModel.openConversation(id: draft.conversationID, title: "Draft")
+#endif
     }
 }

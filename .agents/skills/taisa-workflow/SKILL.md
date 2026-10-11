@@ -168,7 +168,9 @@ One Baah defect observation enters `REPAIR_QUARANTINE`. A repair Goal stays on t
 When a device-only or perceptual failure cannot be proven by agent-owned checks, use the
 bounded physical **repair candidate** lane: prove a clean main-based branch, then run the focused regression and fast native gate.
 Sign the exact commit and over-install it with the same bundle identifier while preserving
-device data. The repair candidate is not canonical. It is not `QA_READY`, Ship-ready,
+device data. Terminate any running app process before launch and prove the launched process
+reports the exact installed revision; reactivating a process that survived the over-install is
+stale evidence. The repair candidate is not canonical. It is not `QA_READY`, Ship-ready,
 shippable, or merge-ready. It authorizes only one named broken interaction; exploratory QA
 is prohibited.
 

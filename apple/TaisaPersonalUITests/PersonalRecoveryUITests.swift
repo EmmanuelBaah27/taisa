@@ -1,6 +1,31 @@
 import XCTest
 
 @MainActor final class PersonalRecoveryUITests: XCTestCase {
+    func testPreservedSavedDraftOpensWithoutConversationUnavailable() {
+        let app = XCUIApplication()
+        app.launch()
+
+        let conversations = app.buttons["Conversations"]
+        XCTAssertTrue(conversations.waitForExistence(timeout: 10))
+        conversations.tap()
+
+        XCTAssertTrue(
+            app.descendants(matching: .any)["conversations.root"].waitForExistence(timeout: 10)
+        )
+        let draft = app.descendants(matching: .any)["conversation.resume"]
+        XCTAssertTrue(draft.waitForExistence(timeout: 10))
+        draft.tap()
+
+        XCTAssertTrue(
+            app.descendants(matching: .any)["conversation.root"].waitForExistence(timeout: 10)
+        )
+        let unavailable = app.staticTexts["Conversation unavailable"]
+        if unavailable.waitForExistence(timeout: 3) {
+            let diagnostic = app.descendants(matching: .any)["conversation.unavailable.diagnostic"]
+            XCTFail("Conversation unavailable: \(diagnostic.exists ? diagnostic.label : "missing diagnostic")")
+        }
+    }
+
     func testOverflowingConversationRendersWithLatestMessageVisible() {
         let app = XCUIApplication()
         app.launchArguments = ["--taisa-conversation-overflow-qa"]
