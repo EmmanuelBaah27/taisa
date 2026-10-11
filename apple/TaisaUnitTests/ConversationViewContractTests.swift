@@ -33,8 +33,11 @@ final class ConversationViewContractTests: XCTestCase {
 
         XCTAssertTrue(factory.contains("contentFreeLatestDraftDiagnostic"))
         XCTAssertTrue(diagnostic.contains("state=\\(turn.state.rawValue) stage=\\(turn.stage.rawValue) failure=\\(turn.failureCode ?? \"none\")"))
+        XCTAssertTrue(diagnostic.contains("reconciliation=\\(status)"))
+        XCTAssertTrue(diagnostic.contains("case .safeToRetry: status = \"safe-to-retry\""))
+        XCTAssertTrue(diagnostic.contains("case .completed: status = \"completed\""))
         XCTAssertFalse(diagnostic.contains("acceptedTranscript"))
-        XCTAssertFalse(diagnostic.contains("requestID"))
+        XCTAssertFalse(appRoot.contains("TAISA_CONVERSATION_DRAFT_DIAGNOSTIC \\(requestID)"))
         XCTAssertTrue(appRoot.contains("--taisa-diagnose-latest-preserved-draft"))
         XCTAssertTrue(appRoot.contains("TAISA_CONVERSATION_DRAFT_DIAGNOSTIC"))
     }
