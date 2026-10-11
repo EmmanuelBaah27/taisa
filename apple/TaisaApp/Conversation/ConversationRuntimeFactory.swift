@@ -44,15 +44,15 @@ struct ConversationRuntimeFactory: Sendable {
         let pendingConversationRequest = resumable.flatMap { turn in
             ["pending_text", "pending_correction"].contains(turn.failureCode) ? turn : nil
         }
+        let lastUserMessage = history.visibleMessages.last(where: { $0.role == "user" })
         if pendingConversationRequest == nil {
-            let lastUserMessage = history.visibleMessages.last(where: { $0.role == "user" })
             for draft in history.drafts {
                 let isCompletedText = draft.inputMode == .text
                     && draft.recoveryKind == .retryableCoaching
                     && draft.text == lastUserMessage?.body
                 let isCompletedVoice: Bool
                 if let voiceTurnID = draft.voiceTurnID,
-                   let voiceTurn = try await turns.turn(id: voiceTurnID) {
+                   let voiceTurn = try? await turns.turn(id: voiceTurnID) {
                     isCompletedVoice = voiceTurn.state == .completed
                 } else {
                     isCompletedVoice = false
@@ -66,7 +66,7 @@ struct ConversationRuntimeFactory: Sendable {
         let restoredDraft = history.drafts.first
         let linkedVoiceTurn: VoiceTurnRecord?
         if restoredDraft?.inputMode == .voice, let voiceTurnID = restoredDraft?.voiceTurnID {
-            linkedVoiceTurn = try await turns.turn(id: voiceTurnID)
+            linkedVoiceTurn = try? await turns.turn(id: voiceTurnID)
         } else {
             linkedVoiceTurn = nil
         }
@@ -87,7 +87,7 @@ struct ConversationRuntimeFactory: Sendable {
             linkedVoiceTurn: linkedVoiceTurn,
             resumableVoiceTurn: resumable,
             fallbackVoiceTurn: fallbackTurn,
-            recoveryTranscript: recoveryTranscript
+            recoveryTranscript: recoveryTranscript ?? lastUserMessage?.body
         )
         let initial = pendingConversationRequest == nil ? restoration.voiceTurn : fallbackTurn
         let files = try ProtectedAudioFileStore()
