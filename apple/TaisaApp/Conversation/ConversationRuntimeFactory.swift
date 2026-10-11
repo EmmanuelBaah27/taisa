@@ -70,13 +70,24 @@ struct ConversationRuntimeFactory: Sendable {
         } else {
             linkedVoiceTurn = nil
         }
+        let recoveryTranscript: String?
+        if linkedVoiceTurn == nil,
+           restoredDraft?.inputMode == .voice,
+           let voiceTurnID = restoredDraft?.voiceTurnID {
+            recoveryTranscript = try? await turns.recoveryTranscript(
+                turnID: voiceTurnID,
+                conversationID: route.id
+            )
+        } else {
+            recoveryTranscript = nil
+        }
         let fallbackTurn = makeTurn(conversationID: route.id)
         let restoration = Self.restoration(
             draft: restoredDraft,
             linkedVoiceTurn: linkedVoiceTurn,
             resumableVoiceTurn: resumable,
             fallbackVoiceTurn: fallbackTurn,
-            recoveryTranscript: lastUserMessage?.body
+            recoveryTranscript: recoveryTranscript
         )
         let initial = pendingConversationRequest == nil ? restoration.voiceTurn : fallbackTurn
         let files = try ProtectedAudioFileStore()
