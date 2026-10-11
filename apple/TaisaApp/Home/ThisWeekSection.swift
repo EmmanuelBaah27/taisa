@@ -6,15 +6,14 @@ struct ThisWeekSection: View {
     let items: [WeeklyWorkItem]
     let unresolvedPriorWeekCount: Int
     let model: HomeModel
-
-    @State private var planningItem: WeeklyWorkItem?
-    @State private var showsPriorWeekReview = false
+    let openPlanning: (WeeklyWorkItem) -> Void
+    let openPriorWeekReview: (Int) -> Void
 
     var body: some View {
         Section {
             if unresolvedPriorWeekCount > 0 {
                 Button {
-                    showsPriorWeekReview = true
+                    openPriorWeekReview(unresolvedPriorWeekCount)
                 } label: {
                     Label(
                         "Review \(unresolvedPriorWeekCount) unfinished \(unresolvedPriorWeekCount == 1 ? "item" : "items")",
@@ -46,12 +45,6 @@ struct ThisWeekSection: View {
             Text("This Week")
         }
         .accessibilityIdentifier("home.this-week")
-        .sheet(item: $planningItem) { item in
-            WeeklyPlanningSheet(item: item, model: model)
-        }
-        .sheet(isPresented: $showsPriorWeekReview) {
-            PriorWeekReviewSheet(unresolvedCount: unresolvedPriorWeekCount)
-        }
     }
 
     private func weeklyRow(_ item: WeeklyWorkItem) -> some View {
@@ -67,7 +60,7 @@ struct ThisWeekSection: View {
             .accessibilityIdentifier("home.this-week.complete")
 
             Button {
-                planningItem = item
+                openPlanning(item)
             } label: {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(item.action.title)
@@ -92,7 +85,19 @@ struct ThisWeekSection: View {
     }
 }
 
-private struct WeeklyPlanningSheet: View {
+enum ThisWeekSheet: Identifiable {
+    case planning(WeeklyWorkItem)
+    case priorWeekReview(unresolvedCount: Int)
+
+    var id: String {
+        switch self {
+        case let .planning(item): "planning-\(item.id)"
+        case .priorWeekReview: "prior-week-review"
+        }
+    }
+}
+
+struct WeeklyPlanningSheet: View {
     let item: WeeklyWorkItem
     let model: HomeModel
     @Environment(\.dismiss) private var dismiss
@@ -122,7 +127,7 @@ private struct WeeklyPlanningSheet: View {
     }
 }
 
-private struct PriorWeekReviewSheet: View {
+struct PriorWeekReviewSheet: View {
     let unresolvedCount: Int
     @Environment(\.dismiss) private var dismiss
 
