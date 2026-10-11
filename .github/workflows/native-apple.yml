@@ -14,9 +14,44 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  classify-native-impact:
+    name: Classify native impact
+    runs-on: ubuntu-latest
+    outputs:
+      native_required: ${{ steps.classify.outputs.native_required }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: classify
+        name: Detect product-native changes
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if test "${EVENT_NAME}" != "pull_request"; then
+            echo "native_required=true" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          native_required=false
+          while IFS= read -r changed_path; do
+            case "${changed_path}" in
+              scripts/native-apple/__tests__/*)
+                ;;
+              apple/*|scripts/native-apple/*|package.json|package-lock.json)
+                native_required=true
+                break
+                ;;
+            esac
+          done < <(git diff --name-only "${BASE_SHA}" "${HEAD_SHA}")
+          echo "native_required=${native_required}" >> "${GITHUB_OUTPUT}"
+
   verify-native-apple:
     name: Native Apple Full Verification
-    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'merge-ready')
+    needs: [classify-native-impact]
+    if: github.event_name != 'pull_request' || (needs.classify-native-impact.outputs.native_required == 'true' && contains(github.event.pull_request.labels.*.name, 'merge-ready'))
     runs-on: macos-26
     timeout-minutes: 75
     steps:
@@ -69,16 +104,21 @@ jobs:
   native-merge-gate:
     name: Native Merge Gate
     if: always() && github.event_name == 'pull_request'
-    needs: [verify-native-apple]
+    needs: [classify-native-impact, verify-native-apple]
     runs-on: ubuntu-latest
     env:
       FULL_RESULT: ${{ needs.verify-native-apple.result }}
+      NATIVE_REQUIRED: ${{ needs.classify-native-impact.outputs.native_required }}
       HAS_MERGE_READY: ${{ contains(github.event.pull_request.labels.*.name, 'merge-ready') }}
       PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
     steps:
       - name: Require full verification for this pull request head
         run: |
           echo "Evaluating native verification for ${PR_HEAD_SHA}"
+          if test "${NATIVE_REQUIRED}" != "true"; then
+            echo "This workflow-only pull request does not require the full native matrix."
+            exit 0
+          fi
           test "${HAS_MERGE_READY}" = "true" || {
             echo "Apply the merge-ready label to start full native verification." >&2
             exit 1

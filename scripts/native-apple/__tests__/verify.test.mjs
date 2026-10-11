@@ -339,6 +339,13 @@ test('tiered native CI keeps fast feedback separate from exact-head full verific
   assert.match(fullWorkflow, /tags: \['v\*'\]/);
   assert.match(fullWorkflow, /merge-ready/);
   assert.match(fullWorkflow, /name: Native Merge Gate/);
+  assert.match(fullWorkflow, /name: Classify native impact/);
+  assert.match(fullWorkflow, /native_required/);
+  assert.match(fullWorkflow, /workflow-only pull request does not require the full native matrix/i);
+  assert.match(fullWorkflow, /github\.event\.pull_request\.base\.sha/);
+  assert.match(fullWorkflow, /github\.event\.pull_request\.head\.sha/);
+  assert.match(fullWorkflow, /apple\/|scripts\/native-apple\/|package\.json/);
+  assert.match(fullWorkflow, /scripts\/native-apple\/__tests__\/\*\).*;;/s);
   assert.match(fullWorkflow, /needs\.verify-native-apple\.result/);
   assert.match(fullWorkflow, /github\.event\.pull_request\.head\.sha/);
   assert.match(fullWorkflow, /cancel-in-progress: \$\{\{ github\.event_name == 'pull_request' \}\}/);
