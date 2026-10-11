@@ -32,6 +32,22 @@ struct ConversationRuntimeFactory: Sendable {
     let deviceID: UUID
     let configuration: VoiceGatewayConfiguration
 
+    func contentFreeLatestDraftDiagnostic() async -> String {
+        do {
+            let snapshot = try await ConversationQuery(store: store).loadIndex()
+            guard let draft = snapshot.drafts.first else { return "result=no-draft" }
+            guard let turnID = draft.voiceTurnID else {
+                return "result=draft input=\(draft.inputMode.rawValue) turn=none"
+            }
+            guard let turn = try await ConversationTurnRepository(store: store).turn(id: turnID) else {
+                return "result=draft input=voice turn=missing"
+            }
+            return "result=draft input=voice state=\(turn.state.rawValue) stage=\(turn.stage.rawValue) failure=\(turn.failureCode ?? "none")"
+        } catch {
+            return "result=diagnostic-read-failed type=\(String(reflecting: type(of: error)))"
+        }
+    }
+
     func makeModel(
         route: ConversationRoute,
         entryIntent: ConversationEntryIntent?,
