@@ -66,6 +66,23 @@ struct ConversationRuntimeFactory: Sendable {
         }
     }
 
+    func retryLatestPreservedDraftProbe() async -> String {
+        do {
+            let snapshot = try await ConversationQuery(store: store).loadIndex()
+            guard let draft = snapshot.drafts.first else { return "result=no-draft" }
+            let model = try await makeModel(
+                route: .init(id: draft.conversationID, localTitle: "Draft"),
+                entryIntent: nil,
+                dismiss: {}
+            )
+            await model.start()
+            await model.retry()
+            return await contentFreeLatestDraftDiagnostic()
+        } catch {
+            return "result=retry-probe-failed type=\(String(reflecting: type(of: error)))"
+        }
+    }
+
     func makeModel(
         route: ConversationRoute,
         entryIntent: ConversationEntryIntent?,
