@@ -40,6 +40,10 @@ final class ConversationViewContractTests: XCTestCase {
         XCTAssertFalse(appRoot.contains("TAISA_CONVERSATION_DRAFT_DIAGNOSTIC \\(requestID)"))
         XCTAssertTrue(appRoot.contains("--taisa-diagnose-latest-preserved-draft"))
         XCTAssertTrue(appRoot.contains("TAISA_CONVERSATION_DRAFT_DIAGNOSTIC"))
+        XCTAssertTrue(appRoot.contains("--taisa-retry-latest-preserved-draft-once"))
+        XCTAssertTrue(appRoot.contains("TAISA_CONVERSATION_RETRY_PROBE"))
+        XCTAssertTrue(factory.contains("retryLatestPreservedDraftProbe"))
+        XCTAssertTrue(factory.contains("await model.retry()"))
     }
 
     func testLegacyVoiceDraftDecodeFailureFallsThroughToTranscriptRecovery() throws {

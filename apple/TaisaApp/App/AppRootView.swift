@@ -83,6 +83,14 @@ struct AppRootView: View {
     @MainActor
     private func openPreservedDraftProbeIfRequested() async {
 #if DEBUG || TAISA_PERSONAL
+        if ProcessInfo.processInfo.arguments.contains("--taisa-retry-latest-preserved-draft-once") {
+            guard runtime.state == .ready, let factory = runtime.conversationFactory else {
+                print("TAISA_CONVERSATION_RETRY_PROBE result=factory-unavailable")
+                return
+            }
+            print("TAISA_CONVERSATION_RETRY_PROBE \(await factory.retryLatestPreservedDraftProbe())")
+            return
+        }
         if ProcessInfo.processInfo.arguments.contains("--taisa-diagnose-latest-preserved-draft") {
             guard runtime.state == .ready, let factory = runtime.conversationFactory else {
                 print("TAISA_CONVERSATION_DRAFT_DIAGNOSTIC result=factory-unavailable")
