@@ -112,8 +112,17 @@ struct ConversationRuntimeFactory: Sendable {
             try await query.loadConversation(id: route.id)
         }
         let turns = ConversationTurnRepository(store: store)
-        let resumable = try await openStage(.resumableTurn) {
+        let rawResumable = try await openStage(.resumableTurn) {
             try await turns.latestResumableTurn(conversationID: route.id)
+        }
+        let latestCompleted = try await openStage(.resumableTurn) {
+            try await turns.latestCompletedTurn(conversationID: route.id)
+        }
+        let resumable: VoiceTurnRecord? = if let rawResumable, let latestCompleted,
+                                            latestCompleted.updatedAtMS > rawResumable.updatedAtMS {
+            nil
+        } else {
+            rawResumable
         }
         let pendingConversationRequest = resumable.flatMap { turn in
             ["pending_text", "pending_correction"].contains(turn.failureCode) ? turn : nil
@@ -128,6 +137,7 @@ struct ConversationRuntimeFactory: Sendable {
                 if let voiceTurnID = draft.voiceTurnID,
                    let voiceTurn = try? await turns.turn(id: voiceTurnID) {
                     isCompletedVoice = voiceTurn.state == .completed
+                        || latestCompleted.map { $0.updatedAtMS > draft.updatedAtMS } == true
                 } else {
                     isCompletedVoice = false
                 }
@@ -224,6 +234,7 @@ struct ConversationRuntimeFactory: Sendable {
             ? (entryIntent == nil ? restoration.composer : .waitingForReply)
             : .failure(.retryable)
         let initialText = restoration.text
+        let restoredDraftID = restoredDraft?.id
 
         let client = ConversationScreenClient(
             loadMessages: { try await query.loadConversation(id: route.id).visibleMessages },
@@ -237,7 +248,12 @@ struct ConversationRuntimeFactory: Sendable {
                 for draft in snapshot.drafts { try await conversations.discardDraft(id: draft.id) }
             },
             sendText: { try await coordinator.send(.text($0)) },
-            retry: { try await coordinator.retry() },
+            retry: {
+                try await coordinator.retry()
+                if let restoredDraftID {
+                    try await conversations.discardDraft(id: restoredDraftID)
+                }
+            },
             saveDraft: { input in
                 switch input {
                 case .text:
