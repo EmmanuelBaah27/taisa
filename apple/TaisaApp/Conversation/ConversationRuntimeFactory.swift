@@ -42,7 +42,25 @@ struct ConversationRuntimeFactory: Sendable {
             guard let turn = try await ConversationTurnRepository(store: store).turn(id: turnID) else {
                 return "result=draft input=voice turn=missing"
             }
-            return "result=draft input=voice state=\(turn.state.rawValue) stage=\(turn.stage.rawValue) failure=\(turn.failureCode ?? "none")"
+            let local = "result=draft input=voice state=\(turn.state.rawValue) stage=\(turn.stage.rawValue) failure=\(turn.failureCode ?? "none")"
+            guard turn.stage == .coaching,
+                  let requestID = UUID(uuidString: turn.coachingRequestID) else {
+                return local
+            }
+            do {
+                let result = try await GatewayCoachingReconciliation(configuration: configuration)
+                    .reconcile(requestID: requestID)
+                let status: String
+                switch result {
+                case .safeToRetry: status = "safe-to-retry"
+                case .ambiguous: status = "ambiguous"
+                case .completed: status = "completed"
+                case .failed(_, let retryable): status = retryable ? "failed-retryable" : "failed-terminal"
+                }
+                return "\(local) reconciliation=\(status)"
+            } catch {
+                return "\(local) reconciliation=lookup-failed type=\(String(reflecting: type(of: error)))"
+            }
         } catch {
             return "result=diagnostic-read-failed type=\(String(reflecting: type(of: error)))"
         }
