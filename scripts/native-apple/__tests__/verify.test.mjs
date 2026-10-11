@@ -341,6 +341,11 @@ test('tiered native CI keeps fast feedback separate from exact-head full verific
   assert.match(fullWorkflow, /name: Native Merge Gate/);
   assert.match(fullWorkflow, /needs\.verify-native-apple\.result/);
   assert.match(fullWorkflow, /github\.event\.pull_request\.head\.sha/);
+  assert.equal(
+    fullWorkflow.match(/^concurrency:/gm)?.length,
+    1,
+    'full native workflow must declare exactly one top-level concurrency policy',
+  );
   assert.match(fullWorkflow, /cancel-in-progress: \$\{\{ github\.event_name == 'pull_request' \}\}/);
   assert.match(fullWorkflow, /npm run verify:native-apple:all/);
 });
