@@ -1,6 +1,7 @@
 import Foundation
 import Testing
 import TaisaAudio
+import TaisaConversations
 import TaisaContracts
 import TaisaStorage
 @testable import TaisaVoice
@@ -20,6 +21,28 @@ struct VoiceSessionCoordinatorTests {
         )
 
         try await coordinator.restartFailedCoaching(with: replacementTurn(from: failed))
+        await coordinator.waitForIdle()
+
+        #expect(await transcription.calls == 0)
+        #expect(await coaching.calls == 1)
+        #expect(await coordinator.snapshot().durable.state == .completed)
+    }
+
+    @Test("safe server state restarts ambiguous coaching with a fresh identity")
+    func safeServerStateRestartsAmbiguousCoaching() async throws {
+        let transcription = TranscriptionSpy(events: [])
+        let coaching = SuccessfulCoachingSpy()
+        let ambiguous = turn(
+            state: .resumeRequiresConfirmation, stage: .coaching, transcript: "accepted"
+        )
+        let coordinator = VoiceSessionCoordinator(
+            initial: ambiguous,
+            checkpoints: CheckpointSpy(), transcription: transcription, coaching: coaching,
+            connectivity: ConnectivitySpy(available: true), reconciliation: ReconciliationSpy(.safeToRetry),
+            capture: NoopCapture(), audio: NoopAudio()
+        )
+
+        try await coordinator.restartCoachingIfServerSafe(with: replacementTurn(from: ambiguous))
         await coordinator.waitForIdle()
 
         #expect(await transcription.calls == 0)
@@ -52,6 +75,75 @@ struct VoiceSessionCoordinatorTests {
         #expect(await coaching.calls == 0)
         #expect(await coordinator.snapshot().durable.state == .noSpeech)
         #expect(await store.states.contains(.queued))
+    }
+
+    @Test("pause failure preserves the durable paused checkpoint for draft saving")
+    func pauseFailurePreservesDurablePausedState() async throws {
+        let coordinator = VoiceSessionCoordinator(
+            initial: turn(state: .recording, stage: .capture),
+            checkpoints: CheckpointSpy(), transcription: TranscriptionSpy(events: []),
+            coaching: CoachingSpy(), connectivity: ConnectivitySpy(available: true),
+            reconciliation: ReconciliationSpy(.safeToRetry),
+            capture: FailingPauseCapture(), audio: NoopAudio()
+        )
+
+        await #expect(throws: AudioCaptureError.invalidState) {
+            try await coordinator.send(.pauseRecording)
+        }
+        #expect(await coordinator.snapshot().durable.state == .paused)
+    }
+
+    @Test("saving a voice draft preserves finalized audio that can be sent after relaunch")
+    func savedVoiceDraftCanSendAfterRelaunch() async throws {
+        let capture = DraftCapture()
+        let store = CheckpointSpy()
+        let coordinator = VoiceSessionCoordinator(
+            initial: draftRecordingTurn(), checkpoints: store,
+            transcription: TranscriptionSpy(events: [.noSpeech(requestId: IDs.transcription, sequence: 0)]),
+            coaching: CoachingSpy(), connectivity: ConnectivitySpy(available: true),
+            reconciliation: ReconciliationSpy(.safeToRetry), capture: capture, audio: NoopAudio()
+        )
+
+        try await VoiceSessionConversationAdapter(coordinator).saveDraft()
+        let saved = await coordinator.snapshot().durable
+
+        #expect(saved.state == .paused)
+        #expect(saved.audioFileID == "audio-1")
+        #expect(saved.audioSHA256 == "draft-sha")
+        #expect(saved.audioDurationMS == 2_000)
+
+        let relaunchedCapture = RejectingFinalizationCapture()
+        let relaunched = VoiceSessionCoordinator(
+            initial: saved, checkpoints: CheckpointSpy(),
+            transcription: TranscriptionSpy(events: [.noSpeech(requestId: IDs.transcription, sequence: 0)]),
+            coaching: CoachingSpy(), connectivity: ConnectivitySpy(available: true),
+            reconciliation: ReconciliationSpy(.safeToRetry), capture: relaunchedCapture, audio: NoopAudio()
+        )
+
+        try await relaunched.sendRecordedAudio()
+        await relaunched.waitForIdle()
+
+        #expect(await relaunchedCapture.finalizeCount == 0)
+        #expect(await relaunched.snapshot().durable.state == .noSpeech)
+    }
+
+    @Test("discarding a restored finalized draft deletes persisted audio without a recorder session")
+    func restoredFinalizedDraftDiscardUsesPersistedAudio() async throws {
+        let capture = RejectingFinalizationCapture()
+        let audio = AudioDeleteSpy()
+        let coordinator = VoiceSessionCoordinator(
+            initial: finalizedDraftTurn(), checkpoints: CheckpointSpy(),
+            transcription: TranscriptionSpy(events: []), coaching: CoachingSpy(),
+            connectivity: ConnectivitySpy(available: true),
+            reconciliation: ReconciliationSpy(.safeToRetry), capture: capture, audio: audio
+        )
+
+        try await VoiceSessionConversationAdapter(coordinator).discardDraft()
+
+        #expect(await capture.discardCount == 0)
+        #expect(await audio.deletedFileIDs == ["audio-1"])
+        #expect(await coordinator.snapshot().durable.state == .discarded)
+        #expect(await coordinator.snapshot().durable.cleanupState == .completed)
     }
 
     @Test("retrying coaching never retranscribes audio")
@@ -119,6 +211,32 @@ private func turn(state: VoiceTurnState, stage: VoiceTurnStage, transcript: Stri
         transcriptionReceipt: transcript == nil ? nil : IDs.transcription.uuidString,
         userMessageID: transcript == nil ? nil : "77777777-7777-4777-8777-777777777777",
         createdAtMS: 1, updatedAtMS: 1
+    )
+}
+
+private func draftRecordingTurn() -> VoiceTurnRecord {
+    VoiceTurnRecord(
+        id: IDs.turn.uuidString, conversationID: IDs.conversation.uuidString,
+        transcriptionRequestID: IDs.transcription.uuidString,
+        transcriptionIdempotencyKey: "transcription-1",
+        coachingRequestID: IDs.coaching.uuidString,
+        coachingIdempotencyKey: "coaching-1",
+        state: .recording, stage: .capture,
+        audioFileID: "audio-1",
+        createdAtMS: 1, updatedAtMS: 1
+    )
+}
+
+private func finalizedDraftTurn() -> VoiceTurnRecord {
+    VoiceTurnRecord(
+        id: IDs.turn.uuidString, conversationID: IDs.conversation.uuidString,
+        transcriptionRequestID: IDs.transcription.uuidString,
+        transcriptionIdempotencyKey: "transcription-1",
+        coachingRequestID: IDs.coaching.uuidString,
+        coachingIdempotencyKey: "coaching-1",
+        state: .paused, stage: .capture,
+        audioFileID: "audio-1", audioSHA256: "draft-sha", audioDurationMS: 2_000,
+        cleanupState: .pending, createdAtMS: 1, updatedAtMS: 2
     )
 }
 
@@ -216,6 +334,59 @@ private actor NoopCapture: VoiceCaptureControlling {
     func cancel(turnID: UUID) async throws {}
     func discard(turnID: UUID) async throws {}
     func release(turnID: UUID) async throws {}
+}
+
+private actor FailingPauseCapture: VoiceCaptureControlling {
+    func events() -> AsyncStream<AudioCaptureEvent> { AsyncStream { $0.finish() } }
+    func prepare(turnID: UUID) async throws -> String { IDs.turn.uuidString }
+    func start(turnID: UUID) async throws {}
+    func pause(turnID: UUID) async throws { throw AudioCaptureError.invalidState }
+    func resume(turnID: UUID) async throws {}
+    func finalize(turnID: UUID) async throws -> FinalizedVoiceAudio {
+        throw AudioCaptureError.audioNotFinalized
+    }
+    func cancel(turnID: UUID) async throws {}
+    func discard(turnID: UUID) async throws {}
+    func release(turnID: UUID) async throws {}
+}
+
+private actor DraftCapture: VoiceCaptureControlling {
+    func events() -> AsyncStream<AudioCaptureEvent> { AsyncStream { $0.finish() } }
+    func prepare(turnID: UUID) async throws -> String { "audio-1" }
+    func start(turnID: UUID) async throws {}
+    func pause(turnID: UUID) async throws {}
+    func resume(turnID: UUID) async throws {}
+    func finalize(turnID: UUID) async throws -> FinalizedVoiceAudio {
+        .init(fileID: "audio-1", sha256: "draft-sha", durationMS: 2_000)
+    }
+    func cancel(turnID: UUID) async throws {}
+    func discard(turnID: UUID) async throws {}
+    func release(turnID: UUID) async throws {}
+}
+
+private actor RejectingFinalizationCapture: VoiceCaptureControlling {
+    private(set) var finalizeCount = 0
+    private(set) var discardCount = 0
+    func events() -> AsyncStream<AudioCaptureEvent> { AsyncStream { $0.finish() } }
+    func prepare(turnID: UUID) async throws -> String { throw AudioCaptureError.invalidState }
+    func start(turnID: UUID) async throws { throw AudioCaptureError.invalidState }
+    func pause(turnID: UUID) async throws { throw AudioCaptureError.invalidState }
+    func resume(turnID: UUID) async throws { throw AudioCaptureError.invalidState }
+    func finalize(turnID: UUID) async throws -> FinalizedVoiceAudio {
+        finalizeCount += 1
+        throw AudioCaptureError.audioNotFinalized
+    }
+    func cancel(turnID: UUID) async throws {}
+    func discard(turnID: UUID) async throws {
+        discardCount += 1
+        throw AudioCaptureError.invalidState
+    }
+    func release(turnID: UUID) async throws {}
+}
+
+private actor AudioDeleteSpy: VoiceAudioDeleting {
+    private(set) var deletedFileIDs: [String] = []
+    func delete(fileID: String) async throws { deletedFileIDs.append(fileID) }
 }
 
 private actor NoopAudio: VoiceAudioDeleting {

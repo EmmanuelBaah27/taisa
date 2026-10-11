@@ -26,13 +26,18 @@ struct AppRootView: View {
                     }
                 case .recoveryRequired:
                     NavigationStack {
-                        RecoveryView()
+                        RecoveryView(retryRuntime: {
+                            Task { await runtime.retryRecovery() }
+                        })
                             .accessibilityIdentifier("home.recovery")
                     }
                 }
             }
         }
-        .task { await runtime.start() }
+        .task {
+            await runtime.start()
+            await openPreservedDraftProbeIfRequested()
+        }
 #if TAISA_PERSONAL
         .sheet(isPresented: $showsPersonalQA, onDismiss: openPendingProductVoiceQA) {
             NavigationStack {
@@ -66,5 +71,58 @@ struct AppRootView: View {
         guard startsProductVoiceAfterQA else { return }
         startsProductVoiceAfterQA = false
         runtime.primaryShellModel.presentNewConversation(.voice)
+    }
+
+    @MainActor
+    private func openPreservedDraftProbeIfRequested() async {
+#if DEBUG || TAISA_PERSONAL
+        if ProcessInfo.processInfo.arguments.contains("--taisa-seed-finalized-voice-draft") {
+            guard runtime.state == .ready, let factory = runtime.conversationFactory else {
+                print("TAISA_CONVERSATION_SEED_PROBE result=factory-unavailable")
+                return
+            }
+            do {
+                _ = try await factory.seedFinalizedVoiceDraftProbe()
+                print("TAISA_CONVERSATION_SEED_PROBE result=seeded")
+            } catch {
+                print("TAISA_CONVERSATION_SEED_PROBE result=failed type=\(String(reflecting: type(of: error)))")
+            }
+        }
+        if ProcessInfo.processInfo.arguments.contains("--taisa-cleanup-completed-preserved-draft") {
+            guard runtime.state == .ready, let factory = runtime.conversationFactory else {
+                print("TAISA_CONVERSATION_CLEANUP_PROBE result=factory-unavailable")
+                return
+            }
+            print("TAISA_CONVERSATION_CLEANUP_PROBE \(await factory.cleanupCompletedPreservedDraftProbe())")
+            return
+        }
+        if ProcessInfo.processInfo.arguments.contains("--taisa-retry-latest-preserved-draft-once") {
+            guard runtime.state == .ready, let factory = runtime.conversationFactory else {
+                print("TAISA_CONVERSATION_RETRY_PROBE result=factory-unavailable")
+                return
+            }
+            print("TAISA_CONVERSATION_RETRY_PROBE \(await factory.retryLatestPreservedDraftProbe())")
+            return
+        }
+        if ProcessInfo.processInfo.arguments.contains("--taisa-diagnose-latest-preserved-draft") {
+            guard runtime.state == .ready, let factory = runtime.conversationFactory else {
+                print("TAISA_CONVERSATION_DRAFT_DIAGNOSTIC result=factory-unavailable")
+                return
+            }
+            print("TAISA_CONVERSATION_DRAFT_DIAGNOSTIC \(await factory.contentFreeLatestDraftDiagnostic())")
+            return
+        }
+        guard ProcessInfo.processInfo.arguments.contains("--taisa-open-first-preserved-draft"),
+              runtime.state == .ready,
+              let conversations = runtime.conversationsModel
+        else { return }
+        await conversations.load()
+        guard let draft = conversations.snapshot.drafts.first else {
+            print("TAISA_CONVERSATION_OPEN_PROBE result=no-draft")
+            return
+        }
+        print("TAISA_CONVERSATION_OPEN_PROBE result=opening-draft")
+        runtime.primaryShellModel.openConversation(id: draft.conversationID, title: "Draft")
+#endif
     }
 }

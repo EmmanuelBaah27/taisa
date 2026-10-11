@@ -86,11 +86,31 @@ public struct VoiceSessionConversationAdapter: ConversationVoiceControlling {
         let failed = await coordinator.snapshot().durable
         if failed.state == .terminalFailure, failed.stage == .finished {
             try await coordinator.restartFailedCoaching(with: retryTurn(for: failed))
+        } else if failed.state == .resumeRequiresConfirmation, failed.stage == .coaching {
+            do {
+                try await coordinator.send(.confirmResume)
+            } catch {
+                let afterConfirmation = await coordinator.snapshot().durable
+                try await coordinator.restartCoachingIfServerSafe(
+                    with: retryTurn(for: afterConfirmation)
+                )
+            }
         } else {
-            try await coordinator.send(.retry)
+            try await coordinator.send(Self.retryCommand(for: failed.state))
         }
         await coordinator.waitForIdle()
+        let afterRetry = await coordinator.snapshot().durable
+        if failed.state == .resumeRequiresConfirmation,
+           afterRetry.state == .resumeRequiresConfirmation,
+           afterRetry.stage == .coaching {
+            try await coordinator.restartCoachingIfServerSafe(with: retryTurn(for: afterRetry))
+            await coordinator.waitForIdle()
+        }
         try Self.requireCompleted(await coordinator.snapshot().durable.state)
+    }
+
+    static func retryCommand(for state: VoiceTurnState) -> VoiceSessionCommand {
+        state == .resumeRequiresConfirmation ? .confirmResume : .retry
     }
 
     private func retryTurn(for failed: VoiceTurnRecord) -> VoiceTurnRecord {
@@ -110,7 +130,9 @@ public struct VoiceSessionConversationAdapter: ConversationVoiceControlling {
     }
     public func saveDraft() async throws {
         let state = await coordinator.snapshot().durable.state
-        if state == .recording { try await coordinator.send(.pauseRecording) }
+        if state == .recording || state == .paused {
+            try await coordinator.preserveDraftAudio()
+        }
     }
     public func discardDraft() async throws { try await coordinator.send(.discard) }
 }
