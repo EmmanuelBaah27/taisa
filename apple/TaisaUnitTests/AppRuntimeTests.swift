@@ -201,7 +201,7 @@ final class AppRuntimeTests: XCTestCase {
         let attempts = StartAttempts()
         let runtime = AppRuntime(start: {
             guard await attempts.next() > 1 else { throw StorageError.authenticationFailed }
-            return HomeClient { HomeSnapshot(conversations: [], goals: [], actions: []) }
+            return .test(home: HomeClient { HomeSnapshot(conversations: [], goals: [], actions: []) })
         })
 
         let failedState = await runtime.start()

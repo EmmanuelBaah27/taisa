@@ -52,8 +52,8 @@ struct RepositorySpec: Sendable {
 /// The single repository/journal mapping from transport-neutral entity tags to
 /// v1 storage tables and their identity-bearing parent references.
 enum DomainEntity: String, CaseIterable {
-    case profile, conversation, message, goal, milestone, action, evidence, memory, memory_source
-    case weekly_placement, work_event, insight, insight_source, insight_revision, voice_turn
+    case profile, conversation, message, goal, milestone, action, evidence, memory, memory_source, voice_turn
+    case weekly_placement, work_event, insight, insight_source, insight_revision
 
     var table: String {
         switch self {
@@ -66,12 +66,12 @@ enum DomainEntity: String, CaseIterable {
         case .evidence: "evidence"
         case .memory: "memory_items"
         case .memory_source: "memory_sources"
+        case .voice_turn: "voice_turns"
         case .weekly_placement: "weekly_placements"
         case .work_event: "work_events"
         case .insight: "insights"
         case .insight_source: "insight_sources"
         case .insight_revision: "insight_revisions"
-        case .voice_turn: "voice_turns"
         }
     }
 
@@ -82,13 +82,13 @@ enum DomainEntity: String, CaseIterable {
         case .action: [("goalID", "goal_id", "goals")]
         case .evidence: [("goalID", "goal_id", "goals"), ("actionID", "action_id", "actions")]
         case .memory_source: [("memoryItemID", "memory_item_id", "memory_items")]
-        case .weekly_placement, .work_event: [("actionID", "action_id", "actions")]
-        case .insight_source, .insight_revision: [("insightID", "insight_id", "insights")]
         case .voice_turn: [
             ("conversationID", "conversation_id", "conversations"),
             ("userMessageID", "user_message_id", "messages"),
             ("assistantMessageID", "assistant_message_id", "messages"),
         ]
+        case .weekly_placement, .work_event: [("actionID", "action_id", "actions")]
+        case .insight_source, .insight_revision: [("insightID", "insight_id", "insights")]
         default: []
         }
     }

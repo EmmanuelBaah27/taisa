@@ -72,7 +72,7 @@ enum TaisaMigrator {
         _ queue: DatabaseQueue,
         from version: Int,
         createSchema: @escaping @Sendable (Database) throws -> Void = TaisaSchema.createVersion1,
-        createVersion3: @escaping @Sendable (Database) throws -> Void = TaisaSchema.createVersion3,
+        createVersion4: @escaping @Sendable (Database) throws -> Void = TaisaSchema.createVersion4,
         createVersion5: @escaping @Sendable (Database) throws -> Void = TaisaSchema.createVersion5
     ) throws {
         // The caller completes a read-only preflight on any existing file.
@@ -96,7 +96,7 @@ enum TaisaMigrator {
             try db.execute(sql: "PRAGMA user_version = 2")
         }
         migrator.registerMigration("v3", foreignKeyChecks: .immediate) { db in
-            try createVersion3(db)
+            try TaisaSchema.createVersion3(in: db)
             try db.execute(
                 sql: "INSERT INTO migration_state (version, applied_at_ms) VALUES (?, ?)",
                 arguments: [3, Int64(Date().timeIntervalSince1970 * 1_000)]
@@ -104,7 +104,7 @@ enum TaisaMigrator {
             try db.execute(sql: "PRAGMA user_version = 3")
         }
         migrator.registerMigration("v4", foreignKeyChecks: .immediate) { db in
-            try TaisaSchema.createVersion4(in: db)
+            try createVersion4(db)
             try db.execute(
                 sql: "INSERT INTO migration_state (version, applied_at_ms) VALUES (?, ?)",
                 arguments: [4, Int64(Date().timeIntervalSince1970 * 1_000)]

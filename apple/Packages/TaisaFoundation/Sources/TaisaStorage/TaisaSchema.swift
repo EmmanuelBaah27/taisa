@@ -322,71 +322,6 @@ enum TaisaSchema {
     ]
 
     private static let version3Statements: [String] = [
-        """
-        CREATE TABLE weekly_placements (
-            id TEXT PRIMARY KEY NOT NULL CHECK (length(id) = 36),
-            action_id TEXT NOT NULL REFERENCES actions(id) ON DELETE CASCADE,
-            week_start_ms INTEGER NOT NULL CHECK (week_start_ms >= 0),
-            planned_day_ms INTEGER CHECK (planned_day_ms >= week_start_ms),
-            created_at_ms INTEGER NOT NULL CHECK (created_at_ms >= 0),
-            updated_at_ms INTEGER NOT NULL CHECK (updated_at_ms >= created_at_ms),
-            UNIQUE (action_id, week_start_ms)
-        )
-        """,
-        """
-        CREATE TABLE work_events (
-            id TEXT PRIMARY KEY NOT NULL CHECK (length(id) = 36),
-            action_id TEXT NOT NULL REFERENCES actions(id) ON DELETE CASCADE,
-            kind TEXT NOT NULL CHECK (kind IN ('created', 'placed', 'moved', 'completed', 'restored', 'removed')),
-            from_week_start_ms INTEGER CHECK (from_week_start_ms >= 0),
-            to_week_start_ms INTEGER CHECK (to_week_start_ms >= 0),
-            source_type TEXT NOT NULL,
-            source_id TEXT CHECK (source_id IS NULL OR length(source_id) = 36),
-            occurred_at_ms INTEGER NOT NULL CHECK (occurred_at_ms >= 0)
-        )
-        """,
-        """
-        CREATE TABLE insights (
-            id TEXT PRIMARY KEY NOT NULL CHECK (length(id) = 36),
-            body TEXT NOT NULL,
-            status TEXT NOT NULL CHECK (status IN ('confirmed', 'review_needed', 'superseded', 'retired')),
-            is_time_sensitive INTEGER NOT NULL DEFAULT 0 CHECK (is_time_sensitive IN (0, 1)),
-            home_eligible_until_ms INTEGER CHECK (home_eligible_until_ms >= 0),
-            created_at_ms INTEGER NOT NULL CHECK (created_at_ms >= 0),
-            updated_at_ms INTEGER NOT NULL CHECK (updated_at_ms >= created_at_ms)
-        )
-        """,
-        """
-        CREATE TABLE insight_sources (
-            id TEXT PRIMARY KEY NOT NULL CHECK (length(id) = 36),
-            insight_id TEXT NOT NULL REFERENCES insights(id) ON DELETE CASCADE,
-            source_type TEXT NOT NULL,
-            source_id TEXT NOT NULL CHECK (length(source_id) = 36),
-            excerpt TEXT NOT NULL DEFAULT '',
-            created_at_ms INTEGER NOT NULL CHECK (created_at_ms >= 0),
-            UNIQUE (insight_id, source_type, source_id)
-        )
-        """,
-        """
-        CREATE TABLE insight_revisions (
-            id TEXT PRIMARY KEY NOT NULL CHECK (length(id) = 36),
-            insight_id TEXT REFERENCES insights(id) ON DELETE CASCADE,
-            proposed_body TEXT NOT NULL,
-            status TEXT NOT NULL CHECK (status IN ('proposed', 'accepted', 'rejected')),
-            source_type TEXT NOT NULL,
-            source_id TEXT CHECK (source_id IS NULL OR length(source_id) = 36),
-            created_at_ms INTEGER NOT NULL CHECK (created_at_ms >= 0),
-            resolved_at_ms INTEGER CHECK (resolved_at_ms >= created_at_ms)
-        )
-        """,
-        "CREATE INDEX weekly_placements_by_week ON weekly_placements(week_start_ms, planned_day_ms)",
-        "CREATE INDEX work_events_by_action ON work_events(action_id, occurred_at_ms)",
-        "CREATE INDEX insights_by_status ON insights(status, updated_at_ms)",
-        "CREATE INDEX insight_sources_by_insight ON insight_sources(insight_id)",
-        "CREATE INDEX insight_revisions_by_insight ON insight_revisions(insight_id, created_at_ms)",
-    ]
-
-    private static let version4Statements: [String] = [
         "ALTER TABLE conversations ADD COLUMN lifecycle TEXT NOT NULL DEFAULT 'completed' CHECK (lifecycle IN ('draft', 'active', 'completed'))",
         "ALTER TABLE conversations ADD COLUMN title_authority TEXT NOT NULL DEFAULT 'user' CHECK (title_authority IN ('localFallback', 'assistantSuggested', 'user'))",
         """
@@ -399,8 +334,10 @@ enum TaisaSchema {
             recovery_kind TEXT NOT NULL CHECK (recovery_kind IN ('saved', 'recovered', 'retryableTranscription', 'retryableCoaching')),
             created_at_ms INTEGER NOT NULL CHECK (created_at_ms >= 0),
             updated_at_ms INTEGER NOT NULL CHECK (updated_at_ms >= created_at_ms),
-            CHECK ((input_mode = 'text' AND text IS NOT NULL AND voice_turn_id IS NULL)
-                OR (input_mode = 'voice' AND text IS NULL AND voice_turn_id IS NOT NULL))
+            CHECK (
+                (input_mode = 'text' AND text IS NOT NULL AND voice_turn_id IS NULL)
+                OR (input_mode = 'voice' AND text IS NULL AND voice_turn_id IS NOT NULL)
+            )
         )
         """,
         """
@@ -416,7 +353,7 @@ enum TaisaSchema {
         "CREATE INDEX message_revisions_by_message ON message_revisions(message_id, created_at_ms)",
     ]
 
-    private static let version5Statements: [String] = [
+    private static let version4Statements: [String] = [
         """
         CREATE TABLE career_work_events (
             id TEXT PRIMARY KEY NOT NULL CHECK (length(id) = 36),
@@ -481,6 +418,71 @@ enum TaisaSchema {
         "CREATE INDEX capability_states_by_state ON capability_states(state, updated_at_ms)",
     ]
 
+    private static let version5Statements: [String] = [
+        """
+        CREATE TABLE weekly_placements (
+            id TEXT PRIMARY KEY NOT NULL CHECK (length(id) = 36),
+            action_id TEXT NOT NULL REFERENCES actions(id) ON DELETE CASCADE,
+            week_start_ms INTEGER NOT NULL CHECK (week_start_ms >= 0),
+            planned_day_ms INTEGER CHECK (planned_day_ms >= week_start_ms),
+            created_at_ms INTEGER NOT NULL CHECK (created_at_ms >= 0),
+            updated_at_ms INTEGER NOT NULL CHECK (updated_at_ms >= created_at_ms),
+            UNIQUE (action_id, week_start_ms)
+        )
+        """,
+        """
+        CREATE TABLE work_events (
+            id TEXT PRIMARY KEY NOT NULL CHECK (length(id) = 36),
+            action_id TEXT NOT NULL REFERENCES actions(id) ON DELETE CASCADE,
+            kind TEXT NOT NULL CHECK (kind IN ('created', 'placed', 'moved', 'completed', 'restored', 'removed')),
+            from_week_start_ms INTEGER CHECK (from_week_start_ms >= 0),
+            to_week_start_ms INTEGER CHECK (to_week_start_ms >= 0),
+            source_type TEXT NOT NULL,
+            source_id TEXT CHECK (source_id IS NULL OR length(source_id) = 36),
+            occurred_at_ms INTEGER NOT NULL CHECK (occurred_at_ms >= 0)
+        )
+        """,
+        """
+        CREATE TABLE insights (
+            id TEXT PRIMARY KEY NOT NULL CHECK (length(id) = 36),
+            body TEXT NOT NULL,
+            status TEXT NOT NULL CHECK (status IN ('confirmed', 'review_needed', 'superseded', 'retired')),
+            is_time_sensitive INTEGER NOT NULL DEFAULT 0 CHECK (is_time_sensitive IN (0, 1)),
+            home_eligible_until_ms INTEGER CHECK (home_eligible_until_ms >= 0),
+            created_at_ms INTEGER NOT NULL CHECK (created_at_ms >= 0),
+            updated_at_ms INTEGER NOT NULL CHECK (updated_at_ms >= created_at_ms)
+        )
+        """,
+        """
+        CREATE TABLE insight_sources (
+            id TEXT PRIMARY KEY NOT NULL CHECK (length(id) = 36),
+            insight_id TEXT NOT NULL REFERENCES insights(id) ON DELETE CASCADE,
+            source_type TEXT NOT NULL,
+            source_id TEXT NOT NULL CHECK (length(source_id) = 36),
+            excerpt TEXT NOT NULL DEFAULT '',
+            created_at_ms INTEGER NOT NULL CHECK (created_at_ms >= 0),
+            UNIQUE (insight_id, source_type, source_id)
+        )
+        """,
+        """
+        CREATE TABLE insight_revisions (
+            id TEXT PRIMARY KEY NOT NULL CHECK (length(id) = 36),
+            insight_id TEXT REFERENCES insights(id) ON DELETE CASCADE,
+            proposed_body TEXT NOT NULL,
+            status TEXT NOT NULL CHECK (status IN ('proposed', 'accepted', 'rejected')),
+            source_type TEXT NOT NULL,
+            source_id TEXT CHECK (source_id IS NULL OR length(source_id) = 36),
+            created_at_ms INTEGER NOT NULL CHECK (created_at_ms >= 0),
+            resolved_at_ms INTEGER CHECK (resolved_at_ms >= created_at_ms)
+        )
+        """,
+        "CREATE INDEX weekly_placements_by_week ON weekly_placements(week_start_ms, planned_day_ms)",
+        "CREATE INDEX work_events_by_action ON work_events(action_id, occurred_at_ms)",
+        "CREATE INDEX insights_by_status ON insights(status, updated_at_ms)",
+        "CREATE INDEX insight_sources_by_insight ON insight_sources(insight_id)",
+        "CREATE INDEX insight_revisions_by_insight ON insight_revisions(insight_id, created_at_ms)",
+    ]
+
     static func validateVersion1(in db: Database, allowingConversationExtensions: Bool = false) throws {
         let requiredColumns: [String: Set<String>] = [
             "profile": ["id", "display_name", "headline", "biography", "updated_at_ms"],
@@ -507,7 +509,9 @@ enum TaisaSchema {
             for (table, expected) in requiredColumns {
                 guard try db.tableExists(table) else { throw StorageError.schemaMismatch }
                 let actual = Set(try db.columns(in: table).map(\.name))
-                guard actual == expected || (allowingConversationExtensions && table == "conversations" && actual.isSuperset(of: expected)) else { throw StorageError.schemaMismatch }
+                guard actual == expected || (allowingConversationExtensions && table == "conversations" && actual.isSuperset(of: expected)) else {
+                    throw StorageError.schemaMismatch
+                }
             }
             // V1's supported producer is this canonical migration. SQLite can
             // rewrite equivalent CREATE text during manual ALTER/restore; such
@@ -554,16 +558,16 @@ enum TaisaSchema {
         }
     }
 
-    static func validateVersion3(in db: Database, allowingConversationExtensions: Bool = false) throws {
-        try validateVersion2(in: db, allowingConversationExtensions: allowingConversationExtensions)
+    static func validateVersion3(in db: Database) throws {
+        try validateVersion2(in: db, allowingConversationExtensions: true)
         let requiredColumns: [String: Set<String>] = [
-            "weekly_placements": ["id", "action_id", "week_start_ms", "planned_day_ms", "created_at_ms", "updated_at_ms"],
-            "work_events": ["id", "action_id", "kind", "from_week_start_ms", "to_week_start_ms", "source_type", "source_id", "occurred_at_ms"],
-            "insights": ["id", "body", "status", "is_time_sensitive", "home_eligible_until_ms", "created_at_ms", "updated_at_ms"],
-            "insight_sources": ["id", "insight_id", "source_type", "source_id", "excerpt", "created_at_ms"],
-            "insight_revisions": ["id", "insight_id", "proposed_body", "status", "source_type", "source_id", "created_at_ms", "resolved_at_ms"],
+            "conversation_drafts": ["id", "conversation_id", "input_mode", "text", "voice_turn_id", "recovery_kind", "created_at_ms", "updated_at_ms"],
+            "message_revisions": ["id", "message_id", "original_body", "replacement_message_id", "created_at_ms"],
         ]
         do {
+            guard Set(try db.columns(in: "conversations").map(\.name)) == [
+                "id", "title", "lifecycle", "title_authority", "created_at_ms", "updated_at_ms",
+            ] else { throw StorageError.schemaMismatch }
             for (table, expected) in requiredColumns {
                 guard try db.tableExists(table), Set(try db.columns(in: table).map(\.name)) == expected else {
                     throw StorageError.schemaMismatch
@@ -584,15 +588,15 @@ enum TaisaSchema {
     }
 
     static func validateVersion4(in db: Database) throws {
-        try validateVersion3(in: db, allowingConversationExtensions: true)
+        try validateVersion3(in: db)
+        let requiredColumns: [String: Set<String>] = [
+            "career_work_events": ["id", "entity_type", "entity_id", "transition", "from_status", "to_status", "source_type", "source_id", "occurred_at_ms"],
+            "career_work_archives": ["id", "entity_type", "entity_id", "archived_at_ms", "restored_at_ms"],
+            "evidence_provenance": ["evidence_id", "origin_type", "origin_id", "supersedes_evidence_id", "created_at_ms"],
+            "career_work_proposal_receipts": ["id", "proposal_id", "target_type", "target_id", "target_version_id", "payload_digest", "decision", "resolved_at_ms"],
+            "capability_states": ["capability_id", "state", "decision_source", "transport_source", "decided_at_ms", "updated_at_ms"],
+        ]
         do {
-            guard Set(try db.columns(in: "conversations").map(\.name)) == [
-                "id", "title", "lifecycle", "title_authority", "created_at_ms", "updated_at_ms",
-            ] else { throw StorageError.schemaMismatch }
-            let requiredColumns: [String: Set<String>] = [
-                "conversation_drafts": ["id", "conversation_id", "input_mode", "text", "voice_turn_id", "recovery_kind", "created_at_ms", "updated_at_ms"],
-                "message_revisions": ["id", "message_id", "original_body", "replacement_message_id", "created_at_ms"],
-            ]
             for (table, expected) in requiredColumns {
                 guard try db.tableExists(table), Set(try db.columns(in: table).map(\.name)) == expected else {
                     throw StorageError.schemaMismatch
@@ -607,36 +611,7 @@ enum TaisaSchema {
                 )
                 guard stored == statement else { throw StorageError.schemaMismatch }
             }
-        } catch {
-            throw StorageError.schemaMismatch
-        }
-    }
-
-    static func validateVersion5(in db: Database) throws {
-        try validateVersion4(in: db)
-        let requiredColumns: [String: Set<String>] = [
-            "career_work_events": ["id", "entity_type", "entity_id", "transition", "from_status", "to_status", "source_type", "source_id", "occurred_at_ms"],
-            "career_work_archives": ["id", "entity_type", "entity_id", "archived_at_ms", "restored_at_ms"],
-            "evidence_provenance": ["evidence_id", "origin_type", "origin_id", "supersedes_evidence_id", "created_at_ms"],
-            "career_work_proposal_receipts": ["id", "proposal_id", "target_type", "target_id", "target_version_id", "payload_digest", "decision", "resolved_at_ms"],
-            "capability_states": ["capability_id", "state", "decision_source", "transport_source", "decided_at_ms", "updated_at_ms"],
-        ]
-        do {
-            for (table, expected) in requiredColumns {
-                guard try db.tableExists(table), Set(try db.columns(in: table).map(\.name)) == expected else {
-                    throw StorageError.schemaMismatch
-                }
-            }
-            for statement in version5Statements where statement.hasPrefix("CREATE TABLE ") {
-                let name = String(statement.split(separator: " ", maxSplits: 3)[2])
-                let stored = try String.fetchOne(
-                    db,
-                    sql: "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?",
-                    arguments: [name]
-                )
-                guard stored == statement else { throw StorageError.schemaMismatch }
-            }
-            for statement in version5Statements where statement.hasPrefix("CREATE INDEX ") || statement.hasPrefix("CREATE UNIQUE INDEX ") {
+            for statement in version4Statements where statement.hasPrefix("CREATE INDEX ") || statement.hasPrefix("CREATE UNIQUE INDEX ") {
                 let parts = statement.split(separator: " ", maxSplits: 4)
                 let name = String(statement.hasPrefix("CREATE UNIQUE INDEX ") ? parts[3] : parts[2])
                 let stored = try String.fetchOne(
@@ -650,4 +625,34 @@ enum TaisaSchema {
             throw StorageError.schemaMismatch
         }
     }
+    static func validateVersion5(in db: Database, allowingConversationExtensions: Bool = false) throws {
+        try validateVersion4(in: db)
+        let requiredColumns: [String: Set<String>] = [
+            "weekly_placements": ["id", "action_id", "week_start_ms", "planned_day_ms", "created_at_ms", "updated_at_ms"],
+            "work_events": ["id", "action_id", "kind", "from_week_start_ms", "to_week_start_ms", "source_type", "source_id", "occurred_at_ms"],
+            "insights": ["id", "body", "status", "is_time_sensitive", "home_eligible_until_ms", "created_at_ms", "updated_at_ms"],
+            "insight_sources": ["id", "insight_id", "source_type", "source_id", "excerpt", "created_at_ms"],
+            "insight_revisions": ["id", "insight_id", "proposed_body", "status", "source_type", "source_id", "created_at_ms", "resolved_at_ms"],
+        ]
+        do {
+            for (table, expected) in requiredColumns {
+                guard try db.tableExists(table), Set(try db.columns(in: table).map(\.name)) == expected else {
+                    throw StorageError.schemaMismatch
+                }
+            }
+            for statement in version5Statements where statement.hasPrefix("CREATE TABLE ") || statement.hasPrefix("CREATE INDEX ") {
+                let name = String(statement.split(separator: " ", maxSplits: 3)[2])
+                let objectType = statement.hasPrefix("CREATE TABLE ") ? "table" : "index"
+                let stored = try String.fetchOne(
+                    db,
+                    sql: "SELECT sql FROM sqlite_master WHERE type = ? AND name = ?",
+                    arguments: [objectType, name]
+                )
+                guard stored == statement else { throw StorageError.schemaMismatch }
+            }
+        } catch {
+            throw StorageError.schemaMismatch
+        }
+    }
+
 }
