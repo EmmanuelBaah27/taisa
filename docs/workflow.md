@@ -239,7 +239,8 @@ expand only after focused checks pass or the risk boundary requires it. Reuse fr
 when the code, toolchain, configuration, and covered revision are unchanged; do not rerun an
 identical expensive command merely to produce another transcript. Run independent checks concurrently
 when they do not share mutable state. The complete release matrix remains mandatory at its
-named merge, release, repair-release, or high-risk gate.
+named merge, release, final repair-release, or high-risk gate. During repair quarantine, do
+not spend the complete matrix before the named broken interaction is proven fixed.
 
 Autonomous repair remains outcome-based, not attempt-based. Do not repeat the same failed
 approach or unchanged verification. After three materially distinct unsuccessful approaches
@@ -286,19 +287,31 @@ One Baah defect observation is sufficient. Record the exact preview/build revisi
 `REPAIR_QUARANTINE`; do not ask Baah to repeat, reconfirm, characterize, or periodically
 retest the same defect while engineering evidence is incomplete.
 
-The repair-release gate requires: authority/revision confirmation; stable reproduction,
-diagnostic trace, or explicit contract assertion; supported root cause; failing-before and
-passing-after evidence where technically possible; the fix; affected integration,
-simulator/UI, accessibility, and regression checks; the applicable full release matrix;
-resolved blocking review; exact replacement commit integrated and pushed to canonical
-preview; confirmed served/installed revision; agent smoke check; and one concise retest
-request naming the failure, replacement revision, evidence, action, and expected result.
-Every repair-release item must be recorded as passed or explicitly inapplicable with evidence;
-silently skipping an item keeps the issue in `REPAIR_QUARANTINE`.
+Use the bounded physical **repair candidate** lane when agent-owned evidence cannot prove a
+previously recorded device-only or perceptual failure. Before installing a candidate, require:
+authority/revision confirmation; a stable reproduction, diagnostic trace, or explicit contract
+assertion; a supported root cause; failing-before and passing-after evidence where technically
+possible; the fix; focused regression checks; the fast native gate; and the existing branch
+topology gate proving a clean, `main`-based work branch with no preview-only ancestry.
+
+Sign that exact commit with the existing bundle identifier and install it over the current app
+without uninstalling, resetting, or discarding device data. The repair candidate is not canonical.
+It is not `QA_READY`, Ship-ready, shippable, or merge-ready. It authorizes only one named broken interaction.
+Exploratory or general QA is prohibited. If that interaction fails, record the new evidence,
+remain in `REPAIR_QUARANTINE`, and repeat diagnose → fix → focused regression →
+fast native → exact over-install; do not run the full native matrix merely to attempt again.
+
+After the named interaction passes, run the full native matrix on that exact frozen candidate.
+Then resolve blocking review, obtain Ship approval, merge to `main`, synchronize
+one-way into canonical preview, confirm the served/installed revision, and perform the agent
+smoke check. Any code, dependency, toolchain, signing, or configuration change after physical
+proof invalidates the proof and returns to the candidate loop. Every final repair-release item
+must be recorded as passed or explicitly inapplicable with evidence; silently skipping an item
+keeps the issue in `REPAIR_QUARANTINE`.
 
 The authoritative sequence is:
 
-`Baah observation → REPAIR_QUARANTINE → repair Goal → reproduce/diagnose → BUILDING → VERIFYING → PUBLISHING → agent smoke check → QA_READY → focused Baah retest`.
+`Baah observation → REPAIR_QUARANTINE → repair Goal → diagnose/fix → focused + fast verification → exact repair candidate over-install → one named broken interaction → full matrix on the proven unchanged candidate → review/Ship → merge → canonical preview`.
 
 If the repair cannot be proven, the issue remains **Unfixed; blocking; unshippable**. It is
 not QA-ready, Ship-ready, complete, deferred, or eligible for successor work. Baah receives
@@ -319,7 +332,9 @@ as evidence:
 4. If any check differs, stop, reconcile/port, verify, republish, and only then request QA.
 
 Never ask Baah to test a mobile change until its exact verified commit is integrated into
-`preview/taisa`, pushed, and confirmed as the revision served or installed.
+`preview/taisa`, pushed, and confirmed as the revision served or installed, except for the
+bounded repair-candidate lane above. That exception is deliberately noncanonical and can test
+only the previously recorded broken interaction before final verification and publication.
 
 ## Product and design-system quality
 

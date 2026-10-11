@@ -164,12 +164,20 @@ resolved blocking review, complete required slices, exact canonical preview, con
 served/installed revision, agent-owned simulator/accessibility/preview smoke checks, explicit
 limitations, and a Linear evidence summary. Failure returns to autonomous Build.
 
-One Baah defect observation enters `REPAIR_QUARANTINE`. A repair Goal stays on the same issue
-and cannot return to Baah until the repair-release gate proves authority, reproduction/root
-cause, failing-before/passing-after evidence where possible, replacement verification,
-review, exact preview publication, revision confirmation, and agent smoke checks. Otherwise
-report `Unfixed; blocking; unshippable` with one smallest Baah-controlled need; never claim
-QA-ready, Ship-ready, closure, or successor work.
+One Baah defect observation enters `REPAIR_QUARANTINE`. A repair Goal stays on the same issue.
+When a device-only or perceptual failure cannot be proven by agent-owned checks, use the
+bounded physical **repair candidate** lane: prove a clean main-based branch, then run the focused regression and fast native gate.
+Sign the exact commit and over-install it with the same bundle identifier while preserving
+device data. The repair candidate is not canonical. It is not `QA_READY`, Ship-ready,
+shippable, or merge-ready. It authorizes only one named broken interaction; exploratory QA
+is prohibited.
+
+If that interaction fails, remain in quarantine and loop with new diagnostic evidence without
+running the full matrix. After the named interaction passes, run the full native matrix on that exact frozen revision.
+Only then resolve review, request Ship,
+merge to `main`, synchronize canonical preview, confirm the installed revision, and smoke-test.
+Otherwise report `Unfixed; blocking; unshippable` with one smallest Baah-controlled need;
+never claim QA-ready, Ship-ready, closure, or successor work.
 Record every repair-release gate item as passed or explicitly inapplicable with evidence.
 An omitted or unsupported item keeps the issue in `REPAIR_QUARANTINE`.
 
@@ -243,8 +251,8 @@ served or installed. Repeat for every QA revision.
 Start with the smallest applicable verification that can disprove the change. Reuse fresh evidence
 only when revision, code, toolchain, configuration, and coverage are unchanged. Run
 independent checks concurrently when they do not share mutable state, and reserve the full
-matrix for its named merge, release, repair-release, or high-risk gate. Never weaken a named
-gate or claim that a narrower check proves a broader surface.
+matrix for its named merge, release, final repair-release after physical proof, or high-risk
+gate. Never weaken a named gate or claim that a narrower check proves a broader surface.
 
 Do not rerun an unchanged failed approach or narrate unchanged waits. After three materially distinct unsuccessful approaches
 without new diagnostic evidence, terminate the bounded Goal as `UNRESOLVED_ESCALATION` with
