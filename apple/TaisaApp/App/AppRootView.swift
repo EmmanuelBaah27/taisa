@@ -83,6 +83,14 @@ struct AppRootView: View {
     @MainActor
     private func openPreservedDraftProbeIfRequested() async {
 #if DEBUG || TAISA_PERSONAL
+        if ProcessInfo.processInfo.arguments.contains("--taisa-cleanup-completed-preserved-draft") {
+            guard runtime.state == .ready, let factory = runtime.conversationFactory else {
+                print("TAISA_CONVERSATION_CLEANUP_PROBE result=factory-unavailable")
+                return
+            }
+            print("TAISA_CONVERSATION_CLEANUP_PROBE \(await factory.cleanupCompletedPreservedDraftProbe())")
+            return
+        }
         if ProcessInfo.processInfo.arguments.contains("--taisa-retry-latest-preserved-draft-once") {
             guard runtime.state == .ready, let factory = runtime.conversationFactory else {
                 print("TAISA_CONVERSATION_RETRY_PROBE result=factory-unavailable")
