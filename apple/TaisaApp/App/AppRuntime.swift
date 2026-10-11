@@ -45,10 +45,26 @@ final class AppRuntime {
             let context = try await backend.voiceStoreContext()
             let store = context.store
             let rawURL = Bundle.main.object(forInfoDictionaryKey: "TaisaVoiceGatewayURL") as? String ?? ""
-            let configuration = try await voiceConfiguration(
+            let configuration: VoiceGatewayConfiguration?
+#if DEBUG || TAISA_PERSONAL
+            if ProcessInfo.processInfo.arguments.contains("--taisa-seed-finalized-voice-draft") {
+                configuration = try VoiceGatewayConfiguration(
+                    baseURL: URL(string: "https://voice.example.com")!,
+                    bearerToken: "saved-draft-ui-probe",
+                    ownerID: "00000000-0000-4000-8000-000000000350"
+                )
+            } else {
+                configuration = try await voiceConfiguration(
+                    gatewayURLString: rawURL,
+                    credentialStore: KeychainVoiceGatewayCredentialStore()
+                )
+            }
+#else
+            configuration = try await voiceConfiguration(
                 gatewayURLString: rawURL,
                 credentialStore: KeychainVoiceGatewayCredentialStore()
             )
+#endif
             return (
                 HomeClient { try await HomeQuery(store: store).load() },
                 ConversationsClient.local(store: store),
