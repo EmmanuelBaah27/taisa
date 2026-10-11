@@ -153,6 +153,20 @@ final class AppRuntimeTests: XCTestCase {
         }
     }
 
+    func testRecoveryRetryReopensRuntimeAfterTransientStoreFailure() async {
+        let attempts = StartAttempts()
+        let runtime = AppRuntime(start: {
+            guard await attempts.next() > 1 else { throw StorageError.authenticationFailed }
+            return HomeClient { HomeSnapshot(conversations: [], goals: [], actions: []) }
+        })
+
+        let failedState = await runtime.start()
+        XCTAssertEqual(failedState, .recoveryRequired)
+        let recoveredState = await runtime.retryRecovery()
+        XCTAssertEqual(recoveredState, .ready)
+        XCTAssertNotNil(runtime.homeModel)
+    }
+
     func testMissingKeyRouteDoesNotTouchExistingStoreBytes() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -189,4 +203,9 @@ final class AppRuntimeTests: XCTestCase {
             updatedAtMS: 2
         )
     }
+}
+
+private actor StartAttempts {
+    private var count = 0
+    func next() -> Int { count += 1; return count }
 }
