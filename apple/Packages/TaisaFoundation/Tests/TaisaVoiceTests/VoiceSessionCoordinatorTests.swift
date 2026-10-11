@@ -76,6 +76,22 @@ struct VoiceSessionCoordinatorTests {
         #expect(await store.states.contains(.queued))
     }
 
+    @Test("pause failure preserves the durable paused checkpoint for draft saving")
+    func pauseFailurePreservesDurablePausedState() async throws {
+        let coordinator = VoiceSessionCoordinator(
+            initial: turn(state: .recording, stage: .capture),
+            checkpoints: CheckpointSpy(), transcription: TranscriptionSpy(events: []),
+            coaching: CoachingSpy(), connectivity: ConnectivitySpy(available: true),
+            reconciliation: ReconciliationSpy(.safeToRetry),
+            capture: FailingPauseCapture(), audio: NoopAudio()
+        )
+
+        await #expect(throws: AudioCaptureError.invalidState) {
+            try await coordinator.send(.pauseRecording)
+        }
+        #expect(await coordinator.snapshot().durable.state == .paused)
+    }
+
     @Test("retrying coaching never retranscribes audio")
     func retryingCoachingNeverRetranscribesAudio() async throws {
         let transcription = TranscriptionSpy(events: [])
@@ -234,6 +250,20 @@ private actor NoopCapture: VoiceCaptureControlling {
     func resume(turnID: UUID) async throws {}
     func finalize(turnID: UUID) async throws -> FinalizedVoiceAudio {
         .init(fileID: "audio-1", sha256: "abc", durationMS: 1_000)
+    }
+    func cancel(turnID: UUID) async throws {}
+    func discard(turnID: UUID) async throws {}
+    func release(turnID: UUID) async throws {}
+}
+
+private actor FailingPauseCapture: VoiceCaptureControlling {
+    func events() -> AsyncStream<AudioCaptureEvent> { AsyncStream { $0.finish() } }
+    func prepare(turnID: UUID) async throws -> String { IDs.turn.uuidString }
+    func start(turnID: UUID) async throws {}
+    func pause(turnID: UUID) async throws { throw AudioCaptureError.invalidState }
+    func resume(turnID: UUID) async throws {}
+    func finalize(turnID: UUID) async throws -> FinalizedVoiceAudio {
+        throw AudioCaptureError.audioNotFinalized
     }
     func cancel(turnID: UUID) async throws {}
     func discard(turnID: UUID) async throws {}

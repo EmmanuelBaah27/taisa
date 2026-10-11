@@ -130,7 +130,13 @@ public struct VoiceSessionConversationAdapter: ConversationVoiceControlling {
     }
     public func saveDraft() async throws {
         let state = await coordinator.snapshot().durable.state
-        if state == .recording { try await coordinator.send(.pauseRecording) }
+        if state == .recording {
+            do {
+                try await coordinator.send(.pauseRecording)
+            } catch {
+                guard await coordinator.snapshot().durable.state == .paused else { throw error }
+            }
+        }
     }
     public func discardDraft() async throws { try await coordinator.send(.discard) }
 }
