@@ -129,6 +129,26 @@ require_workflow_pattern .agents/skills/taisa-workflow/SKILL.md \
 require_workflow_pattern "$goal_template" 'each repair-release.*pass.*inapplicable.*evidence' \
   'per-item repair-release disposition'
 
+for repair_candidate_file in \
+  docs/workflow.md \
+  .agents/skills/taisa-workflow/SKILL.md \
+  .agents/skills/taisa-workflow/templates/bounded-goal.md; do
+  require_workflow_pattern "$repair_candidate_file" 'repair candidate' \
+    'bounded physical repair-candidate lane'
+  require_workflow_pattern "$repair_candidate_file" \
+    'focused regression.*fast native|fast native.*focused regression' \
+    'focused and fast repair-candidate verification'
+  require_workflow_pattern "$repair_candidate_file" \
+    'one named broken interaction|single named broken interaction' \
+    'single-interaction physical retest boundary'
+  require_workflow_pattern "$repair_candidate_file" \
+    'not.*(canonical|QA_READY|Ship-ready|shippable|merge-ready)' \
+    'noncanonical repair-candidate status'
+  require_workflow_pattern "$repair_candidate_file" \
+    'full (native |release )?matrix.*after.*(proven|passes)|after.*(proven|passes).*full (native |release )?matrix' \
+    'full matrix only after physical repair proof'
+done
+
 for forbidden in \
   'continue until the complete product ships' \
   'select the next highest-priority issue and continue' \

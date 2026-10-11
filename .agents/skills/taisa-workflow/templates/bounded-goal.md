@@ -33,8 +33,12 @@ above without asking Baah to say “continue.”
   defect/replacement, Ship/merge, and Closeout evidence.
 - Every repair attempt must produce new evidence, a changed hypothesis or implementation,
   or a more discriminating test.
-- A Baah defect observation enters `REPAIR_QUARANTINE`; do not request another test until
-  the repair-release gate passes.
+- A Baah defect observation enters `REPAIR_QUARANTINE`. When agent-owned checks cannot prove
+  a device-only failure, a bounded repair candidate may run focused regression and the fast native gate.
+  Preserve device data during an exact signed over-install for one named broken interaction.
+- A repair candidate is not canonical. It is not `QA_READY`, Ship-ready, shippable, or merge-ready. If
+  the interaction fails, keep looping with new evidence and no full matrix. After it passes, run
+  the full native matrix on the exact unchanged candidate before final repair-release.
 - Each repair-release gate item must pass or be explicitly marked inapplicable with evidence;
   an omitted item does not pass the gate.
 - Device-facing QA requires the exact verified commit on canonical `preview/taisa`, confirmed
