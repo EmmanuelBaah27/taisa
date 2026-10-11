@@ -87,7 +87,7 @@ struct ConversationRuntimeFactory: Sendable {
             linkedVoiceTurn: linkedVoiceTurn,
             resumableVoiceTurn: resumable,
             fallbackVoiceTurn: fallbackTurn,
-            recoveryTranscript: recoveryTranscript
+            recoveryTranscript: recoveryTranscript ?? lastUserMessage?.body
         )
         let initial = pendingConversationRequest == nil ? restoration.voiceTurn : fallbackTurn
         let files = try ProtectedAudioFileStore()

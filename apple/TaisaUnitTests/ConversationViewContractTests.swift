@@ -2,6 +2,18 @@ import Foundation
 import XCTest
 
 final class ConversationViewContractTests: XCTestCase {
+    func testLegacyVoiceDraftDecodeFailureFallsThroughToTranscriptRecovery() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let source = try String(
+            contentsOf: root.appendingPathComponent("TaisaApp/Conversation/ConversationRuntimeFactory.swift"),
+            encoding: .utf8
+        )
+
+        XCTAssertTrue(source.contains("let voiceTurn = try? await turns.turn(id: voiceTurnID)"))
+        XCTAssertTrue(source.contains("linkedVoiceTurn = try? await turns.turn(id: voiceTurnID)"))
+        XCTAssertTrue(source.contains("recoveryTranscript: recoveryTranscript ?? lastUserMessage?.body"))
+    }
+
     func testConversationScreenExposesRequiredNativeInteractionContracts() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let directory = root.appendingPathComponent("TaisaApp/Conversation")
