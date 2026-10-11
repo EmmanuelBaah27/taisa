@@ -2,6 +2,20 @@ import Foundation
 import XCTest
 
 final class ConversationViewContractTests: XCTestCase {
+    func testConversationOpenFailureReportsAContentFreeStage() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let source = try String(
+            contentsOf: root.appendingPathComponent("TaisaApp/Conversation/ConversationRuntimeFactory.swift"),
+            encoding: .utf8
+        )
+
+        XCTAssertTrue(source.contains("enum ConversationOpenStage: String"))
+        XCTAssertTrue(source.contains("conversation.unavailable.diagnostic"))
+        XCTAssertTrue(source.contains("openStage(.resumableTurn)"))
+        XCTAssertTrue(source.contains("TAISA_CONVERSATION_OPEN_FAILURE stage="))
+        XCTAssertFalse(source.contains("error.localizedDescription"))
+    }
+
     func testLegacyVoiceDraftDecodeFailureFallsThroughToTranscriptRecovery() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let source = try String(

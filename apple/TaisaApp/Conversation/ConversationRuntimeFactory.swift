@@ -6,6 +6,21 @@ import TaisaNetworking
 import TaisaStorage
 import TaisaVoice
 
+enum ConversationOpenStage: String, Sendable {
+    case conversationFactory = "conversation-factory"
+    case conversationRecord = "conversation-record"
+    case history = "history"
+    case resumableTurn = "resumable-turn"
+    case draftCleanup = "draft-cleanup"
+    case refreshedHistory = "refreshed-history"
+    case audioFiles = "audio-files"
+    case unknown
+}
+
+struct ConversationOpenFailure: Error, Sendable {
+    let stage: ConversationOpenStage
+}
+
 struct ConversationRuntimeFactory: Sendable {
     struct Restoration {
         let voiceTurn: VoiceTurnRecord
@@ -28,19 +43,27 @@ struct ConversationRuntimeFactory: Sendable {
             try await query.loadConversation(id: conversationID).visibleMessages
         }
         let now = Int64(Date().timeIntervalSince1970 * 1_000)
-        if try await conversations.get(id: route.id) == nil {
-            try await conversations.create(
+        if try await openStage(.conversationRecord, operation: {
+            try await conversations.get(id: route.id)
+        }) == nil {
+            try await openStage(.conversationRecord) {
+                try await conversations.create(
                 .init(
                     id: route.id, title: route.localTitle, lifecycle: .draft,
                     titleAuthority: .localFallback, createdAtMS: now, updatedAtMS: now
                 ),
                 context: mutation(at: now)
             )
+            }
         }
 
-        var history = try await query.loadConversation(id: route.id)
+        var history = try await openStage(.history) {
+            try await query.loadConversation(id: route.id)
+        }
         let turns = ConversationTurnRepository(store: store)
-        let resumable = try await turns.latestResumableTurn(conversationID: route.id)
+        let resumable = try await openStage(.resumableTurn) {
+            try await turns.latestResumableTurn(conversationID: route.id)
+        }
         let pendingConversationRequest = resumable.flatMap { turn in
             ["pending_text", "pending_correction"].contains(turn.failureCode) ? turn : nil
         }
@@ -58,10 +81,14 @@ struct ConversationRuntimeFactory: Sendable {
                     isCompletedVoice = false
                 }
                 if isCompletedText || isCompletedVoice {
-                    try await conversations.discardDraft(id: draft.id)
+                    try await openStage(.draftCleanup) {
+                        try await conversations.discardDraft(id: draft.id)
+                    }
                 }
             }
-            history = try await query.loadConversation(id: route.id)
+            history = try await openStage(.refreshedHistory) {
+                try await query.loadConversation(id: route.id)
+            }
         }
         let restoredDraft = history.drafts.first
         let linkedVoiceTurn: VoiceTurnRecord?
@@ -90,7 +117,9 @@ struct ConversationRuntimeFactory: Sendable {
             recoveryTranscript: recoveryTranscript ?? lastUserMessage?.body
         )
         let initial = pendingConversationRequest == nil ? restoration.voiceTurn : fallbackTurn
-        let files = try ProtectedAudioFileStore()
+        let files = try await openStage(.audioFiles) {
+            try ProtectedAudioFileStore()
+        }
         let capture = AudioCaptureController(
             service: AudioCaptureService(
                 session: SystemAudioSessionAdapter(), recorder: SystemAudioRecorderAdapter(), files: files
@@ -208,6 +237,17 @@ struct ConversationRuntimeFactory: Sendable {
         .init(id: UUID().uuidString, deviceID: deviceID.uuidString, timestamp: timestamp)
     }
 
+    private func openStage<Value>(
+        _ stage: ConversationOpenStage,
+        operation: () async throws -> Value
+    ) async throws -> Value {
+        do {
+            return try await operation()
+        } catch {
+            throw ConversationOpenFailure(stage: stage)
+        }
+    }
+
     static func restoration(
         draft: ConversationDraftRecord?,
         linkedVoiceTurn: VoiceTurnRecord?,
@@ -279,20 +319,30 @@ struct ConversationHostView: View {
     let dismiss: @MainActor () -> Void
     @State private var model: ConversationViewModel?
     @State private var failed = false
+    @State private var failureStage: ConversationOpenStage?
 
     var body: some View {
         Group {
             if let model { ConversationView(model: model) }
             else if failed {
-                ContentUnavailableView(
-                    "Conversation unavailable",
-                    systemImage: "exclamationmark.triangle",
-                    description: Text("Taisa couldn’t open this conversation securely.")
-                )
+                VStack {
+                    ContentUnavailableView(
+                        "Conversation unavailable",
+                        systemImage: "exclamationmark.triangle",
+                        description: Text("Taisa couldn’t open this conversation securely.")
+                    )
+#if DEBUG || TAISA_PERSONAL
+                    Text("Diagnostic: \((failureStage ?? .unknown).rawValue)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("conversation.unavailable.diagnostic")
+#endif
+                }
             } else { ProgressView("Opening conversation…") }
         }
         .accessibilityIdentifier("conversation.root")
         .task {
+            print("TAISA_CONVERSATION_OPEN stage=host-start")
 #if DEBUG || TAISA_PERSONAL
             if ProcessInfo.processInfo.arguments.contains("--taisa-conversation-route-qa-fixture") {
                 guard entryIntent == .voice else { failed = true; return }
@@ -300,9 +350,22 @@ struct ConversationHostView: View {
                 return
             }
 #endif
-            guard model == nil, !failed, let factory else { failed = true; return }
-            do { model = try await factory.makeModel(route: route, entryIntent: entryIntent, dismiss: dismiss) }
-            catch { failed = true }
+            guard model == nil, !failed else { return }
+            guard let factory else {
+                failureStage = .conversationFactory
+                print("TAISA_CONVERSATION_OPEN_FAILURE stage=conversation-factory")
+                failed = true
+                return
+            }
+            do {
+                model = try await factory.makeModel(route: route, entryIntent: entryIntent, dismiss: dismiss)
+                print("TAISA_CONVERSATION_OPEN result=success")
+            }
+            catch {
+                failureStage = (error as? ConversationOpenFailure)?.stage ?? .unknown
+                print("TAISA_CONVERSATION_OPEN_FAILURE stage=\(failureStage?.rawValue ?? "unknown")")
+                failed = true
+            }
         }
     }
 }
