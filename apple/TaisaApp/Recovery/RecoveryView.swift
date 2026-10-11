@@ -4,6 +4,7 @@ import TaisaSecurity
 
 struct RecoveryView: View {
     var importURL: URL? = nil
+    var retryRuntime: (@MainActor @Sendable () -> Void)? = nil
     @Environment(\.scenePhase) private var scenePhase
     @State private var model: RecoveryViewModel?
     @State private var enteredKey = ""
@@ -14,8 +15,13 @@ struct RecoveryView: View {
     @State private var sharing = false
     @State private var initializationFailed = false
 
-    init(importURL: URL? = nil, model: RecoveryViewModel? = nil) {
+    init(
+        importURL: URL? = nil,
+        model: RecoveryViewModel? = nil,
+        retryRuntime: (@MainActor @Sendable () -> Void)? = nil
+    ) {
         self.importURL = importURL
+        self.retryRuntime = retryRuntime
         _model = State(initialValue: model)
     }
 
@@ -32,6 +38,10 @@ struct RecoveryView: View {
                 } else {
                     TaisaText(role: .body, content: initializationFailed
                         ? "Recovery could not open safely. Reopen Taisa to try again." : "Opening secure storage…")
+                    if initializationFailed, let retryRuntime {
+                        TaisaButton(role: .primary, label: "Try Again", action: retryRuntime)
+                            .accessibilityIdentifier("recovery.initialization.retry")
+                    }
                 }
             }
             .padding(TaisaSpacing.page.rawValue)

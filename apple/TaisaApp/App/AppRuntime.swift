@@ -76,6 +76,17 @@ final class AppRuntime {
     @discardableResult
     func start() async -> State {
         guard state == .startup else { return state }
+        return await openServices()
+    }
+
+    @discardableResult
+    func retryRecovery() async -> State {
+        guard state == .recoveryRequired else { return state }
+        state = .startup
+        return await openServices()
+    }
+
+    private func openServices() async -> State {
         do {
             let clients = try await startOperation()
             homeModel = HomeModel(client: clients.home)

@@ -28,7 +28,9 @@ struct AppRootView: View {
                     }
                 case .recoveryRequired:
                     NavigationStack {
-                        RecoveryView()
+                        RecoveryView(retryRuntime: {
+                            Task { await runtime.retryRecovery() }
+                        })
                             .accessibilityIdentifier("home.recovery")
                     }
                 }
