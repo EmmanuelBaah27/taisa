@@ -14,7 +14,8 @@ final class ConversationViewContractTests: XCTestCase {
             "conversation.root", "conversation.close", "conversation.timeline",
             "conversation.voice-composer", "conversation.text-composer",
             "conversation.save-draft", "conversation.discard", "conversation.retry",
-            "conversation.correct-transcript", "conversation.transcript-preview"
+            "conversation.correct-transcript", "conversation.transcript-preview",
+            "conversation.unavailable.close"
         ] {
             XCTAssertTrue(source.contains(identifier), "Missing \(identifier)")
         }

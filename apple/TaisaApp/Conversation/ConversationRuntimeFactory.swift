@@ -44,15 +44,15 @@ struct ConversationRuntimeFactory: Sendable {
         let pendingConversationRequest = resumable.flatMap { turn in
             ["pending_text", "pending_correction"].contains(turn.failureCode) ? turn : nil
         }
+        let lastUserMessage = history.visibleMessages.last(where: { $0.role == "user" })
         if pendingConversationRequest == nil {
-            let lastUserMessage = history.visibleMessages.last(where: { $0.role == "user" })
             for draft in history.drafts {
                 let isCompletedText = draft.inputMode == .text
                     && draft.recoveryKind == .retryableCoaching
                     && draft.text == lastUserMessage?.body
                 let isCompletedVoice: Bool
                 if let voiceTurnID = draft.voiceTurnID,
-                   let voiceTurn = try await turns.turn(id: voiceTurnID) {
+                   let voiceTurn = try? await turns.turn(id: voiceTurnID) {
                     isCompletedVoice = voiceTurn.state == .completed
                 } else {
                     isCompletedVoice = false
@@ -66,7 +66,7 @@ struct ConversationRuntimeFactory: Sendable {
         let restoredDraft = history.drafts.first
         let linkedVoiceTurn: VoiceTurnRecord?
         if restoredDraft?.inputMode == .voice, let voiceTurnID = restoredDraft?.voiceTurnID {
-            linkedVoiceTurn = try await turns.turn(id: voiceTurnID)
+            linkedVoiceTurn = try? await turns.turn(id: voiceTurnID)
         } else {
             linkedVoiceTurn = nil
         }
@@ -75,7 +75,8 @@ struct ConversationRuntimeFactory: Sendable {
             draft: restoredDraft,
             linkedVoiceTurn: linkedVoiceTurn,
             resumableVoiceTurn: resumable,
-            fallbackVoiceTurn: fallbackTurn
+            fallbackVoiceTurn: fallbackTurn,
+            recoveryTranscript: lastUserMessage?.body
         )
         let initial = pendingConversationRequest == nil ? restoration.voiceTurn : fallbackTurn
         let files = try ProtectedAudioFileStore()
@@ -200,9 +201,10 @@ struct ConversationRuntimeFactory: Sendable {
         draft: ConversationDraftRecord?,
         linkedVoiceTurn: VoiceTurnRecord?,
         resumableVoiceTurn: VoiceTurnRecord?,
-        fallbackVoiceTurn: VoiceTurnRecord
+        fallbackVoiceTurn: VoiceTurnRecord,
+        recoveryTranscript: String? = nil
     ) -> Restoration {
-        let voiceTurn = linkedVoiceTurn ?? resumableVoiceTurn ?? fallbackVoiceTurn
+        var voiceTurn = linkedVoiceTurn ?? resumableVoiceTurn ?? fallbackVoiceTurn
         guard let draft else {
             return Restoration(voiceTurn: voiceTurn, composer: .waitingForReply, text: "")
         }
@@ -216,7 +218,27 @@ struct ConversationRuntimeFactory: Sendable {
             case .recoverableFailure, .terminalFailure:
                 composer = .failure(.retryable)
             default:
-                composer = .paused
+                if linkedVoiceTurn == nil,
+                   let transcript = recoveryTranscript?.trimmingCharacters(in: .whitespacesAndNewlines),
+                   !transcript.isEmpty {
+                    voiceTurn = VoiceTurnRecord(
+                        id: fallbackVoiceTurn.id,
+                        conversationID: fallbackVoiceTurn.conversationID,
+                        transcriptionRequestID: fallbackVoiceTurn.transcriptionRequestID,
+                        transcriptionIdempotencyKey: fallbackVoiceTurn.transcriptionIdempotencyKey,
+                        coachingRequestID: fallbackVoiceTurn.coachingRequestID,
+                        coachingIdempotencyKey: fallbackVoiceTurn.coachingIdempotencyKey,
+                        state: .terminalFailure,
+                        stage: .finished,
+                        acceptedTranscript: transcript,
+                        failureCode: "legacy_voice_turn_unavailable",
+                        createdAtMS: fallbackVoiceTurn.createdAtMS,
+                        updatedAtMS: fallbackVoiceTurn.updatedAtMS
+                    )
+                    composer = .failure(.retryable)
+                } else {
+                    composer = .paused
+                }
             }
             return Restoration(voiceTurn: voiceTurn, composer: composer, text: "")
         }
@@ -251,11 +273,14 @@ struct ConversationHostView: View {
         Group {
             if let model { ConversationView(model: model) }
             else if failed {
-                ContentUnavailableView(
-                    "Conversation unavailable",
-                    systemImage: "exclamationmark.triangle",
-                    description: Text("Taisa couldn’t open this conversation securely.")
-                )
+                ContentUnavailableView {
+                    Label("Conversation unavailable", systemImage: "exclamationmark.triangle")
+                } description: {
+                    Text("Taisa couldn’t open this conversation securely.")
+                } actions: {
+                    Button("Close", action: dismiss)
+                        .accessibilityIdentifier("conversation.unavailable.close")
+                }
             } else { ProgressView("Opening conversation…") }
         }
         .accessibilityIdentifier("conversation.root")
