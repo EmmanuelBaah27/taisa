@@ -87,10 +87,14 @@ public struct VoiceSessionConversationAdapter: ConversationVoiceControlling {
         if failed.state == .terminalFailure, failed.stage == .finished {
             try await coordinator.restartFailedCoaching(with: retryTurn(for: failed))
         } else {
-            try await coordinator.send(.retry)
+            try await coordinator.send(Self.retryCommand(for: failed.state))
         }
         await coordinator.waitForIdle()
         try Self.requireCompleted(await coordinator.snapshot().durable.state)
+    }
+
+    static func retryCommand(for state: VoiceTurnState) -> VoiceSessionCommand {
+        state == .resumeRequiresConfirmation ? .confirmResume : .retry
     }
 
     private func retryTurn(for failed: VoiceTurnRecord) -> VoiceTurnRecord {
