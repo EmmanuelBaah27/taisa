@@ -295,7 +295,9 @@ possible; the fix; focused regression checks; the fast native gate; and the exis
 topology gate proving a clean, `main`-based work branch with no preview-only ancestry.
 
 Sign that exact commit with the existing bundle identifier and install it over the current app
-without uninstalling, resetting, or discarding device data. The repair candidate is not canonical.
+without uninstalling, resetting, or discarding device data. Terminate any running app process
+before launch, then prove the launched process reports the exact installed revision; merely
+reactivating a process that survived the over-install is stale evidence. The repair candidate is not canonical.
 It is not `QA_READY`, Ship-ready, shippable, or merge-ready. It authorizes only one named broken interaction.
 Exploratory or general QA is prohibited. If that interaction fails, record the new evidence,
 remain in `REPAIR_QUARANTINE`, and repeat diagnose → fix → focused regression →

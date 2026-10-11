@@ -1,7 +1,7 @@
 import SwiftUI
 
 public struct VoiceComposerControls: View {
-    public enum Phase: Sendable { case preparing, recording, paused, waitingForReply }
+    public enum Phase: Sendable { case preparing, recording, paused, saved, waitingForReply }
     public struct Contract: Sendable, Equatable {
         public let pauseLabel: String
         public let resumeLabel: String
@@ -22,11 +22,13 @@ public struct VoiceComposerControls: View {
     }
     public var body: some View {
         HStack {
-            if phase == .recording || phase == .paused {
+            if phase == .recording || phase == .paused || phase == .saved {
                 Button("Keyboard", systemImage: "keyboard", action: onKeyboard)
                     .accessibilityLabel("Switch to keyboard")
             }
-            Button(primaryLabel, action: onPrimary).accessibilityLabel(primaryLabel)
+            if phase != .saved {
+                Button(primaryLabel, action: onPrimary).accessibilityLabel(primaryLabel)
+            }
             Spacer()
             if phase != .waitingForReply { Button("Send", action: onSend) }
         }
@@ -34,6 +36,6 @@ public struct VoiceComposerControls: View {
         .background(TaisaColor.raisedSurface.color, in: RoundedRectangle(cornerRadius: TaisaRadius.composer.rawValue))
     }
     private var primaryLabel: String {
-        switch phase { case .preparing: "Preparing microphone"; case .recording: Contract.recording.pauseLabel; case .paused: Contract.paused.resumeLabel; case .waitingForReply: "Reply by voice, starts recording" }
+        switch phase { case .preparing: "Preparing microphone"; case .recording: Contract.recording.pauseLabel; case .paused, .saved: Contract.paused.resumeLabel; case .waitingForReply: "Reply by voice, starts recording" }
     }
 }

@@ -8,6 +8,17 @@ import Darwin
 
 @MainActor
 final class RecoveryViewModelTests: XCTestCase {
+    func testInitializationFailureExposesRuntimeRetryAction() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let source = try String(
+            contentsOf: root.appendingPathComponent("TaisaApp/Recovery/RecoveryView.swift"),
+            encoding: .utf8
+        )
+
+        XCTAssertTrue(source.contains("recovery.initialization.retry"))
+        XCTAssertTrue(source.contains("retryRuntime"))
+    }
+
     // Break caught: an unauthenticated caller can submit or reveal recovery material.
     func testAuthenticationFailureNeverAcceptsKey() async throws {
         let fixture = try await RecoveryFixture()

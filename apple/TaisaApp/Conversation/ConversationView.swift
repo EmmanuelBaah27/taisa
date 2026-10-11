@@ -73,6 +73,14 @@ struct ConversationView: View {
                 onKeyboard: model.requestKeyboard
             )
                 .accessibilityIdentifier("conversation.voice-composer")
+        case .savedVoiceDraft:
+            VoiceComposerControls(
+                phase: .saved,
+                onPrimary: {},
+                onSend: { Task { await model.sendVoice() } },
+                onKeyboard: model.requestKeyboard
+            )
+                .accessibilityIdentifier("conversation.voice-composer")
         case .typing:
             TextComposer(text: $model.text, onSend: { Task { await model.sendText() } }, onVoice: { Task { try? await model.beginVoice() } })
                 .accessibilityIdentifier("conversation.text-composer")

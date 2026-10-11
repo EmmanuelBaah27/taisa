@@ -1,6 +1,35 @@
 import XCTest
 
 @MainActor final class PersonalRecoveryUITests: XCTestCase {
+    func testPreservedSavedDraftOpensWithoutConversationUnavailable() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["--taisa-seed-finalized-voice-draft"]
+        app.launch()
+
+        let conversations = app.buttons["Conversations"]
+        XCTAssertTrue(conversations.waitForExistence(timeout: 10))
+        conversations.tap()
+        let list = app.descendants(matching: .any)["conversations.root"]
+        XCTAssertTrue(list.waitForExistence(timeout: 10))
+        list.swipeDown()
+        let draft = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS %@", "Voice draft")
+        ).firstMatch
+        XCTAssertTrue(draft.waitForExistence(timeout: 10))
+        draft.tap()
+
+        XCTAssertTrue(
+            app.descendants(matching: .any)["conversation.root"].waitForExistence(timeout: 10)
+        )
+        let unavailable = app.staticTexts["Conversation unavailable"]
+        if unavailable.waitForExistence(timeout: 3) {
+            let diagnostic = app.descendants(matching: .any)["conversation.unavailable.diagnostic"]
+            XCTFail("Conversation unavailable: \(diagnostic.exists ? diagnostic.label : "missing diagnostic")")
+        }
+        XCTAssertTrue(app.buttons["Send"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.buttons["Resume"].exists)
+    }
+
     func testOverflowingConversationRendersWithLatestMessageVisible() {
         let app = XCUIApplication()
         app.launchArguments = ["--taisa-conversation-overflow-qa"]

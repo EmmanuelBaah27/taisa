@@ -178,12 +178,37 @@ public actor VoiceSessionCoordinator {
     }
 
     public func sendRecordedAudio() async throws {
-        let finalized = try await capture.finalize(turnID: currentTurnID())
+        let finalized: FinalizedVoiceAudio
+        if let fileID = durable.audioFileID,
+           let sha256 = durable.audioSHA256,
+           let durationMS = durable.audioDurationMS {
+            finalized = .init(fileID: fileID, sha256: sha256, durationMS: durationMS)
+        } else {
+            finalized = try await capture.finalize(turnID: currentTurnID())
+        }
         try await send(.send(finalized))
+    }
+
+    public func preserveDraftAudio() async throws {
+        guard durable.stage == .capture,
+              durable.state == .recording || durable.state == .paused else { return }
+        if durable.audioSHA256 != nil, durable.audioDurationMS != nil { return }
+        let finalized = try await capture.finalize(turnID: currentTurnID())
+        try await send(.preserveDraft(finalized))
     }
 
     public func restartFailedCoaching(with replacement: VoiceTurnRecord) async throws {
         try await send(.restartFailedCoaching(replacement))
+    }
+
+    public func restartCoachingIfServerSafe(with replacement: VoiceTurnRecord) async throws {
+        guard durable.state == .resumeRequiresConfirmation || durable.state == .coaching,
+              durable.stage == .coaching,
+              let requestID = UUID(uuidString: durable.coachingRequestID),
+              case .safeToRetry = try await reconciliation.reconcile(requestID: requestID) else {
+            throw StreamTransportError.reconciliationRequired
+        }
+        try await send(.restartSafeCoaching(replacement))
     }
 
     public func connectivityChanged(isAvailable: Bool) async throws {

@@ -146,6 +146,17 @@ struct ConversationCoordinatorTests {
         }
     }
 
+    @Test func ambiguousVoiceRetryUsesOwnerConfirmationCommand() {
+        #expect(
+            VoiceSessionConversationAdapter.retryCommand(for: .resumeRequiresConfirmation)
+                == .confirmResume
+        )
+        #expect(
+            VoiceSessionConversationAdapter.retryCommand(for: .recoverableFailure)
+                == .retry
+        )
+    }
+
     @Test func correctionRetryUsesTheSamePaidRequestIdentity() async throws {
         let client = ConversationClientSpy(correctionFailuresBeforeSuccess: 1)
         let coordinator = ConversationCoordinator.new(

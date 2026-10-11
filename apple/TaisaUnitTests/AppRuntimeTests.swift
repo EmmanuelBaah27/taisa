@@ -46,6 +46,100 @@ final class AppRuntimeTests: XCTestCase {
         XCTAssertEqual(restoration.composer, .failure(.retryable))
     }
 
+    func testSavedVoiceDraftWithUnreadableTurnRestoresRetryFromPersistedTranscript() {
+        let conversationID = UUID().uuidString
+        let fallbackTurn = voiceTurn(
+            conversationID: conversationID,
+            state: .draft,
+            stage: .capture
+        )
+        let draft = ConversationDraftRecord(
+            id: UUID().uuidString,
+            conversationID: conversationID,
+            inputMode: .voice,
+            text: nil,
+            voiceTurnID: UUID().uuidString,
+            recoveryKind: .saved,
+            createdAtMS: 1,
+            updatedAtMS: 2
+        )
+
+        let restoration = ConversationRuntimeFactory.restoration(
+            draft: draft,
+            linkedVoiceTurn: nil,
+            resumableVoiceTurn: nil,
+            fallbackVoiceTurn: fallbackTurn,
+            recoveryTranscript: "Persisted transcript"
+        )
+
+        XCTAssertEqual(restoration.voiceTurn.id, fallbackTurn.id)
+        XCTAssertEqual(restoration.voiceTurn.state, .terminalFailure)
+        XCTAssertEqual(restoration.voiceTurn.stage, .finished)
+        XCTAssertEqual(restoration.voiceTurn.acceptedTranscript, "Persisted transcript")
+        XCTAssertEqual(restoration.composer, .failure(.retryable))
+    }
+
+    func testSavedVoiceDraftWithUnreadableTurnWithoutLinkedTranscriptRemainsPaused() {
+        let conversationID = UUID().uuidString
+        let fallbackTurn = voiceTurn(
+            conversationID: conversationID,
+            state: .draft,
+            stage: .capture
+        )
+        let draft = ConversationDraftRecord(
+            id: UUID().uuidString,
+            conversationID: conversationID,
+            inputMode: .voice,
+            text: nil,
+            voiceTurnID: UUID().uuidString,
+            recoveryKind: .saved,
+            createdAtMS: 20,
+            updatedAtMS: 21
+        )
+
+        let restoration = ConversationRuntimeFactory.restoration(
+            draft: draft,
+            linkedVoiceTurn: nil,
+            resumableVoiceTurn: nil,
+            fallbackVoiceTurn: fallbackTurn,
+            recoveryTranscript: nil
+        )
+
+        XCTAssertEqual(restoration.voiceTurn.id, fallbackTurn.id)
+        XCTAssertEqual(restoration.voiceTurn.state, .draft)
+        XCTAssertEqual(restoration.composer, .paused)
+    }
+
+    func testFinalizedVoiceDraftRestoresAsReadyToSendInsteadOfResumable() {
+        let conversationID = UUID().uuidString
+        let linkedTurn = VoiceTurnRecord(
+            id: UUID().uuidString, conversationID: conversationID,
+            transcriptionRequestID: UUID().uuidString,
+            transcriptionIdempotencyKey: UUID().uuidString,
+            coachingRequestID: UUID().uuidString,
+            coachingIdempotencyKey: UUID().uuidString,
+            state: .paused, stage: .capture,
+            audioFileID: UUID().uuidString, audioSHA256: "saved-audio",
+            audioDurationMS: 2_000, cleanupState: .pending,
+            createdAtMS: 1, updatedAtMS: 2
+        )
+        let draft = ConversationDraftRecord(
+            id: UUID().uuidString, conversationID: conversationID,
+            inputMode: .voice, text: nil, voiceTurnID: linkedTurn.id,
+            recoveryKind: .saved, createdAtMS: 1, updatedAtMS: 2
+        )
+
+        let restoration = ConversationRuntimeFactory.restoration(
+            draft: draft, linkedVoiceTurn: linkedTurn,
+            resumableVoiceTurn: nil,
+            fallbackVoiceTurn: voiceTurn(
+                conversationID: conversationID, state: .draft, stage: .capture
+            )
+        )
+
+        XCTAssertEqual(restoration.composer, .savedVoiceDraft)
+    }
+
     func testVoiceConfigurationUsesEnrolledOriginBoundCredential() async throws {
         let store = InMemoryVoiceGatewayCredentialStore()
         let credential = try VoiceGatewayCredential(
@@ -103,6 +197,20 @@ final class AppRuntimeTests: XCTestCase {
         }
     }
 
+    func testRecoveryRetryReopensRuntimeAfterTransientStoreFailure() async {
+        let attempts = StartAttempts()
+        let runtime = AppRuntime(start: {
+            guard await attempts.next() > 1 else { throw StorageError.authenticationFailed }
+            return HomeClient { HomeSnapshot(conversations: [], goals: [], actions: []) }
+        })
+
+        let failedState = await runtime.start()
+        XCTAssertEqual(failedState, .recoveryRequired)
+        let recoveredState = await runtime.retryRecovery()
+        XCTAssertEqual(recoveredState, .ready)
+        XCTAssertNotNil(runtime.homeModel)
+    }
+
     func testMissingKeyRouteDoesNotTouchExistingStoreBytes() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -150,4 +258,9 @@ private extension AppRuntime.Clients {
             })
         )
     }
+}
+
+private actor StartAttempts {
+    private var count = 0
+    func next() -> Int { count += 1; return count }
 }
