@@ -83,6 +83,18 @@ struct AppRootView: View {
     @MainActor
     private func openPreservedDraftProbeIfRequested() async {
 #if DEBUG || TAISA_PERSONAL
+        if ProcessInfo.processInfo.arguments.contains("--taisa-seed-finalized-voice-draft") {
+            guard runtime.state == .ready, let factory = runtime.conversationFactory else {
+                print("TAISA_CONVERSATION_SEED_PROBE result=factory-unavailable")
+                return
+            }
+            do {
+                _ = try await factory.seedFinalizedVoiceDraftProbe()
+                print("TAISA_CONVERSATION_SEED_PROBE result=seeded")
+            } catch {
+                print("TAISA_CONVERSATION_SEED_PROBE result=failed type=\(String(reflecting: type(of: error)))")
+            }
+        }
         if ProcessInfo.processInfo.arguments.contains("--taisa-cleanup-completed-preserved-draft") {
             guard runtime.state == .ready, let factory = runtime.conversationFactory else {
                 print("TAISA_CONVERSATION_CLEANUP_PROBE result=factory-unavailable")

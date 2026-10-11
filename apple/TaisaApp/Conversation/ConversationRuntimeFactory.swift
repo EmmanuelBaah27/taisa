@@ -32,6 +32,50 @@ struct ConversationRuntimeFactory: Sendable {
     let deviceID: UUID
     let configuration: VoiceGatewayConfiguration
 
+    func seedFinalizedVoiceDraftProbe() async throws -> String {
+        let conversationID = "00000000-0000-4000-8000-000000000351"
+        let turnID = "00000000-0000-4000-8000-000000000352"
+        let draftID = "00000000-0000-4000-8000-000000000353"
+        let conversations = ConversationRepository(store: store)
+        if try await conversations.draft(id: draftID) != nil { return conversationID }
+
+        let now = Int64(Date().timeIntervalSince1970 * 1_000)
+        if try await conversations.get(id: conversationID) == nil {
+            try await conversations.create(
+                .init(
+                    id: conversationID, title: "Saved voice draft", lifecycle: .draft,
+                    titleAuthority: .localFallback, createdAtMS: now, updatedAtMS: now
+                ),
+                context: mutation(at: now)
+            )
+        }
+
+        let files = try ProtectedAudioFileStore()
+        let pending = try await files.allocate(turnID: UUID(uuidString: turnID)!)
+        try Data("deterministic saved voice draft".utf8).write(to: pending.url, options: .atomic)
+        let audio = try await files.finalize(pending, duration: 1)
+        let turn = VoiceTurnRecord(
+            id: turnID, conversationID: conversationID,
+            transcriptionRequestID: "00000000-0000-4000-8000-000000000354",
+            transcriptionIdempotencyKey: "saved-draft-transcription",
+            coachingRequestID: "00000000-0000-4000-8000-000000000355",
+            coachingIdempotencyKey: "saved-draft-coaching",
+            state: .paused, stage: .capture,
+            audioFileID: audio.fileID.uuidString.lowercased(), audioSHA256: audio.sha256,
+            audioDurationMS: 1_000, cleanupState: .pending,
+            createdAtMS: now, updatedAtMS: now
+        )
+        try await ConversationTurnRepository(store: store).checkpoint(
+            turn, messages: [], cleanup: nil, context: mutation(at: now + 1)
+        )
+        try await conversations.saveDraft(.init(
+            id: draftID, conversationID: conversationID, inputMode: .voice,
+            text: nil, voiceTurnID: turnID, recoveryKind: .saved,
+            createdAtMS: now, updatedAtMS: now
+        ))
+        return conversationID
+    }
+
     func contentFreeLatestDraftDiagnostic() async -> String {
         do {
             let snapshot = try await ConversationQuery(store: store).loadIndex()
