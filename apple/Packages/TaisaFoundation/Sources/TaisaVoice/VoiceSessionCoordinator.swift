@@ -186,6 +186,16 @@ public actor VoiceSessionCoordinator {
         try await send(.restartFailedCoaching(replacement))
     }
 
+    public func restartCoachingIfServerSafe(with replacement: VoiceTurnRecord) async throws {
+        guard durable.state == .resumeRequiresConfirmation,
+              durable.stage == .coaching,
+              let requestID = UUID(uuidString: durable.coachingRequestID),
+              case .safeToRetry = try await reconciliation.reconcile(requestID: requestID) else {
+            throw StreamTransportError.reconciliationRequired
+        }
+        try await send(.restartSafeCoaching(replacement))
+    }
+
     public func connectivityChanged(isAvailable: Bool) async throws {
         guard isAvailable else { return }
         if durable.stage == .capture,

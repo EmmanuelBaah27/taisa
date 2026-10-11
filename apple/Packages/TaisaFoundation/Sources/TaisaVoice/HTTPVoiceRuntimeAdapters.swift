@@ -119,21 +119,16 @@ public actor GatewayTranscriptionReconciliation: TranscriptionReconciliationLook
 public actor GatewayCoachingRunner: VoiceCoachingRunning {
     private let configuration: VoiceGatewayConfiguration
     private let client: CoachingStreamClient
-    private let submittedAt: @Sendable () -> String
     private let recentMessages: @Sendable (String) async throws -> [MessageRecord]
 
     public init(
         configuration: VoiceGatewayConfiguration,
         transport: any NDJSONStreamTransporting = URLSessionNDJSONStreamTransport(),
-        recentMessages: @escaping @Sendable (String) async throws -> [MessageRecord] = { _ in [] },
-        submittedAt: @escaping @Sendable () -> String = {
-            Date().formatted(.iso8601)
-        }
+        recentMessages: @escaping @Sendable (String) async throws -> [MessageRecord] = { _ in [] }
     ) {
         self.configuration = configuration
         client = .init(transport: transport)
         self.recentMessages = recentMessages
-        self.submittedAt = submittedAt
     }
 
     public func stream(
@@ -149,10 +144,12 @@ public actor GatewayCoachingRunner: VoiceCoachingRunning {
             .map { ["role": $0.role, "content": $0.body] }
         let body = try JSONSerialization.data(withJSONObject: [
             "requestId": requestID.uuidString.lowercased(),
-            "submittedAt": submittedAt(),
+            "submittedAt": Date(
+                timeIntervalSince1970: TimeInterval(turn.createdAtMS) / 1_000
+            ).formatted(.iso8601),
             "input": transcript,
             "context": ["profile": NSNull(), "recentMessages": history, "memory": [], "evidence": []],
-        ])
+        ], options: [.sortedKeys])
         return client.stream(.init(
             endpoint: configuration.endpoint("api/v1/coaching/respond/stream"),
             requestID: requestID, idempotencyKey: turn.coachingIdempotencyKey,
