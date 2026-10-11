@@ -43,7 +43,15 @@ private struct RestoreFixture {
         archive = directory.appendingPathComponent("backup.taisa-backup")
         recovery = try RecoveryKey.generate()
         store = try await TaisaStore.open(at: active, keyStore: keys)
-        try await store.write { try $0.execute(sql: "INSERT INTO profile (id, display_name, updated_at_ms) VALUES (?, 'ARCHIVED', 1)", arguments: [UUID().uuidString]) }
+        try await store.write { db in
+            try db.execute(sql: "INSERT INTO profile (id, display_name, updated_at_ms) VALUES (?, 'ARCHIVED', 1)", arguments: [UUID().uuidString])
+            try db.execute(sql: "INSERT INTO evidence (id, title, occurred_at_ms, created_at_ms) VALUES ('00000000-0000-0000-0000-000000000701', 'Restored evidence', 1, 1)")
+            try db.execute(sql: "INSERT INTO career_work_events (id, entity_type, entity_id, transition, to_status, source_type, occurred_at_ms) VALUES ('00000000-0000-0000-0000-000000000702', 'goal', '00000000-0000-0000-0000-000000000703', 'created', 'active', 'user', 1)")
+            try db.execute(sql: "INSERT INTO career_work_archives (id, entity_type, entity_id, archived_at_ms) VALUES ('00000000-0000-0000-0000-000000000704', 'goal', '00000000-0000-0000-0000-000000000703', 2)")
+            try db.execute(sql: "INSERT INTO evidence_provenance (evidence_id, origin_type, origin_id, created_at_ms) VALUES ('00000000-0000-0000-0000-000000000701', 'conversation', '00000000-0000-0000-0000-000000000705', 1)")
+            try db.execute(sql: "INSERT INTO career_work_proposal_receipts (id, proposal_id, target_type, target_id, target_version_id, payload_digest, decision, resolved_at_ms) VALUES ('00000000-0000-0000-0000-000000000706', '00000000-0000-0000-0000-000000000707', 'goal', '00000000-0000-0000-0000-000000000703', '00000000-0000-0000-0000-000000000708', 'digest-v4', 'accepted', 3)")
+            try db.execute(sql: "INSERT INTO capability_states (capability_id, state, decision_source, transport_source, decided_at_ms, updated_at_ms) VALUES ('voice', 'ready', 'user', 'restore', 4, 5)")
+        }
         _ = try await SnapshotService(store: store, audioGuard: RestoreAudio(), sourceInstallationID: UUID()).createPortableArchive(at: archive, recoveryKey: recovery)
         try await store.write { try $0.execute(sql: "UPDATE profile SET display_name = 'ORIGINAL'") }
     }
@@ -79,6 +87,25 @@ private struct RestoreFixture {
         await #expect(throws: Error.self) { try await second.read { try Int.fetchOne($0, sql: "SELECT count(*) FROM profile") } }
         let restored = try await TaisaStore.open(at: f.active, keyStore: f.keys)
         #expect(try await restored.read { try String.fetchOne($0, sql: "SELECT display_name FROM profile") } == "ARCHIVED")
+        let v4 = try await restored.read { db in
+            (
+                try String.fetchOne(db, sql: "SELECT transition FROM career_work_events"),
+                try String.fetchOne(db, sql: "SELECT entity_id FROM career_work_archives WHERE restored_at_ms IS NULL"),
+                try String.fetchOne(db, sql: "SELECT origin_type FROM evidence_provenance"),
+                try String.fetchOne(db, sql: "SELECT payload_digest FROM career_work_proposal_receipts"),
+                try String.fetchOne(db, sql: "SELECT decision_source || ':' || transport_source FROM capability_states")
+            )
+        }
+        #expect(v4.0 == "created")
+        #expect(v4.1 == "00000000-0000-0000-0000-000000000703")
+        #expect(v4.2 == "conversation")
+        #expect(v4.3 == "digest-v4")
+        #expect(v4.4 == "user:restore")
+        await #expect(throws: DatabaseError.self) {
+            try await restored.write { db in
+                try db.execute(sql: "INSERT INTO career_work_archives (id, entity_type, entity_id, archived_at_ms) VALUES ('00000000-0000-0000-0000-000000000709', 'goal', '00000000-0000-0000-0000-000000000703', 6)")
+            }
+        }
         #expect(!FileManager.default.fileExists(atPath: coordinator.journalURL.path))
     }
 

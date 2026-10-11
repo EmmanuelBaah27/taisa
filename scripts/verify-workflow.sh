@@ -10,6 +10,8 @@ fail() {
 test -f AGENTS.md || fail "AGENTS.md is missing"
 test -f docs/workflow.md || fail "docs/workflow.md is missing"
 test -f .agents/skills/taisa-workflow/SKILL.md || fail "Taisa workflow orchestrator is missing"
+test -f .agents/skills/taisa-workflow/templates/bounded-goal.md ||
+  fail ".agents/skills/taisa-workflow/templates/bounded-goal.md is missing"
 test -f docs/project-memory.md || fail "project memory index is missing"
 test -f docs/decisions/README.md || fail "decision record guide is missing"
 test -f docs/decisions/0001-use-repository-native-project-memory.md || fail "initial project memory decision is missing"
@@ -59,6 +61,118 @@ if rg -n 'No formal Work Map, scope doc, or Linear issue|No Linear issue|Linear 
   fail "active repository instructions still permit actionable work without Linear intake"
 fi
 
+require_workflow_pattern() {
+  local file="$1" pattern="$2" description="$3"
+  rg -qi "$pattern" "$file" || fail "$file is missing $description"
+}
+
+for invariant in \
+  'bounded Goal run' \
+  'kickoff bundle' \
+  'high-risk predicates' \
+  'REPAIR_QUARANTINE' \
+  'Unfixed; blocking; unshippable'; do
+  require_workflow_pattern docs/workflow.md "$invariant" "bounded-delivery invariant: $invariant"
+done
+require_workflow_pattern docs/workflow.md 'Platform.*Product.*Integration.*exclusive|exclusive.*Platform.*Product.*Integration' \
+  'exclusive Platform/Product/Integration ownership'
+
+for invariant in \
+  'active Goal.*solely.*wait|no active Goal.*wait' \
+  'QA_READY' \
+  'MATERIAL_REAPPROVAL_REQUIRED' \
+  'repair-release gate' \
+  'no successor issue|never select.*successor'; do
+  require_workflow_pattern .agents/skills/taisa-workflow/SKILL.md "$invariant" \
+    "bounded Goal routing: $invariant"
+done
+
+goal_template=.agents/skills/taisa-workflow/templates/bounded-goal.md
+for invariant in \
+  'Primary Linear issue' \
+  'Milestone context' \
+  'Run type' \
+  'Entry state and evidence' \
+  'Terminal outcome' \
+  'Approved kickoff or Scope/Plan evidence' \
+  'Work slices' \
+  'Branch/worktree' \
+  'Canonical preview baseline' \
+  'Acceptance criteria' \
+  'Verification matrix' \
+  'Permitted mutations' \
+  'Prohibited actions' \
+  'Repair evidence' \
+  'unchanged polling' \
+  'Never infer approval' \
+  'successor issue' \
+  'do not remain active solely.*wait' \
+  'Next Baah gate'; do
+  require_workflow_pattern "$goal_template" "$invariant" "Goal-template field: $invariant"
+done
+
+for forbidden_pattern in \
+  '^[[:space:]-]*(continue|loop|work).*(complete|ship).*(product|everything)' \
+  '^[[:space:]-]*(select|start|advance).*(next|successor).*(issue|work)' \
+  '^[[:space:]-]*(poll|retry|check again).*until' \
+  '^[[:space:]-]*(wait|remain active).*(Baah|external state)'; do
+  if rg -ni "$forbidden_pattern" "$goal_template"; then
+    fail "$goal_template contains semantically unbounded instruction: $forbidden_pattern"
+  fi
+done
+
+require_workflow_pattern docs/workflow.md 'inapplicable.*evidence|evidence.*inapplicable' \
+  'evidence-backed repair-gate inapplicability'
+require_workflow_pattern .agents/skills/taisa-workflow/SKILL.md \
+  'inapplicable.*evidence|evidence.*inapplicable' \
+  'evidence-backed repair-gate inapplicability'
+require_workflow_pattern "$goal_template" 'each repair-release.*pass.*inapplicable.*evidence' \
+  'per-item repair-release disposition'
+
+for forbidden in \
+  'continue until the complete product ships' \
+  'select the next highest-priority issue and continue' \
+  'poll again until complete' \
+  'silence counts as approval'; do
+  if rg -n -F "$forbidden" "$goal_template"; then
+    fail "$goal_template contains forbidden unbounded instruction: $forbidden"
+  fi
+done
+
+for recommendation_file in \
+  docs/workflow.md \
+  .agents/skills/taisa-workflow/SKILL.md \
+  .agents/skills/taisa-workflow/templates/bounded-goal.md; do
+  require_workflow_pattern "$recommendation_file" 'exactly one.*Recommended next outcome|Recommended next outcome.*exactly one' \
+    'exactly-one Recommended next outcome contract'
+  require_workflow_pattern "$recommendation_file" 'exactly one.*No next outcome recommended|No next outcome recommended.*exactly one' \
+    'exactly-one no-safe-candidate recommendation form'
+  require_workflow_pattern "$recommendation_file" 'priorit(y|ies).*blocker.*dependenc.*approval|approval.*dependenc.*blocker.*priorit' \
+    'Linear recommendation evidence inputs'
+  require_workflow_pattern "$recommendation_file" 'Recommended next outcome.*Reason:.*Next Baah gate:' \
+    'recommended-outcome reason and gate form'
+  require_workflow_pattern "$recommendation_file" 'No next outcome recommended.*Reason:.*Next Baah gate:' \
+    'no-outcome reason and gate form'
+  require_workflow_pattern "$recommendation_file" 'never provide an alternatives list' \
+    'no-alternatives recommendation boundary'
+  require_workflow_pattern "$recommendation_file" 'explicit.*kickoff|kickoff.*explicit' \
+    'explicit successor kickoff boundary'
+done
+
+for recommendation_file in \
+  docs/workflow.md \
+  .agents/skills/taisa-workflow/SKILL.md \
+  .agents/skills/taisa-workflow/templates/bounded-goal.md; do
+  for mutation_boundary in \
+    'never reopen or start the successor issue' \
+    'never create the successor branch or Goal' \
+    'never change the successor status' \
+    'never begin the successor work'; do
+    require_workflow_pattern "$recommendation_file" "$mutation_boundary" \
+      "successor mutation prohibition: $mutation_boundary"
+  done
+done
+
 rg -q '31b0d99c-6f74-4c9c-af2a-12e6e25aabe0' \
   .agents/skills/taisa-workflow/SKILL.md || fail "Taisa Linear project ID is missing"
 rg -q 'e95356d8-17f7-4700-bdfe-222782bea546' \
@@ -94,6 +208,26 @@ rg -q 'main.*only permanent branch|only permanent branch.*main' docs/workflow.md
 rg -q '<type>/<short-kebab-case-description>' docs/workflow.md || fail "typed branch naming policy is missing"
 rg -qi 'squash merge' docs/workflow.md || fail "squash merge policy is missing"
 rg -q 'Ship approval|Ship gate' docs/workflow.md || fail "Ship authorization policy is missing"
+test -f scripts/verify-branch-topology.sh || fail "branch topology verifier is missing"
+test -f scripts/__tests__/verify-branch-topology.test.mjs || fail "branch topology verifier tests are missing"
+node --test scripts/__tests__/verify-branch-topology.test.mjs
+for topology_mode in build ship preview-sync; do
+  rg -q "verify-branch-topology.sh ${topology_mode}" docs/workflow.md ||
+    fail "workflow is missing the ${topology_mode} topology gate"
+  rg -q "verify-branch-topology.sh ${topology_mode}" .agents/skills/taisa-workflow/SKILL.md ||
+    fail "orchestrator is missing the ${topology_mode} topology gate"
+done
+rg -q 'merge-tree' scripts/verify-branch-topology.sh || fail "Ship topology gate lacks a conflict dry run"
+for efficiency_invariant in \
+  'smallest applicable verification' \
+  'reuse fresh evidence' \
+  'independent checks concurrently' \
+  'three materially distinct unsuccessful approaches'; do
+  rg -qi "$efficiency_invariant" docs/workflow.md ||
+    fail "workflow is missing efficiency invariant: $efficiency_invariant"
+  rg -qi "$efficiency_invariant" .agents/skills/taisa-workflow/SKILL.md ||
+    fail "orchestrator is missing efficiency invariant: $efficiency_invariant"
+done
 rg -q 'superpowers:brainstorming' .agents/skills/taisa-workflow/SKILL.md || fail "brainstorming routing is missing"
 rg -q 'superpowers:verification-before-completion' .agents/skills/taisa-workflow/SKILL.md || fail "completion verification routing is missing"
 rg -q '\.agents/skills/taisa-workflow/SKILL\.md' AGENTS.md || fail "AGENTS.md does not load the canonical orchestrator"

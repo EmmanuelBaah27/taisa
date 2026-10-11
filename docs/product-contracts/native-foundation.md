@@ -58,6 +58,14 @@ The preview app lists searchable, named scenarios and can open a scenario direct
 
 SwiftUI navigation, `Bundle` metadata, Xcode build settings, Apple provisioning profiles, XCUITest launch arguments, and iOS orientation declarations are Apple-only. A future React Native shell must reproduce the visible states, accessibility semantics, adaptive constraints, identity fields, environment isolation, and fixture revision—not these mechanisms.
 
+## Voice platform retention and diagnostics
+
+The native voice platform owns finalized audio until the durable conversation turn no longer needs it. In-progress, interrupted, offline, and recoverable turns retain their audio. Completed, no-speech, terminal-failure, and explicitly discarded turns delete owned audio idempotently and durably checkpoint cleanup completion. A failed deletion remains pending for retry.
+
+At startup, files with a known recoverable owner are retained, files with a terminal owner are reconciled, and unknown files enter a bounded quarantine before orphan deletion. Reconciliation works only with opaque file identities; local paths never enter diagnostic or evidence output.
+
+Voice preview fixtures are deterministic, synthetic, and network-denied. They cover clear, uncertain, no-speech, offline, reconnecting, interrupted, ambiguous paid-work, failed, completed, and second-turn states. Their portable evidence is limited to state, stage, counts, sizes, durations, sequences, synthetic fingerprints, and timestamps. Transcript text, coaching responses, private context, audio bytes, and local paths are forbidden from fixtures and diagnostics.
+
 ## Out of scope
 
-This foundation contains no production feature flow, authentication, persistence, audio capture, live transcription, backend request, or migration from the existing React Native application. Those capabilities require separately approved plans.
+The original shell remains deliberately separate from final product navigation and Conversation UI. Authentication and migration from the existing React Native application remain outside this contract. Persistence, audio capture, and streaming are governed by their separately approved platform contracts and plans.

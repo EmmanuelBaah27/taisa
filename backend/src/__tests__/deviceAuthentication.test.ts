@@ -67,3 +67,61 @@ test('authentication comparison handles equal-length invalid tokens without thro
   expect(store.authenticate(`${credential.token.slice(0, -1)}x`)).toBeNull();
   store.close();
 });
+
+test('enrolled bearer credentials guard both production voice route families', async () => {
+  const store = new DeviceCredentialStore({ pepper: PEPPER });
+  store.registerEnrollmentCode(CODE, future);
+  const app = express();
+  app.use(express.json());
+  app.use('/api/v1/device-enrollments', createDeviceEnrollmentRouter(store));
+  app.use('/api/v1', createDeviceAuthentication(store));
+  app.post('/api/v1/transcribe', (_req, res) => res.status(422).json({ code: 'VOICE_CONTRACT_REACHED' }));
+  app.post('/api/v1/coaching/respond', (_req, res) => res.status(422).json({ code: 'VOICE_CONTRACT_REACHED' }));
+
+  const enrolled = await request(app)
+    .post('/api/v1/device-enrollments')
+    .send({ code: CODE });
+  const token = enrolled.body.data.token as string;
+
+  for (const route of ['/api/v1/transcribe', '/api/v1/coaching/respond']) {
+    const unauthenticated = await request(app).post(route).send({});
+    expect(unauthenticated.status).toBe(401);
+    expect(unauthenticated.body).toEqual({
+      success: false,
+      error: {
+        code: 'DEVICE_AUTHENTICATION_REQUIRED',
+        message: 'Device authentication required',
+      },
+    });
+
+    const uuidBearer = await request(app)
+      .post(route)
+      .set('authorization', 'Bearer 11111111-1111-4111-8111-111111111111')
+      .send({});
+    expect(uuidBearer.status).toBe(401);
+
+    const authenticated = await request(app)
+      .post(route)
+      .set('authorization', `Bearer ${token}`)
+      .send({});
+    expect(authenticated.status).toBe(422);
+    expect(authenticated.body.code).toBe('VOICE_CONTRACT_REACHED');
+  }
+  store.close();
+});
+
+test('all rejected auth inputs return the same content-free response', async () => {
+  const privateToken = 'private-invalid-bearer-value';
+  const store = new DeviceCredentialStore({ pepper: PEPPER });
+  const app = express();
+  app.get('/private', createDeviceAuthentication(store), (_req, res) => res.json({ ok: true }));
+
+  for (const authorization of [undefined, 'Basic private-value', `Bearer ${privateToken}`]) {
+    const pending = request(app).get('/private');
+    const response = await (authorization ? pending.set('authorization', authorization) : pending);
+    expect(response.status).toBe(401);
+    expect(JSON.stringify(response.body)).not.toContain(privateToken);
+    expect(response.body.error.code).toBe('DEVICE_AUTHENTICATION_REQUIRED');
+  }
+  store.close();
+});

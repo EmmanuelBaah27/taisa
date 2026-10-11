@@ -1,16 +1,63 @@
 import GRDB
 
 enum TaisaSchema {
-    static let currentVersion = 1
+    struct MigrationLedgerEntry: Equatable, Sendable {
+        let version: Int
+        let identifier: String
+        let predecessor: String?
+        let body: [String]
+    }
+
+    static let currentVersion = 4
 
     static func createVersion1(in db: Database) throws {
-        for statement in statements { try db.execute(sql: statement) }
+        for statement in version1Statements { try db.execute(sql: statement) }
+    }
+
+    static func createVersion2(in db: Database) throws {
+        for statement in version2Statements { try db.execute(sql: statement) }
+    }
+
+    static func createVersion3(in db: Database) throws {
+        for statement in version3Statements { try db.execute(sql: statement) }
+    }
+
+    static func createVersion4(in db: Database) throws {
+        for statement in version4Statements { try db.execute(sql: statement) }
+    }
+
+    static var migrationLedger: [MigrationLedgerEntry] {
+        [
+            .init(version: 1, identifier: "v1", predecessor: nil, body: version1Statements),
+            .init(version: 2, identifier: "v2", predecessor: "v1", body: version2Statements),
+            .init(version: 3, identifier: "v3", predecessor: "v2", body: version3Statements),
+            .init(version: 4, identifier: "v4", predecessor: "v3", body: version4Statements),
+        ]
+    }
+
+    static func validateMigrationLedger(_ entries: [MigrationLedgerEntry]) throws {
+        guard !entries.isEmpty else { throw StorageError.unsupportedMigration }
+        var versions = Set<Int>()
+        var identifiers = Set<String>()
+        for (index, entry) in entries.enumerated() {
+            let expectedVersion = index + 1
+            let expectedIdentifier = "v\(expectedVersion)"
+            let expectedPredecessor = index == 0 ? nil : "v\(index)"
+            guard entry.version == expectedVersion,
+                  entry.identifier == expectedIdentifier,
+                  entry.predecessor == expectedPredecessor,
+                  !entry.body.isEmpty,
+                  versions.insert(entry.version).inserted,
+                  identifiers.insert(entry.identifier).inserted else {
+                throw StorageError.unsupportedMigration
+            }
+        }
     }
 
     // The stored DDL is also the canonical v1 integrity contract. Comparing it
     // on reopen catches removed FKs, checks, PKs, types, and unique constraints
     // even when the table still has every expected column name.
-    private static let statements: [String] = [
+    private static let version1Statements: [String] = [
         // IDs are opaque UUID strings; every persisted time is UTC milliseconds.
         // This database-only schema deliberately has no audio path or URI column.
             """
@@ -228,7 +275,145 @@ enum TaisaSchema {
             "CREATE INDEX snapshots_by_date ON snapshot_manifests(created_at_ms)",
     ]
 
-    static func validateVersion1(in db: Database) throws {
+    private static let version2Statements: [String] = [
+        """
+        CREATE TABLE voice_turns (
+            id TEXT PRIMARY KEY NOT NULL CHECK (length(id) = 36),
+            conversation_id TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+            transcription_request_id TEXT NOT NULL UNIQUE CHECK (length(transcription_request_id) = 36),
+            transcription_idempotency_key TEXT NOT NULL UNIQUE,
+            coaching_request_id TEXT NOT NULL UNIQUE CHECK (length(coaching_request_id) = 36),
+            coaching_idempotency_key TEXT NOT NULL UNIQUE,
+            state TEXT NOT NULL CHECK (state IN ('draft', 'recording', 'paused', 'queued', 'transcribing', 'transcriptClear', 'transcriptUncertain', 'awaitingTranscriptConfirmation', 'coaching', 'completed', 'noSpeech', 'recoverableFailure', 'terminalFailure', 'cancelled', 'discarded', 'resumeRequiresConfirmation')),
+            stage TEXT NOT NULL CHECK (stage IN ('capture', 'transcription', 'coaching', 'cleanup', 'finished')),
+            audio_file_id TEXT,
+            audio_sha256 TEXT,
+            audio_duration_ms INTEGER CHECK (audio_duration_ms IS NULL OR audio_duration_ms >= 0),
+            accepted_transcript TEXT,
+            uncertain_transcript TEXT,
+            retry_count INTEGER NOT NULL DEFAULT 0 CHECK (retry_count >= 0),
+            next_retry_at_ms INTEGER CHECK (next_retry_at_ms IS NULL OR next_retry_at_ms >= 0),
+            failure_code TEXT,
+            transcription_receipt TEXT,
+            coaching_receipt TEXT,
+            user_message_id TEXT UNIQUE REFERENCES messages(id) ON DELETE SET NULL,
+            assistant_message_id TEXT UNIQUE REFERENCES messages(id) ON DELETE SET NULL,
+            cleanup_state TEXT NOT NULL CHECK (cleanup_state IN ('notRequired', 'pending', 'completed')),
+            created_at_ms INTEGER NOT NULL CHECK (created_at_ms >= 0),
+            updated_at_ms INTEGER NOT NULL CHECK (updated_at_ms >= created_at_ms),
+            CHECK (audio_file_id IS NULL OR length(audio_file_id) > 0),
+            CHECK (accepted_transcript IS NULL OR uncertain_transcript IS NULL)
+        )
+        """,
+        """
+        CREATE TABLE audio_cleanup_queue (
+            turn_id TEXT PRIMARY KEY NOT NULL REFERENCES voice_turns(id) ON DELETE CASCADE,
+            audio_file_id TEXT NOT NULL,
+            completed_at_ms INTEGER CHECK (completed_at_ms IS NULL OR completed_at_ms >= 0)
+        )
+        """,
+        "CREATE INDEX voice_turns_by_conversation ON voice_turns(conversation_id, updated_at_ms)",
+        "CREATE INDEX voice_turns_by_state ON voice_turns(state, next_retry_at_ms)",
+    ]
+
+    private static let version3Statements: [String] = [
+        "ALTER TABLE conversations ADD COLUMN lifecycle TEXT NOT NULL DEFAULT 'completed' CHECK (lifecycle IN ('draft', 'active', 'completed'))",
+        "ALTER TABLE conversations ADD COLUMN title_authority TEXT NOT NULL DEFAULT 'user' CHECK (title_authority IN ('localFallback', 'assistantSuggested', 'user'))",
+        """
+        CREATE TABLE conversation_drafts (
+            id TEXT PRIMARY KEY NOT NULL CHECK (length(id) = 36),
+            conversation_id TEXT NOT NULL UNIQUE REFERENCES conversations(id) ON DELETE CASCADE,
+            input_mode TEXT NOT NULL CHECK (input_mode IN ('voice', 'text')),
+            text TEXT,
+            voice_turn_id TEXT UNIQUE REFERENCES voice_turns(id) ON DELETE CASCADE,
+            recovery_kind TEXT NOT NULL CHECK (recovery_kind IN ('saved', 'recovered', 'retryableTranscription', 'retryableCoaching')),
+            created_at_ms INTEGER NOT NULL CHECK (created_at_ms >= 0),
+            updated_at_ms INTEGER NOT NULL CHECK (updated_at_ms >= created_at_ms),
+            CHECK (
+                (input_mode = 'text' AND text IS NOT NULL AND voice_turn_id IS NULL)
+                OR (input_mode = 'voice' AND text IS NULL AND voice_turn_id IS NOT NULL)
+            )
+        )
+        """,
+        """
+        CREATE TABLE message_revisions (
+            id TEXT PRIMARY KEY NOT NULL CHECK (length(id) = 36),
+            message_id TEXT NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+            original_body TEXT NOT NULL,
+            replacement_message_id TEXT REFERENCES messages(id) ON DELETE SET NULL,
+            created_at_ms INTEGER NOT NULL CHECK (created_at_ms >= 0)
+        )
+        """,
+        "CREATE INDEX conversation_drafts_by_updated ON conversation_drafts(updated_at_ms DESC, created_at_ms DESC)",
+        "CREATE INDEX message_revisions_by_message ON message_revisions(message_id, created_at_ms)",
+    ]
+
+    private static let version4Statements: [String] = [
+        """
+        CREATE TABLE career_work_events (
+            id TEXT PRIMARY KEY NOT NULL CHECK (length(id) = 36),
+            entity_type TEXT NOT NULL CHECK (entity_type IN ('goal', 'milestone', 'action')),
+            entity_id TEXT NOT NULL CHECK (length(entity_id) = 36),
+            transition TEXT NOT NULL CHECK (transition IN ('created', 'paused', 'resumed', 'completed', 'reopened', 'archived', 'restored')),
+            from_status TEXT,
+            to_status TEXT NOT NULL,
+            source_type TEXT NOT NULL CHECK (source_type IN ('user', 'proposal', 'undo', 'migration')),
+            source_id TEXT CHECK (source_id IS NULL OR length(source_id) = 36),
+            occurred_at_ms INTEGER NOT NULL CHECK (occurred_at_ms >= 0),
+            UNIQUE (entity_type, entity_id, occurred_at_ms, transition)
+        )
+        """,
+        """
+        CREATE TABLE career_work_archives (
+            id TEXT PRIMARY KEY NOT NULL CHECK (length(id) = 36),
+            entity_type TEXT NOT NULL CHECK (entity_type IN ('goal', 'milestone', 'action')),
+            entity_id TEXT NOT NULL CHECK (length(entity_id) = 36),
+            archived_at_ms INTEGER NOT NULL CHECK (archived_at_ms >= 0),
+            restored_at_ms INTEGER CHECK (restored_at_ms IS NULL OR restored_at_ms >= archived_at_ms),
+            UNIQUE (entity_type, entity_id, archived_at_ms)
+        )
+        """,
+        """
+        CREATE TABLE evidence_provenance (
+            evidence_id TEXT PRIMARY KEY NOT NULL REFERENCES evidence(id) ON DELETE CASCADE,
+            origin_type TEXT NOT NULL CHECK (origin_type IN ('user', 'action', 'conversation', 'import')),
+            origin_id TEXT CHECK (origin_id IS NULL OR length(origin_id) = 36),
+            supersedes_evidence_id TEXT REFERENCES evidence(id) ON DELETE SET NULL,
+            created_at_ms INTEGER NOT NULL CHECK (created_at_ms >= 0),
+            CHECK (supersedes_evidence_id IS NULL OR supersedes_evidence_id != evidence_id)
+        )
+        """,
+        """
+        CREATE TABLE career_work_proposal_receipts (
+            id TEXT PRIMARY KEY NOT NULL CHECK (length(id) = 36),
+            proposal_id TEXT NOT NULL UNIQUE CHECK (length(proposal_id) = 36),
+            target_type TEXT NOT NULL CHECK (target_type IN ('goal', 'milestone', 'action', 'evidence')),
+            target_id TEXT NOT NULL CHECK (length(target_id) = 36),
+            target_version_id TEXT NOT NULL CHECK (length(target_version_id) = 36),
+            payload_digest TEXT NOT NULL CHECK (length(payload_digest) > 0),
+            decision TEXT NOT NULL CHECK (decision IN ('accepted', 'corrected', 'rejected', 'undone')),
+            resolved_at_ms INTEGER NOT NULL CHECK (resolved_at_ms >= 0)
+        )
+        """,
+        """
+        CREATE TABLE capability_states (
+            capability_id TEXT PRIMARY KEY NOT NULL CHECK (length(capability_id) > 0),
+            state TEXT NOT NULL CHECK (state IN ('learning', 'ready', 'trial', 'trusted')),
+            decision_source TEXT NOT NULL CHECK (decision_source = 'user'),
+            transport_source TEXT NOT NULL CHECK (transport_source IN ('direct', 'import', 'restore')),
+            decided_at_ms INTEGER NOT NULL CHECK (decided_at_ms >= 0),
+            updated_at_ms INTEGER NOT NULL CHECK (updated_at_ms >= decided_at_ms)
+        )
+        """,
+        "CREATE INDEX career_work_events_by_entity ON career_work_events(entity_type, entity_id, occurred_at_ms)",
+        "CREATE INDEX career_work_archives_by_entity ON career_work_archives(entity_type, entity_id, archived_at_ms)",
+        "CREATE UNIQUE INDEX career_work_one_active_archive ON career_work_archives(entity_type, entity_id) WHERE restored_at_ms IS NULL",
+        "CREATE INDEX evidence_provenance_by_origin ON evidence_provenance(origin_type, origin_id)",
+        "CREATE INDEX career_work_receipts_by_target ON career_work_proposal_receipts(target_type, target_id, resolved_at_ms)",
+        "CREATE INDEX capability_states_by_state ON capability_states(state, updated_at_ms)",
+    ]
+
+    static func validateVersion1(in db: Database, allowingConversationExtensions: Bool = false) throws {
         let requiredColumns: [String: Set<String>] = [
             "profile": ["id", "display_name", "headline", "biography", "updated_at_ms"],
             "conversations": ["id", "title", "created_at_ms", "updated_at_ms"],
@@ -254,17 +439,114 @@ enum TaisaSchema {
             for (table, expected) in requiredColumns {
                 guard try db.tableExists(table) else { throw StorageError.schemaMismatch }
                 let actual = Set(try db.columns(in: table).map(\.name))
-                guard actual == expected else { throw StorageError.schemaMismatch }
+                guard actual == expected || (allowingConversationExtensions && table == "conversations" && actual.isSuperset(of: expected)) else {
+                    throw StorageError.schemaMismatch
+                }
             }
             // V1's supported producer is this canonical migration. SQLite can
             // rewrite equivalent CREATE text during manual ALTER/restore; such
             // rewritten schemas require an explicit migration, not guessed
             // normalization that could erase constraint differences.
-            for statement in statements where statement.hasPrefix("CREATE TABLE ") {
+            for statement in version1Statements where statement.hasPrefix("CREATE TABLE ") {
+                let name = String(statement.split(separator: " ", maxSplits: 3)[2])
+                if allowingConversationExtensions && name == "conversations" { continue }
+                let stored = try String.fetchOne(
+                    db,
+                    sql: "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?",
+                    arguments: [name]
+                )
+                guard stored == statement else { throw StorageError.schemaMismatch }
+            }
+        } catch {
+            throw StorageError.schemaMismatch
+        }
+    }
+
+    static func validateVersion2(in db: Database, allowingConversationExtensions: Bool = false) throws {
+        try validateVersion1(in: db, allowingConversationExtensions: allowingConversationExtensions)
+        let requiredColumns: [String: Set<String>] = [
+            "voice_turns": ["id", "conversation_id", "transcription_request_id", "transcription_idempotency_key", "coaching_request_id", "coaching_idempotency_key", "state", "stage", "audio_file_id", "audio_sha256", "audio_duration_ms", "accepted_transcript", "uncertain_transcript", "retry_count", "next_retry_at_ms", "failure_code", "transcription_receipt", "coaching_receipt", "user_message_id", "assistant_message_id", "cleanup_state", "created_at_ms", "updated_at_ms"],
+            "audio_cleanup_queue": ["turn_id", "audio_file_id", "completed_at_ms"],
+        ]
+        do {
+            for (table, expected) in requiredColumns {
+                guard try db.tableExists(table), Set(try db.columns(in: table).map(\.name)) == expected else {
+                    throw StorageError.schemaMismatch
+                }
+            }
+            for statement in version2Statements where statement.hasPrefix("CREATE TABLE ") {
                 let name = String(statement.split(separator: " ", maxSplits: 3)[2])
                 let stored = try String.fetchOne(
                     db,
                     sql: "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?",
+                    arguments: [name]
+                )
+                guard stored == statement else { throw StorageError.schemaMismatch }
+            }
+        } catch {
+            throw StorageError.schemaMismatch
+        }
+    }
+
+    static func validateVersion3(in db: Database) throws {
+        try validateVersion2(in: db, allowingConversationExtensions: true)
+        let requiredColumns: [String: Set<String>] = [
+            "conversation_drafts": ["id", "conversation_id", "input_mode", "text", "voice_turn_id", "recovery_kind", "created_at_ms", "updated_at_ms"],
+            "message_revisions": ["id", "message_id", "original_body", "replacement_message_id", "created_at_ms"],
+        ]
+        do {
+            guard Set(try db.columns(in: "conversations").map(\.name)) == [
+                "id", "title", "lifecycle", "title_authority", "created_at_ms", "updated_at_ms",
+            ] else { throw StorageError.schemaMismatch }
+            for (table, expected) in requiredColumns {
+                guard try db.tableExists(table), Set(try db.columns(in: table).map(\.name)) == expected else {
+                    throw StorageError.schemaMismatch
+                }
+            }
+            for statement in version3Statements where statement.hasPrefix("CREATE TABLE ") {
+                let name = String(statement.split(separator: " ", maxSplits: 3)[2])
+                let stored = try String.fetchOne(
+                    db,
+                    sql: "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?",
+                    arguments: [name]
+                )
+                guard stored == statement else { throw StorageError.schemaMismatch }
+            }
+        } catch {
+            throw StorageError.schemaMismatch
+        }
+    }
+
+    static func validateVersion4(in db: Database) throws {
+        try validateVersion3(in: db)
+        let requiredColumns: [String: Set<String>] = [
+            "career_work_events": ["id", "entity_type", "entity_id", "transition", "from_status", "to_status", "source_type", "source_id", "occurred_at_ms"],
+            "career_work_archives": ["id", "entity_type", "entity_id", "archived_at_ms", "restored_at_ms"],
+            "evidence_provenance": ["evidence_id", "origin_type", "origin_id", "supersedes_evidence_id", "created_at_ms"],
+            "career_work_proposal_receipts": ["id", "proposal_id", "target_type", "target_id", "target_version_id", "payload_digest", "decision", "resolved_at_ms"],
+            "capability_states": ["capability_id", "state", "decision_source", "transport_source", "decided_at_ms", "updated_at_ms"],
+        ]
+        do {
+            for (table, expected) in requiredColumns {
+                guard try db.tableExists(table), Set(try db.columns(in: table).map(\.name)) == expected else {
+                    throw StorageError.schemaMismatch
+                }
+            }
+            for statement in version4Statements where statement.hasPrefix("CREATE TABLE ") {
+                let name = String(statement.split(separator: " ", maxSplits: 3)[2])
+                let stored = try String.fetchOne(
+                    db,
+                    sql: "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?",
+                    arguments: [name]
+                )
+                guard stored == statement else { throw StorageError.schemaMismatch }
+            }
+            for statement in version4Statements where statement.hasPrefix("CREATE INDEX ") || statement.hasPrefix("CREATE UNIQUE INDEX ") {
+                let parts = statement.split(separator: " ", maxSplits: 4)
+                let name = String(statement.hasPrefix("CREATE UNIQUE INDEX ") ? parts[3] : parts[2])
+                let stored = try String.fetchOne(
+                    db,
+                    sql: "SELECT sql FROM sqlite_master WHERE type = 'index' AND name = ?",
                     arguments: [name]
                 )
                 guard stored == statement else { throw StorageError.schemaMismatch }

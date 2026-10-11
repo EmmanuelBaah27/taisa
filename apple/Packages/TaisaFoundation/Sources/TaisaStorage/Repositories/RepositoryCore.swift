@@ -47,7 +47,7 @@ struct RepositorySpec: Sendable {
 /// The single repository/journal mapping from transport-neutral entity tags to
 /// v1 storage tables and their identity-bearing parent references.
 enum DomainEntity: String, CaseIterable {
-    case profile, conversation, message, goal, milestone, action, evidence, memory, memory_source
+    case profile, conversation, message, goal, milestone, action, evidence, memory, memory_source, voice_turn
 
     var table: String {
         switch self {
@@ -60,6 +60,7 @@ enum DomainEntity: String, CaseIterable {
         case .evidence: "evidence"
         case .memory: "memory_items"
         case .memory_source: "memory_sources"
+        case .voice_turn: "voice_turns"
         }
     }
 
@@ -70,6 +71,11 @@ enum DomainEntity: String, CaseIterable {
         case .action: [("goalID", "goal_id", "goals")]
         case .evidence: [("goalID", "goal_id", "goals"), ("actionID", "action_id", "actions")]
         case .memory_source: [("memoryItemID", "memory_item_id", "memory_items")]
+        case .voice_turn: [
+            ("conversationID", "conversation_id", "conversations"),
+            ("userMessageID", "user_message_id", "messages"),
+            ("assistantMessageID", "assistant_message_id", "messages"),
+        ]
         default: []
         }
     }
@@ -136,13 +142,18 @@ struct RepositoryCore<Record: DomainRecord>: Sendable {
         }
     }
 
-    func delete(id: String, context: MutationContext) async throws {
+    func delete(
+        id: String,
+        context: MutationContext,
+        beforeDelete: @escaping @Sendable (Database) throws -> Void = { _ in }
+    ) async throws {
         let id = try canonicalID(id), context = try canonicalContext(context)
         try validateID(id); try validate(context)
         try await safeWrite { db in
             if try isDuplicate(context, entityID: id, operation: "delete", record: Optional<Record>.none, db: db) { return }
             guard try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM \(spec.table) WHERE id = ? COLLATE NOCASE", arguments: [id]) == 1,
                   try !isDeleted(id, db: db) else { throw RepositoryError.notFound }
+            try beforeDelete(db)
             let causality = try versions(fields: [:], previous: [:], id: id, context: context, db: db)
             try db.execute(sql: "INSERT INTO tombstones (id, entity_type, entity_id, deletion_version_id, deleted_at_ms) VALUES (?, ?, ?, ?, ?)", arguments: [UUID().uuidString, spec.entity, id, context.id, context.timestamp])
             try ChangeJournal.insert(db: db, context: context, entity: spec.entity, entityID: id, operation: "delete", record: Optional<Record>.none, causality: causality)

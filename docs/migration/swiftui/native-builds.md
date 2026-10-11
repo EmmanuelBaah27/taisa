@@ -71,3 +71,8 @@ Validated records:
 Free Personal Team provisioning expires after about seven days; the recorded profile's actual expiry is authoritative. Rebuild and install `com.taisa.app.personal` **over the existing app with the same bundle identifier**. Never uninstall the Personal app as part of refresh because uninstalling removes its device-local container. Create a fresh encrypted backup and verify the recovery key before any risky device or signing change. If an install is blocked by the free-team three-app limit, remove another explicitly approved disposable development identity—not `com.taisa.app.personal`—only after confirming its data may be lost.
 
 Files and AirDrop copy an encrypted snapshot; they do not merge histories. Choose one authoritative device, avoid editing both copies between transfers, and accept replacement on the receiving device only after verifying which copy is authoritative. The recovery key must remain separate from the backup, saved in Passwords and in a distinct offline copy.
+# SwiftUI functional Home candidate
+
+The candidate SHA is recorded only after final automated verification and review. Signed Personal builds must be produced from that exact clean revision and integrated into `preview/taisa` before Baah is asked to test.
+
+Required evidence: bundle identity, signer, provisioning profile, embedded commit, iOS 26+ environment, entitlements, authorized iPhone/iPad UDIDs, and completed `docs/qa/swiftui-functional-home-device-matrix.md`. Simulator results do not satisfy the Ship gate.

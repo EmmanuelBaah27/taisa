@@ -3,6 +3,7 @@ import GRDB
 
 enum TaisaMigrator {
     static func preflight(_ queue: DatabaseQueue) throws -> Int {
+        try TaisaSchema.validateMigrationLedger(TaisaSchema.migrationLedger)
         let version: Int
         do {
             version = try queue.read { db in
@@ -20,7 +21,8 @@ enum TaisaMigrator {
                 let applied = hasGRDBMarkers
                     ? try String.fetchAll(db, sql: "SELECT identifier FROM grdb_migrations ORDER BY identifier")
                     : []
-                guard applied.allSatisfy({ $0 == "v1" }) else {
+                let supportedIdentifiers = Set(TaisaSchema.migrationLedger.map(\.identifier))
+                guard applied.allSatisfy(supportedIdentifiers.contains) else {
                     throw StorageError.unsupportedMigration
                 }
                 if version == 1 {
@@ -28,6 +30,21 @@ enum TaisaMigrator {
                     try TaisaSchema.validateVersion1(in: db)
                     let states = try Int.fetchAll(db, sql: "SELECT version FROM migration_state ORDER BY version")
                     guard states == [1] else { throw StorageError.schemaMismatch }
+                } else if version == 2 {
+                    guard applied == ["v1", "v2"] else { throw StorageError.schemaMismatch }
+                    try TaisaSchema.validateVersion2(in: db)
+                    let states = try Int.fetchAll(db, sql: "SELECT version FROM migration_state ORDER BY version")
+                    guard states == [1, 2] else { throw StorageError.schemaMismatch }
+                } else if version == 3 {
+                    guard applied == ["v1", "v2", "v3"] else { throw StorageError.schemaMismatch }
+                    try TaisaSchema.validateVersion3(in: db)
+                    let states = try Int.fetchAll(db, sql: "SELECT version FROM migration_state ORDER BY version")
+                    guard states == [1, 2, 3] else { throw StorageError.schemaMismatch }
+                } else if version == 4 {
+                    guard applied == ["v1", "v2", "v3", "v4"] else { throw StorageError.schemaMismatch }
+                    try TaisaSchema.validateVersion4(in: db)
+                    let states = try Int.fetchAll(db, sql: "SELECT version FROM migration_state ORDER BY version")
+                    guard states == [1, 2, 3, 4] else { throw StorageError.schemaMismatch }
                 } else {
                     let objects = try String.fetchAll(
                         db,
@@ -49,10 +66,11 @@ enum TaisaMigrator {
     static func migrate(
         _ queue: DatabaseQueue,
         from version: Int,
-        createSchema: @escaping @Sendable (Database) throws -> Void = TaisaSchema.createVersion1
+        createSchema: @escaping @Sendable (Database) throws -> Void = TaisaSchema.createVersion1,
+        createVersion4: @escaping @Sendable (Database) throws -> Void = TaisaSchema.createVersion4
     ) throws {
         // The caller completes a read-only preflight on any existing file.
-        if version == 1 { return }
+        if version == TaisaSchema.currentVersion { return }
 
         var migrator = DatabaseMigrator()
         migrator.registerMigration("v1", foreignKeyChecks: .immediate) { db in
@@ -62,6 +80,30 @@ enum TaisaMigrator {
                 arguments: [1, Int64(Date().timeIntervalSince1970 * 1_000)]
             )
             try db.execute(sql: "PRAGMA user_version = 1")
+        }
+        migrator.registerMigration("v2", foreignKeyChecks: .immediate) { db in
+            try TaisaSchema.createVersion2(in: db)
+            try db.execute(
+                sql: "INSERT INTO migration_state (version, applied_at_ms) VALUES (?, ?)",
+                arguments: [2, Int64(Date().timeIntervalSince1970 * 1_000)]
+            )
+            try db.execute(sql: "PRAGMA user_version = 2")
+        }
+        migrator.registerMigration("v3", foreignKeyChecks: .immediate) { db in
+            try TaisaSchema.createVersion3(in: db)
+            try db.execute(
+                sql: "INSERT INTO migration_state (version, applied_at_ms) VALUES (?, ?)",
+                arguments: [3, Int64(Date().timeIntervalSince1970 * 1_000)]
+            )
+            try db.execute(sql: "PRAGMA user_version = 3")
+        }
+        migrator.registerMigration("v4", foreignKeyChecks: .immediate) { db in
+            try createVersion4(db)
+            try db.execute(
+                sql: "INSERT INTO migration_state (version, applied_at_ms) VALUES (?, ?)",
+                arguments: [4, Int64(Date().timeIntervalSince1970 * 1_000)]
+            )
+            try db.execute(sql: "PRAGMA user_version = 4")
         }
         do {
             try migrator.migrate(queue)

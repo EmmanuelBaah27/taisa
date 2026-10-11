@@ -1,9 +1,22 @@
-import { Router } from 'express';
+import { Router, type Request, type Response } from 'express';
 import { CoachingRequestSchema } from '../schemas/coaching';
 import {
   estimateConfiguredCoachingAttempts,
   requestCoaching,
+  requestStreamingCoaching,
 } from '../services/coaching/coachingGateway';
+import { getConfiguredFallbackProvider } from '../services/coaching/fallbackProvider';
+import type { CoachingRequest, CoachingStreamFailureCode } from '@taisa/shared';
+import {
+  CoachingIdempotencyStore,
+  CoachingRequestNotFoundError,
+  IdempotencyConflictError,
+} from '../services/coaching/coachingIdempotencyStore';
+import {
+  AmbiguousPaidWorkError,
+  executeCoachingStream,
+  type PaidCoachingStreamItem,
+} from '../services/coaching/streamingCoaching';
 import { ContentFreeFallbackError } from '../services/coaching/fallbackProvider';
 import {
   CostConfigurationError,
@@ -12,7 +25,68 @@ import {
   reserveAttempts,
 } from '../services/usage/costLedger';
 
+let defaultIdempotencyStore: CoachingIdempotencyStore | undefined;
+
+function getDefaultIdempotencyStore(): CoachingIdempotencyStore {
+  if (!defaultIdempotencyStore) {
+    defaultIdempotencyStore = new CoachingIdempotencyStore({
+      databasePath: process.env.TAISA_USAGE_LEDGER_PATH?.trim() || 'taisa-usage-ledger.sqlite',
+      encryptionKeyBase64: process.env.TAISA_COACHING_RECEIPT_ENCRYPTION_KEY?.trim() || '',
+    });
+  }
+  return defaultIdempotencyStore;
+}
+
+async function* defaultPaidExecution(
+  request: CoachingRequest,
+  context: { idempotencyKey: string },
+): AsyncIterable<PaidCoachingStreamItem> {
+  const ceilings = readCostCeilings();
+  const reservation = reserveAttempts(
+    estimateConfiguredCoachingAttempts(request),
+    ceilings,
+    context.idempotencyKey,
+  );
+  try {
+    for await (const item of requestStreamingCoaching(
+      request,
+      getConfiguredFallbackProvider(),
+      reservation,
+    )) {
+      if (item.kind === 'delta') yield item;
+      else yield { kind: 'completed', response: item.response };
+    }
+  } finally {
+    reservation.release();
+  }
+}
+
+export function createCoachingRouter(options: {
+  idempotencyStore?: CoachingIdempotencyStore;
+  allowLegacyOwnerHeader?: boolean;
+  paidExecution?: (
+    request: CoachingRequest,
+    context: { idempotencyKey: string },
+  ) => AsyncIterable<PaidCoachingStreamItem>;
+} = {}) {
 const router = Router();
+
+function requestOwner(req: Request, res: Response): string | null {
+  const authenticated = typeof res.locals.deviceCredentialId === 'string'
+    ? res.locals.deviceCredentialId.trim() : '';
+  const legacyAllowed = options.allowLegacyOwnerHeader
+    ?? process.env.NODE_ENV !== 'production';
+  const legacy = legacyAllowed ? req.header('X-User-ID')?.trim() ?? '' : '';
+  const owner = authenticated || legacy;
+  if (!owner || owner.length > 200) {
+    res.status(401).json({
+      success: false,
+      error: { code: 'DEVICE_AUTHENTICATION_REQUIRED', message: 'Device authentication required' },
+    });
+    return null;
+  }
+  return owner;
+}
 
 function operationalFailureCode(error: unknown): string {
   if (error instanceof ContentFreeFallbackError) {
@@ -35,6 +109,15 @@ function operationalFailureCode(error: unknown): string {
           ? 'PROVIDER_ERROR'
           : 'UNKNOWN_ERROR';
   return `COACHING_FAILED${status}_${type}`;
+}
+
+function streamFailureCode(error: unknown): CoachingStreamFailureCode {
+  if (error instanceof CostLimitError) return 'COST_LIMIT_REACHED';
+  const value = error as { code?: unknown; status?: unknown; type?: unknown } | null;
+  if (value?.code === 'INVALID_COACHING_OUTPUT') return 'INVALID_COACHING_OUTPUT';
+  if (value?.status === 401 || value?.type === 'authentication_error') return 'AUTHENTICATION_FAILED';
+  if (value?.status === 429 || value?.type === 'rate_limit_error') return 'RATE_LIMITED';
+  return 'COACHING_UNAVAILABLE';
 }
 
 router.post('/respond', async (req, res) => {
@@ -89,4 +172,111 @@ router.post('/respond', async (req, res) => {
   }
 });
 
-export default router;
+router.post('/respond/stream', async (req, res) => {
+  const ownerId = requestOwner(req, res);
+  if (!ownerId) return;
+  const parsed = CoachingRequestSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({
+      success: false,
+      error: { code: 'VALIDATION_ERROR', message: parsed.error.message },
+    });
+  }
+  const idempotencyKey = req.header('Idempotency-Key')?.trim();
+  if (!idempotencyKey || idempotencyKey.length > 200) {
+    return res.status(400).json({
+      success: false,
+      error: { code: 'INVALID_IDEMPOTENCY_KEY', message: 'A bounded Idempotency-Key is required' },
+    });
+  }
+
+  const store = options.idempotencyStore ?? getDefaultIdempotencyStore();
+  let lastSequence = -1;
+  try {
+    const events = executeCoachingStream({
+      request: parsed.data,
+      idempotencyKey,
+      ownerId,
+      store,
+      paidExecution: options.paidExecution ?? defaultPaidExecution,
+    });
+    for await (const event of events) {
+      if (!res.headersSent) {
+        res.status(200);
+        res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
+        res.setHeader('Cache-Control', 'no-store');
+      }
+      lastSequence = event.sequence;
+      res.write(`${JSON.stringify(event)}\n`);
+    }
+    return res.end();
+  } catch (error) {
+    if (error instanceof ContentFreeFallbackError) {
+      console.warn('[Taisa diagnostic] COACHING_STREAM_PROVIDER_FAILURE', {
+        attempts: error.attempts,
+      });
+    }
+    if (res.headersSent) {
+      const code = streamFailureCode(error);
+      try { store.fail(idempotencyKey, code, false); } catch { /* Preserve the original failure. */ }
+      res.write(`${JSON.stringify({
+        type: 'coaching.failed',
+        requestId: parsed.data.requestId,
+        sequence: lastSequence + 1,
+        code,
+        retryable: false,
+      })}\n`);
+      return res.end();
+    }
+    if (error instanceof IdempotencyConflictError) {
+      return res.status(409).json({ success: false, error: { code: error.code, message: 'Idempotency key conflicts with another request' } });
+    }
+    if (error instanceof AmbiguousPaidWorkError) {
+      return res.status(409).json({ success: false, error: { code: error.code, message: 'Paid work requires explicit reconciliation' } });
+    }
+    return res.status(503).json({ success: false, error: { code: 'COACHING_STREAM_FAILED', message: 'Unable to stream coaching' } });
+  }
+});
+
+router.get('/requests/:requestId', (req, res) => {
+  const ownerId = requestOwner(req, res);
+  if (!ownerId) return;
+  const result = (options.idempotencyStore ?? getDefaultIdempotencyStore())
+    .reconcile(req.params.requestId, ownerId);
+  if (result.status === 'missing') {
+    return res.status(404).json({ success: false, error: { code: 'REQUEST_NOT_FOUND', message: 'Coaching request not found' } });
+  }
+  return res.json({ success: true, data: result });
+});
+
+router.post('/requests/:requestId/resolve', (req, res) => {
+  const ownerId = requestOwner(req, res);
+  if (!ownerId) return;
+  if (req.body?.decision !== 'retry') {
+    return res.status(400).json({
+      success: false,
+      error: { code: 'INVALID_RESOLUTION', message: 'A retry decision is required' },
+    });
+  }
+  try {
+    const result = (options.idempotencyStore ?? getDefaultIdempotencyStore())
+      .authorizeRetry(req.params.requestId, ownerId);
+    return res.json({ success: true, data: result });
+  } catch (error) {
+    if (error instanceof CoachingRequestNotFoundError) {
+      return res.status(404).json({
+        success: false,
+        error: { code: error.code, message: 'Coaching request not found' },
+      });
+    }
+    return res.status(409).json({
+      success: false,
+      error: { code: 'IDEMPOTENCY_STATE_CONFLICT', message: 'Request is not awaiting resolution' },
+    });
+  }
+});
+
+return router;
+}
+
+export default createCoachingRouter();

@@ -136,18 +136,32 @@ test('preview support is linked only by the preview target', async () => {
     'TaisaCore',
     'TaisaContracts',
     'TaisaDesignSystem',
+    'TaisaHome',
     'TaisaStorage',
     'TaisaCloudKit',
     'TaisaRecovery',
     'TaisaSecurity',
+    'TaisaVoice',
+    'TaisaConversations',
+    'TaisaAudio',
+    'TaisaNetworking',
   ]);
   assert.deepEqual(result.previewProducts, [
     'TaisaCore',
     'TaisaContracts',
     'TaisaDesignSystem',
+    'TaisaHome',
     'TaisaPreviewSupport',
     'TaisaStorage',
+    'TaisaVoice',
+    'TaisaConversations',
   ]);
+});
+
+test('preview includes the shared conversation entry contract', async () => {
+  const project = await readFile(join(repositoryRoot, 'apple/project.yml'), 'utf8');
+  const preview = project.slice(project.indexOf('  TaisaPreview:'), project.indexOf('  TaisaUnitTests:'));
+  assert.match(preview, /TaisaApp\/AppShell\/PrimaryDestination\.swift/);
 });
 
 test('CloudKit capability is isolated to development and production identities', async () => {
@@ -240,6 +254,10 @@ test('combined native verification and CI pin every required gate', async () => 
     resolve(repositoryRoot, '.github/workflows/design-system.yml'),
     'utf8',
   );
+  const combinedScript = await readFile(
+    resolve(repositoryRoot, 'scripts/native-apple/verify-all.sh'),
+    'utf8',
+  );
   const combined = packageJSON.scripts['verify:native-apple:all'];
 
   for (const required of [
@@ -272,6 +290,59 @@ test('combined native verification and CI pin every required gate', async () => 
 
   assert.match(designSystemWorkflow, /name: Design System Compliance/);
   assert.match(designSystemWorkflow, /npm run verify:native-design-system/);
+  for (const bundleIdentifier of [
+    'com.taisa.app.dev',
+    'com.taisa.app.preview',
+    'com.taisa.app.personal',
+  ]) {
+    assert.match(combinedScript, new RegExp(`reset_simulator_app.*${bundleIdentifier}`));
+  }
+});
+
+test('tiered native CI keeps fast feedback separate from exact-head full verification', async () => {
+  const packageJSON = JSON.parse(await readFile(resolve(repositoryRoot, 'package.json'), 'utf8'));
+  const fastScript = await readFile(
+    resolve(repositoryRoot, 'scripts/native-apple/verify-fast.sh'),
+    'utf8',
+  );
+  const fastWorkflow = await readFile(
+    resolve(repositoryRoot, '.github/workflows/native-fast.yml'),
+    'utf8',
+  );
+  const fullWorkflow = await readFile(
+    resolve(repositoryRoot, '.github/workflows/native-apple.yml'),
+    'utf8',
+  );
+
+  assert.match(packageJSON.scripts['verify:native-apple:fast'], /verify-fast\.sh/);
+  for (const required of [
+    'verify-generated-project.sh',
+    'generate-build-metadata.sh',
+    'verify:native-contracts',
+    'swift test',
+    'verify:native-design-system',
+    'verify:workflow',
+  ]) assert.match(fastScript, new RegExp(required.replaceAll('.', '\\.')));
+  assert.doesNotMatch(fastScript, /xcodebuild (test|build|build-for-testing)/);
+
+  assert.match(fastWorkflow, /name: Native Fast Checks/);
+  assert.match(fastWorkflow, /pull_request:/);
+  assert.match(fastWorkflow, /branches: \[main\]/);
+  assert.match(fastWorkflow, /verify:native-apple:fast/);
+  assert.match(fastWorkflow, /native-fast-\$\{\{/);
+  assert.match(fastWorkflow, /cancel-in-progress: true/);
+
+  assert.match(fullWorkflow, /name: Native Apple Full Verification/);
+  assert.match(fullWorkflow, /types: \[opened, reopened, synchronize, ready_for_review, labeled, unlabeled\]/);
+  assert.match(fullWorkflow, /schedule:/);
+  assert.match(fullWorkflow, /workflow_dispatch:/);
+  assert.match(fullWorkflow, /tags: \['v\*'\]/);
+  assert.match(fullWorkflow, /merge-ready/);
+  assert.match(fullWorkflow, /name: Native Merge Gate/);
+  assert.match(fullWorkflow, /needs\.verify-native-apple\.result/);
+  assert.match(fullWorkflow, /github\.event\.pull_request\.head\.sha/);
+  assert.match(fullWorkflow, /cancel-in-progress: \$\{\{ github\.event_name == 'pull_request' \}\}/);
+  assert.match(fullWorkflow, /npm run verify:native-apple:all/);
 });
 
 test('rejects unexpanded build identity placeholders', () => {

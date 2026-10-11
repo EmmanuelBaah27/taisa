@@ -2,24 +2,39 @@ import XCTest
 
 @MainActor
 final class TaisaAccessibilityLayoutTests: XCTestCase {
-    func testAccessibilityTextKeepsContentVisibleAndHittable() {
-        assertScenarioFitsVisibleWindow(identifier: "foundation.accessibilityText")
+    func testAccessibilityTextKeepsHomeRowsVisibleAndHittable() {
+        assertHomeScenarioFitsVisibleWindow(
+            identifier: "home.accessibilityText",
+            requiredText: "Plan the garden studio"
+        )
     }
 
-    func testNarrowIPadKeepsContentVisibleAndHittable() {
-        assertScenarioFitsVisibleWindow(identifier: "foundation.narrowIPad")
+    func testNarrowIPadKeepsHomeRowsVisibleAndHittable() {
+        assertHomeScenarioFitsVisibleWindow(
+            identifier: "home.narrowIPad",
+            requiredText: "Plan the garden studio"
+        )
     }
 
-    private func assertScenarioFitsVisibleWindow(identifier: String) {
+    func testFailureAndRecoveryActionsRemainReachable() {
+        for (identifier, action) in [("home.failure", "Try again"), ("home.recovery", "Open recovery")] {
+            let app = XCUIApplication()
+            openScenario(identifier, in: app)
+            let control = app.descendants(matching: .any)
+                .matching(NSPredicate(format: "label == %@", action)).firstMatch
+            XCTAssertTrue(control.waitForExistence(timeout: 5), identifier)
+            XCTAssertTrue(control.isHittable, identifier)
+            app.terminate()
+        }
+    }
+
+    private func assertHomeScenarioFitsVisibleWindow(identifier: String, requiredText: String) {
         let app = XCUIApplication()
-        app.launchArguments = ["-TAISAPreviewScenario", identifier]
-        app.launch()
+        openScenario(identifier, in: app)
 
-        let readiness = app.descendants(matching: .any)["preview.ready.\(identifier)"]
-        XCTAssertTrue(readiness.waitForExistence(timeout: 5))
-
-        let title = app.staticTexts["preview.scenario.title"]
-        let action = app.buttons["preview.scenario.primaryAction"]
+        let title = app.staticTexts[requiredText]
+        let action = app.buttons[requiredText]
+        XCTAssertTrue(title.waitForExistence(timeout: 5))
         XCTAssertTrue(title.exists)
         XCTAssertTrue(action.isHittable)
 
@@ -32,5 +47,23 @@ final class TaisaAccessibilityLayoutTests: XCTestCase {
         attachment.name = identifier
         attachment.lifetime = .keepAlways
         add(attachment)
+    }
+
+    private func openScenario(_ identifier: String, in app: XCUIApplication) {
+        app.launch()
+        let search = app.searchFields["Search scenarios"]
+        XCTAssertTrue(search.waitForExistence(timeout: 5), identifier)
+        search.tap()
+        search.typeText(identifier)
+        let title: String
+        switch identifier {
+        case "home.accessibilityText": title = "Home accessibility text"
+        case "home.narrowIPad": title = "Home narrow iPad"
+        default: title = identifier.replacingOccurrences(of: "home.", with: "Home ")
+        }
+        let row = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", title)).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 5), identifier)
+        row.tap()
+        XCTAssertFalse(search.waitForExistence(timeout: 2), identifier)
     }
 }

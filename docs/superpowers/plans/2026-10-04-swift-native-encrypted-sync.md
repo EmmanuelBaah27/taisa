@@ -1,5 +1,7 @@
 # Swift Native Encrypted Storage, Sync, and Recovery Implementation Plan
 
+**Status:** Shipped through the approved Personal device lane in PR #12 (`8c22c7b`); live CloudKit activation remains deferred pending paid Apple capabilities and separate approval.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build private offline-first native storage that synchronizes end-to-end encrypted career data between Baah's iPhone and iPad and restores it safely with a user-held recovery key.

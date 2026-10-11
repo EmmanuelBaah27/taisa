@@ -1,0 +1,3 @@
+[
+  {"type":"coaching.failed","requestId":"00000000-0000-4000-8000-000000000107","sequence":0,"code":"COACHING_UNAVAILABLE","retryable":true,"providerMessage":"private"}
+]

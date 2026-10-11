@@ -98,10 +98,10 @@ private actor EntityIdentityKeys: DatabaseKeyStore {
         #expect(try await ChangeJournal(store: store).pending(limit: 10).count == 3)
     }
 
-    @Test func entityTagMappingMatchesEveryV1DomainTableAndReference() async throws {
+    @Test func entityTagMappingMatchesEveryCurrentDomainTableAndReference() async throws {
         let (store, directory, _) = try await fixture()
         defer { try? FileManager.default.removeItem(at: directory) }
-        #expect(DomainEntity.allCases.count == 9)
+        #expect(DomainEntity.allCases.count == 10)
         for kind in DomainEntity.allCases {
             let valid = try await store.read { db in
                 guard try db.tableExists(kind.table),

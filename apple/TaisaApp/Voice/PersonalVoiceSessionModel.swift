@@ -1,0 +1,296 @@
+#if TAISA_PERSONAL
+import Foundation
+import TaisaAudio
+import TaisaNetworking
+import TaisaStorage
+import TaisaVoice
+
+func voiceActionFailureStatus(_ error: any Error) -> String {
+    if let captureError = error as? AudioCaptureError {
+        let code: String
+        switch captureError {
+        case .permissionDenied: code = "CAPTURE_PERMISSION_DENIED"
+        case .turnAlreadyOwned: code = "CAPTURE_TURN_ALREADY_OWNED"
+        case .noActiveCapture: code = "CAPTURE_NO_ACTIVE_CAPTURE"
+        case .invalidState: code = "CAPTURE_INVALID_STATE"
+        case .audioNotFinalized: code = "CAPTURE_AUDIO_NOT_FINALIZED"
+        case .unsupportedPlatform: code = "CAPTURE_UNSUPPORTED_PLATFORM"
+        }
+        return "Voice action failed (\(code))."
+    }
+    let failure = error as NSError
+    return "Voice action failed (\(failure.domain) \(failure.code))."
+}
+
+@MainActor
+final class PersonalVoiceSessionModel: ObservableObject {
+    enum GatewayState: Equatable {
+        case notConfigured
+        case enrollmentRequired
+        case enrolling
+        case ready
+        case invalidOrExpiredCode
+        case credentialRejected
+        case reEnrollmentRequired
+    }
+
+    typealias RuntimeStarter = @MainActor (VoiceGatewayCredential) async throws -> Void
+
+    @Published private(set) var snapshot: VoiceSessionSnapshot?
+    @Published private(set) var status = "Configure an approved HTTPS Taisa voice gateway for this build."
+    @Published private(set) var gatewayState: GatewayState = .notConfigured
+
+    private let gatewayURLString: String
+    private let enrollmentClient: any VoiceGatewayEnrolling
+    private let credentialStore: any VoiceGatewayCredentialStoring
+    private let runtimeStarter: RuntimeStarter?
+    private var gatewayOrigin: URL?
+    private var coordinator: VoiceSessionCoordinator?
+    private var connectivityTask: Task<Void, Never>?
+    private var refreshTask: Task<Void, Never>?
+    private var conversationID: UUID?
+    private var started = false
+
+    init(
+        gatewayURLString: String? = nil,
+        enrollmentClient: (any VoiceGatewayEnrolling)? = nil,
+        credentialStore: (any VoiceGatewayCredentialStoring)? = nil,
+        runtimeStarter: RuntimeStarter? = nil
+    ) {
+        let arguments = ProcessInfo.processInfo.arguments
+        let forcesUnenrolledUITest = arguments.contains("--taisa-voice-gateway-unenrolled")
+        let usesUITestGateway = forcesUnenrolledUITest
+            || arguments.contains("--taisa-voice-gateway-ready")
+        self.gatewayURLString = gatewayURLString
+            ?? (usesUITestGateway
+                ? ProcessInfo.processInfo.environment["TAISA_UI_TEST_VOICE_GATEWAY_URL"] ?? ""
+                : Bundle.main.object(forInfoDictionaryKey: "TaisaVoiceGatewayURL") as? String ?? "")
+        self.enrollmentClient = enrollmentClient ?? VoiceGatewayEnrollmentClient()
+        self.credentialStore = credentialStore
+            ?? (usesUITestGateway
+                ? InMemoryVoiceGatewayCredentialStore()
+                : KeychainVoiceGatewayCredentialStore())
+        self.runtimeStarter = runtimeStarter
+    }
+
+    deinit {
+        connectivityTask?.cancel()
+        refreshTask?.cancel()
+    }
+
+    func start() async {
+        guard !started else { return }
+        started = true
+        let rawURL = gatewayURLString.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !rawURL.isEmpty,
+              let suppliedURL = URL(string: rawURL),
+              let origin = try? VoiceGatewayCredential(
+                origin: suppliedURL, credentialID: "origin-validation", bearerToken: "origin-validation"
+              ).origin
+        else {
+            gatewayState = .notConfigured
+            status = "Configure an approved HTTPS Taisa voice gateway for this build."
+            return
+        }
+        gatewayOrigin = origin
+#if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("--taisa-voice-gateway-ready") {
+            gatewayState = .ready
+            status = "Ready"
+            snapshot = VoiceSessionSnapshot(
+                durable: makeTurn(conversationID: UUID()),
+                partialTranscript: "",
+                partialCoaching: ""
+            )
+            return
+        }
+#endif
+        do {
+            guard let credential = try await credentialStore.load(origin: origin) else {
+                gatewayState = .enrollmentRequired
+                status = "Connect this device to the approved voice gateway."
+                return
+            }
+            try await activate(credential)
+        } catch {
+            gatewayState = .enrollmentRequired
+            status = "Connect this device to the approved voice gateway."
+        }
+    }
+
+    func connect(code: String) async {
+        guard let gatewayOrigin else { return }
+        gatewayState = .enrolling
+        status = "Connecting this device…"
+        do {
+            let credential = try await enrollmentClient.enroll(baseURL: gatewayOrigin, code: code)
+            try await credentialStore.save(credential)
+            try await activate(credential)
+        } catch VoiceGatewayEnrollmentError.invalidOrExpiredCode {
+            gatewayState = .invalidOrExpiredCode
+            status = "That enrollment code is invalid or expired. Request a new code and try again."
+        } catch {
+            gatewayState = .enrollmentRequired
+            status = "Unable to connect this device. Check the gateway and try again."
+        }
+    }
+
+    func credentialWasRejected() async {
+        guard let gatewayOrigin else { return }
+        try? await credentialStore.delete(origin: gatewayOrigin)
+        coordinator = nil
+        connectivityTask?.cancel()
+        refreshTask?.cancel()
+        snapshot = nil
+        gatewayState = .reEnrollmentRequired
+        status = "This device credential was rejected. Connect this device again."
+    }
+
+    func perform(_ action: VoiceSessionDiagnosticAction) {
+        guard let coordinator else { return }
+        status = "\(action.title)…"
+        Task {
+            do {
+                switch action {
+                case .record: try await coordinator.send(.startRecording)
+                case .pause: try await coordinator.send(.pauseRecording)
+                case .resume: try await coordinator.send(.resumeRecording)
+                case .send: try await coordinator.sendRecordedAudio()
+                case .cancel: try await coordinator.send(.cancel)
+                case .discard: try await coordinator.send(.discard)
+                case .confirmTranscript:
+                    guard let text = (await coordinator.snapshot()).durable.uncertainTranscript else { return }
+                    try await coordinator.send(.confirmTranscript(text: text, userMessageID: UUID().uuidString))
+                case .retry: try await coordinator.send(.retry)
+                case .confirmResume: try await coordinator.send(.confirmResume)
+                case .nextTurn:
+                    guard let conversationID else { return }
+                    try await coordinator.send(.beginNextTurn(makeTurn(conversationID: conversationID)))
+                }
+                await refresh()
+                status = "Ready"
+                beginRefreshing()
+            } catch {
+                if error as? StreamTransportError == .authentication {
+                    gatewayState = .credentialRejected
+                    await credentialWasRejected()
+                } else {
+                    status = voiceActionFailureStatus(error)
+                    await refresh()
+                }
+            }
+        }
+    }
+
+    private func activate(_ credential: VoiceGatewayCredential) async throws {
+        if let runtimeStarter {
+            try await runtimeStarter(credential)
+        } else {
+            try await startRuntime(credential: credential)
+        }
+        gatewayState = .ready
+        status = "Ready"
+    }
+
+    private func startRuntime(credential: VoiceGatewayCredential) async throws {
+        let backend = try PersonalRecoveryBackend.personal()
+        let context = try await backend.voiceStoreContext()
+        let deviceID = context.deviceID
+        let configuration = try VoiceGatewayConfiguration(
+            baseURL: credential.origin,
+            bearerToken: credential.bearerToken,
+            ownerID: deviceID.uuidString.lowercased()
+        )
+        let conversationID = stableConversationID()
+        self.conversationID = conversationID
+        try await ensureConversation(conversationID, store: context.store, deviceID: deviceID)
+        let turns = ConversationTurnRepository(store: context.store)
+        let initial = try await turns.latestResumableTurn(
+            conversationID: conversationID.uuidString
+        ) ?? makeTurn(conversationID: conversationID)
+        let files = try ProtectedAudioFileStore()
+        let capture = AudioCaptureController(
+            service: AudioCaptureService(
+                session: SystemAudioSessionAdapter(), recorder: SystemAudioRecorderAdapter(), files: files
+            ),
+            files: files, lifecycle: SystemAudioSessionLifecycleSource()
+        )
+        let connectivity = SystemConnectivityMonitor()
+        let coordinator = VoiceSessionCoordinator(
+            initial: initial,
+            checkpoints: RepositoryVoiceTurnCheckpointer(
+                repository: turns, deviceID: deviceID
+            ),
+            transcription: GatewayTranscriptionRunner(configuration: configuration, audio: capture),
+            transcriptionReconciliation: GatewayTranscriptionReconciliation(
+                configuration: configuration
+            ),
+            coaching: GatewayCoachingRunner(configuration: configuration),
+            connectivity: connectivity,
+            reconciliation: GatewayCoachingReconciliation(configuration: configuration),
+            capture: capture, audio: capture
+        )
+        self.coordinator = coordinator
+        snapshot = await coordinator.snapshot()
+        connectivityTask = Task { [weak self] in
+            for await available in await connectivity.changes() {
+                guard !Task.isCancelled else { return }
+                try? await coordinator.connectivityChanged(isAvailable: available)
+                await self?.refresh()
+            }
+        }
+        try await coordinator.recoverIfAuthorized()
+        beginRefreshing()
+    }
+
+    private func beginRefreshing() {
+        refreshTask?.cancel()
+        refreshTask = Task { [weak self] in
+            guard let self, let coordinator else { return }
+            for _ in 0..<1_200 {
+                guard !Task.isCancelled else { return }
+                snapshot = await coordinator.snapshot()
+                if snapshot?.durable.state.isTerminal == true { return }
+                try? await Task.sleep(for: .milliseconds(100))
+            }
+        }
+    }
+
+    private func refresh() async {
+        guard let coordinator else { return }
+        snapshot = await coordinator.snapshot()
+    }
+
+    private func stableConversationID() -> UUID {
+        let key = "taisa.personal.voice.conversation"
+        if let value = UserDefaults.standard.string(forKey: key).flatMap(UUID.init(uuidString:)) {
+            return value
+        }
+        let value = UUID()
+        UserDefaults.standard.set(value.uuidString, forKey: key)
+        return value
+    }
+
+    private func ensureConversation(_ id: UUID, store: TaisaStore, deviceID: UUID) async throws {
+        let repository = ConversationRepository(store: store)
+        guard try await repository.get(id: id.uuidString) == nil else { return }
+        let now = Int64(Date().timeIntervalSince1970 * 1_000)
+        try await repository.create(
+            .init(id: id.uuidString, title: "Voice conversation", createdAtMS: now, updatedAtMS: now),
+            context: .init(id: UUID().uuidString, deviceID: deviceID.uuidString, timestamp: now)
+        )
+    }
+
+    private func makeTurn(conversationID: UUID) -> VoiceTurnRecord {
+        let now = Int64(Date().timeIntervalSince1970 * 1_000)
+        return VoiceTurnRecord(
+            id: UUID().uuidString, conversationID: conversationID.uuidString,
+            transcriptionRequestID: UUID().uuidString,
+            transcriptionIdempotencyKey: UUID().uuidString,
+            coachingRequestID: UUID().uuidString,
+            coachingIdempotencyKey: UUID().uuidString,
+            state: .draft, stage: .capture, createdAtMS: now, updatedAtMS: now
+        )
+    }
+}
+#endif

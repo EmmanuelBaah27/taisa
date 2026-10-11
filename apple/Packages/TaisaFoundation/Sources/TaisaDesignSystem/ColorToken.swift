@@ -6,6 +6,10 @@ public enum TaisaColor: String, CaseIterable, Sendable {
     case mutedForeground = "#5F646A"
     case primaryAction = "#CDEC1A"
     case border = "#E6E6E6"
+    case raisedSurface = "#F9F9F9"
+    case selectedSurface = "#F3F3F3"
+    case destructive = "#C60000"
+    case warning = "#E46300"
 
     public var hex: String { rawValue }
 

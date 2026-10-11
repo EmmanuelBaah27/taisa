@@ -9,6 +9,7 @@ import type {
 } from './provider';
 import { estimateCostUsd, estimateMaximumCoachingUsage } from './provider';
 import { normalizeAnthropicSdkFailure } from './providerSdkFailure';
+import { extractReplyPrefix } from './streamingCoaching';
 
 type AnthropicClient = Pick<Anthropic, 'messages'>;
 
@@ -23,6 +24,10 @@ const IdJsonSchema = {
   minLength: 1,
   maxLength: COACHING_GATEWAY_LIMITS.maxIdLength,
   pattern: '\\S',
+};
+const TitleSuggestionJsonSchema = {
+  type: 'string' as const, minLength: 1,
+  maxLength: COACHING_GATEWAY_LIMITS.maxTitleSuggestionLength, pattern: '\\S',
 };
 const TimestampJsonSchema = {
   type: 'string' as const,
@@ -192,6 +197,7 @@ const COACHING_RESPONSE_INPUT_SCHEMA = {
         ],
           },
         },
+        titleSuggestion: TitleSuggestionJsonSchema,
       },
     },
     {
@@ -205,6 +211,7 @@ const COACHING_RESPONSE_INPUT_SCHEMA = {
         reply: TextJsonSchema,
         stance: { type: 'null' },
         proposals: { type: 'array', minItems: 0, maxItems: 0 },
+        titleSuggestion: TitleSuggestionJsonSchema,
       },
     },
     {
@@ -218,6 +225,7 @@ const COACHING_RESPONSE_INPUT_SCHEMA = {
         reply: TextJsonSchema,
         stance: { type: 'null' },
         proposals: { type: 'array', minItems: 0, maxItems: 0 },
+        titleSuggestion: TitleSuggestionJsonSchema,
       },
     },
   ],
@@ -275,6 +283,36 @@ export function createAnthropicProvider(
           estimatedCostUsd: estimateCostUsd(inputTokens, outputTokens, config),
         },
       };
+    },
+    async *streamRespond(input: ProviderCoachingInput) {
+      try {
+        const stream = client.messages.stream({
+          model: config.model, max_tokens: config.maxOutputTokens, system: input.systemPrompt,
+          messages: [{ role: 'user', content: input.userPrompt }],
+          tools: [{ name: 'submit_coaching_response', description: 'Return the structured coaching response for this submitted turn.', input_schema: COACHING_RESPONSE_INPUT_SCHEMA }],
+          tool_choice: { type: 'tool', name: 'submit_coaching_response', disable_parallel_tool_use: true },
+        }, { maxRetries: 0 });
+        let raw = '';
+        let emitted = '';
+        for await (const event of stream) {
+          if (event.type !== 'content_block_delta' || event.delta.type !== 'input_json_delta') continue;
+          raw += event.delta.partial_json;
+          const reply = extractReplyPrefix(raw);
+          if (reply.length > emitted.length) {
+            yield { kind: 'delta', delta: reply.slice(emitted.length) } as const;
+            emitted = reply;
+          }
+        }
+        const message = await stream.finalMessage();
+        const toolUse = message.content.find((block) => block.type === 'tool_use' && block.name === 'submit_coaching_response');
+        const payload = CoachingResponsePayloadSchema.parse(toolUse?.type === 'tool_use' ? toolUse.input : undefined);
+        const inputTokens = message.usage.input_tokens;
+        const outputTokens = message.usage.output_tokens;
+        yield { kind: 'completed', result: { payload, usage: {
+          provider: 'anthropic', model: config.model, inputTokens, outputTokens,
+          estimatedCostUsd: estimateCostUsd(inputTokens, outputTokens, config),
+        } } } as const;
+      } catch (error) { throw normalizeAnthropicSdkFailure(error); }
     },
   };
 }

@@ -35,8 +35,12 @@
 	<true/>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Authenticate to use your Taisa recovery key.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Taisa uses the microphone only when you choose to record a conversation.</string>
 	<key>TaisaEnvironment</key>
 	<string>$(TAISA_ENVIRONMENT)</string>
+	<key>TaisaVoiceGatewayURL</key>
+	<string>$(TAISA_VOICE_GATEWAY_URL)</string>
 	<key>UTExportedTypeDeclarations</key>
 	<array>
 		<dict>

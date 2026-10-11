@@ -1,6 +1,56 @@
 import XCTest
 
 @MainActor final class PersonalRecoveryUITests: XCTestCase {
+    func testOverflowingConversationRendersWithLatestMessageVisible() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--taisa-conversation-overflow-qa"]
+        app.launch()
+
+        let latestMessage = app.descendants(matching: .any)["conversation.message.latest-message"]
+        XCTAssertTrue(latestMessage.waitForExistence(timeout: 10))
+        XCTAssertTrue(latestMessage.isHittable)
+    }
+
+    func testExplicitQALaunchExposesVoiceGatewayEntry() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--taisa-personal-device-qa"]
+        app.launch()
+
+        let qa = app.buttons["foundation.personal-qa.action"]
+        XCTAssertTrue(qa.waitForExistence(timeout: 10))
+        qa.tap()
+        XCTAssertTrue(
+            app.buttons["personal-qa.voice"].waitForExistence(timeout: 10)
+        )
+    }
+
+    func testExplicitQALaunchOpensTheProductConversationForVoiceAcceptance() {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "--taisa-personal-device-qa",
+            "--taisa-conversation-route-qa-fixture",
+        ]
+        app.launch()
+
+        let qa = app.buttons["foundation.personal-qa.action"]
+        XCTAssertTrue(qa.waitForExistence(timeout: 10))
+        qa.tap()
+
+        let productVoice = app.buttons["personal-qa.product-voice"]
+        XCTAssertTrue(productVoice.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["personal-qa.voice-acceptance-guidance"].exists)
+        productVoice.tap()
+
+        XCTAssertTrue(
+            app.descendants(matching: .any)["conversation.root"].waitForExistence(timeout: 10)
+        )
+        XCTAssertTrue(
+            app.descendants(matching: .any)["conversation.voice-composer"].waitForExistence(timeout: 10)
+        )
+        XCTAssertFalse(app.staticTexts["Conversation unavailable"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["voice.diagnostics.root"].exists)
+    }
+
     func testExplicitQALaunchCanCreateOnceAndInspectAfterRelaunch() {
         let app = XCUIApplication()
         app.launchArguments = ["--taisa-personal-device-qa"]
@@ -67,5 +117,26 @@ import XCTest
         app.activate()
         XCTAssertTrue(app.buttons["Restore Backup"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.secureTextFields["Recovery key"].exists)
+    }
+
+    func testConfiguredGatewayRequiresSecureEnrollmentBeforeRecording() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--taisa-personal-device-qa", "--taisa-voice-gateway-unenrolled"]
+        app.launchEnvironment["TAISA_UI_TEST_VOICE_GATEWAY_URL"] = "https://voice.example.com"
+        app.launch()
+        app.buttons["foundation.personal-qa.action"].tap()
+        app.buttons["personal-qa.voice"].tap()
+
+        XCTAssertTrue(app.secureTextFields["Enrollment code"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["Connect this device"].exists)
+        XCTAssertFalse(app.buttons["Record"].exists)
+
+        app.terminate()
+        app.launchArguments = ["--taisa-personal-device-qa", "--taisa-voice-gateway-ready"]
+        app.launch()
+        app.buttons["foundation.personal-qa.action"].tap()
+        app.buttons["personal-qa.voice"].tap()
+        XCTAssertTrue(app.buttons["Record"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.secureTextFields["Enrollment code"].exists)
     }
 }

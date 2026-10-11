@@ -44,6 +44,17 @@
             parallelizable = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
+               BlueprintIdentifier = "0E4CB3E4A7973D8D85BD97CF"
+               BuildableName = "TaisaUnitTests.xctest"
+               BlueprintName = "TaisaUnitTests"
+               ReferencedContainer = "container:Taisa.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
                BlueprintIdentifier = "E2608AF89C4A30E946949247"
                BuildableName = "TaisaPreviewUITests.xctest"
                BlueprintName = "TaisaPreviewUITests"

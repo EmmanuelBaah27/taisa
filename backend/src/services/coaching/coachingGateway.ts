@@ -1,7 +1,7 @@
 import type { CoachingRequest, CoachingResponse } from '@taisa/shared';
 import { ZodError } from 'zod';
 import { buildSeniorSelfPrompt } from '../../prompts/system/seniorSelf';
-import { CoachingResponsePayloadSchema } from '../../schemas/coaching';
+import { CoachingResponsePayloadSchema, type CoachingResponsePayload } from '../../schemas/coaching';
 import {
   getConfiguredFallbackProvider,
   type FallbackCoachingProvider,
@@ -48,6 +48,47 @@ export interface CoachingExecution {
   attempts: readonly ProviderAttemptOutcome[];
 }
 
+export type StreamingCoachingProviderItem =
+  | { kind: 'delta'; delta: string }
+  | { kind: 'completed'; result: { payload: unknown; usage: CoachingResponse['usage'] }; attempts: readonly ProviderAttemptOutcome[] };
+
+export interface StreamingFallbackCoachingProvider {
+  stream(
+    input: { systemPrompt: string; userPrompt: string },
+    observer: ProviderAttemptObserver,
+  ): AsyncIterable<StreamingCoachingProviderItem>;
+}
+
+export type StreamingCoachingItem =
+  | { kind: 'delta'; delta: string }
+  | { kind: 'completed'; response: CoachingResponse; attempts: readonly ProviderAttemptOutcome[] };
+
+function normalizeTitleSuggestion(request: CoachingRequest, payload: CoachingResponsePayload) {
+  const { titleSuggestion, ...decision } = payload;
+  const isFirstTurn = !request.context.recentMessages.some(({ role }) => role === 'assistant');
+  return { ...decision, ...(isFirstTurn && titleSuggestion ? { titleSuggestion } : {}) };
+}
+
+export async function* requestStreamingCoaching(
+  request: CoachingRequest,
+  provider: StreamingFallbackCoachingProvider,
+  observer: ProviderAttemptObserver = NOOP_ATTEMPT_OBSERVER,
+): AsyncIterable<StreamingCoachingItem> {
+  const prompt = buildSeniorSelfPrompt(request);
+  for await (const item of provider.stream(prompt, observer)) {
+    if (item.kind === 'delta') {
+      yield item;
+      continue;
+    }
+    const payload = CoachingResponsePayloadSchema.parse(item.result.payload);
+    yield {
+      kind: 'completed',
+      response: { requestId: request.requestId, ...normalizeTitleSuggestion(request, payload), usage: item.result.usage },
+      attempts: item.attempts,
+    };
+  }
+}
+
 const NOOP_ATTEMPT_OBSERVER: ProviderAttemptObserver = {
   beginAttempt: () => undefined,
   settleAttempt: () => undefined,
@@ -66,7 +107,7 @@ export async function requestCoaching(
     return {
       response: {
         requestId: request.requestId,
-        ...payload,
+        ...normalizeTitleSuggestion(request, payload),
         usage: execution.result.usage,
       },
       attempts: execution.attempts,

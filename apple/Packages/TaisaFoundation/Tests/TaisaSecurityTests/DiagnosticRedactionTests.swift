@@ -1,5 +1,7 @@
 import Foundation
 import Testing
+import TaisaStorage
+import TaisaVoice
 @testable import TaisaSecurity
 
 @Suite struct DiagnosticRedactionTests {
@@ -45,6 +47,32 @@ import Testing
                           envelope.ciphertext.base64EncodedString()] {
             #expect(!output.contains(forbidden))
         }
+        #expect(output.contains("redacted"))
+    }
+
+    @Test func voiceDiagnosticsNeverRevealConversationContentOrAudioIdentity() {
+        let forbidden = [
+            "private-transcript", "private-uncertain", "private-audio-path",
+            "private-partial-transcript", "private-partial-coaching",
+        ]
+        let turn = VoiceTurnRecord(
+            id: UUID().uuidString, conversationID: UUID().uuidString,
+            transcriptionRequestID: UUID().uuidString, transcriptionIdempotencyKey: "t",
+            coachingRequestID: UUID().uuidString, coachingIdempotencyKey: "c",
+            state: .recoverableFailure, stage: .coaching,
+            audioFileID: "private-audio-path", audioSHA256: "private-digest",
+            acceptedTranscript: "private-transcript",
+            uncertainTranscript: "private-uncertain",
+            createdAtMS: 0, updatedAtMS: 0
+        )
+        let snapshot = VoiceSessionSnapshot(
+            durable: turn,
+            partialTranscript: "private-partial-transcript",
+            partialCoaching: "private-partial-coaching"
+        )
+
+        let output = diagnosticText(snapshot)
+        for value in forbidden { #expect(!output.contains(value)) }
         #expect(output.contains("redacted"))
     }
 

@@ -1,6 +1,9 @@
 import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
-import { ContentFilterFinishReasonError } from 'openai/error';
+import {
+  ContentFilterFinishReasonError,
+  LengthFinishReasonError,
+} from 'openai/error';
 
 type FailureRecord = Readonly<Record<string, unknown>>;
 
@@ -56,6 +59,9 @@ function anthropicType(error: { error?: unknown }): string | null {
 export function normalizeOpenAISdkFailure(error: unknown): unknown {
   if (error instanceof ContentFilterFinishReasonError) {
     return Object.freeze({ type: 'content_policy_error' });
+  }
+  if (error instanceof LengthFinishReasonError) {
+    return Object.freeze({ type: 'length_finish_reason_error' });
   }
   if (!(error instanceof OpenAI.APIError)) return error;
 

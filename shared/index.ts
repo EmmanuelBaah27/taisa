@@ -4,6 +4,7 @@ export * from './types/goals';
 export * from './types/api';
 export * from './types/memory';
 export * from './types/coaching';
+export * from './types/coachingStream';
 export * from './types/migration';
 export * from './types/local';
 export * from './types/transcription';

@@ -2,7 +2,7 @@
 
 **Tier:** Full
 **Track:** Platform
-**Stage:** Review + QA
+**Stage:** Shipped — Personal device lane merged in `8c22c7b`; automatic CloudKit remains deferred
 **Depends on:** accepted Swift native foundation
 
 ## What is it?
@@ -63,4 +63,4 @@ The interim lane is specified in `docs/superpowers/specs/2026-10-06-personal-dev
 - **Learnings and decisions:** Weekly refresh must install over `com.taisa.app.personal` and never uninstall it. Encrypted file transfer copies one authoritative history and never merges divergent devices. The recovery key is stored separately in Passwords plus an offline copy, and the signed artifact is rejected unless its signer, profile, explicit device authorization, bundle, environment, embedded commit, entitlements, and linkage all match.
 - **Remaining debt:** The original CloudKit criteria—including live development schema creation, real two-device incremental sync/conflict/deletion/offline tests, production schema promotion, and paid-capability signed QA—remain open. Recovery does not include recordings or unfinished audio, and file transfer does not merge histories.
 - **Canonical docs updated:** Personal signed-build records and weekly refresh guidance, CloudKit deferral, workflow evidence rules, and roadmap status are updated on this branch.
-- **PR and merge evidence:** Pending.
+- **PR and merge evidence:** PR #12 merged into `main` as `8c22c7bb89fda5f3a0a57a71e222b0e2ee95a19b` after the native Apple and design-system workflows passed on head `c1a2ab7`.

@@ -70,4 +70,5 @@ export type CoachingResponse = CoachingResponseDecision & {
   requestId: string;
   reply: string;
   usage: UsageReceipt;
+  titleSuggestion?: string;
 };

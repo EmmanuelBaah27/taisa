@@ -34,6 +34,17 @@ public struct SnapshotService: Sendable {
         do { try await audioGuard.assertNoPendingAudioReferences() }
         catch is CancellationError { throw CancellationError() }
         catch { throw SnapshotError.pendingAudio }
+        // Defense in depth: the injected file guard checks the filesystem, while the
+        // encrypted store remains authoritative for durable references. Never export a
+        // checkpoint that could teach another device about a local audio identifier.
+        let storedAudioReferences = try await store.read { db in
+            let turns = try Int.fetchOne(
+                db, sql: "SELECT count(*) FROM voice_turns WHERE audio_file_id IS NOT NULL"
+            ) ?? 0
+            let cleanup = try Int.fetchOne(db, sql: "SELECT count(*) FROM audio_cleanup_queue") ?? 0
+            return turns + cleanup
+        }
+        guard storedAudioReferences == 0 else { throw SnapshotError.pendingAudio }
         let directory = destination.deletingLastPathComponent()
         let staging = directory.appendingPathComponent(".taisa-\(UUID().uuidString)", isDirectory: true)
         let temporaryArchive = staging.appendingPathComponent("archive.partial")
