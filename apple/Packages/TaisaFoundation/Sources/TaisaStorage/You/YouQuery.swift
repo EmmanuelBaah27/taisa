@@ -29,12 +29,18 @@ public struct CapabilityOverview: Codable, Sendable, Equatable, Identifiable {
     public let chosenState: CapabilityGovernanceState
     public let availability: CapabilityAvailability
     public let decidedAtMS: Int64?
+    public init(id: CapabilityID, chosenState: CapabilityGovernanceState, availability: CapabilityAvailability, decidedAtMS: Int64?) {
+        self.id = id; self.chosenState = chosenState; self.availability = availability; self.decidedAtMS = decidedAtMS
+    }
 }
 
 public struct YouSnapshot: Codable, Sendable, Equatable {
     public let profile: ProfileRecord?
     public let capabilities: [CapabilityOverview]
     public let diagnostics: YouOperationalFacts
+    public init(profile: ProfileRecord?, capabilities: [CapabilityOverview], diagnostics: YouOperationalFacts) {
+        self.profile = profile; self.capabilities = capabilities; self.diagnostics = diagnostics
+    }
 }
 
 public struct YouQuery: Sendable {
