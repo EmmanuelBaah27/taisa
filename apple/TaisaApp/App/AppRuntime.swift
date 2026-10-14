@@ -1,3 +1,4 @@
+import AVFAudio
 import Foundation
 import Observation
 import TaisaCareerWork
@@ -5,22 +6,25 @@ import TaisaConversations
 import TaisaHome
 import TaisaStorage
 import TaisaVoice
+import TaisaYou
 
 @MainActor
 @Observable
 final class AppRuntime {
     struct Clients: Sendable {
         let home: HomeClient
+        let you: YouClient
         let careerWork: CareerWorkClient
         let insights: InsightsClient
         let conversations: ConversationsClient
         let conversationFactory: ConversationRuntimeFactory?
 
-        init(home: HomeClient, insights: InsightsClient,
+        init(home: HomeClient, you: YouClient, insights: InsightsClient,
              careerWork: CareerWorkClient = CareerWorkClient(loadOverview: { .init(active: [], paused: [], completed: [], archived: []) }),
              conversations: ConversationsClient = ConversationsClient(load: { ConversationIndexSnapshot(drafts: [], conversations: []) }),
              conversationFactory: ConversationRuntimeFactory? = nil) {
             self.home = home
+            self.you = you
             self.careerWork = careerWork
             self.insights = insights
             self.conversations = conversations
@@ -35,6 +39,7 @@ final class AppRuntime {
     private(set) var careerWorkModel: CareerWorkModel?
     private(set) var insightsModel: InsightsModel?
     private(set) var conversationsModel: ConversationsModel?
+    private(set) var youModel: YouModel?
     private(set) var conversationFactory: ConversationRuntimeFactory?
     let primaryShellModel: PrimaryAppShellModel
     @ObservationIgnored private let startOperation: @Sendable () async throws -> Clients
@@ -46,7 +51,8 @@ final class AppRuntime {
     }
 
     static func live() -> AppRuntime {
-        AppRuntime {
+        let microphone = microphonePermissionStatus
+        return AppRuntime {
 #if DEBUG || TAISA_PERSONAL
             if ProcessInfo.processInfo.arguments.contains("--taisa-recovery-route-qa") {
                 throw StorageError.authenticationFailed
@@ -78,6 +84,17 @@ final class AppRuntime {
 #endif
             return Clients(
                 home: HomeClient.local(store: store, deviceID: context.deviceID.uuidString),
+                you: YouClient.local(
+                    store: store,
+                    deviceID: context.deviceID.uuidString,
+                    operational: .init(
+                        store: .healthy,
+                        recovery: .ready,
+                        microphone: microphone,
+                        gateway: configuration == nil ? .unavailable : .healthy,
+                        appProtection: .unknown
+                    )
+                ),
                 insights: InsightsClient.local(store: store),
                 careerWork: CareerWorkClient.local(store: store, deviceID: context.deviceID.uuidString),
                 conversations: ConversationsClient.local(store: store),
@@ -117,6 +134,7 @@ final class AppRuntime {
         do {
             let clients = try await startOperation()
             homeModel = HomeModel(client: clients.home)
+            youModel = YouModel(client: clients.you)
             careerWorkModel = CareerWorkModel(client: clients.careerWork)
             insightsModel = InsightsModel(client: clients.insights)
             conversationsModel = ConversationsModel(client: clients.conversations)
@@ -124,6 +142,7 @@ final class AppRuntime {
             state = .ready
         } catch {
             homeModel = nil
+            youModel = nil
             careerWorkModel = nil
             insightsModel = nil
             conversationsModel = nil
@@ -134,4 +153,13 @@ final class AppRuntime {
     }
 
     func requireRecovery() { state = .recoveryRequired }
+
+    private static var microphonePermissionStatus: YouPermissionStatus {
+        switch AVAudioApplication.shared.recordPermission {
+        case .granted: .granted
+        case .denied: .denied
+        case .undetermined: .notDetermined
+        @unknown default: .restricted
+        }
+    }
 }
