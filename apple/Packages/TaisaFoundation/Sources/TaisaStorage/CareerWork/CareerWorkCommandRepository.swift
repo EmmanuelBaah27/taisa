@@ -16,6 +16,15 @@ public struct CareerWorkCommandRepository: Sendable {
         return record
     }
 
+    public func updateGoal(id: String, title: String, detail: String, context: MutationContext) async throws {
+        let title = try CareerWorkTitle.validating(title).value
+        try await store.write { db in
+            guard let current = try Self.fetchGoal(id: id, db: db) else { throw RepositoryError.notFound }
+            let updated = GoalRecord(id: current.id, title: title, detail: detail, status: current.status, createdAtMS: current.createdAtMS, updatedAtMS: context.timestamp)
+            try Self.goalCore(self.store).update(updated, context: context, db: db)
+        }
+    }
+
     public func createMilestone(id: String = UUID().uuidString, goalID: String, title: String, targetAtMS: Int64?, source: CareerWorkMutationSource = .user, sourceID: String? = nil, context: MutationContext) async throws -> MilestoneRecord {
         let title = try CareerWorkTitle.validating(title).value
         let record = MilestoneRecord(id: id, goalID: goalID, title: title, status: MilestoneStatus.planned.storageValue, targetAtMS: targetAtMS, updatedAtMS: context.timestamp)

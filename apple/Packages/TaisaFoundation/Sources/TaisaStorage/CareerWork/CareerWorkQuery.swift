@@ -7,6 +7,15 @@ public struct CareerWorkProgress: Sendable, Equatable {
     public let completedActions: Int
     public let actionCount: Int
     public let evidenceCount: Int
+
+    public init(summary: String, completedMilestones: Int, milestoneCount: Int, completedActions: Int, actionCount: Int, evidenceCount: Int) {
+        self.summary = summary
+        self.completedMilestones = completedMilestones
+        self.milestoneCount = milestoneCount
+        self.completedActions = completedActions
+        self.actionCount = actionCount
+        self.evidenceCount = evidenceCount
+    }
 }
 
 public struct EvidenceProvenance: Sendable, Equatable {
@@ -14,6 +23,13 @@ public struct EvidenceProvenance: Sendable, Equatable {
     public let origin: EvidenceOrigin
     public let originID: String?
     public let supersedesEvidenceID: String?
+
+    public init(evidenceID: String, origin: EvidenceOrigin, originID: String?, supersedesEvidenceID: String?) {
+        self.evidenceID = evidenceID
+        self.origin = origin
+        self.originID = originID
+        self.supersedesEvidenceID = supersedesEvidenceID
+    }
 }
 
 public struct CareerGoalSnapshot: Sendable, Equatable {
@@ -23,6 +39,15 @@ public struct CareerGoalSnapshot: Sendable, Equatable {
     public let evidence: [EvidenceRecord]
     public let provenance: [EvidenceProvenance]
     public let progress: CareerWorkProgress
+
+    public init(goal: GoalRecord, milestones: [MilestoneRecord], actions: [ActionRecord], evidence: [EvidenceRecord], provenance: [EvidenceProvenance], progress: CareerWorkProgress) {
+        self.goal = goal
+        self.milestones = milestones
+        self.actions = actions
+        self.evidence = evidence
+        self.provenance = provenance
+        self.progress = progress
+    }
 }
 
 public struct CareerWorkOverview: Sendable, Equatable {
@@ -30,6 +55,13 @@ public struct CareerWorkOverview: Sendable, Equatable {
     public let paused: [GoalRecord]
     public let completed: [GoalRecord]
     public let archived: [GoalRecord]
+
+    public init(active: [GoalRecord], paused: [GoalRecord], completed: [GoalRecord], archived: [GoalRecord]) {
+        self.active = active
+        self.paused = paused
+        self.completed = completed
+        self.archived = archived
+    }
 }
 
 public struct CareerWorkQuery: Sendable {
