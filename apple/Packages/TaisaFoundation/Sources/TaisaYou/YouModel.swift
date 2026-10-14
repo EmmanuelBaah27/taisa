@@ -1,7 +1,18 @@
 import Observation
 import TaisaStorage
 
-public enum YouIssue: Sendable, Equatable { case storageUnavailable, recoveryRequired, invalidInput, conflict }
+public enum YouIssue: Sendable, Equatable {
+    case storageUnavailable, recoveryRequired, invalidInput, conflict
+
+    public var guidance: String {
+        switch self {
+        case .storageUnavailable: "Your encrypted information could not be loaded. Try again."
+        case .recoveryRequired: "Taisa could not safely open your encrypted data. Open backup and recovery."
+        case .invalidInput: "Review the highlighted information and try again."
+        case .conflict: "This information changed since you opened it. Reload and review the current value."
+        }
+    }
+}
 public enum YouState: Sendable, Equatable {
     case idle, loading, content(YouSnapshot, issue: YouIssue?), failure(YouIssue)
     public var snapshot: YouSnapshot? { if case let .content(value, _) = self { value } else { nil } }

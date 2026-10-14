@@ -71,7 +71,19 @@ import TaisaStorage
         #expect(capability.availability == .unavailable)
         #expect(YouPrivacyCopy.readableData == "Career profile and capability choices")
         #expect(YouPrivacyCopy.encryptedLocation == "Encrypted on this device")
+        #expect(YouPrivacyCopy.networkBoundary.contains("deliberate voice or coaching action"))
+        #expect(YouPrivacyCopy.retentionBoundary.contains("until you edit"))
+        #expect(YouPrivacyCopy.recoveryBoundary.contains("explicit confirmation"))
         #expect(YouPermissionGuidance.microphone(.notDetermined).requestsPermission == false)
+    }
+
+    @Test func userIssuesAreActionableAndContentFree() {
+        #expect(YouIssue.invalidInput.guidance.contains("Review"))
+        #expect(YouIssue.conflict.guidance.contains("changed"))
+        for issue in [YouIssue.storageUnavailable, .recoveryRequired, .invalidInput, .conflict] {
+            #expect(!issue.guidance.contains("/private/"))
+            #expect(!issue.guidance.contains("token"))
+        }
     }
 
     @Test func diagnosticsAreAllowlistedContentFreeAndDeterministic() {

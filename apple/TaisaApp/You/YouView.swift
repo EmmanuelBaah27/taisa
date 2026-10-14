@@ -17,7 +17,7 @@ struct YouView: View {
                 ContentUnavailableView {
                     Label(issue == .recoveryRequired ? "Recovery required" : "You is unavailable", systemImage: "person.crop.circle.badge.exclamationmark")
                 } description: {
-                    Text(issue == .recoveryRequired ? "Taisa could not safely open your encrypted data." : "Your information could not be loaded from this device.")
+                    Text(issue.guidance)
                 } actions: {
                     if issue == .recoveryRequired {
                         Button("Open backup and recovery", action: openRecovery)
@@ -72,8 +72,8 @@ struct YouView: View {
 
     @ViewBuilder private func destinationView(_ destination: YouDestination, snapshot: YouSnapshot) -> some View {
         switch destination {
-        case .careerProfile: CareerProfileView(model: model, profile: snapshot.profile)
-        case .capabilities: CapabilityOverviewView(model: model, snapshot: snapshot)
+        case .careerProfile: CareerProfileView(model: model, profile: snapshot.profile, issue: model.state.issue)
+        case .capabilities: CapabilityOverviewView(model: model, snapshot: snapshot, issue: model.state.issue)
         case .privacyPermissions: PrivacyPermissionsView(facts: snapshot.diagnostics)
         case .backupRecovery:
             List { Button("Open backup and recovery", action: openRecovery) }
@@ -86,10 +86,15 @@ struct YouView: View {
 private struct CareerProfileView: View {
     @Bindable var model: YouModel
     let profile: ProfileRecord?
+    let issue: YouIssue?
     @State private var editing = false
 
     var body: some View {
         Form {
+            if let issue {
+                Label(issue.guidance, systemImage: "exclamationmark.triangle")
+                    .accessibilityIdentifier("you.profile.issue")
+            }
             if editing, model.profileDraft != nil {
                 TextField("Display name", text: binding(\.displayName))
                 TextField("Headline", text: binding(\.headline))
@@ -118,18 +123,25 @@ private struct CareerProfileView: View {
 private struct CapabilityOverviewView: View {
     @Bindable var model: YouModel
     let snapshot: YouSnapshot
+    let issue: YouIssue?
     var body: some View {
-        List(snapshot.capabilities) { capability in
-            Section(capability.id.title) {
-                Picker("Your choice", selection: Binding(
-                    get: { capability.chosenState },
-                    set: { requested in Task { await model.requestCapabilityChange(capability.id, to: requested) } }
-                )) {
-                    ForEach(CapabilityGovernanceState.allCases, id: \.self) { state in
-                        Text(state.rawValue.capitalized).tag(state)
+        List {
+            if let issue {
+                Label(issue.guidance, systemImage: "exclamationmark.triangle")
+                    .accessibilityIdentifier("you.capabilities.issue")
+            }
+            ForEach(snapshot.capabilities) { capability in
+                Section(capability.id.title) {
+                    Picker("Your choice", selection: Binding(
+                        get: { capability.chosenState },
+                        set: { requested in Task { await model.requestCapabilityChange(capability.id, to: requested) } }
+                    )) {
+                        ForEach(CapabilityGovernanceState.allCases, id: \.self) { state in
+                            Text(state.rawValue.capitalized).tag(state)
+                        }
                     }
+                    LabeledContent("Availability", value: capability.availability.rawValue.capitalized)
                 }
-                LabeledContent("Availability", value: capability.availability.rawValue.capitalized)
             }
         }
         .navigationTitle("Capabilities")
@@ -157,6 +169,13 @@ private struct PrivacyPermissionsView: View {
             Section("Readable data") {
                 LabeledContent("Stored", value: YouPrivacyCopy.readableData)
                 LabeledContent("Protection", value: YouPrivacyCopy.encryptedLocation)
+                Text(YouPrivacyCopy.retentionBoundary).foregroundStyle(.secondary)
+            }
+            Section("Network boundary") {
+                Text(YouPrivacyCopy.networkBoundary)
+            }
+            Section("Recovery boundary") {
+                Text(YouPrivacyCopy.recoveryBoundary)
             }
             Section("Permissions") {
                 LabeledContent("Microphone", value: microphone.status.displayName)
