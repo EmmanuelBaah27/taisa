@@ -358,6 +358,24 @@ enum TaisaSchema {
         "CREATE INDEX message_revisions_by_message ON message_revisions(message_id, created_at_ms)",
     ]
 
+    // A previously shipped v3 producer emitted this semantically identical
+    // CHECK constraint with compact parentheses. Keep the exception exact so
+    // other schema differences continue to fail closed.
+    private static let compactVersion3ConversationDraftsTable = """
+        CREATE TABLE conversation_drafts (
+            id TEXT PRIMARY KEY NOT NULL CHECK (length(id) = 36),
+            conversation_id TEXT NOT NULL UNIQUE REFERENCES conversations(id) ON DELETE CASCADE,
+            input_mode TEXT NOT NULL CHECK (input_mode IN ('voice', 'text')),
+            text TEXT,
+            voice_turn_id TEXT UNIQUE REFERENCES voice_turns(id) ON DELETE CASCADE,
+            recovery_kind TEXT NOT NULL CHECK (recovery_kind IN ('saved', 'recovered', 'retryableTranscription', 'retryableCoaching')),
+            created_at_ms INTEGER NOT NULL CHECK (created_at_ms >= 0),
+            updated_at_ms INTEGER NOT NULL CHECK (updated_at_ms >= created_at_ms),
+            CHECK ((input_mode = 'text' AND text IS NOT NULL AND voice_turn_id IS NULL)
+                OR (input_mode = 'voice' AND text IS NULL AND voice_turn_id IS NOT NULL))
+        )
+        """
+
     private static let version4Statements: [String] = [
         """
         CREATE TABLE career_work_events (
@@ -605,7 +623,11 @@ enum TaisaSchema {
                     sql: "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?",
                     arguments: [name]
                 )
-                guard stored == statement else { throw StorageError.schemaMismatch }
+                let isSupportedCompactV3 = name == "conversation_drafts"
+                    && stored == compactVersion3ConversationDraftsTable
+                guard stored == statement || isSupportedCompactV3 else {
+                    throw StorageError.schemaMismatch
+                }
             }
         } catch {
             throw StorageError.schemaMismatch
