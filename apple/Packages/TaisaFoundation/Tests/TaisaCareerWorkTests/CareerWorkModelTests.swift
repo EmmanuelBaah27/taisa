@@ -72,10 +72,20 @@ import TaisaStorage
         let client = CareerWorkClient.local(store: store, deviceID: UUID().uuidString, nowMS: { 100 })
 
         let created = try await client.createGoal("Offline goal", "No provider")
+        let milestone = try await client.createMilestone(created.id, "First proof point", 200)
+        let action = try await client.createAction(created.id, "Collect feedback", "Ask three peers", 300)
+        let evidence = try await client.addEvidence(created.id, action.id, "Feedback received", "Three responses", 150)
         try await client.transitionGoal(created.id, .paused)
 
         #expect(try await client.loadOverview().paused.map(\.id) == [created.id])
-        #expect(try await client.loadGoal(created.id)?.goal.status == "paused")
+        let reloaded = try await client.loadGoal(created.id)
+        #expect(reloaded?.goal.status == "paused")
+        #expect(reloaded?.milestones.map(\.id) == [milestone.id])
+        #expect(reloaded?.actions.map(\.id) == [action.id])
+        #expect(reloaded?.evidence.map(\.id) == [evidence.id])
+        #expect(reloaded?.provenance.first?.origin == .user)
+        #expect(try await client.loadAction(action.id)?.id == action.id)
+        #expect(try await client.loadEvidence(evidence.id)?.id == evidence.id)
     }
 }
 
