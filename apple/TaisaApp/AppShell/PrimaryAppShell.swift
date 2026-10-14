@@ -1,6 +1,7 @@
 import Observation
 import SwiftUI
 import TaisaDesignSystem
+import TaisaCareerWork
 import TaisaHome
 import TaisaConversations
 import TaisaStorage
@@ -61,6 +62,7 @@ final class PrimaryAppShellModel {
 struct PrimaryAppShell: View {
     @State var model: PrimaryAppShellModel
     let homeModel: HomeModel
+    var careerWorkModel: CareerWorkModel = CareerWorkModel(client: .init(loadOverview: { .init(active: [], paused: [], completed: [], archived: []) }))
     let conversationsModel: ConversationsModel
     let conversationFactory: ConversationRuntimeFactory?
     var openRecovery: () -> Void = {}
@@ -120,12 +122,15 @@ struct PrimaryAppShell: View {
         case .home:
             HomeView(
                 model: homeModel,
+                send: openHomeIntent,
                 openRecovery: openRecovery,
                 openPersonalQA: openPersonalQA,
                 openInsights: openInsights,
                 ownsNavigation: false,
                 showsRecentConversations: false
             )
+        case .careerWork:
+            CareerWorkView(model: careerWorkModel, openRecovery: openRecovery)
         case .conversations:
             ConversationsView(
                 model: conversationsModel,
@@ -141,6 +146,18 @@ struct PrimaryAppShell: View {
             )
             .navigationTitle("You")
             .accessibilityIdentifier("you.root")
+        }
+    }
+
+    private func openHomeIntent(_ intent: HomeIntent) {
+        switch intent {
+        case let .conversation(id): model.openConversation(id: id, title: "Conversation")
+        case let .goal(id):
+            model.select(.careerWork)
+            Task { await careerWorkModel.select(.goal(id: id)) }
+        case let .action(id):
+            model.select(.careerWork)
+            Task { await careerWorkModel.select(.action(id: id)) }
         }
     }
 }

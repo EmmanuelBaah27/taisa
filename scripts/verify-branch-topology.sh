@@ -41,12 +41,16 @@ verify_work_branch() {
   git merge-base --is-ancestor "$main_ref" "$work_ref" ||
     fail "$work_ref does not contain current main $main_ref"
 
-  local preview_commit
-  while IFS= read -r preview_commit; do
-    if git merge-base --is-ancestor "$preview_commit" "$work_ref"; then
-      fail "$work_ref contains preview-only history from $preview_ref"
-    fi
-  done < <(git rev-list "${main_ref}..${preview_ref}")
+  local merge_commit parent_index parent
+  while IFS= read -r merge_commit; do
+    parent_index=0
+    while IFS= read -r parent; do
+      parent_index=$((parent_index + 1))
+      if ((parent_index > 1)) && ! git merge-base --is-ancestor "$parent" "$main_ref"; then
+        fail "$work_ref contains preview-only history from $preview_ref"
+      fi
+    done < <(git show -s --format='%P' "$merge_commit" | tr ' ' '\n')
+  done < <(git rev-list --merges "${main_ref}..${work_ref}")
 }
 
 case "$mode" in

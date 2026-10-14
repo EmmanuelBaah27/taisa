@@ -4,7 +4,146 @@ import Testing
 @testable import TaisaStorage
 
 @Suite(.serialized) struct TaisaMigratorTests {
-    @Test func coordinatedVersionFiveContainsCareerWorkCapabilityAndCombinedContracts() async throws {
+    @Test func compactVersionThreeCheckSyntaxUpgradesWithoutRecoveryDetour() async throws {
+        let fixture = try MigrationFixture()
+        defer { fixture.remove() }
+        let queue = try fixture.makeKeyedQueue()
+        var legacy = DatabaseMigrator()
+        for version in 1...5 {
+            legacy.registerMigration("v\(version)", foreignKeyChecks: .immediate) { db in
+                switch version {
+                case 1: try TaisaSchema.createVersion1(in: db)
+                case 2: try TaisaSchema.createVersion2(in: db)
+                case 3:
+                    try db.execute(sql: "ALTER TABLE conversations ADD COLUMN lifecycle TEXT NOT NULL DEFAULT 'completed' CHECK (lifecycle IN ('draft', 'active', 'completed'))")
+                    try db.execute(sql: "ALTER TABLE conversations ADD COLUMN title_authority TEXT NOT NULL DEFAULT 'user' CHECK (title_authority IN ('localFallback', 'assistantSuggested', 'user'))")
+                    try db.execute(sql: Self.compactConversationDraftsDDL)
+                    try db.execute(sql: """
+                        CREATE TABLE message_revisions (
+                            id TEXT PRIMARY KEY NOT NULL CHECK (length(id) = 36),
+                            message_id TEXT NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+                            original_body TEXT NOT NULL,
+                            replacement_message_id TEXT REFERENCES messages(id) ON DELETE SET NULL,
+                            created_at_ms INTEGER NOT NULL CHECK (created_at_ms >= 0)
+                        )
+                        """)
+                    try db.execute(sql: "CREATE INDEX conversation_drafts_by_updated ON conversation_drafts(updated_at_ms DESC, created_at_ms DESC)")
+                    try db.execute(sql: "CREATE INDEX message_revisions_by_message ON message_revisions(message_id, created_at_ms)")
+                case 4: try TaisaSchema.createVersion4(in: db)
+                case 5: try TaisaSchema.createVersion5(in: db)
+                default: break
+                }
+                try db.execute(sql: "INSERT INTO migration_state (version, applied_at_ms) VALUES (?, ?)", arguments: [version, version])
+                try db.execute(sql: "PRAGMA user_version = \(version)")
+            }
+        }
+        try legacy.migrate(queue)
+        let profileID = UUID().uuidString
+        try await queue.write { db in
+            try db.execute(sql: "INSERT INTO profile (id, display_name, updated_at_ms) VALUES (?, 'Preserved', 1)", arguments: [profileID])
+        }
+        try queue.close()
+
+        let store = try await TaisaStore.open(at: fixture.url, keyStore: fixture.keys)
+        let state = try await store.read { db in
+            (
+                try Int.fetchOne(db, sql: "PRAGMA user_version"),
+                try String.fetchOne(db, sql: "SELECT display_name FROM profile WHERE id = ?", arguments: [profileID])
+            )
+        }
+        #expect(state.0 == 6)
+        #expect(state.1 == "Preserved")
+    }
+
+    private static let compactConversationDraftsDDL = """
+    CREATE TABLE conversation_drafts (
+        id TEXT PRIMARY KEY NOT NULL CHECK (length(id) = 36),
+        conversation_id TEXT NOT NULL UNIQUE REFERENCES conversations(id) ON DELETE CASCADE,
+        input_mode TEXT NOT NULL CHECK (input_mode IN ('voice', 'text')),
+        text TEXT,
+        voice_turn_id TEXT UNIQUE REFERENCES voice_turns(id) ON DELETE CASCADE,
+        recovery_kind TEXT NOT NULL CHECK (recovery_kind IN ('saved', 'recovered', 'retryableTranscription', 'retryableCoaching')),
+        created_at_ms INTEGER NOT NULL CHECK (created_at_ms >= 0),
+        updated_at_ms INTEGER NOT NULL CHECK (updated_at_ms >= created_at_ms),
+        CHECK ((input_mode = 'text' AND text IS NOT NULL AND voice_turn_id IS NULL)
+            OR (input_mode = 'voice' AND text IS NULL AND voice_turn_id IS NOT NULL))
+    )
+    """
+
+    @Test func versionSixPreservesGoalsAndPermitsPausedLifecycle() async throws {
+        let fixture = try MigrationFixture()
+        defer { fixture.remove() }
+        let queue = try fixture.makeKeyedQueue()
+        var legacy = DatabaseMigrator()
+        for entry in TaisaSchema.migrationLedger.prefix(5) {
+            legacy.registerMigration(entry.identifier, foreignKeyChecks: .immediate) { db in
+                switch entry.version {
+                case 1: try TaisaSchema.createVersion1(in: db)
+                case 2: try TaisaSchema.createVersion2(in: db)
+                case 3: try TaisaSchema.createVersion3(in: db)
+                case 4: try TaisaSchema.createVersion4(in: db)
+                case 5: try TaisaSchema.createVersion5(in: db)
+                default: throw MigrationInterruption.injected
+                }
+                try db.execute(
+                    sql: "INSERT INTO migration_state (version, applied_at_ms) VALUES (?, ?)",
+                    arguments: [entry.version, entry.version]
+                )
+                try db.execute(sql: "PRAGMA user_version = \(entry.version)")
+            }
+        }
+        try legacy.migrate(queue)
+        let goalID = UUID().uuidString
+        let milestoneID = UUID().uuidString
+        let actionID = UUID().uuidString
+        let evidenceID = UUID().uuidString
+        try await queue.write { db in
+            try db.execute(
+                sql: "INSERT INTO goals (id, title, detail, status, created_at_ms, updated_at_ms) VALUES (?, 'Preserved', '', 'active', 1, 1)",
+                arguments: [goalID]
+            )
+            try db.execute(
+                sql: "INSERT INTO milestones (id, goal_id, title, status, updated_at_ms) VALUES (?, ?, 'Milestone', 'open', 1)",
+                arguments: [milestoneID, goalID]
+            )
+            try db.execute(
+                sql: "INSERT INTO actions (id, goal_id, title, status, created_at_ms, updated_at_ms) VALUES (?, ?, 'Action', 'open', 1, 1)",
+                arguments: [actionID, goalID]
+            )
+            try db.execute(
+                sql: "INSERT INTO evidence (id, goal_id, action_id, title, occurred_at_ms, created_at_ms) VALUES (?, ?, ?, 'Evidence', 1, 1)",
+                arguments: [evidenceID, goalID, actionID]
+            )
+        }
+        try queue.close()
+
+        let store = try await TaisaStore.open(at: fixture.url, keyStore: fixture.keys)
+        try await store.write { db in
+            try db.execute(sql: "UPDATE goals SET status = 'paused', updated_at_ms = 2 WHERE id = ?", arguments: [goalID])
+        }
+        let state = try await store.read { db in
+            (
+                try Int.fetchOne(db, sql: "PRAGMA user_version"),
+                try String.fetchOne(db, sql: "SELECT title FROM goals WHERE id = ?", arguments: [goalID]),
+                try String.fetchOne(db, sql: "SELECT status FROM goals WHERE id = ?", arguments: [goalID]),
+                try String.fetchAll(db, sql: "SELECT identifier FROM grdb_migrations ORDER BY identifier"),
+                try Int.fetchOne(db, sql: "SELECT count(*) FROM milestones WHERE id = ? AND goal_id = ?", arguments: [milestoneID, goalID]),
+                try Int.fetchOne(db, sql: "SELECT count(*) FROM actions WHERE id = ? AND goal_id = ?", arguments: [actionID, goalID]),
+                try Int.fetchOne(db, sql: "SELECT count(*) FROM evidence WHERE id = ? AND goal_id = ? AND action_id = ?", arguments: [evidenceID, goalID, actionID]),
+                try Int.fetchOne(db, sql: "SELECT count(*) FROM pragma_foreign_key_check")
+            )
+        }
+        #expect(state.0 == 6)
+        #expect(state.1 == "Preserved")
+        #expect(state.2 == "paused")
+        #expect(state.3 == ["v1", "v2", "v3", "v4", "v5", "v6"])
+        #expect(state.4 == 1)
+        #expect(state.5 == 1)
+        #expect(state.6 == 1)
+        #expect(state.7 == 0)
+    }
+
+    @Test func currentSchemaContainsCoordinatedCareerWorkCapabilityAndCombinedContracts() async throws {
         let fixture = try MigrationFixture()
         defer { fixture.remove() }
         let store = try await TaisaStore.open(at: fixture.url, keyStore: fixture.keys)
@@ -20,17 +159,17 @@ import Testing
                 try Int.fetchAll(db, sql: "SELECT version FROM migration_state ORDER BY version")
             )
         }
-        #expect(state.0 == 5)
+        #expect(state.0 == 6)
         #expect(state.1)
         #expect(state.2)
         #expect(state.3)
         #expect(state.4)
         #expect(state.5)
-        #expect(state.6 == ["v1", "v2", "v3", "v4", "v5"])
-        #expect(state.7 == [1, 2, 3, 4, 5])
+        #expect(state.6 == ["v1", "v2", "v3", "v4", "v5", "v6"])
+        #expect(state.7 == [1, 2, 3, 4, 5, 6])
     }
 
-    @Test func populatedMainVersionThreeStoreUpgradesLosslesslyToVersionFive() async throws {
+    @Test func populatedMainVersionThreeStoreUpgradesLosslesslyToCurrent() async throws {
         let fixture = try MigrationFixture()
         defer { fixture.remove() }
         let queue = try fixture.makeKeyedQueue()
@@ -65,7 +204,7 @@ import Testing
                 try db.tableExists("capability_states")
             )
         }
-        #expect(state.0 == 5)
+        #expect(state.0 == 6)
         #expect(state.1 == "Preserve")
         #expect(state.2)
     }
@@ -179,9 +318,9 @@ import Testing
         let state = try await reopened.read { db in
             (try Int.fetchOne(db, sql: "PRAGMA user_version"), try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM profile"), try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM grdb_migrations"))
         }
-        #expect(state.0 == 5)
+        #expect(state.0 == 6)
         #expect(state.1 == 1)
-        #expect(state.2 == 5)
+        #expect(state.2 == 6)
         #expect(!tables.contains("recordings"))
     }
 
@@ -233,10 +372,10 @@ import Testing
                 try Int.fetchAll(db, sql: "SELECT version FROM migration_state ORDER BY version")
             )
         }
-        #expect(state.0 == 5)
+        #expect(state.0 == 6)
         #expect(state.1 == "preserved-v1")
         #expect(state.2)
-        #expect(state.3 == [1, 2, 3, 4, 5])
+        #expect(state.3 == [1, 2, 3, 4, 5, 6])
     }
 
     @Test func existingVersionTwoStoreMigratesWithoutInventingDraftsOrRevisions() async throws {
@@ -266,7 +405,7 @@ import Testing
                 try String.fetchOne(db, sql: "SELECT lifecycle FROM conversations LIMIT 1")
             )
         }
-        #expect(state.0 == 5)
+        #expect(state.0 == 6)
         #expect(state.1 == 0)
         #expect(state.2 == 0)
         #expect(state.3 == nil)
@@ -317,6 +456,66 @@ import Testing
         #expect(state.1 == "Preserve me")
         #expect(!state.2)
         #expect(state.3 == ["v1", "v2", "v3", "v4"])
+    }
+
+    @Test func interruptedVersionSixMigrationLeavesVersionFiveAndRelationshipsUnchanged() async throws {
+        let fixture = try MigrationFixture()
+        defer { fixture.remove() }
+        let queue = try fixture.makeKeyedQueue()
+        var legacy = DatabaseMigrator()
+        for entry in TaisaSchema.migrationLedger.prefix(5) {
+            legacy.registerMigration(entry.identifier, foreignKeyChecks: .immediate) { db in
+                switch entry.version {
+                case 1: try TaisaSchema.createVersion1(in: db)
+                case 2: try TaisaSchema.createVersion2(in: db)
+                case 3: try TaisaSchema.createVersion3(in: db)
+                case 4: try TaisaSchema.createVersion4(in: db)
+                case 5: try TaisaSchema.createVersion5(in: db)
+                default: throw MigrationInterruption.injected
+                }
+                try db.execute(
+                    sql: "INSERT INTO migration_state (version, applied_at_ms) VALUES (?, ?)",
+                    arguments: [entry.version, entry.version]
+                )
+                try db.execute(sql: "PRAGMA user_version = \(entry.version)")
+            }
+        }
+        try legacy.migrate(queue)
+        let goalID = UUID().uuidString
+        let actionID = UUID().uuidString
+        try await queue.write { db in
+            try db.execute(
+                sql: "INSERT INTO goals (id, title, status, created_at_ms, updated_at_ms) VALUES (?, 'Preserve me', 'active', 1, 1)",
+                arguments: [goalID]
+            )
+            try db.execute(
+                sql: "INSERT INTO actions (id, goal_id, title, status, created_at_ms, updated_at_ms) VALUES (?, ?, 'Still linked', 'open', 1, 1)",
+                arguments: [actionID, goalID]
+            )
+        }
+
+        #expect(throws: StorageError.migrationFailed) {
+            try TaisaMigrator.migrate(queue, from: 5, createVersion6: { db in
+                try TaisaSchema.createVersion6(in: db)
+                throw MigrationInterruption.injected
+            })
+        }
+        let state = try await queue.read { db in
+            (
+                try Int.fetchOne(db, sql: "PRAGMA user_version"),
+                try String.fetchOne(db, sql: "SELECT title FROM goals WHERE id = ?", arguments: [goalID]),
+                try String.fetchOne(db, sql: "SELECT title FROM actions WHERE id = ? AND goal_id = ?", arguments: [actionID, goalID]),
+                try db.tableExists("goals_v6"),
+                try String.fetchAll(db, sql: "SELECT identifier FROM grdb_migrations ORDER BY identifier"),
+                try Int.fetchOne(db, sql: "SELECT count(*) FROM pragma_foreign_key_check")
+            )
+        }
+        #expect(state.0 == 5)
+        #expect(state.1 == "Preserve me")
+        #expect(state.2 == "Still linked")
+        #expect(!state.3)
+        #expect(state.4 == ["v1", "v2", "v3", "v4", "v5"])
+        #expect(state.5 == 0)
     }
 
     @Test func futureSchemaIsRejectedWithoutMutation() async throws {
@@ -583,7 +782,7 @@ import Testing
         let restarted = try fixture.restartCopy()
         let store = try await TaisaStore.open(at: restarted, keyStore: fixture.keys)
         #expect(try await store.read { db in try db.tableExists("profile") })
-        #expect(try await store.read { db in try Int.fetchOne(db, sql: "PRAGMA user_version") } == 5)
+        #expect(try await store.read { db in try Int.fetchOne(db, sql: "PRAGMA user_version") } == 6)
         #expect(try await fixture.keys.loadKey() == fixture.key)
     }
 

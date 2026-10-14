@@ -176,6 +176,7 @@ final class AppRuntimeTests: XCTestCase {
         )
         XCTAssertTrue(source.contains("let context = try await backend.voiceStoreContext()"))
         XCTAssertTrue(source.contains("HomeClient.local(store: store, deviceID: context.deviceID.uuidString)"))
+        XCTAssertTrue(source.contains("CareerWorkClient.local(store: store, deviceID: context.deviceID.uuidString)"))
         XCTAssertFalse(source.contains("HomeClient { try await HomeQuery"))
     }
 
@@ -184,6 +185,7 @@ final class AppRuntimeTests: XCTestCase {
         let state = await runtime.start()
         XCTAssertEqual(state, .ready)
         XCTAssertNotNil(runtime.homeModel)
+        XCTAssertNotNil(runtime.careerWorkModel)
         XCTAssertNotNil(runtime.insightsModel)
     }
 
@@ -193,6 +195,7 @@ final class AppRuntimeTests: XCTestCase {
             let state = await runtime.start()
             XCTAssertEqual(state, .recoveryRequired)
             XCTAssertNil(runtime.homeModel)
+            XCTAssertNil(runtime.careerWorkModel)
             XCTAssertNil(runtime.insightsModel)
         }
     }
