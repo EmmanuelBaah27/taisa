@@ -36,6 +36,13 @@ private struct RestoreFixture {
     let recovery: RecoveryKey
     let keys = RestoreKeys()
     let store: TaisaStore
+    let placementID: String
+    let insightID: String
+    let careerEventID: String
+    let careerArchiveID: String
+    let evidenceID: String
+    let proposalReceiptID: String
+    let capabilityID: String
     init() async throws {
         directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
@@ -43,14 +50,34 @@ private struct RestoreFixture {
         archive = directory.appendingPathComponent("backup.taisa-backup")
         recovery = try RecoveryKey.generate()
         store = try await TaisaStore.open(at: active, keyStore: keys)
+        let deviceID = UUID().uuidString
+        let action = ActionRecord(id: UUID().uuidString, goalID: nil, title: "Archived week", detail: "", status: "open", dueAtMS: nil, createdAtMS: 1, updatedAtMS: 1)
+        placementID = UUID().uuidString
+        careerEventID = UUID().uuidString
+        careerArchiveID = UUID().uuidString
+        evidenceID = UUID().uuidString
+        proposalReceiptID = UUID().uuidString
+        capabilityID = "voice.coaching"
+        let conversation = ConversationRecord(id: UUID().uuidString, title: "Archived source", createdAtMS: 1, updatedAtMS: 1)
+        try await ActionRepository(store: store).create(action, context: .init(id: UUID().uuidString, deviceID: deviceID, timestamp: 1))
+        try await WeeklyPlacementRepository(store: store).create(.init(id: placementID, actionID: action.id, weekStartMS: 100, plannedDayMS: nil, createdAtMS: 2, updatedAtMS: 2), context: .init(id: UUID().uuidString, deviceID: deviceID, timestamp: 2))
+        try await ConversationRepository(store: store).create(conversation, context: .init(id: UUID().uuidString, deviceID: deviceID, timestamp: 3))
+        let commands = InsightCommandRepository(store: store)
+        let proposal = try await commands.propose(body: "Archived insight", sourceType: "conversation", sourceID: conversation.id, context: .init(id: UUID().uuidString, deviceID: deviceID, timestamp: 4))
+        insightID = try await commands.confirm(proposalID: proposal.id, editedBody: nil, isTimeSensitive: false, homeEligibleUntilMS: nil, context: .init(id: UUID().uuidString, deviceID: deviceID, timestamp: 5)).id
+        let storedCareerEventID = careerEventID
+        let storedCareerArchiveID = careerArchiveID
+        let storedEvidenceID = evidenceID
+        let storedProposalReceiptID = proposalReceiptID
+        let storedCapabilityID = capabilityID
         try await store.write { db in
             try db.execute(sql: "INSERT INTO profile (id, display_name, updated_at_ms) VALUES (?, 'ARCHIVED', 1)", arguments: [UUID().uuidString])
-            try db.execute(sql: "INSERT INTO evidence (id, title, occurred_at_ms, created_at_ms) VALUES ('00000000-0000-0000-0000-000000000701', 'Restored evidence', 1, 1)")
-            try db.execute(sql: "INSERT INTO career_work_events (id, entity_type, entity_id, transition, to_status, source_type, occurred_at_ms) VALUES ('00000000-0000-0000-0000-000000000702', 'goal', '00000000-0000-0000-0000-000000000703', 'created', 'active', 'user', 1)")
-            try db.execute(sql: "INSERT INTO career_work_archives (id, entity_type, entity_id, archived_at_ms) VALUES ('00000000-0000-0000-0000-000000000704', 'goal', '00000000-0000-0000-0000-000000000703', 2)")
-            try db.execute(sql: "INSERT INTO evidence_provenance (evidence_id, origin_type, origin_id, created_at_ms) VALUES ('00000000-0000-0000-0000-000000000701', 'conversation', '00000000-0000-0000-0000-000000000705', 1)")
-            try db.execute(sql: "INSERT INTO career_work_proposal_receipts (id, proposal_id, target_type, target_id, target_version_id, payload_digest, decision, resolved_at_ms) VALUES ('00000000-0000-0000-0000-000000000706', '00000000-0000-0000-0000-000000000707', 'goal', '00000000-0000-0000-0000-000000000703', '00000000-0000-0000-0000-000000000708', 'digest-v4', 'accepted', 3)")
-            try db.execute(sql: "INSERT INTO capability_states (capability_id, state, decision_source, transport_source, decided_at_ms, updated_at_ms) VALUES ('voice', 'ready', 'user', 'restore', 4, 5)")
+            try db.execute(sql: "INSERT INTO career_work_events (id, entity_type, entity_id, transition, to_status, source_type, occurred_at_ms) VALUES (?, 'action', ?, 'created', 'open', 'user', 6)", arguments: [storedCareerEventID, action.id])
+            try db.execute(sql: "INSERT INTO career_work_archives (id, entity_type, entity_id, archived_at_ms) VALUES (?, 'action', ?, 7)", arguments: [storedCareerArchiveID, action.id])
+            try db.execute(sql: "INSERT INTO evidence (id, action_id, title, occurred_at_ms, created_at_ms) VALUES (?, ?, 'Proof', 8, 8)", arguments: [storedEvidenceID, action.id])
+            try db.execute(sql: "INSERT INTO evidence_provenance (evidence_id, origin_type, origin_id, created_at_ms) VALUES (?, 'action', ?, 8)", arguments: [storedEvidenceID, action.id])
+            try db.execute(sql: "INSERT INTO career_work_proposal_receipts (id, proposal_id, target_type, target_id, target_version_id, payload_digest, decision, resolved_at_ms) VALUES (?, ?, 'action', ?, ?, 'digest', 'accepted', 9)", arguments: [storedProposalReceiptID, UUID().uuidString, action.id, UUID().uuidString])
+            try db.execute(sql: "INSERT INTO capability_states (capability_id, state, decision_source, transport_source, decided_at_ms, updated_at_ms) VALUES (?, 'ready', 'user', 'direct', 10, 10)", arguments: [storedCapabilityID])
         }
         _ = try await SnapshotService(store: store, audioGuard: RestoreAudio(), sourceInstallationID: UUID()).createPortableArchive(at: archive, recoveryKey: recovery)
         try await store.write { try $0.execute(sql: "UPDATE profile SET display_name = 'ORIGINAL'") }
@@ -87,23 +114,33 @@ private struct RestoreFixture {
         await #expect(throws: Error.self) { try await second.read { try Int.fetchOne($0, sql: "SELECT count(*) FROM profile") } }
         let restored = try await TaisaStore.open(at: f.active, keyStore: f.keys)
         #expect(try await restored.read { try String.fetchOne($0, sql: "SELECT display_name FROM profile") } == "ARCHIVED")
-        let v4 = try await restored.read { db in
+        #expect(try await WeeklyPlacementRepository(store: restored).get(id: f.placementID)?.weekStartMS == 100)
+        #expect(try await InsightQuery(store: restored).current().map(\.id) == [f.insightID])
+        #expect(try await InsightQuery(store: restored).sources(insightID: f.insightID).count == 1)
+        #expect(try await InsightQuery(store: restored).revisions(insightID: f.insightID).map(\.status) == [.accepted])
+        let v5 = try await restored.read { db in
             (
-                try String.fetchOne(db, sql: "SELECT transition FROM career_work_events"),
-                try String.fetchOne(db, sql: "SELECT entity_id FROM career_work_archives WHERE restored_at_ms IS NULL"),
-                try String.fetchOne(db, sql: "SELECT origin_type FROM evidence_provenance"),
-                try String.fetchOne(db, sql: "SELECT payload_digest FROM career_work_proposal_receipts"),
-                try String.fetchOne(db, sql: "SELECT decision_source || ':' || transport_source FROM capability_states")
+                try String.fetchOne(db, sql: "SELECT id FROM career_work_events WHERE id = ?", arguments: [f.careerEventID]),
+                try String.fetchOne(db, sql: "SELECT id FROM career_work_archives WHERE id = ?", arguments: [f.careerArchiveID]),
+                try String.fetchOne(db, sql: "SELECT evidence_id FROM evidence_provenance WHERE evidence_id = ?", arguments: [f.evidenceID]),
+                try String.fetchOne(db, sql: "SELECT id FROM career_work_proposal_receipts WHERE id = ?", arguments: [f.proposalReceiptID]),
+                try String.fetchOne(db, sql: "SELECT state FROM capability_states WHERE capability_id = ?", arguments: [f.capabilityID])
             )
         }
-        #expect(v4.0 == "created")
-        #expect(v4.1 == "00000000-0000-0000-0000-000000000703")
-        #expect(v4.2 == "conversation")
-        #expect(v4.3 == "digest-v4")
-        #expect(v4.4 == "user:restore")
+        #expect(v5.0 == f.careerEventID)
+        #expect(v5.1 == f.careerArchiveID)
+        #expect(v5.2 == f.evidenceID)
+        #expect(v5.3 == f.proposalReceiptID)
+        #expect(v5.4 == "ready")
         await #expect(throws: DatabaseError.self) {
             try await restored.write { db in
-                try db.execute(sql: "INSERT INTO career_work_archives (id, entity_type, entity_id, archived_at_ms) VALUES ('00000000-0000-0000-0000-000000000709', 'goal', '00000000-0000-0000-0000-000000000703', 6)")
+                try db.execute(
+                    sql: """
+                        INSERT INTO career_work_archives (id, entity_type, entity_id, archived_at_ms)
+                        SELECT ?, entity_type, entity_id, 11 FROM career_work_archives WHERE id = ?
+                        """,
+                    arguments: [UUID().uuidString, f.careerArchiveID]
+                )
             }
         }
         #expect(!FileManager.default.fileExists(atPath: coordinator.journalURL.path))

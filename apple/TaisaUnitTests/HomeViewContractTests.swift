@@ -18,4 +18,61 @@ final class HomeViewContractTests: XCTestCase {
         XCTAssertTrue(sources.contains("ContentUnavailableView"))
         XCTAssertTrue(sources.contains("refreshable"))
     }
+
+    func testCombinedHomeKeepsTheLeadInsightConditionalAndWeeklyWorkPrimary() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let home = root.appendingPathComponent("TaisaApp/Home")
+        let homeView = try String(contentsOf: home.appendingPathComponent("HomeView.swift"), encoding: .utf8)
+        let thisWeek = try String(contentsOf: home.appendingPathComponent("ThisWeekSection.swift"), encoding: .utf8)
+        let leadInsight = try String(contentsOf: home.appendingPathComponent("LeadInsightSection.swift"), encoding: .utf8)
+
+        XCTAssertTrue(homeView.contains("if let leadInsight = snapshot.leadInsight"))
+        XCTAssertTrue(homeView.contains("LeadInsightSection(insight: leadInsight"))
+        XCTAssertTrue(homeView.contains("ThisWeekSection("))
+        XCTAssertLessThan(
+            try XCTUnwrap(homeView.range(of: "LeadInsightSection(insight: leadInsight")?.lowerBound),
+            try XCTUnwrap(homeView.range(of: "ThisWeekSection(")?.lowerBound)
+        )
+        XCTAssertTrue(homeView.contains("snapshot.hasConfirmedInsightHistory"))
+        XCTAssertTrue(homeView.contains("home.insights.link"))
+
+        for identifier in ["home.this-week", "home.this-week.complete", "home.this-week.undo", "home.prior-week.review"] {
+            XCTAssertTrue(thisWeek.contains(identifier), "Missing \(identifier)")
+        }
+        XCTAssertTrue(thisWeek.contains("await model.complete(actionID:"))
+        XCTAssertTrue(thisWeek.contains("await model.undoCompletion()"))
+        XCTAssertTrue(leadInsight.contains("home.lead-insight"))
+    }
+
+    func testInsightsStayNestedByCurrentReviewAndHistoryWithGroundedDetail() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let home = root.appendingPathComponent("TaisaApp/Home")
+        let view = try String(contentsOf: home.appendingPathComponent("InsightsView.swift"), encoding: .utf8)
+        let detail = try String(contentsOf: home.appendingPathComponent("InsightDetailView.swift"), encoding: .utf8)
+        let rootView = try String(contentsOf: root.appendingPathComponent("TaisaApp/App/AppRootView.swift"), encoding: .utf8)
+
+        for identifier in ["insights.root", "insights.current", "insights.review", "insights.history"] {
+            XCTAssertTrue(view.contains(identifier), "Missing \(identifier)")
+        }
+        XCTAssertTrue(view.contains("NavigationLink"))
+        XCTAssertFalse(view.contains("Section(\"Sources\")"), "Grounding belongs in nested detail")
+        XCTAssertTrue(detail.contains("insight.detail.sources"))
+        XCTAssertTrue(detail.contains("insight.detail.revisions"))
+        XCTAssertTrue(rootView.contains("openInsights:"))
+        XCTAssertTrue(rootView.contains("InsightsView(model:"))
+    }
+
+    func testPreviewExercisesCombinedHomeAndNestedInsights() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let preview = root.appendingPathComponent("TaisaPreview")
+        let scenarios = try String(contentsOf: preview.appendingPathComponent("HomeScenarios.swift"), encoding: .utf8)
+        let scenarioView = try String(contentsOf: preview.appendingPathComponent("HomeScenarioView.swift"), encoding: .utf8)
+
+        XCTAssertTrue(scenarios.contains("home.combined"))
+        XCTAssertTrue(scenarios.contains("home.insights"))
+        XCTAssertTrue(scenarios.contains("thisWeek:"))
+        XCTAssertTrue(scenarios.contains("leadInsight:"))
+        XCTAssertTrue(scenarioView.contains("InsightsView(model:"))
+        XCTAssertTrue(scenarioView.contains("openInsights:"))
+    }
 }

@@ -16,19 +16,32 @@ public struct HomeSnapshot: Sendable, Equatable {
     public let conversations: [ConversationRecord]
     public let goals: [GoalRecord]
     public let actions: [ActionRecord]
+    public let thisWeek: [WeeklyWorkItem]
+    public let unresolvedPriorWeekCount: Int
+    public let leadInsight: InsightRecord?
+    public let hasConfirmedInsightHistory: Bool
 
     public init(
         conversations: [ConversationRecord],
         goals: [GoalRecord],
-        actions: [ActionRecord]
+        actions: [ActionRecord],
+        thisWeek: [WeeklyWorkItem] = [],
+        unresolvedPriorWeekCount: Int = 0,
+        leadInsight: InsightRecord? = nil,
+        hasConfirmedInsightHistory: Bool = false
     ) {
         self.conversations = conversations
         self.goals = goals
         self.actions = actions
+        self.thisWeek = thisWeek
+        self.unresolvedPriorWeekCount = unresolvedPriorWeekCount
+        self.leadInsight = leadInsight
+        self.hasConfirmedInsightHistory = hasConfirmedInsightHistory
     }
 
     public var isEmpty: Bool {
-        conversations.isEmpty && goals.isEmpty && actions.isEmpty
+        conversations.isEmpty && goals.isEmpty && actions.isEmpty && thisWeek.isEmpty &&
+            unresolvedPriorWeekCount == 0 && leadInsight == nil && !hasConfirmedInsightHistory
     }
 }
 

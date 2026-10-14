@@ -20,7 +20,6 @@ public enum SyncMergeError: Error, Sendable, Equatable, CustomStringConvertible 
         }
     }
 }
-
 public struct SyncField: Codable, Sendable, Equatable {
     public let name: String
     public let value: Data
@@ -164,7 +163,10 @@ public struct SyncMutation: Codable, Sendable, Equatable {
         }
     }
 
-    private static let entities: Set<String> = ["profile", "conversation", "message", "goal", "milestone", "action", "evidence", "memory", "memory_source", "voice_turn"]
+    private static let entities: Set<String> = [
+        "profile", "conversation", "message", "goal", "milestone", "action", "evidence", "memory", "memory_source",
+        "voice_turn", "weekly_placement", "work_event", "insight", "insight_source", "insight_revision",
+    ]
 
     func canonicalized() -> SyncMutation {
         func key(_ value: String) -> String { UUID(uuidString: value)!.uuidString }

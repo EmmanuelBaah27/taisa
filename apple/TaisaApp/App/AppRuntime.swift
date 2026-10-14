@@ -1,46 +1,47 @@
 import Foundation
 import Observation
-import TaisaHome
 import TaisaConversations
+import TaisaHome
 import TaisaStorage
 import TaisaVoice
 
 @MainActor
 @Observable
 final class AppRuntime {
-    enum State: Equatable {
-        case startup
-        case ready
-        case recoveryRequired
-    }
+    struct Clients: Sendable {
+        let home: HomeClient
+        let insights: InsightsClient
+        let conversations: ConversationsClient
+        let conversationFactory: ConversationRuntimeFactory?
 
-    private(set) var state: State = .startup
-    private(set) var homeModel: HomeModel?
-    private(set) var conversationsModel: ConversationsModel?
-    private(set) var conversationFactory: ConversationRuntimeFactory?
-    let primaryShellModel: PrimaryAppShellModel
-    @ObservationIgnored private let startOperation: @Sendable () async throws -> (HomeClient, ConversationsClient, ConversationRuntimeFactory?)
-
-    init(
-        primaryShellModel: PrimaryAppShellModel = PrimaryAppShellModel(),
-        start: @escaping @Sendable () async throws -> HomeClient
-    ) {
-        self.primaryShellModel = primaryShellModel
-        startOperation = {
-            (try await start(), ConversationsClient(load: { ConversationIndexSnapshot(drafts: [], conversations: []) }), nil)
+        init(home: HomeClient, insights: InsightsClient,
+             conversations: ConversationsClient = ConversationsClient(load: { ConversationIndexSnapshot(drafts: [], conversations: []) }),
+             conversationFactory: ConversationRuntimeFactory? = nil) {
+            self.home = home
+            self.insights = insights
+            self.conversations = conversations
+            self.conversationFactory = conversationFactory
         }
     }
 
-    private init(
-        primaryShellModel: PrimaryAppShellModel = PrimaryAppShellModel(),
-        startServices: @escaping @Sendable () async throws -> (HomeClient, ConversationsClient, ConversationRuntimeFactory?)
-    ) {
+    enum State: Equatable { case startup, ready, recoveryRequired }
+
+    private(set) var state: State = .startup
+    private(set) var homeModel: HomeModel?
+    private(set) var insightsModel: InsightsModel?
+    private(set) var conversationsModel: ConversationsModel?
+    private(set) var conversationFactory: ConversationRuntimeFactory?
+    let primaryShellModel: PrimaryAppShellModel
+    @ObservationIgnored private let startOperation: @Sendable () async throws -> Clients
+
+    init(primaryShellModel: PrimaryAppShellModel = PrimaryAppShellModel(),
+         start: @escaping @Sendable () async throws -> Clients) {
         self.primaryShellModel = primaryShellModel
-        startOperation = startServices
+        startOperation = start
     }
 
     static func live() -> AppRuntime {
-        AppRuntime(startServices: {
+        AppRuntime {
             let backend = try PersonalRecoveryBackend.personal()
             let context = try await backend.voiceStoreContext()
             let store = context.store
@@ -65,12 +66,13 @@ final class AppRuntime {
                 credentialStore: KeychainVoiceGatewayCredentialStore()
             )
 #endif
-            return (
-                HomeClient { try await HomeQuery(store: store).load() },
-                ConversationsClient.local(store: store),
-                configuration.map { ConversationRuntimeFactory(store: store, deviceID: context.deviceID, configuration: $0) }
+            return Clients(
+                home: HomeClient.local(store: store, deviceID: context.deviceID.uuidString),
+                insights: InsightsClient.local(store: store),
+                conversations: ConversationsClient.local(store: store),
+                conversationFactory: configuration.map { ConversationRuntimeFactory(store: store, deviceID: context.deviceID, configuration: $0) }
             )
-        })
+        }
     }
 
     static func voiceConfiguration(
@@ -102,13 +104,15 @@ final class AppRuntime {
 
     private func openServices() async -> State {
         do {
-            let services = try await startOperation()
-            homeModel = HomeModel(client: services.0)
-            conversationsModel = ConversationsModel(client: services.1)
-            conversationFactory = services.2
+            let clients = try await startOperation()
+            homeModel = HomeModel(client: clients.home)
+            insightsModel = InsightsModel(client: clients.insights)
+            conversationsModel = ConversationsModel(client: clients.conversations)
+            conversationFactory = clients.conversationFactory
             state = .ready
         } catch {
             homeModel = nil
+            insightsModel = nil
             conversationsModel = nil
             conversationFactory = nil
             state = .recoveryRequired
@@ -116,7 +120,5 @@ final class AppRuntime {
         return state
     }
 
-    func requireRecovery() {
-        state = .recoveryRequired
-    }
+    func requireRecovery() { state = .recoveryRequired }
 }
