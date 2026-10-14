@@ -56,9 +56,12 @@ struct RecoveryView: View {
         .toolbar {
             if let dismissRuntimeRecovery {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Close", action: dismissRuntimeRecovery)
-                        .disabled(model?.state == .restoring)
-                        .accessibilityIdentifier("recovery.runtime.close")
+                    Button(action: dismissRuntimeRecovery) {
+                        Image(systemName: "xmark")
+                    }
+                    .accessibilityLabel("Close")
+                    .disabled(model?.state == .restoring)
+                    .accessibilityIdentifier("recovery.runtime.close")
                 }
             }
         }
