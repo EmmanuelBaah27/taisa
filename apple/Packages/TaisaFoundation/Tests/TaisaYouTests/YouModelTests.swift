@@ -3,6 +3,11 @@ import Testing
 import TaisaStorage
 
 @Suite(.serialized) @MainActor struct YouModelTests {
+    @Test func hierarchyOwnsFiveStableUserDestinations() {
+        #expect(YouDestination.allCases == [.careerProfile, .capabilities, .privacyPermissions, .backupRecovery, .diagnostics])
+        #expect(Set(YouDestination.allCases.map(\.stableID)).count == 5)
+    }
+
     @Test func loadEditCancelAndSavePublishLocalTruth() async {
         let initial = snapshot(profile: profile(name: "Baah"))
         let saved = snapshot(profile: profile(name: "Emmanuel"))

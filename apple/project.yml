@@ -63,6 +63,8 @@ targets:
       - package: TaisaFoundation
         product: TaisaCareerWork
       - package: TaisaFoundation
+        product: TaisaYou
+      - package: TaisaFoundation
         product: TaisaStorage
       - package: TaisaFoundation
         product: TaisaCloudKit
@@ -86,6 +88,7 @@ targets:
       - path: TaisaApp/Voice
       - path: TaisaApp/Home
       - path: TaisaApp/CareerWork
+      - path: TaisaApp/You
       - path: TaisaApp/AppShell/PrimaryDestination.swift
       - path: TaisaApp/Conversation/ConversationTimeline.swift
       - path: TaisaApp/Conversation/ConversationView.swift
@@ -116,6 +119,8 @@ targets:
         product: TaisaHome
       - package: TaisaFoundation
         product: TaisaCareerWork
+      - package: TaisaFoundation
+        product: TaisaYou
       - package: TaisaFoundation
         product: TaisaPreviewSupport
       - package: TaisaFoundation
@@ -174,6 +179,8 @@ targets:
       - package: TaisaFoundation
         product: TaisaCareerWork
       - package: TaisaFoundation
+        product: TaisaYou
+      - package: TaisaFoundation
         product: TaisaSecurity
       - package: TaisaFoundation
         product: TaisaRecovery
@@ -214,6 +221,8 @@ targets:
         product: TaisaHome
       - package: TaisaFoundation
         product: TaisaCareerWork
+      - package: TaisaFoundation
+        product: TaisaYou
       - package: TaisaFoundation
         product: TaisaRecovery
       - package: TaisaFoundation
