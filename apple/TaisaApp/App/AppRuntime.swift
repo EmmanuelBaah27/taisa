@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import TaisaCareerWork
 import TaisaConversations
 import TaisaHome
 import TaisaStorage
@@ -10,14 +11,17 @@ import TaisaVoice
 final class AppRuntime {
     struct Clients: Sendable {
         let home: HomeClient
+        let careerWork: CareerWorkClient
         let insights: InsightsClient
         let conversations: ConversationsClient
         let conversationFactory: ConversationRuntimeFactory?
 
         init(home: HomeClient, insights: InsightsClient,
+             careerWork: CareerWorkClient = CareerWorkClient(loadOverview: { .init(active: [], paused: [], completed: [], archived: []) }),
              conversations: ConversationsClient = ConversationsClient(load: { ConversationIndexSnapshot(drafts: [], conversations: []) }),
              conversationFactory: ConversationRuntimeFactory? = nil) {
             self.home = home
+            self.careerWork = careerWork
             self.insights = insights
             self.conversations = conversations
             self.conversationFactory = conversationFactory
@@ -28,6 +32,7 @@ final class AppRuntime {
 
     private(set) var state: State = .startup
     private(set) var homeModel: HomeModel?
+    private(set) var careerWorkModel: CareerWorkModel?
     private(set) var insightsModel: InsightsModel?
     private(set) var conversationsModel: ConversationsModel?
     private(set) var conversationFactory: ConversationRuntimeFactory?
@@ -69,6 +74,7 @@ final class AppRuntime {
             return Clients(
                 home: HomeClient.local(store: store, deviceID: context.deviceID.uuidString),
                 insights: InsightsClient.local(store: store),
+                careerWork: CareerWorkClient.local(store: store, deviceID: context.deviceID.uuidString),
                 conversations: ConversationsClient.local(store: store),
                 conversationFactory: configuration.map { ConversationRuntimeFactory(store: store, deviceID: context.deviceID, configuration: $0) }
             )
@@ -106,12 +112,14 @@ final class AppRuntime {
         do {
             let clients = try await startOperation()
             homeModel = HomeModel(client: clients.home)
+            careerWorkModel = CareerWorkModel(client: clients.careerWork)
             insightsModel = InsightsModel(client: clients.insights)
             conversationsModel = ConversationsModel(client: clients.conversations)
             conversationFactory = clients.conversationFactory
             state = .ready
         } catch {
             homeModel = nil
+            careerWorkModel = nil
             insightsModel = nil
             conversationsModel = nil
             conversationFactory = nil

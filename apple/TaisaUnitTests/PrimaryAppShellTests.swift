@@ -3,6 +3,12 @@ import XCTest
 
 @MainActor
 final class PrimaryAppShellTests: XCTestCase {
+    func testCareerWorkIsAStablePrimaryDestination() {
+        XCTAssertTrue(PrimaryDestination.allCases.contains(.careerWork))
+        XCTAssertEqual(PrimaryDestination.careerWork.title, "Career Work")
+        XCTAssertEqual(PrimaryDestination.careerWork.systemImage, "target")
+    }
+
     func testConversationDismissalRefreshesTheConversationIndex() async {
         let model = PrimaryAppShellModel()
         model.presentNewConversation(.voice)
