@@ -1,7 +1,18 @@
+import Observation
 import SwiftUI
+
+@MainActor
+@Observable
+final class AppRootPresentationModel {
+    private(set) var showsUserRecovery = false
+
+    func openUserRecovery() { showsUserRecovery = true }
+    func closeUserRecovery() { showsUserRecovery = false }
+}
 
 struct AppRootView: View {
     @State var runtime: AppRuntime
+    @State private var presentation = AppRootPresentationModel()
     @State private var showsPersonalQA = false
     @State private var showsInsights = false
     @State private var startsProductVoiceAfterQA = false
@@ -23,7 +34,7 @@ struct AppRootView: View {
                             careerWorkModel: careerWorkModel,
                             conversationsModel: conversationsModel,
                             conversationFactory: runtime.conversationFactory,
-                            openRecovery: runtime.requireRecovery,
+                            openRecovery: presentation.openUserRecovery,
                             openPersonalQA: personalQAAction,
                             openInsights: { showsInsights = true }
                         )
@@ -51,6 +62,14 @@ struct AppRootView: View {
         .sheet(isPresented: $showsInsights) {
             if let model = runtime.insightsModel {
                 NavigationStack { InsightsView(model: model) }
+            }
+        }
+        .sheet(isPresented: Binding(
+            get: { presentation.showsUserRecovery },
+            set: { if !$0 { presentation.closeUserRecovery() } }
+        )) {
+            NavigationStack {
+                RecoveryView(dismissRuntimeRecovery: presentation.closeUserRecovery)
             }
         }
     }

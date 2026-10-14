@@ -133,7 +133,12 @@ private struct PrivacyPermissionsView: View {
 
 private struct DiagnosticsSummaryView: View {
     let facts: YouOperationalFacts
-    var body: some View { List { LabeledContent("Local store", value: facts.store.rawValue); LabeledContent("Recovery", value: facts.recovery.rawValue); LabeledContent("Voice gateway", value: facts.gateway.rawValue) }.navigationTitle("Diagnostics") }
+    var body: some View {
+        List(YouDiagnostics.rows(for: facts)) { row in
+            LabeledContent(row.label, value: row.value)
+        }
+        .navigationTitle("Diagnostics")
+    }
 }
 
 private extension CapabilityID {

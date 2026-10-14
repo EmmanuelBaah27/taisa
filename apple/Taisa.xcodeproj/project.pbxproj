@@ -135,6 +135,7 @@
 		AB283F2CCAB03EB5B3CC8AA8 /* ConversationViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A762C6B05EBE3E1F2EEE8FD3 /* ConversationViewModel.swift */; };
 		AD2036C60D1429682A541314 /* LeadInsightSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E564CC9D239D9DCCC17F0AE /* LeadInsightSection.swift */; };
 		AED0E1346344582659B692BA /* ConversationTimeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8141344AEEFB536E987E8D85 /* ConversationTimeline.swift */; };
+		AFA8A0119D6F5ED6E8CD0355 /* AppRootPresentationModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 512F6F1A7F7B94347A2919F9 /* AppRootPresentationModelTests.swift */; };
 		AFF3C70017F0490B65BE1C0D /* HomeSectionViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DE282C2E35864B24E4EE76E /* HomeSectionViews.swift */; };
 		B04E3DD112735E9E4E2A84FC /* ConversationTimeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8141344AEEFB536E987E8D85 /* ConversationTimeline.swift */; };
 		B1093913D5665590CA1953EE /* RecoveryViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5B97AC1D5F21A3BF7F7BFA3 /* RecoveryViewModelTests.swift */; };
@@ -246,6 +247,7 @@
 		4545C373898A484014E37320 /* TaisaFoundation */ = {isa = PBXFileReference; lastKnownFileType = folder; name = TaisaFoundation; path = Packages/TaisaFoundation; sourceTree = SOURCE_ROOT; };
 		46A8FEB0D11F6C9B75B6E2B3 /* CareerWorkView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CareerWorkView.swift; sourceTree = "<group>"; };
 		4D1AF7F2E4A4A980D0791D4A /* TaisaPreviewApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaisaPreviewApp.swift; sourceTree = "<group>"; };
+		512F6F1A7F7B94347A2919F9 /* AppRootPresentationModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRootPresentationModelTests.swift; sourceTree = "<group>"; };
 		538DFC0F6334FDEC4DB6DE3E /* AppleCapabilityAvailabilityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleCapabilityAvailabilityTests.swift; sourceTree = "<group>"; };
 		542BC8FE972594371B0E82B8 /* TaisaLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaisaLaunchTests.swift; sourceTree = "<group>"; };
 		56C748F52E0A5993C8502937 /* ConversationViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationViewModelTests.swift; sourceTree = "<group>"; };
@@ -483,6 +485,7 @@
 			isa = PBXGroup;
 			children = (
 				538DFC0F6334FDEC4DB6DE3E /* AppleCapabilityAvailabilityTests.swift */,
+				512F6F1A7F7B94347A2919F9 /* AppRootPresentationModelTests.swift */,
 				FB7D5832060268C72A352DB1 /* AppRuntimeTests.swift */,
 				936FCC11F9D526A7A5144337 /* CareerWorkViewContractTests.swift */,
 				5D00619E9662054AA0D87AB3 /* CloudKitIsolationTests.swift */,
@@ -997,6 +1000,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AFA8A0119D6F5ED6E8CD0355 /* AppRootPresentationModelTests.swift in Sources */,
 				E557F16FB50247937021BC14 /* AppRuntimeTests.swift in Sources */,
 				FB493A279C19DB59E570EEC2 /* AppleCapabilityAvailabilityTests.swift in Sources */,
 				2EC7CA4C5F7BD9D3CAC81ABA /* CareerWorkViewContractTests.swift in Sources */,

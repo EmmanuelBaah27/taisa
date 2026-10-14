@@ -72,6 +72,15 @@ import TaisaStorage
         #expect(YouPrivacyCopy.encryptedLocation == "Encrypted on this device")
         #expect(YouPermissionGuidance.microphone(.notDetermined).requestsPermission == false)
     }
+
+    @Test func diagnosticsAreAllowlistedContentFreeAndDeterministic() {
+        let facts = YouOperationalFacts(store: .degraded, recovery: .ready, microphone: .denied, gateway: .unavailable, appProtection: .enabled)
+        let rows = YouDiagnostics.rows(for: facts)
+
+        #expect(rows.map(\.id) == [.localStore, .recovery, .microphone, .voiceGateway, .appProtection])
+        #expect(rows.map(\.value) == ["Degraded", "Ready", "Not allowed", "Unavailable", "Enabled"])
+        #expect(rows.allSatisfy { !$0.value.contains("/") && !$0.value.contains("http") })
+    }
 }
 
 private func profile(name: String) -> ProfileRecord { .init(id: "11111111-1111-4111-8111-111111111111", displayName: name, headline: "", biography: "", updatedAtMS: 1) }
