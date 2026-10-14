@@ -41,14 +41,31 @@ test('build accepts a main-based work branch', async () => {
   assert.equal(result.status, 0, result.stderr);
 });
 
-test('build rejects a branch containing preview-only history', async () => {
+test('ship accepts candidate commits already integrated into preview for QA', async () => {
+  const cwd = await repository();
+  git(cwd, 'switch', 'feature/work');
+  await writeFile(join(cwd, 'candidate.txt'), 'candidate\n');
+  git(cwd, 'add', 'candidate.txt');
+  git(cwd, 'commit', '-m', 'candidate work');
+  const candidate = git(cwd, 'rev-parse', 'HEAD');
+  git(cwd, 'switch', 'preview/taisa');
+  git(cwd, 'cherry-pick', candidate);
+  await writeFile(join(cwd, 'preview.txt'), 'preview only\n');
+  git(cwd, 'add', 'preview.txt');
+  git(cwd, 'commit', '-m', 'preview only');
+  const result = verify(cwd, 'ship', '--work-ref', 'feature/work', '--branch', 'feature/work', '--pr-base', 'main', '--main-ref', 'main', '--preview-ref', 'preview/taisa');
+  assert.equal(result.status, 0, result.stderr);
+});
+
+test('build rejects a branch that merges preview-only history', async () => {
   const cwd = await repository();
   git(cwd, 'switch', 'preview/taisa');
   await writeFile(join(cwd, 'preview.txt'), 'preview only\n');
   git(cwd, 'add', 'preview.txt');
   git(cwd, 'commit', '-m', 'preview only');
-  git(cwd, 'switch', '-c', 'feature/from-preview');
-  const result = verify(cwd, 'build', '--work-ref', 'feature/from-preview', '--branch', 'feature/from-preview', '--main-ref', 'main', '--preview-ref', 'preview/taisa');
+  git(cwd, 'switch', 'feature/work');
+  git(cwd, 'merge', '--no-ff', '--no-edit', 'preview/taisa');
+  const result = verify(cwd, 'build', '--work-ref', 'feature/work', '--branch', 'feature/work', '--main-ref', 'main', '--preview-ref', 'preview/taisa');
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /contains preview-only history/i);
 });
