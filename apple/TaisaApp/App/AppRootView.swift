@@ -5,6 +5,7 @@ struct AppRootView: View {
     @State private var showsPersonalQA = false
     @State private var showsInsights = false
     @State private var startsProductVoiceAfterQA = false
+    @State private var showsRuntimeRecovery = true
 
     var body: some View {
         Group {
@@ -28,12 +29,8 @@ struct AppRootView: View {
                         )
                     }
                 case .recoveryRequired:
-                    NavigationStack {
-                        RecoveryView(retryRuntime: {
-                            Task { await runtime.retryRecovery() }
-                        })
-                            .accessibilityIdentifier("home.recovery")
-                    }
+                    if showsRuntimeRecovery { runtimeRecovery }
+                    else { recoveryUnavailable }
                 }
             }
         }
@@ -56,6 +53,33 @@ struct AppRootView: View {
                 NavigationStack { InsightsView(model: model) }
             }
         }
+    }
+
+    private var runtimeRecovery: some View {
+        NavigationStack {
+            RecoveryView(
+                retryRuntime: { Task { await runtime.retryRecovery() } },
+                dismissRuntimeRecovery: { showsRuntimeRecovery = false }
+            )
+            .accessibilityIdentifier("home.recovery")
+        }
+    }
+
+    private var recoveryUnavailable: some View {
+        ContentUnavailableView {
+            Label("Secure data unavailable", systemImage: "lock.trianglebadge.exclamationmark")
+        } description: {
+            Text("Taisa could not open the encrypted data on this device. Your data has not been replaced.")
+        } actions: {
+            Button("Try Again") {
+                Task {
+                    let state = await runtime.retryRecovery()
+                    if state == .recoveryRequired { showsRuntimeRecovery = false }
+                }
+            }
+            Button("Open backup and recovery") { showsRuntimeRecovery = true }
+        }
+        .accessibilityIdentifier("recovery.unavailable")
     }
 
     private var showsConversationOverflowQA: Bool {

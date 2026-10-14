@@ -19,6 +19,23 @@ final class RecoveryViewModelTests: XCTestCase {
         XCTAssertTrue(source.contains("retryRuntime"))
     }
 
+    func testRootRecoveryExposesAVisibleExitToTheUnavailableLanding() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let recoverySource = try String(
+            contentsOf: root.appendingPathComponent("TaisaApp/Recovery/RecoveryView.swift"),
+            encoding: .utf8
+        )
+        let appRootSource = try String(
+            contentsOf: root.appendingPathComponent("TaisaApp/App/AppRootView.swift"),
+            encoding: .utf8
+        )
+
+        XCTAssertTrue(recoverySource.contains("dismissRuntimeRecovery"))
+        XCTAssertTrue(recoverySource.contains("recovery.runtime.close"))
+        XCTAssertTrue(appRootSource.contains("recovery.unavailable"))
+        XCTAssertTrue(appRootSource.contains("Open backup and recovery"))
+    }
+
     // Break caught: an unauthenticated caller can submit or reveal recovery material.
     func testAuthenticationFailureNeverAcceptsKey() async throws {
         let fixture = try await RecoveryFixture()
