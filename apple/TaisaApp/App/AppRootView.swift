@@ -15,10 +15,11 @@ struct AppRootView: View {
                 case .startup:
                     ProgressView("Opening Taisa…")
                 case .ready:
-                    if let model = runtime.homeModel, let conversationsModel = runtime.conversationsModel {
+                    if let model = runtime.homeModel, let careerWorkModel = runtime.careerWorkModel, let conversationsModel = runtime.conversationsModel {
                         PrimaryAppShell(
                             model: runtime.primaryShellModel,
                             homeModel: model,
+                            careerWorkModel: careerWorkModel,
                             conversationsModel: conversationsModel,
                             conversationFactory: runtime.conversationFactory,
                             openRecovery: runtime.requireRecovery,

@@ -29,9 +29,19 @@ public final class CareerWorkModel {
             do {
                 async let overview = client.loadOverview()
                 let detail: CareerGoalSnapshot?
-                if case let .goal(id) = route { detail = try await client.loadGoal(id) }
-                else { detail = nil }
-                let snapshot = try await CareerWorkProductSnapshot(overview: overview, selectedGoal: detail)
+                let action: ActionRecord?
+                let evidence: EvidenceRecord?
+                switch route {
+                case let .goal(id):
+                    detail = try await client.loadGoal(id); action = nil; evidence = nil
+                case let .action(id):
+                    detail = nil; action = try await client.loadAction(id); evidence = nil
+                case let .evidence(id):
+                    detail = nil; action = nil; evidence = try await client.loadEvidence(id)
+                case .overview:
+                    detail = nil; action = nil; evidence = nil
+                }
+                let snapshot = try await CareerWorkProductSnapshot(overview: overview, selectedGoal: detail, selectedAction: action, selectedEvidence: evidence)
                 try Task.checkCancellation()
                 return .success(snapshot)
             } catch is CancellationError {
@@ -68,6 +78,21 @@ public final class CareerWorkModel {
     public func updateSelectedGoal(title: String, detail: String) async {
         guard case let .goal(id) = route else { return }
         await mutate { try await client.updateGoal(id, title, detail) }
+    }
+
+    public func createMilestone(title: String, targetAtMS: Int64?) async {
+        guard case let .goal(id) = route else { return }
+        await mutate { _ = try await client.createMilestone(id, title, targetAtMS) }
+    }
+
+    public func createAction(title: String, detail: String, dueAtMS: Int64?) async {
+        guard case let .goal(id) = route else { return }
+        await mutate { _ = try await client.createAction(id, title, detail, dueAtMS) }
+    }
+
+    public func addEvidence(actionID: String?, title: String, detail: String, occurredAtMS: Int64) async {
+        guard case let .goal(id) = route else { return }
+        await mutate { _ = try await client.addEvidence(id, actionID, title, detail, occurredAtMS) }
     }
 
     public func transitionSelectedGoal(to status: GoalStatus) async {

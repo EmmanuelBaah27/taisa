@@ -31,6 +31,7 @@
 		1E89017FCDE18E2D8924951F /* TaisaConversations in Frameworks */ = {isa = PBXBuildFile; productRef = 9CB1C9FED8F2538C29B3DBE0 /* TaisaConversations */; };
 		1E9F46005B09D3CCFF0801E6 /* VoiceSessionDiagnosticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37D6181795E1F88B04691E7E /* VoiceSessionDiagnosticsView.swift */; };
 		23F902852DA35474CB0D79D0 /* TaisaContracts in Frameworks */ = {isa = PBXBuildFile; productRef = 3D8E0B5042A6307078A2815B /* TaisaContracts */; };
+		250AAE7D3E2D26899DBB5EB3 /* CareerWorkScenarios.swift in Sources */ = {isa = PBXBuildFile; fileRef = 329E813033BF75796D0AD0CE /* CareerWorkScenarios.swift */; };
 		264ACBC992C077312BF36A7F /* PersonalDeviceQAView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92D5594A142F5C6089D8C7E2 /* PersonalDeviceQAView.swift */; };
 		2704C585225D9C8902B3B338 /* PersonalDeviceQAView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92D5594A142F5C6089D8C7E2 /* PersonalDeviceQAView.swift */; };
 		27647A73DE2201D81A1724E9 /* PreviewCatalogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E29E857D33A087D16F65BB2C /* PreviewCatalogView.swift */; };
@@ -41,6 +42,7 @@
 		2BB2004C2A12D95BBDC43B00 /* HomeScenarios.swift in Sources */ = {isa = PBXBuildFile; fileRef = F55DF3928CFB2744E7DB4520 /* HomeScenarios.swift */; };
 		2C4953C9F7A77AFE60369188 /* BuildMetadata.generated.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5247C0A0A8695277E1212A3 /* BuildMetadata.generated.swift */; };
 		2C87AABC98E1700B738509C0 /* ConversationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DFC071BC87E24F810CB98DD /* ConversationView.swift */; };
+		2EC7CA4C5F7BD9D3CAC81ABA /* CareerWorkViewContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 936FCC11F9D526A7A5144337 /* CareerWorkViewContractTests.swift */; };
 		2F8325E955C7D322F3A85195 /* VoiceSessionDiagnosticsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79B1393C1FED95ECECC487CB /* VoiceSessionDiagnosticsViewModel.swift */; };
 		2F926A2C94A687DEAF1C37F1 /* TaisaConversations in Frameworks */ = {isa = PBXBuildFile; productRef = EE5CBE84C5CC2E71D74BA7FA /* TaisaConversations */; };
 		2FC52F11C37E17D01ACB5616 /* AppRuntime.swift in Sources */ = {isa = PBXBuildFile; fileRef = 590574378B222D024CB18099 /* AppRuntime.swift */; };
@@ -52,6 +54,7 @@
 		3593C89AD66C25B6755521BD /* ConversationTimeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8141344AEEFB536E987E8D85 /* ConversationTimeline.swift */; };
 		391B21B781EBCDB921226163 /* PersonalRecoveryBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3369C3B07B2C81C17D16BFFB /* PersonalRecoveryBackend.swift */; };
 		3AD4E8D286F8319496162CEE /* CloudKitRuntimeConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDD926DEBBEEBABEDDE1BCE4 /* CloudKitRuntimeConfiguration.swift */; };
+		3EC287C8278A5A69EA8A84D0 /* CareerWorkView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46A8FEB0D11F6C9B75B6E2B3 /* CareerWorkView.swift */; };
 		4385E89487FA22F1D8963C82 /* ConversationsViewContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8287F686EE049BD6CFB7E075 /* ConversationsViewContractTests.swift */; };
 		44BD30D2329C67910E146E33 /* PersonalVoiceSessionModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D98709FA19C97713E47DCC11 /* PersonalVoiceSessionModel.swift */; };
 		453968367E2C069858A27195 /* TaisaHome in Frameworks */ = {isa = PBXBuildFile; productRef = CDE1C319968A04D7C860E6AC /* TaisaHome */; };
@@ -82,6 +85,7 @@
 		6B8C7B485ABC3D93A041D65C /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0B8739884148E1FFE9C9B1C /* HomeView.swift */; };
 		6CECB13EC2017E23AB5E389F /* ThisWeekSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = B49A242D82122A359560DA43 /* ThisWeekSection.swift */; };
 		6D9E8C043F9EA67761AF5D05 /* ConversationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DFC071BC87E24F810CB98DD /* ConversationView.swift */; };
+		71030842694FB9DD28001127 /* CareerWorkView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46A8FEB0D11F6C9B75B6E2B3 /* CareerWorkView.swift */; };
 		7123CE009420812A33170858 /* TaisaCareerWork in Frameworks */ = {isa = PBXBuildFile; productRef = B287C5869C13C1DC6D300D79 /* TaisaCareerWork */; };
 		7140D458E177D716DDF995ED /* TaisaStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 37302F854332C0799EC455A7 /* TaisaStorage */; };
 		7236186363DA6E89483D248C /* TaisaStorage in Frameworks */ = {isa = PBXBuildFile; productRef = B6433508F77896BF3BB8142E /* TaisaStorage */; };
@@ -109,6 +113,7 @@
 		94FCF4B5DD490F5575F5DFEB /* ConversationPreviewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18515B6E6B1AF610940D68D5 /* ConversationPreviewTests.swift */; };
 		9753FAC0095857148C7D78B0 /* TaisaNetworking in Frameworks */ = {isa = PBXBuildFile; productRef = DB8B86318CA6204FB4E99DA2 /* TaisaNetworking */; };
 		980EFD6B050D14F51379E3F9 /* PersonalVoiceSessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68CC4A35117BE0C1981CF4E2 /* PersonalVoiceSessionView.swift */; };
+		98BAD9001F4039865F00E14F /* CareerWorkView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46A8FEB0D11F6C9B75B6E2B3 /* CareerWorkView.swift */; };
 		98EE3C3736F76DACD2460EB9 /* TranscriptCorrectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F9F0E82CFDAD9C86AC289FF /* TranscriptCorrectionView.swift */; };
 		994E9601F13E58AD25705A77 /* VoiceSessionDiagnosticsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79B1393C1FED95ECECC487CB /* VoiceSessionDiagnosticsViewModel.swift */; };
 		9BD10D6AEBDB181476582D27 /* TaisaCareerWork in Frameworks */ = {isa = PBXBuildFile; productRef = EBDED72422FE28BD295EBBB2 /* TaisaCareerWork */; };
@@ -223,6 +228,7 @@
 		2C67580C7BC2D92BA207D078 /* TaisaPreviewUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = TaisaPreviewUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		2E564CC9D239D9DCCC17F0AE /* LeadInsightSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeadInsightSection.swift; sourceTree = "<group>"; };
 		305AAEAE3D76CAC24AA7C499 /* ConversationViewContractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationViewContractTests.swift; sourceTree = "<group>"; };
+		329E813033BF75796D0AD0CE /* CareerWorkScenarios.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CareerWorkScenarios.swift; sourceTree = "<group>"; };
 		3369C3B07B2C81C17D16BFFB /* PersonalRecoveryBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalRecoveryBackend.swift; sourceTree = "<group>"; };
 		358347F16F086497135A3080 /* AppRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRootView.swift; sourceTree = "<group>"; };
 		37D6181795E1F88B04691E7E /* VoiceSessionDiagnosticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceSessionDiagnosticsView.swift; sourceTree = "<group>"; };
@@ -230,6 +236,7 @@
 		3A19D945D21AC83D8AF47BED /* PersonalDeviceQATests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalDeviceQATests.swift; sourceTree = "<group>"; };
 		3DFC071BC87E24F810CB98DD /* ConversationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationView.swift; sourceTree = "<group>"; };
 		4545C373898A484014E37320 /* TaisaFoundation */ = {isa = PBXFileReference; lastKnownFileType = folder; name = TaisaFoundation; path = Packages/TaisaFoundation; sourceTree = SOURCE_ROOT; };
+		46A8FEB0D11F6C9B75B6E2B3 /* CareerWorkView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CareerWorkView.swift; sourceTree = "<group>"; };
 		4D1AF7F2E4A4A980D0791D4A /* TaisaPreviewApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaisaPreviewApp.swift; sourceTree = "<group>"; };
 		538DFC0F6334FDEC4DB6DE3E /* AppleCapabilityAvailabilityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleCapabilityAvailabilityTests.swift; sourceTree = "<group>"; };
 		542BC8FE972594371B0E82B8 /* TaisaLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaisaLaunchTests.swift; sourceTree = "<group>"; };
@@ -257,6 +264,7 @@
 		8DE603EA1A17036021FA0FF9 /* HomeScenarioView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeScenarioView.swift; sourceTree = "<group>"; };
 		913DBB6F0D16BF6173604367 /* TaisaPreviewCatalogTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaisaPreviewCatalogTests.swift; sourceTree = "<group>"; };
 		92D5594A142F5C6089D8C7E2 /* PersonalDeviceQAView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalDeviceQAView.swift; sourceTree = "<group>"; };
+		936FCC11F9D526A7A5144337 /* CareerWorkViewContractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CareerWorkViewContractTests.swift; sourceTree = "<group>"; };
 		97B1116C9FFEDAF680AF43A5 /* InsightDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightDetailView.swift; sourceTree = "<group>"; };
 		985B59A5AA9B882A8A7CB454 /* PrimaryAppShell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrimaryAppShell.swift; sourceTree = "<group>"; };
 		9AB82F356059A4761E465BC9 /* VoiceSessionDiagnosticsViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceSessionDiagnosticsViewModelTests.swift; sourceTree = "<group>"; };
@@ -390,6 +398,7 @@
 		16BB71C41EFB62EE6336932F /* TaisaPreview */ = {
 			isa = PBXGroup;
 			children = (
+				329E813033BF75796D0AD0CE /* CareerWorkScenarios.swift */,
 				75AFA99B98670C0CF61BF667 /* ConversationScenarios.swift */,
 				EA84D91BC150697897986EF9 /* FoundationScenarios.swift */,
 				F55DF3928CFB2744E7DB4520 /* HomeScenarios.swift */,
@@ -429,6 +438,14 @@
 			path = TaisaPreviewUITests;
 			sourceTree = "<group>";
 		};
+		6D3F85FB9D88D8D86AA213D1 /* CareerWork */ = {
+			isa = PBXGroup;
+			children = (
+				46A8FEB0D11F6C9B75B6E2B3 /* CareerWorkView.swift */,
+			);
+			path = CareerWork;
+			sourceTree = "<group>";
+		};
 		73A0DF13494B49DFAE6806BE /* AppShell */ = {
 			isa = PBXGroup;
 			children = (
@@ -455,6 +472,7 @@
 			children = (
 				538DFC0F6334FDEC4DB6DE3E /* AppleCapabilityAvailabilityTests.swift */,
 				FB7D5832060268C72A352DB1 /* AppRuntimeTests.swift */,
+				936FCC11F9D526A7A5144337 /* CareerWorkViewContractTests.swift */,
 				5D00619E9662054AA0D87AB3 /* CloudKitIsolationTests.swift */,
 				8287F686EE049BD6CFB7E075 /* ConversationsViewContractTests.swift */,
 				305AAEAE3D76CAC24AA7C499 /* ConversationViewContractTests.swift */,
@@ -480,6 +498,7 @@
 				E79CF0C618833217451F645C /* TaisaApp.swift */,
 				DC3123EFD67B2D87CAAED872 /* App */,
 				73A0DF13494B49DFAE6806BE /* AppShell */,
+				6D3F85FB9D88D8D86AA213D1 /* CareerWork */,
 				FDC8E03D1D07A8F2DAD8626B /* Conversation */,
 				CFEDB896F3416E87D0A9A706 /* Conversations */,
 				A1EA259DBD694A50AB7A0A94 /* Home */,
@@ -865,6 +884,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				2C4953C9F7A77AFE60369188 /* BuildMetadata.generated.swift in Sources */,
+				250AAE7D3E2D26899DBB5EB3 /* CareerWorkScenarios.swift in Sources */,
+				3EC287C8278A5A69EA8A84D0 /* CareerWorkView.swift in Sources */,
 				28BA5C760D4AB92C831E4DCC /* ConversationHistoryRow.swift in Sources */,
 				5931DA432C1DF23FB2121FC7 /* ConversationScenarios.swift in Sources */,
 				B04E3DD112735E9E4E2A84FC /* ConversationTimeline.swift in Sources */,
@@ -902,6 +923,7 @@
 				2FC52F11C37E17D01ACB5616 /* AppRuntime.swift in Sources */,
 				1C3C0759308495D3F89AD423 /* BuildDiagnosticsView.swift in Sources */,
 				C706F833D6F085BA07123280 /* BuildMetadata.generated.swift in Sources */,
+				98BAD9001F4039865F00E14F /* CareerWorkView.swift in Sources */,
 				3AD4E8D286F8319496162CEE /* CloudKitRuntimeConfiguration.swift in Sources */,
 				BB26DEFED617B50820D3D661 /* ConversationHistoryRow.swift in Sources */,
 				E1C6EF58329CD3B87483B807 /* ConversationRuntimeFactory.swift in Sources */,
@@ -950,6 +972,7 @@
 			files = (
 				E557F16FB50247937021BC14 /* AppRuntimeTests.swift in Sources */,
 				FB493A279C19DB59E570EEC2 /* AppleCapabilityAvailabilityTests.swift in Sources */,
+				2EC7CA4C5F7BD9D3CAC81ABA /* CareerWorkViewContractTests.swift in Sources */,
 				00EBB8A65CFC9CCEBB9F96A4 /* CloudKitIsolationTests.swift in Sources */,
 				5BF03F94250165F9281938A7 /* ConversationViewContractTests.swift in Sources */,
 				C2E995CF2E1681451AF512EC /* ConversationViewModelTests.swift in Sources */,
@@ -1002,6 +1025,7 @@
 				5A5003E0A59E1826942CB88B /* AppRuntime.swift in Sources */,
 				BC05599BCB16F2E72FB9E01E /* BuildDiagnosticsView.swift in Sources */,
 				6A8C01721A57C6BF44E6802F /* BuildMetadata.generated.swift in Sources */,
+				71030842694FB9DD28001127 /* CareerWorkView.swift in Sources */,
 				FFAA066E0649D55DCCFDE268 /* CloudKitRuntimeConfiguration.swift in Sources */,
 				F86170C2BB15132E6DCF65D7 /* ConversationHistoryRow.swift in Sources */,
 				9D14FE17C71C024AE88C5C64 /* ConversationRuntimeFactory.swift in Sources */,

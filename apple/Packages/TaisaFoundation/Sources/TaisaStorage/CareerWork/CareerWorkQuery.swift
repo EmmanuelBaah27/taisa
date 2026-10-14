@@ -102,6 +102,18 @@ public struct CareerWorkQuery: Sendable {
         }
     }
 
+    public func action(id: String) async throws -> ActionRecord? {
+        try await store.read { db in
+            try Row.fetchOne(db, sql: "SELECT * FROM actions WHERE id = ? COLLATE NOCASE AND NOT EXISTS (SELECT 1 FROM tombstones WHERE entity_type = 'action' AND entity_id = ? COLLATE NOCASE)", arguments: [id, id]).map(Self.action)
+        }
+    }
+
+    public func evidence(id: String) async throws -> EvidenceRecord? {
+        try await store.read { db in
+            try Row.fetchOne(db, sql: "SELECT * FROM evidence WHERE id = ? COLLATE NOCASE AND NOT EXISTS (SELECT 1 FROM tombstones WHERE entity_type = 'evidence' AND entity_id = ? COLLATE NOCASE)", arguments: [id, id]).map(Self.evidence)
+        }
+    }
+
     private static func goal(_ row: Row) -> GoalRecord { .init(id: row["id"], title: row["title"], detail: row["detail"], status: row["status"], createdAtMS: row["created_at_ms"], updatedAtMS: row["updated_at_ms"]) }
     private static func milestone(_ row: Row) -> MilestoneRecord { .init(id: row["id"], goalID: row["goal_id"], title: row["title"], status: row["status"], targetAtMS: row["target_at_ms"], updatedAtMS: row["updated_at_ms"]) }
     private static func action(_ row: Row) -> ActionRecord { .init(id: row["id"], goalID: row["goal_id"], title: row["title"], detail: row["detail"], status: row["status"], dueAtMS: row["due_at_ms"], createdAtMS: row["created_at_ms"], updatedAtMS: row["updated_at_ms"]) }

@@ -10,10 +10,14 @@ public enum CareerWorkIssue: Sendable, Equatable {
 public struct CareerWorkProductSnapshot: Sendable, Equatable {
     public let overview: CareerWorkOverview
     public let selectedGoal: CareerGoalSnapshot?
+    public let selectedAction: ActionRecord?
+    public let selectedEvidence: EvidenceRecord?
 
-    public init(overview: CareerWorkOverview, selectedGoal: CareerGoalSnapshot?) {
+    public init(overview: CareerWorkOverview, selectedGoal: CareerGoalSnapshot?, selectedAction: ActionRecord? = nil, selectedEvidence: EvidenceRecord? = nil) {
         self.overview = overview
         self.selectedGoal = selectedGoal
+        self.selectedAction = selectedAction
+        self.selectedEvidence = selectedEvidence
     }
 
     public var isEmpty: Bool {
