@@ -368,7 +368,10 @@ public actor SyncCoordinator {
             let remote = try received.values.map(SyncProjection.init)
             let sources = local + remote
             var conflictCount = 0
-            let order = ["profile", "conversation", "goal", "memory", "message", "milestone", "action", "evidence", "memory_source"]
+            let order = [
+                "profile", "conversation", "goal", "memory", "message", "milestone", "action", "evidence", "memory_source",
+                "weekly_placement", "work_event", "insight", "insight_source", "insight_revision",
+            ]
             for key in affected.sorted(by: { left, right in
                 let a = left.split(separator: "|", maxSplits: 1).first.map(String.init) ?? ""
                 let b = right.split(separator: "|", maxSplits: 1).first.map(String.init) ?? ""
@@ -376,7 +379,7 @@ public actor SyncCoordinator {
             }) {
                 let events = sources.filter { $0.mutation.entityType + "|" + $0.mutation.entityID == key }.map(\.mutation)
                 guard let first = events.first else { continue }
-                if first.entityType == "memory_source" &&
+                if ["memory_source", "work_event", "insight_source"].contains(first.entityType) &&
                     events.contains(where: { $0.kind == .update || $0.kind == .resolve }) &&
                     !events.contains(where: { $0.kind == .create }) {
                     throw SyncProjectionError.dependencyPending

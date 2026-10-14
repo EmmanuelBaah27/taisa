@@ -39,4 +39,16 @@ import TaisaSync
             _ = try CloudRecordMapper.makeRecord(bad, assetDirectory: FileManager.default.temporaryDirectory)
         }
     }
+
+    @Test func combinedHomeEntityFamiliesRoundTripAsOpaqueCloudRecords() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        for entityType in ["weekly_placement", "work_event", "insight", "insight_source", "insight_revision"] {
+            let id = UUID()
+            let change = EncryptedChange(id: id.uuidString, envelope: VaultEnvelope(version: 1, metadata: EnvelopeMetadata(vaultID: UUID(), recordID: id, entityType: entityType, schemaVersion: 1, tombstone: false), ciphertext: Data(repeating: 0xA5, count: 64)))
+            let record = try CloudRecordMapper.makeRecord(change, assetDirectory: directory)
+            #expect(try CloudRecordMapper.change(from: record) == change)
+        }
+    }
 }

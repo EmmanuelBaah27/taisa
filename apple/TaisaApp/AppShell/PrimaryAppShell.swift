@@ -65,6 +65,7 @@ struct PrimaryAppShell: View {
     let conversationFactory: ConversationRuntimeFactory?
     var openRecovery: () -> Void = {}
     var openPersonalQA: (() -> Void)?
+    var openInsights: () -> Void = {}
 
     var body: some View {
         NavigationStack {
@@ -121,6 +122,7 @@ struct PrimaryAppShell: View {
                 model: homeModel,
                 openRecovery: openRecovery,
                 openPersonalQA: openPersonalQA,
+                openInsights: openInsights,
                 ownsNavigation: false,
                 showsRecentConversations: false
             )

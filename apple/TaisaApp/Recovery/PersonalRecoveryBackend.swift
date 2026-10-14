@@ -39,6 +39,8 @@ actor PersonalRecoveryBackend {
         return try await TaisaStore.open(at: storeURL, keyStore: keyStore)
     }
 
+    func deviceID() -> String { installationID.uuidString }
+
     func voiceStoreContext() async throws -> (store: TaisaStore, deviceID: UUID) {
         (try await openStore(), installationID)
     }

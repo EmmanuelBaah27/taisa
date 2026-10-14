@@ -3,6 +3,7 @@ import SwiftUI
 struct AppRootView: View {
     @State var runtime: AppRuntime
     @State private var showsPersonalQA = false
+    @State private var showsInsights = false
     @State private var startsProductVoiceAfterQA = false
 
     var body: some View {
@@ -21,7 +22,8 @@ struct AppRootView: View {
                             conversationsModel: conversationsModel,
                             conversationFactory: runtime.conversationFactory,
                             openRecovery: runtime.requireRecovery,
-                            openPersonalQA: personalQAAction
+                            openPersonalQA: personalQAAction,
+                            openInsights: { showsInsights = true }
                         )
                     }
                 case .recoveryRequired:
@@ -48,6 +50,11 @@ struct AppRootView: View {
             }
         }
 #endif
+        .sheet(isPresented: $showsInsights) {
+            if let model = runtime.insightsModel {
+                NavigationStack { InsightsView(model: model) }
+            }
+        }
     }
 
     private var showsConversationOverflowQA: Bool {
