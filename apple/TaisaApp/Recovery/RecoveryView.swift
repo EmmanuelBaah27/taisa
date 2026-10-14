@@ -5,6 +5,7 @@ import TaisaSecurity
 struct RecoveryView: View {
     var importURL: URL? = nil
     var retryRuntime: (@MainActor @Sendable () -> Void)? = nil
+    var dismissRuntimeRecovery: (@MainActor @Sendable () -> Void)? = nil
     @Environment(\.scenePhase) private var scenePhase
     @State private var model: RecoveryViewModel?
     @State private var enteredKey = ""
@@ -18,10 +19,12 @@ struct RecoveryView: View {
     init(
         importURL: URL? = nil,
         model: RecoveryViewModel? = nil,
-        retryRuntime: (@MainActor @Sendable () -> Void)? = nil
+        retryRuntime: (@MainActor @Sendable () -> Void)? = nil,
+        dismissRuntimeRecovery: (@MainActor @Sendable () -> Void)? = nil
     ) {
         self.importURL = importURL
         self.retryRuntime = retryRuntime
+        self.dismissRuntimeRecovery = dismissRuntimeRecovery
         _model = State(initialValue: model)
     }
 
@@ -50,6 +53,15 @@ struct RecoveryView: View {
         .background(TaisaColor.background.color)
         .navigationTitle("Backup and recovery")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if let dismissRuntimeRecovery {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close", action: dismissRuntimeRecovery)
+                        .disabled(model?.state == .restoring)
+                        .accessibilityIdentifier("recovery.runtime.close")
+                }
+            }
+        }
         .navigationBarBackButtonHidden(model?.state == .restoring)
         .interactiveDismissDisabled(model?.state == .restoring)
         .task(id: importURL) {

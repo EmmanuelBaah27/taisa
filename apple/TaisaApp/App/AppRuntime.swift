@@ -47,6 +47,11 @@ final class AppRuntime {
 
     static func live() -> AppRuntime {
         AppRuntime {
+#if DEBUG || TAISA_PERSONAL
+            if ProcessInfo.processInfo.arguments.contains("--taisa-recovery-route-qa") {
+                throw StorageError.authenticationFailed
+            }
+#endif
             let backend = try PersonalRecoveryBackend.personal()
             let context = try await backend.voiceStoreContext()
             let store = context.store

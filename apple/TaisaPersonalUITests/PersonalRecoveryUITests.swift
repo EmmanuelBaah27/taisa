@@ -1,6 +1,20 @@
 import XCTest
 
 @MainActor final class PersonalRecoveryUITests: XCTestCase {
+    func testRootRecoveryCanCloseAndReopenWithoutADeadEnd() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--taisa-recovery-route-qa"]
+        app.launch()
+
+        let close = app.buttons["recovery.runtime.close"]
+        XCTAssertTrue(close.waitForExistence(timeout: 10))
+        close.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["recovery.unavailable"].waitForExistence(timeout: 5))
+
+        app.buttons["Open backup and recovery"].tap()
+        XCTAssertTrue(close.waitForExistence(timeout: 5))
+    }
+
     func testPreservedSavedDraftOpensWithoutConversationUnavailable() throws {
         let app = XCUIApplication()
         app.launchArguments = ["--taisa-seed-finalized-voice-draft"]
