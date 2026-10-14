@@ -4,6 +4,72 @@ import Testing
 @testable import TaisaStorage
 
 @Suite(.serialized) struct TaisaMigratorTests {
+    @Test func compactVersionThreeCheckSyntaxUpgradesWithoutRecoveryDetour() async throws {
+        let fixture = try MigrationFixture()
+        defer { fixture.remove() }
+        let queue = try fixture.makeKeyedQueue()
+        var legacy = DatabaseMigrator()
+        for version in 1...5 {
+            legacy.registerMigration("v\(version)", foreignKeyChecks: .immediate) { db in
+                switch version {
+                case 1: try TaisaSchema.createVersion1(in: db)
+                case 2: try TaisaSchema.createVersion2(in: db)
+                case 3:
+                    try db.execute(sql: "ALTER TABLE conversations ADD COLUMN lifecycle TEXT NOT NULL DEFAULT 'completed' CHECK (lifecycle IN ('draft', 'active', 'completed'))")
+                    try db.execute(sql: "ALTER TABLE conversations ADD COLUMN title_authority TEXT NOT NULL DEFAULT 'user' CHECK (title_authority IN ('localFallback', 'assistantSuggested', 'user'))")
+                    try db.execute(sql: Self.compactConversationDraftsDDL)
+                    try db.execute(sql: """
+                        CREATE TABLE message_revisions (
+                            id TEXT PRIMARY KEY NOT NULL CHECK (length(id) = 36),
+                            message_id TEXT NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+                            original_body TEXT NOT NULL,
+                            replacement_message_id TEXT REFERENCES messages(id) ON DELETE SET NULL,
+                            created_at_ms INTEGER NOT NULL CHECK (created_at_ms >= 0)
+                        )
+                        """)
+                    try db.execute(sql: "CREATE INDEX conversation_drafts_by_updated ON conversation_drafts(updated_at_ms DESC, created_at_ms DESC)")
+                    try db.execute(sql: "CREATE INDEX message_revisions_by_message ON message_revisions(message_id, created_at_ms)")
+                case 4: try TaisaSchema.createVersion4(in: db)
+                case 5: try TaisaSchema.createVersion5(in: db)
+                default: break
+                }
+                try db.execute(sql: "INSERT INTO migration_state (version, applied_at_ms) VALUES (?, ?)", arguments: [version, version])
+                try db.execute(sql: "PRAGMA user_version = \(version)")
+            }
+        }
+        try legacy.migrate(queue)
+        let profileID = UUID().uuidString
+        try await queue.write { db in
+            try db.execute(sql: "INSERT INTO profile (id, display_name, updated_at_ms) VALUES (?, 'Preserved', 1)", arguments: [profileID])
+        }
+        try queue.close()
+
+        let store = try await TaisaStore.open(at: fixture.url, keyStore: fixture.keys)
+        let state = try await store.read { db in
+            (
+                try Int.fetchOne(db, sql: "PRAGMA user_version"),
+                try String.fetchOne(db, sql: "SELECT display_name FROM profile WHERE id = ?", arguments: [profileID])
+            )
+        }
+        #expect(state.0 == 6)
+        #expect(state.1 == "Preserved")
+    }
+
+    private static let compactConversationDraftsDDL = """
+    CREATE TABLE conversation_drafts (
+        id TEXT PRIMARY KEY NOT NULL CHECK (length(id) = 36),
+        conversation_id TEXT NOT NULL UNIQUE REFERENCES conversations(id) ON DELETE CASCADE,
+        input_mode TEXT NOT NULL CHECK (input_mode IN ('voice', 'text')),
+        text TEXT,
+        voice_turn_id TEXT UNIQUE REFERENCES voice_turns(id) ON DELETE CASCADE,
+        recovery_kind TEXT NOT NULL CHECK (recovery_kind IN ('saved', 'recovered', 'retryableTranscription', 'retryableCoaching')),
+        created_at_ms INTEGER NOT NULL CHECK (created_at_ms >= 0),
+        updated_at_ms INTEGER NOT NULL CHECK (updated_at_ms >= created_at_ms),
+        CHECK ((input_mode = 'text' AND text IS NOT NULL AND voice_turn_id IS NULL)
+            OR (input_mode = 'voice' AND text IS NULL AND voice_turn_id IS NOT NULL))
+    )
+    """
+
     @Test func versionSixPreservesGoalsAndPermitsPausedLifecycle() async throws {
         let fixture = try MigrationFixture()
         defer { fixture.remove() }
