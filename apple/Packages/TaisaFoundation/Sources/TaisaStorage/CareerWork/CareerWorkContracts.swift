@@ -37,6 +37,10 @@ public enum ProposalDecision: String, Codable, Sendable, CaseIterable {
     case accepted, corrected, rejected, undone
 }
 
+public enum CareerWorkMutationSource: String, Codable, Sendable, CaseIterable {
+    case user, proposal, undo, migration
+}
+
 public enum CareerWorkContractError: Error, Equatable, Sendable {
     case invalidTitle
     case invalidTransition

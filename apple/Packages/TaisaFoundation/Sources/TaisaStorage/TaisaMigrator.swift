@@ -50,6 +50,11 @@ enum TaisaMigrator {
                     try TaisaSchema.validateVersion5(in: db)
                     let states = try Int.fetchAll(db, sql: "SELECT version FROM migration_state ORDER BY version")
                     guard states == [1, 2, 3, 4, 5] else { throw StorageError.schemaMismatch }
+                } else if version == 6 {
+                    guard applied == ["v1", "v2", "v3", "v4", "v5", "v6"] else { throw StorageError.schemaMismatch }
+                    try TaisaSchema.validateVersion6(in: db)
+                    let states = try Int.fetchAll(db, sql: "SELECT version FROM migration_state ORDER BY version")
+                    guard states == [1, 2, 3, 4, 5, 6] else { throw StorageError.schemaMismatch }
                 } else {
                     let objects = try String.fetchAll(
                         db,
@@ -73,7 +78,8 @@ enum TaisaMigrator {
         from version: Int,
         createSchema: @escaping @Sendable (Database) throws -> Void = TaisaSchema.createVersion1,
         createVersion4: @escaping @Sendable (Database) throws -> Void = TaisaSchema.createVersion4,
-        createVersion5: @escaping @Sendable (Database) throws -> Void = TaisaSchema.createVersion5
+        createVersion5: @escaping @Sendable (Database) throws -> Void = TaisaSchema.createVersion5,
+        createVersion6: @escaping @Sendable (Database) throws -> Void = TaisaSchema.createVersion6
     ) throws {
         // The caller completes a read-only preflight on any existing file.
         if version == TaisaSchema.currentVersion { return }
@@ -118,6 +124,14 @@ enum TaisaMigrator {
                 arguments: [5, Int64(Date().timeIntervalSince1970 * 1_000)]
             )
             try db.execute(sql: "PRAGMA user_version = 5")
+        }
+        migrator.registerMigration("v6", foreignKeyChecks: .deferred) { db in
+            try createVersion6(db)
+            try db.execute(
+                sql: "INSERT INTO migration_state (version, applied_at_ms) VALUES (?, ?)",
+                arguments: [6, Int64(Date().timeIntervalSince1970 * 1_000)]
+            )
+            try db.execute(sql: "PRAGMA user_version = 6")
         }
         do {
             try migrator.migrate(queue)

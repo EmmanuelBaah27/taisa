@@ -8,7 +8,7 @@ enum TaisaSchema {
         let body: [String]
     }
 
-    static let currentVersion = 5
+    static let currentVersion = 6
 
     static func createVersion1(in db: Database) throws {
         for statement in version1Statements { try db.execute(sql: statement) }
@@ -30,6 +30,10 @@ enum TaisaSchema {
         for statement in version5Statements { try db.execute(sql: statement) }
     }
 
+    static func createVersion6(in db: Database) throws {
+        for statement in version6Statements { try db.execute(sql: statement) }
+    }
+
     static var migrationLedger: [MigrationLedgerEntry] {
         [
             .init(version: 1, identifier: "v1", predecessor: nil, body: version1Statements),
@@ -37,6 +41,7 @@ enum TaisaSchema {
             .init(version: 3, identifier: "v3", predecessor: "v2", body: version3Statements),
             .init(version: 4, identifier: "v4", predecessor: "v3", body: version4Statements),
             .init(version: 5, identifier: "v5", predecessor: "v4", body: version5Statements),
+            .init(version: 6, identifier: "v6", predecessor: "v5", body: version6Statements),
         ]
     }
 
@@ -483,7 +488,26 @@ enum TaisaSchema {
         "CREATE INDEX insight_revisions_by_insight ON insight_revisions(insight_id, created_at_ms)",
     ]
 
-    static func validateVersion1(in db: Database, allowingConversationExtensions: Bool = false) throws {
+    private static let version6GoalTable = """
+    CREATE TABLE goals_v6 (
+        id TEXT PRIMARY KEY NOT NULL CHECK (length(id) = 36),
+        title TEXT NOT NULL,
+        detail TEXT NOT NULL DEFAULT '',
+        status TEXT NOT NULL CHECK (status IN ('active', 'paused', 'completed', 'archived')),
+        created_at_ms INTEGER NOT NULL CHECK (created_at_ms >= 0),
+        updated_at_ms INTEGER NOT NULL CHECK (updated_at_ms >= created_at_ms)
+    )
+    """
+
+    private static let version6Statements: [String] = [
+        "PRAGMA defer_foreign_keys = ON",
+        version6GoalTable,
+        "INSERT INTO goals_v6 (id, title, detail, status, created_at_ms, updated_at_ms) SELECT id, title, detail, status, created_at_ms, updated_at_ms FROM goals",
+        "DROP TABLE goals",
+        "ALTER TABLE goals_v6 RENAME TO goals",
+    ]
+
+    static func validateVersion1(in db: Database, allowingConversationExtensions: Bool = false, allowingGoalLifecycleExtension: Bool = false) throws {
         let requiredColumns: [String: Set<String>] = [
             "profile": ["id", "display_name", "headline", "biography", "updated_at_ms"],
             "conversations": ["id", "title", "created_at_ms", "updated_at_ms"],
@@ -520,6 +544,7 @@ enum TaisaSchema {
             for statement in version1Statements where statement.hasPrefix("CREATE TABLE ") {
                 let name = String(statement.split(separator: " ", maxSplits: 3)[2])
                 if allowingConversationExtensions && name == "conversations" { continue }
+                if allowingGoalLifecycleExtension && name == "goals" { continue }
                 let stored = try String.fetchOne(
                     db,
                     sql: "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?",
@@ -532,8 +557,8 @@ enum TaisaSchema {
         }
     }
 
-    static func validateVersion2(in db: Database, allowingConversationExtensions: Bool = false) throws {
-        try validateVersion1(in: db, allowingConversationExtensions: allowingConversationExtensions)
+    static func validateVersion2(in db: Database, allowingConversationExtensions: Bool = false, allowingGoalLifecycleExtension: Bool = false) throws {
+        try validateVersion1(in: db, allowingConversationExtensions: allowingConversationExtensions, allowingGoalLifecycleExtension: allowingGoalLifecycleExtension)
         let requiredColumns: [String: Set<String>] = [
             "voice_turns": ["id", "conversation_id", "transcription_request_id", "transcription_idempotency_key", "coaching_request_id", "coaching_idempotency_key", "state", "stage", "audio_file_id", "audio_sha256", "audio_duration_ms", "accepted_transcript", "uncertain_transcript", "retry_count", "next_retry_at_ms", "failure_code", "transcription_receipt", "coaching_receipt", "user_message_id", "assistant_message_id", "cleanup_state", "created_at_ms", "updated_at_ms"],
             "audio_cleanup_queue": ["turn_id", "audio_file_id", "completed_at_ms"],
@@ -558,8 +583,8 @@ enum TaisaSchema {
         }
     }
 
-    static func validateVersion3(in db: Database) throws {
-        try validateVersion2(in: db, allowingConversationExtensions: true)
+    static func validateVersion3(in db: Database, allowingGoalLifecycleExtension: Bool = false) throws {
+        try validateVersion2(in: db, allowingConversationExtensions: true, allowingGoalLifecycleExtension: allowingGoalLifecycleExtension)
         let requiredColumns: [String: Set<String>] = [
             "conversation_drafts": ["id", "conversation_id", "input_mode", "text", "voice_turn_id", "recovery_kind", "created_at_ms", "updated_at_ms"],
             "message_revisions": ["id", "message_id", "original_body", "replacement_message_id", "created_at_ms"],
@@ -587,8 +612,8 @@ enum TaisaSchema {
         }
     }
 
-    static func validateVersion4(in db: Database) throws {
-        try validateVersion3(in: db)
+    static func validateVersion4(in db: Database, allowingGoalLifecycleExtension: Bool = false) throws {
+        try validateVersion3(in: db, allowingGoalLifecycleExtension: allowingGoalLifecycleExtension)
         let requiredColumns: [String: Set<String>] = [
             "career_work_events": ["id", "entity_type", "entity_id", "transition", "from_status", "to_status", "source_type", "source_id", "occurred_at_ms"],
             "career_work_archives": ["id", "entity_type", "entity_id", "archived_at_ms", "restored_at_ms"],
@@ -625,8 +650,8 @@ enum TaisaSchema {
             throw StorageError.schemaMismatch
         }
     }
-    static func validateVersion5(in db: Database, allowingConversationExtensions: Bool = false) throws {
-        try validateVersion4(in: db)
+    static func validateVersion5(in db: Database, allowingGoalLifecycleExtension: Bool = false) throws {
+        try validateVersion4(in: db, allowingGoalLifecycleExtension: allowingGoalLifecycleExtension)
         let requiredColumns: [String: Set<String>] = [
             "weekly_placements": ["id", "action_id", "week_start_ms", "planned_day_ms", "created_at_ms", "updated_at_ms"],
             "work_events": ["id", "action_id", "kind", "from_week_start_ms", "to_week_start_ms", "source_type", "source_id", "occurred_at_ms"],
@@ -650,6 +675,17 @@ enum TaisaSchema {
                 )
                 guard stored == statement else { throw StorageError.schemaMismatch }
             }
+        } catch {
+            throw StorageError.schemaMismatch
+        }
+    }
+
+    static func validateVersion6(in db: Database) throws {
+        try validateVersion5(in: db, allowingGoalLifecycleExtension: true)
+        do {
+            let stored = try String.fetchOne(db, sql: "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'goals'")
+            let expected = version6GoalTable.replacingOccurrences(of: "goals_v6", with: "\"goals\"")
+            guard stored == expected else { throw StorageError.schemaMismatch }
         } catch {
             throw StorageError.schemaMismatch
         }

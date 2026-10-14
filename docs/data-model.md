@@ -3,7 +3,7 @@
 > Open this when touching anything data-related. The local schema below is authoritative for the
 > new coaching path. The backend schema remains mounted only during the gated BUILD transition.
 
-## Authoritative on-device database (schema version 4)
+## Authoritative on-device database (schema version 6)
 
 `apple/Packages/TaisaFoundation/Sources/TaisaStorage/TaisaSchema.swift` is the native executable
 source. The file is encrypted by SQLCipher with a
@@ -17,7 +17,7 @@ triggers are enforced locally.
 | `conversations`, `messages` | Private/submitted/received conversation archive, lifecycle, and title authority |
 | `conversation_drafts` | One device-local voice or text draft per conversation; excluded from sync and linked to durable voice-turn recovery when applicable |
 | `message_revisions` | Original submitted text and optional replacement-message identity for explicit user edits |
-| `goals`, `milestones` | Lifecycle-aware career goals and milestones |
+| `goals`, `milestones` | Lifecycle-aware career goals and milestones; goals support active, paused, completed, and archived states |
 | `actions`, `action_transitions` | Open/completed actions plus source-bound explicit completion history |
 | `evidence` | First-class evidence linked by message, goal, and action IDs |
 | `career_work_events`, `career_work_archives` | Append-only career-work lifecycle events and recoverable archive state |
@@ -70,7 +70,7 @@ The archive is database-only. It preserves completed transcripts but does not bu
 files. Export therefore fails closed when either the filesystem guard or the encrypted
 `voice_turns.audio_file_id` / `audio_cleanup_queue` state reports an audio reference. Cleanup clears
 the turn reference and queue atomically before portable backup can proceed. Version-1 archives are
-authenticated and validated at their declared schema, migrated privately to version 4, and only
+authenticated and validated at their declared schema, migrated privately to version 6, and only
 then promoted.
 
 This is manual recovery, not sync. Losing the phone before moving an export outside the app,
