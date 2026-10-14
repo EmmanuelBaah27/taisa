@@ -6,32 +6,32 @@ public struct CareerWorkCommandRepository: Sendable {
 
     public init(store: TaisaStore) { self.store = store }
 
-    public func createGoal(title: String, detail: String, context: MutationContext) async throws -> GoalRecord {
+    public func createGoal(id: String = UUID().uuidString, title: String, detail: String, source: CareerWorkMutationSource = .user, sourceID: String? = nil, context: MutationContext) async throws -> GoalRecord {
         let title = try CareerWorkTitle.validating(title).value
-        let record = GoalRecord(id: UUID().uuidString, title: title, detail: detail, status: GoalStatus.active.rawValue, createdAtMS: context.timestamp, updatedAtMS: context.timestamp)
+        let record = GoalRecord(id: id, title: title, detail: detail, status: GoalStatus.active.rawValue, createdAtMS: context.timestamp, updatedAtMS: context.timestamp)
         try await store.write { db in
             try Self.goalCore(self.store).create(record, context: context, db: db)
-            try Self.insertEvent(entity: "goal", id: record.id, transition: "created", from: nil, to: record.status, source: .user, context: context, db: db)
+            try Self.insertEvent(entity: "goal", id: record.id, transition: "created", from: nil, to: record.status, source: source, sourceID: sourceID, context: context, db: db)
         }
         return record
     }
 
-    public func createMilestone(goalID: String, title: String, targetAtMS: Int64?, context: MutationContext) async throws -> MilestoneRecord {
+    public func createMilestone(id: String = UUID().uuidString, goalID: String, title: String, targetAtMS: Int64?, source: CareerWorkMutationSource = .user, sourceID: String? = nil, context: MutationContext) async throws -> MilestoneRecord {
         let title = try CareerWorkTitle.validating(title).value
-        let record = MilestoneRecord(id: UUID().uuidString, goalID: goalID, title: title, status: MilestoneStatus.planned.storageValue, targetAtMS: targetAtMS, updatedAtMS: context.timestamp)
+        let record = MilestoneRecord(id: id, goalID: goalID, title: title, status: MilestoneStatus.planned.storageValue, targetAtMS: targetAtMS, updatedAtMS: context.timestamp)
         try await store.write { db in
             try Self.milestoneCore(self.store).create(record, context: context, db: db)
-            try Self.insertEvent(entity: "milestone", id: record.id, transition: "created", from: nil, to: record.status, source: .user, context: context, db: db)
+            try Self.insertEvent(entity: "milestone", id: record.id, transition: "created", from: nil, to: record.status, source: source, sourceID: sourceID, context: context, db: db)
         }
         return record
     }
 
-    public func createAction(goalID: String?, title: String, detail: String, dueAtMS: Int64?, context: MutationContext) async throws -> ActionRecord {
+    public func createAction(id: String = UUID().uuidString, goalID: String?, title: String, detail: String, dueAtMS: Int64?, source: CareerWorkMutationSource = .user, sourceID: String? = nil, context: MutationContext) async throws -> ActionRecord {
         let title = try CareerWorkTitle.validating(title).value
-        let record = ActionRecord(id: UUID().uuidString, goalID: goalID, title: title, detail: detail, status: ActionStatus.open.rawValue, dueAtMS: dueAtMS, createdAtMS: context.timestamp, updatedAtMS: context.timestamp)
+        let record = ActionRecord(id: id, goalID: goalID, title: title, detail: detail, status: ActionStatus.open.rawValue, dueAtMS: dueAtMS, createdAtMS: context.timestamp, updatedAtMS: context.timestamp)
         try await store.write { db in
             try Self.actionCore(self.store).create(record, context: context, db: db)
-            try Self.insertEvent(entity: "action", id: record.id, transition: "created", from: nil, to: record.status, source: .user, context: context, db: db)
+            try Self.insertEvent(entity: "action", id: record.id, transition: "created", from: nil, to: record.status, source: source, sourceID: sourceID, context: context, db: db)
         }
         return record
     }
@@ -111,8 +111,8 @@ public struct CareerWorkCommandRepository: Sendable {
         }
     }
 
-    private static func insertEvent(entity: String, id: String, transition: String, from: String?, to: String, source: CareerWorkMutationSource, context: MutationContext, db: Database) throws {
-        try db.execute(sql: "INSERT INTO career_work_events (id, entity_type, entity_id, transition, from_status, to_status, source_type, source_id, occurred_at_ms) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, ?)", arguments: [UUID().uuidString, entity, id, transition, from, to, source.rawValue, context.timestamp])
+    private static func insertEvent(entity: String, id: String, transition: String, from: String?, to: String, source: CareerWorkMutationSource, sourceID: String? = nil, context: MutationContext, db: Database) throws {
+        try db.execute(sql: "INSERT INTO career_work_events (id, entity_type, entity_id, transition, from_status, to_status, source_type, source_id, occurred_at_ms) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", arguments: [UUID().uuidString, entity, id, transition, from, to, source.rawValue, sourceID, context.timestamp])
     }
 
     private static func fetchGoal(id: String, db: Database) throws -> GoalRecord? { try Row.fetchOne(db, sql: "SELECT * FROM goals WHERE id = ? COLLATE NOCASE", arguments: [id]).map { GoalRecord(id: $0["id"], title: $0["title"], detail: $0["detail"], status: $0["status"], createdAtMS: $0["created_at_ms"], updatedAtMS: $0["updated_at_ms"]) } }
