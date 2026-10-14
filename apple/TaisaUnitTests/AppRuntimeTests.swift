@@ -3,6 +3,7 @@ import XCTest
 import TaisaHome
 import TaisaStorage
 import TaisaVoice
+import TaisaYou
 @testable import Taisa
 
 @MainActor
@@ -187,6 +188,7 @@ final class AppRuntimeTests: XCTestCase {
         XCTAssertNotNil(runtime.homeModel)
         XCTAssertNotNil(runtime.careerWorkModel)
         XCTAssertNotNil(runtime.insightsModel)
+        XCTAssertNotNil(runtime.youModel)
     }
 
     func testStorageFailuresRouteToRecovery() async {
@@ -197,6 +199,7 @@ final class AppRuntimeTests: XCTestCase {
             XCTAssertNil(runtime.homeModel)
             XCTAssertNil(runtime.careerWorkModel)
             XCTAssertNil(runtime.insightsModel)
+            XCTAssertNil(runtime.youModel)
         }
     }
 
@@ -212,6 +215,7 @@ final class AppRuntimeTests: XCTestCase {
         let recoveredState = await runtime.retryRecovery()
         XCTAssertEqual(recoveredState, .ready)
         XCTAssertNotNil(runtime.homeModel)
+        XCTAssertNotNil(runtime.youModel)
     }
 
     func testMissingKeyRouteDoesNotTouchExistingStoreBytes() async throws {
@@ -256,6 +260,7 @@ private extension AppRuntime.Clients {
     static func test(home: HomeClient) -> Self {
         .init(
             home: home,
+            you: YouClient(load: { .init(profile: nil, capabilities: [], diagnostics: .unknown) }),
             insights: InsightsClient(load: { .empty }, detail: { insight in
                 .init(insight: insight, sources: [], revisions: [])
             })

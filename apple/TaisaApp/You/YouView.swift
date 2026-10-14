@@ -5,32 +5,69 @@ import TaisaYou
 struct YouView: View {
     @Bindable var model: YouModel
     let openRecovery: () -> Void
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @State private var selectedDestination: YouDestination? = .careerProfile
 
     var body: some View {
         Group {
             switch model.state {
             case .idle, .loading:
                 ProgressView("Loading You")
-            case .failure:
-                ContentUnavailableView("You is unavailable", systemImage: "person.crop.circle.badge.exclamationmark")
-            case let .content(snapshot, issue):
-                List {
-                    if issue != nil { Label("Some local information could not be refreshed.", systemImage: "exclamationmark.triangle") }
-                    ForEach(YouDestination.allCases, id: \.self) { destination in
-                        NavigationLink(value: destination) {
-                            Label(destination.title, systemImage: destination.systemImage)
-                        }
-                        .accessibilityIdentifier("you.destination.\(destination.stableID)")
+            case let .failure(issue):
+                ContentUnavailableView {
+                    Label(issue == .recoveryRequired ? "Recovery required" : "You is unavailable", systemImage: "person.crop.circle.badge.exclamationmark")
+                } description: {
+                    Text(issue == .recoveryRequired ? "Taisa could not safely open your encrypted data." : "Your information could not be loaded from this device.")
+                } actions: {
+                    if issue == .recoveryRequired {
+                        Button("Open backup and recovery", action: openRecovery)
+                    } else {
+                        Button("Try again") { Task { await model.retry() } }
                     }
                 }
-                .navigationDestination(for: YouDestination.self) { destination in
-                    destinationView(destination, snapshot: snapshot)
-                }
+            case let .content(snapshot, issue):
+                content(snapshot: snapshot, issue: issue)
             }
         }
         .navigationTitle("You")
         .accessibilityIdentifier("you.root")
         .task { if model.state == .idle { await model.load() } }
+    }
+
+    @ViewBuilder private func content(snapshot: YouSnapshot, issue: YouIssue?) -> some View {
+        if horizontalSizeClass == .regular {
+            NavigationSplitView {
+                destinationList(issue: issue, selection: $selectedDestination)
+                    .navigationTitle("You")
+            } detail: {
+                if let selectedDestination {
+                    destinationView(selectedDestination, snapshot: snapshot)
+                }
+            }
+        } else {
+            destinationList(issue: issue)
+                .navigationDestination(for: YouDestination.self) { destination in
+                    destinationView(destination, snapshot: snapshot)
+                }
+        }
+    }
+
+    private func destinationList(issue: YouIssue?, selection: Binding<YouDestination?>? = nil) -> some View {
+        List(selection: selection) {
+            if issue != nil { Label("Some local information could not be refreshed.", systemImage: "exclamationmark.triangle") }
+            ForEach(YouDestination.allCases, id: \.self) { destination in
+                if selection != nil {
+                    Label(destination.title, systemImage: destination.systemImage)
+                        .tag(destination)
+                        .accessibilityIdentifier("you.destination.\(destination.stableID)")
+                } else {
+                    NavigationLink(value: destination) {
+                        Label(destination.title, systemImage: destination.systemImage)
+                    }
+                    .accessibilityIdentifier("you.destination.\(destination.stableID)")
+                }
+            }
+        }
     }
 
     @ViewBuilder private func destinationView(_ destination: YouDestination, snapshot: YouSnapshot) -> some View {

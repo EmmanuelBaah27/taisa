@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import TaisaYou
 import TaisaStorage
@@ -81,7 +82,29 @@ import TaisaStorage
         #expect(rows.map(\.value) == ["Degraded", "Ready", "Not allowed", "Unavailable", "Enabled"])
         #expect(rows.allSatisfy { !$0.value.contains("/") && !$0.value.contains("http") })
     }
+
+    @Test func localClientPersistsProfileAndCapabilityWithoutTransport() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let deviceID = UUID().uuidString
+        let store = try await TaisaStore.open(at: directory.appendingPathComponent("store.sqlite"), keyStore: YouClientTestKeys())
+        let client = YouClient.local(store: store, deviceID: deviceID, operational: .unknown, nowMS: { 10 })
+
+        _ = try await client.saveProfile(.init(displayName: "Baah", headline: "Builder", biography: "Offline"))
+        _ = try await client.setCapability(.insights, .ready)
+        let relaunched = try await YouClient.local(store: store, deviceID: deviceID, operational: .unknown, nowMS: { 20 }).load()
+
+        #expect(relaunched.profile?.displayName == "Baah")
+        #expect(relaunched.capabilities.first(where: { $0.id == .insights })?.chosenState == .ready)
+    }
 }
 
 private func profile(name: String) -> ProfileRecord { .init(id: "11111111-1111-4111-8111-111111111111", displayName: name, headline: "", biography: "", updatedAtMS: 1) }
 private func snapshot(profile: ProfileRecord?, capabilities: [CapabilityOverview] = []) -> YouSnapshot { .init(profile: profile, capabilities: capabilities, diagnostics: .unknown) }
+
+private actor YouClientTestKeys: DatabaseKeyStore {
+    private var key: Data?
+    func loadKey() async throws -> Data? { key }
+    func saveKey(_ key: Data) async throws { self.key = key }
+}

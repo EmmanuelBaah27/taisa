@@ -34,6 +34,7 @@ struct AppRootView: View {
                             careerWorkModel: careerWorkModel,
                             conversationsModel: conversationsModel,
                             conversationFactory: runtime.conversationFactory,
+                            youModel: runtime.youModel,
                             openRecovery: presentation.openUserRecovery,
                             openPersonalQA: personalQAAction,
                             openInsights: { showsInsights = true }
