@@ -239,6 +239,7 @@ private actor RecorderSpy: AudioRecorderAdapting {
     func cancel() async {}
     func meter() async -> AudioMeterSample { .init(averagePower: -18, peakPower: -6) }
     func elapsedTime() async -> TimeInterval { elapsed }
+    func hasRecordedAudio() async -> Bool { elapsed > 0 }
     func setElapsed(_ elapsed: TimeInterval) { self.elapsed = elapsed }
 }
 

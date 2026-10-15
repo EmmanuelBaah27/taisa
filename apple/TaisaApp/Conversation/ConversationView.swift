@@ -54,6 +54,9 @@ struct ConversationView: View {
             case .discardRecording:
                 Button("Continue", role: .destructive) { Task { await model.confirmDiscardRecording() } }
                 Button("Go back", role: .cancel, action: model.cancelConfirmation)
+            case .discardShortOrKeepRecording:
+                Button("Discard recording", role: .destructive) { Task { await model.confirmDiscardRecording() } }
+                Button("Keep recording", role: .cancel, action: model.cancelConfirmation)
             case .saveDiscardOrCancel:
                 Button("Save draft") { Task { await model.saveAndClose() } }.accessibilityIdentifier("conversation.save-draft")
                 Button("Discard", role: .destructive) { Task { await model.discardAndClose() } }.accessibilityIdentifier("conversation.discard")
@@ -98,7 +101,13 @@ struct ConversationView: View {
                     .accessibilityElement(children: .combine)
                     .accessibilityIdentifier("conversation.transcript-preview")
                 }
-                ConversationProgressState(label: "Preparing coaching…")
+                if model.partialCoaching.isEmpty {
+                    ConversationProgressState(label: "Preparing coaching…")
+                } else if let markdown = try? AttributedString(markdown: model.partialCoaching) {
+                    Text(markdown)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityIdentifier("conversation.streaming-response")
+                }
                 TextComposer(
                     text: $model.text, mode: .processing,
                     onSend: {}, onVoice: {}
@@ -106,6 +115,12 @@ struct ConversationView: View {
                 .accessibilityIdentifier("conversation.text-composer.processing")
             }
             .padding(.horizontal)
+            .task {
+                while !Task.isCancelled, model.composer == .coaching {
+                    await model.refreshPartialCoaching()
+                    try? await Task.sleep(for: .milliseconds(100))
+                }
+            }
         case .waitingForReply:
             TextComposer(text: $model.text, onSend: { Task { await model.sendText() } }, onVoice: { Task { try? await model.beginVoice() } })
                 .accessibilityIdentifier("conversation.text-composer")

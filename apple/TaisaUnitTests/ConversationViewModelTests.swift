@@ -34,6 +34,19 @@ final class ConversationViewModelTests: XCTestCase {
         XCTAssertEqual(model.confirmation, .saveDiscardOrCancel)
     }
 
+    func testShortCaptureCloseOffersDiscardOrKeepRecordingWithoutSave() async {
+        let client = ConversationScreenClientSpy(captureDisposition: .shortCapture)
+        let model = ConversationViewModel(
+            conversationID: UUID().uuidString, title: "Chat", entryIntent: nil,
+            composer: .recording, client: await client.makeClient()
+        )
+        await model.start()
+
+        model.requestClose()
+
+        XCTAssertEqual(model.confirmation, .discardShortOrKeepRecording)
+    }
+
     func testEmptyCloseDismissesWithoutCreatingDraft() async {
         var dismissed = 0
         let model = ConversationViewModel.preview(composer: .typing("   "), dismiss: { dismissed += 1 })
@@ -151,6 +164,25 @@ final class ConversationViewModelTests: XCTestCase {
         XCTAssertEqual(model.correctionMessageID, original.id)
         XCTAssertEqual(model.correctionText, "Corrected")
         XCTAssertEqual(model.messages.first?.body, "Corrected")
+    }
+
+    func testCorrectionRetryReusesPendingRequestInsteadOfCreatingAnotherCorrection() async {
+        let client = ConversationScreenClientSpy(correctionFails: true)
+        let original = message(role: "user", body: "Original")
+        let model = ConversationViewModel(
+            conversationID: original.conversationID, title: "Chat", entryIntent: nil,
+            client: await client.makeClient(messages: [original])
+        )
+        await model.start()
+        model.requestCorrection(original)
+        model.correctionText = "Corrected"
+
+        await model.submitCorrection()
+        await model.submitCorrection()
+
+        let counts = await client.correctionRequestCounts()
+        XCTAssertEqual(counts, [1, 1])
+        XCTAssertNil(model.correctionMessageID)
     }
 
     func testCorrectionRequiresUserMessageAndChangedNonemptyText() {
@@ -285,6 +317,8 @@ private actor ConversationScreenClientSpy {
     private let captureDisposition: VoiceCaptureDisposition
     private var discardedDraftCount = 0
     private var discardedConversationCount = 0
+    private var correctionRequestCount = 0
+    private var retryCount = 0
 
     init(messages: [MessageRecord] = [], correctionFails: Bool = false, captureDisposition: VoiceCaptureDisposition = .empty) {
         self.messages = messages
@@ -298,10 +332,11 @@ private actor ConversationScreenClientSpy {
             loadMessages: { loaded },
             beginVoice: { [self] in await recordBegin() },
             pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
-            sendText: { _ in }, retry: {}, saveDraft: { [self] input in await save(input) },
+            sendText: { _ in }, retry: { [self] in await recordRetry() }, saveDraft: { [self] input in await save(input) },
             discardDraft: { [self] in await recordDraftDiscard() },
             discardEmptyConversation: { [self] in await recordConversationDiscard() },
-            correctTranscript: { [correctionFails] _, _ in
+            correctTranscript: { [self, correctionFails] _, _ in
+                await recordCorrectionRequest()
                 if correctionFails { throw ConversationFailure.retryable }
             },
             loadCaptureSnapshot: { [captureDisposition] in
@@ -316,4 +351,7 @@ private actor ConversationScreenClientSpy {
     private func recordDraftDiscard() { discardedDraftCount += 1 }
     private func recordConversationDiscard() { discardedConversationCount += 1 }
     func discardCounts() -> [Int] { [discardedDraftCount, discardedConversationCount] }
+    private func recordCorrectionRequest() { correctionRequestCount += 1 }
+    private func recordRetry() { retryCount += 1 }
+    func correctionRequestCounts() -> [Int] { [correctionRequestCount, retryCount] }
 }

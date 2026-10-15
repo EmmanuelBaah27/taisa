@@ -266,7 +266,7 @@ public actor AudioCaptureService {
             activity: activity,
             elapsedMilliseconds: Int64(elapsed * 1_000),
             meter: meter,
-            hasAudioPayload: activity != .prepared && elapsed > 0
+            hasAudioPayload: await recorder.hasRecordedAudio()
         )
     }
 

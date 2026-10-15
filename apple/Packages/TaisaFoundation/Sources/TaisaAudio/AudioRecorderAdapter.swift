@@ -8,6 +8,7 @@ public protocol AudioRecorderAdapting: Sendable {
     func cancel() async
     func meter() async -> AudioMeterSample
     func elapsedTime() async -> TimeInterval
+    func hasRecordedAudio() async -> Bool
 }
 
 #if canImport(AVFoundation)
@@ -15,6 +16,7 @@ public protocol AudioRecorderAdapting: Sendable {
 
 public actor SystemAudioRecorderAdapter: AudioRecorderAdapting {
     private var recorder: AVAudioRecorder?
+    private var outputURL: URL?
 
     public init() {}
 
@@ -34,6 +36,7 @@ public actor SystemAudioRecorderAdapter: AudioRecorderAdapting {
         print("TAISA_CAPTURE recorder.start result=\(started) isRecording=\(recorder.isRecording)")
         guard started else { throw AudioCaptureError.invalidState }
         self.recorder = recorder
+        outputURL = url
     }
 
     public func pause() async {
@@ -69,6 +72,11 @@ public actor SystemAudioRecorderAdapter: AudioRecorderAdapting {
     }
 
     public func elapsedTime() async -> TimeInterval { recorder?.currentTime ?? 0 }
+    public func hasRecordedAudio() async -> Bool {
+        guard let outputURL,
+              let size = try? FileManager.default.attributesOfItem(atPath: outputURL.path)[.size] as? NSNumber else { return false }
+        return size.int64Value > 0
+    }
 }
 #else
 public actor SystemAudioRecorderAdapter: AudioRecorderAdapting {
@@ -80,5 +88,6 @@ public actor SystemAudioRecorderAdapter: AudioRecorderAdapting {
     public func cancel() async {}
     public func meter() async -> AudioMeterSample { .init(averagePower: -160, peakPower: -160) }
     public func elapsedTime() async -> TimeInterval { 0 }
+    public func hasRecordedAudio() async -> Bool { false }
 }
 #endif

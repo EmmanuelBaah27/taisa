@@ -272,12 +272,6 @@ struct ConversationRuntimeFactory: Sendable {
             capture: capture,
             audio: capture
         )
-        Task {
-            let changes = await connectivity.changes()
-            for await isAvailable in changes {
-                try? await voiceCoordinator.connectivityChanged(isAvailable: isAvailable)
-            }
-        }
         let gatewayClient = GatewayConversationClient(
             store: store, deviceID: deviceID,
             coaching: GatewayCoachingRunner(configuration: configuration, recentMessages: messageHistory)
@@ -365,7 +359,23 @@ struct ConversationRuntimeFactory: Sendable {
             correctTranscript: { messageID, text in
                 try await coordinator.correctTranscript(messageID: messageID, text: text)
             },
-            loadCaptureSnapshot: { await voiceCoordinator.snapshot().capture }
+            loadCaptureSnapshot: { await voiceCoordinator.snapshot().capture },
+            loadPartialCoaching: { await voiceCoordinator.snapshot().partialCoaching },
+            recoveryEvents: {
+                AsyncStream { continuation in
+                    let task = Task {
+                        let changes = await connectivity.changes()
+                        for await isAvailable in changes where isAvailable {
+                            try? await voiceCoordinator.connectivityChanged(isAvailable: true)
+                            if await voiceCoordinator.snapshot().durable.state == .completed {
+                                continuation.yield(())
+                            }
+                        }
+                        continuation.finish()
+                    }
+                    continuation.onTermination = { _ in task.cancel() }
+                }
+            }
         )
         return await ConversationViewModel(
             conversationID: route.id,

@@ -34,7 +34,7 @@ struct ConversationTimeline: View {
                                             .accessibilityIdentifier("conversation.correct-transcript")
                                     }
                                 }
-                            if message.role == "user", message.body.split(separator: "\n").count > Self.userPreviewLineLimit || message.body.count > 320 {
+                            if message.role == "user", message.body.count > 120 {
                                 Button(expandedUserMessages.contains(message.id) ? "Show less" : "Show more") {
                                     if expandedUserMessages.contains(message.id) {
                                         expandedUserMessages.remove(message.id)
@@ -90,7 +90,8 @@ struct ConversationTimeline: View {
     }
 
     private func userLineLimit(for message: MessageRecord) -> Int? {
-        guard message.role == "user", !expandedUserMessages.contains(message.id) else { return nil }
+        guard message.role == "user", message.body.count > 120,
+              !expandedUserMessages.contains(message.id) else { return nil }
         return Self.userPreviewLineLimit
     }
 }

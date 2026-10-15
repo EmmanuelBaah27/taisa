@@ -10,14 +10,16 @@ public struct ConversationPageHeader: View {
     }
 
     public var body: some View {
-        HStack {
+        ZStack {
             Text(title)
                 .font(.system(.headline, weight: .semibold))
                 .lineLimit(1)
                 .truncationMode(.tail)
                 .frame(width: TaisaControlMetric.conversationTitleWidth, alignment: .center)
-            Spacer(minLength: TaisaSpacing.compact.rawValue)
-            TaisaSecondaryIconButton(icon: .chevronDown, accessibilityLabel: "Close conversation", action: onDismiss)
+            HStack {
+                Spacer()
+                TaisaSecondaryIconButton(icon: .chevronDown, accessibilityLabel: "Close conversation", action: onDismiss)
+            }
         }
         .padding(.horizontal, TaisaSpacing.standard.rawValue)
         .frame(height: TaisaControlMetric.appBarHeight)
