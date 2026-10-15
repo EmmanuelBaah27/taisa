@@ -358,7 +358,8 @@ struct ConversationRuntimeFactory: Sendable {
             },
             correctTranscript: { messageID, text in
                 try await coordinator.correctTranscript(messageID: messageID, text: text)
-            }
+            },
+            loadCaptureSnapshot: { await voiceCoordinator.snapshot().capture }
         )
         return await ConversationViewModel(
             conversationID: route.id,

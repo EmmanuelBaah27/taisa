@@ -1,6 +1,7 @@
 import Observation
 import TaisaConversations
 import TaisaStorage
+import TaisaVoice
 
 struct ConversationScreenClient: Sendable {
     var loadMessages: @Sendable () async throws -> [MessageRecord]
@@ -15,6 +16,7 @@ struct ConversationScreenClient: Sendable {
     var discardDraft: @Sendable () async throws -> Void
     var discardEmptyConversation: @Sendable () async throws -> Void
     var correctTranscript: @Sendable (String, String) async throws -> Void
+    var loadCaptureSnapshot: @Sendable () async -> VoiceCaptureSnapshot
 
     init(
         loadMessages: @escaping @Sendable () async throws -> [MessageRecord] = { [] },
@@ -28,7 +30,10 @@ struct ConversationScreenClient: Sendable {
         saveDraft: @escaping @Sendable (ConversationInput) async throws -> Void,
         discardDraft: @escaping @Sendable () async throws -> Void,
         discardEmptyConversation: @escaping @Sendable () async throws -> Void = {},
-        correctTranscript: @escaping @Sendable (String, String) async throws -> Void = { _, _ in }
+        correctTranscript: @escaping @Sendable (String, String) async throws -> Void = { _, _ in },
+        loadCaptureSnapshot: @escaping @Sendable () async -> VoiceCaptureSnapshot = {
+            .init(activity: .prepared, elapsedMilliseconds: 0, meter: .init(averagePower: -160, peakPower: -160), disposition: .empty)
+        }
     ) {
         self.loadMessages = loadMessages
         self.loadTitle = loadTitle
@@ -42,6 +47,7 @@ struct ConversationScreenClient: Sendable {
         self.discardDraft = discardDraft
         self.discardEmptyConversation = discardEmptyConversation
         self.correctTranscript = correctTranscript
+        self.loadCaptureSnapshot = loadCaptureSnapshot
     }
 }
 
@@ -50,14 +56,21 @@ struct ConversationScreenClient: Sendable {
 final class ConversationViewModel {
     enum Confirmation: Equatable {
         case discardVoiceForKeyboard(returnTo: ComposerState)
+        case discardRecording
         case saveDiscardOrCancel
     }
+
+    enum PagePhase: Equatable { case preparing, empty, shortCapture, sendable, paused, saved, text, durableProcessing, waiting, failure }
 
     let conversationID: String
     private(set) var title: String
     private(set) var composer: ComposerState
     private(set) var messages: [MessageRecord] = []
     private(set) var confirmation: Confirmation?
+    private(set) var capture: VoiceCaptureSnapshot = .init(
+        activity: .prepared, elapsedMilliseconds: 0,
+        meter: .init(averagePower: -160, peakPower: -160), disposition: .empty
+    )
     private(set) var correctionMessageID: String?
     private(set) var correctionRegenerationMessageID: String?
     private var correctionOriginalText = ""
@@ -71,6 +84,19 @@ final class ConversationViewModel {
     }
     var latestUserTranscript: String? {
         messages.last(where: { $0.role == "user" })?.body
+    }
+    var pagePhase: PagePhase {
+        switch composer {
+        case .preparingVoice: .preparing
+        case .recording:
+            switch capture.disposition { case .empty: .empty; case .shortCapture: .shortCapture; case .sendable: .sendable; case .durableProcessing: .durableProcessing }
+        case .paused: .paused
+        case .savedVoiceDraft: .saved
+        case .typing: .text
+        case .transcribing, .coaching: .durableProcessing
+        case .waitingForReply: .waiting
+        case .failure: .failure
+        }
     }
 
     @ObservationIgnored private let entryIntent: ConversationEntryIntent?
@@ -138,6 +164,7 @@ final class ConversationViewModel {
         started = true
         do {
             messages = try await client.loadMessages()
+            capture = await client.loadCaptureSnapshot()
             switch entryIntent {
             case .voice: try await beginVoice()
             case .text: composer = .typing(""); text = ""
@@ -150,12 +177,23 @@ final class ConversationViewModel {
 
     func beginVoice() async throws {
         composer = .preparingVoice
-        do { try await client.beginVoice(); composer = .recording }
+        do { try await client.beginVoice(); composer = .recording; await refreshCapture() }
         catch { composer = .failure(.unavailable); throw error }
     }
 
-    func pause() async { await perform(next: .paused) { try await client.pauseVoice() } }
-    func resume() async { await perform(next: .recording) { try await client.resumeVoice() } }
+    func pause() async { await perform(next: .paused) { try await client.pauseVoice() }; await refreshCapture() }
+    func resume() async { await perform(next: .recording) { try await client.resumeVoice() }; await refreshCapture() }
+    func refreshCapture() async { capture = await client.loadCaptureSnapshot() }
+
+    func requestDiscardRecording() {
+        if capture.disposition == .empty {
+            Task { @MainActor in await discardRecordingAndRemainOrDismiss() }
+        } else {
+            confirmation = .discardRecording
+        }
+    }
+
+    func confirmDiscardRecording() async { await discardRecordingAndRemainOrDismiss() }
     func sendVoice() async {
         guard !actionInFlight else { return }
         actionInFlight = true
@@ -227,6 +265,21 @@ final class ConversationViewModel {
     func cancelConfirmation() {
         if case .discardVoiceForKeyboard(let prior) = confirmation { composer = prior }
         confirmation = nil
+    }
+
+    private func discardRecordingAndRemainOrDismiss() async {
+        guard !actionInFlight else { return }
+        actionInFlight = true
+        do {
+            try await client.discardDraft()
+            confirmation = nil
+            if messages.isEmpty {
+                try await client.discardEmptyConversation(); dismiss()
+            } else {
+                composer = .waitingForReply
+            }
+        } catch { composer = .failure(.unavailable); confirmation = nil }
+        actionInFlight = false
     }
 
     func saveAndClose() async {

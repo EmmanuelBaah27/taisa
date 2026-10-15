@@ -1,6 +1,7 @@
 import XCTest
 import TaisaConversations
 import TaisaStorage
+import TaisaVoice
 @testable import Taisa
 
 @MainActor
@@ -173,6 +174,39 @@ final class ConversationViewModelTests: XCTestCase {
         XCTAssertEqual(model.correctionText, "First")
     }
 
+    func testCaptureDispositionDrivesApprovedPagePhases() async {
+        let cases: [(VoiceCaptureDisposition, ConversationViewModel.PagePhase)] = [
+            (.empty, .empty), (.shortCapture, .shortCapture), (.sendable, .sendable),
+        ]
+        for (disposition, expected) in cases {
+            let client = ConversationScreenClientSpy(captureDisposition: disposition)
+            let model = ConversationViewModel(
+                conversationID: UUID().uuidString, title: "New chat", entryIntent: nil,
+                composer: .recording, client: await client.makeClient()
+            )
+            await model.start()
+            XCTAssertEqual(model.pagePhase, expected)
+        }
+        XCTAssertEqual(ConversationViewModel.preview(composer: .paused).pagePhase, .paused)
+        XCTAssertEqual(ConversationViewModel.preview(composer: .savedVoiceDraft).pagePhase, .saved)
+        XCTAssertEqual(ConversationViewModel.preview(composer: .typing("")).pagePhase, .text)
+        XCTAssertEqual(ConversationViewModel.preview(composer: .transcribing).pagePhase, .durableProcessing)
+    }
+
+    func testEmptyRecordingDiscardCleansUpProvisionalChatAndDismisses() async {
+        let client = ConversationScreenClientSpy(captureDisposition: .empty)
+        var dismissed = 0
+        let model = ConversationViewModel(
+            conversationID: UUID().uuidString, title: "New chat", entryIntent: nil,
+            composer: .recording, client: await client.makeClient(), dismiss: { dismissed += 1 }
+        )
+        await model.start()
+        await model.confirmDiscardRecording()
+        let counts = await client.discardCounts()
+        XCTAssertEqual(counts, [1, 1])
+        XCTAssertEqual(dismissed, 1)
+    }
+
     func testFailedTextSendSavesAsTextDraft() async {
         let client = ConversationScreenClientSpy()
         let model = ConversationViewModel(
@@ -230,10 +264,14 @@ private actor ConversationScreenClientSpy {
     let correctionFails: Bool
     private(set) var beginVoiceCount = 0
     private var saved: ConversationInput?
+    private let captureDisposition: VoiceCaptureDisposition
+    private var discardedDraftCount = 0
+    private var discardedConversationCount = 0
 
-    init(messages: [MessageRecord] = [], correctionFails: Bool = false) {
+    init(messages: [MessageRecord] = [], correctionFails: Bool = false, captureDisposition: VoiceCaptureDisposition = .empty) {
         self.messages = messages
         self.correctionFails = correctionFails
+        self.captureDisposition = captureDisposition
     }
 
     func makeClient(messages: [MessageRecord]? = nil) -> ConversationScreenClient {
@@ -242,9 +280,14 @@ private actor ConversationScreenClientSpy {
             loadMessages: { loaded },
             beginVoice: { [self] in await recordBegin() },
             pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
-            sendText: { _ in }, retry: {}, saveDraft: { [self] input in await save(input) }, discardDraft: {},
+            sendText: { _ in }, retry: {}, saveDraft: { [self] input in await save(input) },
+            discardDraft: { [self] in await recordDraftDiscard() },
+            discardEmptyConversation: { [self] in await recordConversationDiscard() },
             correctTranscript: { [correctionFails] _, _ in
                 if correctionFails { throw ConversationFailure.retryable }
+            },
+            loadCaptureSnapshot: { [captureDisposition] in
+                .init(activity: .recording, elapsedMilliseconds: 0, meter: .init(averagePower: -160, peakPower: -160), disposition: captureDisposition)
             }
         )
     }
@@ -252,4 +295,7 @@ private actor ConversationScreenClientSpy {
     private func save(_ input: ConversationInput) { saved = input }
     func count() -> Int { beginVoiceCount }
     func savedInput() -> ConversationInput? { saved }
+    private func recordDraftDiscard() { discardedDraftCount += 1 }
+    private func recordConversationDiscard() { discardedConversationCount += 1 }
+    func discardCounts() -> [Int] { [discardedDraftCount, discardedConversationCount] }
 }
