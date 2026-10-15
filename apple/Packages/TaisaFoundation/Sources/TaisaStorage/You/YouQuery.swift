@@ -33,9 +33,17 @@ public struct YouSnapshot: Codable, Sendable, Equatable {
 
 public struct YouQuery: Sendable {
     private let store: TaisaStore
-    private let operational: YouOperationalFacts
+    private let operational: @Sendable () async -> YouOperationalFacts
 
     public init(store: TaisaStore, operational: YouOperationalFacts = .unknown) {
+        self.store = store
+        self.operational = { operational }
+    }
+
+    public init(
+        store: TaisaStore,
+        operational: @escaping @Sendable () async -> YouOperationalFacts
+    ) {
         self.store = store
         self.operational = operational
     }
@@ -52,8 +60,10 @@ public struct YouQuery: Sendable {
                     updatedAtMS: row["updated_at_ms"]
                 )
             }
-            return YouSnapshot(profile: profile, diagnostics: operational)
+            return YouSnapshot(profile: profile, diagnostics: await operational())
         } catch let error as YouContractError {
+            throw error
+        } catch let error as StorageError {
             throw error
         } catch {
             throw YouContractError.persistenceFailed

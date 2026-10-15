@@ -51,7 +51,6 @@ final class AppRuntime {
     }
 
     static func live() -> AppRuntime {
-        let microphone = microphonePermissionStatus
         return AppRuntime {
 #if DEBUG || TAISA_PERSONAL
             if ProcessInfo.processInfo.arguments.contains("--taisa-recovery-route-qa") {
@@ -82,18 +81,17 @@ final class AppRuntime {
                 credentialStore: KeychainVoiceGatewayCredentialStore()
             )
 #endif
+            let hasGatewayConfiguration = configuration != nil
             return Clients(
                 home: HomeClient.local(store: store, deviceID: context.deviceID.uuidString),
                 you: YouClient.local(
                     store: store,
                     deviceID: context.deviceID.uuidString,
-                    operational: .init(
-                        store: .healthy,
-                        recovery: .ready,
-                        microphone: microphone,
-                        gateway: configuration == nil ? .unavailable : .healthy,
-                        appProtection: .unknown
-                    )
+                    operational: {
+                        await AppRuntime.liveOperationalFacts(
+                            hasGatewayConfiguration: hasGatewayConfiguration
+                        )
+                    }
                 ),
                 insights: InsightsClient.local(store: store),
                 careerWork: CareerWorkClient.local(store: store, deviceID: context.deviceID.uuidString),
@@ -117,6 +115,28 @@ final class AppRuntime {
         )
     }
 
+    nonisolated static func operationalFacts(
+        hasGatewayConfiguration: Bool,
+        microphone: YouPermissionStatus
+    ) -> YouOperationalFacts {
+        .init(
+            store: .healthy,
+            recovery: .unknown,
+            microphone: microphone,
+            gateway: hasGatewayConfiguration ? .unknown : .unavailable,
+            appProtection: .unknown
+        )
+    }
+
+    private static func liveOperationalFacts(
+        hasGatewayConfiguration: Bool
+    ) -> YouOperationalFacts {
+        operationalFacts(
+            hasGatewayConfiguration: hasGatewayConfiguration,
+            microphone: microphonePermissionStatus
+        )
+    }
+
     @discardableResult
     func start() async -> State {
         guard state == .startup else { return state }
@@ -127,6 +147,13 @@ final class AppRuntime {
     func retryRecovery() async -> State {
         guard state == .recoveryRequired else { return state }
         state = .startup
+        return await openServices()
+    }
+
+    @discardableResult
+    func reloadAfterRestore() async -> State {
+        state = .startup
+        clearServices()
         return await openServices()
     }
 
@@ -141,15 +168,19 @@ final class AppRuntime {
             conversationFactory = clients.conversationFactory
             state = .ready
         } catch {
-            homeModel = nil
-            youModel = nil
-            careerWorkModel = nil
-            insightsModel = nil
-            conversationsModel = nil
-            conversationFactory = nil
+            clearServices()
             state = .recoveryRequired
         }
         return state
+    }
+
+    private func clearServices() {
+        homeModel = nil
+        youModel = nil
+        careerWorkModel = nil
+        insightsModel = nil
+        conversationsModel = nil
+        conversationFactory = nil
     }
 
     func requireRecovery() { state = .recoveryRequired }

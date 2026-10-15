@@ -37,7 +37,7 @@ struct FoundationRootView: View {
                     }
 #if TAISA_PERSONAL
                     if ProcessInfo.processInfo.arguments.contains(PersonalDeviceQA.launchArgument) {
-                        NavigationLink { PersonalDeviceQAView() } label: {
+                        NavigationLink { PersonalDeviceQAView(restoreSucceeded: reopenFoundationStore) } label: {
                             TaisaText(role: .body, content: "Personal device QA")
                         }
                         .accessibilityIdentifier("foundation.personal-qa.action")
@@ -68,7 +68,9 @@ struct FoundationRootView: View {
 #endif
             }
             .accessibilityIdentifier("foundation.root")
-            .navigationDestination(isPresented: $showsRecovery) { RecoveryView(importURL: recoveryImportURL) }
+            .navigationDestination(isPresented: $showsRecovery) {
+                RecoveryView(importURL: recoveryImportURL, restoreSucceeded: reopenFoundationStore)
+            }
             .navigationDestination(isPresented: $showsVoiceDiagnostics) {
 #if TAISA_PERSONAL
                 PersonalVoiceSessionView()
@@ -114,6 +116,16 @@ struct FoundationRootView: View {
         let value = Bundle.main.object(forInfoDictionaryKey: "TaisaEnvironment") as? String
             ?? "development"
         return (try? TaisaEnvironment(configurationValue: value)) ?? .development
+    }
+
+    private func reopenFoundationStore() async -> Bool {
+        do {
+            let backend = try PersonalRecoveryBackend.personal()
+            _ = try await backend.openStore()
+            return true
+        } catch {
+            return false
+        }
     }
 
 #if DEBUG || TAISA_PREVIEW

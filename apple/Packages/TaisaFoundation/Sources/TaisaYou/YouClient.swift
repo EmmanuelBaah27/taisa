@@ -18,6 +18,24 @@ public extension YouClient {
         nowMS: @escaping @Sendable () -> Int64 = { Int64((Date().timeIntervalSince1970 * 1_000).rounded()) }
     ) -> Self {
         let query = YouQuery(store: store, operational: operational)
+        return local(store: store, deviceID: deviceID, query: query, nowMS: nowMS)
+    }
+
+    static func local(
+        store: TaisaStore,
+        deviceID: String,
+        operational: @escaping @Sendable () async -> YouOperationalFacts,
+        nowMS: @escaping @Sendable () -> Int64 = { Int64((Date().timeIntervalSince1970 * 1_000).rounded()) }
+    ) -> Self {
+        local(store: store, deviceID: deviceID, query: YouQuery(store: store, operational: operational), nowMS: nowMS)
+    }
+
+    private static func local(
+        store: TaisaStore,
+        deviceID: String,
+        query: YouQuery,
+        nowMS: @escaping @Sendable () -> Int64
+    ) -> Self {
         let profiles = ProfileCommandRepository(store: store)
         let context: @Sendable () -> MutationContext = {
             .init(id: UUID().uuidString, deviceID: deviceID, timestamp: nowMS())
