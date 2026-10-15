@@ -21,7 +21,22 @@ public struct PrimaryNavigation<Item: Hashable>: View {
         self.items = items; _selection = selection
     }
 
-    public var body: some View {
+    @ViewBuilder public var body: some View {
+        if #available(iOS 26.0, macOS 26.0, *) {
+            navigationItems
+                .padding(6)
+                .glassEffect(.regular.interactive(), in: .capsule)
+                .shadow(color: TaisaColor.foreground.color.opacity(0.04), radius: 14)
+        } else {
+            navigationItems
+                .padding(6)
+                .background(TaisaColor.background.color, in: Capsule())
+                .overlay { Capsule().stroke(TaisaColor.background.color, lineWidth: 1) }
+                .shadow(color: TaisaColor.foreground.color.opacity(0.04), radius: 14)
+        }
+    }
+
+    private var navigationItems: some View {
         HStack(spacing: TaisaSpacing.tight.rawValue) {
             ForEach(items, id: \.0) { item, label, icon in
                 Button { select(item) } label: {
@@ -33,7 +48,7 @@ public struct PrimaryNavigation<Item: Hashable>: View {
                             Text(label)
                                 .font(TaisaTypography.body.font.weight(.medium))
                                 .lineLimit(1)
-                                .transition(reduceMotion ? .identity : .opacity.combined(with: .scale(scale: 0.96)))
+                                .transition(reduceMotion ? .identity : .opacity)
                         }
                     }
                     .foregroundStyle(selection == item ? TaisaColor.foreground.color : TaisaColor.mutedForeground.color)
@@ -41,8 +56,7 @@ public struct PrimaryNavigation<Item: Hashable>: View {
                     .frame(minHeight: 48)
                     .background {
                         if selection == item {
-                            Capsule()
-                                .fill(TaisaColor.selectedSurface.color)
+                            selectedSurface
                                 .matchedGeometryEffect(id: "primary-navigation-selection", in: selectionCapsule)
                         }
                     }
@@ -52,10 +66,16 @@ public struct PrimaryNavigation<Item: Hashable>: View {
                 .accessibilityAddTraits(selection == item ? .isSelected : [])
             }
         }
-        .padding(6)
-        .background(TaisaColor.background.color, in: Capsule())
-        .overlay { Capsule().stroke(TaisaColor.background.color, lineWidth: 1) }
-        .shadow(color: TaisaColor.foreground.color.opacity(0.04), radius: 14)
+        .animation(reduceMotion ? nil : .snappy(duration: TaisaMotion.fast), value: selection)
+    }
+
+    @ViewBuilder private var selectedSurface: some View {
+        if #available(iOS 26.0, macOS 26.0, *) {
+            Capsule()
+                .fill(TaisaColor.selectedSurface.color.opacity(0.72))
+        } else {
+            Capsule().fill(TaisaColor.selectedSurface.color)
+        }
     }
 
     private func select(_ item: Item) {
@@ -63,7 +83,7 @@ public struct PrimaryNavigation<Item: Hashable>: View {
         if PrimaryNavigationMotion.transition(reduceMotion: reduceMotion) == .instant {
             selection = item
         } else {
-            withAnimation(.snappy) { selection = item }
+            withAnimation(.snappy(duration: TaisaMotion.fast)) { selection = item }
         }
     }
 }

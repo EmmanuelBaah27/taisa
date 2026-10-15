@@ -68,7 +68,6 @@ final class PrimaryAppShellModel {
 }
 
 struct PrimaryAppShell: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State var model: PrimaryAppShellModel
     let homeModel: HomeModel
     var careerWorkModel: CareerWorkModel = CareerWorkModel(client: .init(loadOverview: { .init(active: [], paused: [], completed: [], archived: []) }))
@@ -81,14 +80,22 @@ struct PrimaryAppShell: View {
 
     var body: some View {
         NavigationStack {
-            ZStack {
-                destination
-                    .id(model.selection)
-                    .transition(destinationTransition)
+            if model.selection == .careerWork {
+                destinationView(.careerWork)
+            } else {
+                TabView(selection: Binding(
+                    get: { model.selection },
+                    set: { destination in model.select(destination) }
+                )) {
+                    ForEach(PrimaryDestination.allCases, id: \.self) { destination in
+                        destinationView(destination)
+                            .tag(destination)
+                    }
+                }
+                .tabViewStyle(.page(indexDisplayMode: .never))
             }
-            .animation(reduceMotion ? nil : .smooth, value: model.selection)
         }
-        .safeAreaInset(edge: .bottom, spacing: TaisaSpacing.compact.rawValue) {
+        .safeAreaInset(edge: .bottom, spacing: 0) {
             if model.showsConversationDock {
                 VStack(spacing: TaisaSpacing.compact.rawValue) {
                     ConversationEntryDock(
@@ -107,6 +114,12 @@ struct PrimaryAppShell: View {
                     .accessibilityIdentifier("app-shell.primary-navigation")
                 }
                 .padding(.horizontal, TaisaSpacing.standard.rawValue)
+                .padding(.top, TaisaSpacing.section.rawValue)
+                .padding(.bottom, TaisaSpacing.compact.rawValue)
+                .background {
+                    PageEdgeFade(.navigation)
+                        .ignoresSafeArea(edges: .bottom)
+                }
             }
         }
         .fullScreenCover(item: Binding(
@@ -122,11 +135,6 @@ struct PrimaryAppShell: View {
         }
     }
 
-    private var destinationTransition: AnyTransition {
-        guard !reduceMotion else { return .identity }
-        return .opacity
-    }
-
     @MainActor
     private func dismissConversationAndRefresh() {
         Task {
@@ -137,8 +145,8 @@ struct PrimaryAppShell: View {
     }
 
     @ViewBuilder
-    private var destination: some View {
-        switch model.selection {
+    private func destinationView(_ destination: PrimaryDestination) -> some View {
+        switch destination {
         case .home:
             HomeView(
                 model: homeModel,

@@ -18,15 +18,26 @@ public struct ConversationEntryDock: View {
         self.disabled = disabled; self.onVoice = onVoice; self.onKeyboard = onKeyboard
     }
 
-    public var body: some View {
-        Button(action: onVoice) {
-            Image(systemName: "waveform")
-                .font(.system(size: 24, weight: .medium))
-                .foregroundStyle(TaisaColor.foreground.color)
-                .frame(width: 104, height: 56)
+    @ViewBuilder public var body: some View {
+        if #available(iOS 26.0, macOS 26.0, *) {
+            voiceButton
+                .buttonStyle(.glassProminent)
+                .buttonBorderShape(.capsule)
+                .tint(TaisaColor.primaryAction.color)
+        } else {
+            voiceButton
+                .buttonStyle(.plain)
                 .background(TaisaColor.primaryAction.color, in: Capsule())
         }
-        .buttonStyle(.plain)
+    }
+
+    private var voiceButton: some View {
+        Button(action: onVoice) {
+            CentralIcon(.voiceMid)
+                .foregroundStyle(TaisaColor.foreground.color)
+                .frame(width: 20, height: 20)
+                .frame(width: 104, height: 56)
+        }
         .accessibilityLabel(Contract.preview.voiceAccessibilityLabel)
         .disabled(disabled)
     }

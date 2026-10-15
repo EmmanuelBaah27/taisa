@@ -15,6 +15,8 @@ struct ConversationComponentTests {
         #expect(TaisaColor.raisedSurface.hex == "#F9F9F9")
         #expect(TaisaRadius.composer.rawValue == 24)
         #expect(TaisaMaterial.composer.reducedTransparencyFallback == .raisedSurface)
+        #expect(TaisaSpacing.control.rawValue == 12)
+        #expect(TaisaMotion.fast == 0.18)
     }
 
     @Test func composerContractsDescribeActionsWithoutColorAlone() {
@@ -27,5 +29,10 @@ struct ConversationComponentTests {
     @Test func primaryNavigationMotionFallsBackToAnInstantAccessibleTransition() {
         #expect(PrimaryNavigationMotion.transition(reduceMotion: false) == .spatial)
         #expect(PrimaryNavigationMotion.transition(reduceMotion: true) == .instant)
+    }
+
+    @Test func centralIconCatalogCoversChatsPageControls() {
+        #expect(CentralIconName.magnifyingGlass != .voiceMid)
+        #expect(CentralIconName.voiceMid != .chatBubbles)
     }
 }

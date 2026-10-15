@@ -3,6 +3,29 @@ import TaisaContracts
 import TaisaStorage
 import TaisaVoice
 
+enum ConversationTitleDeriver {
+    static let maximumLength = 51
+
+    static func derive(from source: String) -> String? {
+        let words = source
+            .split(whereSeparator: { $0.isWhitespace })
+            .map(String.init)
+        guard !words.isEmpty else { return nil }
+
+        var title = ""
+        for word in words {
+            let candidate = title.isEmpty ? word : "\(title) \(word)"
+            guard candidate.count <= maximumLength else { break }
+            title = candidate
+        }
+        if title.isEmpty, let first = words.first {
+            title = String(first.prefix(maximumLength))
+        }
+        let trimmed = title.trimmingCharacters(in: .punctuationCharacters.union(.whitespacesAndNewlines))
+        return trimmed.isEmpty ? nil : trimmed
+    }
+}
+
 public actor GatewayConversationClient: ConversationClient {
     private let query: ConversationQuery
     private let repository: ConversationRepository
@@ -223,7 +246,10 @@ public actor GatewayConversationClient: ConversationClient {
     private func completeConversation(id: String, titleSuggestion: String?, updatedAtMS: Int64) async throws {
         guard let current = try await repository.get(id: id) else { throw ConversationFailure.unavailable }
         let maySuggest = current.titleAuthority == .localFallback
-        let title = maySuggest ? (titleSuggestion ?? current.title) : current.title
+        let firstUserMessage = try await query.loadConversation(id: id).visibleMessages
+            .first(where: { $0.role == "user" })?.body
+        let derivedTitle = firstUserMessage.flatMap(ConversationTitleDeriver.derive)
+        let title = maySuggest ? (titleSuggestion ?? derivedTitle ?? current.title) : current.title
         let authority: TitleAuthority = maySuggest && titleSuggestion != nil ? .assistantSuggested : current.titleAuthority
         try await repository.update(.init(
             id: current.id, title: title, lifecycle: .completed,

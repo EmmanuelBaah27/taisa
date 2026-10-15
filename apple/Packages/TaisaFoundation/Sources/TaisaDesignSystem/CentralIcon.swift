@@ -4,6 +4,8 @@ public enum CentralIconName: Sendable, Equatable {
     case homeLine
     case chatBubbles
     case peopleCircle
+    case magnifyingGlass
+    case voiceMid
 }
 
 /// Native rendering of the Central Icons paths used by Taisa's primary navigation.
@@ -35,6 +37,8 @@ public struct CentralIcon: View {
         case .homeLine: homeLine
         case .chatBubbles: chatBubbles
         case .peopleCircle: peopleCircle
+        case .magnifyingGlass: magnifyingGlass
+        case .voiceMid: voiceMid
         }
     }
 
@@ -72,6 +76,29 @@ public struct CentralIcon: View {
         path.addEllipse(in: CGRect(x: 9, y: 7, width: 6, height: 6))
         path.move(to: CGPoint(x: 6.12, y: 18.81))
         path.addCurve(to: CGPoint(x: 17.88, y: 18.81), control1: CGPoint(x: 8.78, y: 15.38), control2: CGPoint(x: 15.22, y: 15.38))
+        return path
+    }
+
+    private var magnifyingGlass: Path {
+        var path = Path()
+        path.addEllipse(in: CGRect(x: 4, y: 4, width: 14, height: 14))
+        path.move(to: CGPoint(x: 16.05, y: 16.05))
+        path.addLine(to: CGPoint(x: 20, y: 20))
+        return path
+    }
+
+    private var voiceMid: Path {
+        var path = Path()
+        for segment in [
+            (CGPoint(x: 8, y: 6), CGPoint(x: 8, y: 18)),
+            (CGPoint(x: 4, y: 11), CGPoint(x: 4, y: 13)),
+            (CGPoint(x: 12, y: 10), CGPoint(x: 12, y: 14)),
+            (CGPoint(x: 16, y: 8), CGPoint(x: 16, y: 16)),
+            (CGPoint(x: 20, y: 11), CGPoint(x: 20, y: 13)),
+        ] {
+            path.move(to: segment.0)
+            path.addLine(to: segment.1)
+        }
         return path
     }
 }
