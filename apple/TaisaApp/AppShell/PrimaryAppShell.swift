@@ -9,7 +9,10 @@ import TaisaStorage
 @MainActor
 @Observable
 final class PrimaryAppShellModel {
+    enum NavigationDirection: Sendable, Equatable { case forward, backward }
+
     private(set) var selection: PrimaryDestination
+    private(set) var navigationDirection: NavigationDirection = .forward
     private(set) var conversationRoute: ConversationRoute?
     @ObservationIgnored private var pendingEntryIntent: ConversationEntryIntent?
     @ObservationIgnored private let makeConversationID: () -> String
@@ -25,6 +28,10 @@ final class PrimaryAppShellModel {
     var showsConversationDock: Bool { conversationRoute == nil }
 
     func select(_ destination: PrimaryDestination) {
+        let destinations = PrimaryDestination.allCases
+        let currentIndex = destinations.firstIndex(of: selection) ?? 0
+        let nextIndex = destinations.firstIndex(of: destination) ?? currentIndex
+        navigationDirection = nextIndex >= currentIndex ? .forward : .backward
         selection = destination
     }
 
@@ -60,6 +67,7 @@ final class PrimaryAppShellModel {
 }
 
 struct PrimaryAppShell: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State var model: PrimaryAppShellModel
     let homeModel: HomeModel
     var careerWorkModel: CareerWorkModel = CareerWorkModel(client: .init(loadOverview: { .init(active: [], paused: [], completed: [], archived: []) }))
@@ -71,7 +79,12 @@ struct PrimaryAppShell: View {
 
     var body: some View {
         NavigationStack {
-            destination
+            ZStack {
+                destination
+                    .id(model.selection)
+                    .transition(destinationTransition)
+            }
+            .animation(reduceMotion ? nil : .smooth, value: model.selection)
         }
         .safeAreaInset(edge: .bottom, spacing: TaisaSpacing.compact.rawValue) {
             if model.showsConversationDock {
@@ -105,6 +118,16 @@ struct PrimaryAppShell: View {
                 dismiss: dismissConversationAndRefresh
             )
         }
+    }
+
+    private var destinationTransition: AnyTransition {
+        guard !reduceMotion else { return .identity }
+        let insertion: Edge = model.navigationDirection == .forward ? .trailing : .leading
+        let removal: Edge = model.navigationDirection == .forward ? .leading : .trailing
+        return .asymmetric(
+            insertion: .move(edge: insertion).combined(with: .opacity),
+            removal: .move(edge: removal).combined(with: .opacity)
+        )
     }
 
     @MainActor
