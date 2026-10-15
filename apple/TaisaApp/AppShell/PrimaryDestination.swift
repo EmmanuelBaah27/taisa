@@ -10,7 +10,7 @@ enum PrimaryDestination: String, CaseIterable, Hashable, Sendable {
         switch self {
         case .home: "Home"
         case .careerWork: "Career Work"
-        case .conversations: "Conversations"
+        case .conversations: "Chats"
         case .you: "You"
         }
     }

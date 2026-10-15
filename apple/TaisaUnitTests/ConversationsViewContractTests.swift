@@ -2,13 +2,20 @@ import Foundation
 import XCTest
 
 final class ConversationsViewContractTests: XCTestCase {
+    func testChatsPageUsesTheApprovedFigmaHierarchy() throws {
+        let source = try conversationsSource()
+
+        for contract in [
+            "Text(\"Chats\")", "chats.search", "chats.drafts-filter",
+            "List", "listRowBackground", "TaisaRadius.panel"
+        ] {
+            XCTAssertTrue(source.contains(contract), "Missing Figma Chats contract: \(contract)")
+        }
+        XCTAssertFalse(source.contains(".navigationTitle(\"Conversations\")"))
+    }
+
     func testConversationListUsesNativeActionsAndRequiredIdentifiers() throws {
-        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
-        let directory = root.appendingPathComponent("TaisaApp/Conversations")
-        let source = try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
-            .filter { $0.pathExtension == "swift" }
-            .map { try String(contentsOf: $0, encoding: .utf8) }
-            .joined(separator: "\n")
+        let source = try conversationsSource()
 
         for identifier in [
             "conversations.root", "conversations.drafts", "conversations.history",
@@ -22,5 +29,14 @@ final class ConversationsViewContractTests: XCTestCase {
         }
         XCTAssertFalse(source.contains("New conversation"))
         XCTAssertFalse(source.contains("import GRDB"))
+    }
+
+    private func conversationsSource() throws -> String {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let directory = root.appendingPathComponent("TaisaApp/Conversations")
+        return try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
+            .filter { $0.pathExtension == "swift" }
+            .map { try String(contentsOf: $0, encoding: .utf8) }
+            .joined(separator: "\n")
     }
 }
