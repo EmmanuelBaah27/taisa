@@ -58,7 +58,7 @@ final class ConversationsViewContractTests: XCTestCase {
         XCTAssertTrue(source.contains(".buttonStyle(.glass)"))
         XCTAssertTrue(source.contains("PageEdgeFade(.header)"))
         XCTAssertTrue(source.contains(".frame(height: 64)"))
-        XCTAssertTrue(source.contains(".offset(y: TaisaSpacing.section.rawValue)"))
+        XCTAssertTrue(source.contains(".offset(y: TaisaSpacing.compact.rawValue)"))
         XCTAssertFalse(source.contains("Image(systemName: \"magnifyingglass\")"))
     }
 
@@ -69,7 +69,7 @@ final class ConversationsViewContractTests: XCTestCase {
         XCTAssertTrue(source.contains("if !showsDraftsOnly || snapshot.drafts.isEmpty"))
         XCTAssertTrue(source.contains(".listSectionMargins(.horizontal, 0)"))
         XCTAssertTrue(source.contains(".scrollIndicators(.hidden)"))
-        XCTAssertTrue(source.contains(".contentMargins(.top, TaisaSpacing.section.rawValue"))
+        XCTAssertTrue(source.contains(".contentMargins(.top, TaisaSpacing.standard.rawValue"))
         XCTAssertTrue(source.contains(".listSectionSpacing(TaisaSpacing.standard.rawValue)"))
         XCTAssertTrue(source.contains(".padding(.bottom, TaisaSpacing.compact.rawValue)"))
         XCTAssertFalse(source.contains("} header: {"))
