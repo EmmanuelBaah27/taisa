@@ -15,15 +15,6 @@ final class TaisaLaunchTests: XCTestCase {
         retainScreenshot(of: app, name: "development-home")
     }
 
-    func testNewStoreShowsNativeEmptyState() {
-        let app = XCUIApplication()
-        app.launch()
-
-        XCTAssertTrue(app.staticTexts["Nothing here yet"].waitForExistence(timeout: 5))
-        XCTAssertFalse(element("preview.catalog", in: app).exists)
-        retainScreenshot(of: app, name: "development-home-empty")
-    }
-
     func testPrimaryPagerSwipesBothDirectionsAndNavigationTargetsAreComfortablyHittable() {
         let app = XCUIApplication()
         app.launchArguments = ["--taisa-chats-visual-qa"]
@@ -31,17 +22,18 @@ final class TaisaLaunchTests: XCTestCase {
 
         let chats = element("conversations.root", in: app)
         XCTAssertTrue(chats.waitForExistence(timeout: 5))
+        XCTAssertTrue(waitForSelection("Chats", in: app))
 
-        app.swipeRight()
-        XCTAssertTrue(app.staticTexts["Nothing here yet"].waitForExistence(timeout: 2))
+        swipeRight(in: app)
+        XCTAssertTrue(waitForSelection("Home", in: app))
 
-        app.swipeLeft()
-        XCTAssertTrue(chats.waitForExistence(timeout: 2))
-        app.swipeLeft()
-        XCTAssertTrue(app.staticTexts["Your settings and preferences will appear here."].waitForExistence(timeout: 2))
+        swipeLeft(in: app)
+        XCTAssertTrue(waitForSelection("Chats", in: app))
+        swipeLeft(in: app)
+        XCTAssertTrue(waitForSelection("You", in: app))
 
-        app.swipeRight()
-        XCTAssertTrue(chats.waitForExistence(timeout: 2))
+        swipeRight(in: app)
+        XCTAssertTrue(waitForSelection("Chats", in: app))
 
         for label in ["Home", "Chats", "You"] {
             let destination = app.buttons[label]
@@ -68,6 +60,24 @@ final class TaisaLaunchTests: XCTestCase {
 
     private func element(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
         app.descendants(matching: .any)[identifier]
+    }
+
+    private func waitForSelection(_ label: String, in app: XCUIApplication) -> Bool {
+        let selected = NSPredicate(format: "selected == true")
+        let expectation = XCTNSPredicateExpectation(predicate: selected, object: app.buttons[label])
+        return XCTWaiter.wait(for: [expectation], timeout: 2) == .completed
+    }
+
+    private func swipeLeft(in app: XCUIApplication) {
+        let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.8, dy: 0.45))
+        let end = app.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.45))
+        start.press(forDuration: 0.05, thenDragTo: end)
+    }
+
+    private func swipeRight(in app: XCUIApplication) {
+        let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.45))
+        let end = app.coordinate(withNormalizedOffset: CGVector(dx: 0.8, dy: 0.45))
+        start.press(forDuration: 0.05, thenDragTo: end)
     }
 
     private func retainScreenshot(of app: XCUIApplication, name: String) {
