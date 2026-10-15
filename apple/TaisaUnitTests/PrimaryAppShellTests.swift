@@ -83,7 +83,7 @@ final class PrimaryAppShellTests: XCTestCase {
         XCTAssertFalse(source.contains("if model.selection == .careerWork"))
         XCTAssertTrue(source.contains("model.showsCareerWork"))
         XCTAssertTrue(source.contains("PageEdgeFade(.navigation)"))
-        XCTAssertTrue(source.contains(".frame(height: 90)"))
+        XCTAssertTrue(source.contains(".frame(height: 104)"))
         XCTAssertFalse(source.contains(".background {\n                    PageEdgeFade(.navigation)"))
     }
 

@@ -6,7 +6,7 @@ final class ConversationsViewContractTests: XCTestCase {
         let source = try conversationsSource()
 
         for contract in [
-            "Text(\"Chats\")", "chats.search", "chats.drafts-filter",
+            "TaisaPageHeader(\"Chats\")", "chats.search", "chats.drafts-filter",
             "List", "listRowBackground", "TaisaRadius.historyGroup"
         ] {
             XCTAssertTrue(source.contains(contract), "Missing Figma Chats contract: \(contract)")
@@ -23,7 +23,7 @@ final class ConversationsViewContractTests: XCTestCase {
         XCTAssertTrue(source.contains(".listRowSeparatorTint(TaisaColor.background.color)"))
         XCTAssertFalse(source.contains(".lineLimit(2)"))
         XCTAssertTrue(source.contains("preview: snapshot.lastMessagePreview"))
-        XCTAssertTrue(source.contains(".frame(height: 48)"))
+        XCTAssertTrue(source.contains("TaisaControlMetric.chatPreviewLineHeight"))
     }
 
     func testChatsRowsMatchTheMeasuredFigmaRecord() throws {
@@ -52,13 +52,17 @@ final class ConversationsViewContractTests: XCTestCase {
 
     func testChatsControlsUseCentralIconsLiquidGlassAndHeaderFade() throws {
         let source = try conversationsSource()
+        let pageChrome = try designSystemSource(named: "TaisaPageChrome.swift")
 
-        XCTAssertTrue(source.contains("CentralIcon(.magnifyingGlass)"))
-        XCTAssertTrue(source.contains(".frame(width: 24, height: 24)"))
-        XCTAssertTrue(source.contains(".buttonStyle(.glass)"))
-        XCTAssertTrue(source.contains("PageEdgeFade(.header)"))
-        XCTAssertTrue(source.contains(".frame(height: 64)"))
-        XCTAssertTrue(source.contains(".offset(y: TaisaSpacing.compact.rawValue)"))
+        XCTAssertTrue(source.contains("TaisaSecondaryIconButton("))
+        XCTAssertTrue(source.contains("icon: .magnifyingGlass"))
+        XCTAssertTrue(source.contains("TaisaSecondaryCapsuleButton("))
+        XCTAssertTrue(pageChrome.contains("CentralIcon(icon)"))
+        XCTAssertTrue(pageChrome.contains("TaisaControlMetric.standardIcon"))
+        XCTAssertTrue(pageChrome.contains(".glassEffect(.regular.interactive()"))
+        XCTAssertTrue(pageChrome.contains("PageEdgeFade(.header)"))
+        XCTAssertTrue(pageChrome.contains("TaisaControlMetric.appBarHeight"))
+        XCTAssertTrue(pageChrome.contains("TaisaControlMetric.headerActionHeight"))
         XCTAssertFalse(source.contains("Image(systemName: \"magnifyingglass\")"))
     }
 
@@ -69,8 +73,8 @@ final class ConversationsViewContractTests: XCTestCase {
         XCTAssertTrue(source.contains("if !showsDraftsOnly || snapshot.drafts.isEmpty"))
         XCTAssertTrue(source.contains(".listSectionMargins(.horizontal, 0)"))
         XCTAssertTrue(source.contains(".scrollIndicators(.hidden)"))
-        XCTAssertTrue(source.contains(".contentMargins(.top, TaisaSpacing.standard.rawValue"))
-        XCTAssertTrue(source.contains(".listSectionSpacing(TaisaSpacing.standard.rawValue)"))
+        XCTAssertTrue(source.contains("TaisaControlMetric.appBarHeight + TaisaSpacing.standard.rawValue"))
+        XCTAssertTrue(source.contains(".listSectionSpacing(TaisaSpacing.section.rawValue)"))
         XCTAssertTrue(source.contains(".padding(.bottom, TaisaSpacing.compact.rawValue)"))
         XCTAssertFalse(source.contains("} header: {"))
     }
@@ -123,5 +127,15 @@ final class ConversationsViewContractTests: XCTestCase {
             .filter { $0.pathExtension == "swift" }
             .map { try String(contentsOf: $0, encoding: .utf8) }
             .joined(separator: "\n")
+    }
+
+    private func designSystemSource(named fileName: String) throws -> String {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        return try String(
+            contentsOf: root
+                .appendingPathComponent("Packages/TaisaFoundation/Sources/TaisaDesignSystem")
+                .appendingPathComponent(fileName),
+            encoding: .utf8
+        )
     }
 }
