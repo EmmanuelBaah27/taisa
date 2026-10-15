@@ -27,8 +27,6 @@ public enum TaisaControlMetric {
 }
 
 public enum TaisaEffect {
-    public static let headerFadeOpacity: Double = 0.72
-    public static let navigationFadeOpacity: Double = 0.72
     public static let edgeFadeBlurOpacity: Double = 0.42
     /// Figma's 20px blur maps to Core Graphics' 10pt blur radius.
     public static let recordingGlowBlurRadius: CGFloat = 10
