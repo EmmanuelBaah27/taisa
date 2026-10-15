@@ -4,13 +4,18 @@ import TaisaDesignSystem
 
 struct PersonalDeviceQAView: View {
     var openProductVoice: (() -> Void)?
+    let restoreSucceeded: @MainActor @Sendable () async -> Bool
     @State private var harness: PersonalDeviceQA?
     @State private var evidence: PersonalDeviceQA.Evidence?
     @State private var busy = false
     @State private var failed = false
 
-    init(openProductVoice: (() -> Void)? = nil) {
+    init(
+        openProductVoice: (() -> Void)? = nil,
+        restoreSucceeded: @escaping @MainActor @Sendable () async -> Bool
+    ) {
         self.openProductVoice = openProductVoice
+        self.restoreSucceeded = restoreSucceeded
     }
 
     var body: some View {
@@ -49,7 +54,7 @@ struct PersonalDeviceQAView: View {
                     }
                     .accessibilityIdentifier("personal-qa.product-voice")
                 }
-                NavigationLink { RecoveryView() } label: {
+                NavigationLink { RecoveryView(restoreSucceeded: restoreSucceeded) } label: {
                     TaisaText(role: .body, content: "Backup and recovery")
                 }
                 NavigationLink { PersonalVoiceSessionView() } label: {

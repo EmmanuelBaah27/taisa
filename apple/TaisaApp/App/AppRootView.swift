@@ -56,7 +56,7 @@ struct AppRootView: View {
                 PersonalDeviceQAView(openProductVoice: {
                     startsProductVoiceAfterQA = true
                     showsPersonalQA = false
-                })
+                }, restoreSucceeded: { await runtime.reloadAfterRestore() == .ready })
             }
         }
 #endif
@@ -70,7 +70,14 @@ struct AppRootView: View {
             set: { if !$0 { presentation.closeUserRecovery() } }
         )) {
             NavigationStack {
-                RecoveryView(dismissRuntimeRecovery: presentation.closeUserRecovery)
+                RecoveryView(
+                    dismissRuntimeRecovery: presentation.closeUserRecovery,
+                    restoreSucceeded: {
+                        let state = await runtime.reloadAfterRestore()
+                        if state == .ready { presentation.closeUserRecovery() }
+                        return state == .ready
+                    }
+                )
             }
         }
     }
@@ -79,7 +86,8 @@ struct AppRootView: View {
         NavigationStack {
             RecoveryView(
                 retryRuntime: { Task { await runtime.retryRecovery() } },
-                dismissRuntimeRecovery: { showsRuntimeRecovery = false }
+                dismissRuntimeRecovery: { showsRuntimeRecovery = false },
+                restoreSucceeded: { await runtime.reloadAfterRestore() == .ready }
             )
             .accessibilityIdentifier("home.recovery")
         }

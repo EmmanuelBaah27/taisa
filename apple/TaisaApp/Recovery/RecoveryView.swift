@@ -6,6 +6,7 @@ struct RecoveryView: View {
     var importURL: URL? = nil
     var retryRuntime: (@MainActor @Sendable () -> Void)? = nil
     var dismissRuntimeRecovery: (@MainActor @Sendable () -> Void)? = nil
+    var restoreSucceeded: @MainActor @Sendable () async -> Bool
     @Environment(\.scenePhase) private var scenePhase
     @State private var model: RecoveryViewModel?
     @State private var enteredKey = ""
@@ -20,11 +21,13 @@ struct RecoveryView: View {
         importURL: URL? = nil,
         model: RecoveryViewModel? = nil,
         retryRuntime: (@MainActor @Sendable () -> Void)? = nil,
-        dismissRuntimeRecovery: (@MainActor @Sendable () -> Void)? = nil
+        dismissRuntimeRecovery: (@MainActor @Sendable () -> Void)? = nil,
+        restoreSucceeded: @escaping @MainActor @Sendable () async -> Bool
     ) {
         self.importURL = importURL
         self.retryRuntime = retryRuntime
         self.dismissRuntimeRecovery = dismissRuntimeRecovery
+        self.restoreSucceeded = restoreSucceeded
         _model = State(initialValue: model)
     }
 
@@ -236,7 +239,7 @@ struct RecoveryView: View {
         do {
             let backend = try PersonalRecoveryBackend.personal()
             _ = try await backend.openStore()
-            model = RecoveryViewModel(backend: backend)
+            model = RecoveryViewModel(backend: backend, restoreSucceeded: restoreSucceeded)
         } catch { initializationFailed = true }
     }
 }
