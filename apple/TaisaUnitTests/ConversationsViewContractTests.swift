@@ -26,6 +26,31 @@ final class ConversationsViewContractTests: XCTestCase {
         XCTAssertTrue(source.contains(".frame(height: 48)"))
     }
 
+    func testChatsRowsUseTwelvePointVerticalPaddingAndFullWidthDividers() throws {
+        let source = try conversationsSource()
+
+        XCTAssertTrue(source.contains(".padding(.vertical, TaisaSpacing.control.rawValue)"))
+        XCTAssertTrue(source.contains(".alignmentGuide(.listRowSeparatorLeading) { _ in 0 }"))
+        XCTAssertTrue(source.contains(".alignmentGuide(.listRowSeparatorTrailing) { dimensions in dimensions.width }"))
+    }
+
+    func testChatsControlsUseCentralIconsLiquidGlassAndHeaderFade() throws {
+        let source = try conversationsSource()
+
+        XCTAssertTrue(source.contains("CentralIcon(.magnifyingGlass)"))
+        XCTAssertTrue(source.contains(".buttonStyle(.glass)"))
+        XCTAssertTrue(source.contains("PageEdgeFade(.header)"))
+        XCTAssertFalse(source.contains("Image(systemName: \"magnifyingglass\")"))
+    }
+
+    func testDraftFilterIsConditionalAndMonthHeaderHasNoHorizontalInset() throws {
+        let source = try conversationsSource()
+
+        XCTAssertTrue(source.contains("if hasDrafts"))
+        XCTAssertTrue(source.contains("if !showsDraftsOnly || snapshot.drafts.isEmpty"))
+        XCTAssertTrue(source.contains(".listSectionMargins(.horizontal, 0)"))
+    }
+
     func testApplicationIsLockedToLightAppearance() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let source = try String(

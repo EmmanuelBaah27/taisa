@@ -19,6 +19,27 @@ private actor UnusedCoachingRunner: VoiceCoachingRunning {
 
 @Suite(.serialized)
 struct GatewayConversationClientTests {
+    @Test func fallbackTitleIsDerivedFromTheFirstUserMessage() {
+        #expect(
+            ConversationTitleDeriver.derive(from: "  Help me prepare for my quarterly performance review next week.  ")
+                == "Help me prepare for my quarterly performance review"
+        )
+    }
+
+    @Test func fallbackTitleCollapsesWhitespaceAndStaysBounded() throws {
+        let title = try #require(ConversationTitleDeriver.derive(
+            from: "Plan   the launch\nfor the customer advisory board with clear owners and dates"
+        ))
+
+        #expect(title == "Plan the launch for the customer advisory board")
+        #expect(title.count <= ConversationTitleDeriver.maximumLength)
+    }
+
+    @Test func fallbackTitleHandlesAnOverlongFirstToken() throws {
+        let title = try #require(ConversationTitleDeriver.derive(from: String(repeating: "a", count: 80)))
+        #expect(title.count == ConversationTitleDeriver.maximumLength)
+    }
+
     @Test func completedVoiceConversationAppearsInHistory() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -52,5 +73,39 @@ struct GatewayConversationClientTests {
         let index = try await ConversationQuery(store: store).loadIndex()
         #expect(index.conversations.map(\.id) == [conversationID])
         #expect(index.conversations.first?.lifecycle == .completed)
+    }
+
+    @Test func loadingHistoryRepairsExistingFallbackTitles() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = try await TaisaStore.open(
+            at: directory.appendingPathComponent("store.sqlite"),
+            keyStore: GatewayConversationTestKeys()
+        )
+        let conversationID = "00000000-0000-4000-8000-000000000701"
+        let repository = ConversationRepository(store: store)
+        let deviceID = "00000000-0000-4000-8000-000000000799"
+        try await repository.create(.init(
+            id: conversationID,
+            title: "New conversation",
+            lifecycle: .completed,
+            titleAuthority: .localFallback,
+            createdAtMS: 1,
+            updatedAtMS: 1
+        ), context: .init(id: UUID().uuidString, deviceID: deviceID, timestamp: 1))
+        try await repository.createMessage(.init(
+            id: "00000000-0000-4000-8000-000000000702",
+            conversationID: conversationID,
+            role: "user",
+            body: "Prepare me for the annual planning conversation with leadership",
+            createdAtMS: 2
+        ), context: .init(id: UUID().uuidString, deviceID: deviceID, timestamp: 2))
+
+        let index = try await ConversationsClient.local(store: store, deviceID: deviceID).load()
+
+        #expect(index.conversations.first?.title == "Prepare me for the annual planning conversation")
+        #expect(index.conversations.first?.titleAuthority == .localFallback)
+        #expect(index.conversations.first?.updatedAtMS == 1)
     }
 }

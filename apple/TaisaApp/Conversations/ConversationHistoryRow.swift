@@ -23,7 +23,7 @@ struct ConversationHistoryRow: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-        .padding(.vertical, 8)
+        .padding(.vertical, TaisaSpacing.control.rawValue)
         .accessibilityElement(children: .combine)
     }
 

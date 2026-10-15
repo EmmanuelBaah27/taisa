@@ -44,7 +44,26 @@ public struct ConversationsClient: Sendable {
             )
         }
         return ConversationsClient(
-            load: { try await query.loadIndex() },
+            load: {
+                let index = try await query.loadIndex()
+                var repaired = false
+                for conversation in index.conversations where conversation.titleAuthority == .localFallback {
+                    guard let firstUserMessage = try await query.loadConversation(id: conversation.id)
+                        .visibleMessages.first(where: { $0.role == "user" })?.body,
+                          let title = ConversationTitleDeriver.derive(from: firstUserMessage),
+                          title != conversation.title else { continue }
+                    try await repository.update(.init(
+                        id: conversation.id,
+                        title: title,
+                        lifecycle: conversation.lifecycle,
+                        titleAuthority: .localFallback,
+                        createdAtMS: conversation.createdAtMS,
+                        updatedAtMS: conversation.updatedAtMS
+                    ), context: context())
+                    repaired = true
+                }
+                return repaired ? try await query.loadIndex() : index
+            },
             discardDraft: { try await repository.discardDraft(id: $0) },
             renameConversation: { try await repository.rename(id: $0, title: $1, context: context()) },
             deleteConversation: { try await repository.delete(id: $0, context: context()) }

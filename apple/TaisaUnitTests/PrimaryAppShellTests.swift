@@ -44,11 +44,14 @@ final class PrimaryAppShellTests: XCTestCase {
         XCTAssertFalse(model.showsConversationDock)
     }
 
-    func testPageTransitionIsOpacityOnly() throws {
+    func testPagesSupportInteractiveHorizontalPagingAndFastNavigation() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let source = try String(contentsOf: root.appendingPathComponent("TaisaApp/AppShell/PrimaryAppShell.swift"), encoding: .utf8)
-        XCTAssertTrue(source.contains("return .opacity"))
-        XCTAssertFalse(source.contains(".move(edge:"))
+        XCTAssertTrue(source.contains("TabView(selection:"))
+        XCTAssertTrue(source.contains(".tabViewStyle(.page(indexDisplayMode: .never))"))
+        XCTAssertTrue(source.contains("model.select(destination)"))
+        XCTAssertTrue(source.contains("if model.selection == .careerWork"))
+        XCTAssertTrue(source.contains("PageEdgeFade(.navigation)"))
     }
 
     func testVoiceEntryIntentIsConsumedOnlyOnce() {

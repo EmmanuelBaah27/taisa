@@ -83,35 +83,19 @@ struct ConversationsView: View {
                 .foregroundStyle(TaisaColor.foreground.color)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-            Button(action: {}) {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 20, weight: .regular))
-                    .frame(width: 24, height: 24)
-                    .padding(12)
-                    .background(.regularMaterial, in: Circle())
+            searchButton
+            if hasDrafts {
+                draftsButton
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Search chats")
-            .accessibilityHint("Search is not available yet")
-            .accessibilityIdentifier("chats.search")
-
-            Button { showsDraftsOnly.toggle() } label: {
-                HStack(spacing: 6) {
-                    Text("Drafts").font(.system(size: 16, weight: .medium))
-                    Circle()
-                        .fill(TaisaColor.destructive.color)
-                        .frame(width: 8, height: 8)
-                }
-                .padding(.horizontal, 20)
-                .frame(height: 48)
-                .background(.regularMaterial, in: Capsule())
-            }
-            .buttonStyle(.plain)
-            .accessibilityValue(showsDraftsOnly ? "Showing drafts" : "Showing all chats")
-            .accessibilityIdentifier("chats.drafts-filter")
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 12)
+        .padding(.horizontal, TaisaSpacing.content.rawValue)
+        .padding(.vertical, TaisaSpacing.control.rawValue)
+        .overlay(alignment: .bottom) {
+            PageEdgeFade(.header)
+                .frame(height: TaisaSpacing.section.rawValue)
+                .offset(y: TaisaSpacing.section.rawValue)
+        }
+        .zIndex(1)
     }
 
     @ViewBuilder private var content: some View {
@@ -142,7 +126,7 @@ struct ConversationsView: View {
                     }
                     .accessibilityIdentifier("conversations.drafts")
                 }
-                if !showsDraftsOnly {
+                if !showsDraftsOnly || snapshot.drafts.isEmpty {
                     ForEach(groupedConversations(snapshot.conversations), id: \.month) { group in
                         Section {
                             ForEach(group.conversations, id: \.id) { conversation in
@@ -155,6 +139,8 @@ struct ConversationsView: View {
                                 .buttonStyle(.plain)
                                 .listRowBackground(TaisaColor.selectedSurface.color)
                                 .listRowSeparatorTint(TaisaColor.background.color)
+                                .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
+                                .alignmentGuide(.listRowSeparatorTrailing) { dimensions in dimensions.width }
                                 .swipeActions {
                                     Button("Delete", role: .destructive) { confirmation = .delete(conversation) }
                                     Button("Rename") { beginRename(conversation) }.tint(.accentColor)
@@ -169,6 +155,7 @@ struct ConversationsView: View {
                         } header: {
                             monthHeader(group.month)
                         }
+                        .listSectionMargins(.horizontal, 0)
                     }
                     .accessibilityIdentifier("conversations.history")
                 }
@@ -176,7 +163,7 @@ struct ConversationsView: View {
             }
             .listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)
-            .contentMargins(.horizontal, 20, for: .scrollContent)
+            .contentMargins(.horizontal, TaisaSpacing.content.rawValue, for: .scrollContent)
             .clipShape(RoundedRectangle(cornerRadius: TaisaRadius.panel.rawValue))
             .refreshable { await model.load() }
         case let .failure(issue):
@@ -194,12 +181,55 @@ struct ConversationsView: View {
         }
     }
 
+    @ViewBuilder private var searchButton: some View {
+        let button = Button(action: {}) {
+            CentralIcon(.magnifyingGlass)
+                .frame(width: 20, height: 20)
+                .frame(width: 48, height: 48)
+        }
+        .accessibilityLabel("Search chats")
+        .accessibilityHint("Search is not available yet")
+        .accessibilityIdentifier("chats.search")
+
+        if #available(iOS 26.0, macOS 26.0, *) {
+            button.buttonStyle(.glass).buttonBorderShape(.circle)
+        } else {
+            button.buttonStyle(.plain).background(.regularMaterial, in: Circle())
+        }
+    }
+
+    @ViewBuilder private var draftsButton: some View {
+        let button = Button { showsDraftsOnly.toggle() } label: {
+            HStack(spacing: 6) {
+                Text("Drafts").font(.system(size: 16, weight: .medium))
+                Circle()
+                    .fill(TaisaColor.destructive.color)
+                    .frame(width: 8, height: 8)
+            }
+            .padding(.horizontal, TaisaSpacing.content.rawValue)
+            .frame(height: 48)
+        }
+        .accessibilityValue(showsDraftsOnly ? "Showing drafts" : "Showing all chats")
+        .accessibilityIdentifier("chats.drafts-filter")
+
+        if #available(iOS 26.0, macOS 26.0, *) {
+            button.buttonStyle(.glass).buttonBorderShape(.capsule)
+        } else {
+            button.buttonStyle(.plain).background(.regularMaterial, in: Capsule())
+        }
+    }
+
     private func monthHeader(_ month: String) -> some View {
         Text(month)
             .font(.system(size: 14, weight: .medium))
             .foregroundStyle(TaisaColor.mutedForeground.color)
             .textCase(nil)
             .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var hasDrafts: Bool {
+        guard case let .content(snapshot, _, _) = model.state else { return false }
+        return !snapshot.drafts.isEmpty
     }
 
     private struct MonthGroup {
