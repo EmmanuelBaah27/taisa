@@ -130,11 +130,12 @@ final class ConversationViewModelTests: XCTestCase {
 
     func testFailedCorrectionRemainsAvailableForRetry() async {
         let client = ConversationScreenClientSpy(correctionFails: true)
-        let model = ConversationViewModel(
-            conversationID: UUID().uuidString, title: "New conversation", entryIntent: nil,
-            client: await client.makeClient()
-        )
         let original = message(role: "user", body: "Original")
+        let model = ConversationViewModel(
+            conversationID: original.conversationID, title: "New conversation", entryIntent: nil,
+            client: await client.makeClient(messages: [original])
+        )
+        await model.start()
         model.requestCorrection(original)
         model.correctionText = "Corrected"
 
@@ -143,6 +144,33 @@ final class ConversationViewModelTests: XCTestCase {
         XCTAssertEqual(model.composer, .failure(.retryable))
         XCTAssertEqual(model.correctionMessageID, original.id)
         XCTAssertEqual(model.correctionText, "Corrected")
+        XCTAssertEqual(model.messages.first?.body, "Corrected")
+    }
+
+    func testCorrectionRequiresUserMessageAndChangedNonemptyText() {
+        let user = message(role: "user", body: "Complete original text")
+        let assistant = message(role: "assistant", body: "Reply")
+        let model = ConversationViewModel.preview(composer: .waitingForReply, messages: [user, assistant])
+
+        model.requestCorrection(assistant)
+        XCTAssertNil(model.correctionMessageID)
+        model.requestCorrection(user)
+        XCTAssertEqual(model.correctionText, "Complete original text")
+        XCTAssertFalse(model.canSubmitCorrection)
+        model.correctionText = "   "
+        XCTAssertFalse(model.canSubmitCorrection)
+        model.correctionText = "Corrected complete text"
+        XCTAssertTrue(model.canSubmitCorrection)
+    }
+
+    func testOnlyOneCorrectionCanBeEditedAtATime() {
+        let first = message(role: "user", body: "First")
+        let second = message(role: "user", body: "Second")
+        let model = ConversationViewModel.preview(composer: .waitingForReply, messages: [first, second])
+        model.requestCorrection(first)
+        model.requestCorrection(second)
+        XCTAssertEqual(model.correctionMessageID, first.id)
+        XCTAssertEqual(model.correctionText, "First")
     }
 
     func testFailedTextSendSavesAsTextDraft() async {

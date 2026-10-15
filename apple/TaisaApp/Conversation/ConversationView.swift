@@ -7,7 +7,11 @@ struct ConversationView: View {
 
     var body: some View {
         NavigationStack {
-            ConversationTimeline(messages: model.messages, correct: model.requestCorrection)
+            ConversationTimeline(
+                messages: model.messages,
+                updatingResponseAfter: model.correctionRegenerationMessageID,
+                correct: model.requestCorrection
+            )
                 .navigationTitle(model.title)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
@@ -27,6 +31,7 @@ struct ConversationView: View {
             NavigationStack {
                 TranscriptCorrectionView(
                     text: $model.correctionText,
+                    canSubmit: model.canSubmitCorrection,
                     submit: { Task { await model.submitCorrection() } }
                 )
                 .toolbar {

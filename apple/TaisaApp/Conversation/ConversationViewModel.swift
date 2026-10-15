@@ -59,7 +59,13 @@ final class ConversationViewModel {
     private(set) var messages: [MessageRecord] = []
     private(set) var confirmation: Confirmation?
     private(set) var correctionMessageID: String?
+    private(set) var correctionRegenerationMessageID: String?
+    private var correctionOriginalText = ""
     var correctionText = ""
+    var canSubmitCorrection: Bool {
+        let trimmed = correctionText.trimmingCharacters(in: .whitespacesAndNewlines)
+        return correctionMessageID != nil && !trimmed.isEmpty && trimmed != correctionOriginalText
+    }
     var text: String {
         didSet { if case .typing = composer { composer = .typing(text) } }
     }
@@ -247,22 +253,34 @@ final class ConversationViewModel {
     }
 
     func requestCorrection(_ message: MessageRecord) {
+        guard message.role == "user", correctionMessageID == nil else { return }
         correctionMessageID = message.id
         correctionText = message.body
+        correctionOriginalText = message.body
     }
 
     func cancelCorrection() {
         correctionMessageID = nil
         correctionText = ""
+        correctionOriginalText = ""
     }
 
     func submitCorrection() async {
-        guard let messageID = correctionMessageID else { return }
+        guard let messageID = correctionMessageID, canSubmitCorrection,
+              let index = messages.firstIndex(where: { $0.id == messageID }) else { return }
+        let correctedText = correctionText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let original = messages[index]
+        messages[index] = MessageRecord(
+            id: original.id, conversationID: original.conversationID,
+            role: original.role, body: correctedText, createdAtMS: original.createdAtMS
+        )
+        correctionRegenerationMessageID = messageID
         composer = .coaching
         do {
-            try await client.correctTranscript(messageID, correctionText)
+            try await client.correctTranscript(messageID, correctedText)
             cancelCorrection()
             await reloadMessages()
+            correctionRegenerationMessageID = nil
             composer = .waitingForReply
         } catch {
             composer = .failure(.retryable)
