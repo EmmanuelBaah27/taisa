@@ -34,9 +34,9 @@ struct ConversationsView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
+        ZStack(alignment: .top) {
             content
+            header
         }
         .background(TaisaColor.background.color)
         .toolbar(.hidden, for: .navigationBar)
@@ -89,7 +89,7 @@ struct ConversationsView: View {
             }
         }
         .padding(.horizontal, TaisaSpacing.standard.rawValue)
-        .frame(height: 64)
+        .frame(height: TaisaControlMetric.appBarHeight)
         .background {
             PageEdgeFade(.header)
                 .opacity(TaisaEffect.headerFadeOpacity)
@@ -164,7 +164,11 @@ struct ConversationsView: View {
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
             .scrollIndicators(.hidden)
-            .contentMargins(.top, TaisaSpacing.standard.rawValue, for: .scrollContent)
+            .contentMargins(
+                .top,
+                TaisaControlMetric.appBarHeight + TaisaSpacing.standard.rawValue,
+                for: .scrollContent
+            )
             .contentMargins(.bottom, 152, for: .scrollContent)
             .listSectionSpacing(TaisaSpacing.standard.rawValue)
             .environment(\.defaultMinListRowHeight, 0)
@@ -201,11 +205,10 @@ struct ConversationsView: View {
         .accessibilityHint("Search is not available yet")
         .accessibilityIdentifier("chats.search")
 
-        if #available(iOS 26.0, macOS 26.0, *) {
-            button.buttonStyle(.glass).buttonBorderShape(.circle)
-        } else {
-            button.buttonStyle(.plain).background(.regularMaterial, in: Circle())
-        }
+        button
+            .buttonStyle(.plain)
+            .background(.regularMaterial, in: Circle())
+            .contentShape(Circle())
     }
 
     @ViewBuilder private var draftsButton: some View {
@@ -222,11 +225,10 @@ struct ConversationsView: View {
         .accessibilityValue(showsDraftsOnly ? "Showing drafts" : "Showing all chats")
         .accessibilityIdentifier("chats.drafts-filter")
 
-        if #available(iOS 26.0, macOS 26.0, *) {
-            button.buttonStyle(.glass).buttonBorderShape(.capsule)
-        } else {
-            button.buttonStyle(.plain).background(.regularMaterial, in: Capsule())
-        }
+        button
+            .buttonStyle(.plain)
+            .background(.regularMaterial, in: Capsule())
+            .contentShape(Capsule())
     }
 
     private func monthHeader(_ month: String) -> some View {
