@@ -1,23 +1,11 @@
 import TaisaStorage
 
-public struct CapabilityChangeReview: Sendable, Equatable {
-    public let id: CapabilityID
-    public let from: CapabilityGovernanceState
-    public let to: CapabilityGovernanceState
-
-    public init(id: CapabilityID, from: CapabilityGovernanceState, to: CapabilityGovernanceState) {
-        self.id = id
-        self.from = from
-        self.to = to
-    }
-}
-
 public enum YouPrivacyCopy {
-    public static let readableData = "Career profile and capability choices"
+    public static let readableData = "Career profile"
     public static let encryptedLocation = "Encrypted on this device"
     public static let microphonePurpose = "Microphone access is requested only when you start recording."
     public static let networkBoundary = "Only a deliberate voice or coaching action sends the bounded request to the configured provider. Browsing You stays offline."
-    public static let retentionBoundary = "Readable profile and capability choices remain in encrypted local storage until you edit them or restore a verified backup."
+    public static let retentionBoundary = "Your readable career profile remains in encrypted local storage until you edit it or restore a verified backup."
     public static let recoveryBoundary = "A backup can replace local data only after authentication, integrity checks, explicit confirmation, and post-restore verification."
 }
 

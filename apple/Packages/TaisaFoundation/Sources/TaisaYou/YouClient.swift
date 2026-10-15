@@ -19,7 +19,6 @@ public extension YouClient {
     ) -> Self {
         let query = YouQuery(store: store, operational: operational)
         let profiles = ProfileCommandRepository(store: store)
-        let capabilities = CapabilityCommandRepository(store: store)
         let context: @Sendable () -> MutationContext = {
             .init(id: UUID().uuidString, deviceID: deviceID, timestamp: nowMS())
         }
@@ -35,11 +34,6 @@ public extension YouClient {
                     context: context()
                 )
                 return try await query.load()
-            },
-            setCapability: { id, state in
-                let evidence = state == .learning ? nil : "explicit-user-review"
-                _ = try await capabilities.set(id, to: state, evidence: evidence, context: context())
-                return try await query.load()
             }
         )
     }
@@ -48,13 +42,11 @@ public extension YouClient {
 public struct YouClient: Sendable {
     public var load: @Sendable () async throws -> YouSnapshot
     public var saveProfile: @Sendable (ProfileDraft) async throws -> YouSnapshot
-    public var setCapability: @Sendable (CapabilityID, CapabilityGovernanceState) async throws -> YouSnapshot
 
     public init(
         load: @escaping @Sendable () async throws -> YouSnapshot,
-        saveProfile: @escaping @Sendable (ProfileDraft) async throws -> YouSnapshot = { _ in throw YouContractError.persistenceFailed },
-        setCapability: @escaping @Sendable (CapabilityID, CapabilityGovernanceState) async throws -> YouSnapshot = { _, _ in throw YouContractError.persistenceFailed }
+        saveProfile: @escaping @Sendable (ProfileDraft) async throws -> YouSnapshot = { _ in throw YouContractError.persistenceFailed }
     ) {
-        self.load = load; self.saveProfile = saveProfile; self.setCapability = setCapability
+        self.load = load; self.saveProfile = saveProfile
     }
 }

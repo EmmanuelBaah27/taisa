@@ -43,11 +43,6 @@ struct YouScenarioView: View {
                 biography: "Building a private, local-first working companion.",
                 updatedAtMS: 1
             ),
-            capabilities: [
-                .init(id: .voice, chosenState: .trial, availability: gateway == .healthy && permission == .granted ? .available : .unavailable, decidedAtMS: 1),
-                .init(id: .seniorSelf, chosenState: .ready, availability: gateway == .healthy ? .available : .unavailable, decidedAtMS: 1),
-                .init(id: .insights, chosenState: .trusted, availability: .available, decidedAtMS: 1),
-            ],
             diagnostics: .init(store: .healthy, recovery: .ready, microphone: permission, gateway: gateway, appProtection: .enabled)
         )
     }

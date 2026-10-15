@@ -260,7 +260,7 @@ private extension AppRuntime.Clients {
     static func test(home: HomeClient) -> Self {
         .init(
             home: home,
-            you: YouClient(load: { .init(profile: nil, capabilities: [], diagnostics: .unknown) }),
+            you: YouClient(load: { .init(profile: nil, diagnostics: .unknown) }),
             insights: InsightsClient(load: { .empty }, detail: { insight in
                 .init(insight: insight, sources: [], revisions: [])
             })
