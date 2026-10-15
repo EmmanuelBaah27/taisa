@@ -262,6 +262,16 @@ public actor VoiceSessionCoordinator {
         try await send(.preserveDraft(finalized))
     }
 
+    public func retryCapturePause() async throws {
+        guard durable.stage == .capture, durable.state == .paused else { throw AudioCaptureError.invalidState }
+        try await capture.pause(turnID: currentTurnID())
+    }
+
+    public func retryCaptureResume() async throws {
+        guard durable.stage == .capture, durable.state == .recording else { throw AudioCaptureError.invalidState }
+        try await capture.resume(turnID: currentTurnID())
+    }
+
     public func restartFailedCoaching(with replacement: VoiceTurnRecord) async throws {
         try await send(.restartFailedCoaching(replacement))
     }

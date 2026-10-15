@@ -9,6 +9,8 @@ struct ConversationScreenClient: Sendable {
     var beginVoice: @Sendable () async throws -> Void
     var pauseVoice: @Sendable () async throws -> Void
     var resumeVoice: @Sendable () async throws -> Void
+    var retryPauseVoice: @Sendable () async throws -> Void
+    var retryResumeVoice: @Sendable () async throws -> Void
     var sendVoice: @Sendable (@escaping @MainActor @Sendable () async -> Void) async throws -> Void
     var sendText: @Sendable (String) async throws -> Void
     var retry: @Sendable () async throws -> Void
@@ -26,6 +28,8 @@ struct ConversationScreenClient: Sendable {
         beginVoice: @escaping @Sendable () async throws -> Void,
         pauseVoice: @escaping @Sendable () async throws -> Void,
         resumeVoice: @escaping @Sendable () async throws -> Void,
+        retryPauseVoice: @escaping @Sendable () async throws -> Void = {},
+        retryResumeVoice: @escaping @Sendable () async throws -> Void = {},
         sendVoice: @escaping @Sendable (@escaping @MainActor @Sendable () async -> Void) async throws -> Void,
         sendText: @escaping @Sendable (String) async throws -> Void,
         retry: @escaping @Sendable () async throws -> Void,
@@ -44,6 +48,8 @@ struct ConversationScreenClient: Sendable {
         self.beginVoice = beginVoice
         self.pauseVoice = pauseVoice
         self.resumeVoice = resumeVoice
+        self.retryPauseVoice = retryPauseVoice
+        self.retryResumeVoice = retryResumeVoice
         self.sendVoice = sendVoice
         self.sendText = sendText
         self.retry = retry
@@ -83,9 +89,11 @@ final class ConversationViewModel {
     private(set) var correctionRegenerationMessageID: String?
     private(set) var partialCoaching = ""
     private var correctionOriginalText = ""
+    private var submittedCorrectionText: String?
     var correctionText = ""
     var canSubmitCorrection: Bool {
         let trimmed = correctionText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let submittedCorrectionText { return trimmed == submittedCorrectionText }
         return correctionMessageID != nil && !trimmed.isEmpty && trimmed != correctionOriginalText
     }
     var text: String {
@@ -175,14 +183,17 @@ final class ConversationViewModel {
     func start() async {
         guard !started else { return }
         started = true
+        let recoveryEvents = client.recoveryEvents
         recoveryObservation = Task { [weak self] in
-            guard let self else { return }
-            let events = await client.recoveryEvents()
+            let events = await recoveryEvents()
             for await _ in events {
                 guard !Task.isCancelled else { return }
+                guard let self else { return }
                 await reloadMessages()
                 capture = await client.loadCaptureSnapshot()
-                composer = .waitingForReply
+                if composer == .failure(.retryable) || composer == .coaching || composer == .transcribing {
+                    composer = .waitingForReply
+                }
             }
         }
         do {
@@ -272,9 +283,11 @@ final class ConversationViewModel {
         case .beginVoice:
             try? await beginVoice()
         case .pauseVoice:
-            await pause()
+            await perform(next: .paused, recovery: .pauseVoice) { try await client.retryPauseVoice() }
+            await refreshCapture()
         case .resumeVoice:
-            await resume()
+            await perform(next: .recording, recovery: .resumeVoice) { try await client.retryResumeVoice() }
+            await refreshCapture()
         case .request:
             composer = .coaching
             await performSuccess { try await client.retry() }
@@ -430,6 +443,7 @@ final class ConversationViewModel {
         correctionMessageID = nil
         correctionText = ""
         correctionOriginalText = ""
+        submittedCorrectionText = nil
     }
 
     func submitCorrection() async {
@@ -446,6 +460,7 @@ final class ConversationViewModel {
                 role: original.role, body: correctedText, createdAtMS: original.createdAtMS
             )
             correctionRegenerationMessageID = messageID
+            submittedCorrectionText = correctedText
         }
         composer = .coaching
         do {

@@ -178,6 +178,9 @@ final class ConversationViewModelTests: XCTestCase {
         model.correctionText = "Corrected"
 
         await model.submitCorrection()
+        model.correctionText = "A different correction"
+        XCTAssertFalse(model.canSubmitCorrection)
+        model.correctionText = "Corrected"
         await model.submitCorrection()
 
         let counts = await client.correctionRequestCounts()

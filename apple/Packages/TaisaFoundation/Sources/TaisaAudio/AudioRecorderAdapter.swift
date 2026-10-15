@@ -17,6 +17,7 @@ public protocol AudioRecorderAdapting: Sendable {
 public actor SystemAudioRecorderAdapter: AudioRecorderAdapting {
     private var recorder: AVAudioRecorder?
     private var outputURL: URL?
+    private var baselineByteCount: Int64 = 0
 
     public init() {}
 
@@ -37,6 +38,7 @@ public actor SystemAudioRecorderAdapter: AudioRecorderAdapting {
         guard started else { throw AudioCaptureError.invalidState }
         self.recorder = recorder
         outputURL = url
+        baselineByteCount = Self.fileSize(at: url)
     }
 
     public func pause() async {
@@ -73,9 +75,12 @@ public actor SystemAudioRecorderAdapter: AudioRecorderAdapting {
 
     public func elapsedTime() async -> TimeInterval { recorder?.currentTime ?? 0 }
     public func hasRecordedAudio() async -> Bool {
-        guard let outputURL,
-              let size = try? FileManager.default.attributesOfItem(atPath: outputURL.path)[.size] as? NSNumber else { return false }
-        return size.int64Value > 0
+        guard let outputURL else { return false }
+        return Self.fileSize(at: outputURL) > baselineByteCount
+    }
+
+    private static func fileSize(at url: URL) -> Int64 {
+        ((try? FileManager.default.attributesOfItem(atPath: url.path)[.size]) as? NSNumber)?.int64Value ?? 0
     }
 }
 #else
