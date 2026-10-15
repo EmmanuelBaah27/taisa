@@ -21,7 +21,9 @@ struct ConversationHistoryRow: View {
                 Text(preview)
                     .font(.system(size: 14, weight: .regular))
                     .foregroundStyle(TaisaColor.mutedForeground.color)
-                    .lineLimit(2)
+                    .lineLimit(1)
+                    .frame(height: TaisaControlMetric.chatPreviewLineHeight, alignment: .topLeading)
+                    .clipped()
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
         }

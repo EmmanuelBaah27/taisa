@@ -93,6 +93,11 @@ struct ConversationsView: View {
         .background {
             PageEdgeFade(.header)
         }
+        .overlay(alignment: .bottom) {
+            PageEdgeFade(.header)
+                .frame(height: TaisaSpacing.section.rawValue)
+                .offset(y: TaisaSpacing.section.rawValue)
+        }
         .zIndex(1)
     }
 
@@ -159,6 +164,7 @@ struct ConversationsView: View {
             .contentMargins(.top, 0, for: .scrollContent)
             .contentMargins(.bottom, 152, for: .scrollContent)
             .listSectionSpacing(TaisaSpacing.tight.rawValue)
+            .environment(\.defaultMinListRowHeight, 0)
             .padding(.horizontal, TaisaSpacing.standard.rawValue)
             .refreshable { await model.load() }
         case let .failure(issue):
@@ -220,7 +226,7 @@ struct ConversationsView: View {
             .foregroundStyle(TaisaColor.mutedForeground.color)
             .textCase(nil)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.bottom, TaisaSpacing.tight.rawValue)
+            .padding(.bottom, -TaisaSpacing.tight.rawValue)
             .listRowInsets(EdgeInsets())
             .accessibilityIdentifier("conversations.history")
     }

@@ -51,7 +51,7 @@ public struct PrimaryNavigation<Item: Hashable>: View {
                                 .transition(reduceMotion ? .identity : .opacity)
                         }
                     }
-                    .foregroundStyle(selection == item ? TaisaColor.foreground.color : TaisaColor.mutedForeground.color)
+                    .foregroundStyle(selection == item ? TaisaColor.foreground.color : TaisaColor.inactiveForeground.color)
                     .padding(.horizontal, TaisaSpacing.standard.rawValue)
                     .frame(
                         minWidth: TaisaControlMetric.primaryNavigationItemWidth,

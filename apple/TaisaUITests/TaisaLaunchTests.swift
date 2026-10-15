@@ -60,8 +60,8 @@ final class TaisaLaunchTests: XCTestCase {
         let row = element("conversation.history.row.00000000-0000-4000-8000-000000000811", in: app)
         XCTAssertTrue(row.waitForExistence(timeout: 5))
         let window = app.windows.firstMatch.frame
-        XCTAssertEqual(row.frame.minX, window.minX + 20, accuracy: 1)
-        XCTAssertEqual(row.frame.maxX, window.maxX - 20, accuracy: 1)
+        XCTAssertEqual(row.frame.minX, window.minX + 16, accuracy: 1)
+        XCTAssertEqual(row.frame.maxX, window.maxX - 16, accuracy: 1)
         XCTAssertTrue(app.buttons["Talk to Taisa, starts recording"].isHittable)
         XCTAssertLessThanOrEqual(app.buttons["Talk to Taisa, starts recording"].frame.maxX, window.maxX)
     }

@@ -21,7 +21,7 @@ final class ConversationsViewContractTests: XCTestCase {
         XCTAssertTrue(source.contains("monthHeader(group.month)"))
         XCTAssertTrue(source.contains(".system(size: 14, weight: .medium)"))
         XCTAssertTrue(source.contains(".listRowSeparatorTint(TaisaColor.background.color)"))
-        XCTAssertTrue(source.contains(".lineLimit(2)"))
+        XCTAssertFalse(source.contains(".lineLimit(2)"))
         XCTAssertTrue(source.contains("preview: snapshot.lastMessagePreview"))
         XCTAssertTrue(source.contains(".frame(height: 48)"))
     }
@@ -29,12 +29,12 @@ final class ConversationsViewContractTests: XCTestCase {
     func testChatsRowsMatchTheMeasuredFigmaRecord() throws {
         let source = try conversationsSource()
 
-        XCTAssertTrue(source.contains(".padding(TaisaSpacing.standard.rawValue)"))
+        XCTAssertTrue(source.contains(".padding(.vertical, TaisaSpacing.control.rawValue)"))
         XCTAssertTrue(source.contains(".frame(height: 2)"))
         XCTAssertTrue(source.contains(".listRowInsets(EdgeInsets())"))
         XCTAssertTrue(source.contains(".listStyle(.plain)"))
         XCTAssertTrue(source.contains("TaisaColor.subtleSurface.color"))
-        XCTAssertTrue(source.contains(".padding(.horizontal, TaisaSpacing.content.rawValue)"))
+        XCTAssertTrue(source.contains(".padding(.horizontal, TaisaSpacing.standard.rawValue)"))
         XCTAssertTrue(source.contains("TaisaRadius.historyGroup.rawValue"))
     }
 
@@ -57,8 +57,8 @@ final class ConversationsViewContractTests: XCTestCase {
         XCTAssertTrue(source.contains(".frame(width: 24, height: 24)"))
         XCTAssertTrue(source.contains(".buttonStyle(.glass)"))
         XCTAssertTrue(source.contains("PageEdgeFade(.header)"))
-        XCTAssertTrue(source.contains(".frame(height: 72)"))
-        XCTAssertFalse(source.contains(".offset(y: TaisaSpacing.section.rawValue)"))
+        XCTAssertTrue(source.contains(".frame(height: 64)"))
+        XCTAssertTrue(source.contains(".offset(y: TaisaSpacing.section.rawValue)"))
         XCTAssertFalse(source.contains("Image(systemName: \"magnifyingglass\")"))
     }
 
@@ -104,9 +104,11 @@ final class ConversationsViewContractTests: XCTestCase {
         ] {
             XCTAssertTrue(source.contains(identifier), "Missing \(identifier)")
         }
-        for nativeControl in ["List", "Section", "swipeActions", "Menu", "confirmationDialog"] {
+        for nativeControl in ["List", "Section", "contextMenu", "confirmationDialog"] {
             XCTAssertTrue(source.contains(nativeControl), "Missing \(nativeControl)")
         }
+        XCTAssertFalse(source.contains("swipeActions"))
+        XCTAssertFalse(source.contains("Menu(\"Actions\")"))
         XCTAssertFalse(source.contains("New conversation"))
         XCTAssertFalse(source.contains("import GRDB"))
     }
