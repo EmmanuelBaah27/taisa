@@ -84,6 +84,7 @@ final class PrimaryAppShellTests: XCTestCase {
         XCTAssertTrue(source.contains("model.showsCareerWork"))
         XCTAssertTrue(source.contains("PageEdgeFade(.navigation)"))
         XCTAssertTrue(source.contains(".frame(height: 104)"))
+        XCTAssertTrue(source.contains(".safeAreaPadding(.bottom, TaisaControlMetric.primaryNavigationReservedHeight)"))
         XCTAssertFalse(source.contains(".background {\n                    PageEdgeFade(.navigation)"))
     }
 

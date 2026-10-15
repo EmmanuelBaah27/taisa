@@ -111,6 +111,7 @@ struct PrimaryAppShell: View {
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
                 .simultaneousGesture(primaryPageFallbackGesture)
+                .safeAreaPadding(.bottom, TaisaControlMetric.primaryNavigationReservedHeight)
             }
 
             if model.showsConversationDock {

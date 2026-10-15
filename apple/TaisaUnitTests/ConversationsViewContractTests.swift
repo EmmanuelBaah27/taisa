@@ -74,6 +74,7 @@ final class ConversationsViewContractTests: XCTestCase {
         XCTAssertTrue(source.contains(".listSectionMargins(.horizontal, 0)"))
         XCTAssertTrue(source.contains(".scrollIndicators(.hidden)"))
         XCTAssertTrue(source.contains("TaisaControlMetric.appBarHeight + TaisaSpacing.standard.rawValue"))
+        XCTAssertFalse(source.contains(".contentMargins(.bottom, 152"))
         XCTAssertTrue(source.contains(".listSectionSpacing(TaisaSpacing.section.rawValue)"))
         XCTAssertTrue(source.contains(".padding(.bottom, TaisaSpacing.compact.rawValue)"))
         XCTAssertFalse(source.contains("} header: {"))
