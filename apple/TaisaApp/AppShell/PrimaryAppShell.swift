@@ -122,6 +122,7 @@ struct PrimaryAppShell: View {
                         onVoice: { model.presentNewConversation(.voice) },
                         onKeyboard: { model.presentNewConversation(.text) }
                     )
+                    .zIndex(1)
                     .accessibilityIdentifier("app-shell.conversation-dock")
 
                     PrimaryNavigation(
