@@ -161,7 +161,7 @@ struct ConversationsView: View {
                 for: .scrollContent
             )
             .contentMargins(.bottom, 152, for: .scrollContent)
-            .listSectionSpacing(TaisaSpacing.standard.rawValue)
+            .listSectionSpacing(TaisaSpacing.section.rawValue)
             .environment(\.defaultMinListRowHeight, 0)
             .padding(.horizontal, TaisaSpacing.standard.rawValue)
             .refreshable { await model.load() }
