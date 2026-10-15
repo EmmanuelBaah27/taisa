@@ -181,6 +181,60 @@ final class AppRuntimeTests: XCTestCase {
         XCTAssertEqual(facts.gateway, .unknown)
     }
 
+    func testLiveRuntimeKeepsConversationOpeningAvailableWithoutVoiceEnrollment() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let source = try String(
+            contentsOf: root.appendingPathComponent("TaisaApp/App/AppRuntime.swift"),
+            encoding: .utf8
+        )
+
+        XCTAssertTrue(source.contains("conversationFactory: ConversationRuntimeFactory("))
+        XCTAssertTrue(source.contains("configuration: configuration"))
+        XCTAssertFalse(source.contains("configuration.map { ConversationRuntimeFactory"))
+    }
+
+    func testExistingConversationOpensWithoutVoiceEnrollment() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = try await TaisaStore.open(
+            at: directory.appendingPathComponent("store.sqlite"),
+            keyStore: AppRuntimeTestKeys()
+        )
+        let conversationID = "00000000-0000-4000-8000-000000000601"
+        let repository = ConversationRepository(store: store)
+        let context = MutationContext(id: UUID().uuidString, deviceID: UUID().uuidString, timestamp: 1)
+        try await repository.create(.init(
+            id: conversationID,
+            title: "A stored conversation",
+            lifecycle: .completed,
+            titleAuthority: .localFallback,
+            createdAtMS: 1,
+            updatedAtMS: 1
+        ), context: context)
+        try await repository.createMessage(.init(
+            id: "00000000-0000-4000-8000-000000000602",
+            conversationID: conversationID,
+            role: "user",
+            body: "This message must remain readable offline.",
+            createdAtMS: 2
+        ), context: .init(id: UUID().uuidString, deviceID: context.deviceID, timestamp: 2))
+
+        let model = try await ConversationRuntimeFactory(
+            store: store,
+            deviceID: UUID(),
+            configuration: nil
+        ).makeModel(
+            route: .init(id: conversationID, localTitle: "A stored conversation"),
+            entryIntent: nil,
+            dismiss: {}
+        )
+        await model.start()
+
+        XCTAssertEqual(model.messages.map(\.body), ["This message must remain readable offline."])
+        XCTAssertEqual(model.title, "A stored conversation")
+    }
+
     func testLiveRuntimeUsesMutationCapableLocalHomeClient() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let source = try String(
@@ -190,6 +244,7 @@ final class AppRuntimeTests: XCTestCase {
         XCTAssertTrue(source.contains("let context = try await backend.voiceStoreContext()"))
         XCTAssertTrue(source.contains("HomeClient.local(store: store, deviceID: context.deviceID.uuidString)"))
         XCTAssertTrue(source.contains("CareerWorkClient.local(store: store, deviceID: context.deviceID.uuidString)"))
+        XCTAssertTrue(source.contains("ConversationsClient.local(store: store, deviceID: context.deviceID.uuidString)"))
         XCTAssertFalse(source.contains("HomeClient { try await HomeQuery"))
     }
 
@@ -302,4 +357,10 @@ private actor StartAttempts {
     private var count = 0
     func next() -> Int { count += 1; return count }
     var value: Int { count }
+}
+
+private actor AppRuntimeTestKeys: DatabaseKeyStore {
+    private var key: Data?
+    func loadKey() async throws -> Data? { key }
+    func saveKey(_ key: Data) async throws { self.key = key }
 }

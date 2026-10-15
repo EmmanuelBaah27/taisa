@@ -1,5 +1,8 @@
 import Observation
 import SwiftUI
+import TaisaConversations
+import TaisaHome
+import TaisaStorage
 
 @MainActor
 @Observable
@@ -20,7 +23,9 @@ struct AppRootView: View {
 
     var body: some View {
         Group {
-            if showsConversationOverflowQA {
+            if showsChatsVisualQA {
+                chatsVisualQAShell
+            } else if showsConversationOverflowQA {
                 ConversationView(model: .overflowQAPreview())
             } else {
                 switch runtime.state {
@@ -116,6 +121,54 @@ struct AppRootView: View {
 #else
         false
 #endif
+    }
+
+    private var showsChatsVisualQA: Bool {
+#if DEBUG
+        ProcessInfo.processInfo.arguments.contains("--taisa-chats-visual-qa")
+#else
+        false
+#endif
+    }
+
+    private var chatsVisualQAShell: some View {
+        let snapshot = Self.chatsVisualQASnapshot
+        return PrimaryAppShell(
+            model: PrimaryAppShellModel(selection: .conversations),
+            homeModel: HomeModel(client: HomeClient { .init(conversations: [], goals: [], actions: []) }),
+            conversationsModel: ConversationsModel(
+                client: ConversationsClient(load: { snapshot }),
+                initialState: .content(snapshot, isRefreshing: false, issue: nil)
+            ),
+            conversationFactory: nil
+        )
+    }
+
+    private static let chatsVisualQASnapshot = ConversationIndexSnapshot(
+        drafts: [],
+        conversations: [
+            visualQAConversation("00000000-0000-4000-8000-000000000811", "Building a personal brand", 1791676800000),
+            visualQAConversation("00000000-0000-4000-8000-000000000812", "Preparing for a leadership conversation", 1791676700000),
+            visualQAConversation("00000000-0000-4000-8000-000000000813", "Finding focus in a difficult week", 1791676600000),
+            visualQAConversation("00000000-0000-4000-8000-000000000814", "Planning the next career milestone", 1791504000000),
+        ],
+        lastMessagePreviews: [
+            "00000000-0000-4000-8000-000000000811": "How to showcase your strengths and stand out in a competitive market",
+            "00000000-0000-4000-8000-000000000812": "Capture the evidence you want to bring into the room and the outcome you need.",
+            "00000000-0000-4000-8000-000000000813": "Separate the immediate pressure from the work that will create the most impact.",
+            "00000000-0000-4000-8000-000000000814": "Turn the direction into a concrete milestone with a clear next action.",
+        ]
+    )
+
+    private static func visualQAConversation(_ id: String, _ title: String, _ updatedAtMS: Int64) -> ConversationRecord {
+        .init(
+            id: id,
+            title: title,
+            lifecycle: .completed,
+            titleAuthority: .assistantSuggested,
+            createdAtMS: updatedAtMS,
+            updatedAtMS: updatedAtMS
+        )
     }
 
     private var personalQAAction: (() -> Void)? {

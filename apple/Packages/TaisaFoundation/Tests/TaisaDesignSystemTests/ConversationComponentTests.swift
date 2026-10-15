@@ -13,8 +13,27 @@ struct ConversationComponentTests {
         #expect(TaisaColor.destructive.hex == "#C60000")
         #expect(TaisaColor.warning.hex == "#E46300")
         #expect(TaisaColor.raisedSurface.hex == "#F9F9F9")
+        #expect(TaisaColor.inactiveForeground.hex == "#898989")
         #expect(TaisaRadius.composer.rawValue == 24)
         #expect(TaisaMaterial.composer.reducedTransparencyFallback == .raisedSurface)
+        #expect(TaisaSpacing.control.rawValue == 12)
+        #expect(TaisaMotion.fast == 0.18)
+        #expect(TaisaControlMetric.primaryNavigationItemWidth == 56)
+        #expect(TaisaControlMetric.primaryNavigationItemHeight == 48)
+        #expect(TaisaControlMetric.standardIcon == 24)
+        #expect(TaisaControlMetric.recordingButtonWidth == 104)
+        #expect(TaisaControlMetric.recordingButtonHeight == 48)
+        #expect(TaisaControlMetric.primaryNavigationReservedHeight == 152)
+        #expect(TaisaControlMetric.chatPreviewLineHeight == 20)
+        #expect(TaisaTypography.navigationLabel.pointSize == 16)
+        #expect(TaisaTypography.navigationLabel.lineHeight == 24)
+        #expect(TaisaEffect.recordingGlowBlurRadius == 10)
+        #expect(TaisaEffect.recordingGlowSpread == 4)
+        #expect(TaisaEffect.recordingGlowOpacity == 0.35)
+        #expect(TaisaEffect.edgeFadeBlurOpacity == 0.42)
+        #expect(TaisaControlMetric.appBarHeight == 64)
+        #expect(TaisaControlMetric.headerActionHeight == 44)
+        #expect(TaisaRadius.historyGroup.rawValue == 20)
     }
 
     @Test func composerContractsDescribeActionsWithoutColorAlone() {
@@ -22,5 +41,21 @@ struct ConversationComponentTests {
         #expect(VoiceComposerControls.Contract.paused.resumeLabel == "Resume recording")
         #expect(ConversationFailureActions.Contract.retryable.retryLabel == "Retry request")
         #expect(TextComposer.Contract.empty.voiceLabel == "Reply by voice, starts recording")
+    }
+
+    @Test func primaryNavigationMotionFallsBackToAnInstantAccessibleTransition() {
+        #expect(PrimaryNavigationMotion.transition(reduceMotion: false) == .spatial)
+        #expect(PrimaryNavigationMotion.transition(reduceMotion: true) == .instant)
+    }
+
+    @Test func centralIconCatalogCoversChatsPageControls() {
+        #expect(CentralIconName.magnifyingGlass != .voiceMid)
+        #expect(CentralIconName.voiceMid != .chatBubbles)
+    }
+
+    @MainActor @Test func figmaEdgeFadesUseMeasuredStops() {
+        #expect(PageEdgeFade.fadeStart == 0.40)
+        #expect(PageEdgeFade.headerOpaqueStop == 0.40)
+        #expect(PageEdgeFade.navigationOpaqueStop == 0.60)
     }
 }

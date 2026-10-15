@@ -1,4 +1,5 @@
 import Foundation
+import TaisaDesignSystem
 
 enum PrimaryDestination: String, CaseIterable, Hashable, Sendable {
     case home
@@ -6,21 +7,23 @@ enum PrimaryDestination: String, CaseIterable, Hashable, Sendable {
     case conversations
     case you
 
+    static let allCases: [PrimaryDestination] = [.home, .conversations, .you]
+
     var title: String {
         switch self {
         case .home: "Home"
         case .careerWork: "Career Work"
-        case .conversations: "Conversations"
+        case .conversations: "Chats"
         case .you: "You"
         }
     }
 
-    var systemImage: String {
+    var icon: CentralIconName {
         switch self {
-        case .home: "house"
-        case .careerWork: "target"
-        case .conversations: "bubble.left.and.bubble.right"
-        case .you: "person"
+        case .home: .homeLine
+        case .careerWork: .homeLine
+        case .conversations: .chatBubbles
+        case .you: .peopleCircle
         }
     }
 }

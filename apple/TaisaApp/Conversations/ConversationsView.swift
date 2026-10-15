@@ -1,5 +1,6 @@
 import SwiftUI
 import TaisaConversations
+import TaisaDesignSystem
 import TaisaStorage
 
 struct ConversationsView: View {
@@ -15,6 +16,7 @@ struct ConversationsView: View {
     @State private var confirmation: Confirmation?
     @State private var renameTarget: ConversationRecord?
     @State private var renameText = ""
+    @State private var showsDraftsOnly = false
     let resume: (ConversationDraftRecord) -> Void
     let open: (ConversationRecord) -> Void
     let openRecovery: () -> Void
@@ -32,11 +34,16 @@ struct ConversationsView: View {
     }
 
     var body: some View {
-        content
-            .navigationTitle("Conversations")
-            .accessibilityIdentifier("conversations.root")
-            .task { if model.state == .idle { await model.load() } }
-            .confirmationDialog(
+        ZStack(alignment: .top) {
+            content
+            header
+        }
+        .background(TaisaColor.background.color)
+        .toolbar(.hidden, for: .navigationBar)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("conversations.root")
+        .task { if model.state == .idle { await model.load() } }
+        .confirmationDialog(
                 confirmationTitle,
                 isPresented: Binding(
                     get: { confirmation != nil },
@@ -54,7 +61,7 @@ struct ConversationsView: View {
                 }
                 Button("Cancel", role: .cancel) {}
             }
-            .alert("Rename conversation", isPresented: Binding(
+        .alert("Rename conversation", isPresented: Binding(
                 get: { renameTarget != nil },
                 set: { if !$0 { renameTarget = nil } }
             )) {
@@ -69,15 +76,26 @@ struct ConversationsView: View {
             }
     }
 
+    private var header: some View {
+        TaisaPageHeader("Chats") {
+            searchButton
+            if hasDrafts {
+                draftsButton
+            }
+        }
+        .zIndex(1)
+    }
+
     @ViewBuilder private var content: some View {
         switch model.state {
         case .idle, .loading:
-            ProgressView("Loading conversations…")
+            ProgressView("Loading chats…")
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         case .empty:
             ContentUnavailableView(
-                "No conversations yet",
+                "No chats yet",
                 systemImage: "bubble.left.and.bubble.right",
-                description: Text("Completed conversations and saved drafts will appear here.")
+                description: Text("Completed chats and saved drafts will appear here.")
             )
             .accessibilityIdentifier("conversations.empty")
         case let .content(snapshot, isRefreshing, issue):
@@ -87,33 +105,55 @@ struct ConversationsView: View {
                     Section("Drafts") {
                         ForEach(snapshot.drafts) { draft in
                             Button { resume(draft) } label: { DraftRow(draft: draft) }
-                                .swipeActions {
+                                .buttonStyle(.plain)
+                                .listRowSeparatorTint(TaisaColor.background.color)
+                                .contextMenu {
                                     Button("Discard", role: .destructive) { confirmation = .discard(draft) }
                                 }
                         }
                     }
                     .accessibilityIdentifier("conversations.drafts")
                 }
-                if !snapshot.conversations.isEmpty {
-                    Section("History") {
-                        ForEach(snapshot.conversations, id: \.id) { conversation in
-                            Button { open(conversation) } label: { ConversationHistoryRow(conversation: conversation) }
-                                .swipeActions {
-                                    Button("Delete", role: .destructive) { confirmation = .delete(conversation) }
-                                    Button("Rename") { beginRename(conversation) }.tint(.accentColor)
-                                }
+                if !showsDraftsOnly || snapshot.drafts.isEmpty {
+                    ForEach(groupedConversations(snapshot.conversations), id: \.month) { group in
+                        Section {
+                            monthHeader(group.month)
+                                .listRowInsets(EdgeInsets())
+                                .listRowBackground(Color.clear)
+                                .listRowSeparator(.hidden)
+                            ForEach(Array(group.conversations.enumerated()), id: \.element.id) { index, conversation in
+                            Button { open(conversation) } label: {
+                                ConversationHistoryRow(
+                                    conversation: conversation,
+                                    preview: snapshot.lastMessagePreview(for: conversation.id)
+                                )
+                            }
+                                .buttonStyle(.plain)
+                                .listRowInsets(EdgeInsets())
+                                .listRowBackground(historyRowBackground(index: index, count: group.conversations.count))
+                                .listRowSeparator(.hidden)
                                 .contextMenu {
-                                    Menu("Actions") {
-                                        Button("Rename") { beginRename(conversation) }
-                                        Button("Delete", role: .destructive) { confirmation = .delete(conversation) }
-                                    }
+                                    Button("Rename") { beginRename(conversation) }
+                                    Button("Delete", role: .destructive) { confirmation = .delete(conversation) }
                                 }
+                            }
                         }
+                        .listSectionMargins(.horizontal, 0)
                     }
-                    .accessibilityIdentifier("conversations.history")
                 }
                 if isRefreshing { ProgressView().frame(maxWidth: .infinity) }
             }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .scrollIndicators(.hidden)
+            .contentMargins(
+                .top,
+                TaisaControlMetric.appBarHeight + TaisaSpacing.standard.rawValue,
+                for: .scrollContent
+            )
+            .listSectionSpacing(TaisaSpacing.section.rawValue)
+            .environment(\.defaultMinListRowHeight, 0)
+            .padding(.horizontal, TaisaSpacing.standard.rawValue)
             .refreshable { await model.load() }
         case let .failure(issue):
             ContentUnavailableView {
@@ -128,6 +168,80 @@ struct ConversationsView: View {
                 }
             }
         }
+    }
+
+    private var searchButton: some View {
+        TaisaSecondaryIconButton(
+            icon: .magnifyingGlass,
+            accessibilityLabel: "Search chats",
+            accessibilityHint: "Search is not available yet",
+            action: {}
+        )
+        .disabled(true)
+        .accessibilityIdentifier("chats.search")
+    }
+
+    private var draftsButton: some View {
+        TaisaSecondaryCapsuleButton(action: { showsDraftsOnly.toggle() }) {
+            HStack(spacing: 6) {
+                Text("Drafts").font(.system(size: 16, weight: .medium))
+                Circle()
+                    .fill(TaisaColor.destructive.color)
+                    .frame(width: 8, height: 8)
+            }
+            .padding(.horizontal, TaisaSpacing.content.rawValue)
+        }
+        .accessibilityValue(showsDraftsOnly ? "Showing drafts" : "Showing all chats")
+        .accessibilityIdentifier("chats.drafts-filter")
+    }
+
+    private func monthHeader(_ month: String) -> some View {
+        Text(month)
+            .font(.system(size: 14, weight: .medium))
+            .foregroundStyle(TaisaColor.mutedForeground.color)
+            .textCase(nil)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.bottom, TaisaSpacing.compact.rawValue)
+            .listRowInsets(EdgeInsets())
+            .accessibilityIdentifier("conversations.history")
+    }
+
+    private func historyRowBackground(index: Int, count: Int) -> some View {
+        let radius = TaisaRadius.historyGroup.rawValue
+        return TaisaColor.subtleSurface.color
+            .clipShape(
+                UnevenRoundedRectangle(
+                    topLeadingRadius: index == 0 ? radius : 0,
+                    bottomLeadingRadius: index == count - 1 ? radius : 0,
+                    bottomTrailingRadius: index == count - 1 ? radius : 0,
+                    topTrailingRadius: index == 0 ? radius : 0
+                )
+            )
+    }
+
+    private var hasDrafts: Bool {
+        guard case let .content(snapshot, _, _) = model.state else { return false }
+        return !snapshot.drafts.isEmpty
+    }
+
+    private struct MonthGroup {
+        let month: String
+        let conversations: [ConversationRecord]
+    }
+
+    private func groupedConversations(_ conversations: [ConversationRecord]) -> [MonthGroup] {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "LLLL yyyy"
+        let grouped = Dictionary(grouping: conversations) { conversation in
+            let date = Date(timeIntervalSince1970: Double(conversation.updatedAtMS) / 1_000)
+            return formatter.string(from: date)
+        }
+        return grouped.map { MonthGroup(month: $0.key, conversations: $0.value) }
+            .sorted { lhs, rhs in
+                let left = lhs.conversations.map(\.updatedAtMS).max() ?? 0
+                let right = rhs.conversations.map(\.updatedAtMS).max() ?? 0
+                return left > right
+            }
     }
 
     private func issueRow(_ issue: ConversationsIssue) -> some View {

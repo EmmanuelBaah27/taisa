@@ -32,6 +32,21 @@ struct ConversationQueryTests {
         #expect(snapshot.conversations.map(\.id) == [ids.newestConversation, ids.olderConversation])
     }
 
+    @Test func indexIncludesTheLatestVisibleMessageAsItsPreview() async throws {
+        let fixture = try await makeFixture()
+        defer { fixture.remove() }
+        let ids = IDs()
+        try await fixture.store.write { db in
+            try insertConversation(db, id: ids.newestConversation, title: "Review", lifecycle: "completed", updatedAtMS: 40)
+            try insertMessage(db, id: ids.originalUser, conversationID: ids.newestConversation, role: "user", body: "Earlier", createdAtMS: 41)
+            try insertMessage(db, id: ids.originalAssistant, conversationID: ids.newestConversation, role: "assistant", body: "The latest message", createdAtMS: 42)
+        }
+
+        let snapshot = try await ConversationQuery(store: fixture.store).loadIndex()
+
+        #expect(snapshot.lastMessagePreview(for: ids.newestConversation) == "The latest message")
+    }
+
     @Test func indexRecoversDraftLifecycleConversationThatAlreadyHasMessages() async throws {
         let fixture = try await makeFixture()
         defer { fixture.remove() }

@@ -58,7 +58,35 @@ public struct ConversationQuery: ConversationQuerying, Sendable {
                     ORDER BY updated_at_ms DESC, id COLLATE NOCASE ASC
                     """
                 ).map(Self.conversation)
-                return ConversationIndexSnapshot(drafts: drafts, conversations: conversations)
+                let previews = try Row.fetchAll(
+                    db,
+                    sql: """
+                    SELECT messages.conversation_id, messages.body
+                    FROM messages
+                    JOIN conversations ON conversations.id = messages.conversation_id COLLATE NOCASE
+                    WHERE NOT EXISTS (
+                        SELECT 1 FROM tombstones
+                        WHERE entity_type = 'message' AND entity_id = messages.id COLLATE NOCASE
+                    )
+                      AND NOT EXISTS (
+                        SELECT 1 FROM messages AS newer
+                        WHERE newer.conversation_id = messages.conversation_id COLLATE NOCASE
+                          AND NOT EXISTS (
+                              SELECT 1 FROM tombstones
+                              WHERE entity_type = 'message' AND entity_id = newer.id COLLATE NOCASE
+                          )
+                          AND (newer.created_at_ms > messages.created_at_ms OR
+                               (newer.created_at_ms = messages.created_at_ms AND newer.id COLLATE NOCASE > messages.id COLLATE NOCASE))
+                    )
+                    """
+                ).reduce(into: [String: String]()) { result, row in
+                    result[UUIDIdentity.normalizedOrOriginal(row["conversation_id"] as String)] = row["body"]
+                }
+                return ConversationIndexSnapshot(
+                    drafts: drafts,
+                    conversations: conversations,
+                    lastMessagePreviews: previews
+                )
             }
         } catch let error as RepositoryError {
             throw error

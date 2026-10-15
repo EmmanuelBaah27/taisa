@@ -15,6 +15,7 @@ public struct HomeLimits: Sendable, Equatable {
 public struct HomeSnapshot: Sendable, Equatable {
     public let conversations: [ConversationRecord]
     public let goals: [GoalRecord]
+    public let milestones: [MilestoneRecord]
     public let actions: [ActionRecord]
     public let thisWeek: [WeeklyWorkItem]
     public let unresolvedPriorWeekCount: Int
@@ -24,6 +25,7 @@ public struct HomeSnapshot: Sendable, Equatable {
     public init(
         conversations: [ConversationRecord],
         goals: [GoalRecord],
+        milestones: [MilestoneRecord] = [],
         actions: [ActionRecord],
         thisWeek: [WeeklyWorkItem] = [],
         unresolvedPriorWeekCount: Int = 0,
@@ -32,6 +34,7 @@ public struct HomeSnapshot: Sendable, Equatable {
     ) {
         self.conversations = conversations
         self.goals = goals
+        self.milestones = milestones
         self.actions = actions
         self.thisWeek = thisWeek
         self.unresolvedPriorWeekCount = unresolvedPriorWeekCount
@@ -40,7 +43,7 @@ public struct HomeSnapshot: Sendable, Equatable {
     }
 
     public var isEmpty: Bool {
-        conversations.isEmpty && goals.isEmpty && actions.isEmpty && thisWeek.isEmpty &&
+        conversations.isEmpty && goals.isEmpty && milestones.isEmpty && actions.isEmpty && thisWeek.isEmpty &&
             unresolvedPriorWeekCount == 0 && leadInsight == nil && !hasConfirmedInsightHistory
     }
 }

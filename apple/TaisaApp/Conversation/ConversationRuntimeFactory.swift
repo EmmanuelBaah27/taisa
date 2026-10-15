@@ -30,7 +30,7 @@ struct ConversationRuntimeFactory: Sendable {
 
     let store: TaisaStore
     let deviceID: UUID
-    let configuration: VoiceGatewayConfiguration
+    let configuration: VoiceGatewayConfiguration?
 
     func seedFinalizedVoiceDraftProbe() async throws -> String {
         let conversationID = "00000000-0000-4000-8000-000000000351"
@@ -90,6 +90,9 @@ struct ConversationRuntimeFactory: Sendable {
             guard turn.stage == .coaching,
                   let requestID = UUID(uuidString: turn.coachingRequestID) else {
                 return local
+            }
+            guard let configuration else {
+                return "\(local) reconciliation=gateway-unavailable"
             }
             do {
                 let result = try await GatewayCoachingReconciliation(configuration: configuration)
@@ -169,6 +172,16 @@ struct ConversationRuntimeFactory: Sendable {
 
         var history = try await openStage(.history) {
             try await query.loadConversation(id: route.id)
+        }
+        guard let configuration else {
+            return await makeLocalModel(
+                route: route,
+                entryIntent: entryIntent,
+                history: history,
+                query: query,
+                conversations: conversations,
+                dismiss: dismiss
+            )
         }
         let turns = ConversationTurnRepository(store: store)
         let rawResumable = try await openStage(.resumableTurn) {
@@ -360,6 +373,72 @@ struct ConversationRuntimeFactory: Sendable {
 
     private func mutation(at timestamp: Int64) -> MutationContext {
         .init(id: UUID().uuidString, deviceID: deviceID.uuidString, timestamp: timestamp)
+    }
+
+    @MainActor
+    private func makeLocalModel(
+        route: ConversationRoute,
+        entryIntent: ConversationEntryIntent?,
+        history: ConversationSnapshot,
+        query: ConversationQuery,
+        conversations: ConversationRepository,
+        dismiss: @escaping @MainActor () -> Void
+    ) -> ConversationViewModel {
+        let unavailable: @Sendable () async throws -> Void = {
+            throw ConversationFailure.unavailable
+        }
+        let textDraft = history.drafts.first(where: { $0.inputMode == .text })?.text ?? ""
+        let composer: ComposerState = textDraft.isEmpty ? .waitingForReply : .typing(textDraft)
+        let client = ConversationScreenClient(
+            loadMessages: { try await query.loadConversation(id: route.id).visibleMessages },
+            loadTitle: { try await query.loadConversation(id: route.id).conversation.title },
+            beginVoice: unavailable,
+            pauseVoice: unavailable,
+            resumeVoice: unavailable,
+            sendVoice: { _ in try await unavailable() },
+            sendText: { _ in try await unavailable() },
+            retry: unavailable,
+            saveDraft: { input in
+                guard case .text = input else { try await unavailable(); return }
+                try await conversations.saveDraft(.init(
+                    id: Self.derivedUUID(from: route.id, salt: 4),
+                    conversationID: route.id,
+                    inputMode: .text,
+                    text: {
+                        if case .text(let text) = input { return text }
+                        return ""
+                    }(),
+                    voiceTurnID: nil,
+                    recoveryKind: .saved,
+                    createdAtMS: Int64(Date().timeIntervalSince1970 * 1_000),
+                    updatedAtMS: Int64(Date().timeIntervalSince1970 * 1_000)
+                ))
+            },
+            discardDraft: {
+                let snapshot = try await query.loadConversation(id: route.id)
+                for draft in snapshot.drafts { try await conversations.discardDraft(id: draft.id) }
+            },
+            discardEmptyConversation: {
+                let snapshot = try await query.loadConversation(id: route.id)
+                guard snapshot.conversation.lifecycle == .draft,
+                      snapshot.drafts.isEmpty,
+                      snapshot.visibleMessages.isEmpty else { return }
+                try await conversations.delete(
+                    id: route.id,
+                    context: mutation(at: Int64(Date().timeIntervalSince1970 * 1_000))
+                )
+            },
+            correctTranscript: { _, _ in try await unavailable() }
+        )
+        return ConversationViewModel(
+            conversationID: route.id,
+            title: history.conversation.title,
+            entryIntent: entryIntent,
+            composer: composer,
+            text: textDraft,
+            client: client,
+            dismiss: dismiss
+        )
     }
 
     private func openStage<Value>(

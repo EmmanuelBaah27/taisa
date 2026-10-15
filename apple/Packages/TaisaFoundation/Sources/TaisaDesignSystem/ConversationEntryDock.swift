@@ -18,16 +18,50 @@ public struct ConversationEntryDock: View {
         self.disabled = disabled; self.onVoice = onVoice; self.onKeyboard = onKeyboard
     }
 
-    public var body: some View {
-        HStack(spacing: TaisaSpacing.compact.rawValue) {
-            Button(action: onVoice) { Label("Talk to Taisa", systemImage: "waveform") }
-                .buttonStyle(.borderedProminent).tint(TaisaColor.primaryAction.color)
-                .accessibilityLabel(Contract.preview.voiceAccessibilityLabel)
-            Button(action: onKeyboard) { Image(systemName: "keyboard") }
-                .buttonStyle(.bordered).accessibilityLabel(Contract.preview.keyboardAccessibilityLabel)
+    @ViewBuilder public var body: some View {
+        if #available(iOS 26.0, macOS 26.0, *) {
+            voiceButton
+                .buttonStyle(.glassProminent)
+                .buttonBorderShape(.capsule)
+                .tint(TaisaColor.primaryAction.color)
+                .recordingGlow()
+        } else {
+            voiceButton
+                .buttonStyle(.plain)
+                .background(TaisaColor.primaryAction.color, in: Capsule())
+                .recordingGlow()
         }
-        .padding(TaisaSpacing.compact.rawValue)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: TaisaRadius.composer.rawValue))
+    }
+
+    private var voiceButton: some View {
+        Button(action: onVoice) {
+            CentralIcon(.voiceMid)
+                .foregroundStyle(TaisaColor.foreground.color)
+                .frame(width: TaisaControlMetric.standardIcon, height: TaisaControlMetric.standardIcon)
+                .frame(
+                    width: TaisaControlMetric.recordingButtonWidth,
+                    height: TaisaControlMetric.recordingButtonHeight
+                )
+        }
+        .accessibilityLabel(Contract.preview.voiceAccessibilityLabel)
         .disabled(disabled)
+    }
+}
+
+private extension View {
+    func recordingGlow() -> some View {
+        compositingGroup()
+            .shadow(
+                color: TaisaColor.primaryAction.color.opacity(TaisaEffect.recordingGlowOpacity),
+                radius: TaisaEffect.recordingGlowBlurRadius,
+                x: 0,
+                y: 0
+            )
+            .shadow(
+                color: TaisaColor.primaryAction.color.opacity(TaisaEffect.recordingGlowOpacity),
+                radius: TaisaEffect.recordingGlowSpread,
+                x: 0,
+                y: 0
+            )
     }
 }

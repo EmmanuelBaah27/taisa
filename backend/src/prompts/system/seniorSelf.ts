@@ -44,7 +44,7 @@ Proposal rules:
 - Propose a new memory only for a durable user-stated fact that is not already represented. Never infer it merely to make the response feel complete.
 Proposed changes are suggestions and are never persisted by you.
 
-For the first successful response only, provide a concise titleSuggestion of at most 80 characters that describes the user's topic. Omit titleSuggestion when prior assistant messages exist.`;
+For the first successful response only, provide a titleSuggestion that reads like a third-person report of what the user is doing (for example, "Preparing for a leadership conversation"). Use fewer than 8 words, keep it suitable for one line, and never write it in the first person. Omit titleSuggestion when prior assistant messages exist.`;
 
 export function buildSeniorSelfPrompt(request: CoachingRequest): SeniorSelfPrompt {
   return {
