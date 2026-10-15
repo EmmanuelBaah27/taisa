@@ -17,6 +17,7 @@ public enum TaisaMotion {
 
 public enum TaisaControlMetric {
     public static let standardIcon: CGFloat = 24
+    public static let headerActionHeight: CGFloat = 48
     public static let primaryNavigationItemWidth: CGFloat = 56
     public static let primaryNavigationItemHeight: CGFloat = 48
     public static let recordingButtonWidth: CGFloat = 104
@@ -27,6 +28,7 @@ public enum TaisaControlMetric {
 public enum TaisaEffect {
     public static let headerFadeOpacity: Double = 0.72
     public static let navigationFadeOpacity: Double = 0.72
+    public static let edgeFadeBlurOpacity: Double = 0.42
     /// Figma's 20px blur maps to Core Graphics' 10pt blur radius.
     public static let recordingGlowBlurRadius: CGFloat = 10
     public static let recordingGlowSpread: CGFloat = 4
