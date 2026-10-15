@@ -53,8 +53,8 @@ struct ConversationComponentTests {
     }
 
     @MainActor @Test func figmaEdgeFadesUseMeasuredStops() {
-        #expect(PageEdgeFade.fadeStart == 0.60)
-        #expect(PageEdgeFade.headerOpaqueStop == 0.60)
-        #expect(PageEdgeFade.navigationOpaqueStop == 0.40)
+        #expect(PageEdgeFade.fadeStart == 0.40)
+        #expect(PageEdgeFade.headerOpaqueStop == 0.40)
+        #expect(PageEdgeFade.navigationOpaqueStop == 0.60)
     }
 }
