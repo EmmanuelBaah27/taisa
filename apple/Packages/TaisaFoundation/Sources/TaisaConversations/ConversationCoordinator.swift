@@ -231,7 +231,8 @@ public actor ConversationCoordinator {
 
     private func accept(_ reply: ConversationReply) {
         latestReply = reply
-        if titleAuthority == .localFallback, let suggestion = reply.titleSuggestion {
+        if titleAuthority == .localFallback,
+           let suggestion = reply.titleSuggestion.flatMap(ConversationTitleDeriver.normalizeSuggestion) {
             title = suggestion
             titleAuthority = .assistantSuggested
         }

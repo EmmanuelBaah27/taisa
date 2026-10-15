@@ -5,24 +5,105 @@ import TaisaVoice
 
 enum ConversationTitleDeriver {
     static let maximumLength = 51
+    static let maximumWordCount = 7
+
+    private static let leadingPhrases = [
+        "can you help me ", "could you help me ", "would you help me ",
+        "help me ", "i would like to ", "i'd like to ", "i want to ",
+        "i need to ", "i am going to ", "i'm going to ", "i am ", "i'm ",
+    ]
+
+    private static let gerunds = [
+        "build": "Building", "change": "Changing", "decide": "Deciding",
+        "deal": "Dealing", "discuss": "Discussing", "explore": "Exploring",
+        "find": "Finding", "improve": "Improving", "navigate": "Navigating",
+        "plan": "Planning", "prepare": "Preparing", "start": "Starting",
+        "try": "Trying", "understand": "Understanding", "work": "Working",
+    ]
 
     static func derive(from source: String) -> String? {
-        let words = source
+        let collapsed = source
             .split(whereSeparator: { $0.isWhitespace })
             .map(String.init)
-        guard !words.isEmpty else { return nil }
+            .joined(separator: " ")
+            .trimmingCharacters(in: .punctuationCharacters.union(.whitespacesAndNewlines))
+        guard !collapsed.isEmpty else { return nil }
 
+        var topic = collapsed
+        let lowercase = collapsed.lowercased()
+        if let prefix = leadingPhrases.first(where: { lowercase.hasPrefix($0) }) {
+            topic = String(collapsed.dropFirst(prefix.count))
+        }
+
+        var words = topic.split(whereSeparator: { $0.isWhitespace }).map(String.init)
+        guard !words.isEmpty else { return nil }
+        let first = words[0].trimmingCharacters(in: .punctuationCharacters).lowercased()
+        if first == "prepare", words.count > 1,
+           words[1].trimmingCharacters(in: .punctuationCharacters).lowercased() == "me" {
+            words.remove(at: 1)
+        }
+        if let gerund = gerunds[first] {
+            words[0] = gerund
+        } else if !first.hasSuffix("ing") {
+            words.insert("Discussing", at: 0)
+        } else {
+            words[0] = words[0].prefix(1).uppercased() + words[0].dropFirst()
+        }
+
+        words = words.flatMap { reportedWord($0).split(separator: " ").map(String.init) }
+
+        return bounded(words)
+    }
+
+    static func normalizeSuggestion(_ source: String) -> String? {
+        let collapsed = source
+            .split(whereSeparator: { $0.isWhitespace })
+            .map(String.init)
+            .joined(separator: " ")
+            .trimmingCharacters(in: .punctuationCharacters.union(.whitespacesAndNewlines))
+        guard !collapsed.isEmpty else { return nil }
+        let lowercased = collapsed.lowercased()
+        if leadingPhrases.contains(where: { lowercased.hasPrefix($0) }) {
+            return derive(from: collapsed)
+        }
+        return bounded(collapsed.split(separator: " ").map(String.init))
+    }
+
+    private static func bounded(_ words: [String]) -> String? {
+        let weakEndings: Set<String> = ["a", "an", "and", "at", "but", "for", "in", "of", "on", "or", "the", "to", "with"]
         var title = ""
-        for word in words {
+        for word in words.prefix(maximumWordCount) {
             let candidate = title.isEmpty ? word : "\(title) \(word)"
             guard candidate.count <= maximumLength else { break }
             title = candidate
         }
+        var boundedWords = title.split(separator: " ").map(String.init)
+        while boundedWords.count > 1,
+              let last = boundedWords.last?.trimmingCharacters(in: .punctuationCharacters).lowercased(),
+              weakEndings.contains(last) {
+            boundedWords.removeLast()
+        }
+        title = boundedWords.joined(separator: " ")
         if title.isEmpty, let first = words.first {
             title = String(first.prefix(maximumLength))
         }
         let trimmed = title.trimmingCharacters(in: .punctuationCharacters.union(.whitespacesAndNewlines))
         return trimmed.isEmpty ? nil : trimmed
+    }
+
+    private static func reportedWord(_ word: String) -> String {
+        let punctuation = String(word.reversed().prefix(while: { $0.isPunctuation }).reversed())
+        let stem = word.dropLast(punctuation.count)
+        let replacement: String
+        switch stem.lowercased() {
+        case "i": replacement = "the user"
+        case "i'm", "i’m": replacement = "the user is"
+        case "i've", "i’ve": replacement = "the user has"
+        case "my": replacement = "their"
+        case "me": replacement = "them"
+        default: return word
+        }
+        return replacement + punctuation
     }
 }
 
@@ -249,8 +330,9 @@ public actor GatewayConversationClient: ConversationClient {
         let firstUserMessage = try await query.loadConversation(id: id).visibleMessages
             .first(where: { $0.role == "user" })?.body
         let derivedTitle = firstUserMessage.flatMap(ConversationTitleDeriver.derive)
-        let title = maySuggest ? (titleSuggestion ?? derivedTitle ?? current.title) : current.title
-        let authority: TitleAuthority = maySuggest && titleSuggestion != nil ? .assistantSuggested : current.titleAuthority
+        let normalizedSuggestion = titleSuggestion.flatMap(ConversationTitleDeriver.normalizeSuggestion)
+        let title = maySuggest ? (normalizedSuggestion ?? derivedTitle ?? current.title) : current.title
+        let authority: TitleAuthority = maySuggest && normalizedSuggestion != nil ? .assistantSuggested : current.titleAuthority
         try await repository.update(.init(
             id: current.id, title: title, lifecycle: .completed,
             titleAuthority: authority, createdAtMS: current.createdAtMS,

@@ -14,6 +14,8 @@ struct ConversationHistoryRow: View {
             Text(conversation.title)
                 .font(.system(size: 16, weight: .medium))
                 .foregroundStyle(TaisaColor.foreground.color)
+                .lineLimit(1)
+                .truncationMode(.tail)
                 .frame(maxWidth: .infinity, alignment: .leading)
             if let preview, !preview.isEmpty {
                 Text(preview)
