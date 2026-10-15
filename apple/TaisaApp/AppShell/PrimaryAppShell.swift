@@ -115,7 +115,6 @@ struct PrimaryAppShell: View {
                 PageEdgeFade(.navigation)
                     .frame(maxWidth: .infinity)
                     .frame(height: 104)
-                    .opacity(TaisaEffect.navigationFadeOpacity)
                     .ignoresSafeArea(edges: [.horizontal, .bottom])
 
                 VStack(spacing: TaisaSpacing.compact.rawValue) {

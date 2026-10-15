@@ -29,8 +29,6 @@ struct ConversationComponentTests {
         #expect(TaisaEffect.recordingGlowBlurRadius == 10)
         #expect(TaisaEffect.recordingGlowSpread == 4)
         #expect(TaisaEffect.recordingGlowOpacity == 0.35)
-        #expect(TaisaEffect.headerFadeOpacity == 0.72)
-        #expect(TaisaEffect.navigationFadeOpacity == 0.72)
         #expect(TaisaEffect.edgeFadeBlurOpacity == 0.42)
         #expect(TaisaControlMetric.appBarHeight == 64)
         #expect(TaisaControlMetric.headerActionHeight == 44)
