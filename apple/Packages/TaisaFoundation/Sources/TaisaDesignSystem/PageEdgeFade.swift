@@ -16,13 +16,43 @@ public struct PageEdgeFade: View {
     }
 
     public var body: some View {
-        LinearGradient(
-            gradient: placement == .header ? headerGradient : navigationGradient,
+        ZStack {
+            Rectangle()
+                .fill(.ultraThinMaterial)
+                .opacity(TaisaEffect.edgeFadeBlurOpacity)
+
+            LinearGradient(
+                gradient: placement == .header ? headerGradient : navigationGradient,
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        }
+        .mask(fadeMask)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+
+    private var fadeMask: LinearGradient {
+        let stops: [Gradient.Stop]
+        switch placement {
+        case .header:
+            stops = [
+                .init(color: .white, location: 0),
+                .init(color: .white, location: Self.headerOpaqueStop),
+                .init(color: .clear, location: 1),
+            ]
+        case .navigation:
+            stops = [
+                .init(color: .clear, location: 0),
+                .init(color: .white, location: Self.navigationOpaqueStop),
+                .init(color: .white, location: 1),
+            ]
+        }
+        return LinearGradient(
+            gradient: Gradient(stops: stops),
             startPoint: .top,
             endPoint: .bottom
         )
-        .allowsHitTesting(false)
-        .accessibilityHidden(true)
     }
 
     private var headerGradient: Gradient {

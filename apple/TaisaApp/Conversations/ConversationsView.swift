@@ -92,6 +92,8 @@ struct ConversationsView: View {
         .frame(height: 64)
         .background {
             PageEdgeFade(.header)
+                .opacity(TaisaEffect.headerFadeOpacity)
+                .ignoresSafeArea(edges: [.top, .horizontal])
         }
         .overlay(alignment: .bottom) {
             PageEdgeFade(.header)
@@ -186,8 +188,14 @@ struct ConversationsView: View {
     @ViewBuilder private var searchButton: some View {
         let button = Button(action: {}) {
             CentralIcon(.magnifyingGlass)
-                .frame(width: 24, height: 24)
-                .frame(width: 32, height: 32)
+                .frame(
+                    width: TaisaControlMetric.standardIcon,
+                    height: TaisaControlMetric.standardIcon
+                )
+                .frame(
+                    width: TaisaControlMetric.headerActionHeight,
+                    height: TaisaControlMetric.headerActionHeight
+                )
         }
         .accessibilityLabel("Search chats")
         .accessibilityHint("Search is not available yet")
@@ -209,7 +217,7 @@ struct ConversationsView: View {
                     .frame(width: 8, height: 8)
             }
             .padding(.horizontal, TaisaSpacing.content.rawValue)
-            .frame(height: 48)
+            .frame(height: TaisaControlMetric.headerActionHeight)
         }
         .accessibilityValue(showsDraftsOnly ? "Showing drafts" : "Showing all chats")
         .accessibilityIdentifier("chats.drafts-filter")
