@@ -88,8 +88,8 @@ struct ConversationsView: View {
                 draftsButton
             }
         }
-        .padding(.horizontal, TaisaSpacing.content.rawValue)
-        .frame(height: 72)
+        .padding(.horizontal, TaisaSpacing.standard.rawValue)
+        .frame(height: 64)
         .background {
             PageEdgeFade(.header)
         }
@@ -117,7 +117,7 @@ struct ConversationsView: View {
                             Button { resume(draft) } label: { DraftRow(draft: draft) }
                                 .buttonStyle(.plain)
                                 .listRowSeparatorTint(TaisaColor.background.color)
-                                .swipeActions {
+                                .contextMenu {
                                     Button("Discard", role: .destructive) { confirmation = .discard(draft) }
                                 }
                         }
@@ -142,15 +142,9 @@ struct ConversationsView: View {
                                 .listRowInsets(EdgeInsets())
                                 .listRowBackground(historyRowBackground(index: index, count: group.conversations.count))
                                 .listRowSeparator(.hidden)
-                                .swipeActions {
-                                    Button("Delete", role: .destructive) { confirmation = .delete(conversation) }
-                                    Button("Rename") { beginRename(conversation) }.tint(.accentColor)
-                                }
                                 .contextMenu {
-                                    Menu("Actions") {
-                                        Button("Rename") { beginRename(conversation) }
-                                        Button("Delete", role: .destructive) { confirmation = .delete(conversation) }
-                                    }
+                                    Button("Rename") { beginRename(conversation) }
+                                    Button("Delete", role: .destructive) { confirmation = .delete(conversation) }
                                 }
                             }
                         }
@@ -162,7 +156,10 @@ struct ConversationsView: View {
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
             .scrollIndicators(.hidden)
-            .padding(.horizontal, TaisaSpacing.content.rawValue)
+            .contentMargins(.top, 0, for: .scrollContent)
+            .contentMargins(.bottom, 152, for: .scrollContent)
+            .listSectionSpacing(TaisaSpacing.tight.rawValue)
+            .padding(.horizontal, TaisaSpacing.standard.rawValue)
             .refreshable { await model.load() }
         case let .failure(issue):
             ContentUnavailableView {
@@ -183,6 +180,7 @@ struct ConversationsView: View {
         let button = Button(action: {}) {
             CentralIcon(.magnifyingGlass)
                 .frame(width: 24, height: 24)
+                .frame(width: 32, height: 32)
         }
         .accessibilityLabel("Search chats")
         .accessibilityHint("Search is not available yet")
@@ -222,6 +220,7 @@ struct ConversationsView: View {
             .foregroundStyle(TaisaColor.mutedForeground.color)
             .textCase(nil)
             .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.bottom, TaisaSpacing.tight.rawValue)
             .listRowInsets(EdgeInsets())
             .accessibilityIdentifier("conversations.history")
     }

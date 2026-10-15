@@ -25,7 +25,8 @@ struct ConversationHistoryRow: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-        .padding(TaisaSpacing.standard.rawValue)
+        .padding(.horizontal, TaisaSpacing.standard.rawValue)
+        .padding(.vertical, TaisaSpacing.control.rawValue)
         .overlay(alignment: .bottom) {
             TaisaColor.background.color
                 .frame(height: 2)
