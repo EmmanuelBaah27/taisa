@@ -95,7 +95,7 @@ final class AppRuntime {
                 ),
                 insights: InsightsClient.local(store: store),
                 careerWork: CareerWorkClient.local(store: store, deviceID: context.deviceID.uuidString),
-                conversations: ConversationsClient.local(store: store),
+                conversations: ConversationsClient.local(store: store, deviceID: context.deviceID.uuidString),
                 conversationFactory: ConversationRuntimeFactory(
                     store: store,
                     deviceID: context.deviceID,

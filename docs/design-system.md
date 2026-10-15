@@ -25,9 +25,9 @@ Primary navigation uses the default system face (SF Pro), not the rounded system
 
 The primary pager always keeps Home, Chats, and You mounted in one native page container. Career Work is a Home sub-surface and must never replace or become an untagged state of the primary pager. Horizontal gestures advance one adjacent destination, clamp at the first and last destination, and provide a guarded shell-level fallback only when native paging did not update the selection.
 
-Chats uses `subtleSurface` (`#F5F5F5`) for records, `background` (`#FFFFFF`) for the 2pt edge-to-edge record divider, a 20pt page inset, and the 20pt `historyGroup` outer radius. Page and navigation fades are decorative overlays with measured stops; they must not participate in safe-area layout or expand their owning stacks.
+Chats uses `subtleSurface` (`#F5F5F5`) for records, `background` (`#FFFFFF`) for the 2pt edge-to-edge record divider, a 16pt page inset, and the 20pt `historyGroup` outer radius. Page and navigation fades are decorative overlays with measured stops; they must not participate in safe-area layout or expand their owning stacks.
 
-Responsive layout derives page and record widths from the current safe-area width: the Chats history is `available width - 40pt`, never a fixed 353pt frame. Fixed dimensions are reserved for Figma-defined components and touch contracts (icons, controls, fade heights, and minimum hit regions). Compact and large iPhone UI tests must verify the 20pt page inset, reachable dock controls, and the full bidirectional swipe sequence.
+Responsive layout derives page and record widths from the current safe-area width: the Chats history is `available width - 32pt`, never a fixed 353pt frame. Fixed dimensions are reserved for Figma-defined components and touch contracts (icons, controls, fade heights, and minimum hit regions). Compact and large iPhone UI tests must verify the 16pt page inset, reachable dock controls, and the full bidirectional swipe sequence.
 
 Every native page consumes these package-owned tokens and components rather than defining feature-local equivalents. Token/component changes update this living reference and the `TaisaDesignSystemTests` contract in the same delivery cycle; page-level source-contract tests guard adoption where a visual regression would otherwise be easy to reintroduce.
 

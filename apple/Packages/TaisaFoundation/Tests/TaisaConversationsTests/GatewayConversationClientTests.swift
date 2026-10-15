@@ -118,4 +118,46 @@ struct GatewayConversationClientTests {
         #expect(index.conversations.first?.titleAuthority == .localFallback)
         #expect(index.conversations.first?.updatedAtMS == 1)
     }
+
+    @Test func loadingHistoryPreservesAuthoredAndAssistantSuggestedTitles() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = try await TaisaStore.open(
+            at: directory.appendingPathComponent("store.sqlite"),
+            keyStore: GatewayConversationTestKeys()
+        )
+        let repository = ConversationRepository(store: store)
+        let deviceID = "00000000-0000-4000-8000-000000000899"
+        let records: [(String, String, TitleAuthority)] = [
+            ("00000000-0000-4000-8000-000000000801", "Leadership planning recap", .assistantSuggested),
+            ("00000000-0000-4000-8000-000000000802", "My chosen title", .user),
+        ]
+
+        for (offset, record) in records.enumerated() {
+            try await repository.create(.init(
+                id: record.0,
+                title: record.1,
+                lifecycle: .completed,
+                titleAuthority: record.2,
+                createdAtMS: Int64(offset + 1),
+                updatedAtMS: Int64(offset + 1)
+            ), context: .init(id: UUID().uuidString, deviceID: deviceID, timestamp: Int64(offset + 1)))
+            try await repository.createMessage(.init(
+                id: "00000000-0000-4000-8000-00000000081\(offset)",
+                conversationID: record.0,
+                role: "user",
+                body: "This message would derive a different fallback title",
+                createdAtMS: Int64(offset + 10)
+            ), context: .init(id: UUID().uuidString, deviceID: deviceID, timestamp: Int64(offset + 10)))
+        }
+
+        let index = try await ConversationsClient.local(store: store, deviceID: deviceID).load()
+        let titles = Dictionary(uniqueKeysWithValues: index.conversations.map { ($0.id, ($0.title, $0.titleAuthority)) })
+
+        #expect(titles[records[0].0]?.0 == records[0].1)
+        #expect(titles[records[0].0]?.1 == .assistantSuggested)
+        #expect(titles[records[1].0]?.0 == records[1].1)
+        #expect(titles[records[1].0]?.1 == .user)
+    }
 }

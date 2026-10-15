@@ -47,7 +47,7 @@ public struct ConversationsClient: Sendable {
             load: {
                 let index = try await query.loadIndex()
                 var repaired = false
-                for conversation in index.conversations where conversation.titleAuthority != .user {
+                for conversation in index.conversations where conversation.titleAuthority == .localFallback {
                     guard let firstUserMessage = try await query.loadConversation(id: conversation.id)
                         .visibleMessages.first(where: { $0.role == "user" })?.body,
                           let title = ConversationTitleDeriver.derive(from: firstUserMessage),
