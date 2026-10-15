@@ -23,7 +23,7 @@ public struct PageEdgeFade: View {
                 .opacity(TaisaEffect.edgeFadeBlurOpacity)
 
             Rectangle()
-                .fill(TaisaColor.background.color)
+                .fill(TaisaColor.background.color.opacity(TaisaEffect.edgeFadeTintOpacity))
         }
         .mask(fadeMask)
         .allowsHitTesting(false)
