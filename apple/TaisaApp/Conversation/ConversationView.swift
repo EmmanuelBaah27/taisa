@@ -76,7 +76,7 @@ struct ConversationView: View {
                     }
                 }
         case .paused:
-            recordingBar(.paused)
+            recordingBar(pausedActionPhase)
         case .savedVoiceDraft:
             recordingBar(.saved)
         case .typing:
@@ -119,13 +119,22 @@ struct ConversationView: View {
         }
     }
 
+    private var pausedActionPhase: ConversationActionBar.Phase {
+        switch model.capture.disposition {
+        case .empty: .pausedEmpty
+        case .shortCapture: .pausedShort
+        case .sendable: .paused
+        case .durableProcessing: .waitingForReply
+        }
+    }
+
     private func recordingBar(_ phase: ConversationActionBar.Phase) -> some View {
         ConversationActionBar(
             phase: phase, elapsed: elapsed,
             onDiscard: model.requestDiscardRecording,
             onKeyboard: model.requestKeyboard,
             onPrimary: {
-                Task { phase == .paused || phase == .saved ? await model.resume() : await model.pause() }
+                Task { phase == .pausedEmpty || phase == .pausedShort || phase == .paused || phase == .saved ? await model.resume() : await model.pause() }
             },
             onSend: { Task { await model.sendVoice() } }
         )

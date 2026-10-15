@@ -1,7 +1,7 @@
 import SwiftUI
 
 public struct ConversationActionBar: View {
-    public enum Phase: Sendable { case preparing, recording, shortCapture, sendable, paused, saved, waitingForReply }
+    public enum Phase: Sendable { case preparing, recording, shortCapture, sendable, pausedEmpty, pausedShort, paused, saved, waitingForReply }
     public struct Availability: Sendable, Equatable {
         public let canDiscard: Bool
         public let canSwitchToKeyboard: Bool
@@ -11,6 +11,8 @@ public struct ConversationActionBar: View {
         public static let recording = Self(canDiscard: true, canSwitchToKeyboard: true, canSend: false, primaryLabel: "Pause")
         public static let shortCapture = Self(canDiscard: true, canSwitchToKeyboard: true, canSend: false, primaryLabel: "Pause")
         public static let sendable = Self(canDiscard: true, canSwitchToKeyboard: true, canSend: true, primaryLabel: "Pause")
+        public static let pausedEmpty = Self(canDiscard: true, canSwitchToKeyboard: true, canSend: false, primaryLabel: "Resume")
+        public static let pausedShort = Self(canDiscard: true, canSwitchToKeyboard: true, canSend: false, primaryLabel: "Resume")
         public static let paused = Self(canDiscard: true, canSwitchToKeyboard: true, canSend: true, primaryLabel: "Resume")
         public static let saved = Self(canDiscard: true, canSwitchToKeyboard: true, canSend: true, primaryLabel: "Resume")
         public static let waitingForReply = Self(canDiscard: false, canSwitchToKeyboard: false, canSend: false, primaryLabel: "Reply")
@@ -53,7 +55,7 @@ public struct ConversationActionBar: View {
                 if phase == .recording || phase == .shortCapture || phase == .sendable {
                     ConversationActivityIndicator(active: true)
                 } else {
-                    CentralIcon(phase == .paused || phase == .saved ? .play : .voiceMid).frame(width: 24, height: 24)
+                    CentralIcon(isPaused ? .play : .voiceMid).frame(width: 24, height: 24)
                 }
                 Text(availability.primaryLabel).font(.system(.body, weight: .medium))
                 if !elapsed.isEmpty { Text(elapsed).font(.caption).foregroundStyle(TaisaColor.mutedForeground.color) }
@@ -75,10 +77,16 @@ public struct ConversationActionBar: View {
         case .recording: .recording
         case .shortCapture: .shortCapture
         case .sendable: .sendable
+        case .pausedEmpty: .pausedEmpty
+        case .pausedShort: .pausedShort
         case .paused: .paused
         case .saved: .saved
         case .waitingForReply: .waitingForReply
         }
+    }
+
+    private var isPaused: Bool {
+        phase == .pausedEmpty || phase == .pausedShort || phase == .paused || phase == .saved
     }
 
     private func iconButton(_ icon: CentralIconName, label: String, action: @escaping @MainActor () -> Void) -> some View {

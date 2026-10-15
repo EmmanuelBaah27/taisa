@@ -67,6 +67,8 @@ struct ConversationComponentTests {
         #expect(ConversationActionBar.Availability.recording.canSwitchToKeyboard)
         #expect(ConversationActionBar.Availability.shortCapture.canSend == false)
         #expect(ConversationActionBar.Availability.sendable.canSend)
+        #expect(ConversationActionBar.Availability.pausedEmpty.canSend == false)
+        #expect(ConversationActionBar.Availability.pausedShort.canSend == false)
         #expect(ConversationActionBar.Availability.paused.primaryLabel == "Resume")
         #expect(ConversationActionBar.Availability.waitingForReply.canDiscard == false)
     }
