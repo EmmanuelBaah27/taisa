@@ -66,6 +66,12 @@ final class ConversationsViewContractTests: XCTestCase {
         XCTAssertFalse(source.contains("Image(systemName: \"magnifyingglass\")"))
     }
 
+    func testUnavailableSearchControlIsDisabled() throws {
+        let source = try conversationsSource()
+
+        XCTAssertTrue(source.contains(".disabled(true)"))
+    }
+
     func testDraftFilterIsConditionalAndMonthHeaderHasNoHorizontalInset() throws {
         let source = try conversationsSource()
 
