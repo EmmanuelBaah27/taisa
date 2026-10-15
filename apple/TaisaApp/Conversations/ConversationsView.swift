@@ -84,7 +84,9 @@ struct ConversationsView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             searchButton
-            draftsButton
+            if hasDrafts {
+                draftsButton
+            }
         }
         .padding(.horizontal, TaisaSpacing.standard.rawValue)
         .frame(height: TaisaControlMetric.appBarHeight)
