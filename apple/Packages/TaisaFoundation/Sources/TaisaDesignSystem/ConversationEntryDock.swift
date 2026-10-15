@@ -50,9 +50,15 @@ public struct ConversationEntryDock: View {
 
 private extension View {
     func recordingGlow() -> some View {
-        shadow(
-            color: TaisaColor.primaryAction.color.opacity(TaisaEffect.recordingGlowOpacity),
-            radius: TaisaEffect.recordingGlowRadius
-        )
+        background {
+            Capsule()
+                .fill(TaisaColor.primaryAction.color.opacity(TaisaEffect.recordingGlowOpacity))
+                .frame(
+                    width: TaisaControlMetric.recordingButtonWidth + (TaisaEffect.recordingGlowSpread * 2),
+                    height: TaisaControlMetric.recordingButtonHeight + (TaisaEffect.recordingGlowSpread * 2)
+                )
+                .blur(radius: TaisaEffect.recordingGlowBlurRadius)
+                .allowsHitTesting(false)
+        }
     }
 }
