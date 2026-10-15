@@ -5,6 +5,7 @@
     "background": "#FFFFFF",
     "foreground": "#060707",
     "mutedForeground": "#5F646A",
+    "inactiveForeground": "#898989",
     "primaryAction": "#CDEC1A",
     "border": "#E6E6E6"
   },

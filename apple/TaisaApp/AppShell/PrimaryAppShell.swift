@@ -112,6 +112,11 @@ struct PrimaryAppShell: View {
             }
 
             if model.showsConversationDock {
+                PageEdgeFade(.navigation)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 104)
+                    .ignoresSafeArea(edges: [.horizontal, .bottom])
+
                 VStack(spacing: TaisaSpacing.compact.rawValue) {
                     ConversationEntryDock(
                         onVoice: { model.presentNewConversation(.voice) },
@@ -131,11 +136,6 @@ struct PrimaryAppShell: View {
                 .padding(.horizontal, TaisaSpacing.standard.rawValue)
                 .padding(.top, TaisaSpacing.section.rawValue)
                 .padding(.bottom, TaisaSpacing.compact.rawValue)
-                .background(alignment: .bottom) {
-                    PageEdgeFade(.navigation)
-                        .frame(height: 180)
-                        .ignoresSafeArea(edges: .bottom)
-                }
             }
         }
         .fullScreenCover(item: Binding(

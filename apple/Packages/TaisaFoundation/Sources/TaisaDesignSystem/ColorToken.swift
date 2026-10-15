@@ -4,6 +4,7 @@ public enum TaisaColor: String, CaseIterable, Sendable {
     case background = "#FFFFFF"
     case foreground = "#060707"
     case mutedForeground = "#5F646A"
+    case inactiveForeground = "#898989"
     case primaryAction = "#CDEC1A"
     case border = "#E6E6E6"
     case raisedSurface = "#F9F9F9"
