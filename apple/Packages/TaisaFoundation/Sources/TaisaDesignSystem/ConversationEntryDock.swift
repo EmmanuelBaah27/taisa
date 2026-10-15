@@ -19,15 +19,15 @@ public struct ConversationEntryDock: View {
     }
 
     public var body: some View {
-        HStack(spacing: TaisaSpacing.compact.rawValue) {
-            Button(action: onVoice) { Label("Talk to Taisa", systemImage: "waveform") }
-                .buttonStyle(.borderedProminent).tint(TaisaColor.primaryAction.color)
-                .accessibilityLabel(Contract.preview.voiceAccessibilityLabel)
-            Button(action: onKeyboard) { Image(systemName: "keyboard") }
-                .buttonStyle(.bordered).accessibilityLabel(Contract.preview.keyboardAccessibilityLabel)
+        Button(action: onVoice) {
+            Image(systemName: "waveform")
+                .font(.system(size: 24, weight: .medium))
+                .foregroundStyle(TaisaColor.foreground.color)
+                .frame(width: 104, height: 56)
+                .background(TaisaColor.primaryAction.color, in: Capsule())
         }
-        .padding(TaisaSpacing.compact.rawValue)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: TaisaRadius.composer.rawValue))
+        .buttonStyle(.plain)
+        .accessibilityLabel(Contract.preview.voiceAccessibilityLabel)
         .disabled(disabled)
     }
 }

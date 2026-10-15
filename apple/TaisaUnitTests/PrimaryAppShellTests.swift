@@ -17,10 +17,8 @@ final class PrimaryAppShellTests: XCTestCase {
         XCTAssertEqual(model.navigationDirection, .backward)
     }
 
-    func testCareerWorkIsAStablePrimaryDestination() {
-        XCTAssertTrue(PrimaryDestination.allCases.contains(.careerWork))
-        XCTAssertEqual(PrimaryDestination.careerWork.title, "Career Work")
-        XCTAssertEqual(PrimaryDestination.careerWork.systemImage, "target")
+    func testPrimaryNavigationMatchesTheThreeDestinationProductArchitecture() {
+        XCTAssertEqual(PrimaryDestination.allCases, [.home, .conversations, .you])
     }
 
     func testConversationDismissalRefreshesTheConversationIndex() async {
@@ -44,6 +42,13 @@ final class PrimaryAppShellTests: XCTestCase {
 
         model.presentNewConversation(.voice)
         XCTAssertFalse(model.showsConversationDock)
+    }
+
+    func testPageTransitionIsOpacityOnly() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let source = try String(contentsOf: root.appendingPathComponent("TaisaApp/AppShell/PrimaryAppShell.swift"), encoding: .utf8)
+        XCTAssertTrue(source.contains("return .opacity"))
+        XCTAssertFalse(source.contains(".move(edge:"))
     }
 
     func testVoiceEntryIntentIsConsumedOnlyOnce() {

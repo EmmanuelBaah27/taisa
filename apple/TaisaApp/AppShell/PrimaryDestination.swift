@@ -1,10 +1,13 @@
 import Foundation
+import TaisaDesignSystem
 
 enum PrimaryDestination: String, CaseIterable, Hashable, Sendable {
     case home
     case careerWork
     case conversations
     case you
+
+    static let allCases: [PrimaryDestination] = [.home, .conversations, .you]
 
     var title: String {
         switch self {
@@ -15,12 +18,12 @@ enum PrimaryDestination: String, CaseIterable, Hashable, Sendable {
         }
     }
 
-    var systemImage: String {
+    var icon: CentralIconName {
         switch self {
-        case .home: "house"
-        case .careerWork: "target"
-        case .conversations: "bubble.left.and.bubble.right"
-        case .you: "person"
+        case .home: .homeLine
+        case .careerWork: .homeLine
+        case .conversations: .chatBubbles
+        case .you: .peopleCircle
         }
     }
 }

@@ -108,6 +108,14 @@ struct HomeView: View {
                     }
                     .accessibilityIdentifier("home.goals")
                 }
+                if !snapshot.milestones.isEmpty {
+                    Section("Upcoming milestones") {
+                        ForEach(snapshot.milestones, id: \.id) { milestone in
+                            MilestoneRow(milestone: milestone, send: send)
+                        }
+                    }
+                    .accessibilityIdentifier("home.milestones")
+                }
                 if !snapshot.actions.isEmpty {
                     Section("Open actions") {
                         ForEach(snapshot.actions, id: \.id) { ActionRow(action: $0, send: send) }

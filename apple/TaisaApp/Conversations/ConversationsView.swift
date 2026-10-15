@@ -97,13 +97,13 @@ struct ConversationsView: View {
 
             Button { showsDraftsOnly.toggle() } label: {
                 HStack(spacing: 6) {
-                    Text("Drafts").font(TaisaTypography.body.font.weight(.medium))
+                    Text("Drafts").font(.system(size: 16, weight: .medium))
                     Circle()
                         .fill(TaisaColor.destructive.color)
                         .frame(width: 8, height: 8)
                 }
                 .padding(.horizontal, 20)
-                .frame(minHeight: 48)
+                .frame(height: 48)
                 .background(.regularMaterial, in: Capsule())
             }
             .buttonStyle(.plain)
@@ -146,7 +146,12 @@ struct ConversationsView: View {
                     ForEach(groupedConversations(snapshot.conversations), id: \.month) { group in
                         Section {
                             ForEach(group.conversations, id: \.id) { conversation in
-                            Button { open(conversation) } label: { ConversationHistoryRow(conversation: conversation) }
+                            Button { open(conversation) } label: {
+                                ConversationHistoryRow(
+                                    conversation: conversation,
+                                    preview: snapshot.lastMessagePreview(for: conversation.id)
+                                )
+                            }
                                 .buttonStyle(.plain)
                                 .listRowBackground(TaisaColor.selectedSurface.color)
                                 .listRowSeparatorTint(TaisaColor.background.color)
@@ -191,8 +196,8 @@ struct ConversationsView: View {
 
     private func monthHeader(_ month: String) -> some View {
         Text(month)
-            .font(TaisaTypography.metadata.font.weight(.semibold))
-            .foregroundStyle(TaisaColor.foreground.color)
+            .font(.system(size: 14, weight: .medium))
+            .foregroundStyle(TaisaColor.mutedForeground.color)
             .textCase(nil)
             .frame(maxWidth: .infinity, alignment: .leading)
     }

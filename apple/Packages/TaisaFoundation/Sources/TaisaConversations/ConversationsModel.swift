@@ -79,7 +79,8 @@ public final class ConversationsModel {
             guard generation == activeGeneration else { return }
             let sorted = ConversationIndexSnapshot(
                 drafts: loaded.drafts.sorted(by: Self.newerDraft),
-                conversations: loaded.conversations.sorted(by: Self.newerConversation)
+                conversations: loaded.conversations.sorted(by: Self.newerConversation),
+                lastMessagePreviews: loaded.lastMessagePreviews
             )
             state = sorted.drafts.isEmpty && sorted.conversations.isEmpty
                 ? .empty

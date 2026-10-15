@@ -2,6 +2,18 @@ import Foundation
 import XCTest
 
 final class HomeViewContractTests: XCTestCase {
+    func testHomeSurfacesUpcomingMilestonesInsideCareerProgress() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let home = root.appendingPathComponent("TaisaApp/Home")
+        let sources = try FileManager.default.contentsOfDirectory(at: home, includingPropertiesForKeys: nil)
+            .filter { $0.pathExtension == "swift" }
+            .map { try String(contentsOf: $0, encoding: .utf8) }
+            .joined(separator: "\n")
+
+        XCTAssertTrue(sources.contains("Section(\"Upcoming milestones\")"))
+        XCTAssertTrue(sources.contains("case milestone(goalID: String)"))
+    }
+
     func testHomeUsesRequiredNativeStateIdentifiersAndNoGRDB() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let home = root.appendingPathComponent("TaisaApp/Home")

@@ -12,22 +12,21 @@ public enum PrimaryNavigationMotion {
 }
 
 public struct PrimaryNavigation<Item: Hashable>: View {
-    public let items: [(Item, String, String)]
+    public let items: [(Item, String, CentralIconName)]
     @Binding private var selection: Item
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Namespace private var selectionCapsule
 
-    public init(items: [(Item, String, String)], selection: Binding<Item>) {
+    public init(items: [(Item, String, CentralIconName)], selection: Binding<Item>) {
         self.items = items; _selection = selection
     }
 
     public var body: some View {
         HStack(spacing: TaisaSpacing.tight.rawValue) {
-            ForEach(items, id: \.0) { item, label, symbol in
+            ForEach(items, id: \.0) { item, label, icon in
                 Button { select(item) } label: {
                     HStack(spacing: TaisaSpacing.compact.rawValue) {
-                        Image(systemName: symbol)
-                            .font(.system(size: 20, weight: .regular))
+                        CentralIcon(icon)
                             .frame(width: 24, height: 24)
 
                         if selection == item {

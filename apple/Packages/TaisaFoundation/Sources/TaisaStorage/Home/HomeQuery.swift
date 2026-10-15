@@ -62,6 +62,22 @@ public struct HomeQuery: Sendable {
                     """,
                     arguments: [limits.actions]
                 )
+                let milestoneRows = try Row.fetchAll(
+                    db,
+                    sql: """
+                    SELECT milestones.*
+                    FROM milestones
+                    JOIN goals ON goals.id = milestones.goal_id COLLATE NOCASE
+                    WHERE milestones.status = 'open' AND goals.status = 'active'
+                      AND NOT EXISTS (
+                        SELECT 1 FROM tombstones
+                        WHERE entity_type = 'milestone' AND entity_id = milestones.id COLLATE NOCASE
+                      )
+                    ORDER BY target_at_ms IS NULL ASC, target_at_ms ASC, milestones.updated_at_ms DESC
+                    LIMIT ?
+                    """,
+                    arguments: [limits.goals]
+                )
                 let weeklyRows = try Row.fetchAll(db, sql: """
                     SELECT a.*, p.id AS placement_id, p.action_id AS placement_action_id,
                            p.week_start_ms, p.planned_day_ms, p.created_at_ms AS placement_created_at_ms,
@@ -95,6 +111,7 @@ public struct HomeQuery: Sendable {
                 return HomeSnapshot(
                     conversations: conversationRows.map(Self.conversation),
                     goals: goalRows.map(Self.goal),
+                    milestones: milestoneRows.map(Self.milestone),
                     actions: actionRows.map(Self.action),
                     thisWeek: weeklyRows.map(Self.weeklyItem),
                     unresolvedPriorWeekCount: unresolved,
@@ -139,6 +156,13 @@ public struct HomeQuery: Sendable {
             dueAtMS: row["due_at_ms"],
             createdAtMS: row["created_at_ms"],
             updatedAtMS: row["updated_at_ms"]
+        )
+    }
+
+    private static func milestone(_ row: Row) -> MilestoneRecord {
+        MilestoneRecord(
+            id: row["id"], goalID: row["goal_id"], title: row["title"],
+            status: row["status"], targetAtMS: row["target_at_ms"], updatedAtMS: row["updated_at_ms"]
         )
     }
 

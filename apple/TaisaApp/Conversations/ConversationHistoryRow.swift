@@ -4,18 +4,26 @@ import TaisaStorage
 
 struct ConversationHistoryRow: View {
     let conversation: ConversationRecord
+    let preview: String?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: TaisaSpacing.tight.rawValue) {
+        VStack(alignment: .leading, spacing: 4) {
             Text(formattedDate)
-                .font(TaisaTypography.metadata.font)
+                .font(.system(size: 12, weight: .regular))
                 .foregroundStyle(TaisaColor.mutedForeground.color)
             Text(conversation.title)
-                .font(TaisaTypography.body.font.weight(.medium))
+                .font(.system(size: 16, weight: .medium))
                 .foregroundStyle(TaisaColor.foreground.color)
                 .frame(maxWidth: .infinity, alignment: .leading)
+            if let preview, !preview.isEmpty {
+                Text(preview)
+                    .font(.system(size: 14, weight: .regular))
+                    .foregroundStyle(TaisaColor.mutedForeground.color)
+                    .lineLimit(2)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
         }
-        .padding(.vertical, TaisaSpacing.compact.rawValue)
+        .padding(.vertical, 8)
         .accessibilityElement(children: .combine)
     }
 
