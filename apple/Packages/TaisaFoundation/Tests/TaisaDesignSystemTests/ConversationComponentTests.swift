@@ -17,6 +17,14 @@ struct ConversationComponentTests {
         #expect(TaisaMaterial.composer.reducedTransparencyFallback == .raisedSurface)
         #expect(TaisaSpacing.control.rawValue == 12)
         #expect(TaisaMotion.fast == 0.18)
+        #expect(TaisaControlMetric.primaryNavigationItemWidth == 56)
+        #expect(TaisaControlMetric.primaryNavigationItemHeight == 48)
+        #expect(TaisaControlMetric.standardIcon == 24)
+        #expect(TaisaTypography.navigationLabel.pointSize == 16)
+        #expect(TaisaTypography.navigationLabel.lineHeight == 24)
+        #expect(TaisaEffect.recordingGlowRadius == 20)
+        #expect(TaisaEffect.recordingGlowOpacity == 0.35)
+        #expect(TaisaRadius.historyGroup.rawValue == 20)
     }
 
     @Test func composerContractsDescribeActionsWithoutColorAlone() {
@@ -34,5 +42,10 @@ struct ConversationComponentTests {
     @Test func centralIconCatalogCoversChatsPageControls() {
         #expect(CentralIconName.magnifyingGlass != .voiceMid)
         #expect(CentralIconName.voiceMid != .chatBubbles)
+    }
+
+    @MainActor @Test func figmaEdgeFadesUseMeasuredStops() {
+        #expect(PageEdgeFade.headerOpaqueStop == 0.70)
+        #expect(PageEdgeFade.navigationOpaqueStop == 0.54565)
     }
 }

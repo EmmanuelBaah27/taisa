@@ -42,18 +42,22 @@ public struct PrimaryNavigation<Item: Hashable>: View {
                 Button { select(item) } label: {
                     HStack(spacing: TaisaSpacing.compact.rawValue) {
                         CentralIcon(icon)
-                            .frame(width: 24, height: 24)
+                            .frame(width: TaisaControlMetric.standardIcon, height: TaisaControlMetric.standardIcon)
 
                         if selection == item {
                             Text(label)
-                                .font(TaisaTypography.body.font.weight(.medium))
+                                .font(TaisaTypography.navigationLabel.font)
                                 .lineLimit(1)
                                 .transition(reduceMotion ? .identity : .opacity)
                         }
                     }
                     .foregroundStyle(selection == item ? TaisaColor.foreground.color : TaisaColor.mutedForeground.color)
                     .padding(.horizontal, TaisaSpacing.standard.rawValue)
-                    .frame(minHeight: 48)
+                    .frame(
+                        minWidth: TaisaControlMetric.primaryNavigationItemWidth,
+                        minHeight: TaisaControlMetric.primaryNavigationItemHeight
+                    )
+                    .contentShape(Capsule())
                     .background {
                         if selection == item {
                             selectedSurface
@@ -62,6 +66,7 @@ public struct PrimaryNavigation<Item: Hashable>: View {
                     }
                 }
                 .buttonStyle(.plain)
+                .contentShape(Capsule())
                 .accessibilityLabel(label)
                 .accessibilityAddTraits(selection == item ? .isSelected : [])
             }

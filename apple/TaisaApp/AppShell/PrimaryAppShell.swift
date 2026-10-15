@@ -13,6 +13,7 @@ final class PrimaryAppShellModel {
     enum NavigationDirection: Sendable, Equatable { case forward, backward }
 
     private(set) var selection: PrimaryDestination
+    private(set) var showsCareerWork = false
     private(set) var navigationDirection: NavigationDirection = .forward
     private(set) var conversationRoute: ConversationRoute?
     @ObservationIgnored private var pendingEntryIntent: ConversationEntryIntent?
@@ -29,11 +30,28 @@ final class PrimaryAppShellModel {
     var showsConversationDock: Bool { conversationRoute == nil }
 
     func select(_ destination: PrimaryDestination) {
+        if destination == .careerWork {
+            showCareerWork()
+            return
+        }
         let destinations = PrimaryDestination.allCases
         let currentIndex = destinations.firstIndex(of: selection) ?? 0
         let nextIndex = destinations.firstIndex(of: destination) ?? currentIndex
         navigationDirection = nextIndex >= currentIndex ? .forward : .backward
         selection = destination
+        showsCareerWork = false
+    }
+
+    func showCareerWork() {
+        select(.home)
+        showsCareerWork = true
+    }
+
+    func selectAdjacent(offset: Int) {
+        let destinations = PrimaryDestination.allCases
+        guard let currentIndex = destinations.firstIndex(of: selection) else { return }
+        let nextIndex = min(max(currentIndex + offset, destinations.startIndex), destinations.index(before: destinations.endIndex))
+        select(destinations[nextIndex])
     }
 
     func presentNewConversation(_ intent: ConversationEntryIntent) {
@@ -69,6 +87,7 @@ final class PrimaryAppShellModel {
 
 struct PrimaryAppShell: View {
     @State var model: PrimaryAppShellModel
+    @State private var swipeOrigin: PrimaryDestination?
     let homeModel: HomeModel
     var careerWorkModel: CareerWorkModel = CareerWorkModel(client: .init(loadOverview: { .init(active: [], paused: [], completed: [], archived: []) }))
     let conversationsModel: ConversationsModel
@@ -80,20 +99,17 @@ struct PrimaryAppShell: View {
 
     var body: some View {
         NavigationStack {
-            if model.selection == .careerWork {
-                destinationView(.careerWork)
-            } else {
-                TabView(selection: Binding(
-                    get: { model.selection },
-                    set: { destination in model.select(destination) }
-                )) {
-                    ForEach(PrimaryDestination.allCases, id: \.self) { destination in
-                        destinationView(destination)
-                            .tag(destination)
-                    }
+            TabView(selection: Binding(
+                get: { model.selection },
+                set: { destination in model.select(destination) }
+            )) {
+                ForEach(PrimaryDestination.allCases, id: \.self) { destination in
+                    destinationView(destination)
+                        .tag(destination)
                 }
-                .tabViewStyle(.page(indexDisplayMode: .never))
             }
+            .tabViewStyle(.page(indexDisplayMode: .never))
+            .simultaneousGesture(primaryPageSwipe)
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if model.showsConversationDock {
@@ -116,8 +132,9 @@ struct PrimaryAppShell: View {
                 .padding(.horizontal, TaisaSpacing.standard.rawValue)
                 .padding(.top, TaisaSpacing.section.rawValue)
                 .padding(.bottom, TaisaSpacing.compact.rawValue)
-                .background {
+                .background(alignment: .bottom) {
                     PageEdgeFade(.navigation)
+                        .frame(height: 90)
                         .ignoresSafeArea(edges: .bottom)
                 }
             }
@@ -135,6 +152,21 @@ struct PrimaryAppShell: View {
         }
     }
 
+    private var primaryPageSwipe: some Gesture {
+        DragGesture(minimumDistance: 20)
+            .onChanged { _ in
+                if swipeOrigin == nil { swipeOrigin = model.selection }
+            }
+            .onEnded { value in
+                let origin = swipeOrigin
+                swipeOrigin = nil
+                guard model.selection == origin else { return }
+                let horizontal = value.predictedEndTranslation.width
+                guard abs(horizontal) > 50, abs(horizontal) > abs(value.predictedEndTranslation.height) else { return }
+                model.selectAdjacent(offset: horizontal < 0 ? 1 : -1)
+            }
+    }
+
     @MainActor
     private func dismissConversationAndRefresh() {
         Task {
@@ -148,15 +180,19 @@ struct PrimaryAppShell: View {
     private func destinationView(_ destination: PrimaryDestination) -> some View {
         switch destination {
         case .home:
-            HomeView(
-                model: homeModel,
-                send: openHomeIntent,
-                openRecovery: openRecovery,
-                openPersonalQA: openPersonalQA,
-                openInsights: openInsights,
-                ownsNavigation: false,
-                showsRecentConversations: false
-            )
+            if model.showsCareerWork {
+                CareerWorkView(model: careerWorkModel, openRecovery: openRecovery)
+            } else {
+                HomeView(
+                    model: homeModel,
+                    send: openHomeIntent,
+                    openRecovery: openRecovery,
+                    openPersonalQA: openPersonalQA,
+                    openInsights: openInsights,
+                    ownsNavigation: false,
+                    showsRecentConversations: false
+                )
+            }
         case .careerWork:
             CareerWorkView(model: careerWorkModel, openRecovery: openRecovery)
         case .conversations:
@@ -181,13 +217,13 @@ struct PrimaryAppShell: View {
         switch intent {
         case let .conversation(id): model.openConversation(id: id, title: "Conversation")
         case let .goal(id):
-            model.select(.careerWork)
+            model.showCareerWork()
             Task { await careerWorkModel.select(.goal(id: id)) }
         case let .action(id):
-            model.select(.careerWork)
+            model.showCareerWork()
             Task { await careerWorkModel.select(.action(id: id)) }
         case let .milestone(goalID):
-            model.select(.careerWork)
+            model.showCareerWork()
             Task { await careerWorkModel.select(.goal(id: goalID)) }
         }
     }
