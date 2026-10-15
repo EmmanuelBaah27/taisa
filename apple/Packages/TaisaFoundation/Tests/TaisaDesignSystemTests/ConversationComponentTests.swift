@@ -22,7 +22,8 @@ struct ConversationComponentTests {
         #expect(TaisaControlMetric.standardIcon == 24)
         #expect(TaisaTypography.navigationLabel.pointSize == 16)
         #expect(TaisaTypography.navigationLabel.lineHeight == 24)
-        #expect(TaisaEffect.recordingGlowRadius == 20)
+        #expect(TaisaEffect.recordingGlowBlurRadius == 10)
+        #expect(TaisaEffect.recordingGlowSpread == 4)
         #expect(TaisaEffect.recordingGlowOpacity == 0.35)
         #expect(TaisaRadius.historyGroup.rawValue == 20)
     }

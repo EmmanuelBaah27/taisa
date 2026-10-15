@@ -24,7 +24,9 @@ public enum TaisaControlMetric {
 }
 
 public enum TaisaEffect {
-    public static let recordingGlowRadius: CGFloat = 20
+    /// Figma's 20px blur maps to Core Graphics' 10pt blur radius.
+    public static let recordingGlowBlurRadius: CGFloat = 10
+    public static let recordingGlowSpread: CGFloat = 4
     public static let recordingGlowOpacity: Double = 0.35
 }
 
