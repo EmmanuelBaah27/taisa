@@ -54,8 +54,8 @@ public struct PrimaryNavigation<Item: Hashable>: View {
             }
         }
         .padding(6)
-        .background(.regularMaterial, in: Capsule())
-        .overlay { Capsule().stroke(TaisaColor.border.color.opacity(0.7), lineWidth: 1) }
+        .background(TaisaColor.background.color, in: Capsule())
+        .overlay { Capsule().stroke(TaisaColor.background.color, lineWidth: 1) }
         .shadow(color: TaisaColor.foreground.color.opacity(0.04), radius: 14)
     }
 

@@ -14,6 +14,25 @@ final class ConversationsViewContractTests: XCTestCase {
         XCTAssertFalse(source.contains(".navigationTitle(\"Conversations\")"))
     }
 
+    func testChatsVisualRepairUsesDefaultTypographyAndWhiteSeparators() throws {
+        let source = try conversationsSource()
+
+        XCTAssertFalse(source.contains("design: .rounded"))
+        XCTAssertTrue(source.contains("monthHeader(group.month)"))
+        XCTAssertTrue(source.contains("TaisaTypography.metadata.font.weight(.semibold)"))
+        XCTAssertTrue(source.contains(".listRowSeparatorTint(TaisaColor.background.color)"))
+    }
+
+    func testApplicationIsLockedToLightAppearance() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let source = try String(
+            contentsOf: root.appendingPathComponent("TaisaApp/TaisaApp.swift"),
+            encoding: .utf8
+        )
+
+        XCTAssertTrue(source.contains(".preferredColorScheme(.light)"))
+    }
+
     func testConversationListUsesNativeActionsAndRequiredIdentifiers() throws {
         let source = try conversationsSource()
 
