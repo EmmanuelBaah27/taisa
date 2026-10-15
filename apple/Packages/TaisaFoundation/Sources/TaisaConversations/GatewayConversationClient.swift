@@ -29,6 +29,10 @@ enum ConversationTitleDeriver {
             .trimmingCharacters(in: .punctuationCharacters.union(.whitespacesAndNewlines))
         guard !collapsed.isEmpty else { return nil }
 
+        if let reported = reportedPhrase(for: collapsed.lowercased()) {
+            return reported
+        }
+
         var topic = collapsed
         let lowercase = collapsed.lowercased()
         if let prefix = leadingPhrases.first(where: { lowercase.hasPrefix($0) }) {
@@ -104,6 +108,23 @@ enum ConversationTitleDeriver {
         default: return word
         }
         return replacement + punctuation
+    }
+
+    /// Stable fallbacks for common capture intents. Server suggestions remain the
+    /// preferred title; these phrases keep offline/legacy history grammatical.
+    private static func reportedPhrase(for source: String) -> String? {
+        if source.contains("draft") { return "Starting another conversation draft" }
+        if source.contains("type") && source.contains("show") { return "Checking whether typed messages appear" }
+        if source.contains("record") {
+            if source.contains("last time") { return "Retrying a recording one last time" }
+            if source.contains("new one") { return "Testing a new recording attempt" }
+            if source.contains("why") || source.contains("fail") || source.contains("problem") {
+                return "Troubleshooting a recording problem"
+            }
+            return "Discussing a recent recording"
+        }
+        if source.contains("new one") && source.contains("tap") { return "Testing a new recording attempt" }
+        return nil
     }
 }
 

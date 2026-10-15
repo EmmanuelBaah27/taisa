@@ -97,26 +97,20 @@ struct PrimaryAppShell: View {
     var openInsights: () -> Void = {}
 
     var body: some View {
-        NavigationStack {
-            TabView(selection: Binding(
-                get: { model.selection },
-                set: { destination in model.select(destination) }
-            )) {
-                ForEach(PrimaryDestination.allCases, id: \.self) { destination in
-                    destinationView(destination)
-                        .tag(destination)
+        ZStack(alignment: .bottom) {
+            NavigationStack {
+                TabView(selection: Binding(
+                    get: { model.selection },
+                    set: { destination in model.select(destination) }
+                )) {
+                    ForEach(PrimaryDestination.allCases, id: \.self) { destination in
+                        destinationView(destination)
+                            .tag(destination)
+                    }
                 }
+                .tabViewStyle(.page(indexDisplayMode: .never))
             }
-            .tabViewStyle(.page(indexDisplayMode: .never))
-        }
-        .overlay(alignment: .bottom) {
-            if model.showsConversationDock {
-                PageEdgeFade(.navigation)
-                    .frame(height: 90)
-                    .ignoresSafeArea(edges: .bottom)
-            }
-        }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
+
             if model.showsConversationDock {
                 VStack(spacing: TaisaSpacing.compact.rawValue) {
                     ConversationEntryDock(
@@ -137,6 +131,11 @@ struct PrimaryAppShell: View {
                 .padding(.horizontal, TaisaSpacing.standard.rawValue)
                 .padding(.top, TaisaSpacing.section.rawValue)
                 .padding(.bottom, TaisaSpacing.compact.rawValue)
+                .background(alignment: .bottom) {
+                    PageEdgeFade(.navigation)
+                        .frame(height: 180)
+                        .ignoresSafeArea(edges: .bottom)
+                }
             }
         }
         .fullScreenCover(item: Binding(
