@@ -6,6 +6,13 @@ public enum CentralIconName: Sendable, Equatable {
     case peopleCircle
     case magnifyingGlass
     case voiceMid
+    case cross
+    case keyboard
+    case arrowUp
+    case pause
+    case play
+    case chevronDown
+    case exclamationCircle
 }
 
 /// Native rendering of the Central Icons paths used by Taisa's primary navigation.
@@ -39,6 +46,13 @@ public struct CentralIcon: View {
         case .peopleCircle: peopleCircle
         case .magnifyingGlass: magnifyingGlass
         case .voiceMid: voiceMid
+        case .cross: cross
+        case .keyboard: keyboard
+        case .arrowUp: arrowUp
+        case .pause: pause
+        case .play: play
+        case .chevronDown: chevronDown
+        case .exclamationCircle: exclamationCircle
         }
     }
 
@@ -100,5 +114,35 @@ public struct CentralIcon: View {
             path.addLine(to: segment.1)
         }
         return path
+    }
+
+    private var cross: Path {
+        var path = Path(); path.move(to: .init(x: 6, y: 6)); path.addLine(to: .init(x: 18, y: 18)); path.move(to: .init(x: 18, y: 6)); path.addLine(to: .init(x: 6, y: 18)); return path
+    }
+
+    private var keyboard: Path {
+        var path = Path(); path.addRoundedRect(in: .init(x: 3, y: 6, width: 18, height: 13), cornerSize: .init(width: 2, height: 2));
+        for x in stride(from: CGFloat(6), through: 18, by: 4) { path.move(to: .init(x: x, y: 10)); path.addLine(to: .init(x: x, y: 10.1)) }
+        path.move(to: .init(x: 7, y: 15)); path.addLine(to: .init(x: 17, y: 15)); return path
+    }
+
+    private var arrowUp: Path {
+        var path = Path(); path.move(to: .init(x: 12, y: 20)); path.addLine(to: .init(x: 12, y: 5)); path.move(to: .init(x: 6, y: 11)); path.addLine(to: .init(x: 12, y: 5)); path.addLine(to: .init(x: 18, y: 11)); return path
+    }
+
+    private var pause: Path {
+        var path = Path(); path.move(to: .init(x: 8, y: 6)); path.addLine(to: .init(x: 8, y: 18)); path.move(to: .init(x: 16, y: 6)); path.addLine(to: .init(x: 16, y: 18)); return path
+    }
+
+    private var play: Path {
+        var path = Path(); path.move(to: .init(x: 8, y: 5)); path.addLine(to: .init(x: 19, y: 12)); path.addLine(to: .init(x: 8, y: 19)); path.closeSubpath(); return path
+    }
+
+    private var chevronDown: Path {
+        var path = Path(); path.move(to: .init(x: 5, y: 9)); path.addLine(to: .init(x: 12, y: 16)); path.addLine(to: .init(x: 19, y: 9)); return path
+    }
+
+    private var exclamationCircle: Path {
+        var path = Path(); path.addEllipse(in: .init(x: 3, y: 3, width: 18, height: 18)); path.move(to: .init(x: 12, y: 7)); path.addLine(to: .init(x: 12, y: 13)); path.move(to: .init(x: 12, y: 17)); path.addLine(to: .init(x: 12, y: 17.1)); return path
     }
 }

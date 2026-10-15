@@ -58,4 +58,31 @@ struct ConversationComponentTests {
         #expect(PageEdgeFade.headerOpaqueStop == 0.40)
         #expect(PageEdgeFade.navigationOpaqueStop == 0.60)
     }
+
+    @Test func conversationHeaderAndActionBarMatchFigmaContracts() {
+        #expect(TaisaControlMetric.conversationTitleWidth == 220)
+        #expect(TaisaControlMetric.conversationRecordingControl == 56)
+        #expect(ConversationPageHeader.Contract.usesSharedHeaderFade)
+        #expect(ConversationActionBar.Availability.recording.canDiscard)
+        #expect(ConversationActionBar.Availability.recording.canSwitchToKeyboard)
+        #expect(ConversationActionBar.Availability.shortCapture.canSend == false)
+        #expect(ConversationActionBar.Availability.sendable.canSend)
+        #expect(ConversationActionBar.Availability.paused.primaryLabel == "Resume")
+        #expect(ConversationActionBar.Availability.waitingForReply.canDiscard == false)
+    }
+
+    @MainActor @Test func conversationActivityAndRecoveryRemainAccessible() {
+        #expect(ConversationActivityIndicator.animationDuration == 2)
+        #expect(ConversationActivityIndicator.Motion.reduced == .staticFrame)
+        #expect(InlineRecoveryAlert.Contract.transcription.retryLabel == "Try again")
+        #expect(InlineRecoveryAlert.Contract.transcription.cancelLabel == "Cancel")
+        #expect(TextComposer.Contract.empty.placeholder == "Reply")
+        #expect(TextComposer.Mode.processing.acceptsInput == false)
+    }
+
+    @Test func centralIconCatalogCoversConversationDetailsControls() {
+        #expect(CentralIconName.cross != .keyboard)
+        #expect(CentralIconName.arrowUp != .pause)
+        #expect(CentralIconName.play != .chevronDown)
+    }
 }
