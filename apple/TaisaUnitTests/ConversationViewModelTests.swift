@@ -11,8 +11,13 @@ final class ConversationViewModelTests: XCTestCase {
         XCTAssertTrue(ConversationTimelineMotion.animatesNewMessage(reduceMotion: false))
     }
 
-    func testKeyboardReplacementRequiresDiscardAndCancelRestoresPause() {
-        let model = ConversationViewModel.preview(composer: .paused)
+    func testNonemptyKeyboardReplacementRequiresDiscardAndCancelRestoresPause() async {
+        let client = ConversationScreenClientSpy(captureDisposition: .sendable)
+        let model = ConversationViewModel(
+            conversationID: UUID().uuidString, title: "Chat", entryIntent: nil,
+            composer: .paused, client: await client.makeClient()
+        )
+        await model.start()
 
         model.requestKeyboard()
         XCTAssertEqual(model.confirmation, .discardVoiceForKeyboard(returnTo: .paused))
@@ -204,6 +209,19 @@ final class ConversationViewModelTests: XCTestCase {
         await model.confirmDiscardRecording()
         let counts = await client.discardCounts()
         XCTAssertEqual(counts, [1, 1])
+        XCTAssertEqual(dismissed, 1)
+    }
+
+    func testCancelRecoveryClosesWithoutDiscardingRecoverableInput() async {
+        let client = ConversationScreenClientSpy()
+        var dismissed = 0
+        let model = ConversationViewModel(
+            conversationID: UUID().uuidString, title: "Chat", entryIntent: nil,
+            composer: .failure(.retryable), client: await client.makeClient(), dismiss: { dismissed += 1 }
+        )
+        model.cancelRecoveryAndClose()
+        let counts = await client.discardCounts()
+        XCTAssertEqual(counts, [0, 0])
         XCTAssertEqual(dismissed, 1)
     }
 

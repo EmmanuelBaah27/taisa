@@ -8,6 +8,11 @@ public struct InlineRecoveryAlert: View {
             message: "Your recording is safe. Try again when you’re ready.",
             cancelLabel: "Cancel", retryLabel: "Try again"
         )
+        public static let request = Contract(
+            title: "Taisa couldn’t finish this response",
+            message: "Nothing has been discarded. Try again when you’re ready.",
+            cancelLabel: "Cancel", retryLabel: "Try again"
+        )
     }
     private let contract: Contract
     private let onCancel: @MainActor () -> Void

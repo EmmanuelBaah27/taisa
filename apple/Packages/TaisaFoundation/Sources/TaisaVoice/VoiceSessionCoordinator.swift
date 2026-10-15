@@ -218,7 +218,7 @@ public actor VoiceSessionCoordinator {
         let disposition: VoiceCaptureDisposition
         if durable.stage != .capture {
             disposition = .durableProcessing
-        } else if elapsed == 0 {
+        } else if captureSnapshot?.hasAudioPayload != true {
             disposition = .empty
         } else if elapsed < VoiceCaptureSnapshot.minimumSendableDurationMilliseconds {
             disposition = .shortCapture

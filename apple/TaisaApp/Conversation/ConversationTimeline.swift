@@ -10,6 +10,7 @@ struct ConversationTimeline: View {
     let updatingResponseAfter: String?
     let correct: (MessageRecord) -> Void
     @State private var isAwayFromLatest = false
+    @State private var expandedUserMessages: Set<String> = []
 
     init(messages: [MessageRecord], updatingResponseAfter: String? = nil, correct: @escaping (MessageRecord) -> Void) {
         self.messages = messages; self.updatingResponseAfter = updatingResponseAfter; self.correct = correct
@@ -23,7 +24,7 @@ struct ConversationTimeline: View {
                         VStack(alignment: message.role == "user" ? .trailing : .leading, spacing: 4) {
                             Text(message.role == "assistant" ? "Taisa" : "You").font(.caption).foregroundStyle(.secondary)
                             messageText(message)
-                                .lineLimit(message.role == "user" ? Self.userPreviewLineLimit : nil)
+                                .lineLimit(userLineLimit(for: message))
                                 .padding(message.role == "user" ? 12 : 0)
                                 .background(message.role == "user" ? Color.secondary.opacity(0.12) : Color.clear, in: RoundedRectangle(cornerRadius: 16))
                                 .contextMenu {
@@ -33,6 +34,17 @@ struct ConversationTimeline: View {
                                             .accessibilityIdentifier("conversation.correct-transcript")
                                     }
                                 }
+                            if message.role == "user", message.body.split(separator: "\n").count > Self.userPreviewLineLimit || message.body.count > 320 {
+                                Button(expandedUserMessages.contains(message.id) ? "Show less" : "Show more") {
+                                    if expandedUserMessages.contains(message.id) {
+                                        expandedUserMessages.remove(message.id)
+                                    } else {
+                                        expandedUserMessages.insert(message.id)
+                                    }
+                                }
+                                .font(.caption.weight(.medium))
+                                .accessibilityIdentifier("conversation.message.\(message.id).expansion")
+                            }
                             if updatingResponseAfter == message.id {
                                 Text("Updating response…").font(.caption).foregroundStyle(.secondary)
                             }
@@ -75,6 +87,11 @@ struct ConversationTimeline: View {
     private func messageText(_ message: MessageRecord) -> Text {
         if message.role == "assistant", let markdown = try? AttributedString(markdown: message.body) { return Text(markdown) }
         return Text(message.body)
+    }
+
+    private func userLineLimit(for message: MessageRecord) -> Int? {
+        guard message.role == "user", !expandedUserMessages.contains(message.id) else { return nil }
+        return Self.userPreviewLineLimit
     }
 }
 

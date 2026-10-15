@@ -32,11 +32,18 @@ public struct AudioCaptureSnapshot: Sendable, Equatable {
     public let activity: AudioCaptureActivity
     public let elapsedMilliseconds: Int64
     public let meter: AudioMeterSample
+    public let hasAudioPayload: Bool
 
-    public init(activity: AudioCaptureActivity, elapsedMilliseconds: Int64, meter: AudioMeterSample) {
+    public init(
+        activity: AudioCaptureActivity,
+        elapsedMilliseconds: Int64,
+        meter: AudioMeterSample,
+        hasAudioPayload: Bool? = nil
+    ) {
         self.activity = activity
         self.elapsedMilliseconds = elapsedMilliseconds
         self.meter = meter
+        self.hasAudioPayload = hasAudioPayload ?? (activity != .prepared && elapsedMilliseconds > 0)
     }
 }
 
@@ -258,7 +265,8 @@ public actor AudioCaptureService {
         return .init(
             activity: activity,
             elapsedMilliseconds: Int64(elapsed * 1_000),
-            meter: meter
+            meter: meter,
+            hasAudioPayload: activity != .prepared && elapsed > 0
         )
     }
 

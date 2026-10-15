@@ -70,6 +70,8 @@ struct ConversationComponentTests {
         #expect(ConversationActionBar.Availability.pausedEmpty.canSend == false)
         #expect(ConversationActionBar.Availability.pausedShort.canSend == false)
         #expect(ConversationActionBar.Availability.paused.primaryLabel == "Resume")
+        #expect(ConversationActionBar.Availability.saved.canSwitchToKeyboard == false)
+        #expect(ConversationActionBar.Availability.saved.canResume == false)
         #expect(ConversationActionBar.Availability.waitingForReply.canDiscard == false)
     }
 
@@ -78,6 +80,7 @@ struct ConversationComponentTests {
         #expect(ConversationActivityIndicator.Motion.reduced == .staticFrame)
         #expect(InlineRecoveryAlert.Contract.transcription.retryLabel == "Try again")
         #expect(InlineRecoveryAlert.Contract.transcription.cancelLabel == "Cancel")
+        #expect(InlineRecoveryAlert.Contract.request.message == "Nothing has been discarded. Try again when you’re ready.")
         #expect(TextComposer.Contract.empty.placeholder == "Reply")
         #expect(TextComposer.Mode.processing.acceptsInput == false)
     }

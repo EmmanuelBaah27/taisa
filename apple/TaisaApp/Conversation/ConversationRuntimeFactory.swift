@@ -272,6 +272,12 @@ struct ConversationRuntimeFactory: Sendable {
             capture: capture,
             audio: capture
         )
+        Task {
+            let changes = await connectivity.changes()
+            for await isAvailable in changes {
+                try? await voiceCoordinator.connectivityChanged(isAvailable: isAvailable)
+            }
+        }
         let gatewayClient = GatewayConversationClient(
             store: store, deviceID: deviceID,
             coaching: GatewayCoachingRunner(configuration: configuration, recentMessages: messageHistory)

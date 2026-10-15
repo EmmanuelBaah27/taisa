@@ -15,7 +15,7 @@ public struct ConversationPageHeader: View {
                 .font(.system(.headline, weight: .semibold))
                 .lineLimit(1)
                 .truncationMode(.tail)
-                .frame(width: TaisaControlMetric.conversationTitleWidth, alignment: .leading)
+                .frame(width: TaisaControlMetric.conversationTitleWidth, alignment: .center)
             Spacer(minLength: TaisaSpacing.compact.rawValue)
             TaisaSecondaryIconButton(icon: .chevronDown, accessibilityLabel: "Close conversation", action: onDismiss)
         }

@@ -99,13 +99,22 @@ struct ConversationView: View {
                     .accessibilityIdentifier("conversation.transcript-preview")
                 }
                 ConversationProgressState(label: "Preparing coaching…")
+                TextComposer(
+                    text: $model.text, mode: .processing,
+                    onSend: {}, onVoice: {}
+                )
+                .accessibilityIdentifier("conversation.text-composer.processing")
             }
             .padding(.horizontal)
         case .waitingForReply:
             TextComposer(text: $model.text, onSend: { Task { await model.sendText() } }, onVoice: { Task { try? await model.beginVoice() } })
                 .accessibilityIdentifier("conversation.text-composer")
         case .failure:
-            InlineRecoveryAlert(onCancel: { Task { await model.discardAndClose() } }, onRetry: { Task { await model.retry() } })
+            InlineRecoveryAlert(
+                contract: .request,
+                onCancel: model.cancelRecoveryAndClose,
+                onRetry: { Task { await model.retry() } }
+            )
             .accessibilityIdentifier("conversation.retry")
         }
     }
@@ -134,7 +143,13 @@ struct ConversationView: View {
             onDiscard: model.requestDiscardRecording,
             onKeyboard: model.requestKeyboard,
             onPrimary: {
-                Task { phase == .pausedEmpty || phase == .pausedShort || phase == .paused || phase == .saved ? await model.resume() : await model.pause() }
+                Task {
+                    switch phase {
+                    case .pausedEmpty, .pausedShort, .paused: await model.resume()
+                    case .recording, .shortCapture, .sendable: await model.pause()
+                    case .preparing, .saved, .waitingForReply: break
+                    }
+                }
             },
             onSend: { Task { await model.sendVoice() } }
         )
