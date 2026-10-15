@@ -69,6 +69,9 @@ final class ConversationsViewContractTests: XCTestCase {
         XCTAssertTrue(source.contains("if !showsDraftsOnly || snapshot.drafts.isEmpty"))
         XCTAssertTrue(source.contains(".listSectionMargins(.horizontal, 0)"))
         XCTAssertTrue(source.contains(".scrollIndicators(.hidden)"))
+        XCTAssertTrue(source.contains(".contentMargins(.top, TaisaSpacing.section.rawValue"))
+        XCTAssertTrue(source.contains(".listSectionSpacing(TaisaSpacing.standard.rawValue)"))
+        XCTAssertTrue(source.contains(".padding(.bottom, TaisaSpacing.compact.rawValue)"))
         XCTAssertFalse(source.contains("} header: {"))
     }
 
