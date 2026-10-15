@@ -40,6 +40,7 @@ struct ConversationsView: View {
         }
         .background(TaisaColor.background.color)
         .toolbar(.hidden, for: .navigationBar)
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("conversations.root")
         .task { if model.state == .idle { await model.load() } }
         .confirmationDialog(
