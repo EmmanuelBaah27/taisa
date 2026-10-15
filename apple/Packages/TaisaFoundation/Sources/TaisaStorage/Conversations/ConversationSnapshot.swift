@@ -1,10 +1,20 @@
 public struct ConversationIndexSnapshot: Sendable, Equatable {
     public let drafts: [ConversationDraftRecord]
     public let conversations: [ConversationRecord]
+    public let lastMessagePreviews: [String: String]
 
-    public init(drafts: [ConversationDraftRecord], conversations: [ConversationRecord]) {
+    public init(
+        drafts: [ConversationDraftRecord],
+        conversations: [ConversationRecord],
+        lastMessagePreviews: [String: String] = [:]
+    ) {
         self.drafts = drafts
         self.conversations = conversations
+        self.lastMessagePreviews = lastMessagePreviews
+    }
+
+    public func lastMessagePreview(for conversationID: String) -> String? {
+        lastMessagePreviews[UUIDIdentity.normalizedOrOriginal(conversationID)]
     }
 }
 

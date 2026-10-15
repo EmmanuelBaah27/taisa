@@ -19,8 +19,11 @@ final class ConversationsViewContractTests: XCTestCase {
 
         XCTAssertFalse(source.contains("design: .rounded"))
         XCTAssertTrue(source.contains("monthHeader(group.month)"))
-        XCTAssertTrue(source.contains("TaisaTypography.metadata.font.weight(.semibold)"))
+        XCTAssertTrue(source.contains(".system(size: 14, weight: .medium)"))
         XCTAssertTrue(source.contains(".listRowSeparatorTint(TaisaColor.background.color)"))
+        XCTAssertTrue(source.contains(".lineLimit(2)"))
+        XCTAssertTrue(source.contains("preview: snapshot.lastMessagePreview"))
+        XCTAssertTrue(source.contains(".frame(height: 48)"))
     }
 
     func testApplicationIsLockedToLightAppearance() throws {

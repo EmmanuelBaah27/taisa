@@ -98,7 +98,7 @@ struct PrimaryAppShell: View {
                     .accessibilityIdentifier("app-shell.conversation-dock")
 
                     PrimaryNavigation(
-                        items: PrimaryDestination.allCases.map { ($0, $0.title, $0.systemImage) },
+                        items: PrimaryDestination.allCases.map { ($0, $0.title, $0.icon) },
                         selection: Binding(
                             get: { model.selection },
                             set: { model.select($0) }
@@ -124,12 +124,7 @@ struct PrimaryAppShell: View {
 
     private var destinationTransition: AnyTransition {
         guard !reduceMotion else { return .identity }
-        let insertion: Edge = model.navigationDirection == .forward ? .trailing : .leading
-        let removal: Edge = model.navigationDirection == .forward ? .leading : .trailing
-        return .asymmetric(
-            insertion: .move(edge: insertion).combined(with: .opacity),
-            removal: .move(edge: removal).combined(with: .opacity)
-        )
+        return .opacity
     }
 
     @MainActor
@@ -183,6 +178,9 @@ struct PrimaryAppShell: View {
         case let .action(id):
             model.select(.careerWork)
             Task { await careerWorkModel.select(.action(id: id)) }
+        case let .milestone(goalID):
+            model.select(.careerWork)
+            Task { await careerWorkModel.select(.goal(id: goalID)) }
         }
     }
 }
