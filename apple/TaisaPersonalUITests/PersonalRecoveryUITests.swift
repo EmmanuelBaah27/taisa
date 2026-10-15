@@ -20,9 +20,9 @@ import XCTest
         app.launchArguments = ["--taisa-seed-finalized-voice-draft"]
         app.launch()
 
-        let conversations = app.buttons["Conversations"]
-        XCTAssertTrue(conversations.waitForExistence(timeout: 10))
-        conversations.tap()
+        let chats = app.buttons["Chats"]
+        XCTAssertTrue(chats.waitForExistence(timeout: 10))
+        chats.tap()
         let list = app.descendants(matching: .any)["conversations.root"]
         XCTAssertTrue(list.waitForExistence(timeout: 10))
         list.swipeDown()
