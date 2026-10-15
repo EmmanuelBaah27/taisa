@@ -3,6 +3,20 @@ import XCTest
 
 @MainActor
 final class PrimaryAppShellTests: XCTestCase {
+    func testConversationDestinationUsesChatsAsItsUserFacingName() {
+        XCTAssertEqual(PrimaryDestination.conversations.title, "Chats")
+    }
+
+    func testPrimaryDestinationSelectionRecordsHorizontalTravelDirection() {
+        let model = PrimaryAppShellModel(selection: .home)
+
+        model.select(.conversations)
+        XCTAssertEqual(model.navigationDirection, .forward)
+
+        model.select(.home)
+        XCTAssertEqual(model.navigationDirection, .backward)
+    }
+
     func testCareerWorkIsAStablePrimaryDestination() {
         XCTAssertTrue(PrimaryDestination.allCases.contains(.careerWork))
         XCTAssertEqual(PrimaryDestination.careerWork.title, "Career Work")

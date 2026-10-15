@@ -23,4 +23,9 @@ struct ConversationComponentTests {
         #expect(ConversationFailureActions.Contract.retryable.retryLabel == "Retry request")
         #expect(TextComposer.Contract.empty.voiceLabel == "Reply by voice, starts recording")
     }
+
+    @Test func primaryNavigationMotionFallsBackToAnInstantAccessibleTransition() {
+        #expect(PrimaryNavigationMotion.transition(reduceMotion: false) == .spatial)
+        #expect(PrimaryNavigationMotion.transition(reduceMotion: true) == .instant)
+    }
 }
