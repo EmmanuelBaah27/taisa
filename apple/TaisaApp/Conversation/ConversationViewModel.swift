@@ -433,7 +433,8 @@ final class ConversationViewModel {
     }
 
     func requestCorrection(_ message: MessageRecord) {
-        guard !actionInFlight, message.role == "user", correctionMessageID == nil else { return }
+        guard !actionInFlight, message.role == "user", correctionMessageID == nil,
+              correctionRegenerationMessageID == nil else { return }
         correctionMessageID = message.id
         correctionText = message.body
         correctionOriginalText = message.body
@@ -443,7 +444,7 @@ final class ConversationViewModel {
         correctionMessageID = nil
         correctionText = ""
         correctionOriginalText = ""
-        submittedCorrectionText = nil
+        if correctionRegenerationMessageID == nil { submittedCorrectionText = nil }
     }
 
     func submitCorrection() async {
@@ -469,9 +470,10 @@ final class ConversationViewModel {
             } else {
                 try await client.correctTranscript(messageID, correctedText)
             }
-            cancelCorrection()
             await reloadMessages()
             correctionRegenerationMessageID = nil
+            submittedCorrectionText = nil
+            cancelCorrection()
             composer = .waitingForReply
         } catch {
             composer = .failure(.retryable)

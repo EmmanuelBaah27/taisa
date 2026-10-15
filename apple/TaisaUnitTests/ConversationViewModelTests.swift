@@ -188,6 +188,24 @@ final class ConversationViewModelTests: XCTestCase {
         XCTAssertNil(model.correctionMessageID)
     }
 
+    func testCancellingFailedCorrectionDoesNotAllowReplacingPendingRequest() async {
+        let client = ConversationScreenClientSpy(correctionFails: true)
+        let original = message(role: "user", body: "Original")
+        let model = ConversationViewModel(
+            conversationID: original.conversationID, title: "Chat", entryIntent: nil,
+            client: await client.makeClient(messages: [original])
+        )
+        await model.start()
+        model.requestCorrection(original)
+        model.correctionText = "First correction"
+        await model.submitCorrection()
+
+        model.cancelCorrection()
+        model.requestCorrection(original)
+
+        XCTAssertNil(model.correctionMessageID)
+    }
+
     func testCorrectionRequiresUserMessageAndChangedNonemptyText() {
         let user = message(role: "user", body: "Complete original text")
         let assistant = message(role: "assistant", body: "Reply")
