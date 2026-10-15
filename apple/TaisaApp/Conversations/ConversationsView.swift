@@ -91,14 +91,8 @@ struct ConversationsView: View {
         .padding(.horizontal, TaisaSpacing.standard.rawValue)
         .frame(height: TaisaControlMetric.appBarHeight)
         .background {
-            TaisaColor.background.color
-                .ignoresSafeArea(edges: [.top, .horizontal])
-        }
-        .overlay(alignment: .bottom) {
             PageEdgeFade(.header)
-                .frame(height: TaisaSpacing.compact.rawValue)
-                .opacity(TaisaEffect.headerFadeOpacity)
-                .offset(y: TaisaSpacing.compact.rawValue)
+                .ignoresSafeArea(edges: .horizontal)
         }
         .zIndex(1)
     }
@@ -204,10 +198,17 @@ struct ConversationsView: View {
         .accessibilityHint("Search is not available yet")
         .accessibilityIdentifier("chats.search")
 
-        button
-            .buttonStyle(.plain)
-            .background(.regularMaterial, in: Circle())
-            .contentShape(Circle())
+        if #available(iOS 26.0, macOS 26.0, *) {
+            button
+                .buttonStyle(.plain)
+                .glassEffect(.regular.interactive(), in: Circle())
+                .contentShape(Circle())
+        } else {
+            button
+                .buttonStyle(.plain)
+                .background(.regularMaterial, in: Circle())
+                .contentShape(Circle())
+        }
     }
 
     @ViewBuilder private var draftsButton: some View {
@@ -224,10 +225,17 @@ struct ConversationsView: View {
         .accessibilityValue(showsDraftsOnly ? "Showing drafts" : "Showing all chats")
         .accessibilityIdentifier("chats.drafts-filter")
 
-        button
-            .buttonStyle(.plain)
-            .background(.regularMaterial, in: Capsule())
-            .contentShape(Capsule())
+        if #available(iOS 26.0, macOS 26.0, *) {
+            button
+                .buttonStyle(.plain)
+                .glassEffect(.regular.interactive(), in: Capsule())
+                .contentShape(Capsule())
+        } else {
+            button
+                .buttonStyle(.plain)
+                .background(.regularMaterial, in: Capsule())
+                .contentShape(Capsule())
+        }
     }
 
     private func monthHeader(_ month: String) -> some View {
