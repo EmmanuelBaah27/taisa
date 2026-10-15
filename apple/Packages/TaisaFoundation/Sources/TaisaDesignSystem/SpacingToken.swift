@@ -20,7 +20,7 @@ public enum TaisaControlMetric {
     public static let primaryNavigationItemWidth: CGFloat = 56
     public static let primaryNavigationItemHeight: CGFloat = 48
     public static let recordingButtonWidth: CGFloat = 104
-    public static let recordingButtonHeight: CGFloat = 56
+    public static let recordingButtonHeight: CGFloat = 48
 }
 
 public enum TaisaEffect {
