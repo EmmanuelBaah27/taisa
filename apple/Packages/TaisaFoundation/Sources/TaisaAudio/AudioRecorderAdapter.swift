@@ -7,6 +7,7 @@ public protocol AudioRecorderAdapting: Sendable {
     func stop() async throws -> AudioRecordingSummary
     func cancel() async
     func meter() async -> AudioMeterSample
+    func elapsedTime() async -> TimeInterval
 }
 
 #if canImport(AVFoundation)
@@ -66,6 +67,8 @@ public actor SystemAudioRecorderAdapter: AudioRecorderAdapting {
         recorder.updateMeters()
         return .init(averagePower: recorder.averagePower(forChannel: 0), peakPower: recorder.peakPower(forChannel: 0))
     }
+
+    public func elapsedTime() async -> TimeInterval { recorder?.currentTime ?? 0 }
 }
 #else
 public actor SystemAudioRecorderAdapter: AudioRecorderAdapting {
@@ -76,5 +79,6 @@ public actor SystemAudioRecorderAdapter: AudioRecorderAdapting {
     public func stop() async throws -> AudioRecordingSummary { throw AudioCaptureError.unsupportedPlatform }
     public func cancel() async {}
     public func meter() async -> AudioMeterSample { .init(averagePower: -160, peakPower: -160) }
+    public func elapsedTime() async -> TimeInterval { 0 }
 }
 #endif

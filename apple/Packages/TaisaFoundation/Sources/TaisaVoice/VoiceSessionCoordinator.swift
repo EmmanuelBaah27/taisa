@@ -43,6 +43,7 @@ public protocol VoiceCoachingRunning: Sendable {
 
 public protocol VoiceCaptureControlling: Sendable {
     func events() async -> AsyncStream<AudioCaptureEvent>
+    func snapshot(turnID: UUID) async throws -> AudioCaptureSnapshot
     func prepare(turnID: UUID) async throws -> String
     func start(turnID: UUID) async throws
     func pause(turnID: UUID) async throws
@@ -51,6 +52,16 @@ public protocol VoiceCaptureControlling: Sendable {
     func cancel(turnID: UUID) async throws
     func discard(turnID: UUID) async throws
     func release(turnID: UUID) async throws
+}
+
+public extension VoiceCaptureControlling {
+    func snapshot(turnID: UUID) async throws -> AudioCaptureSnapshot {
+        .init(
+            activity: .prepared,
+            elapsedMilliseconds: 0,
+            meter: .init(averagePower: -160, peakPower: -160)
+        )
+    }
 }
 
 public protocol VoiceAudioDeleting: Sendable {
@@ -69,19 +80,55 @@ public protocol CoachingReconciliationLookingUp: Sendable {
     func authorizeRetry(requestID: UUID) async throws
 }
 
+public enum VoiceCaptureDisposition: Sendable, Equatable {
+    case empty
+    case shortCapture
+    case sendable
+    case durableProcessing
+}
+
+public struct VoiceCaptureSnapshot: Sendable, Equatable {
+    public static let minimumSendableDurationMilliseconds: Int64 = 1_000
+
+    public let activity: AudioCaptureActivity
+    public let elapsedMilliseconds: Int64
+    public let meter: AudioMeterSample
+    public let disposition: VoiceCaptureDisposition
+
+    public init(
+        activity: AudioCaptureActivity,
+        elapsedMilliseconds: Int64,
+        meter: AudioMeterSample,
+        disposition: VoiceCaptureDisposition
+    ) {
+        self.activity = activity
+        self.elapsedMilliseconds = elapsedMilliseconds
+        self.meter = meter
+        self.disposition = disposition
+    }
+}
+
 public struct VoiceSessionSnapshot: Sendable, Equatable, CustomStringConvertible, CustomReflectable {
     public let durable: VoiceTurnRecord
     public let partialTranscript: String
     public let partialCoaching: String
+    public let capture: VoiceCaptureSnapshot
 
     public init(
         durable: VoiceTurnRecord,
         partialTranscript: String,
-        partialCoaching: String
+        partialCoaching: String,
+        capture: VoiceCaptureSnapshot = .init(
+            activity: .prepared,
+            elapsedMilliseconds: 0,
+            meter: .init(averagePower: -160, peakPower: -160),
+            disposition: .empty
+        )
     ) {
         self.durable = durable
         self.partialTranscript = partialTranscript
         self.partialCoaching = partialCoaching
+        self.capture = capture
     }
 
     public var requiresResumeConfirmation: Bool {
@@ -165,11 +212,29 @@ public actor VoiceSessionCoordinator {
         self.nowMS = nowMS
     }
 
-    public func snapshot() -> VoiceSessionSnapshot {
-        VoiceSessionSnapshot(
+    public func snapshot() async -> VoiceSessionSnapshot {
+        let captureSnapshot = try? await capture.snapshot(turnID: currentTurnID())
+        let elapsed = captureSnapshot?.elapsedMilliseconds ?? durable.audioDurationMS ?? 0
+        let disposition: VoiceCaptureDisposition
+        if durable.stage != .capture {
+            disposition = .durableProcessing
+        } else if elapsed == 0 {
+            disposition = .empty
+        } else if elapsed < VoiceCaptureSnapshot.minimumSendableDurationMilliseconds {
+            disposition = .shortCapture
+        } else {
+            disposition = .sendable
+        }
+        return VoiceSessionSnapshot(
             durable: durable,
             partialTranscript: partialTranscript,
-            partialCoaching: partialCoaching
+            partialCoaching: partialCoaching,
+            capture: .init(
+                activity: captureSnapshot?.activity ?? .prepared,
+                elapsedMilliseconds: elapsed,
+                meter: captureSnapshot?.meter ?? .init(averagePower: -160, peakPower: -160),
+                disposition: disposition
+            )
         )
     }
 
