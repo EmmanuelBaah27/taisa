@@ -20,6 +20,7 @@ struct ConversationComponentTests {
         #expect(TaisaControlMetric.primaryNavigationItemWidth == 56)
         #expect(TaisaControlMetric.primaryNavigationItemHeight == 48)
         #expect(TaisaControlMetric.standardIcon == 24)
+        #expect(TaisaControlMetric.recordingButtonWidth == 48)
         #expect(TaisaControlMetric.recordingButtonHeight == 48)
         #expect(TaisaTypography.navigationLabel.pointSize == 16)
         #expect(TaisaTypography.navigationLabel.lineHeight == 24)
