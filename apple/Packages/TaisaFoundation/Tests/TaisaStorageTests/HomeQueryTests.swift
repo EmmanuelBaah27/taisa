@@ -49,6 +49,32 @@ private actor HomeQueryKeys: DatabaseKeyStore {
         #expect(try await HomeQuery(store: fixture.store).load().isEmpty)
     }
 
+    @Test func excludesMilestonesWhoseParentGoalIsTombstoned() async throws {
+        let fixture = try await makeStore()
+        defer { fixture.cleanup() }
+        let goalID = UUID().uuidString
+        let milestoneID = UUID().uuidString
+        try await fixture.store.write { db in
+            try db.execute(
+                sql: "INSERT INTO goals VALUES (?, 'Deleted goal', '', 'active', 1, 1)",
+                arguments: [goalID]
+            )
+            try db.execute(
+                sql: "INSERT INTO milestones (id, goal_id, title, status, updated_at_ms) VALUES (?, ?, 'Hidden milestone', 'open', 1)",
+                arguments: [milestoneID, goalID]
+            )
+            try db.execute(
+                sql: "INSERT INTO tombstones VALUES (?, 'goal', ?, ?, 2)",
+                arguments: [UUID().uuidString, goalID, UUID().uuidString]
+            )
+        }
+
+        let snapshot = try await HomeQuery(store: fixture.store).load()
+
+        #expect(snapshot.goals.isEmpty)
+        #expect(snapshot.milestones.isEmpty)
+    }
+
     @Test func combinedSnapshotIncludesWeeklyWorkAndOnlyGroundedLeadInsight() async throws {
         let fixture = try await makeStore()
         defer { fixture.cleanup() }

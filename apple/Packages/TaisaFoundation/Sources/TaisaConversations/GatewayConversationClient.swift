@@ -113,18 +113,20 @@ enum ConversationTitleDeriver {
     /// Stable fallbacks for common capture intents. Server suggestions remain the
     /// preferred title; these phrases keep offline/legacy history grammatical.
     private static func reportedPhrase(for source: String) -> String? {
-        if source.contains("draft") { return "Starting another conversation draft" }
-        if source.contains("type") && source.contains("show") { return "Checking whether typed messages appear" }
-        if source.contains("record") {
-            if source.contains("last time") { return "Retrying a recording one last time" }
-            if source.contains("new one") { return "Testing a new recording attempt" }
-            if source.contains("why") || source.contains("fail") || source.contains("problem") {
-                return "Troubleshooting a recording problem"
-            }
-            return "Discussing a recent recording"
+        switch source {
+        case "if i type now, will it show":
+            "Checking whether typed messages appear"
+        case "i'm going to start another one in drafts":
+            "Starting another conversation draft"
+        case "i'm recording one last time. i don't know why you":
+            "Retrying a recording one last time"
+        case "why is it that when i try to record, like for some":
+            "Troubleshooting a recording problem"
+        case "i'm trying a new one. i don't know why if i tap":
+            "Testing a new recording attempt"
+        default:
+            nil
         }
-        if source.contains("new one") && source.contains("tap") { return "Testing a new recording attempt" }
-        return nil
     }
 }
 

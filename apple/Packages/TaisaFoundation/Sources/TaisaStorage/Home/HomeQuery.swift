@@ -73,6 +73,10 @@ public struct HomeQuery: Sendable {
                         SELECT 1 FROM tombstones
                         WHERE entity_type = 'milestone' AND entity_id = milestones.id COLLATE NOCASE
                       )
+                      AND NOT EXISTS (
+                        SELECT 1 FROM tombstones
+                        WHERE entity_type = 'goal' AND entity_id = goals.id COLLATE NOCASE
+                      )
                     ORDER BY target_at_ms IS NULL ASC, target_at_ms ASC, milestones.updated_at_ms DESC
                     LIMIT ?
                     """,

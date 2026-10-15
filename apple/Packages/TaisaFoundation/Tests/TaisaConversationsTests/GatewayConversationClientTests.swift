@@ -50,6 +50,17 @@ struct GatewayConversationClientTests {
         #expect(ConversationTitleDeriver.derive(from: "I'm trying a new one. I don't know why if I tap") == "Testing a new recording attempt")
     }
 
+    @Test func ordinaryTopicsContainingFixtureKeywordsKeepTheirActualSubject() {
+        #expect(
+            ConversationTitleDeriver.derive(from: "Review my draft promotion packet")
+                == "Discussing Review their draft promotion packet"
+        )
+        #expect(
+            ConversationTitleDeriver.derive(from: "We achieved record sales this quarter")
+                == "Discussing We achieved record sales this quarter"
+        )
+    }
+
     @Test func completedVoiceConversationAppearsInHistory() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
