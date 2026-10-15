@@ -8,6 +8,31 @@ import TaisaStorage
 
 @Suite("Voice session coordinator")
 struct VoiceSessionCoordinatorTests {
+    @Test("snapshot distinguishes empty short sendable and durable processing capture")
+    func snapshotDistinguishesCaptureDisposition() async throws {
+        let capture = SnapshotCapture(elapsedMilliseconds: 0)
+        let coordinator = VoiceSessionCoordinator(
+            initial: turn(state: .recording, stage: .capture),
+            checkpoints: CheckpointSpy(), transcription: TranscriptionSpy(events: []),
+            coaching: CoachingSpy(), connectivity: ConnectivitySpy(available: true),
+            reconciliation: ReconciliationSpy(.safeToRetry), capture: capture, audio: NoopAudio()
+        )
+
+        #expect(await coordinator.snapshot().capture.disposition == .empty)
+        await capture.setElapsedMilliseconds(999)
+        #expect(await coordinator.snapshot().capture.disposition == .shortCapture)
+        await capture.setElapsedMilliseconds(1_000)
+        #expect(await coordinator.snapshot().capture.disposition == .sendable)
+
+        let processing = VoiceSessionCoordinator(
+            initial: turn(state: .queued, stage: .transcription),
+            checkpoints: CheckpointSpy(), transcription: TranscriptionSpy(events: []),
+            coaching: CoachingSpy(), connectivity: ConnectivitySpy(available: false),
+            reconciliation: ReconciliationSpy(.safeToRetry), capture: capture, audio: NoopAudio()
+        )
+        #expect(await processing.snapshot().capture.disposition == .durableProcessing)
+    }
+
     @Test("explicit retry restarts terminal coaching without retranscribing")
     func explicitRetryRestartsTerminalCoachingWithoutRetranscribing() async throws {
         let transcription = TranscriptionSpy(events: [])
@@ -330,6 +355,30 @@ private actor NoopCapture: VoiceCaptureControlling {
     func resume(turnID: UUID) async throws {}
     func finalize(turnID: UUID) async throws -> FinalizedVoiceAudio {
         .init(fileID: "audio-1", sha256: "abc", durationMS: 1_000)
+    }
+    func cancel(turnID: UUID) async throws {}
+    func discard(turnID: UUID) async throws {}
+    func release(turnID: UUID) async throws {}
+}
+
+private actor SnapshotCapture: VoiceCaptureControlling {
+    private var elapsedMilliseconds: Int64
+    init(elapsedMilliseconds: Int64) { self.elapsedMilliseconds = elapsedMilliseconds }
+    func setElapsedMilliseconds(_ value: Int64) { elapsedMilliseconds = value }
+    func snapshot(turnID: UUID) async throws -> AudioCaptureSnapshot {
+        .init(
+            activity: .recording,
+            elapsedMilliseconds: elapsedMilliseconds,
+            meter: .init(averagePower: -18, peakPower: -6)
+        )
+    }
+    func events() -> AsyncStream<AudioCaptureEvent> { AsyncStream { $0.finish() } }
+    func prepare(turnID: UUID) async throws -> String { "audio-1" }
+    func start(turnID: UUID) async throws {}
+    func pause(turnID: UUID) async throws {}
+    func resume(turnID: UUID) async throws {}
+    func finalize(turnID: UUID) async throws -> FinalizedVoiceAudio {
+        .init(fileID: "audio-1", sha256: "abc", durationMS: elapsedMilliseconds)
     }
     func cancel(turnID: UUID) async throws {}
     func discard(turnID: UUID) async throws {}

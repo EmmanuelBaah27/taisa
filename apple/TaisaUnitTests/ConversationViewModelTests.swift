@@ -1,6 +1,7 @@
 import XCTest
 import TaisaConversations
 import TaisaStorage
+import TaisaVoice
 @testable import Taisa
 
 @MainActor
@@ -10,8 +11,13 @@ final class ConversationViewModelTests: XCTestCase {
         XCTAssertTrue(ConversationTimelineMotion.animatesNewMessage(reduceMotion: false))
     }
 
-    func testKeyboardReplacementRequiresDiscardAndCancelRestoresPause() {
-        let model = ConversationViewModel.preview(composer: .paused)
+    func testNonemptyKeyboardReplacementRequiresDiscardAndCancelRestoresPause() async {
+        let client = ConversationScreenClientSpy(captureDisposition: .sendable)
+        let model = ConversationViewModel(
+            conversationID: UUID().uuidString, title: "Chat", entryIntent: nil,
+            composer: .paused, client: await client.makeClient()
+        )
+        await model.start()
 
         model.requestKeyboard()
         XCTAssertEqual(model.confirmation, .discardVoiceForKeyboard(returnTo: .paused))
@@ -26,6 +32,19 @@ final class ConversationViewModelTests: XCTestCase {
         model.requestClose()
 
         XCTAssertEqual(model.confirmation, .saveDiscardOrCancel)
+    }
+
+    func testShortCaptureCloseOffersDiscardOrKeepRecordingWithoutSave() async {
+        let client = ConversationScreenClientSpy(captureDisposition: .shortCapture)
+        let model = ConversationViewModel(
+            conversationID: UUID().uuidString, title: "Chat", entryIntent: nil,
+            composer: .recording, client: await client.makeClient()
+        )
+        await model.start()
+
+        model.requestClose()
+
+        XCTAssertEqual(model.confirmation, .discardShortOrKeepRecording)
     }
 
     func testEmptyCloseDismissesWithoutCreatingDraft() async {
@@ -130,11 +149,12 @@ final class ConversationViewModelTests: XCTestCase {
 
     func testFailedCorrectionRemainsAvailableForRetry() async {
         let client = ConversationScreenClientSpy(correctionFails: true)
-        let model = ConversationViewModel(
-            conversationID: UUID().uuidString, title: "New conversation", entryIntent: nil,
-            client: await client.makeClient()
-        )
         let original = message(role: "user", body: "Original")
+        let model = ConversationViewModel(
+            conversationID: original.conversationID, title: "New conversation", entryIntent: nil,
+            client: await client.makeClient(messages: [original])
+        )
+        await model.start()
         model.requestCorrection(original)
         model.correctionText = "Corrected"
 
@@ -143,6 +163,124 @@ final class ConversationViewModelTests: XCTestCase {
         XCTAssertEqual(model.composer, .failure(.retryable))
         XCTAssertEqual(model.correctionMessageID, original.id)
         XCTAssertEqual(model.correctionText, "Corrected")
+        XCTAssertEqual(model.messages.first?.body, "Corrected")
+    }
+
+    func testCorrectionRetryReusesPendingRequestInsteadOfCreatingAnotherCorrection() async {
+        let client = ConversationScreenClientSpy(correctionFails: true)
+        let original = message(role: "user", body: "Original")
+        let model = ConversationViewModel(
+            conversationID: original.conversationID, title: "Chat", entryIntent: nil,
+            client: await client.makeClient(messages: [original])
+        )
+        await model.start()
+        model.requestCorrection(original)
+        model.correctionText = "Corrected"
+
+        await model.submitCorrection()
+        model.correctionText = "A different correction"
+        XCTAssertFalse(model.canSubmitCorrection)
+        model.correctionText = "Corrected"
+        await model.submitCorrection()
+
+        let counts = await client.correctionRequestCounts()
+        XCTAssertEqual(counts, [1, 1])
+        XCTAssertNil(model.correctionMessageID)
+    }
+
+    func testCancellingFailedCorrectionDoesNotAllowReplacingPendingRequest() async {
+        let client = ConversationScreenClientSpy(correctionFails: true)
+        let original = message(role: "user", body: "Original")
+        let model = ConversationViewModel(
+            conversationID: original.conversationID, title: "Chat", entryIntent: nil,
+            client: await client.makeClient(messages: [original])
+        )
+        await model.start()
+        model.requestCorrection(original)
+        model.correctionText = "First correction"
+        await model.submitCorrection()
+
+        model.cancelCorrection()
+        model.requestCorrection(original)
+
+        XCTAssertNil(model.correctionMessageID)
+
+        await model.retry()
+        model.requestCorrection(original)
+
+        XCTAssertEqual(model.correctionMessageID, original.id)
+    }
+
+    func testCorrectionRequiresUserMessageAndChangedNonemptyText() {
+        let user = message(role: "user", body: "Complete original text")
+        let assistant = message(role: "assistant", body: "Reply")
+        let model = ConversationViewModel.preview(composer: .waitingForReply, messages: [user, assistant])
+
+        model.requestCorrection(assistant)
+        XCTAssertNil(model.correctionMessageID)
+        model.requestCorrection(user)
+        XCTAssertEqual(model.correctionText, "Complete original text")
+        XCTAssertFalse(model.canSubmitCorrection)
+        model.correctionText = "   "
+        XCTAssertFalse(model.canSubmitCorrection)
+        model.correctionText = "Corrected complete text"
+        XCTAssertTrue(model.canSubmitCorrection)
+    }
+
+    func testOnlyOneCorrectionCanBeEditedAtATime() {
+        let first = message(role: "user", body: "First")
+        let second = message(role: "user", body: "Second")
+        let model = ConversationViewModel.preview(composer: .waitingForReply, messages: [first, second])
+        model.requestCorrection(first)
+        model.requestCorrection(second)
+        XCTAssertEqual(model.correctionMessageID, first.id)
+        XCTAssertEqual(model.correctionText, "First")
+    }
+
+    func testCaptureDispositionDrivesApprovedPagePhases() async {
+        let cases: [(VoiceCaptureDisposition, ConversationViewModel.PagePhase)] = [
+            (.empty, .empty), (.shortCapture, .shortCapture), (.sendable, .sendable),
+        ]
+        for (disposition, expected) in cases {
+            let client = ConversationScreenClientSpy(captureDisposition: disposition)
+            let model = ConversationViewModel(
+                conversationID: UUID().uuidString, title: "New chat", entryIntent: nil,
+                composer: .recording, client: await client.makeClient()
+            )
+            await model.start()
+            XCTAssertEqual(model.pagePhase, expected)
+        }
+        XCTAssertEqual(ConversationViewModel.preview(composer: .paused).pagePhase, .paused)
+        XCTAssertEqual(ConversationViewModel.preview(composer: .savedVoiceDraft).pagePhase, .saved)
+        XCTAssertEqual(ConversationViewModel.preview(composer: .typing("")).pagePhase, .text)
+        XCTAssertEqual(ConversationViewModel.preview(composer: .transcribing).pagePhase, .durableProcessing)
+    }
+
+    func testEmptyRecordingDiscardCleansUpProvisionalChatAndDismisses() async {
+        let client = ConversationScreenClientSpy(captureDisposition: .empty)
+        var dismissed = 0
+        let model = ConversationViewModel(
+            conversationID: UUID().uuidString, title: "New chat", entryIntent: nil,
+            composer: .recording, client: await client.makeClient(), dismiss: { dismissed += 1 }
+        )
+        await model.start()
+        await model.confirmDiscardRecording()
+        let counts = await client.discardCounts()
+        XCTAssertEqual(counts, [1, 1])
+        XCTAssertEqual(dismissed, 1)
+    }
+
+    func testCancelRecoveryClosesWithoutDiscardingRecoverableInput() async {
+        let client = ConversationScreenClientSpy()
+        var dismissed = 0
+        let model = ConversationViewModel(
+            conversationID: UUID().uuidString, title: "Chat", entryIntent: nil,
+            composer: .failure(.retryable), client: await client.makeClient(), dismiss: { dismissed += 1 }
+        )
+        model.cancelRecoveryAndClose()
+        let counts = await client.discardCounts()
+        XCTAssertEqual(counts, [0, 0])
+        XCTAssertEqual(dismissed, 1)
     }
 
     func testFailedTextSendSavesAsTextDraft() async {
@@ -202,10 +340,16 @@ private actor ConversationScreenClientSpy {
     let correctionFails: Bool
     private(set) var beginVoiceCount = 0
     private var saved: ConversationInput?
+    private let captureDisposition: VoiceCaptureDisposition
+    private var discardedDraftCount = 0
+    private var discardedConversationCount = 0
+    private var correctionRequestCount = 0
+    private var retryCount = 0
 
-    init(messages: [MessageRecord] = [], correctionFails: Bool = false) {
+    init(messages: [MessageRecord] = [], correctionFails: Bool = false, captureDisposition: VoiceCaptureDisposition = .empty) {
         self.messages = messages
         self.correctionFails = correctionFails
+        self.captureDisposition = captureDisposition
     }
 
     func makeClient(messages: [MessageRecord]? = nil) -> ConversationScreenClient {
@@ -214,9 +358,15 @@ private actor ConversationScreenClientSpy {
             loadMessages: { loaded },
             beginVoice: { [self] in await recordBegin() },
             pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
-            sendText: { _ in }, retry: {}, saveDraft: { [self] input in await save(input) }, discardDraft: {},
-            correctTranscript: { [correctionFails] _, _ in
+            sendText: { _ in }, retry: { [self] in await recordRetry() }, saveDraft: { [self] input in await save(input) },
+            discardDraft: { [self] in await recordDraftDiscard() },
+            discardEmptyConversation: { [self] in await recordConversationDiscard() },
+            correctTranscript: { [self, correctionFails] _, _ in
+                await recordCorrectionRequest()
                 if correctionFails { throw ConversationFailure.retryable }
+            },
+            loadCaptureSnapshot: { [captureDisposition] in
+                .init(activity: .recording, elapsedMilliseconds: 0, meter: .init(averagePower: -160, peakPower: -160), disposition: captureDisposition)
             }
         )
     }
@@ -224,4 +374,10 @@ private actor ConversationScreenClientSpy {
     private func save(_ input: ConversationInput) { saved = input }
     func count() -> Int { beginVoiceCount }
     func savedInput() -> ConversationInput? { saved }
+    private func recordDraftDiscard() { discardedDraftCount += 1 }
+    private func recordConversationDiscard() { discardedConversationCount += 1 }
+    func discardCounts() -> [Int] { [discardedDraftCount, discardedConversationCount] }
+    private func recordCorrectionRequest() { correctionRequestCount += 1 }
+    private func recordRetry() { retryCount += 1 }
+    func correctionRequestCounts() -> [Int] { [correctionRequestCount, retryCount] }
 }

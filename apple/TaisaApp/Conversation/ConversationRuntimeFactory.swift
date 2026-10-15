@@ -314,6 +314,8 @@ struct ConversationRuntimeFactory: Sendable {
             beginVoice: { try await coordinator.beginReply(mode: .voice) },
             pauseVoice: { try await coordinator.pauseVoice() },
             resumeVoice: { try await coordinator.resumeVoice() },
+            retryPauseVoice: { try await voiceCoordinator.retryCapturePause() },
+            retryResumeVoice: { try await voiceCoordinator.retryCaptureResume() },
             sendVoice: { transcriptAvailable in
                 try await coordinator.sendVoice(onTranscriptAvailable: transcriptAvailable)
                 let snapshot = try await query.loadConversation(id: route.id)
@@ -358,6 +360,26 @@ struct ConversationRuntimeFactory: Sendable {
             },
             correctTranscript: { messageID, text in
                 try await coordinator.correctTranscript(messageID: messageID, text: text)
+            },
+            loadCaptureSnapshot: { await voiceCoordinator.snapshot().capture },
+            loadPartialCoaching: { await voiceCoordinator.snapshot().partialCoaching },
+            recoveryEvents: {
+                AsyncStream { continuation in
+                    let task = Task {
+                        let changes = await connectivity.changes()
+                        for await isAvailable in changes where isAvailable {
+                            let before = await voiceCoordinator.snapshot().durable.state
+                            guard before != .completed else { continue }
+                            try? await voiceCoordinator.connectivityChanged(isAvailable: true)
+                            await voiceCoordinator.waitForIdle()
+                            if await voiceCoordinator.snapshot().durable.state == .completed {
+                                continuation.yield(())
+                            }
+                        }
+                        continuation.finish()
+                    }
+                    continuation.onTermination = { _ in task.cancel() }
+                }
             }
         )
         return await ConversationViewModel(

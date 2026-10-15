@@ -67,6 +67,10 @@ public actor AudioCaptureController: VoiceCaptureControlling, VoiceAudioDeleting
 
     public func events() -> AsyncStream<AudioCaptureEvent> { eventStream }
 
+    public func snapshot(turnID: UUID) async throws -> AudioCaptureSnapshot {
+        try await service.snapshot(turnID: turnID)
+    }
+
     public func prepare(turnID: UUID) async throws -> String {
         let pending = try await service.prepare(turnID: turnID)
         return pending.fileID.uuidString.lowercased()

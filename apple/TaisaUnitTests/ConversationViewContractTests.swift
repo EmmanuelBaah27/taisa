@@ -83,6 +83,12 @@ final class ConversationViewContractTests: XCTestCase {
         XCTAssertTrue(source.contains("ScrollViewReader"))
         XCTAssertTrue(source.contains("onChange(of: messages.last?.id"))
         XCTAssertTrue(source.contains("latestUserTranscript"))
+        XCTAssertTrue(source.contains("contextMenu"))
+        XCTAssertTrue(source.contains("Copy"))
+        XCTAssertTrue(source.contains("Edit"))
+        XCTAssertTrue(source.contains("userPreviewLineLimit = 6"))
+        XCTAssertTrue(source.contains("Updating response…"))
+        XCTAssertTrue(source.contains("Jump to latest"))
         XCTAssertFalse(source.contains("import GRDB"))
     }
 }

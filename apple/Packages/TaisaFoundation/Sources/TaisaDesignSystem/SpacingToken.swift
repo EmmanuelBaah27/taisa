@@ -25,6 +25,8 @@ public enum TaisaControlMetric {
     public static let recordingButtonHeight: CGFloat = 48
     public static let primaryNavigationReservedHeight: CGFloat = 152
     public static let chatPreviewLineHeight: CGFloat = 20
+    public static let conversationTitleWidth: CGFloat = 220
+    public static let conversationRecordingControl: CGFloat = 56
 }
 
 public enum TaisaEffect {
