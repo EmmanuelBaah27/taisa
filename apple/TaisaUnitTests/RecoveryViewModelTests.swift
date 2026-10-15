@@ -34,6 +34,22 @@ final class RecoveryViewModelTests: XCTestCase {
         XCTAssertTrue(recoverySource.contains("recovery.runtime.close"))
         XCTAssertTrue(appRootSource.contains("recovery.unavailable"))
         XCTAssertTrue(appRootSource.contains("Open backup and recovery"))
+        XCTAssertTrue(appRootSource.contains("runtime.reloadAfterRestore()"))
+    }
+
+    func testEveryProductRecoveryRouteRequiresAReopenCallback() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let recoverySource = try String(
+            contentsOf: root.appendingPathComponent("TaisaApp/Recovery/RecoveryView.swift"),
+            encoding: .utf8
+        )
+        let personalQASource = try String(
+            contentsOf: root.appendingPathComponent("TaisaApp/PersonalDeviceQAView.swift"),
+            encoding: .utf8
+        )
+
+        XCTAssertFalse(recoverySource.contains("restoreSucceeded: @escaping @MainActor @Sendable () async -> Bool = { true }"))
+        XCTAssertTrue(personalQASource.contains("RecoveryView(restoreSucceeded: restoreSucceeded)"))
     }
 
     // Break caught: an unauthenticated caller can submit or reveal recovery material.
@@ -93,6 +109,51 @@ final class RecoveryViewModelTests: XCTestCase {
         XCTAssertEqual(model.state, .success)
         XCTAssertTrue(try fixture.transferFiles().isEmpty)
         _ = try await fixture.backend.openStore()
+    }
+
+    func testSuccessfulRestoreNotifiesTheRuntimeAfterPromotion() async throws {
+        let fixture = try await RecoveryFixture()
+        defer { fixture.remove() }
+        let key = try RecoveryKey.generate()
+        let archive = fixture.root.appendingPathComponent("runtime-reload.taisa-backup")
+        _ = try await fixture.snapshot.createPortableArchive(at: archive, recoveryKey: key)
+        var didRestore = false
+        let model = RecoveryViewModel(
+            backend: fixture.backend,
+            authenticate: { true },
+            restoreSucceeded: { didRestore = true; return true }
+        )
+
+        await model.selectImport(archive)
+        await model.authenticateImport()
+        await model.submitKey(key.formatted)
+        await model.confirmRestore(replace: true)
+
+        XCTAssertEqual(model.state, .success)
+        XCTAssertTrue(didRestore)
+    }
+
+    func testRestoreReportsFailureWhenTheRuntimeCannotReopenPromotedData() async throws {
+        let fixture = try await RecoveryFixture()
+        defer { fixture.remove() }
+        let key = try RecoveryKey.generate()
+        let archive = fixture.root.appendingPathComponent("runtime-reload-failure.taisa-backup")
+        _ = try await fixture.snapshot.createPortableArchive(at: archive, recoveryKey: key)
+        var didAttemptReopen = false
+        let model = RecoveryViewModel(
+            backend: fixture.backend,
+            authenticate: { true },
+            restoreSucceeded: { didAttemptReopen = true; return false }
+        )
+
+        await model.selectImport(archive)
+        await model.authenticateImport()
+        await model.submitKey(key.formatted)
+        await model.confirmRestore(replace: true)
+
+        XCTAssertEqual(model.state, .failure)
+        XCTAssertTrue(didAttemptReopen)
+        XCTAssertEqual(model.message, "Backup restored, but Taisa could not reopen it safely. Reopen Taisa to recover.")
     }
 
     // Break caught: double tap starts concurrent work or late auth revives a hidden scene.
@@ -229,7 +290,7 @@ final class RecoveryViewModelTests: XCTestCase {
         let fixture = try await RecoveryFixture()
         defer { fixture.remove() }
         let model = fixture.model()
-        let host = UIHostingController(rootView: RecoveryView(model: model)
+        let host = UIHostingController(rootView: RecoveryView(model: model, restoreSucceeded: { true })
             .environment(\.dynamicTypeSize, .accessibility5)
             .environment(\.scenePhase, .active))
         host.traitOverrides.userInterfaceIdiom = .pad

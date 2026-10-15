@@ -3,6 +3,7 @@ import XCTest
 import TaisaHome
 import TaisaStorage
 import TaisaVoice
+import TaisaYou
 @testable import Taisa
 
 @MainActor
@@ -168,6 +169,18 @@ final class AppRuntimeTests: XCTestCase {
         XCTAssertNil(configuration)
     }
 
+    func testOperationalFactsRemainHonestWithoutLiveHealthProof() {
+        let facts = AppRuntime.operationalFacts(
+            hasGatewayConfiguration: true,
+            microphone: .denied
+        )
+
+        XCTAssertEqual(facts.store, .healthy)
+        XCTAssertEqual(facts.recovery, .unknown)
+        XCTAssertEqual(facts.microphone, .denied)
+        XCTAssertEqual(facts.gateway, .unknown)
+    }
+
     func testLiveRuntimeUsesMutationCapableLocalHomeClient() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let source = try String(
@@ -187,6 +200,7 @@ final class AppRuntimeTests: XCTestCase {
         XCTAssertNotNil(runtime.homeModel)
         XCTAssertNotNil(runtime.careerWorkModel)
         XCTAssertNotNil(runtime.insightsModel)
+        XCTAssertNotNil(runtime.youModel)
     }
 
     func testStorageFailuresRouteToRecovery() async {
@@ -197,6 +211,7 @@ final class AppRuntimeTests: XCTestCase {
             XCTAssertNil(runtime.homeModel)
             XCTAssertNil(runtime.careerWorkModel)
             XCTAssertNil(runtime.insightsModel)
+            XCTAssertNil(runtime.youModel)
         }
     }
 
@@ -212,6 +227,25 @@ final class AppRuntimeTests: XCTestCase {
         let recoveredState = await runtime.retryRecovery()
         XCTAssertEqual(recoveredState, .ready)
         XCTAssertNotNil(runtime.homeModel)
+        XCTAssertNotNil(runtime.youModel)
+    }
+
+    func testSuccessfulRestoreRebuildsEveryRuntimeClient() async {
+        let attempts = StartAttempts()
+        let runtime = AppRuntime(start: {
+            _ = await attempts.next()
+            return .test(home: HomeClient { HomeSnapshot(conversations: [], goals: [], actions: []) })
+        })
+
+        let startedState = await runtime.start()
+        XCTAssertEqual(startedState, .ready)
+        let originalYouModel = try! XCTUnwrap(runtime.youModel)
+
+        let restoredState = await runtime.reloadAfterRestore()
+        XCTAssertEqual(restoredState, .ready)
+        let attemptCount = await attempts.value
+        XCTAssertEqual(attemptCount, 2)
+        XCTAssertFalse(originalYouModel === runtime.youModel)
     }
 
     func testMissingKeyRouteDoesNotTouchExistingStoreBytes() async throws {
@@ -256,6 +290,7 @@ private extension AppRuntime.Clients {
     static func test(home: HomeClient) -> Self {
         .init(
             home: home,
+            you: YouClient(load: { .init(profile: nil, diagnostics: .unknown) }),
             insights: InsightsClient(load: { .empty }, detail: { insight in
                 .init(insight: insight, sources: [], revisions: [])
             })
@@ -266,4 +301,5 @@ private extension AppRuntime.Clients {
 private actor StartAttempts {
     private var count = 0
     func next() -> Int { count += 1; return count }
+    var value: Int { count }
 }

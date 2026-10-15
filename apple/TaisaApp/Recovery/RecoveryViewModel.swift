@@ -17,6 +17,7 @@ final class RecoveryViewModel {
     let divergenceWarning = "Changes made independently on this device, including newer changes, will be lost. Choose one authoritative device and avoid editing both copies between transfers."
     private let backend: PersonalRecoveryBackend
     private let authenticate: @MainActor () async throws -> Bool
+    private let restoreSucceeded: @MainActor @Sendable () async -> Bool
     private var restoring = false
     private var generation = UUID()
     private var operation: Task<Void, Never>?
@@ -26,8 +27,14 @@ final class RecoveryViewModel {
     private var suspendedKey: RecoveryKey?
     private var suspendedSetup: RecoverySetupState?
 
-    init(backend: PersonalRecoveryBackend, authenticate: @escaping @MainActor () async throws -> Bool = RecoveryViewModel.deviceAuthentication) {
-        self.backend = backend; self.authenticate = authenticate
+    init(
+        backend: PersonalRecoveryBackend,
+        authenticate: @escaping @MainActor () async throws -> Bool = RecoveryViewModel.deviceAuthentication,
+        restoreSucceeded: @escaping @MainActor @Sendable () async -> Bool = { true }
+    ) {
+        self.backend = backend
+        self.authenticate = authenticate
+        self.restoreSucceeded = restoreSucceeded
     }
 
     var isBusy: Bool { [.authenticating, .creating, .validating, .restoring, .systemExport, .finishing].contains(state) || operation != nil || cleanupTask != nil }
@@ -159,7 +166,12 @@ final class RecoveryViewModel {
             do {
                 try await self.backend.promote(confirmed: replace)
                 try await self.backend.cleanup()
-                self.state = .success; self.message = "Backup restored. Stored securely on this device."
+                if await self.restoreSucceeded() {
+                    self.state = .success
+                    self.message = "Backup restored. Stored securely on this device."
+                } else {
+                    self.fail("Backup restored, but Taisa could not reopen it safely. Reopen Taisa to recover.")
+                }
             } catch {
                 try? await self.backend.cleanup()
                 self.fail("Restore could not finish. Reopen Taisa to recover safely before trying again.")

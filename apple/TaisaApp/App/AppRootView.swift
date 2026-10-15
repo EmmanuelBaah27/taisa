@@ -1,7 +1,18 @@
+import Observation
 import SwiftUI
+
+@MainActor
+@Observable
+final class AppRootPresentationModel {
+    private(set) var showsUserRecovery = false
+
+    func openUserRecovery() { showsUserRecovery = true }
+    func closeUserRecovery() { showsUserRecovery = false }
+}
 
 struct AppRootView: View {
     @State var runtime: AppRuntime
+    @State private var presentation = AppRootPresentationModel()
     @State private var showsPersonalQA = false
     @State private var showsInsights = false
     @State private var startsProductVoiceAfterQA = false
@@ -23,7 +34,8 @@ struct AppRootView: View {
                             careerWorkModel: careerWorkModel,
                             conversationsModel: conversationsModel,
                             conversationFactory: runtime.conversationFactory,
-                            openRecovery: runtime.requireRecovery,
+                            youModel: runtime.youModel,
+                            openRecovery: presentation.openUserRecovery,
                             openPersonalQA: personalQAAction,
                             openInsights: { showsInsights = true }
                         )
@@ -44,7 +56,7 @@ struct AppRootView: View {
                 PersonalDeviceQAView(openProductVoice: {
                     startsProductVoiceAfterQA = true
                     showsPersonalQA = false
-                })
+                }, restoreSucceeded: { await runtime.reloadAfterRestore() == .ready })
             }
         }
 #endif
@@ -53,13 +65,29 @@ struct AppRootView: View {
                 NavigationStack { InsightsView(model: model) }
             }
         }
+        .sheet(isPresented: Binding(
+            get: { presentation.showsUserRecovery },
+            set: { if !$0 { presentation.closeUserRecovery() } }
+        )) {
+            NavigationStack {
+                RecoveryView(
+                    dismissRuntimeRecovery: presentation.closeUserRecovery,
+                    restoreSucceeded: {
+                        let state = await runtime.reloadAfterRestore()
+                        if state == .ready { presentation.closeUserRecovery() }
+                        return state == .ready
+                    }
+                )
+            }
+        }
     }
 
     private var runtimeRecovery: some View {
         NavigationStack {
             RecoveryView(
                 retryRuntime: { Task { await runtime.retryRecovery() } },
-                dismissRuntimeRecovery: { showsRuntimeRecovery = false }
+                dismissRuntimeRecovery: { showsRuntimeRecovery = false },
+                restoreSucceeded: { await runtime.reloadAfterRestore() == .ready }
             )
             .accessibilityIdentifier("home.recovery")
         }

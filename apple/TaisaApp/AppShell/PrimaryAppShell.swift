@@ -5,6 +5,7 @@ import TaisaCareerWork
 import TaisaHome
 import TaisaConversations
 import TaisaStorage
+import TaisaYou
 
 @MainActor
 @Observable
@@ -65,6 +66,7 @@ struct PrimaryAppShell: View {
     var careerWorkModel: CareerWorkModel = CareerWorkModel(client: .init(loadOverview: { .init(active: [], paused: [], completed: [], archived: []) }))
     let conversationsModel: ConversationsModel
     let conversationFactory: ConversationRuntimeFactory?
+    var youModel: YouModel? = nil
     var openRecovery: () -> Void = {}
     var openPersonalQA: (() -> Void)?
     var openInsights: () -> Void = {}
@@ -139,13 +141,13 @@ struct PrimaryAppShell: View {
                 openRecovery: openRecovery
             )
         case .you:
-            ContentUnavailableView(
-                "You",
-                systemImage: "person",
-                description: Text("Your settings and preferences will appear here.")
-            )
-            .navigationTitle("You")
-            .accessibilityIdentifier("you.root")
+            if let youModel {
+                YouView(model: youModel, openRecovery: openRecovery)
+            } else {
+                ContentUnavailableView("You is unavailable", systemImage: "person.crop.circle.badge.exclamationmark", description: Text("Your local profile could not be opened."))
+                    .navigationTitle("You")
+                    .accessibilityIdentifier("you.unavailable")
+            }
         }
     }
 
