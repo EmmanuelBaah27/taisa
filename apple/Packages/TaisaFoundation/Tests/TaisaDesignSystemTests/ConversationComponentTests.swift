@@ -32,6 +32,7 @@ struct ConversationComponentTests {
         #expect(TaisaEffect.headerFadeOpacity == 0.72)
         #expect(TaisaEffect.navigationFadeOpacity == 0.72)
         #expect(TaisaEffect.edgeFadeBlurOpacity == 0.42)
+        #expect(TaisaControlMetric.appBarHeight == 64)
         #expect(TaisaControlMetric.headerActionHeight == 48)
         #expect(TaisaRadius.historyGroup.rawValue == 20)
     }

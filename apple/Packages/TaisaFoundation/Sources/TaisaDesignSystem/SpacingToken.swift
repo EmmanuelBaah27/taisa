@@ -17,6 +17,7 @@ public enum TaisaMotion {
 
 public enum TaisaControlMetric {
     public static let standardIcon: CGFloat = 24
+    public static let appBarHeight: CGFloat = 64
     public static let headerActionHeight: CGFloat = 48
     public static let primaryNavigationItemWidth: CGFloat = 56
     public static let primaryNavigationItemHeight: CGFloat = 48
