@@ -17,6 +17,36 @@ final class PrimaryAppShellTests: XCTestCase {
         XCTAssertEqual(model.navigationDirection, .backward)
     }
 
+    func testCareerWorkStaysInsideHomeWithoutLeavingThePrimaryPager() {
+        let model = PrimaryAppShellModel(selection: .conversations)
+
+        model.showCareerWork()
+
+        XCTAssertEqual(model.selection, .home)
+        XCTAssertTrue(model.showsCareerWork)
+
+        model.select(.conversations)
+        XCTAssertFalse(model.showsCareerWork)
+    }
+
+    func testAdjacentPagingCoversEveryDestinationInBothDirections() {
+        let model = PrimaryAppShellModel(selection: .home)
+
+        model.selectAdjacent(offset: 1)
+        XCTAssertEqual(model.selection, .conversations)
+        model.selectAdjacent(offset: 1)
+        XCTAssertEqual(model.selection, .you)
+        model.selectAdjacent(offset: 1)
+        XCTAssertEqual(model.selection, .you)
+
+        model.selectAdjacent(offset: -1)
+        XCTAssertEqual(model.selection, .conversations)
+        model.selectAdjacent(offset: -1)
+        XCTAssertEqual(model.selection, .home)
+        model.selectAdjacent(offset: -1)
+        XCTAssertEqual(model.selection, .home)
+    }
+
     func testPrimaryNavigationMatchesTheThreeDestinationProductArchitecture() {
         XCTAssertEqual(PrimaryDestination.allCases, [.home, .conversations, .you])
     }
@@ -50,8 +80,11 @@ final class PrimaryAppShellTests: XCTestCase {
         XCTAssertTrue(source.contains("TabView(selection:"))
         XCTAssertTrue(source.contains(".tabViewStyle(.page(indexDisplayMode: .never))"))
         XCTAssertTrue(source.contains("model.select(destination)"))
-        XCTAssertTrue(source.contains("if model.selection == .careerWork"))
+        XCTAssertFalse(source.contains("if model.selection == .careerWork"))
+        XCTAssertTrue(source.contains("model.showsCareerWork"))
         XCTAssertTrue(source.contains("PageEdgeFade(.navigation)"))
+        XCTAssertTrue(source.contains(".frame(height: 90)"))
+        XCTAssertFalse(source.contains(".background {\n                    PageEdgeFade(.navigation)"))
     }
 
     func testVoiceEntryIntentIsConsumedOnlyOnce() {

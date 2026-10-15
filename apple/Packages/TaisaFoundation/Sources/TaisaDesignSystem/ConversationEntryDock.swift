@@ -24,10 +24,12 @@ public struct ConversationEntryDock: View {
                 .buttonStyle(.glassProminent)
                 .buttonBorderShape(.capsule)
                 .tint(TaisaColor.primaryAction.color)
+                .recordingGlow()
         } else {
             voiceButton
                 .buttonStyle(.plain)
                 .background(TaisaColor.primaryAction.color, in: Capsule())
+                .recordingGlow()
         }
     }
 
@@ -35,10 +37,22 @@ public struct ConversationEntryDock: View {
         Button(action: onVoice) {
             CentralIcon(.voiceMid)
                 .foregroundStyle(TaisaColor.foreground.color)
-                .frame(width: 20, height: 20)
-                .frame(width: 104, height: 56)
+                .frame(width: TaisaControlMetric.standardIcon, height: TaisaControlMetric.standardIcon)
+                .frame(
+                    width: TaisaControlMetric.recordingButtonWidth,
+                    height: TaisaControlMetric.recordingButtonHeight
+                )
         }
         .accessibilityLabel(Contract.preview.voiceAccessibilityLabel)
         .disabled(disabled)
+    }
+}
+
+private extension View {
+    func recordingGlow() -> some View {
+        shadow(
+            color: TaisaColor.primaryAction.color.opacity(TaisaEffect.recordingGlowOpacity),
+            radius: TaisaEffect.recordingGlowRadius
+        )
     }
 }

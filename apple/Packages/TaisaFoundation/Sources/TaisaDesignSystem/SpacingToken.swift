@@ -15,9 +15,23 @@ public enum TaisaMotion {
     public static let fast: Double = 0.18
 }
 
+public enum TaisaControlMetric {
+    public static let standardIcon: CGFloat = 24
+    public static let primaryNavigationItemWidth: CGFloat = 56
+    public static let primaryNavigationItemHeight: CGFloat = 48
+    public static let recordingButtonWidth: CGFloat = 104
+    public static let recordingButtonHeight: CGFloat = 56
+}
+
+public enum TaisaEffect {
+    public static let recordingGlowRadius: CGFloat = 20
+    public static let recordingGlowOpacity: Double = 0.35
+}
+
 public enum TaisaRadius: CGFloat, CaseIterable, Sendable {
     case control = 12
     case panel = 16
+    case historyGroup = 20
     case composer = 24
     case circular = 9_999
 }

@@ -6,6 +6,21 @@ public enum TaisaTypography: String, CaseIterable, Sendable {
     case body
     case label
     case metadata
+    case navigationLabel
+
+    public var pointSize: CGFloat {
+        switch self {
+        case .navigationLabel: 16
+        default: 0
+        }
+    }
+
+    public var lineHeight: CGFloat {
+        switch self {
+        case .navigationLabel: 24
+        default: 0
+        }
+    }
 
     public var font: Font {
         switch self {
@@ -19,6 +34,8 @@ public enum TaisaTypography: String, CaseIterable, Sendable {
             .system(.subheadline, design: .rounded, weight: .semibold)
         case .metadata:
             .system(.caption, design: .rounded, weight: .regular)
+        case .navigationLabel:
+            .system(size: pointSize, weight: .medium, design: .default)
         }
     }
 }

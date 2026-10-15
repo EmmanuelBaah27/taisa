@@ -23,8 +23,14 @@ struct ConversationHistoryRow: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-        .padding(.vertical, TaisaSpacing.control.rawValue)
+        .padding(TaisaSpacing.standard.rawValue)
+        .background(TaisaColor.subtleSurface.color)
+        .overlay(alignment: .bottom) {
+            TaisaColor.background.color
+                .frame(height: 2)
+        }
         .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("conversation.history.row.\(conversation.id)")
     }
 
     private var formattedDate: String {

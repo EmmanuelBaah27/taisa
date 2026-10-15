@@ -7,7 +7,7 @@ final class ConversationsViewContractTests: XCTestCase {
 
         for contract in [
             "Text(\"Chats\")", "chats.search", "chats.drafts-filter",
-            "List", "listRowBackground", "TaisaRadius.panel"
+            "List", "listRowBackground", "TaisaRadius.historyGroup"
         ] {
             XCTAssertTrue(source.contains(contract), "Missing Figma Chats contract: \(contract)")
         }
@@ -26,20 +26,27 @@ final class ConversationsViewContractTests: XCTestCase {
         XCTAssertTrue(source.contains(".frame(height: 48)"))
     }
 
-    func testChatsRowsUseTwelvePointVerticalPaddingAndFullWidthDividers() throws {
+    func testChatsRowsMatchTheMeasuredFigmaRecord() throws {
         let source = try conversationsSource()
 
-        XCTAssertTrue(source.contains(".padding(.vertical, TaisaSpacing.control.rawValue)"))
-        XCTAssertTrue(source.contains(".alignmentGuide(.listRowSeparatorLeading) { _ in 0 }"))
-        XCTAssertTrue(source.contains(".alignmentGuide(.listRowSeparatorTrailing) { dimensions in dimensions.width }"))
+        XCTAssertTrue(source.contains(".padding(TaisaSpacing.standard.rawValue)"))
+        XCTAssertTrue(source.contains(".frame(height: 2)"))
+        XCTAssertTrue(source.contains(".listRowInsets(EdgeInsets())"))
+        XCTAssertTrue(source.contains(".listStyle(.plain)"))
+        XCTAssertTrue(source.contains("TaisaColor.subtleSurface.color"))
+        XCTAssertTrue(source.contains(".padding(.horizontal, TaisaSpacing.content.rawValue)"))
+        XCTAssertTrue(source.contains("TaisaRadius.historyGroup.rawValue"))
     }
 
     func testChatsControlsUseCentralIconsLiquidGlassAndHeaderFade() throws {
         let source = try conversationsSource()
 
         XCTAssertTrue(source.contains("CentralIcon(.magnifyingGlass)"))
+        XCTAssertTrue(source.contains(".frame(width: 24, height: 24)"))
         XCTAssertTrue(source.contains(".buttonStyle(.glass)"))
         XCTAssertTrue(source.contains("PageEdgeFade(.header)"))
+        XCTAssertTrue(source.contains(".frame(height: 72)"))
+        XCTAssertFalse(source.contains(".offset(y: TaisaSpacing.section.rawValue)"))
         XCTAssertFalse(source.contains("Image(systemName: \"magnifyingglass\")"))
     }
 
@@ -59,6 +66,18 @@ final class ConversationsViewContractTests: XCTestCase {
         )
 
         XCTAssertTrue(source.contains(".preferredColorScheme(.light)"))
+    }
+
+    func testChatsVisualQAExercisesTheRealAppShell() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let source = try String(
+            contentsOf: root.appendingPathComponent("TaisaApp/App/AppRootView.swift"),
+            encoding: .utf8
+        )
+
+        XCTAssertTrue(source.contains("--taisa-chats-visual-qa"))
+        XCTAssertTrue(source.contains("PrimaryAppShellModel(selection: .conversations)"))
+        XCTAssertTrue(source.contains("chatsVisualQASnapshot"))
     }
 
     func testConversationListUsesNativeActionsAndRequiredIdentifiers() throws {

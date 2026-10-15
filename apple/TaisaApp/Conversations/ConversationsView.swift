@@ -89,11 +89,9 @@ struct ConversationsView: View {
             }
         }
         .padding(.horizontal, TaisaSpacing.content.rawValue)
-        .padding(.vertical, TaisaSpacing.control.rawValue)
-        .overlay(alignment: .bottom) {
+        .frame(height: 72)
+        .background {
             PageEdgeFade(.header)
-                .frame(height: TaisaSpacing.section.rawValue)
-                .offset(y: TaisaSpacing.section.rawValue)
         }
         .zIndex(1)
     }
@@ -129,7 +127,7 @@ struct ConversationsView: View {
                 if !showsDraftsOnly || snapshot.drafts.isEmpty {
                     ForEach(groupedConversations(snapshot.conversations), id: \.month) { group in
                         Section {
-                            ForEach(group.conversations, id: \.id) { conversation in
+                            ForEach(Array(group.conversations.enumerated()), id: \.element.id) { index, conversation in
                             Button { open(conversation) } label: {
                                 ConversationHistoryRow(
                                     conversation: conversation,
@@ -137,10 +135,9 @@ struct ConversationsView: View {
                                 )
                             }
                                 .buttonStyle(.plain)
-                                .listRowBackground(TaisaColor.selectedSurface.color)
-                                .listRowSeparatorTint(TaisaColor.background.color)
-                                .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
-                                .alignmentGuide(.listRowSeparatorTrailing) { dimensions in dimensions.width }
+                                .listRowInsets(EdgeInsets())
+                                .listRowBackground(historyRowBackground(index: index, count: group.conversations.count))
+                                .listRowSeparator(.hidden)
                                 .swipeActions {
                                     Button("Delete", role: .destructive) { confirmation = .delete(conversation) }
                                     Button("Rename") { beginRename(conversation) }.tint(.accentColor)
@@ -157,14 +154,12 @@ struct ConversationsView: View {
                         }
                         .listSectionMargins(.horizontal, 0)
                     }
-                    .accessibilityIdentifier("conversations.history")
                 }
                 if isRefreshing { ProgressView().frame(maxWidth: .infinity) }
             }
-            .listStyle(.insetGrouped)
+            .listStyle(.plain)
             .scrollContentBackground(.hidden)
-            .contentMargins(.horizontal, TaisaSpacing.content.rawValue, for: .scrollContent)
-            .clipShape(RoundedRectangle(cornerRadius: TaisaRadius.panel.rawValue))
+            .padding(.horizontal, TaisaSpacing.content.rawValue)
             .refreshable { await model.load() }
         case let .failure(issue):
             ContentUnavailableView {
@@ -184,7 +179,7 @@ struct ConversationsView: View {
     @ViewBuilder private var searchButton: some View {
         let button = Button(action: {}) {
             CentralIcon(.magnifyingGlass)
-                .frame(width: 20, height: 20)
+                .frame(width: 24, height: 24)
                 .frame(width: 48, height: 48)
         }
         .accessibilityLabel("Search chats")
@@ -225,6 +220,21 @@ struct ConversationsView: View {
             .foregroundStyle(TaisaColor.mutedForeground.color)
             .textCase(nil)
             .frame(maxWidth: .infinity, alignment: .leading)
+            .listRowInsets(EdgeInsets())
+            .accessibilityIdentifier("conversations.history")
+    }
+
+    private func historyRowBackground(index: Int, count: Int) -> some View {
+        let radius = TaisaRadius.historyGroup.rawValue
+        return TaisaColor.subtleSurface.color
+            .clipShape(
+                UnevenRoundedRectangle(
+                    topLeadingRadius: index == 0 ? radius : 0,
+                    bottomLeadingRadius: index == count - 1 ? radius : 0,
+                    bottomTrailingRadius: index == count - 1 ? radius : 0,
+                    topTrailingRadius: index == 0 ? radius : 0
+                )
+            )
     }
 
     private var hasDrafts: Bool {
