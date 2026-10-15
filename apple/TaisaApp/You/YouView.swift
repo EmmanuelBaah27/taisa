@@ -73,7 +73,6 @@ struct YouView: View {
     @ViewBuilder private func destinationView(_ destination: YouDestination, snapshot: YouSnapshot) -> some View {
         switch destination {
         case .careerProfile: CareerProfileView(model: model, profile: snapshot.profile, issue: model.state.issue)
-        case .capabilities: CapabilityOverviewView(model: model, snapshot: snapshot, issue: model.state.issue)
         case .privacyPermissions: PrivacyPermissionsView(facts: snapshot.diagnostics)
         case .backupRecovery:
             List { Button("Open backup and recovery", action: openRecovery) }
@@ -120,47 +119,6 @@ private struct CareerProfileView: View {
     }
 }
 
-private struct CapabilityOverviewView: View {
-    @Bindable var model: YouModel
-    let snapshot: YouSnapshot
-    let issue: YouIssue?
-    var body: some View {
-        List {
-            if let issue {
-                Label(issue.guidance, systemImage: "exclamationmark.triangle")
-                    .accessibilityIdentifier("you.capabilities.issue")
-            }
-            ForEach(snapshot.capabilities) { capability in
-                Section(capability.id.title) {
-                    Picker("Your choice", selection: Binding(
-                        get: { capability.chosenState },
-                        set: { requested in Task { await model.requestCapabilityChange(capability.id, to: requested) } }
-                    )) {
-                        ForEach(CapabilityGovernanceState.allCases, id: \.self) { state in
-                            Text(state.rawValue.capitalized).tag(state)
-                        }
-                    }
-                    LabeledContent("Availability", value: capability.availability.rawValue.capitalized)
-                }
-            }
-        }
-        .navigationTitle("Capabilities")
-        .confirmationDialog(
-            "Confirm capability change",
-            isPresented: Binding(
-                get: { model.pendingCapabilityReview != nil },
-                set: { if !$0 { model.cancelCapabilityChange() } }
-            ),
-            titleVisibility: .visible
-        ) {
-            Button("Confirm") { Task { await model.confirmCapabilityChange() } }
-            Button("Cancel", role: .cancel) { model.cancelCapabilityChange() }
-        } message: {
-            Text("This changes how much responsibility Taisa may take. You can reduce it again at any time.")
-        }
-    }
-}
-
 private struct PrivacyPermissionsView: View {
     let facts: YouOperationalFacts
     private var microphone: YouPermissionGuidance { .microphone(facts.microphone) }
@@ -194,16 +152,6 @@ private struct DiagnosticsSummaryView: View {
             LabeledContent(row.label, value: row.value)
         }
         .navigationTitle("Diagnostics")
-    }
-}
-
-private extension CapabilityID {
-    var title: String {
-        switch self {
-        case .voice: "Voice"
-        case .seniorSelf: "Senior self"
-        case .insights: "Insights"
-        }
     }
 }
 

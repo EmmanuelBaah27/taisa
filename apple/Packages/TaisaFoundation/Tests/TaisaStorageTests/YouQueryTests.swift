@@ -10,10 +10,6 @@ import Testing
             id: fixture.profileID, displayName: "Baah", headline: "Builder", biography: "Local",
             context: fixture.context(10)
         )
-        _ = try await CapabilityCommandRepository(store: fixture.store).set(
-            .voice, to: .trial, evidence: "Reviewed microphone boundary", context: fixture.context(20)
-        )
-
         let snapshot = try await YouQuery(
             store: fixture.store,
             operational: .init(
@@ -26,9 +22,6 @@ import Testing
         ).load()
 
         #expect(snapshot.profile?.displayName == "Baah")
-        #expect(snapshot.capabilities.first(where: { $0.id == .voice })?.chosenState == .trial)
-        #expect(snapshot.capabilities.first(where: { $0.id == .voice })?.availability == .unavailable)
-        #expect(snapshot.capabilities.first(where: { $0.id == .insights })?.chosenState == .learning)
         #expect(snapshot.diagnostics.store == .healthy)
     }
 

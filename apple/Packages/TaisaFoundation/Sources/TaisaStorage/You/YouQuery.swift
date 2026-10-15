@@ -4,7 +4,6 @@ public enum YouHealth: String, Codable, Sendable { case healthy, degraded, unava
 public enum YouRecoveryStatus: String, Codable, Sendable { case ready, setupRequired, recoveryRequired, unknown }
 public enum YouPermissionStatus: String, Codable, Sendable { case granted, denied, restricted, notDetermined }
 public enum YouProtectionStatus: String, Codable, Sendable { case enabled, disabled, unknown }
-public enum CapabilityAvailability: String, Codable, Sendable { case available, limited, unavailable, unknown }
 
 public struct YouOperationalFacts: Codable, Sendable, Equatable {
     public let store: YouHealth
@@ -24,22 +23,11 @@ public struct YouOperationalFacts: Codable, Sendable, Equatable {
     public static let unknown = YouOperationalFacts(store: .unknown, recovery: .unknown, microphone: .notDetermined, gateway: .unknown, appProtection: .unknown)
 }
 
-public struct CapabilityOverview: Codable, Sendable, Equatable, Identifiable {
-    public let id: CapabilityID
-    public let chosenState: CapabilityGovernanceState
-    public let availability: CapabilityAvailability
-    public let decidedAtMS: Int64?
-    public init(id: CapabilityID, chosenState: CapabilityGovernanceState, availability: CapabilityAvailability, decidedAtMS: Int64?) {
-        self.id = id; self.chosenState = chosenState; self.availability = availability; self.decidedAtMS = decidedAtMS
-    }
-}
-
 public struct YouSnapshot: Codable, Sendable, Equatable {
     public let profile: ProfileRecord?
-    public let capabilities: [CapabilityOverview]
     public let diagnostics: YouOperationalFacts
-    public init(profile: ProfileRecord?, capabilities: [CapabilityOverview], diagnostics: YouOperationalFacts) {
-        self.profile = profile; self.capabilities = capabilities; self.diagnostics = diagnostics
+    public init(profile: ProfileRecord?, diagnostics: YouOperationalFacts) {
+        self.profile = profile; self.diagnostics = diagnostics
     }
 }
 
@@ -64,39 +52,11 @@ public struct YouQuery: Sendable {
                     updatedAtMS: row["updated_at_ms"]
                 )
             }
-            let chosen = try await CapabilityCommandRepository(store: store).list()
-            let byID = Dictionary(uniqueKeysWithValues: chosen.map { ($0.capability, $0) })
-            let capabilities = CapabilityID.allCases.map { id in
-                CapabilityOverview(
-                    id: id,
-                    chosenState: byID[id]?.state ?? .learning,
-                    availability: availability(for: id),
-                    decidedAtMS: byID[id]?.decidedAtMS
-                )
-            }
-            return YouSnapshot(profile: profile, capabilities: capabilities, diagnostics: operational)
+            return YouSnapshot(profile: profile, diagnostics: operational)
         } catch let error as YouContractError {
             throw error
         } catch {
             throw YouContractError.persistenceFailed
-        }
-    }
-
-    private func availability(for capability: CapabilityID) -> CapabilityAvailability {
-        guard operational.store == .healthy else {
-            return operational.store == .unavailable ? .unavailable : .unknown
-        }
-        switch capability {
-        case .insights:
-            return .available
-        case .voice:
-            if operational.microphone == .denied || operational.microphone == .restricted || operational.gateway == .unavailable { return .unavailable }
-            if operational.microphone == .granted && operational.gateway == .healthy { return .available }
-            return operational.gateway == .degraded ? .limited : .unknown
-        case .seniorSelf:
-            if operational.gateway == .unavailable { return .unavailable }
-            if operational.gateway == .healthy { return .available }
-            return operational.gateway == .degraded ? .limited : .unknown
         }
     }
 }
