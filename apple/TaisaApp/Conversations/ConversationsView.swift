@@ -77,22 +77,11 @@ struct ConversationsView: View {
     }
 
     private var header: some View {
-        HStack(spacing: TaisaSpacing.standard.rawValue) {
-            Text("Chats")
-                .font(.system(.title, weight: .semibold))
-                .foregroundStyle(TaisaColor.foreground.color)
-                .frame(maxWidth: .infinity, alignment: .leading)
-
+        TaisaPageHeader("Chats") {
             searchButton
             if hasDrafts {
                 draftsButton
             }
-        }
-        .padding(.horizontal, TaisaSpacing.standard.rawValue)
-        .frame(height: TaisaControlMetric.appBarHeight)
-        .background {
-            PageEdgeFade(.header)
-                .ignoresSafeArea(edges: .horizontal)
         }
         .zIndex(1)
     }
@@ -182,37 +171,18 @@ struct ConversationsView: View {
         }
     }
 
-    @ViewBuilder private var searchButton: some View {
-        let button = Button(action: {}) {
-            CentralIcon(.magnifyingGlass)
-                .frame(
-                    width: TaisaControlMetric.standardIcon,
-                    height: TaisaControlMetric.standardIcon
-                )
-                .frame(
-                    width: TaisaControlMetric.headerActionHeight,
-                    height: TaisaControlMetric.headerActionHeight
-                )
-        }
-        .accessibilityLabel("Search chats")
-        .accessibilityHint("Search is not available yet")
+    private var searchButton: some View {
+        TaisaSecondaryIconButton(
+            icon: .magnifyingGlass,
+            accessibilityLabel: "Search chats",
+            accessibilityHint: "Search is not available yet",
+            action: {}
+        )
         .accessibilityIdentifier("chats.search")
-
-        if #available(iOS 26.0, macOS 26.0, *) {
-            button
-                .buttonStyle(.plain)
-                .glassEffect(.regular.interactive(), in: Circle())
-                .contentShape(Circle())
-        } else {
-            button
-                .buttonStyle(.plain)
-                .background(.regularMaterial, in: Circle())
-                .contentShape(Circle())
-        }
     }
 
-    @ViewBuilder private var draftsButton: some View {
-        let button = Button { showsDraftsOnly.toggle() } label: {
+    private var draftsButton: some View {
+        TaisaSecondaryCapsuleButton(action: { showsDraftsOnly.toggle() }) {
             HStack(spacing: 6) {
                 Text("Drafts").font(.system(size: 16, weight: .medium))
                 Circle()
@@ -220,22 +190,9 @@ struct ConversationsView: View {
                     .frame(width: 8, height: 8)
             }
             .padding(.horizontal, TaisaSpacing.content.rawValue)
-            .frame(height: TaisaControlMetric.headerActionHeight)
         }
         .accessibilityValue(showsDraftsOnly ? "Showing drafts" : "Showing all chats")
         .accessibilityIdentifier("chats.drafts-filter")
-
-        if #available(iOS 26.0, macOS 26.0, *) {
-            button
-                .buttonStyle(.plain)
-                .glassEffect(.regular.interactive(), in: Capsule())
-                .contentShape(Capsule())
-        } else {
-            button
-                .buttonStyle(.plain)
-                .background(.regularMaterial, in: Capsule())
-                .contentShape(Capsule())
-        }
     }
 
     private func monthHeader(_ month: String) -> some View {
