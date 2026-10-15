@@ -91,8 +91,7 @@ struct ConversationsView: View {
         .padding(.horizontal, TaisaSpacing.standard.rawValue)
         .frame(height: TaisaControlMetric.appBarHeight)
         .background {
-            PageEdgeFade(.header)
-                .opacity(TaisaEffect.headerFadeOpacity)
+            TaisaColor.background.color
                 .ignoresSafeArea(edges: [.top, .horizontal])
         }
         .overlay(alignment: .bottom) {
