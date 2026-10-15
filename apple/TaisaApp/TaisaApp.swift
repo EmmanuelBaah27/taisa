@@ -7,6 +7,7 @@ struct TaisaApp: App {
     var body: some Scene {
         WindowGroup {
             AppRootView(runtime: runtime)
+                .preferredColorScheme(.light)
         }
     }
 }

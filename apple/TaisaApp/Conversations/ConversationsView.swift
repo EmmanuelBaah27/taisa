@@ -79,7 +79,7 @@ struct ConversationsView: View {
     private var header: some View {
         HStack(spacing: TaisaSpacing.standard.rawValue) {
             Text("Chats")
-                .font(.system(.title, design: .rounded, weight: .semibold))
+                .font(.system(.title, weight: .semibold))
                 .foregroundStyle(TaisaColor.foreground.color)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -133,6 +133,8 @@ struct ConversationsView: View {
                     Section("Drafts") {
                         ForEach(snapshot.drafts) { draft in
                             Button { resume(draft) } label: { DraftRow(draft: draft) }
+                                .buttonStyle(.plain)
+                                .listRowSeparatorTint(TaisaColor.background.color)
                                 .swipeActions {
                                     Button("Discard", role: .destructive) { confirmation = .discard(draft) }
                                 }
@@ -142,10 +144,12 @@ struct ConversationsView: View {
                 }
                 if !showsDraftsOnly {
                     ForEach(groupedConversations(snapshot.conversations), id: \.month) { group in
-                        Section(group.month) {
+                        Section {
                             ForEach(group.conversations, id: \.id) { conversation in
                             Button { open(conversation) } label: { ConversationHistoryRow(conversation: conversation) }
+                                .buttonStyle(.plain)
                                 .listRowBackground(TaisaColor.selectedSurface.color)
+                                .listRowSeparatorTint(TaisaColor.background.color)
                                 .swipeActions {
                                     Button("Delete", role: .destructive) { confirmation = .delete(conversation) }
                                     Button("Rename") { beginRename(conversation) }.tint(.accentColor)
@@ -157,8 +161,9 @@ struct ConversationsView: View {
                                     }
                                 }
                             }
+                        } header: {
+                            monthHeader(group.month)
                         }
-                        .textCase(nil)
                     }
                     .accessibilityIdentifier("conversations.history")
                 }
@@ -182,6 +187,14 @@ struct ConversationsView: View {
                 }
             }
         }
+    }
+
+    private func monthHeader(_ month: String) -> some View {
+        Text(month)
+            .font(TaisaTypography.metadata.font.weight(.semibold))
+            .foregroundStyle(TaisaColor.foreground.color)
+            .textCase(nil)
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private struct MonthGroup {
