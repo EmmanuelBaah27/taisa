@@ -87,7 +87,6 @@ final class PrimaryAppShellModel {
 
 struct PrimaryAppShell: View {
     @State var model: PrimaryAppShellModel
-    @State private var swipeOrigin: PrimaryDestination?
     let homeModel: HomeModel
     var careerWorkModel: CareerWorkModel = CareerWorkModel(client: .init(loadOverview: { .init(active: [], paused: [], completed: [], archived: []) }))
     let conversationsModel: ConversationsModel
@@ -109,7 +108,13 @@ struct PrimaryAppShell: View {
                 }
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
-            .simultaneousGesture(primaryPageSwipe)
+        }
+        .overlay(alignment: .bottom) {
+            if model.showsConversationDock {
+                PageEdgeFade(.navigation)
+                    .frame(height: 90)
+                    .ignoresSafeArea(edges: .bottom)
+            }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if model.showsConversationDock {
@@ -132,11 +137,6 @@ struct PrimaryAppShell: View {
                 .padding(.horizontal, TaisaSpacing.standard.rawValue)
                 .padding(.top, TaisaSpacing.section.rawValue)
                 .padding(.bottom, TaisaSpacing.compact.rawValue)
-                .background(alignment: .bottom) {
-                    PageEdgeFade(.navigation)
-                        .frame(height: 90)
-                        .ignoresSafeArea(edges: .bottom)
-                }
             }
         }
         .fullScreenCover(item: Binding(
@@ -150,21 +150,6 @@ struct PrimaryAppShell: View {
                 dismiss: dismissConversationAndRefresh
             )
         }
-    }
-
-    private var primaryPageSwipe: some Gesture {
-        DragGesture(minimumDistance: 20)
-            .onChanged { _ in
-                if swipeOrigin == nil { swipeOrigin = model.selection }
-            }
-            .onEnded { value in
-                let origin = swipeOrigin
-                swipeOrigin = nil
-                guard model.selection == origin else { return }
-                let horizontal = value.predictedEndTranslation.width
-                guard abs(horizontal) > 50, abs(horizontal) > abs(value.predictedEndTranslation.height) else { return }
-                model.selectAdjacent(offset: horizontal < 0 ? 1 : -1)
-            }
     }
 
     @MainActor

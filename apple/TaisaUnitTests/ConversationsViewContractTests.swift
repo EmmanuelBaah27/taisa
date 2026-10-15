@@ -46,6 +46,8 @@ final class ConversationsViewContractTests: XCTestCase {
         )
 
         XCTAssertFalse(source.contains(".background(TaisaColor.subtleSurface.color)"))
+        XCTAssertTrue(source.contains(".lineLimit(1)"))
+        XCTAssertTrue(source.contains(".truncationMode(.tail)"))
     }
 
     func testChatsControlsUseCentralIconsLiquidGlassAndHeaderFade() throws {
@@ -66,6 +68,8 @@ final class ConversationsViewContractTests: XCTestCase {
         XCTAssertTrue(source.contains("if hasDrafts"))
         XCTAssertTrue(source.contains("if !showsDraftsOnly || snapshot.drafts.isEmpty"))
         XCTAssertTrue(source.contains(".listSectionMargins(.horizontal, 0)"))
+        XCTAssertTrue(source.contains(".scrollIndicators(.hidden)"))
+        XCTAssertFalse(source.contains("} header: {"))
     }
 
     func testApplicationIsLockedToLightAppearance() throws {

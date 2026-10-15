@@ -22,7 +22,7 @@ struct GatewayConversationClientTests {
     @Test func fallbackTitleIsDerivedFromTheFirstUserMessage() {
         #expect(
             ConversationTitleDeriver.derive(from: "  Help me prepare for my quarterly performance review next week.  ")
-                == "Help me prepare for my quarterly performance review"
+                == "Preparing for their quarterly performance review"
         )
     }
 
@@ -31,13 +31,15 @@ struct GatewayConversationClientTests {
             from: "Plan   the launch\nfor the customer advisory board with clear owners and dates"
         ))
 
-        #expect(title == "Plan the launch for the customer advisory board")
+        #expect(title == "Planning the launch for the customer advisory")
         #expect(title.count <= ConversationTitleDeriver.maximumLength)
+        #expect(title.split(separator: " ").count < 8)
     }
 
     @Test func fallbackTitleHandlesAnOverlongFirstToken() throws {
         let title = try #require(ConversationTitleDeriver.derive(from: String(repeating: "a", count: 80)))
-        #expect(title.count == ConversationTitleDeriver.maximumLength)
+        #expect(title.split(separator: " ").count < 8)
+        #expect(title == "Discussing")
     }
 
     @Test func completedVoiceConversationAppearsInHistory() async throws {
@@ -104,7 +106,7 @@ struct GatewayConversationClientTests {
 
         let index = try await ConversationsClient.local(store: store, deviceID: deviceID).load()
 
-        #expect(index.conversations.first?.title == "Prepare me for the annual planning conversation")
+        #expect(index.conversations.first?.title == "Preparing for the annual planning conversation")
         #expect(index.conversations.first?.titleAuthority == .localFallback)
         #expect(index.conversations.first?.updatedAtMS == 1)
     }

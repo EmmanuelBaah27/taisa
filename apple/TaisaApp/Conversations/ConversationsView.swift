@@ -127,6 +127,10 @@ struct ConversationsView: View {
                 if !showsDraftsOnly || snapshot.drafts.isEmpty {
                     ForEach(groupedConversations(snapshot.conversations), id: \.month) { group in
                         Section {
+                            monthHeader(group.month)
+                                .listRowInsets(EdgeInsets())
+                                .listRowBackground(Color.clear)
+                                .listRowSeparator(.hidden)
                             ForEach(Array(group.conversations.enumerated()), id: \.element.id) { index, conversation in
                             Button { open(conversation) } label: {
                                 ConversationHistoryRow(
@@ -149,8 +153,6 @@ struct ConversationsView: View {
                                     }
                                 }
                             }
-                        } header: {
-                            monthHeader(group.month)
                         }
                         .listSectionMargins(.horizontal, 0)
                     }
@@ -159,6 +161,7 @@ struct ConversationsView: View {
             }
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
+            .scrollIndicators(.hidden)
             .padding(.horizontal, TaisaSpacing.content.rawValue)
             .refreshable { await model.load() }
         case let .failure(issue):
@@ -180,7 +183,6 @@ struct ConversationsView: View {
         let button = Button(action: {}) {
             CentralIcon(.magnifyingGlass)
                 .frame(width: 24, height: 24)
-                .frame(width: 48, height: 48)
         }
         .accessibilityLabel("Search chats")
         .accessibilityHint("Search is not available yet")
