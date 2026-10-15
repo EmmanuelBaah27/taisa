@@ -95,8 +95,9 @@ struct ConversationsView: View {
         }
         .overlay(alignment: .bottom) {
             PageEdgeFade(.header)
-                .frame(height: TaisaSpacing.section.rawValue)
-                .offset(y: TaisaSpacing.section.rawValue)
+                .frame(height: TaisaSpacing.compact.rawValue)
+                .opacity(TaisaEffect.headerFadeOpacity)
+                .offset(y: TaisaSpacing.compact.rawValue)
         }
         .zIndex(1)
     }
@@ -161,7 +162,7 @@ struct ConversationsView: View {
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
             .scrollIndicators(.hidden)
-            .contentMargins(.top, TaisaSpacing.section.rawValue, for: .scrollContent)
+            .contentMargins(.top, TaisaSpacing.standard.rawValue, for: .scrollContent)
             .contentMargins(.bottom, 152, for: .scrollContent)
             .listSectionSpacing(TaisaSpacing.standard.rawValue)
             .environment(\.defaultMinListRowHeight, 0)

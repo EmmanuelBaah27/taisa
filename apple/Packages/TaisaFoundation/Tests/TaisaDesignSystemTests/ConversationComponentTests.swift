@@ -29,6 +29,7 @@ struct ConversationComponentTests {
         #expect(TaisaEffect.recordingGlowBlurRadius == 10)
         #expect(TaisaEffect.recordingGlowSpread == 4)
         #expect(TaisaEffect.recordingGlowOpacity == 0.35)
+        #expect(TaisaEffect.headerFadeOpacity == 0.72)
         #expect(TaisaRadius.historyGroup.rawValue == 20)
     }
 
