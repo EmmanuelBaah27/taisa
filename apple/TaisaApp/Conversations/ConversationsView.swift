@@ -177,6 +177,7 @@ struct ConversationsView: View {
             accessibilityHint: "Search is not available yet",
             action: {}
         )
+        .disabled(true)
         .accessibilityIdentifier("chats.search")
     }
 
