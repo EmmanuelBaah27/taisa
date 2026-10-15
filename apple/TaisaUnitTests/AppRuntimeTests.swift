@@ -244,6 +244,7 @@ final class AppRuntimeTests: XCTestCase {
         XCTAssertTrue(source.contains("let context = try await backend.voiceStoreContext()"))
         XCTAssertTrue(source.contains("HomeClient.local(store: store, deviceID: context.deviceID.uuidString)"))
         XCTAssertTrue(source.contains("CareerWorkClient.local(store: store, deviceID: context.deviceID.uuidString)"))
+        XCTAssertTrue(source.contains("ConversationsClient.local(store: store, deviceID: context.deviceID.uuidString)"))
         XCTAssertFalse(source.contains("HomeClient { try await HomeQuery"))
     }
 
