@@ -291,6 +291,10 @@ final class ConversationViewModel {
         case .request:
             composer = .coaching
             await performSuccess { try await client.retry() }
+            if composer == .waitingForReply, correctionRegenerationMessageID != nil {
+                correctionRegenerationMessageID = nil
+                submittedCorrectionText = nil
+            }
         }
     }
 

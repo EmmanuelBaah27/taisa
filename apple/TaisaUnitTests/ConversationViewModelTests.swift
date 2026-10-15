@@ -204,6 +204,11 @@ final class ConversationViewModelTests: XCTestCase {
         model.requestCorrection(original)
 
         XCTAssertNil(model.correctionMessageID)
+
+        await model.retry()
+        model.requestCorrection(original)
+
+        XCTAssertEqual(model.correctionMessageID, original.id)
     }
 
     func testCorrectionRequiresUserMessageAndChangedNonemptyText() {
