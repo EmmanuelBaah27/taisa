@@ -161,9 +161,9 @@ struct ConversationsView: View {
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
             .scrollIndicators(.hidden)
-            .contentMargins(.top, 0, for: .scrollContent)
+            .contentMargins(.top, TaisaSpacing.section.rawValue, for: .scrollContent)
             .contentMargins(.bottom, 152, for: .scrollContent)
-            .listSectionSpacing(TaisaSpacing.tight.rawValue)
+            .listSectionSpacing(TaisaSpacing.standard.rawValue)
             .environment(\.defaultMinListRowHeight, 0)
             .padding(.horizontal, TaisaSpacing.standard.rawValue)
             .refreshable { await model.load() }
@@ -226,7 +226,7 @@ struct ConversationsView: View {
             .foregroundStyle(TaisaColor.mutedForeground.color)
             .textCase(nil)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.bottom, -TaisaSpacing.tight.rawValue)
+            .padding(.bottom, TaisaSpacing.compact.rawValue)
             .listRowInsets(EdgeInsets())
             .accessibilityIdentifier("conversations.history")
     }
