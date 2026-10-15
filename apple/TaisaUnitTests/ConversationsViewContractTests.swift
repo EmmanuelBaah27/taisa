@@ -38,6 +38,16 @@ final class ConversationsViewContractTests: XCTestCase {
         XCTAssertTrue(source.contains("TaisaRadius.historyGroup.rawValue"))
     }
 
+    func testHistoryRowsDoNotPaintOverTheRoundedGroupBackground() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let source = try String(
+            contentsOf: root.appendingPathComponent("TaisaApp/Conversations/ConversationHistoryRow.swift"),
+            encoding: .utf8
+        )
+
+        XCTAssertFalse(source.contains(".background(TaisaColor.subtleSurface.color)"))
+    }
+
     func testChatsControlsUseCentralIconsLiquidGlassAndHeaderFade() throws {
         let source = try conversationsSource()
 
