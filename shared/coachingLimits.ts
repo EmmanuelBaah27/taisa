@@ -11,7 +11,7 @@ export const COACHING_GATEWAY_LIMITS = Object.freeze({
   maxRecentMessages: 20,
   maxMemoryItems: 50,
   maxEvidenceItems: 8,
-  maxProposals: 20,
+  maxProposals: 1,
   maxTitleSuggestionLength: 80,
 } as const);
 
@@ -314,6 +314,62 @@ function isNonNegativeFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0;
 }
 
+function explanationViolation(value: unknown, expectedMode: string | null): string | null {
+  if (!isRecord(value) || !hasOnlyKeys(value, ['mode', 'evidence', 'inference', 'confidence', 'approach'])) {
+    return 'explanation';
+  }
+  if (value.mode !== expectedMode) return 'explanation.mode';
+  if (!Array.isArray(value.evidence) || value.evidence.length > COACHING_GATEWAY_LIMITS.maxEvidenceItems) {
+    return 'explanation.evidence';
+  }
+  for (let index = 0; index < value.evidence.length; index += 1) {
+    const source = value.evidence[index];
+    if (!isRecord(source) || !hasOnlyKeys(source, ['sourceId', 'sourceType', 'excerpt']) ||
+        !isId(source.sourceId) ||
+        !isOneOf(source.sourceType, ['message', 'goal', 'action', 'evidence', 'memory', 'insight']) ||
+        (source.excerpt !== null && !isStatement(source.excerpt))) {
+      return `explanation.evidence[${index}]`;
+    }
+  }
+  if (!isStatement(value.inference)) return 'explanation.inference';
+  if (!isOneOf(value.confidence, ['low', 'medium', 'high'])) return 'explanation.confidence';
+  if (!isStatement(value.approach)) return 'explanation.approach';
+  return null;
+}
+
+function coachingProposalViolation(value: unknown): string | null {
+  if (!isRecord(value) || !isOneOf(value.kind, ['goal', 'action', 'weekly_work', 'evidence', 'memory', 'insight'])) {
+    return 'proposal';
+  }
+  if (value.kind === 'goal') {
+    return hasOnlyKeys(value, ['kind', 'title', 'description', 'priority', 'targetDate']) &&
+      isStatement(value.title) && (value.description === null || isStatement(value.description)) &&
+      (value.priority === null || isOneOf(value.priority, ['low', 'medium', 'high'])) &&
+      (value.targetDate === null || isTimestamp(value.targetDate)) ? null : 'proposal';
+  }
+  if (value.kind === 'action') {
+    return hasOnlyKeys(value, ['kind', 'title', 'description', 'priority', 'dueAt', 'goalId']) &&
+      isStatement(value.title) && (value.description === null || isStatement(value.description)) &&
+      (value.priority === null || isOneOf(value.priority, ['low', 'medium', 'high'])) &&
+      (value.dueAt === null || isTimestamp(value.dueAt)) && (value.goalId === null || isId(value.goalId)) ? null : 'proposal';
+  }
+  if (value.kind === 'weekly_work') {
+    return hasOnlyKeys(value, ['kind', 'actionId', 'weekStart', 'plannedDay']) && isId(value.actionId) &&
+      isTimestamp(value.weekStart) && (value.plannedDay === null || isTimestamp(value.plannedDay)) ? null : 'proposal';
+  }
+  if (value.kind === 'evidence') {
+    return hasOnlyKeys(value, ['kind', 'statement', 'occurredAt', 'goalId', 'actionId']) &&
+      isStatement(value.statement) && isTimestamp(value.occurredAt) &&
+      (value.goalId === null || isId(value.goalId)) && (value.actionId === null || isId(value.actionId)) ? null : 'proposal';
+  }
+  if (value.kind === 'memory') {
+    return hasOnlyKeys(value, ['kind', 'memory']) && memoryDeltaViolation(value.memory, 0) === null ? null : 'proposal';
+  }
+  return hasOnlyKeys(value, ['kind', 'body', 'isTimeSensitive', 'homeEligibleUntil']) &&
+    isStatement(value.body) && typeof value.isTimeSensitive === 'boolean' &&
+    (value.homeEligibleUntil === null || isTimestamp(value.homeEligibleUntil)) ? null : 'proposal';
+}
+
 function isNonNegativeSafeInteger(value: unknown): value is number {
   return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
 }
@@ -359,7 +415,8 @@ export function firstCoachingResponseContractViolation(
       'contextSufficiency',
       'reply',
       'stance',
-      'proposals',
+      'explanation',
+      'proposal',
       'usage',
       'titleSuggestion',
     ])
@@ -384,23 +441,25 @@ export function firstCoachingResponseContractViolation(
     if (!isOneOf(response.relevance, ['career-relevant', 'adjacent'])) return 'relevance';
     if (!isOneOf(response.contextSufficiency, ['sufficient', 'partial'])) return 'contextSufficiency';
     if (!isOneOf(response.stance, ['mirror', 'nudge', 'challenge', 'direct'])) return 'stance';
-    if (
-      !Array.isArray(response.proposals) ||
-      response.proposals.length > COACHING_GATEWAY_LIMITS.maxProposals
-    ) return 'proposals';
-    for (let index = 0; index < response.proposals.length; index += 1) {
-      const invalidProposal = memoryDeltaViolation(response.proposals[index], index);
+    const invalidExplanation = explanationViolation(response.explanation, response.stance);
+    if (invalidExplanation !== null) return invalidExplanation;
+    if (response.proposal !== null) {
+      const invalidProposal = coachingProposalViolation(response.proposal);
       if (invalidProposal !== null) return invalidProposal;
     }
   } else if (response.mode === 'clarify') {
     if (response.contextSufficiency !== 'insufficient') return 'contextSufficiency';
     if (response.stance !== null) return 'stance';
-    if (!Array.isArray(response.proposals) || response.proposals.length !== 0) return 'proposals';
+    if (response.proposal !== null) return 'proposal';
+    const invalidExplanation = explanationViolation(response.explanation, null);
+    if (invalidExplanation !== null) return invalidExplanation;
   } else {
     if (response.relevance !== 'outside-scope') return 'relevance';
     if (!isOneOf(response.contextSufficiency, ['sufficient', 'partial'])) return 'contextSufficiency';
     if (response.stance !== null) return 'stance';
-    if (!Array.isArray(response.proposals) || response.proposals.length !== 0) return 'proposals';
+    if (response.proposal !== null) return 'proposal';
+    const invalidExplanation = explanationViolation(response.explanation, null);
+    if (invalidExplanation !== null) return invalidExplanation;
   }
   return usageViolation(response.usage);
 }

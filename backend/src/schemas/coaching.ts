@@ -150,10 +150,33 @@ export const CoachingRequestSchema = CoachingRequestRuntimeSchema as z.ZodType<C
 const CoachingRelevanceSchema = z.enum(['career-relevant', 'adjacent', 'outside-scope']);
 const ContextSufficiencySchema = z.enum(['sufficient', 'partial', 'insufficient']);
 const CoachingStanceSchema = z.enum(['mirror', 'nudge', 'challenge', 'direct']);
-const CoachingProposalSchema = z
-  .array(z.union([MemoryDeltaSchema, OutcomeDeltaSchema]))
-  .max(COACHING_GATEWAY_LIMITS.maxProposals);
-const EmptyProposalSchema = z.tuple([]);
+const ResponseSourceSchema = z.object({
+  sourceId: IdSchema,
+  sourceType: z.enum(['message', 'goal', 'action', 'evidence', 'memory', 'insight']),
+  excerpt: StatementSchema.nullable(),
+}).strict();
+
+const ResponseExplanationSchema = z.object({
+  mode: CoachingStanceSchema.nullable(),
+  evidence: z.array(ResponseSourceSchema).max(COACHING_GATEWAY_LIMITS.maxEvidenceItems),
+  inference: StatementSchema,
+  confidence: z.enum(['low', 'medium', 'high']),
+  approach: StatementSchema,
+}).strict();
+
+const CoachingProposalSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('goal'), title: StatementSchema, description: NullableTextSchema,
+    priority: PrioritySchema, targetDate: TimestampSchema.nullable() }).strict(),
+  z.object({ kind: z.literal('action'), title: StatementSchema, description: NullableTextSchema,
+    priority: PrioritySchema, dueAt: TimestampSchema.nullable(), goalId: IdSchema.nullable() }).strict(),
+  z.object({ kind: z.literal('weekly_work'), actionId: IdSchema, weekStart: TimestampSchema,
+    plannedDay: TimestampSchema.nullable() }).strict(),
+  z.object({ kind: z.literal('evidence'), statement: StatementSchema, occurredAt: TimestampSchema,
+    goalId: IdSchema.nullable(), actionId: IdSchema.nullable() }).strict(),
+  z.object({ kind: z.literal('memory'), memory: MemoryDeltaSchema }).strict(),
+  z.object({ kind: z.literal('insight'), body: StatementSchema, isTimeSensitive: z.boolean(),
+    homeEligibleUntil: TimestampSchema.nullable() }).strict(),
+]);
 function titleSuggestionSchema() {
   return z.string().trim().min(1)
     .max(COACHING_GATEWAY_LIMITS.maxTitleSuggestionLength).nullable().optional();
@@ -171,7 +194,8 @@ export const CoachingResponsePayloadSchema = z.discriminatedUnion('mode', [
     contextSufficiency: ContextSufficiencySchema.exclude(['insufficient']),
     reply: StatementSchema,
     stance: CoachingStanceSchema,
-    proposals: CoachingProposalSchema,
+    explanation: ResponseExplanationSchema.extend({ mode: CoachingStanceSchema }),
+    proposal: CoachingProposalSchema.nullable(),
     titleSuggestion: titleSuggestionSchema(),
   }).strict(),
   z.object({
@@ -180,7 +204,8 @@ export const CoachingResponsePayloadSchema = z.discriminatedUnion('mode', [
     contextSufficiency: z.literal('insufficient'),
     reply: StatementSchema,
     stance: z.null(),
-    proposals: EmptyProposalSchema,
+    explanation: ResponseExplanationSchema.extend({ mode: z.null() }),
+    proposal: z.null(),
     titleSuggestion: titleSuggestionSchema(),
   }).strict(),
   z.object({
@@ -189,7 +214,8 @@ export const CoachingResponsePayloadSchema = z.discriminatedUnion('mode', [
     contextSufficiency: ContextSufficiencySchema.exclude(['insufficient']),
     reply: StatementSchema,
     stance: z.null(),
-    proposals: EmptyProposalSchema,
+    explanation: ResponseExplanationSchema.extend({ mode: z.null() }),
+    proposal: z.null(),
     titleSuggestion: titleSuggestionSchema(),
   }).strict(),
 ]) as z.ZodType<CoachingResponsePayload>;

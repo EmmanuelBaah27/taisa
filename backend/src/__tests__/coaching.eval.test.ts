@@ -45,7 +45,8 @@ const successfulPayload = {
   contextSufficiency: 'sufficient' as const,
   reply: 'Name the trade-off, confirm the next action, and revisit it next week.',
   stance: 'nudge' as const,
-  proposals: [],
+  explanation: { mode: 'nudge' as const, evidence: [], inference: 'Bounded fixture inference.', confidence: 'medium' as const, approach: 'Bounded fixture approach.' },
+  proposal: null,
 };
 
 function createFakeProvider(id: 'openai' | 'anthropic' = 'openai'): CoachingProvider {
@@ -229,7 +230,8 @@ test('the rubric deterministically rejects a guardrail response with the wrong m
     contextSufficiency: 'sufficient',
     reply: 'Here is a factual answer.',
     stance: null,
-    proposals: [],
+  explanation: { mode: null, evidence: [], inference: 'More context is required.', confidence: 'low', approach: 'Clarify or redirect without coaching.' },
+  proposal: null,
   });
 
   expect(score).toEqual(expect.objectContaining({
@@ -257,7 +259,7 @@ test('manual review artifact contains synthetic outputs, thresholds, and remains
     relevance: successfulPayload.relevance,
     contextSufficiency: successfulPayload.contextSufficiency,
     stance: successfulPayload.stance,
-    proposals: successfulPayload.proposals,
+    proposals: successfulPayload.proposal ? [successfulPayload.proposal] : [],
     inventedReferent: null,
     inventedEmotion: null,
     inventedParticipantOrPurpose: null,
@@ -466,7 +468,8 @@ test('a fluent hallucinated reply earns no automatic usefulness or continuity cr
     contextSufficiency: 'sufficient',
     reply: 'Everything will work out brilliantly.',
     stance: 'mirror',
-    proposals: [],
+  explanation: { mode: 'mirror', evidence: [], inference: 'Bounded fixture inference.', confidence: 'medium', approach: 'Bounded fixture approach.' },
+  proposal: null,
   });
 
   expect(score.coachingUsefulness).toBe(0);
@@ -591,7 +594,9 @@ test('the runner records invalid schemas without exposing their payload', async 
   const provider: CoachingProvider = {
     id: 'openai',
     respond: jest.fn().mockResolvedValue({
-      payload: { reply: '', stance: 'unknown', proposals: [], secret: 'do-not-print' },
+      payload: { reply: '', stance: 'unknown',
+  explanation: { mode: 'unknown', evidence: [], inference: 'Bounded fixture inference.', confidence: 'medium', approach: 'Bounded fixture approach.' },
+  proposal: null, secret: 'do-not-print' },
       usage: {
         provider: 'openai',
         model: 'synthetic-test-model',

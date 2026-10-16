@@ -11,6 +11,35 @@ import {
 import { writeFileSync } from 'fs';
 import path from 'path';
 import { costLedger, type UsageLedger } from '../../services/usage/costLedger';
+import type { CoachingProposal, MemoryDelta, OutcomeDelta } from '@taisa/shared';
+
+function proposalForLegacyRubric(proposal: CoachingProposal | null | undefined): Array<MemoryDelta | OutcomeDelta> {
+  if (proposal == null) return [];
+  if (proposal.kind === 'memory') return [proposal.memory];
+  if (proposal.kind === 'goal') return [{
+    operation: 'propose-outcome',
+    candidate: { ...proposal, supersedesId: null },
+    reason: 'Senior Self proposed a goal.',
+    requiresConfirmation: true,
+  }];
+  if (proposal.kind === 'action') return [{
+    operation: 'propose-outcome',
+    candidate: { ...proposal, supersedesId: null },
+    reason: 'Senior Self proposed an action.',
+    requiresConfirmation: true,
+  }];
+  if (proposal.kind === 'evidence') return [{
+    operation: 'propose-outcome',
+    candidate: {
+      kind: 'evidence', statement: proposal.statement, occurredAt: proposal.occurredAt,
+      goalIds: proposal.goalId ? [proposal.goalId] : [],
+      actionIds: proposal.actionId ? [proposal.actionId] : [],
+    },
+    reason: 'Senior Self proposed evidence.',
+    requiresConfirmation: true,
+  }];
+  return [];
+}
 
 export interface CoachingEvaluationResult {
   scenarioId: string;
@@ -108,7 +137,7 @@ export async function runCoachingEvaluation(
         scenarioId: scenario.id,
         rubric: scoreCoachingResponse(
           scenario,
-          parsed.data,
+          { ...parsed.data, proposals: proposalForLegacyRubric(parsed.data.proposal) },
         ),
         latencyMs,
         inputTokens: providerResult.usage.inputTokens ?? 0,
@@ -202,7 +231,7 @@ export function buildManualReviewArtifact(summary: CoachingEvaluationSummary) {
         relevance: response?.relevance ?? null,
         contextSufficiency: response?.contextSufficiency ?? null,
         stance: response?.stance ?? null,
-        proposals: response?.proposals ?? [],
+        proposals: response?.proposal ? [response.proposal] : [],
         manualUsefulness: null,
         inventedReferent: null,
         inventedEmotion: null,
