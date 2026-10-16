@@ -13,6 +13,7 @@ struct ConversationsView: View {
     }
 
     @State private var model: ConversationsModel
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var confirmation: Confirmation?
     @State private var renameTarget: ConversationRecord?
     @State private var renameText = ""
@@ -37,7 +38,16 @@ struct ConversationsView: View {
         ZStack(alignment: .top) {
             content
             header
+            if let notice = model.notices.first {
+                toast(notice)
+                    .id(notice.id)
+                    .padding(.horizontal, TaisaSpacing.standard.rawValue)
+                    .padding(.top, TaisaControlMetric.appBarHeight + TaisaSpacing.compact.rawValue)
+                    .transition(toastTransition)
+                    .zIndex(2)
+            }
         }
+        .animation(toastAnimation, value: model.notices.first?.id)
         .background(TaisaColor.background.color)
         .toolbar(.hidden, for: .navigationBar)
         .accessibilityElement(children: .contain)
@@ -98,9 +108,8 @@ struct ConversationsView: View {
                 description: Text("Completed chats and saved drafts will appear here.")
             )
             .accessibilityIdentifier("conversations.empty")
-        case let .content(snapshot, isRefreshing, issue):
+        case let .content(snapshot, isRefreshing, _):
             List {
-                if let issue { issueRow(issue) }
                 if !snapshot.drafts.isEmpty {
                     Section("Drafts") {
                         ForEach(snapshot.drafts) { draft in
@@ -249,17 +258,27 @@ struct ConversationsView: View {
             }
     }
 
-    private func issueRow(_ issue: ConversationsIssue) -> some View {
-        VStack(alignment: .leading, spacing: TaisaSpacing.compact.rawValue) {
-            Label(issueTitle(issue, retainedContent: true), systemImage: "exclamationmark.triangle")
-                .font(TaisaTypography.navigationLabel.font)
-            Text(issueMessage(issue, retainedContent: true))
-                .font(TaisaTypography.metadata.font)
-                .foregroundStyle(TaisaColor.mutedForeground.color)
-            Button(issueActionLabel(issue)) { retry(issue) }
-                .font(TaisaTypography.metadata.font.weight(.medium))
-        }
-        .accessibilityIdentifier(issue == .recoveryRequired ? "conversations.recovery" : "conversations.retry")
+    private var toastTransition: AnyTransition {
+        reduceMotion
+            ? .opacity
+            : .move(edge: .top).combined(with: .opacity)
+    }
+
+    private var toastAnimation: Animation? {
+        reduceMotion ? nil : .snappy(duration: TaisaMotion.fast)
+    }
+
+    private func toast(_ notice: ConversationsNotice) -> some View {
+        TaisaToast(
+            message: issueTitle(notice.issue, retainedContent: true),
+            actionLabel: issueActionLabel(notice.issue),
+            action: {
+                model.dismissNotice(id: notice.id)
+                retry(notice.issue)
+            },
+            dismiss: { model.dismissNotice(id: notice.id) }
+        )
+        .accessibilityIdentifier("conversations.toast")
     }
 
     private func retry(_ issue: ConversationsIssue) {
@@ -279,7 +298,7 @@ struct ConversationsView: View {
 
     private func issueTitle(_ issue: ConversationsIssue, retainedContent: Bool) -> String {
         switch issue {
-        case .storageUnavailable: retainedContent ? "Chats may be out of date" : "Chats couldn’t load"
+        case .storageUnavailable: retainedContent ? "Chats couldn’t refresh" : "Chats couldn’t load"
         case .recoveryRequired: "Secure access needs to be restored"
         case .renameFailed: "Title wasn’t changed"
         case .deleteFailed: "Conversation wasn’t deleted"

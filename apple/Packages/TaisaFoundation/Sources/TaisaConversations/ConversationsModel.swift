@@ -10,6 +10,16 @@ public enum ConversationsIssue: Sendable, Equatable {
     case discardFailed(id: String)
 }
 
+public struct ConversationsNotice: Identifiable, Sendable, Equatable {
+    public let id: Int
+    public let issue: ConversationsIssue
+
+    public init(id: Int, issue: ConversationsIssue) {
+        self.id = id
+        self.issue = issue
+    }
+}
+
 public enum ConversationsState: Sendable, Equatable {
     case idle
     case loading
@@ -78,8 +88,10 @@ public struct ConversationsClient: Sendable {
 @Observable
 public final class ConversationsModel {
     public private(set) var state: ConversationsState
+    public private(set) var notices: [ConversationsNotice] = []
     @ObservationIgnored private let client: ConversationsClient
     @ObservationIgnored private var generation = 0
+    @ObservationIgnored private var nextNoticeID = 0
 
     public init(client: ConversationsClient, initialState: ConversationsState = .idle) {
         self.client = client
@@ -110,7 +122,15 @@ public final class ConversationsModel {
         } catch {
             guard generation == activeGeneration else { return }
             let issue = Self.issue(for: error)
-            state = retained.map { .content($0, isRefreshing: false, issue: issue) } ?? .failure(issue)
+            if issue == .recoveryRequired {
+                notices.removeAll()
+                state = .failure(issue)
+            } else if let retained {
+                state = .content(retained, isRefreshing: false, issue: nil)
+                enqueue(issue)
+            } else {
+                state = .failure(issue)
+            }
         }
     }
 
@@ -128,6 +148,10 @@ public final class ConversationsModel {
         await mutate(fallback: .deleteFailed(id: id)) { try await client.deleteConversation(id) }
     }
 
+    public func dismissNotice(id: Int) {
+        notices.removeAll { $0.id == id }
+    }
+
     private func mutate(fallback: ConversationsIssue, _ operation: () async throws -> Void) async {
         do {
             try await operation()
@@ -135,12 +159,21 @@ public final class ConversationsModel {
         } catch {
             let mapped = Self.issue(for: error)
             let issue = mapped == .recoveryRequired ? mapped : fallback
-            if let retained = state.snapshot {
-                state = .content(retained, isRefreshing: false, issue: issue)
+            if issue == .recoveryRequired {
+                notices.removeAll()
+                state = .failure(issue)
+            } else if let retained = state.snapshot {
+                state = .content(retained, isRefreshing: false, issue: nil)
+                enqueue(issue)
             } else {
                 state = .failure(issue)
             }
         }
+    }
+
+    private func enqueue(_ issue: ConversationsIssue) {
+        nextNoticeID += 1
+        notices.append(ConversationsNotice(id: nextNoticeID, issue: issue))
     }
 
     private static func newerDraft(_ lhs: ConversationDraftRecord, _ rhs: ConversationDraftRecord) -> Bool {

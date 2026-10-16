@@ -30,6 +30,7 @@ public enum TaisaControlMetric {
     public static let conversationTitleWidth: CGFloat = 220
     public static let conversationRecordingControl: CGFloat = 48
     public static let conversationActionSpacing: CGFloat = 12
+    public static let toastMinimumHeight: CGFloat = 52
 }
 
 public enum TaisaEffect {

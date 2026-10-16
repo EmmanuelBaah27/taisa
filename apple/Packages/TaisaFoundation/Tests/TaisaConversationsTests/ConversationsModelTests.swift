@@ -46,13 +46,72 @@ struct ConversationsModelTests {
         await model.load()
 
         await model.renameConversation(id: "chat", title: "New title")
-        #expect(model.state == .content(snapshot, isRefreshing: false, issue: .renameFailed(id: "chat", title: "New title")))
+        #expect(model.state == .content(snapshot, isRefreshing: false, issue: nil))
+        #expect(model.notices.map(\.issue) == [.renameFailed(id: "chat", title: "New title")])
 
         await model.deleteConversation(id: "chat")
-        #expect(model.state == .content(snapshot, isRefreshing: false, issue: .deleteFailed(id: "chat")))
+        #expect(model.state == .content(snapshot, isRefreshing: false, issue: nil))
+        #expect(model.notices.map(\.issue) == [
+            .renameFailed(id: "chat", title: "New title"),
+            .deleteFailed(id: "chat")
+        ])
 
         await model.discardDraft(id: "draft")
-        #expect(model.state == .content(snapshot, isRefreshing: false, issue: .discardFailed(id: "draft")))
+        #expect(model.state == .content(snapshot, isRefreshing: false, issue: nil))
+        #expect(model.notices.map(\.issue) == [
+            .renameFailed(id: "chat", title: "New title"),
+            .deleteFailed(id: "chat"),
+            .discardFailed(id: "draft")
+        ])
+    }
+
+    @Test func retainedRefreshFailureUsesToastAndDismissesInQueueOrder() async throws {
+        struct LoadFailure: Error {}
+        let snapshot = ConversationIndexSnapshot(
+            drafts: [],
+            conversations: [makeConversation(id: "chat", updated: 1)]
+        )
+        let fixture = LoadFixture(results: [.success(snapshot), .failure(LoadFailure())])
+        let model = ConversationsModel(client: ConversationsClient(load: { try await fixture.load() }))
+
+        await model.load()
+        await model.load()
+
+        #expect(model.state == .content(snapshot, isRefreshing: false, issue: nil))
+        #expect(model.notices.map(\.issue) == [.storageUnavailable])
+        let firstID = try #require(model.notices.first?.id)
+        model.dismissNotice(id: firstID)
+        #expect(model.notices.isEmpty)
+    }
+
+    @Test func secureRecoveryRemainsBlockingEvenWhenContentWasRetained() async {
+        let snapshot = ConversationIndexSnapshot(
+            drafts: [],
+            conversations: [makeConversation(id: "chat", updated: 1)]
+        )
+        struct LoadFailure: Error {}
+        let fixture = LoadFixture(results: [
+            .success(snapshot),
+            .failure(LoadFailure()),
+            .failure(StorageError.authenticationFailed)
+        ])
+        let model = ConversationsModel(client: ConversationsClient(load: { try await fixture.load() }))
+
+        await model.load()
+        await model.load()
+        #expect(model.notices.map(\.issue) == [.storageUnavailable])
+        await model.load()
+
+        #expect(model.state == .failure(.recoveryRequired))
+        #expect(model.notices.isEmpty)
+    }
+}
+
+private actor LoadFixture {
+    var results: [Result<ConversationIndexSnapshot, any Error>]
+    init(results: [Result<ConversationIndexSnapshot, any Error>]) { self.results = results }
+    func load() throws -> ConversationIndexSnapshot {
+        try results.removeFirst().get()
     }
 }
 

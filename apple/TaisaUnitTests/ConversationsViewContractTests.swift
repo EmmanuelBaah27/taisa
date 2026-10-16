@@ -126,10 +126,19 @@ final class ConversationsViewContractTests: XCTestCase {
         XCTAssertFalse(source.contains("New conversation"))
         XCTAssertFalse(source.contains("import GRDB"))
         XCTAssertTrue(source.contains("Chats couldn’t load"))
-        XCTAssertTrue(source.contains("Chats may be out of date"))
+        XCTAssertTrue(source.contains("Chats couldn’t refresh"))
         XCTAssertTrue(source.contains("Title wasn’t changed"))
         XCTAssertTrue(source.contains("Conversation wasn’t deleted"))
         XCTAssertTrue(source.contains("Draft wasn’t discarded"))
+    }
+
+    func testChatsFailuresUseTopToastWithoutChangingOtherDestinations() throws {
+        let source = try conversationsSource()
+
+        XCTAssertTrue(source.contains("TaisaToast("))
+        XCTAssertTrue(source.contains("alignment: .top"))
+        XCTAssertTrue(source.contains("model.notices.first"))
+        XCTAssertFalse(source.contains("if let issue { issueRow(issue) }"))
     }
 
     private func conversationsSource() throws -> String {

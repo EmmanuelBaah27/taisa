@@ -112,4 +112,11 @@ struct ConversationComponentTests {
         #expect(CentralIconName.arrowUp != .pause)
         #expect(CentralIconName.play != .chevronDown)
     }
+
+    @Test func toastContractIsTopPlacedAndAccessible() {
+        #expect(TaisaToast.Contract.default.placement == .top)
+        #expect(TaisaToast.Contract.default.dismissAfter == 4)
+        #expect(TaisaToast.Contract.default.swipeDirection == .up)
+        #expect(TaisaToast.Contract.default.announcesWithVoiceOver)
+    }
 }
