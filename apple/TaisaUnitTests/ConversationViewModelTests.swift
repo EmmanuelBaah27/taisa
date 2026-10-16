@@ -159,6 +159,27 @@ final class ConversationViewModelTests: XCTestCase {
         XCTAssertEqual(saved, .text("Keep this text"))
     }
 
+    func testFeedbackSelectionAutosavesWithoutTypedDetail() async {
+        let client = ConversationScreenClientSpy()
+        let model = ConversationViewModel(
+            conversationID: UUID().uuidString, title: "New conversation", entryIntent: nil,
+            client: await client.makeClient()
+        )
+        let responseID = UUID().uuidString
+
+        await model.saveFeedback(
+            responseMessageID: responseID,
+            direction: .notHelpful,
+            factors: [.communicationClarity, .intentAlignment]
+        )
+
+        let saved = await client.savedFeedback()
+        XCTAssertEqual(saved?.responseMessageID, UUID(uuidString: responseID)?.uuidString)
+        XCTAssertEqual(saved?.direction, .notHelpful)
+        XCTAssertEqual(saved?.factors, [.communicationClarity, .intentAlignment])
+        XCTAssertNil(saved?.detail)
+    }
+
     private func message(role: String, body: String) -> MessageRecord {
         MessageRecord(
             id: UUID().uuidString, conversationID: UUID().uuidString,
@@ -202,6 +223,7 @@ private actor ConversationScreenClientSpy {
     let correctionFails: Bool
     private(set) var beginVoiceCount = 0
     private var saved: ConversationInput?
+    private var feedback: ResponseFeedbackRecord?
 
     init(messages: [MessageRecord] = [], correctionFails: Bool = false) {
         self.messages = messages
@@ -217,11 +239,14 @@ private actor ConversationScreenClientSpy {
             sendText: { _ in }, retry: {}, saveDraft: { [self] input in await save(input) }, discardDraft: {},
             correctTranscript: { [correctionFails] _, _ in
                 if correctionFails { throw ConversationFailure.retryable }
-            }
+            },
+            saveFeedback: { [self] value in await save(value) }
         )
     }
     private func recordBegin() { beginVoiceCount += 1 }
     private func save(_ input: ConversationInput) { saved = input }
+    private func save(_ value: ResponseFeedbackRecord) { feedback = value }
     func count() -> Int { beginVoiceCount }
     func savedInput() -> ConversationInput? { saved }
+    func savedFeedback() -> ResponseFeedbackRecord? { feedback }
 }

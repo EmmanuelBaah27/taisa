@@ -59,6 +59,7 @@
 		391B21B781EBCDB921226163 /* PersonalRecoveryBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3369C3B07B2C81C17D16BFFB /* PersonalRecoveryBackend.swift */; };
 		3AD4E8D286F8319496162CEE /* CloudKitRuntimeConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDD926DEBBEEBABEDDE1BCE4 /* CloudKitRuntimeConfiguration.swift */; };
 		3EC287C8278A5A69EA8A84D0 /* CareerWorkView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46A8FEB0D11F6C9B75B6E2B3 /* CareerWorkView.swift */; };
+		40D8B28CF27DF963CBFD1AC7 /* AssistantResponseActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CEFCCBD837E69BEFE5B509E /* AssistantResponseActions.swift */; };
 		4385E89487FA22F1D8963C82 /* ConversationsViewContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8287F686EE049BD6CFB7E075 /* ConversationsViewContractTests.swift */; };
 		44BD30D2329C67910E146E33 /* PersonalVoiceSessionModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D98709FA19C97713E47DCC11 /* PersonalVoiceSessionModel.swift */; };
 		453968367E2C069858A27195 /* TaisaHome in Frameworks */ = {isa = PBXBuildFile; productRef = CDE1C319968A04D7C860E6AC /* TaisaHome */; };
@@ -123,6 +124,7 @@
 		9BD10D6AEBDB181476582D27 /* TaisaCareerWork in Frameworks */ = {isa = PBXBuildFile; productRef = EBDED72422FE28BD295EBBB2 /* TaisaCareerWork */; };
 		9BF2208710111D39A2826689 /* TaisaSecurity in Frameworks */ = {isa = PBXBuildFile; productRef = 42B0308E32320DD4D331FF0B /* TaisaSecurity */; };
 		9C0601F6B809A938B51F6176 /* ConversationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DFC071BC87E24F810CB98DD /* ConversationView.swift */; };
+		9C28B437CDA169ECCDE28DFA /* AssistantResponseActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CEFCCBD837E69BEFE5B509E /* AssistantResponseActions.swift */; };
 		9D14FE17C71C024AE88C5C64 /* ConversationRuntimeFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EAA31D1FAABB9F9ABA4FF1E /* ConversationRuntimeFactory.swift */; };
 		9E385BF60B5E84A9A0CD42F9 /* YouView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 198DB9F295ABEAE0DE2B6393 /* YouView.swift */; };
 		9E4B49C9257035949C3D5C08 /* YouView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 198DB9F295ABEAE0DE2B6393 /* YouView.swift */; };
@@ -274,6 +276,7 @@
 		8141344AEEFB536E987E8D85 /* ConversationTimeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationTimeline.swift; sourceTree = "<group>"; };
 		8287F686EE049BD6CFB7E075 /* ConversationsViewContractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationsViewContractTests.swift; sourceTree = "<group>"; };
 		84B4FC6A6B65DD3C62F773B1 /* PersonalDeviceQA.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalDeviceQA.swift; sourceTree = "<group>"; };
+		8CEFCCBD837E69BEFE5B509E /* AssistantResponseActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantResponseActions.swift; sourceTree = "<group>"; };
 		8DE282C2E35864B24E4EE76E /* HomeSectionViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeSectionViews.swift; sourceTree = "<group>"; };
 		8DE603EA1A17036021FA0FF9 /* HomeScenarioView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeScenarioView.swift; sourceTree = "<group>"; };
 		913DBB6F0D16BF6173604367 /* TaisaPreviewCatalogTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaisaPreviewCatalogTests.swift; sourceTree = "<group>"; };
@@ -641,6 +644,7 @@
 		FDC8E03D1D07A8F2DAD8626B /* Conversation */ = {
 			isa = PBXGroup;
 			children = (
+				8CEFCCBD837E69BEFE5B509E /* AssistantResponseActions.swift */,
 				7EAA31D1FAABB9F9ABA4FF1E /* ConversationRuntimeFactory.swift */,
 				8141344AEEFB536E987E8D85 /* ConversationTimeline.swift */,
 				3DFC071BC87E24F810CB98DD /* ConversationView.swift */,
@@ -958,6 +962,7 @@
 			files = (
 				EEC155B2BFD7C9E712BA3AA4 /* AppRootView.swift in Sources */,
 				2FC52F11C37E17D01ACB5616 /* AppRuntime.swift in Sources */,
+				40D8B28CF27DF963CBFD1AC7 /* AssistantResponseActions.swift in Sources */,
 				1C3C0759308495D3F89AD423 /* BuildDiagnosticsView.swift in Sources */,
 				C706F833D6F085BA07123280 /* BuildMetadata.generated.swift in Sources */,
 				98BAD9001F4039865F00E14F /* CareerWorkView.swift in Sources */,
@@ -1062,6 +1067,7 @@
 			files = (
 				8C49BDAAB3B5CC87998AFBB7 /* AppRootView.swift in Sources */,
 				5A5003E0A59E1826942CB88B /* AppRuntime.swift in Sources */,
+				9C28B437CDA169ECCDE28DFA /* AssistantResponseActions.swift in Sources */,
 				BC05599BCB16F2E72FB9E01E /* BuildDiagnosticsView.swift in Sources */,
 				6A8C01721A57C6BF44E6802F /* BuildMetadata.generated.swift in Sources */,
 				71030842694FB9DD28001127 /* CareerWorkView.swift in Sources */,

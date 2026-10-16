@@ -1,9 +1,11 @@
+import Foundation
 import Observation
 import TaisaConversations
 import TaisaStorage
 
 struct ConversationScreenClient: Sendable {
     var loadMessages: @Sendable () async throws -> [MessageRecord]
+    var loadAssistantResponses: @Sendable () async throws -> [String: AssistantResponseRecord]
     var loadTitle: @Sendable () async throws -> String
     var beginVoice: @Sendable () async throws -> Void
     var pauseVoice: @Sendable () async throws -> Void
@@ -15,9 +17,13 @@ struct ConversationScreenClient: Sendable {
     var discardDraft: @Sendable () async throws -> Void
     var discardEmptyConversation: @Sendable () async throws -> Void
     var correctTranscript: @Sendable (String, String) async throws -> Void
+    var saveFeedback: @Sendable (ResponseFeedbackRecord) async throws -> Void
+    var acceptProposal: @Sendable (String) async throws -> Void
+    var dismissProposal: @Sendable (String) async throws -> Void
 
     init(
         loadMessages: @escaping @Sendable () async throws -> [MessageRecord] = { [] },
+        loadAssistantResponses: @escaping @Sendable () async throws -> [String: AssistantResponseRecord] = { [:] },
         loadTitle: @escaping @Sendable () async throws -> String = { "New conversation" },
         beginVoice: @escaping @Sendable () async throws -> Void,
         pauseVoice: @escaping @Sendable () async throws -> Void,
@@ -28,9 +34,13 @@ struct ConversationScreenClient: Sendable {
         saveDraft: @escaping @Sendable (ConversationInput) async throws -> Void,
         discardDraft: @escaping @Sendable () async throws -> Void,
         discardEmptyConversation: @escaping @Sendable () async throws -> Void = {},
-        correctTranscript: @escaping @Sendable (String, String) async throws -> Void = { _, _ in }
+        correctTranscript: @escaping @Sendable (String, String) async throws -> Void = { _, _ in },
+        saveFeedback: @escaping @Sendable (ResponseFeedbackRecord) async throws -> Void = { _ in },
+        acceptProposal: @escaping @Sendable (String) async throws -> Void = { _ in },
+        dismissProposal: @escaping @Sendable (String) async throws -> Void = { _ in }
     ) {
         self.loadMessages = loadMessages
+        self.loadAssistantResponses = loadAssistantResponses
         self.loadTitle = loadTitle
         self.beginVoice = beginVoice
         self.pauseVoice = pauseVoice
@@ -42,6 +52,9 @@ struct ConversationScreenClient: Sendable {
         self.discardDraft = discardDraft
         self.discardEmptyConversation = discardEmptyConversation
         self.correctTranscript = correctTranscript
+        self.saveFeedback = saveFeedback
+        self.acceptProposal = acceptProposal
+        self.dismissProposal = dismissProposal
     }
 }
 
@@ -57,6 +70,7 @@ final class ConversationViewModel {
     private(set) var title: String
     private(set) var composer: ComposerState
     private(set) var messages: [MessageRecord] = []
+    private(set) var assistantResponses: [String: AssistantResponseRecord] = [:]
     private(set) var confirmation: Confirmation?
     private(set) var correctionMessageID: String?
     var correctionText = ""
@@ -132,6 +146,7 @@ final class ConversationViewModel {
         started = true
         do {
             messages = try await client.loadMessages()
+            assistantResponses = try await client.loadAssistantResponses()
             switch entryIntent {
             case .voice: try await beginVoice()
             case .text: composer = .typing(""); text = ""
@@ -269,6 +284,31 @@ final class ConversationViewModel {
         }
     }
 
+    func saveFeedback(
+        responseMessageID: String,
+        direction: ResponseFeedbackDirection,
+        factors: [ResponseQualityFactor]
+    ) async {
+        do {
+            try await client.saveFeedback(.init(
+                responseMessageID: responseMessageID, direction: direction,
+                factors: factors, detail: nil,
+                updatedAtMS: Int64(Date().timeIntervalSince1970 * 1_000)
+            ))
+            await reloadMessages()
+        } catch { composer = .failure(.retryable) }
+    }
+
+    func acceptProposal(_ id: String) async {
+        do { try await client.acceptProposal(id); await reloadMessages() }
+        catch { composer = .failure(.retryable) }
+    }
+
+    func dismissProposal(_ id: String) async {
+        do { try await client.dismissProposal(id); await reloadMessages() }
+        catch { composer = .failure(.retryable) }
+    }
+
     private var hasUnsentInput: Bool {
         switch composer {
         case .typing: !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -300,6 +340,7 @@ final class ConversationViewModel {
 
     private func reloadMessages() async {
         if let loaded = try? await client.loadMessages() { messages = loaded }
+        if let loaded = try? await client.loadAssistantResponses() { assistantResponses = loaded }
         if let loadedTitle = try? await client.loadTitle() { title = loadedTitle }
     }
 }

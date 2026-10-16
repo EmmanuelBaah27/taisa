@@ -152,6 +152,8 @@ struct ConversationRuntimeFactory: Sendable {
     ) async throws -> ConversationViewModel {
         let conversations = ConversationRepository(store: store)
         let query = ConversationQuery(store: store)
+        let assistantResponses = AssistantResponseRepository(store: store)
+        let proposalRouter = AssistantProposalRouter(store: store)
         let messageHistory: @Sendable (String) async throws -> [MessageRecord] = { conversationID in
             try await query.loadConversation(id: conversationID).visibleMessages
         }
@@ -316,6 +318,7 @@ struct ConversationRuntimeFactory: Sendable {
 
         let client = ConversationScreenClient(
             loadMessages: { try await query.loadConversation(id: route.id).visibleMessages },
+            loadAssistantResponses: { try await query.loadConversation(id: route.id).assistantResponses },
             loadTitle: { try await query.loadConversation(id: route.id).conversation.title },
             beginVoice: { try await coordinator.beginReply(mode: .voice) },
             pauseVoice: { try await coordinator.pauseVoice() },
@@ -364,6 +367,19 @@ struct ConversationRuntimeFactory: Sendable {
             },
             correctTranscript: { messageID, text in
                 try await coordinator.correctTranscript(messageID: messageID, text: text)
+            },
+            saveFeedback: { try await assistantResponses.upsertFeedback($0) },
+            acceptProposal: { proposalID in
+                _ = try await proposalRouter.accept(
+                    proposalID: proposalID, deviceID: deviceID,
+                    resolvedAtMS: Int64(Date().timeIntervalSince1970 * 1_000)
+                )
+            },
+            dismissProposal: { proposalID in
+                _ = try await proposalRouter.dismiss(
+                    proposalID: proposalID,
+                    resolvedAtMS: Int64(Date().timeIntervalSince1970 * 1_000)
+                )
             }
         )
         return await ConversationViewModel(
@@ -393,10 +409,13 @@ struct ConversationRuntimeFactory: Sendable {
         let unavailable: @Sendable () async throws -> Void = {
             throw ConversationFailure.unavailable
         }
+        let assistantResponses = AssistantResponseRepository(store: store)
+        let proposalRouter = AssistantProposalRouter(store: store)
         let textDraft = history.drafts.first(where: { $0.inputMode == .text })?.text ?? ""
         let composer: ComposerState = textDraft.isEmpty ? .waitingForReply : .typing(textDraft)
         let client = ConversationScreenClient(
             loadMessages: { try await query.loadConversation(id: route.id).visibleMessages },
+            loadAssistantResponses: { try await query.loadConversation(id: route.id).assistantResponses },
             loadTitle: { try await query.loadConversation(id: route.id).conversation.title },
             beginVoice: unavailable,
             pauseVoice: unavailable,
@@ -434,7 +453,20 @@ struct ConversationRuntimeFactory: Sendable {
                     context: mutation(at: Int64(Date().timeIntervalSince1970 * 1_000))
                 )
             },
-            correctTranscript: { _, _ in try await unavailable() }
+            correctTranscript: { _, _ in try await unavailable() },
+            saveFeedback: { try await assistantResponses.upsertFeedback($0) },
+            acceptProposal: { proposalID in
+                _ = try await proposalRouter.accept(
+                    proposalID: proposalID, deviceID: deviceID,
+                    resolvedAtMS: Int64(Date().timeIntervalSince1970 * 1_000)
+                )
+            },
+            dismissProposal: { proposalID in
+                _ = try await proposalRouter.dismiss(
+                    proposalID: proposalID,
+                    resolvedAtMS: Int64(Date().timeIntervalSince1970 * 1_000)
+                )
+            }
         )
         return ConversationViewModel(
             conversationID: route.id,
