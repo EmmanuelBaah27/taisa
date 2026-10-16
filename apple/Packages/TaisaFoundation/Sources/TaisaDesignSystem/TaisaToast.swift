@@ -19,7 +19,6 @@ public struct TaisaToast: View {
     }
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @State private var dragOffset: CGFloat = 0
 
     private let message: String
@@ -46,29 +45,23 @@ public struct TaisaToast: View {
         HStack(spacing: TaisaSpacing.control.rawValue) {
             Text(message)
                 .font(TaisaTypography.navigationLabel.font)
-                .foregroundStyle(TaisaColor.foreground.color)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .foregroundStyle(TaisaColor.background.color)
+                .lineLimit(1)
 
             if let actionLabel, let action {
                 Button(actionLabel, action: action)
                     .font(TaisaTypography.navigationLabel.font)
-                    .foregroundStyle(TaisaColor.foreground.color)
+                    .foregroundStyle(TaisaColor.background.color)
                     .frame(minHeight: 44)
                     .padding(.horizontal, TaisaSpacing.compact.rawValue)
                     .buttonStyle(.plain)
+                    .layoutPriority(1)
             }
         }
         .padding(.horizontal, TaisaSpacing.standard.rawValue)
         .frame(minHeight: TaisaControlMetric.toastMinimumHeight)
-        .background {
-            if reduceTransparency {
-                Capsule().fill(TaisaColor.raisedSurface.color)
-            } else {
-                Capsule().fill(.regularMaterial)
-            }
-        }
-        .overlay { Capsule().stroke(TaisaColor.border.color) }
-        .shadow(color: TaisaColor.foreground.color.opacity(0.06), radius: TaisaSpacing.control.rawValue)
+        .background(TaisaColor.foreground.color, in: Capsule())
+        .shadow(color: TaisaColor.foreground.color.opacity(0.14), radius: TaisaSpacing.control.rawValue)
         .offset(y: min(0, dragOffset))
         .contentShape(Capsule())
         .gesture(

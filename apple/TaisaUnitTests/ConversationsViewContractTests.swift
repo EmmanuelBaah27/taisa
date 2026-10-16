@@ -144,7 +144,8 @@ final class ConversationsViewContractTests: XCTestCase {
         XCTAssertFalse(source.contains("if let issue { issueRow(issue) }"))
         XCTAssertTrue(toast.contains("TaisaColor.foreground.color"))
         XCTAssertTrue(toast.contains("TaisaColor.background.color"))
-        XCTAssertTrue(toast.contains(".fixedSize(horizontal: true, vertical: false)"))
+        XCTAssertFalse(toast.contains(".fixedSize(horizontal: true, vertical: false)"))
+        XCTAssertTrue(toast.contains(".layoutPriority(1)"))
         XCTAssertTrue(toast.contains(".lineLimit(1)"))
         XCTAssertFalse(toast.contains(".frame(maxWidth: .infinity"))
     }
