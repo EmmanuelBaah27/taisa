@@ -285,12 +285,14 @@ struct VoiceSessionReviewRegressionTests {
             (
                 try String.fetchAll(database, sql: "SELECT body FROM messages ORDER BY created_at_ms, role"),
                 try String.fetchOne(database, sql: "SELECT state FROM voice_turns LIMIT 1"),
-                try Int.fetchOne(database, sql: "SELECT count(*) FROM audio_cleanup_queue") ?? -1
+                try Int.fetchOne(database, sql: "SELECT count(*) FROM audio_cleanup_queue") ?? -1,
+                try Int.fetchOne(database, sql: "SELECT count(*) FROM assistant_response_metadata") ?? -1
             )
         }
         #expect(Set(result.0) == Set(["I led the critique.", "What changed?"]))
         #expect(result.1 == "completed")
         #expect(result.2 == 0)
+        #expect(result.3 == 1)
     }
 
     @Test("terminal transcript and coaching bodies checkpoint atomically before audio cleanup")
@@ -592,7 +594,7 @@ private func reviewTurn(
 
 private func reviewResponse() throws -> CoachingResponse {
     try JSONDecoder().decode(CoachingResponse.self, from: Data("""
-    {"requestId":"44444444-4444-4444-8444-444444444444","reply":"What changed?","mode":"coach","relevance":"career-relevant","contextSufficiency":"sufficient","stance":"nudge","proposals":[],"usage":{"provider":"anthropic","model":"fixture","estimatedCostUsd":0}}
+    {"requestId":"44444444-4444-4444-8444-444444444444","reply":"What changed?","mode":"coach","relevance":"career-relevant","contextSufficiency":"sufficient","stance":"nudge","explanation":{"mode":"nudge","evidence":[],"inference":"A change may need reflection.","confidence":"medium","approach":"Ask one bounded question."},"proposal":null,"usage":{"provider":"anthropic","model":"fixture","estimatedCostUsd":0}}
     """.utf8))
 }
 
@@ -609,6 +611,7 @@ private actor ReviewCheckpointSpy: VoiceTurnCheckpointing {
     func checkpoint(
         _ record: VoiceTurnRecord,
         messages: [MessageRecord],
+        assistantResponse: AssistantResponseWrite?,
         cleanup: VoiceTurnCleanup?
     ) async throws {
         messageBodies.append(contentsOf: messages.map(\.body))

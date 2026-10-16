@@ -103,14 +103,14 @@ public enum MergeEngine {
         try validateGraph(ordered)
         let state = SyncMergeState(events: ordered)
         let duplicateDelivery = events.count > ordered.count
-        if ["memory_source", "work_event", "insight_source"].contains(first.entityType) &&
+        if ["memory_source", "work_event", "insight_source", "assistant_response_metadata", "assistant_response_source"].contains(first.entityType) &&
             ordered.contains(where: { $0.kind == .update || $0.kind == .resolve }) &&
             !ordered.contains(where: { $0.kind == .create }) {
             throw SyncMergeError.malformedMutation
         }
 
         if first.entityType == "message" ||
-            (["memory_source", "work_event", "insight_source"].contains(first.entityType) && ordered.allSatisfy { $0.kind == .create || $0.kind == .delete }) {
+            (["memory_source", "work_event", "insight_source", "assistant_response_metadata", "assistant_response_source"].contains(first.entityType) && ordered.allSatisfy { $0.kind == .create || $0.kind == .delete }) {
             let creates = ordered.filter { $0.kind == .create }
             let deletions = ordered.filter { $0.kind == .delete }
             if deletions.isEmpty {

@@ -15,7 +15,15 @@ struct ConversationView: View {
                     ConversationTimeline(
                         messages: model.messages,
                         updatingResponseAfter: model.correctionRegenerationMessageID,
-                        correct: model.requestCorrection
+                        assistantResponses: model.assistantResponses,
+                        correct: model.requestCorrection,
+                        saveFeedback: { messageID, direction, factors in
+                            Task { await model.saveFeedback(
+                                responseMessageID: messageID, direction: direction, factors: factors
+                            ) }
+                        },
+                        acceptProposal: { id in Task { await model.acceptProposal(id) } },
+                        dismissProposal: { id in Task { await model.dismissProposal(id) } }
                     )
                     if model.messages.isEmpty { emptyState }
                 }

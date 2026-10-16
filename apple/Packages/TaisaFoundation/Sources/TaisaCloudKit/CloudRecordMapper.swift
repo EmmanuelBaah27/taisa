@@ -22,6 +22,7 @@ public enum CloudRecordMapper {
         "profile", "conversation", "message", "goal", "milestone", "action",
         "evidence", "memory", "memory_source", "weekly_placement", "work_event",
         "insight", "insight_source", "insight_revision", "snapshot",
+        "assistant_response_metadata", "assistant_response_source", "assistant_proposal",
     ]
 
     public static var zoneID: CKRecordZone.ID {

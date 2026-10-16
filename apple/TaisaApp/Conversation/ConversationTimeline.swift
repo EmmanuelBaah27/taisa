@@ -14,12 +14,30 @@ struct ConversationTimeline: View {
 
     let messages: [MessageRecord]
     let updatingResponseAfter: String?
+    let assistantResponses: [String: AssistantResponseRecord]
     let correct: (MessageRecord) -> Void
+    let saveFeedback: (String, ResponseFeedbackDirection?, [ResponseQualityFactor]) -> Void
+    let acceptProposal: (String) -> Void
+    let dismissProposal: (String) -> Void
     @State private var isAwayFromLatest = false
     @State private var expandedUserMessages: Set<String> = []
 
-    init(messages: [MessageRecord], updatingResponseAfter: String? = nil, correct: @escaping (MessageRecord) -> Void) {
-        self.messages = messages; self.updatingResponseAfter = updatingResponseAfter; self.correct = correct
+    init(
+        messages: [MessageRecord],
+        updatingResponseAfter: String? = nil,
+        assistantResponses: [String: AssistantResponseRecord] = [:],
+        correct: @escaping (MessageRecord) -> Void,
+        saveFeedback: @escaping (String, ResponseFeedbackDirection?, [ResponseQualityFactor]) -> Void = { _, _, _ in },
+        acceptProposal: @escaping (String) -> Void = { _ in },
+        dismissProposal: @escaping (String) -> Void = { _ in }
+    ) {
+        self.messages = messages
+        self.updatingResponseAfter = updatingResponseAfter
+        self.assistantResponses = assistantResponses
+        self.correct = correct
+        self.saveFeedback = saveFeedback
+        self.acceptProposal = acceptProposal
+        self.dismissProposal = dismissProposal
     }
 
     var body: some View {
@@ -45,6 +63,17 @@ struct ConversationTimeline: View {
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                     .padding(.horizontal, TaisaSpacing.standard.rawValue)
                                     .contextMenu { messageActions(for: message) }
+                                if let response = assistantResponses[message.id] {
+                                    AssistantResponseActions(
+                                        response: response,
+                                        saveFeedback: { direction, factors in
+                                            saveFeedback(message.id, direction, factors)
+                                        },
+                                        acceptProposal: acceptProposal,
+                                        dismissProposal: dismissProposal
+                                    )
+                                    .padding(.horizontal, TaisaSpacing.standard.rawValue)
+                                }
                             }
                             if updatingResponseAfter == message.id {
                                 Text("Updating response…")

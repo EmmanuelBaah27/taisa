@@ -109,11 +109,15 @@ struct SyncEntityShape {
     let table: String
     let columns: [String: String]
     let optional: Set<String>
+    let identityColumn: String
+    let blobFields: Set<String>
 
-    init(table: String, columns: [String: String], optional: Set<String> = []) {
+    init(table: String, columns: [String: String], optional: Set<String> = [], identityColumn: String = "id", blobFields: Set<String> = []) {
         self.table = table
         self.columns = columns
         self.optional = optional
+        self.identityColumn = identityColumn
+        self.blobFields = blobFields
     }
 
     static let shapes: [String: SyncEntityShape] = [
@@ -154,6 +158,9 @@ struct SyncEntityShape {
         "insight": .init(table: "insights", columns: ["body": "body", "status": "status", "isTimeSensitive": "is_time_sensitive", "homeEligibleUntilMS": "home_eligible_until_ms", "createdAtMS": "created_at_ms", "updatedAtMS": "updated_at_ms"], optional: ["homeEligibleUntilMS"]),
         "insight_source": .init(table: "insight_sources", columns: ["insightID": "insight_id", "sourceType": "source_type", "sourceID": "source_id", "excerpt": "excerpt", "createdAtMS": "created_at_ms"]),
         "insight_revision": .init(table: "insight_revisions", columns: ["insightID": "insight_id", "proposedBody": "proposed_body", "status": "status", "sourceType": "source_type", "sourceID": "source_id", "createdAtMS": "created_at_ms", "resolvedAtMS": "resolved_at_ms"], optional: ["insightID", "sourceID", "resolvedAtMS"]),
+        "assistant_response_metadata": .init(table: "assistant_response_metadata", columns: ["responseMessageID": "response_message_id", "requestID": "request_id", "idempotencyReceipt": "idempotency_receipt", "mode": "mode", "relevance": "relevance", "contextSufficiency": "context_sufficiency", "stance": "stance", "inference": "inference", "confidence": "confidence", "approach": "approach", "createdAtMS": "created_at_ms"], optional: ["stance"], identityColumn: "response_message_id"),
+        "assistant_response_source": .init(table: "assistant_response_sources", columns: ["responseMessageID": "response_message_id", "ordinal": "ordinal", "sourceID": "source_id", "sourceType": "source_type", "excerpt": "excerpt"], optional: ["excerpt"]),
+        "assistant_proposal": .init(table: "assistant_proposals", columns: ["responseMessageID": "response_message_id", "kind": "kind", "canonicalPayload": "canonical_payload", "payloadDigest": "payload_digest", "state": "state", "targetType": "target_type", "targetID": "target_id", "targetVersionID": "target_version_id", "decisionReceipt": "decision_receipt", "createdAtMS": "created_at_ms", "resolvedAtMS": "resolved_at_ms"], optional: ["targetType", "targetID", "targetVersionID", "decisionReceipt", "resolvedAtMS"], blobFields: ["canonicalPayload"]),
     ]
 
     func completeFields(_ record: [String: Any]) throws -> [String: Data] {
@@ -177,6 +184,9 @@ struct SyncEntityShape {
             case "insights": _ = try JSONDecoder().decode(InsightRecord.self, from: data)
             case "insight_sources": _ = try JSONDecoder().decode(InsightSourceRecord.self, from: data)
             case "insight_revisions": _ = try JSONDecoder().decode(InsightRevisionRecord.self, from: data)
+            case "assistant_response_metadata": _ = try JSONDecoder().decode(AssistantResponseMetadataRecord.self, from: data)
+            case "assistant_response_sources": _ = try JSONDecoder().decode(AssistantResponseSourceRecord.self, from: data)
+            case "assistant_proposals": _ = try JSONDecoder().decode(AssistantProposalRecord.self, from: data)
             default: throw SyncMergeError.malformedMutation
             }
         } catch { throw SyncMergeError.malformedMutation }
@@ -193,7 +203,7 @@ struct SyncEntityShape {
 
     static func materialize(_ decision: MergeDecision, entityType: String, entityID: String, source: [SyncProjection], in db: Database) throws {
         guard let shape = shapes[entityType] else { throw SyncMergeError.malformedMutation }
-        let count = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM \(shape.table) WHERE id = ? COLLATE NOCASE", arguments: [entityID]) ?? 0
+        let count = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM \(shape.table) WHERE \(shape.identityColumn) = ? COLLATE NOCASE", arguments: [entityID]) ?? 0
         guard count <= 1 else { throw SyncMergeError.persistenceFailed }
         if let deletion = decision.deletion {
             try db.execute(sql: "INSERT OR IGNORE INTO tombstones (id, entity_type, entity_id, deletion_version_id, deleted_at_ms) VALUES (?, ?, ?, ?, ?)", arguments: [UUID().uuidString, entityType, entityID, deletion.id, deletion.timestampMS])
@@ -212,8 +222,9 @@ struct SyncEntityShape {
             guard Set(fields.keys) == Set(shape.columns.keys) else { throw SyncMergeError.malformedMutation }
             try checkParents(in: fields, shape: shape, db: db)
             let ordered = shape.columns.keys.sorted()
-            let names = ["id"] + ordered.map { shape.columns[$0]! }
-            let values = [entityID.databaseValue] + (try ordered.map { try databaseValue(fields[$0]!) })
+            let identityIsField = shape.columns.values.contains(shape.identityColumn)
+            let names = (identityIsField ? [] : [shape.identityColumn]) + ordered.map { shape.columns[$0]! }
+            let values = (identityIsField ? [] : [entityID.databaseValue]) + (try ordered.map { try shape.databaseValue(fields[$0]!, field: $0) })
             let placeholders = Array(repeating: "?", count: names.count).joined(separator: ", ")
             try db.execute(sql: "INSERT INTO \(shape.table) (\(names.joined(separator: ", "))) VALUES (\(placeholders))", arguments: StatementArguments(values))
         } else {
@@ -223,8 +234,8 @@ struct SyncEntityShape {
             let fields = Dictionary(uniqueKeysWithValues: decision.fields.map { ($0.name, $0.value) })
             try checkParents(in: fields, shape: shape, db: db)
             let assignments = ordered.map { "\(shape.columns[$0]!) = ?" }.joined(separator: ", ")
-            let values = try ordered.map { try databaseValue(fields[$0]!) } + [entityID.databaseValue]
-            try db.execute(sql: "UPDATE \(shape.table) SET \(assignments) WHERE id = ? COLLATE NOCASE", arguments: StatementArguments(values))
+            let values = try ordered.map { try shape.databaseValue(fields[$0]!, field: $0) } + [entityID.databaseValue]
+            try db.execute(sql: "UPDATE \(shape.table) SET \(assignments) WHERE \(shape.identityColumn) = ? COLLATE NOCASE", arguments: StatementArguments(values))
         }
     }
 
@@ -242,12 +253,15 @@ struct SyncEntityShape {
         ]
         case "weekly_placements", "work_events": [("actionID", "actions")]
         case "insight_sources", "insight_revisions": [("insightID", "insights")]
+        case "assistant_response_metadata": [("responseMessageID", "messages")]
+        case "assistant_response_sources", "assistant_proposals": [("responseMessageID", "assistant_response_metadata")]
         default: []
         }
         for (property, parentTable) in relations {
             guard let encoded = fields[property],
                   let parent = try JSONSerialization.jsonObject(with: encoded, options: [.fragmentsAllowed]) as? String else { continue }
-            let exists = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM \(parentTable) WHERE id = ? COLLATE NOCASE", arguments: [parent]) ?? 0
+            let identity = parentTable == "assistant_response_metadata" ? "response_message_id" : "id"
+            let exists = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM \(parentTable) WHERE \(identity) = ? COLLATE NOCASE", arguments: [parent]) ?? 0
             guard exists == 1 else { throw SyncProjectionError.dependencyPending }
         }
         if shape.table == "insight_sources" || shape.table == "insight_revisions" {
@@ -269,6 +283,15 @@ struct SyncEntityShape {
             let exists = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM \(sourceTable) WHERE id = ? COLLATE NOCASE", arguments: [sourceID]) ?? 0
             guard exists == 1 else { throw SyncProjectionError.dependencyPending }
         }
+    }
+
+    private func databaseValue(_ data: Data, field: String) throws -> DatabaseValue {
+        if blobFields.contains(field) {
+            guard let encoded = try JSONSerialization.jsonObject(with: data, options: [.fragmentsAllowed]) as? String,
+                  let decoded = Data(base64Encoded: encoded) else { throw SyncMergeError.malformedMutation }
+            return decoded.databaseValue
+        }
+        return try SyncEntityShape.databaseValue(data)
     }
 
     static func retainCausality(_ mutation: SyncMutation, in db: Database) throws {

@@ -58,6 +58,12 @@ function requestAtPortableLimits(): CoachingRequest {
           actionIds: ids,
         },
       ],
+      preferenceProfile: {
+        signals: [
+          { factor: 'communication_clarity', direction: 'helpful' },
+          { factor: 'coaching_strategy', direction: 'not_helpful' },
+        ],
+      },
     },
   };
 }
@@ -72,6 +78,31 @@ test('the backend and portable contract reject UUID versions outside the shared 
   const request = requestAtPortableLimits();
   request.requestId = '11111111-1111-f111-8111-111111111111';
   expect(firstCoachingRequestContractViolation(request)).toBe('requestId');
+  expect(CoachingRequestSchema.safeParse(request).success).toBe(false);
+});
+
+test.each([
+  ['evidence fidelity', { factor: 'evidence_fidelity', direction: 'helpful' }],
+  ['unknown factor', { factor: 'verbosity', direction: 'helpful' }],
+  ['unknown direction', { factor: 'coverage', direction: 'mixed' }],
+])('the backend and portable contract reject invalid preference signal: %s', (_name, signal) => {
+  const request = requestAtPortableLimits();
+  request.context.preferenceProfile = { signals: [signal as never] };
+  expect(firstCoachingRequestContractViolation(request)).toBe(
+    'context.preferenceProfile.signals[0]',
+  );
+  expect(CoachingRequestSchema.safeParse(request).success).toBe(false);
+});
+
+test('the backend and portable contract cap preference context at five signals', () => {
+  const request = requestAtPortableLimits();
+  request.context.preferenceProfile = {
+    signals: Array.from({ length: 6 }, () => ({
+      factor: 'coverage' as const,
+      direction: 'helpful' as const,
+    })),
+  };
+  expect(firstCoachingRequestContractViolation(request)).toBe('context.preferenceProfile');
   expect(CoachingRequestSchema.safeParse(request).success).toBe(false);
 });
 
@@ -168,7 +199,7 @@ test.each([
   expect(CoachingResponsePayloadSchema.safeParse(payload).success).toBe(false);
 });
 
-test('the backend accepts strict proposals at the portable output boundary', () => {
+test('the backend rejects the legacy proposal-array output boundary', () => {
   expect(CoachingResponsePayloadSchema.safeParse({
     mode: 'coach',
     relevance: 'career-relevant',
@@ -188,5 +219,40 @@ test('the backend accepts strict proposals at the portable output boundary', () 
       },
       reason: 'r'.repeat(COACHING_GATEWAY_LIMITS.maxTextLength),
     })),
+  }).success).toBe(false);
+});
+
+const explanation = {
+  mode: 'direct' as const,
+  evidence: [{ sourceId: 'message-1', sourceType: 'message' as const, excerpt: 'I need a concrete next step.' }],
+  inference: 'The user explicitly asked for practical guidance.',
+  confidence: 'high' as const,
+  approach: 'Offer one bounded next step.',
+};
+
+test('the backend accepts one typed Senior Self proposal with bounded explanation metadata', () => {
+  expect(CoachingResponsePayloadSchema.safeParse({
+    mode: 'coach',
+    relevance: 'career-relevant',
+    contextSufficiency: 'sufficient',
+    reply: 'Write the decision criteria before the meeting.',
+    stance: 'direct',
+    explanation,
+    proposal: {
+      kind: 'action',
+      title: 'Write decision criteria',
+      description: 'Draft the criteria before the meeting.',
+      priority: 'high',
+      dueAt: NOW,
+      goalId: null,
+    },
   }).success).toBe(true);
+});
+
+test('the backend rejects legacy proposal arrays once the singular contract is active', () => {
+  expect(CoachingResponsePayloadSchema.safeParse({
+    mode: 'coach', relevance: 'career-relevant', contextSufficiency: 'sufficient',
+    reply: 'Choose one next step.', stance: 'nudge', explanation: { ...explanation, mode: 'nudge' }, proposal: null,
+    proposals: [proposal, proposal],
+  }).success).toBe(false);
 });

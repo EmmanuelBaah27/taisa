@@ -123,6 +123,118 @@ public struct MessageRecord: Codable, Sendable, Equatable {
     }
 }
 
+public enum AssistantResponseMode: String, Codable, Sendable { case coach, clarify, redirect }
+public enum AssistantProposalState: String, Codable, Sendable {
+    case pending, accepted, dismissed, superseded, stale, unsupported
+}
+public enum ResponseFeedbackDirection: String, Codable, Sendable {
+    case helpful
+    case notHelpful = "not_helpful"
+}
+public enum ResponseQualityFactor: String, Codable, Sendable, CaseIterable, Comparable {
+    case evidenceFidelity = "evidence_fidelity"
+    case intentAlignment = "intent_alignment"
+    case coverage
+    case coachingStrategy = "coaching_strategy"
+    case insightValue = "insight_value"
+    case practicalUtility = "practical_utility"
+    case confidenceCalibration = "confidence_calibration"
+    case relationalFit = "relational_fit"
+    case communicationClarity = "communication_clarity"
+    public static func < (lhs: Self, rhs: Self) -> Bool { lhs.rawValue < rhs.rawValue }
+}
+
+public struct AssistantResponseMetadataRecord: Codable, Sendable, Equatable {
+    public let id: String
+    public let responseMessageID: String
+    public let requestID: String
+    public let idempotencyReceipt: String
+    public let mode: AssistantResponseMode
+    public let relevance: String
+    public let contextSufficiency: String
+    public let stance: String?
+    public let inference: String
+    public let confidence: String
+    public let approach: String
+    public let createdAtMS: Int64
+    public init(responseMessageID: String, requestID: String, idempotencyReceipt: String, mode: AssistantResponseMode, relevance: String, contextSufficiency: String, stance: String?, inference: String, confidence: String, approach: String, createdAtMS: Int64) {
+        self.id = UUIDIdentity.normalizedOrOriginal(responseMessageID); self.responseMessageID = UUIDIdentity.normalizedOrOriginal(responseMessageID); self.requestID = UUIDIdentity.normalizedOrOriginal(requestID)
+        self.idempotencyReceipt = idempotencyReceipt; self.mode = mode; self.relevance = relevance; self.contextSufficiency = contextSufficiency
+        self.stance = stance; self.inference = inference; self.confidence = confidence; self.approach = approach; self.createdAtMS = createdAtMS
+    }
+}
+
+public struct AssistantResponseSourceRecord: Codable, Sendable, Equatable {
+    public let id: String
+    public let responseMessageID: String
+    public let ordinal: Int
+    public let sourceID: String
+    public let sourceType: String
+    public let excerpt: String?
+    public init(id: String, responseMessageID: String, ordinal: Int, sourceID: String, sourceType: String, excerpt: String?) {
+        self.id = UUIDIdentity.normalizedOrOriginal(id); self.responseMessageID = UUIDIdentity.normalizedOrOriginal(responseMessageID)
+        self.ordinal = ordinal; self.sourceID = sourceID; self.sourceType = sourceType; self.excerpt = excerpt
+    }
+}
+
+public struct AssistantProposalRecord: Codable, Sendable, Equatable {
+    public let id: String
+    public let responseMessageID: String
+    public let kind: String
+    public let canonicalPayload: Data
+    public let payloadDigest: String
+    public let state: AssistantProposalState
+    public let targetType: String?
+    public let targetID: String?
+    public let targetVersionID: String?
+    public let decisionReceipt: String?
+    public let createdAtMS: Int64
+    public let resolvedAtMS: Int64?
+    public init(id: String, responseMessageID: String, kind: String, canonicalPayload: Data, payloadDigest: String, state: AssistantProposalState, targetType: String?, targetID: String?, targetVersionID: String?, decisionReceipt: String?, createdAtMS: Int64, resolvedAtMS: Int64?) {
+        self.id = UUIDIdentity.normalizedOrOriginal(id); self.responseMessageID = UUIDIdentity.normalizedOrOriginal(responseMessageID); self.kind = kind
+        self.canonicalPayload = canonicalPayload; self.payloadDigest = payloadDigest; self.state = state; self.targetType = targetType
+        self.targetID = targetID; self.targetVersionID = targetVersionID; self.decisionReceipt = decisionReceipt; self.createdAtMS = createdAtMS; self.resolvedAtMS = resolvedAtMS
+    }
+}
+
+public struct ResponseFeedbackRecord: Codable, Sendable, Equatable {
+    public let responseMessageID: String
+    public let direction: ResponseFeedbackDirection
+    public let factors: [ResponseQualityFactor]
+    public let detail: String?
+    public let updatedAtMS: Int64
+    public init(responseMessageID: String, direction: ResponseFeedbackDirection, factors: [ResponseQualityFactor], detail: String?, updatedAtMS: Int64) {
+        self.responseMessageID = UUIDIdentity.normalizedOrOriginal(responseMessageID); self.direction = direction
+        self.factors = Array(Set(factors)).sorted(); self.detail = detail; self.updatedAtMS = updatedAtMS
+    }
+}
+
+public struct ResponsePreferenceSignalRecord: Codable, Sendable, Equatable {
+    public let factor: ResponseQualityFactor
+    public let direction: ResponseFeedbackDirection
+    public init(factor: ResponseQualityFactor, direction: ResponseFeedbackDirection) {
+        self.factor = factor
+        self.direction = direction
+    }
+}
+
+public struct AssistantResponseRecord: Codable, Sendable, Equatable {
+    public let metadata: AssistantResponseMetadataRecord
+    public let sources: [AssistantResponseSourceRecord]
+    public let proposal: AssistantProposalRecord?
+    public let feedback: ResponseFeedbackRecord?
+}
+
+public struct AssistantResponseWrite: Sendable, Equatable {
+    public let message: MessageRecord
+    public let metadata: AssistantResponseMetadataRecord
+    public let sources: [AssistantResponseSourceRecord]
+    public let proposal: AssistantProposalRecord?
+    public init(message: MessageRecord, metadata: AssistantResponseMetadataRecord, sources: [AssistantResponseSourceRecord], proposal: AssistantProposalRecord?) {
+        self.message = message; self.metadata = metadata; self.sources = sources; self.proposal = proposal
+    }
+}
+
 public struct GoalRecord: Codable, Sendable, Equatable {
     public let id: String
     public let title: String
