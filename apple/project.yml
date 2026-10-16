@@ -129,6 +129,8 @@ targets:
       - package: TaisaFoundation
         product: TaisaVoice
       - package: TaisaFoundation
+        product: TaisaAudio
+      - package: TaisaFoundation
         product: TaisaConversations
   TaisaPersonal:
     type: application
