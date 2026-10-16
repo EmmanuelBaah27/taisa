@@ -103,6 +103,72 @@ public struct AssistantResponseRepository: Sendable {
         catch { throw RepositoryError.persistenceFailed }
     }
 
+    public func proposal(id: String) async throws -> AssistantProposalRecord? {
+        guard let id = UUIDIdentity.canonical(id) else { throw RepositoryError.invalidIdentifier }
+        do {
+            return try await store.read { db in
+                try Row.fetchOne(
+                    db, sql: "SELECT * FROM assistant_proposals WHERE id = ? COLLATE NOCASE",
+                    arguments: [id]
+                ).map(Self.decodeProposal)
+            }
+        } catch let error as RepositoryError { throw error }
+        catch { throw RepositoryError.persistenceFailed }
+    }
+
+    public func resolveProposal(
+        id: String,
+        payloadDigest: String,
+        state: AssistantProposalState,
+        targetType: String?,
+        targetID: String?,
+        targetVersionID: String?,
+        decisionReceipt: String,
+        resolvedAtMS: Int64
+    ) async throws -> AssistantProposalRecord {
+        guard let id = UUIDIdentity.canonical(id), resolvedAtMS >= 0,
+              state != .pending, !decisionReceipt.isEmpty else {
+            throw RepositoryError.persistenceFailed
+        }
+        do {
+            return try await store.write { db in
+                guard let row = try Row.fetchOne(
+                    db, sql: "SELECT * FROM assistant_proposals WHERE id = ? COLLATE NOCASE",
+                    arguments: [id]
+                ) else { throw RepositoryError.notFound }
+                let current = Self.decodeProposal(row)
+                if current.state != .pending {
+                    guard current.payloadDigest == payloadDigest,
+                          current.state == state,
+                          current.targetType == targetType,
+                          current.targetID == targetID,
+                          current.targetVersionID == targetVersionID,
+                          current.decisionReceipt == decisionReceipt else {
+                        throw RepositoryError.mutationCollision
+                    }
+                    return current
+                }
+                guard current.payloadDigest == payloadDigest else {
+                    throw RepositoryError.mutationCollision
+                }
+                try db.execute(sql: """
+                    UPDATE assistant_proposals SET state = ?, target_type = ?, target_id = ?,
+                        target_version_id = ?, decision_receipt = ?, resolved_at_ms = ?
+                    WHERE id = ? COLLATE NOCASE AND state = 'pending'
+                    """, arguments: [
+                        state.rawValue, targetType, targetID, targetVersionID,
+                        decisionReceipt, resolvedAtMS, id,
+                    ])
+                guard let updated = try Row.fetchOne(
+                    db, sql: "SELECT * FROM assistant_proposals WHERE id = ? COLLATE NOCASE",
+                    arguments: [id]
+                ) else { throw RepositoryError.persistenceFailed }
+                return Self.decodeProposal(updated)
+            }
+        } catch let error as RepositoryError { throw error }
+        catch { throw RepositoryError.persistenceFailed }
+    }
+
     public func recentFeedback(limit: Int = 10) async throws -> [ResponseFeedbackRecord] {
         guard (1...10).contains(limit) else { throw RepositoryError.persistenceFailed }
         do {
