@@ -60,6 +60,7 @@ struct ConversationTimeline: View {
                     }
                 }
                 .padding(.vertical, TaisaSpacing.standard.rawValue)
+                .background(NativeConversationScrollPhysics())
             }
             .contentMargins(
                 .top,
@@ -183,6 +184,41 @@ private struct LimitedMessageHeightKey: PreferenceKey {
 private struct FullMessageHeightKey: PreferenceKey {
     static let defaultValue: CGFloat = 0
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
+}
+
+private struct NativeConversationScrollPhysics: UIViewRepresentable {
+    func makeUIView(context: Context) -> NativeConversationScrollPhysicsView {
+        NativeConversationScrollPhysicsView()
+    }
+
+    func updateUIView(_ uiView: NativeConversationScrollPhysicsView, context: Context) {
+        uiView.applyToContainingScrollView()
+    }
+}
+
+private final class NativeConversationScrollPhysicsView: UIView {
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        applyToContainingScrollView()
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        applyToContainingScrollView()
+    }
+
+    func applyToContainingScrollView() {
+        var candidate = superview
+        while let view = candidate {
+            if let scrollView = view as? UIScrollView {
+                scrollView.decelerationRate = .normal
+                scrollView.bounces = true
+                scrollView.alwaysBounceVertical = true
+                return
+            }
+            candidate = view.superview
+        }
+    }
 }
 
 enum ConversationTimelineMotion {
