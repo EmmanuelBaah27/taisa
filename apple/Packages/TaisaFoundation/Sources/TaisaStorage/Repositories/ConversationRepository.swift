@@ -145,7 +145,7 @@ public struct ConversationRepository: DomainRepository, MessageRepositoryContrac
                     guard replacementResponse.message == correction.regeneratedAssistantMessage else {
                         throw RepositoryError.persistenceFailed
                     }
-                    try AssistantResponseRepository.insertCompanions(replacementResponse, db: db)
+                    try AssistantResponseRepository.insertCompanions(replacementResponse, context: context, store: core.store, db: db)
                 }
                 try db.execute(
                     sql: "INSERT INTO message_revisions (id, message_id, original_body, replacement_message_id, created_at_ms) VALUES (?, ?, ?, ?, ?)",
@@ -157,14 +157,27 @@ public struct ConversationRepository: DomainRepository, MessageRepositoryContrac
                         arguments: [UUID().uuidString, messageID, UUID().uuidString, context.timestamp]
                     )
                 }
-                try db.execute(
-                    sql: """
-                        UPDATE assistant_proposals
-                        SET state = 'superseded', resolved_at_ms = ?
-                        WHERE response_message_id = ? COLLATE NOCASE AND state = 'pending'
-                        """,
-                    arguments: [context.timestamp, correction.originalAssistantMessageID]
-                )
+                if let row = try Row.fetchOne(
+                    db,
+                    sql: "SELECT * FROM assistant_proposals WHERE response_message_id = ? COLLATE NOCASE AND state = 'pending'",
+                    arguments: [correction.originalAssistantMessageID]
+                ) {
+                    let proposal = AssistantResponseRepository.decodeProposal(row)
+                    let superseded = AssistantProposalRecord(
+                        id: proposal.id, responseMessageID: proposal.responseMessageID,
+                        kind: proposal.kind, canonicalPayload: proposal.canonicalPayload,
+                        payloadDigest: proposal.payloadDigest, state: .superseded,
+                        targetType: proposal.targetType, targetID: proposal.targetID,
+                        targetVersionID: proposal.targetVersionID,
+                        decisionReceipt: proposal.decisionReceipt,
+                        createdAtMS: proposal.createdAtMS, resolvedAtMS: context.timestamp
+                    )
+                    try AssistantResponseRepository.proposalCore(core.store).update(
+                        superseded,
+                        context: AssistantResponseRepository.childContext(context, entity: "assistant_proposal", id: proposal.id),
+                        db: db
+                    )
+                }
                 try db.execute(
                     sql: "UPDATE conversations SET updated_at_ms = MAX(updated_at_ms, ?) WHERE id = ? COLLATE NOCASE",
                     arguments: [context.timestamp, conversationID]

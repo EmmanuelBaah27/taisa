@@ -145,6 +145,7 @@ public enum ResponseQualityFactor: String, Codable, Sendable, CaseIterable, Comp
 }
 
 public struct AssistantResponseMetadataRecord: Codable, Sendable, Equatable {
+    public let id: String
     public let responseMessageID: String
     public let requestID: String
     public let idempotencyReceipt: String
@@ -157,7 +158,7 @@ public struct AssistantResponseMetadataRecord: Codable, Sendable, Equatable {
     public let approach: String
     public let createdAtMS: Int64
     public init(responseMessageID: String, requestID: String, idempotencyReceipt: String, mode: AssistantResponseMode, relevance: String, contextSufficiency: String, stance: String?, inference: String, confidence: String, approach: String, createdAtMS: Int64) {
-        self.responseMessageID = UUIDIdentity.normalizedOrOriginal(responseMessageID); self.requestID = UUIDIdentity.normalizedOrOriginal(requestID)
+        self.id = UUIDIdentity.normalizedOrOriginal(responseMessageID); self.responseMessageID = UUIDIdentity.normalizedOrOriginal(responseMessageID); self.requestID = UUIDIdentity.normalizedOrOriginal(requestID)
         self.idempotencyReceipt = idempotencyReceipt; self.mode = mode; self.relevance = relevance; self.contextSufficiency = contextSufficiency
         self.stance = stance; self.inference = inference; self.confidence = confidence; self.approach = approach; self.createdAtMS = createdAtMS
     }

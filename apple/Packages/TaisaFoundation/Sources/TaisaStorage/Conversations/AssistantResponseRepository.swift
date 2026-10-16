@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 import GRDB
 
@@ -14,21 +15,22 @@ public struct AssistantResponseRepository: Sendable {
         self.failurePoint = nil
     }
 
+    public func persist(_ write: AssistantResponseWrite) async throws {
+        try await persist(write, context: .init(id: UUID().uuidString, deviceID: UUID().uuidString, timestamp: write.message.createdAtMS))
+    }
+
     init(store: TaisaStore, failurePoint: AssistantResponseFailurePoint?) {
         self.store = store
         self.failurePoint = failurePoint
     }
 
-    public func persist(_ write: AssistantResponseWrite) async throws {
+    public func persist(_ write: AssistantResponseWrite, context: MutationContext) async throws {
         try Self.validate(write)
         do {
             try await store.write { db in
-                try db.execute(
-                    sql: "INSERT INTO messages (id, conversation_id, role, body, created_at_ms) VALUES (?, ?, ?, ?, ?)",
-                    arguments: [write.message.id, write.message.conversationID, write.message.role, write.message.body, write.message.createdAtMS]
-                )
+                try Self.messageCore(store).create(write.message, context: Self.childContext(context, entity: "message", id: write.message.id), db: db)
                 try failIfNeeded(.message)
-                try Self.insertCompanions(write, db: db, after: failIfNeeded)
+                try Self.insertCompanions(write, context: context, store: store, db: db, after: failIfNeeded)
             }
         } catch let error as RepositoryError { throw error }
         catch { throw RepositoryError.persistenceFailed }
@@ -36,42 +38,47 @@ public struct AssistantResponseRepository: Sendable {
 
     static func insertCompanions(
         _ write: AssistantResponseWrite,
+        context: MutationContext,
+        store: TaisaStore,
         db: Database,
         after: (AssistantResponseFailurePoint) throws -> Void = { _ in }
     ) throws {
         let metadata = write.metadata
-        try db.execute(sql: """
-                    INSERT INTO assistant_response_metadata (
-                        response_message_id, request_id, idempotency_receipt, mode, relevance,
-                        context_sufficiency, stance, inference, confidence, approach, created_at_ms
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """, arguments: [
-                        metadata.responseMessageID, metadata.requestID, metadata.idempotencyReceipt,
-                        metadata.mode.rawValue, metadata.relevance, metadata.contextSufficiency,
-                        metadata.stance, metadata.inference, metadata.confidence, metadata.approach,
-                        metadata.createdAtMS,
-                    ])
+        try metadataCore(store).create(metadata, context: childContext(context, entity: "assistant_response_metadata", id: metadata.id), db: db)
         try after(.metadata)
         for source in write.sources.sorted(by: { $0.ordinal < $1.ordinal }) {
-            try db.execute(sql: """
-                        INSERT INTO assistant_response_sources (id, response_message_id, ordinal, source_id, source_type, excerpt)
-                        VALUES (?, ?, ?, ?, ?, ?)
-                        """, arguments: [source.id, source.responseMessageID, source.ordinal, source.sourceID, source.sourceType, source.excerpt])
+            try sourceCore(store).create(source, context: childContext(context, entity: "assistant_response_source", id: source.id), db: db)
         }
         try after(.sources)
         if let proposal = write.proposal {
-            try db.execute(sql: """
-                        INSERT INTO assistant_proposals (
-                            id, response_message_id, kind, canonical_payload, payload_digest, state,
-                            target_type, target_id, target_version_id, decision_receipt, created_at_ms, resolved_at_ms
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        """, arguments: [
-                            proposal.id, proposal.responseMessageID, proposal.kind, proposal.canonicalPayload,
-                            proposal.payloadDigest, proposal.state.rawValue, proposal.targetType, proposal.targetID,
-                            proposal.targetVersionID, proposal.decisionReceipt, proposal.createdAtMS, proposal.resolvedAtMS,
-                        ])
+            try proposalCore(store).create(proposal, context: childContext(context, entity: "assistant_proposal", id: proposal.id), db: db)
         }
         try after(.proposal)
+    }
+
+    static func messageCore(_ store: TaisaStore) -> RepositoryCore<MessageRecord> {
+        RepositoryCore(store: store, spec: .init(table: "messages", entity: "message", fields: [("id", "id"), ("conversationID", "conversation_id"), ("role", "role"), ("body", "body"), ("createdAtMS", "created_at_ms")], immutable: ["conversationID", "role", "body", "createdAtMS"], appendOnly: true))
+    }
+
+    static func metadataCore(_ store: TaisaStore) -> RepositoryCore<AssistantResponseMetadataRecord> {
+        RepositoryCore(store: store, spec: .init(table: "assistant_response_metadata", entity: "assistant_response_metadata", identityColumn: "response_message_id", fields: [("responseMessageID", "response_message_id"), ("requestID", "request_id"), ("idempotencyReceipt", "idempotency_receipt"), ("mode", "mode"), ("relevance", "relevance"), ("contextSufficiency", "context_sufficiency"), ("stance", "stance"), ("inference", "inference"), ("confidence", "confidence"), ("approach", "approach"), ("createdAtMS", "created_at_ms")], immutable: ["responseMessageID", "requestID", "idempotencyReceipt", "mode", "relevance", "contextSufficiency", "stance", "inference", "confidence", "approach", "createdAtMS"], appendOnly: true))
+    }
+
+    static func sourceCore(_ store: TaisaStore) -> RepositoryCore<AssistantResponseSourceRecord> {
+        RepositoryCore(store: store, spec: .init(table: "assistant_response_sources", entity: "assistant_response_source", opaqueIdentifierProperties: ["sourceID"], fields: [("id", "id"), ("responseMessageID", "response_message_id"), ("ordinal", "ordinal"), ("sourceID", "source_id"), ("sourceType", "source_type"), ("excerpt", "excerpt")], immutable: ["responseMessageID", "ordinal", "sourceID", "sourceType", "excerpt"], appendOnly: true))
+    }
+
+    static func proposalCore(_ store: TaisaStore) -> RepositoryCore<AssistantProposalRecord> {
+        RepositoryCore(store: store, spec: .init(table: "assistant_proposals", entity: "assistant_proposal", fields: [("id", "id"), ("responseMessageID", "response_message_id"), ("kind", "kind"), ("canonicalPayload", "canonical_payload"), ("payloadDigest", "payload_digest"), ("state", "state"), ("targetType", "target_type"), ("targetID", "target_id"), ("targetVersionID", "target_version_id"), ("decisionReceipt", "decision_receipt"), ("createdAtMS", "created_at_ms"), ("resolvedAtMS", "resolved_at_ms")], immutable: ["responseMessageID", "kind", "canonicalPayload", "payloadDigest", "createdAtMS"], appendOnly: false))
+    }
+
+    static func childContext(_ context: MutationContext, entity: String, id: String) -> MutationContext {
+        let digest = SHA256.hash(data: Data("\(context.id)|\(entity)|\(id)".utf8))
+        var bytes = Array(digest.prefix(16))
+        bytes[6] = (bytes[6] & 0x0f) | 0x40
+        bytes[8] = (bytes[8] & 0x3f) | 0x80
+        let uuid = UUID(uuid: (bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7], bytes[8], bytes[9], bytes[10], bytes[11], bytes[12], bytes[13], bytes[14], bytes[15]))
+        return .init(id: uuid.uuidString.lowercased(), deviceID: context.deviceID, timestamp: context.timestamp)
     }
 
     public func upsertFeedback(_ feedback: ResponseFeedbackRecord) async throws {
@@ -139,7 +146,8 @@ public struct AssistantResponseRepository: Sendable {
         targetID: String?,
         targetVersionID: String?,
         decisionReceipt: String,
-        resolvedAtMS: Int64
+        resolvedAtMS: Int64,
+        context: MutationContext
     ) async throws -> AssistantProposalRecord {
         guard let id = UUIDIdentity.canonical(id), resolvedAtMS >= 0,
               state != .pending, !decisionReceipt.isEmpty else {
@@ -166,19 +174,19 @@ public struct AssistantResponseRepository: Sendable {
                 guard current.payloadDigest == payloadDigest else {
                     throw RepositoryError.mutationCollision
                 }
-                try db.execute(sql: """
-                    UPDATE assistant_proposals SET state = ?, target_type = ?, target_id = ?,
-                        target_version_id = ?, decision_receipt = ?, resolved_at_ms = ?
-                    WHERE id = ? COLLATE NOCASE AND state = 'pending'
-                    """, arguments: [
-                        state.rawValue, targetType, targetID, targetVersionID,
-                        decisionReceipt, resolvedAtMS, id,
-                    ])
-                guard let updated = try Row.fetchOne(
-                    db, sql: "SELECT * FROM assistant_proposals WHERE id = ? COLLATE NOCASE",
-                    arguments: [id]
-                ) else { throw RepositoryError.persistenceFailed }
-                return Self.decodeProposal(updated)
+                let updated = AssistantProposalRecord(
+                    id: current.id, responseMessageID: current.responseMessageID, kind: current.kind,
+                    canonicalPayload: current.canonicalPayload, payloadDigest: current.payloadDigest,
+                    state: state, targetType: targetType, targetID: targetID,
+                    targetVersionID: targetVersionID, decisionReceipt: decisionReceipt,
+                    createdAtMS: current.createdAtMS, resolvedAtMS: resolvedAtMS
+                )
+                try Self.proposalCore(store).update(
+                    updated,
+                    context: Self.childContext(context, entity: "assistant_proposal", id: id),
+                    db: db
+                )
+                return updated
             }
         } catch let error as RepositoryError { throw error }
         catch { throw RepositoryError.persistenceFailed }

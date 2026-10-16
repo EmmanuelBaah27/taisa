@@ -43,9 +43,9 @@ public struct AssistantProposalRouter: Sendable {
         guard stored.state == .pending else { throw AssistantProposalRoutingError.alreadyResolved }
         let decoded: CoachingProposal
         do { decoded = try JSONDecoder().decode(CoachingProposal.self, from: stored.canonicalPayload) }
-        catch { return try await mark(stored, state: .unsupported, at: resolvedAtMS) }
+        catch { return try await mark(stored, state: .unsupported, deviceID: deviceID, at: resolvedAtMS) }
         guard kind(decoded) == stored.kind else {
-            return try await mark(stored, state: .unsupported, at: resolvedAtMS)
+            return try await mark(stored, state: .unsupported, deviceID: deviceID, at: resolvedAtMS)
         }
 
         let prepared: PreparedDestination
@@ -55,11 +55,11 @@ public struct AssistantProposalRouter: Sendable {
                 timestamp: stored.createdAtMS
             )
         } catch AssistantProposalRoutingError.staleTarget {
-            return try await mark(stored, state: .stale, at: resolvedAtMS)
+            return try await mark(stored, state: .stale, deviceID: deviceID, at: resolvedAtMS)
         } catch AssistantProposalRoutingError.unsupported {
-            return try await mark(stored, state: .unsupported, at: resolvedAtMS)
+            return try await mark(stored, state: .unsupported, deviceID: deviceID, at: resolvedAtMS)
         } catch AssistantProposalRoutingError.malformedPayload {
-            return try await mark(stored, state: .unsupported, at: resolvedAtMS)
+            return try await mark(stored, state: .unsupported, deviceID: deviceID, at: resolvedAtMS)
         }
         do {
             return try await acceptance.accept(
@@ -70,26 +70,31 @@ public struct AssistantProposalRouter: Sendable {
                 decisionReceipt: "accepted:\(stored.id)", resolvedAtMS: resolvedAtMS
             )
         } catch AssistantProposalAcceptanceError.staleTarget {
-            return try await mark(stored, state: .stale, at: resolvedAtMS)
+            return try await mark(stored, state: .stale, deviceID: deviceID, at: resolvedAtMS)
         }
     }
 
     public func dismiss(proposalID: String, resolvedAtMS: Int64) async throws -> AssistantProposalRecord {
+        try await dismiss(proposalID: proposalID, deviceID: UUID(), resolvedAtMS: resolvedAtMS)
+    }
+
+    public func dismiss(proposalID: String, deviceID: UUID, resolvedAtMS: Int64) async throws -> AssistantProposalRecord {
         guard let stored = try await proposals.proposal(id: proposalID) else {
             throw RepositoryError.notFound
         }
         if stored.state == .dismissed { return stored }
         guard stored.state == .pending else { throw AssistantProposalRoutingError.alreadyResolved }
-        return try await mark(stored, state: .dismissed, at: resolvedAtMS)
+        return try await mark(stored, state: .dismissed, deviceID: deviceID, at: resolvedAtMS)
     }
 
     private func mark(
-        _ proposal: AssistantProposalRecord, state: AssistantProposalState, at timestamp: Int64
+        _ proposal: AssistantProposalRecord, state: AssistantProposalState, deviceID: UUID, at timestamp: Int64
     ) async throws -> AssistantProposalRecord {
         try await proposals.resolveProposal(
             id: proposal.id, payloadDigest: proposal.payloadDigest, state: state,
             targetType: nil, targetID: nil, targetVersionID: nil,
-            decisionReceipt: "\(state.rawValue):\(proposal.id)", resolvedAtMS: timestamp
+            decisionReceipt: "\(state.rawValue):\(proposal.id)", resolvedAtMS: timestamp,
+            context: .init(id: UUID().uuidString, deviceID: deviceID.uuidString.lowercased(), timestamp: timestamp)
         )
     }
 

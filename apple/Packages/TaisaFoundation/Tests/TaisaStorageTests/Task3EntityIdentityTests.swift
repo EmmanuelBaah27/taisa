@@ -101,11 +101,11 @@ private actor EntityIdentityKeys: DatabaseKeyStore {
     @Test func entityTagMappingMatchesEveryDomainTableAndReference() async throws {
         let (store, directory, _) = try await fixture()
         defer { try? FileManager.default.removeItem(at: directory) }
-        #expect(DomainEntity.allCases.count == 15)
+        #expect(DomainEntity.allCases.count == 18)
         for kind in DomainEntity.allCases {
             let valid = try await store.read { db in
                 guard try db.tableExists(kind.table),
-                      try db.columns(in: kind.table).contains(where: { $0.name == "id" }) else { return false }
+                      try db.columns(in: kind.table).contains(where: { $0.name == kind.identityColumn }) else { return false }
                 let foreignKeys = try Row.fetchAll(db, sql: "PRAGMA foreign_key_list(\(kind.table))")
                 return kind.references.allSatisfy { reference in
                     foreignKeys.contains { row in

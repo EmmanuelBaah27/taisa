@@ -60,17 +60,19 @@ public struct AssistantProposalAcceptanceRepository: Sendable {
 
                 try apply(destination, context: context, db: db)
                 if failAfterDestination { throw AssistantProposalAcceptanceError.injectedFailure }
-                try db.execute(sql: """
-                    UPDATE assistant_proposals SET state = 'accepted', target_type = ?, target_id = ?,
-                        target_version_id = ?, decision_receipt = ?, resolved_at_ms = ?
-                    WHERE id = ? COLLATE NOCASE AND state = 'pending'
-                    """, arguments: [targetType, targetID, targetVersionID, decisionReceipt, resolvedAtMS, proposalID])
-                guard db.changesCount == 1,
-                      let updated = try Row.fetchOne(
-                        db, sql: "SELECT * FROM assistant_proposals WHERE id = ? COLLATE NOCASE",
-                        arguments: [proposalID]
-                      ) else { throw RepositoryError.persistenceFailed }
-                return AssistantResponseRepository.decodeProposal(updated)
+                let updated = AssistantProposalRecord(
+                    id: current.id, responseMessageID: current.responseMessageID, kind: current.kind,
+                    canonicalPayload: current.canonicalPayload, payloadDigest: current.payloadDigest,
+                    state: .accepted, targetType: targetType, targetID: targetID,
+                    targetVersionID: targetVersionID, decisionReceipt: decisionReceipt,
+                    createdAtMS: current.createdAtMS, resolvedAtMS: resolvedAtMS
+                )
+                try AssistantResponseRepository.proposalCore(store).update(
+                    updated,
+                    context: AssistantResponseRepository.childContext(context, entity: "assistant_proposal", id: proposalID),
+                    db: db
+                )
+                return updated
             }
         } catch let error as AssistantProposalAcceptanceError { throw error }
         catch let error as RepositoryError { throw error }

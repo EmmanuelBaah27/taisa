@@ -190,7 +190,7 @@ public actor GatewayConversationClient: ConversationClient {
                 message: assistantMessage,
                 response: completion.response,
                 receipt: completion.idempotencyReceipt
-            ))
+            ), context: context(assistantMessage.createdAtMS))
         }
         try await finishTurn(
             conversationID: conversationID, requestID: requestID, text: normalized,

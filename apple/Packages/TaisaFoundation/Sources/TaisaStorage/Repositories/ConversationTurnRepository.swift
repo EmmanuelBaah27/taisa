@@ -142,7 +142,7 @@ public struct ConversationTurnRepository: Sendable {
                     try Self.insertMessage(message, deviceID: context.deviceID, timestamp: context.timestamp, db: db)
                 }
                 if let assistantResponse {
-                    try AssistantResponseRepository.insertCompanions(assistantResponse, db: db)
+                    try AssistantResponseRepository.insertCompanions(assistantResponse, context: context, store: store, db: db)
                 }
 
                 try Self.persist(persisted, exists: existing != nil, db: db)

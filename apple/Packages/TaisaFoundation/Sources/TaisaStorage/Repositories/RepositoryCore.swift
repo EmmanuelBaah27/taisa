@@ -40,10 +40,15 @@ extension WorkEventRecord: DomainRecord {}
 extension InsightRecord: DomainRecord {}
 extension InsightSourceRecord: DomainRecord {}
 extension InsightRevisionRecord: DomainRecord {}
+extension AssistantResponseMetadataRecord: DomainRecord {}
+extension AssistantResponseSourceRecord: DomainRecord {}
+extension AssistantProposalRecord: DomainRecord {}
 
 struct RepositorySpec: Sendable {
     let table: String
     let entity: String
+    var identityColumn: String = "id"
+    var opaqueIdentifierProperties: Set<String> = []
     let fields: [(property: String, column: String)]
     let immutable: Set<String>
     let appendOnly: Bool
@@ -54,6 +59,7 @@ struct RepositorySpec: Sendable {
 enum DomainEntity: String, CaseIterable {
     case profile, conversation, message, goal, milestone, action, evidence, memory, memory_source, voice_turn
     case weekly_placement, work_event, insight, insight_source, insight_revision
+    case assistant_response_metadata, assistant_response_source, assistant_proposal
 
     var table: String {
         switch self {
@@ -72,7 +78,14 @@ enum DomainEntity: String, CaseIterable {
         case .insight: "insights"
         case .insight_source: "insight_sources"
         case .insight_revision: "insight_revisions"
+        case .assistant_response_metadata: "assistant_response_metadata"
+        case .assistant_response_source: "assistant_response_sources"
+        case .assistant_proposal: "assistant_proposals"
         }
+    }
+
+    var identityColumn: String {
+        self == .assistant_response_metadata ? "response_message_id" : "id"
     }
 
     var references: [(property: String, column: String, table: String)] {
@@ -89,6 +102,8 @@ enum DomainEntity: String, CaseIterable {
         ]
         case .weekly_placement, .work_event: [("actionID", "action_id", "actions")]
         case .insight_source, .insight_revision: [("insightID", "insight_id", "insights")]
+        case .assistant_response_metadata: [("responseMessageID", "response_message_id", "messages")]
+        case .assistant_response_source, .assistant_proposal: [("responseMessageID", "response_message_id", "assistant_response_metadata")]
         default: []
         }
     }
@@ -102,9 +117,9 @@ struct RepositoryCore<Record: DomainRecord>: Sendable {
         let id = try canonicalID(id)
         do {
             return try await store.read { db in
-                let matches = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM \(spec.table) WHERE id = ? COLLATE NOCASE", arguments: [id]) ?? 0
+                let matches = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM \(spec.table) WHERE \(spec.identityColumn) = ? COLLATE NOCASE", arguments: [id]) ?? 0
                 guard matches <= 1 else { throw RepositoryError.persistenceFailed }
-                guard let row = try Row.fetchOne(db, sql: "SELECT * FROM \(spec.table) WHERE id = ? COLLATE NOCASE AND NOT EXISTS (SELECT 1 FROM tombstones WHERE entity_type = ? AND entity_id = ? COLLATE NOCASE)", arguments: [id, spec.entity, id]) else { return nil }
+                guard let row = try Row.fetchOne(db, sql: "SELECT * FROM \(spec.table) WHERE \(spec.identityColumn) = ? COLLATE NOCASE AND NOT EXISTS (SELECT 1 FROM tombstones WHERE entity_type = ? AND entity_id = ? COLLATE NOCASE)", arguments: [id, spec.entity, id]) else { return nil }
                 return try decode(row)
             }
         } catch {
@@ -125,7 +140,7 @@ struct RepositoryCore<Record: DomainRecord>: Sendable {
         let storedFields = try storageFields(fields, db: db)
         if try isDuplicate(context, entityID: record.id, operation: "create", record: record, db: db) { return }
         try validateSourceTuple(fields, excluding: nil, db: db)
-        guard try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM \(spec.table) WHERE id = ? COLLATE NOCASE", arguments: [record.id]) == 0 else { throw RepositoryError.alreadyExists }
+        guard try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM \(spec.table) WHERE \(spec.identityColumn) = ? COLLATE NOCASE", arguments: [record.id]) == 0 else { throw RepositoryError.alreadyExists }
         let columns = spec.fields.map(\.column)
         let placeholders = Array(repeating: "?", count: columns.count).joined(separator: ", ")
         try db.execute(sql: "INSERT INTO \(spec.table) (\(columns.joined(separator: ", "))) VALUES (\(placeholders))", arguments: StatementArguments(columns.map { value(storedFields, for: $0) }))
@@ -147,9 +162,9 @@ struct RepositoryCore<Record: DomainRecord>: Sendable {
         let storedFields = try storageFields(fields, db: db)
         if try isDuplicate(context, entityID: record.id, operation: "update", record: record, db: db) { return }
         try validateSourceTuple(fields, excluding: record.id, db: db)
-        let matches = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM \(spec.table) WHERE id = ? COLLATE NOCASE", arguments: [record.id]) ?? 0
+        let matches = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM \(spec.table) WHERE \(spec.identityColumn) = ? COLLATE NOCASE", arguments: [record.id]) ?? 0
         guard matches <= 1 else { throw RepositoryError.persistenceFailed }
-        guard let row = try Row.fetchOne(db, sql: "SELECT * FROM \(spec.table) WHERE id = ? COLLATE NOCASE", arguments: [record.id]),
+        guard let row = try Row.fetchOne(db, sql: "SELECT * FROM \(spec.table) WHERE \(spec.identityColumn) = ? COLLATE NOCASE", arguments: [record.id]),
               try !isDeleted(record.id, db: db) else { throw RepositoryError.notFound }
         let old = try properties(decode(row))
         for key in spec.immutable where !equal(fields[key], old[key]) { throw RepositoryError.immutableRecord }
@@ -157,7 +172,7 @@ struct RepositoryCore<Record: DomainRecord>: Sendable {
         if !changed.isEmpty {
             let assignments = changed.map { "\($0.column) = ?" }.joined(separator: ", ")
             let args = changed.map { value(storedFields, for: $0.column) } + [record.id.databaseValue]
-            try db.execute(sql: "UPDATE \(spec.table) SET \(assignments) WHERE id = ? COLLATE NOCASE", arguments: StatementArguments(args))
+            try db.execute(sql: "UPDATE \(spec.table) SET \(assignments) WHERE \(spec.identityColumn) = ? COLLATE NOCASE", arguments: StatementArguments(args))
         }
         let causality = try versions(fields: fields, previous: old, id: record.id, context: context, db: db)
         try ChangeJournal.insert(db: db, context: context, entity: spec.entity, entityID: record.id, operation: "update", record: record, causality: causality)
@@ -182,7 +197,7 @@ struct RepositoryCore<Record: DomainRecord>: Sendable {
         let id = try canonicalID(inputID), context = try canonicalContext(inputContext)
         try validateID(id); try validate(context)
         if try isDuplicate(context, entityID: id, operation: "delete", record: Optional<Record>.none, db: db) { return }
-        guard try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM \(spec.table) WHERE id = ? COLLATE NOCASE", arguments: [id]) == 1,
+        guard try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM \(spec.table) WHERE \(spec.identityColumn) = ? COLLATE NOCASE", arguments: [id]) == 1,
               try !isDeleted(id, db: db) else { throw RepositoryError.notFound }
         try beforeDelete(db)
         let causality = try versions(fields: [:], previous: [:], id: id, context: context, db: db)
@@ -242,7 +257,7 @@ struct RepositoryCore<Record: DomainRecord>: Sendable {
     private func canonicalRecord(_ record: Record) throws -> Record {
         let data = try JSONEncoder().encode(record)
         guard var object = try JSONSerialization.jsonObject(with: data) as? [String: Any] else { throw RepositoryError.persistenceFailed }
-        for (property, _) in spec.fields where property == "id" || property.hasSuffix("ID") {
+        for (property, _) in spec.fields where (property == "id" || property.hasSuffix("ID")) && !spec.opaqueIdentifierProperties.contains(property) {
             if let raw = object[property] as? String { object[property] = try canonicalID(raw) }
         }
         return try JSONDecoder().decode(Record.self, from: JSONSerialization.data(withJSONObject: object))
@@ -258,7 +273,8 @@ struct RepositoryCore<Record: DomainRecord>: Sendable {
         var stored = fields
         for (property, _, table) in kind.references {
             guard let canonical = fields[property] as? String else { continue }
-            let matches = try String.fetchAll(db, sql: "SELECT id FROM \(table) WHERE id = ? COLLATE NOCASE", arguments: [canonical])
+            let identity = table == "assistant_response_metadata" ? "response_message_id" : "id"
+            let matches = try String.fetchAll(db, sql: "SELECT \(identity) FROM \(table) WHERE \(identity) = ? COLLATE NOCASE", arguments: [canonical])
             guard matches.count <= 1 else { throw RepositoryError.persistenceFailed }
             if let existing = matches.first { stored[property] = existing }
         }
@@ -281,8 +297,10 @@ struct RepositoryCore<Record: DomainRecord>: Sendable {
         for (property, column) in spec.fields {
             let value: DatabaseValue = row[column]
             if value.isNull { object[property] = NSNull() }
+            else if property == "canonicalPayload", let data = Data.fromDatabaseValue(value) { object[property] = data.base64EncodedString() }
             else if let text = String.fromDatabaseValue(value) { object[property] = text }
             else if let integer = Int64.fromDatabaseValue(value) { object[property] = integer }
+            else if let data = Data.fromDatabaseValue(value) { object[property] = data.base64EncodedString() }
         }
         return try canonicalRecord(JSONDecoder().decode(Record.self, from: JSONSerialization.data(withJSONObject: object)))
     }
@@ -290,7 +308,10 @@ struct RepositoryCore<Record: DomainRecord>: Sendable {
     private func value(_ fields: [String: Any], for column: String) -> DatabaseValue {
         guard let property = spec.fields.first(where: { $0.column == column })?.property,
               let raw = fields[property], !(raw is NSNull) else { return .null }
-        if let text = raw as? String { return text.databaseValue }
+        if let text = raw as? String {
+            if property == "canonicalPayload", let data = Data(base64Encoded: text) { return data.databaseValue }
+            return text.databaseValue
+        }
         if let number = raw as? NSNumber { return number.int64Value.databaseValue }
         return .null
     }
