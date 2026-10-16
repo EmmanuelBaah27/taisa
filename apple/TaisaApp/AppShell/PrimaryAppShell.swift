@@ -28,6 +28,9 @@ final class PrimaryAppShellModel {
     }
 
     var showsConversationDock: Bool { conversationRoute == nil }
+    var primaryPageBottomReservation: CGFloat {
+        selection == .conversations ? 0 : TaisaControlMetric.primaryNavigationReservedHeight
+    }
 
     func select(_ destination: PrimaryDestination) {
         if destination == .careerWork {
@@ -111,7 +114,7 @@ struct PrimaryAppShell: View {
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
                 .simultaneousGesture(primaryPageFallbackGesture)
-                .safeAreaPadding(.bottom, TaisaControlMetric.primaryNavigationReservedHeight)
+                .safeAreaPadding(.bottom, model.primaryPageBottomReservation)
             }
 
             if model.showsConversationDock {

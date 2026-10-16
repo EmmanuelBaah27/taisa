@@ -40,7 +40,7 @@ import XCTest
             let diagnostic = app.descendants(matching: .any)["conversation.unavailable.diagnostic"]
             XCTFail("Conversation unavailable: \(diagnostic.exists ? diagnostic.label : "missing diagnostic")")
         }
-        XCTAssertTrue(app.buttons["Send"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["Send recording"].waitForExistence(timeout: 10))
         XCTAssertFalse(app.buttons["Resume"].exists)
     }
 

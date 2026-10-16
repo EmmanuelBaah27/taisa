@@ -66,7 +66,7 @@ struct ConversationScreenClient: Sendable {
 @MainActor
 @Observable
 final class ConversationViewModel {
-    private enum FailureRecovery { case request, beginVoice, pauseVoice, resumeVoice }
+    enum FailureContext: Equatable { case request, beginRecording, pauseRecording, resumeRecording }
     enum Confirmation: Equatable {
         case discardVoiceForKeyboard(returnTo: ComposerState)
         case discardRecording
@@ -88,6 +88,7 @@ final class ConversationViewModel {
     private(set) var correctionMessageID: String?
     private(set) var correctionRegenerationMessageID: String?
     private(set) var partialCoaching = ""
+    private(set) var failureContext: FailureContext = .request
     private var correctionOriginalText = ""
     private var submittedCorrectionText: String?
     var correctionText = ""
@@ -121,7 +122,6 @@ final class ConversationViewModel {
     @ObservationIgnored private let dismiss: @MainActor () -> Void
     @ObservationIgnored private var started = false
     @ObservationIgnored private var actionInFlight = false
-    @ObservationIgnored private var failureRecovery: FailureRecovery = .request
     @ObservationIgnored private var recoveryObservation: Task<Void, Never>?
 
     deinit { recoveryObservation?.cancel() }
@@ -215,11 +215,11 @@ final class ConversationViewModel {
         defer { actionInFlight = false }
         composer = .preparingVoice
         do { try await client.beginVoice(); composer = .recording; await refreshCapture() }
-        catch { failureRecovery = .beginVoice; composer = .failure(.unavailable); throw error }
+        catch { failureContext = .beginRecording; composer = .failure(.unavailable); throw error }
     }
 
-    func pause() async { await perform(next: .paused, recovery: .pauseVoice) { try await client.pauseVoice() }; await refreshCapture() }
-    func resume() async { await perform(next: .recording, recovery: .resumeVoice) { try await client.resumeVoice() }; await refreshCapture() }
+    func pause() async { await perform(next: .paused, recovery: .pauseRecording) { try await client.pauseVoice() }; await refreshCapture() }
+    func resume() async { await perform(next: .recording, recovery: .resumeRecording) { try await client.resumeVoice() }; await refreshCapture() }
     func refreshCapture() async {
         capture = await client.loadCaptureSnapshot()
         switch capture.activity {
@@ -260,7 +260,7 @@ final class ConversationViewModel {
             await reloadMessages()
             composer = .waitingForReply
         } catch {
-            failureRecovery = .request
+            failureContext = .request
             composer = .failure(.retryable)
         }
         actionInFlight = false
@@ -273,20 +273,20 @@ final class ConversationViewModel {
         actionInFlight = true
         composer = .coaching
         do { try await client.sendText(value); text = ""; composer = .waitingForReply; await reloadMessages() }
-        catch { failureRecovery = .request; composer = .failure(.retryable) }
+        catch { failureContext = .request; composer = .failure(.retryable) }
         actionInFlight = false
     }
 
     func retry() async {
         guard !actionInFlight else { return }
-        switch failureRecovery {
-        case .beginVoice:
+        switch failureContext {
+        case .beginRecording:
             try? await beginVoice()
-        case .pauseVoice:
-            await perform(next: .paused, recovery: .pauseVoice) { try await client.retryPauseVoice() }
+        case .pauseRecording:
+            await perform(next: .paused, recovery: .pauseRecording) { try await client.retryPauseVoice() }
             await refreshCapture()
-        case .resumeVoice:
-            await perform(next: .recording, recovery: .resumeVoice) { try await client.retryResumeVoice() }
+        case .resumeRecording:
+            await perform(next: .recording, recovery: .resumeRecording) { try await client.retryResumeVoice() }
             await refreshCapture()
         case .request:
             composer = .coaching
@@ -494,13 +494,13 @@ final class ConversationViewModel {
 
     private func perform(
         next: ComposerState,
-        recovery: FailureRecovery = .request,
+        recovery: FailureContext = .request,
         operation: () async throws -> Void
     ) async {
         guard !actionInFlight else { return }
         actionInFlight = true
         do { try await operation(); composer = next }
-        catch { failureRecovery = recovery; composer = .failure(.retryable) }
+        catch { failureContext = recovery; composer = .failure(.retryable) }
         actionInFlight = false
     }
 

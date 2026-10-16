@@ -13,6 +13,21 @@ public struct InlineRecoveryAlert: View {
             message: "Nothing has been discarded. Try again when you’re ready.",
             cancelLabel: "Cancel", retryLabel: "Try again"
         )
+        public static let beginRecording = Contract(
+            title: "Taisa couldn’t start recording",
+            message: "Check microphone access, then try again.",
+            cancelLabel: "Close", retryLabel: "Try again"
+        )
+        public static let pauseRecording = Contract(
+            title: "Taisa couldn’t pause recording",
+            message: "Your recording is still safe. Try pausing again.",
+            cancelLabel: "Close", retryLabel: "Try again"
+        )
+        public static let resumeRecording = Contract(
+            title: "Taisa couldn’t resume recording",
+            message: "Your recording is still safe. Try resuming again.",
+            cancelLabel: "Close", retryLabel: "Try again"
+        )
     }
     private let contract: Contract
     private let onCancel: @MainActor () -> Void
