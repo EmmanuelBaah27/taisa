@@ -74,10 +74,6 @@ public struct AssistantProposalRouter: Sendable {
         }
     }
 
-    public func dismiss(proposalID: String, resolvedAtMS: Int64) async throws -> AssistantProposalRecord {
-        try await dismiss(proposalID: proposalID, deviceID: UUID(), resolvedAtMS: resolvedAtMS)
-    }
-
     public func dismiss(proposalID: String, deviceID: UUID, resolvedAtMS: Int64) async throws -> AssistantProposalRecord {
         guard let stored = try await proposals.proposal(id: proposalID) else {
             throw RepositoryError.notFound

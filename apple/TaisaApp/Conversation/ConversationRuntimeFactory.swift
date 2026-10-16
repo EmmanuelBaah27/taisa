@@ -379,11 +379,11 @@ struct ConversationRuntimeFactory: Sendable {
             },
             saveFeedback: {
                 try await assistantResponses.upsertFeedback($0)
-                try await Self.materializePreferenceProfile(assistantResponses)
+                try await Self.materializePreferenceProfile(assistantResponses, revision: $0.updatedAtMS)
             },
-            removeFeedback: {
-                try await assistantResponses.removeFeedback(responseMessageID: $0)
-                try await Self.materializePreferenceProfile(assistantResponses)
+            removeFeedback: { responseMessageID, revision in
+                try await assistantResponses.removeFeedback(responseMessageID: responseMessageID)
+                try await Self.materializePreferenceProfile(assistantResponses, revision: revision)
             },
             acceptProposal: { proposalID in
                 _ = try await proposalRouter.accept(
@@ -393,7 +393,7 @@ struct ConversationRuntimeFactory: Sendable {
             },
             dismissProposal: { proposalID in
                 _ = try await proposalRouter.dismiss(
-                    proposalID: proposalID,
+                    proposalID: proposalID, deviceID: deviceID,
                     resolvedAtMS: Int64(Date().timeIntervalSince1970 * 1_000)
                 )
             }
@@ -475,11 +475,11 @@ struct ConversationRuntimeFactory: Sendable {
             correctTranscript: { _, _ in try await unavailable() },
             saveFeedback: {
                 try await assistantResponses.upsertFeedback($0)
-                try await Self.materializePreferenceProfile(assistantResponses)
+                try await Self.materializePreferenceProfile(assistantResponses, revision: $0.updatedAtMS)
             },
-            removeFeedback: {
-                try await assistantResponses.removeFeedback(responseMessageID: $0)
-                try await Self.materializePreferenceProfile(assistantResponses)
+            removeFeedback: { responseMessageID, revision in
+                try await assistantResponses.removeFeedback(responseMessageID: responseMessageID)
+                try await Self.materializePreferenceProfile(assistantResponses, revision: revision)
             },
             acceptProposal: { proposalID in
                 _ = try await proposalRouter.accept(
@@ -489,7 +489,7 @@ struct ConversationRuntimeFactory: Sendable {
             },
             dismissProposal: { proposalID in
                 _ = try await proposalRouter.dismiss(
-                    proposalID: proposalID,
+                    proposalID: proposalID, deviceID: deviceID,
                     resolvedAtMS: Int64(Date().timeIntervalSince1970 * 1_000)
                 )
             }
@@ -576,14 +576,15 @@ struct ConversationRuntimeFactory: Sendable {
         )
     }
 
-    private static func materializePreferenceProfile(
-        _ repository: AssistantResponseRepository
+    static func materializePreferenceProfile(
+        _ repository: AssistantResponseRepository,
+        revision: Int64
     ) async throws {
         let feedback = try await repository.recentFeedback()
         let derived = ResponsePreferenceProfile.derive(from: feedback)
         try await repository.replacePreferenceProfile(
             derived.map { .init(factor: $0.factor, direction: $0.direction) },
-            updatedAtMS: feedback.map(\.updatedAtMS).max() ?? Int64(Date().timeIntervalSince1970 * 1_000)
+            updatedAtMS: max(revision, feedback.map(\.updatedAtMS).max() ?? 0)
         )
     }
 

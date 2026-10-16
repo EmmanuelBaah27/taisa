@@ -136,6 +136,31 @@ struct AssistantResponseRepositoryTests {
         #expect(resolved.sources.map(\.excerpt) == [nil, nil])
     }
 
+    @Test func tombstonedLocalSourceIsNeverDisclosed() async throws {
+        let fixture = try await Fixture(); defer { fixture.remove() }
+        try await fixture.seedConversation()
+        let repository = AssistantResponseRepository(store: fixture.store)
+        let source = AssistantResponseSourceRecord(
+            id: "10000000-0000-4000-8000-000000000007",
+            responseMessageID: fixture.messageID, ordinal: 0,
+            sourceID: fixture.messageID, sourceType: "message", excerpt: "provider text"
+        )
+        let write = AssistantResponseWrite(
+            message: fixture.write.message, metadata: fixture.write.metadata,
+            sources: [source], proposal: fixture.write.proposal
+        )
+        try await repository.persist(write)
+        let stored = try #require(await repository.response(messageID: fixture.messageID))
+        #expect(try await repository.resolveSources(in: [fixture.messageID: stored])[fixture.messageID]?.sources.first?.excerpt == "A grounded response")
+        try await fixture.store.write { db in
+            try db.execute(
+                sql: "INSERT INTO tombstones (id, entity_type, entity_id, deletion_version_id, deleted_at_ms) VALUES (?, 'message', ?, ?, 30)",
+                arguments: [UUID().uuidString, fixture.messageID, UUID().uuidString]
+            )
+        }
+        #expect(try await repository.resolveSources(in: [fixture.messageID: stored])[fixture.messageID]?.sources.first?.excerpt == nil)
+    }
+
     @Test func proposalDestinationAndResolutionRollbackTogetherThenRetry() async throws {
         let fixture = try await Fixture(); defer { fixture.remove() }
         try await fixture.seedConversation()

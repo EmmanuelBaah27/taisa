@@ -194,6 +194,37 @@ final class ConversationViewModelTests: XCTestCase {
         XCTAssertEqual(removedFeedbackID, UUID(uuidString: responseID)?.uuidString)
     }
 
+    func testFeedbackSaveAndRemovalAreSerializedInTapOrder() async {
+        let gate = AsyncGate()
+        let events = EventRecorder()
+        let client = ConversationScreenClient(
+            beginVoice: {}, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
+            sendText: { _ in }, retry: {}, saveDraft: { _ in }, discardDraft: {},
+            saveFeedback: { _ in
+                await events.append("save-start")
+                await gate.wait()
+                await events.append("save-end")
+            },
+            removeFeedback: { _, _ in await events.append("remove") }
+        )
+        let model = ConversationViewModel(
+            conversationID: UUID().uuidString, title: "New conversation", entryIntent: nil,
+            client: client
+        )
+        let responseID = UUID().uuidString
+        let save = Task { await model.saveFeedback(responseMessageID: responseID, direction: .helpful, factors: [.coverage]) }
+        while !(await events.values()).contains("save-start") { await Task.yield() }
+        let remove = Task { await model.saveFeedback(responseMessageID: responseID, direction: nil, factors: []) }
+        await Task.yield()
+        let beforeRelease = await events.values()
+        XCTAssertEqual(beforeRelease, ["save-start"])
+        await gate.open()
+        await save.value
+        await remove.value
+        let finalEvents = await events.values()
+        XCTAssertEqual(finalEvents, ["save-start", "save-end", "remove"])
+    }
+
     private func message(role: String, body: String) -> MessageRecord {
         MessageRecord(
             id: UUID().uuidString, conversationID: UUID().uuidString,
@@ -217,6 +248,12 @@ private actor AsyncGate {
         waiters.removeAll()
         pending.forEach { $0.resume() }
     }
+}
+
+private actor EventRecorder {
+    private var events: [String] = []
+    func append(_ event: String) { events.append(event) }
+    func values() -> [String] { events }
 }
 
 private actor MessageSequence {
@@ -256,7 +293,7 @@ private actor ConversationScreenClientSpy {
                 if correctionFails { throw ConversationFailure.retryable }
             },
             saveFeedback: { [self] value in await save(value) },
-            removeFeedback: { [self] id in await removeFeedback(id) }
+            removeFeedback: { [self] id, _ in await removeFeedback(id) }
         )
     }
     private func recordBegin() { beginVoiceCount += 1 }

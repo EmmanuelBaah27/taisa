@@ -18,7 +18,7 @@ struct ConversationScreenClient: Sendable {
     var discardEmptyConversation: @Sendable () async throws -> Void
     var correctTranscript: @Sendable (String, String) async throws -> Void
     var saveFeedback: @Sendable (ResponseFeedbackRecord) async throws -> Void
-    var removeFeedback: @Sendable (String) async throws -> Void
+    var removeFeedback: @Sendable (String, Int64) async throws -> Void
     var acceptProposal: @Sendable (String) async throws -> Void
     var dismissProposal: @Sendable (String) async throws -> Void
 
@@ -37,7 +37,7 @@ struct ConversationScreenClient: Sendable {
         discardEmptyConversation: @escaping @Sendable () async throws -> Void = {},
         correctTranscript: @escaping @Sendable (String, String) async throws -> Void = { _, _ in },
         saveFeedback: @escaping @Sendable (ResponseFeedbackRecord) async throws -> Void = { _ in },
-        removeFeedback: @escaping @Sendable (String) async throws -> Void = { _ in },
+        removeFeedback: @escaping @Sendable (String, Int64) async throws -> Void = { _, _ in },
         acceptProposal: @escaping @Sendable (String) async throws -> Void = { _ in },
         dismissProposal: @escaping @Sendable (String) async throws -> Void = { _ in }
     ) {
@@ -90,6 +90,7 @@ final class ConversationViewModel {
     @ObservationIgnored private var started = false
     @ObservationIgnored private var actionInFlight = false
     @ObservationIgnored private var feedbackRevisionMS: Int64 = 0
+    @ObservationIgnored private var feedbackMutationTails: [String: Task<Void, Never>] = [:]
 
     init(
         conversationID: String,
@@ -295,18 +296,24 @@ final class ConversationViewModel {
     ) async {
         let now = Int64(Date().timeIntervalSince1970 * 1_000)
         feedbackRevisionMS = max(now, feedbackRevisionMS + 1)
-        do {
-            if let direction {
-                try await client.saveFeedback(.init(
-                    responseMessageID: responseMessageID, direction: direction,
-                    factors: factors, detail: nil,
-                    updatedAtMS: feedbackRevisionMS
-                ))
-            } else {
-                try await client.removeFeedback(responseMessageID)
-            }
-            await reloadMessages()
-        } catch { composer = .failure(.retryable) }
+        let revision = feedbackRevisionMS
+        let previous = feedbackMutationTails[responseMessageID]
+        let task = Task { @MainActor in
+            await previous?.value
+            do {
+                if let direction {
+                    try await client.saveFeedback(.init(
+                        responseMessageID: responseMessageID, direction: direction,
+                        factors: factors, detail: nil, updatedAtMS: revision
+                    ))
+                } else {
+                    try await client.removeFeedback(responseMessageID, revision)
+                }
+                await reloadMessages()
+            } catch { composer = .failure(.retryable) }
+        }
+        feedbackMutationTails[responseMessageID] = task
+        await task.value
     }
 
     func acceptProposal(_ id: String) async {

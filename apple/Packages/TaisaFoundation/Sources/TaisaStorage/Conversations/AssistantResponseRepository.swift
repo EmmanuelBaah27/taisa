@@ -85,10 +85,11 @@ public struct AssistantResponseRepository: Sendable {
         guard UUIDIdentity.canonical(feedback.responseMessageID) != nil,
               feedback.updatedAtMS >= 0,
               feedback.factors.count <= ResponseQualityFactor.allCases.count,
+              Set(feedback.factors).count == feedback.factors.count,
               feedback.detail == nil || (feedback.detail!.trimmingCharacters(in: .whitespacesAndNewlines).count > 0 && feedback.detail!.count <= 4_000) else {
             throw RepositoryError.persistenceFailed
         }
-        let factors = try JSONEncoder().encode(feedback.factors.map(\.rawValue))
+        let factors = try JSONEncoder().encode(feedback.factors.sorted().map(\.rawValue))
         do {
             try await store.write { db in
                 try db.execute(sql: """
@@ -264,17 +265,26 @@ public struct AssistantResponseRepository: Sendable {
     }
 
     private static func localSourceText(_ source: AssistantResponseSourceRecord, db: Database) throws -> String? {
-        let query: String
+        let table: String
+        let column: String
+        let entity: String
         switch source.sourceType {
-        case "message": query = "SELECT body FROM messages WHERE id = ? COLLATE NOCASE"
-        case "goal": query = "SELECT title FROM goals WHERE id = ? COLLATE NOCASE"
-        case "action": query = "SELECT title FROM actions WHERE id = ? COLLATE NOCASE"
-        case "evidence": query = "SELECT title FROM evidence WHERE id = ? COLLATE NOCASE"
-        case "memory": query = "SELECT content FROM memory_items WHERE id = ? COLLATE NOCASE"
-        case "insight": query = "SELECT body FROM insights WHERE id = ? COLLATE NOCASE"
+        case "message": (table, column, entity) = ("messages", "body", "message")
+        case "goal": (table, column, entity) = ("goals", "title", "goal")
+        case "action": (table, column, entity) = ("actions", "title", "action")
+        case "evidence": (table, column, entity) = ("evidence", "title", "evidence")
+        case "memory": (table, column, entity) = ("memory_items", "content", "memory")
+        case "insight": (table, column, entity) = ("insights", "body", "insight")
         default: return nil
         }
-        return try String.fetchOne(db, sql: query, arguments: [source.sourceID])
+        return try String.fetchOne(db, sql: """
+            SELECT \(column) FROM \(table)
+            WHERE id = ? COLLATE NOCASE
+              AND NOT EXISTS (
+                SELECT 1 FROM tombstones
+                WHERE entity_type = ? AND entity_id = ? COLLATE NOCASE
+              )
+            """, arguments: [source.sourceID, entity, source.sourceID])
     }
 
     static func loadResponses(messageIDs: [String], db: Database) throws -> [String: AssistantResponseRecord] {

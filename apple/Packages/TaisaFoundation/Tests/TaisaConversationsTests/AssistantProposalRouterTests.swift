@@ -70,7 +70,7 @@ struct AssistantProposalRouterTests {
             #"{"kind":"goal","title":"Do not create","description":null,"priority":null,"targetDate":null}"#,
             ordinal: 10, fixture: fixture
         )
-        let dismissed = try await router.dismiss(proposalID: dismissedID, resolvedAtMS: 20)
+        let dismissed = try await router.dismiss(proposalID: dismissedID, deviceID: UUID(), resolvedAtMS: 20)
         #expect(dismissed.state == .dismissed)
         #expect(dismissed.targetID == nil)
 
