@@ -223,6 +223,9 @@ public struct AssistantResponseRecord: Codable, Sendable, Equatable {
     public let sources: [AssistantResponseSourceRecord]
     public let proposal: AssistantProposalRecord?
     public let feedback: ResponseFeedbackRecord?
+    public init(metadata: AssistantResponseMetadataRecord, sources: [AssistantResponseSourceRecord], proposal: AssistantProposalRecord?, feedback: ResponseFeedbackRecord?) {
+        self.metadata = metadata; self.sources = sources; self.proposal = proposal; self.feedback = feedback
+    }
 }
 
 public struct AssistantResponseWrite: Sendable, Equatable {
