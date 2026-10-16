@@ -29,6 +29,7 @@ const SNAPSHOT: ArchiveSnapshot = {
     usage_receipts: 3,
     migration_state: 0,
     mutation_receipts: 12,
+    response_feedback: 3,
   },
   contentHash: 'a'.repeat(64),
 };
@@ -216,6 +217,34 @@ describe('encrypted archive recovery', () => {
 
     expect(snapshot.schemaVersion).toBe(SCHEMA_VERSION + 1);
     expect(snapshot.counts).toEqual(SNAPSHOT.counts);
+  });
+
+  test('requires response feedback counts for schema-v3 and schema-v4 manifests', () => {
+    const withoutFeedback = { ...SNAPSHOT.counts } as Record<string, number>;
+    delete withoutFeedback.response_feedback;
+
+    for (const schemaVersion of [3, 4]) {
+      expect(() => parseArchiveManifestForValidation({
+        archive_format_version: 1,
+        schema_version: schemaVersion,
+        counts_json: JSON.stringify(withoutFeedback),
+        content_hash: SNAPSHOT.contentHash,
+      })).toThrow('count set');
+    }
+  });
+
+  test('accepts schema-v1 and schema-v2 manifests without response feedback counts', () => {
+    const legacyCounts = { ...SNAPSHOT.counts } as Record<string, number>;
+    delete legacyCounts.response_feedback;
+
+    for (const schemaVersion of [1, 2]) {
+      expect(parseArchiveManifestForValidation({
+        archive_format_version: 1,
+        schema_version: schemaVersion,
+        counts_json: JSON.stringify(legacyCounts),
+        content_hash: SNAPSHOT.contentHash,
+      })).toMatchObject({ schemaVersion, counts: legacyCounts });
+    }
   });
 
   test('fails before export when free space cannot hold a complete new archive', async () => {
