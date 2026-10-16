@@ -208,6 +208,15 @@ public struct ResponseFeedbackRecord: Codable, Sendable, Equatable {
     }
 }
 
+public struct ResponsePreferenceSignalRecord: Codable, Sendable, Equatable {
+    public let factor: ResponseQualityFactor
+    public let direction: ResponseFeedbackDirection
+    public init(factor: ResponseQualityFactor, direction: ResponseFeedbackDirection) {
+        self.factor = factor
+        self.direction = direction
+    }
+}
+
 public struct AssistantResponseRecord: Codable, Sendable, Equatable {
     public let metadata: AssistantResponseMetadataRecord
     public let sources: [AssistantResponseSourceRecord]

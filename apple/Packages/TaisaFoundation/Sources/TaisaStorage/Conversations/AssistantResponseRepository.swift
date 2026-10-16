@@ -90,6 +90,7 @@ public struct AssistantResponseRepository: Sendable {
                     ON CONFLICT(response_message_id) DO UPDATE SET
                         direction = excluded.direction, factors_json = excluded.factors_json,
                         detail = excluded.detail, updated_at_ms = excluded.updated_at_ms
+                    WHERE excluded.updated_at_ms > response_feedback.updated_at_ms
                     """, arguments: [feedback.responseMessageID, feedback.direction.rawValue, factors, feedback.detail, feedback.updatedAtMS])
             }
         } catch { throw RepositoryError.persistenceFailed }
@@ -194,6 +195,80 @@ public struct AssistantResponseRepository: Sendable {
         catch { throw RepositoryError.persistenceFailed }
     }
 
+    public func replacePreferenceProfile(
+        _ signals: [ResponsePreferenceSignalRecord], updatedAtMS: Int64
+    ) async throws {
+        guard signals.count <= 5, updatedAtMS >= 0,
+              signals.allSatisfy({ $0.factor != .evidenceFidelity }),
+              Set(signals.map(\.factor)).count == signals.count else {
+            throw RepositoryError.persistenceFailed
+        }
+        let data = try JSONEncoder().encode(signals.sorted { $0.factor.rawValue < $1.factor.rawValue })
+        do {
+            try await store.write { db in
+                try db.execute(sql: """
+                    INSERT INTO preference_profiles (id, signals_json, enabled, updated_at_ms)
+                    VALUES (1, ?, 1, ?)
+                    ON CONFLICT(id) DO UPDATE SET signals_json = excluded.signals_json,
+                        enabled = excluded.enabled, updated_at_ms = excluded.updated_at_ms
+                    WHERE excluded.updated_at_ms >= preference_profiles.updated_at_ms
+                    """, arguments: [data, updatedAtMS])
+            }
+        } catch { throw RepositoryError.persistenceFailed }
+    }
+
+    public func preferenceProfile() async throws -> [ResponsePreferenceSignalRecord] {
+        do {
+            return try await store.read { db in
+                guard let row = try Row.fetchOne(db, sql: "SELECT signals_json, enabled FROM preference_profiles WHERE id = 1"),
+                      (row["enabled"] as Int) == 1 else { return [] }
+                let data: Data = row["signals_json"]
+                let values = try JSONDecoder().decode([ResponsePreferenceSignalRecord].self, from: data)
+                guard values.count <= 5, values.allSatisfy({ $0.factor != .evidenceFidelity }),
+                      Set(values.map(\.factor)).count == values.count else {
+                    throw RepositoryError.persistenceFailed
+                }
+                return values
+            }
+        } catch let error as RepositoryError { throw error }
+        catch { throw RepositoryError.persistenceFailed }
+    }
+
+    public func resolveSources(
+        in responses: [String: AssistantResponseRecord]
+    ) async throws -> [String: AssistantResponseRecord] {
+        do {
+            return try await store.read { db in
+                try responses.mapValues { response in
+                    let sources = try response.sources.map { source in
+                        AssistantResponseSourceRecord(
+                            id: source.id, responseMessageID: source.responseMessageID,
+                            ordinal: source.ordinal, sourceID: source.sourceID,
+                            sourceType: source.sourceType,
+                            excerpt: try Self.localSourceText(source, db: db)
+                        )
+                    }
+                    return AssistantResponseRecord(metadata: response.metadata, sources: sources, proposal: response.proposal, feedback: response.feedback)
+                }
+            }
+        } catch let error as RepositoryError { throw error }
+        catch { throw RepositoryError.persistenceFailed }
+    }
+
+    private static func localSourceText(_ source: AssistantResponseSourceRecord, db: Database) throws -> String? {
+        let query: String
+        switch source.sourceType {
+        case "message": query = "SELECT body FROM messages WHERE id = ? COLLATE NOCASE"
+        case "goal": query = "SELECT title FROM goals WHERE id = ? COLLATE NOCASE"
+        case "action": query = "SELECT title FROM actions WHERE id = ? COLLATE NOCASE"
+        case "evidence": query = "SELECT title FROM evidence WHERE id = ? COLLATE NOCASE"
+        case "memory": query = "SELECT content FROM memory_items WHERE id = ? COLLATE NOCASE"
+        case "insight": query = "SELECT body FROM insights WHERE id = ? COLLATE NOCASE"
+        default: return nil
+        }
+        return try String.fetchOne(db, sql: query, arguments: [source.sourceID])
+    }
+
     static func loadResponses(messageIDs: [String], db: Database) throws -> [String: AssistantResponseRecord] {
         guard !messageIDs.isEmpty else { return [:] }
         let placeholders = Array(repeating: "?", count: messageIDs.count).joined(separator: ",")
@@ -239,7 +314,7 @@ public struct AssistantResponseRepository: Sendable {
         .init(id: row["id"], responseMessageID: row["response_message_id"], ordinal: row["ordinal"], sourceID: row["source_id"], sourceType: row["source_type"], excerpt: row["excerpt"])
     }
 
-    private static func decodeProposal(_ row: Row) -> AssistantProposalRecord {
+    static func decodeProposal(_ row: Row) -> AssistantProposalRecord {
         .init(id: row["id"], responseMessageID: row["response_message_id"], kind: row["kind"], canonicalPayload: row["canonical_payload"], payloadDigest: row["payload_digest"], state: AssistantProposalState(rawValue: row["state"])!, targetType: row["target_type"], targetID: row["target_id"], targetVersionID: row["target_version_id"], decisionReceipt: row["decision_receipt"], createdAtMS: row["created_at_ms"], resolvedAtMS: row["resolved_at_ms"])
     }
 

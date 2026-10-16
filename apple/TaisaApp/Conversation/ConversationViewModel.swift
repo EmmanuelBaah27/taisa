@@ -89,6 +89,7 @@ final class ConversationViewModel {
     @ObservationIgnored private let dismiss: @MainActor () -> Void
     @ObservationIgnored private var started = false
     @ObservationIgnored private var actionInFlight = false
+    @ObservationIgnored private var feedbackRevisionMS: Int64 = 0
 
     init(
         conversationID: String,
@@ -292,12 +293,14 @@ final class ConversationViewModel {
         direction: ResponseFeedbackDirection?,
         factors: [ResponseQualityFactor]
     ) async {
+        let now = Int64(Date().timeIntervalSince1970 * 1_000)
+        feedbackRevisionMS = max(now, feedbackRevisionMS + 1)
         do {
             if let direction {
                 try await client.saveFeedback(.init(
                     responseMessageID: responseMessageID, direction: direction,
                     factors: factors, detail: nil,
-                    updatedAtMS: Int64(Date().timeIntervalSince1970 * 1_000)
+                    updatedAtMS: feedbackRevisionMS
                 ))
             } else {
                 try await client.removeFeedback(responseMessageID)

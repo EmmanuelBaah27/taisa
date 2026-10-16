@@ -94,6 +94,82 @@ struct AssistantResponseRepositoryTests {
         #expect(try await repository.response(messageID: fixture.messageID)?.feedback == nil)
     }
 
+    @Test func olderFeedbackCompletionCannotOverwriteNewerSelection() async throws {
+        let fixture = try await Fixture(); defer { fixture.remove() }
+        try await fixture.seedConversation()
+        let repository = AssistantResponseRepository(store: fixture.store)
+        try await repository.persist(fixture.write)
+        try await repository.upsertFeedback(.init(
+            responseMessageID: fixture.messageID, direction: .helpful,
+            factors: [.coverage], detail: nil, updatedAtMS: 31
+        ))
+        try await repository.upsertFeedback(.init(
+            responseMessageID: fixture.messageID, direction: .notHelpful,
+            factors: [.intentAlignment], detail: nil, updatedAtMS: 30
+        ))
+        let feedback = try #require(await repository.response(messageID: fixture.messageID)?.feedback)
+        #expect(feedback.direction == .helpful)
+        #expect(feedback.factors == [.coverage])
+    }
+
+    @Test func materializedPreferenceProfileIsBoundedCanonicalAndLocal() async throws {
+        let fixture = try await Fixture(); defer { fixture.remove() }
+        let repository = AssistantResponseRepository(store: fixture.store)
+        try await repository.replacePreferenceProfile([
+            .init(factor: .relationalFit, direction: .helpful),
+            .init(factor: .coverage, direction: .notHelpful),
+        ], updatedAtMS: 40)
+        #expect(try await repository.preferenceProfile() == [
+            .init(factor: .coverage, direction: .notHelpful),
+            .init(factor: .relationalFit, direction: .helpful),
+        ])
+        #expect(try await ChangeJournal(store: fixture.store).pending(limit: 10).isEmpty)
+    }
+
+    @Test func sourceDisplayIgnoresProviderExcerptAndUsesOnlyLocalTruth() async throws {
+        let fixture = try await Fixture(); defer { fixture.remove() }
+        try await fixture.seedConversation()
+        let repository = AssistantResponseRepository(store: fixture.store)
+        try await repository.persist(fixture.write)
+        let stored = try #require(await repository.response(messageID: fixture.messageID))
+        let resolved = try #require(await repository.resolveSources(in: [fixture.messageID: stored])[fixture.messageID])
+        #expect(resolved.sources.map(\.excerpt) == [nil, nil])
+    }
+
+    @Test func proposalDestinationAndResolutionRollbackTogetherThenRetry() async throws {
+        let fixture = try await Fixture(); defer { fixture.remove() }
+        try await fixture.seedConversation()
+        let responses = AssistantResponseRepository(store: fixture.store)
+        try await responses.persist(fixture.write)
+        let targetID = "10000000-0000-4000-8000-000000000020"
+        let versionID = "10000000-0000-4000-8000-000000000021"
+        let destination = AssistantProposalDestination.goal(.init(
+            id: targetID, title: "Atomic goal", detail: "", status: "active",
+            createdAtMS: 20, updatedAtMS: 20
+        ))
+        let context = MutationContext(
+            id: versionID, deviceID: "10000000-0000-4000-8000-000000000022", timestamp: 20
+        )
+        let failing = AssistantProposalAcceptanceRepository(store: fixture.store, failAfterDestination: true)
+        await #expect(throws: AssistantProposalAcceptanceError.injectedFailure) {
+            try await failing.accept(
+                proposalID: "10000000-0000-4000-8000-000000000006", payloadDigest: "digest-1",
+                destination: destination, context: context, targetType: "goal", targetID: targetID,
+                targetVersionID: versionID, decisionReceipt: "accepted:test", resolvedAtMS: 30
+            )
+        }
+        #expect(try await GoalRepository(store: fixture.store).get(id: targetID) == nil)
+        #expect(try await responses.proposal(id: "10000000-0000-4000-8000-000000000006")?.state == .pending)
+
+        let accepted = try await AssistantProposalAcceptanceRepository(store: fixture.store).accept(
+            proposalID: "10000000-0000-4000-8000-000000000006", payloadDigest: "digest-1",
+            destination: destination, context: context, targetType: "goal", targetID: targetID,
+            targetVersionID: versionID, decisionReceipt: "accepted:test", resolvedAtMS: 30
+        )
+        #expect(accepted.state == .accepted)
+        #expect(try await GoalRepository(store: fixture.store).get(id: targetID)?.title == "Atomic goal")
+    }
+
     @Test func correctionSupersedesTheOriginalPendingProposalInTheSameTransaction() async throws {
         let fixture = try await Fixture()
         defer { fixture.remove() }

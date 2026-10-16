@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 import TaisaContracts
 import TaisaStorage
@@ -11,6 +12,7 @@ public enum AssistantProposalRoutingError: Error, Equatable, Sendable {
 
 public struct AssistantProposalRouter: Sendable {
     private let proposals: AssistantResponseRepository
+    private let acceptance: AssistantProposalAcceptanceRepository
     private let goals: GoalRepository
     private let actions: ActionRepository
     private let evidence: EvidenceRepository
@@ -20,6 +22,7 @@ public struct AssistantProposalRouter: Sendable {
 
     public init(store: TaisaStore) {
         proposals = AssistantResponseRepository(store: store)
+        acceptance = AssistantProposalAcceptanceRepository(store: store)
         goals = GoalRepository(store: store)
         actions = ActionRepository(store: store)
         evidence = EvidenceRepository(store: store)
@@ -45,9 +48,9 @@ public struct AssistantProposalRouter: Sendable {
             return try await mark(stored, state: .unsupported, at: resolvedAtMS)
         }
 
-        let target: Target
+        let prepared: PreparedDestination
         do {
-            target = try await apply(
+            prepared = try await prepare(
                 decoded, proposalID: stored.id, deviceID: deviceID,
                 timestamp: stored.createdAtMS
             )
@@ -58,11 +61,17 @@ public struct AssistantProposalRouter: Sendable {
         } catch AssistantProposalRoutingError.malformedPayload {
             return try await mark(stored, state: .unsupported, at: resolvedAtMS)
         }
-        return try await proposals.resolveProposal(
-            id: stored.id, payloadDigest: stored.payloadDigest, state: .accepted,
-            targetType: target.type, targetID: target.id, targetVersionID: target.versionID,
-            decisionReceipt: "accepted:\(stored.id)", resolvedAtMS: resolvedAtMS
-        )
+        do {
+            return try await acceptance.accept(
+                proposalID: stored.id, payloadDigest: stored.payloadDigest,
+                destination: prepared.destination, context: prepared.context,
+                targetType: prepared.target.type, targetID: prepared.target.id,
+                targetVersionID: prepared.target.versionID,
+                decisionReceipt: "accepted:\(stored.id)", resolvedAtMS: resolvedAtMS
+            )
+        } catch AssistantProposalAcceptanceError.staleTarget {
+            return try await mark(stored, state: .stale, at: resolvedAtMS)
+        }
     }
 
     public func dismiss(proposalID: String, resolvedAtMS: Int64) async throws -> AssistantProposalRecord {
@@ -85,10 +94,15 @@ public struct AssistantProposalRouter: Sendable {
     }
 
     private struct Target { let type: String; let id: String; let versionID: String }
+    private struct PreparedDestination {
+        let destination: AssistantProposalDestination
+        let context: MutationContext
+        let target: Target
+    }
 
-    private func apply(
+    private func prepare(
         _ proposal: CoachingProposal, proposalID: String, deviceID: UUID, timestamp: Int64
-    ) async throws -> Target {
+    ) async throws -> PreparedDestination {
         let targetID = derivedUUID(from: proposalID, salt: 1)
         let versionID = derivedUUID(from: proposalID, salt: 2)
         let context = MutationContext(
@@ -96,32 +110,36 @@ public struct AssistantProposalRouter: Sendable {
         )
         switch proposal {
         case .goal(let value):
-            try await goals.create(.init(
+            let record = GoalRecord(
                 id: targetID, title: value.title, detail: value.description ?? "",
                 status: "active", createdAtMS: timestamp, updatedAtMS: timestamp
-            ), context: context)
-            return .init(type: "goal", id: targetID, versionID: versionID)
+            )
+            return .init(destination: .goal(record), context: context, target: .init(type: "goal", id: targetID, versionID: versionID))
         case .action(let value):
             if let goalID = value.goalId, try await goals.get(id: goalID) == nil {
                 throw AssistantProposalRoutingError.staleTarget
             }
-            try await actions.create(.init(
+            let record = ActionRecord(
                 id: targetID, goalID: value.goalId, title: value.title,
                 detail: value.description ?? "", status: "open",
                 dueAtMS: try milliseconds(value.dueAt), createdAtMS: timestamp,
                 updatedAtMS: timestamp
-            ), context: context)
-            return .init(type: "action", id: targetID, versionID: versionID)
+            )
+            return .init(destination: .action(record), context: context, target: .init(type: "action", id: targetID, versionID: versionID))
         case .weeklyWork(let value):
             guard try await actions.get(id: value.actionId) != nil else {
                 throw AssistantProposalRoutingError.staleTarget
             }
-            try await weeklyWork.place(
-                actionID: value.actionId, weekContaining: try date(value.weekStart),
-                plannedDay: try value.plannedDay.map(date), timeZone: TimeZone(secondsFromGMT: 0)!,
-                context: context
+            let dates = try WeekCalendar(timeZone: TimeZone(secondsFromGMT: 0)!).placement(
+                weekContaining: try date(value.weekStart), plannedDay: try value.plannedDay.map(date)
             )
-            return .init(type: "weekly_work", id: value.actionId, versionID: versionID)
+            let weekStart = Int64((dates.weekStart.timeIntervalSince1970 * 1_000).rounded())
+            let plannedDay = dates.plannedDay.map { Int64(($0.timeIntervalSince1970 * 1_000).rounded()) }
+            let placement = WeeklyPlacementRecord(id: targetID, actionID: value.actionId, weekStartMS: weekStart, plannedDayMS: plannedDay, createdAtMS: timestamp, updatedAtMS: timestamp)
+            let eventID = derivedUUID(from: proposalID, salt: 3)
+            let event = WorkEventRecord(id: eventID, actionID: value.actionId, kind: .placed, fromWeekStartMS: nil, toWeekStartMS: weekStart, sourceType: "assistant_proposal", sourceID: proposalID, occurredAtMS: timestamp)
+            let eventContext = MutationContext(id: derivedUUID(from: proposalID, salt: 4), deviceID: context.deviceID, timestamp: timestamp)
+            return .init(destination: .weekly(placement, event, eventContext), context: context, target: .init(type: "weekly_work", id: value.actionId, versionID: versionID))
         case .evidence(let value):
             guard value.goalId != nil || value.actionId != nil else {
                 throw AssistantProposalRoutingError.unsupported
@@ -132,58 +150,58 @@ public struct AssistantProposalRouter: Sendable {
             if let actionID = value.actionId, try await actions.get(id: actionID) == nil {
                 throw AssistantProposalRoutingError.staleTarget
             }
-            try await evidence.create(.init(
+            let record = EvidenceRecord(
                 id: targetID, goalID: value.goalId, actionID: value.actionId,
                 title: value.statement, detail: value.statement,
                 occurredAtMS: try milliseconds(value.occurredAt)!, createdAtMS: timestamp
-            ), context: context)
-            return .init(type: "evidence", id: targetID, versionID: versionID)
+            )
+            return .init(destination: .evidence(record), context: context, target: .init(type: "evidence", id: targetID, versionID: versionID))
         case .memory(let delta):
-            return try await applyMemory(
+            return try await prepareMemory(
                 delta, targetID: targetID, versionID: versionID, context: context
             )
         case .insight(let value):
-            try await insights.create(.init(
+            let record = InsightRecord(
                 id: targetID, body: value.body, status: .reviewNeeded,
                 isTimeSensitive: value.isTimeSensitive,
                 homeEligibleUntilMS: try milliseconds(value.homeEligibleUntil),
                 createdAtMS: timestamp, updatedAtMS: timestamp
-            ), context: context)
-            return .init(type: "insight", id: targetID, versionID: versionID)
+            )
+            return .init(destination: .insight(record), context: context, target: .init(type: "insight", id: targetID, versionID: versionID))
         }
     }
 
-    private func applyMemory(
+    private func prepareMemory(
         _ delta: MemoryDelta, targetID: String, versionID: String, context: MutationContext
-    ) async throws -> Target {
+    ) async throws -> PreparedDestination {
         switch delta {
         case .propose(let candidate, _, _):
-            try await memory.create(.init(
+            let record = MemoryRecord(
                 id: targetID, kind: candidate.type.rawValue, content: candidate.statement,
                 status: storageStatus(candidate.lifecycle), createdAtMS: context.timestamp,
                 updatedAtMS: context.timestamp
-            ), context: context)
-            return .init(type: "memory", id: targetID, versionID: versionID)
+            )
+            return .init(destination: .memoryCreate(record), context: context, target: .init(type: "memory", id: targetID, versionID: versionID))
         case .transition(let id, let lifecycle, _, _):
             guard let current = try await memory.get(id: id) else {
                 throw AssistantProposalRoutingError.staleTarget
             }
-            try await memory.update(.init(
+            let record = MemoryRecord(
                 id: current.id, kind: current.kind, content: current.content,
                 status: storageStatus(lifecycle), createdAtMS: current.createdAtMS,
                 updatedAtMS: context.timestamp
-            ), context: context)
-            return .init(type: "memory", id: current.id, versionID: versionID)
+            )
+            return .init(destination: .memoryUpdate(record), context: context, target: .init(type: "memory", id: current.id, versionID: versionID))
         case .support(let id, let sourceMessageID, _):
             guard try await memory.get(id: id) != nil else {
                 throw AssistantProposalRoutingError.staleTarget
             }
             let sourceID = derivedUUID(from: targetID, salt: 3)
-            try await memory.createSource(.init(
+            let record = MemorySourceRecord(
                 id: sourceID, memoryItemID: id, sourceType: "message",
                 sourceID: sourceMessageID, createdAtMS: context.timestamp
-            ), context: context)
-            return .init(type: "memory_source", id: sourceID, versionID: versionID)
+            )
+            return .init(destination: .memorySource(record), context: context, target: .init(type: "memory_source", id: sourceID, versionID: versionID))
         }
     }
 
@@ -216,10 +234,14 @@ public struct AssistantProposalRouter: Sendable {
     }
 
     private func derivedUUID(from source: String, salt: UInt8) -> String {
-        guard var uuid = UUID(uuidString: source)?.uuid else {
-            return UUID().uuidString.lowercased()
-        }
-        uuid.15 ^= salt
-        return UUID(uuid: uuid).uuidString.lowercased()
+        let digest = SHA256.hash(data: Data("\(source.lowercased()):\(salt)".utf8))
+        var bytes = Array(digest.prefix(16))
+        bytes[6] = (bytes[6] & 0x0F) | 0x50
+        bytes[8] = (bytes[8] & 0x3F) | 0x80
+        let uuid = UUID(uuid: (
+            bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
+            bytes[8], bytes[9], bytes[10], bytes[11], bytes[12], bytes[13], bytes[14], bytes[15]
+        ))
+        return uuid.uuidString
     }
 }
