@@ -77,6 +77,23 @@ struct AssistantResponseRepositoryTests {
         #expect(try await fixture.store.read { db in try Int.fetchOne(db, sql: "SELECT count(*) FROM response_feedback") } == 1)
     }
 
+    @Test func selectedFeedbackCanBeRemovedIdempotently() async throws {
+        let fixture = try await Fixture()
+        defer { fixture.remove() }
+        try await fixture.seedConversation()
+        let repository = AssistantResponseRepository(store: fixture.store)
+        try await repository.persist(fixture.write)
+        try await repository.upsertFeedback(.init(
+            responseMessageID: fixture.messageID, direction: .helpful,
+            factors: [.coverage], detail: nil, updatedAtMS: 30
+        ))
+
+        try await repository.removeFeedback(responseMessageID: fixture.messageID)
+        try await repository.removeFeedback(responseMessageID: fixture.messageID)
+
+        #expect(try await repository.response(messageID: fixture.messageID)?.feedback == nil)
+    }
+
     @Test func correctionSupersedesTheOriginalPendingProposalInTheSameTransaction() async throws {
         let fixture = try await Fixture()
         defer { fixture.remove() }

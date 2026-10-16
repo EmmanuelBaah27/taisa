@@ -180,6 +180,20 @@ final class ConversationViewModelTests: XCTestCase {
         XCTAssertNil(saved?.detail)
     }
 
+    func testRemovingSelectedFeedbackDeletesTheLocalRating() async {
+        let client = ConversationScreenClientSpy()
+        let model = ConversationViewModel(
+            conversationID: UUID().uuidString, title: "New conversation", entryIntent: nil,
+            client: await client.makeClient()
+        )
+        let responseID = UUID().uuidString
+
+        await model.saveFeedback(responseMessageID: responseID, direction: nil, factors: [])
+
+        let removedFeedbackID = await client.removedFeedbackID()
+        XCTAssertEqual(removedFeedbackID, UUID(uuidString: responseID)?.uuidString)
+    }
+
     private func message(role: String, body: String) -> MessageRecord {
         MessageRecord(
             id: UUID().uuidString, conversationID: UUID().uuidString,
@@ -224,6 +238,7 @@ private actor ConversationScreenClientSpy {
     private(set) var beginVoiceCount = 0
     private var saved: ConversationInput?
     private var feedback: ResponseFeedbackRecord?
+    private var removedFeedback: String?
 
     init(messages: [MessageRecord] = [], correctionFails: Bool = false) {
         self.messages = messages
@@ -240,13 +255,16 @@ private actor ConversationScreenClientSpy {
             correctTranscript: { [correctionFails] _, _ in
                 if correctionFails { throw ConversationFailure.retryable }
             },
-            saveFeedback: { [self] value in await save(value) }
+            saveFeedback: { [self] value in await save(value) },
+            removeFeedback: { [self] id in await removeFeedback(id) }
         )
     }
     private func recordBegin() { beginVoiceCount += 1 }
     private func save(_ input: ConversationInput) { saved = input }
     private func save(_ value: ResponseFeedbackRecord) { feedback = value }
+    private func removeFeedback(_ id: String) { removedFeedback = UUID(uuidString: id)?.uuidString ?? id }
     func count() -> Int { beginVoiceCount }
     func savedInput() -> ConversationInput? { saved }
     func savedFeedback() -> ResponseFeedbackRecord? { feedback }
+    func removedFeedbackID() -> String? { removedFeedback }
 }

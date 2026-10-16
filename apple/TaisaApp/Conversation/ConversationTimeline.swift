@@ -8,7 +8,7 @@ struct ConversationTimeline: View {
     let messages: [MessageRecord]
     let assistantResponses: [String: AssistantResponseRecord]
     let correct: (MessageRecord) -> Void
-    let saveFeedback: (String, ResponseFeedbackDirection, [ResponseQualityFactor]) -> Void
+    let saveFeedback: (String, ResponseFeedbackDirection?, [ResponseQualityFactor]) -> Void
     let acceptProposal: (String) -> Void
     let dismissProposal: (String) -> Void
 

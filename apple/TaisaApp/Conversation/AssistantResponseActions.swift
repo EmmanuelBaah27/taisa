@@ -5,7 +5,7 @@ import TaisaStorage
 
 struct AssistantResponseActions: View {
     let response: AssistantResponseRecord
-    let saveFeedback: (ResponseFeedbackDirection, [ResponseQualityFactor]) -> Void
+    let saveFeedback: (ResponseFeedbackDirection?, [ResponseQualityFactor]) -> Void
     let acceptProposal: (String) -> Void
     let dismissProposal: (String) -> Void
 
@@ -15,7 +15,7 @@ struct AssistantResponseActions: View {
 
     init(
         response: AssistantResponseRecord,
-        saveFeedback: @escaping (ResponseFeedbackDirection, [ResponseQualityFactor]) -> Void,
+        saveFeedback: @escaping (ResponseFeedbackDirection?, [ResponseQualityFactor]) -> Void,
         acceptProposal: @escaping (String) -> Void,
         dismissProposal: @escaping (String) -> Void
     ) {
@@ -58,6 +58,7 @@ struct AssistantResponseActions: View {
             NavigationStack {
                 List {
                     Section("Why this response") {
+                        LabeledContent("Mode", value: response.metadata.mode.rawValue.capitalized)
                         LabeledContent("Approach", value: response.metadata.approach)
                         LabeledContent("Confidence", value: response.metadata.confidence.capitalized)
                         Text(response.metadata.inference)
@@ -67,7 +68,7 @@ struct AssistantResponseActions: View {
                             ForEach(response.sources, id: \.id) { source in
                                 VStack(alignment: .leading, spacing: TaisaSpacing.tight.rawValue) {
                                     Text(source.sourceType.capitalized).font(.caption).foregroundStyle(.secondary)
-                                    Text(source.excerpt ?? "Source \(source.ordinal + 1)")
+                                    Text(source.excerpt ?? "Source unavailable")
                                 }
                             }
                         }
@@ -88,9 +89,10 @@ struct AssistantResponseActions: View {
         _ value: ResponseFeedbackDirection, systemImage: String, label: String
     ) -> some View {
         Button {
-            direction = value
+            let nextDirection: ResponseFeedbackDirection? = direction == value ? nil : value
+            direction = nextDirection
             factors = []
-            saveFeedback(value, [])
+            saveFeedback(nextDirection, [])
         } label: {
             Image(systemName: direction == value ? "\(systemImage).fill" : systemImage)
                 .frame(
@@ -114,7 +116,7 @@ struct AssistantResponseActions: View {
 
     private func feedbackFactors(for direction: ResponseFeedbackDirection) -> some View {
         VStack(alignment: .leading, spacing: TaisaSpacing.compact.rawValue) {
-            Text(direction == .helpful ? "What worked?" : "What could be better?")
+            Text(direction == .helpful ? "What worked well?" : "What could be better?")
                 .font(.caption)
                 .foregroundStyle(TaisaColor.mutedForeground.color)
             FlowLayout(spacing: TaisaSpacing.compact.rawValue) {

@@ -95,6 +95,20 @@ public struct AssistantResponseRepository: Sendable {
         } catch { throw RepositoryError.persistenceFailed }
     }
 
+    public func removeFeedback(responseMessageID: String) async throws {
+        guard let responseMessageID = UUIDIdentity.canonical(responseMessageID) else {
+            throw RepositoryError.invalidIdentifier
+        }
+        do {
+            try await store.write { db in
+                try db.execute(
+                    sql: "DELETE FROM response_feedback WHERE response_message_id = ? COLLATE NOCASE",
+                    arguments: [responseMessageID]
+                )
+            }
+        } catch { throw RepositoryError.persistenceFailed }
+    }
+
     public func response(messageID: String) async throws -> AssistantResponseRecord? {
         guard let messageID = UUIDIdentity.canonical(messageID) else { throw RepositoryError.invalidIdentifier }
         do {

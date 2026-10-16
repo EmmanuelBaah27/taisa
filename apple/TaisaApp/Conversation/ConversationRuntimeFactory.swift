@@ -369,6 +369,7 @@ struct ConversationRuntimeFactory: Sendable {
                 try await coordinator.correctTranscript(messageID: messageID, text: text)
             },
             saveFeedback: { try await assistantResponses.upsertFeedback($0) },
+            removeFeedback: { try await assistantResponses.removeFeedback(responseMessageID: $0) },
             acceptProposal: { proposalID in
                 _ = try await proposalRouter.accept(
                     proposalID: proposalID, deviceID: deviceID,
@@ -455,6 +456,7 @@ struct ConversationRuntimeFactory: Sendable {
             },
             correctTranscript: { _, _ in try await unavailable() },
             saveFeedback: { try await assistantResponses.upsertFeedback($0) },
+            removeFeedback: { try await assistantResponses.removeFeedback(responseMessageID: $0) },
             acceptProposal: { proposalID in
                 _ = try await proposalRouter.accept(
                     proposalID: proposalID, deviceID: deviceID,

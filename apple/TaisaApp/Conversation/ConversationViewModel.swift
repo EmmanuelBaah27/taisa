@@ -18,6 +18,7 @@ struct ConversationScreenClient: Sendable {
     var discardEmptyConversation: @Sendable () async throws -> Void
     var correctTranscript: @Sendable (String, String) async throws -> Void
     var saveFeedback: @Sendable (ResponseFeedbackRecord) async throws -> Void
+    var removeFeedback: @Sendable (String) async throws -> Void
     var acceptProposal: @Sendable (String) async throws -> Void
     var dismissProposal: @Sendable (String) async throws -> Void
 
@@ -36,6 +37,7 @@ struct ConversationScreenClient: Sendable {
         discardEmptyConversation: @escaping @Sendable () async throws -> Void = {},
         correctTranscript: @escaping @Sendable (String, String) async throws -> Void = { _, _ in },
         saveFeedback: @escaping @Sendable (ResponseFeedbackRecord) async throws -> Void = { _ in },
+        removeFeedback: @escaping @Sendable (String) async throws -> Void = { _ in },
         acceptProposal: @escaping @Sendable (String) async throws -> Void = { _ in },
         dismissProposal: @escaping @Sendable (String) async throws -> Void = { _ in }
     ) {
@@ -53,6 +55,7 @@ struct ConversationScreenClient: Sendable {
         self.discardEmptyConversation = discardEmptyConversation
         self.correctTranscript = correctTranscript
         self.saveFeedback = saveFeedback
+        self.removeFeedback = removeFeedback
         self.acceptProposal = acceptProposal
         self.dismissProposal = dismissProposal
     }
@@ -286,15 +289,19 @@ final class ConversationViewModel {
 
     func saveFeedback(
         responseMessageID: String,
-        direction: ResponseFeedbackDirection,
+        direction: ResponseFeedbackDirection?,
         factors: [ResponseQualityFactor]
     ) async {
         do {
-            try await client.saveFeedback(.init(
-                responseMessageID: responseMessageID, direction: direction,
-                factors: factors, detail: nil,
-                updatedAtMS: Int64(Date().timeIntervalSince1970 * 1_000)
-            ))
+            if let direction {
+                try await client.saveFeedback(.init(
+                    responseMessageID: responseMessageID, direction: direction,
+                    factors: factors, detail: nil,
+                    updatedAtMS: Int64(Date().timeIntervalSince1970 * 1_000)
+                ))
+            } else {
+                try await client.removeFeedback(responseMessageID)
+            }
             await reloadMessages()
         } catch { composer = .failure(.retryable) }
     }
