@@ -123,4 +123,17 @@ final class ConversationViewContractTests: XCTestCase {
         XCTAssertFalse(source.contains("TextField"))
         XCTAssertFalse(source.contains("TextEditor"))
     }
+
+    func testSeniorSelfResponseHasDeterministicPreviewScenario() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let source = try String(
+            contentsOf: root.appendingPathComponent("TaisaPreview/ConversationScenarios.swift"),
+            encoding: .utf8
+        )
+
+        XCTAssertTrue(source.contains("conversation.senior-self-response"))
+        XCTAssertTrue(source.contains("assistantResponses:"))
+        XCTAssertTrue(source.contains("AssistantResponseMetadataRecord"))
+        XCTAssertTrue(source.contains("AssistantProposalRecord"))
+    }
 }

@@ -169,6 +169,7 @@ final class ConversationViewModel {
     static func preview(
         composer: ComposerState,
         messages: [MessageRecord] = [],
+        assistantResponses: [String: AssistantResponseRecord] = [:],
         dismiss: @escaping @MainActor () -> Void = {}
     ) -> ConversationViewModel {
         let model = ConversationViewModel(
@@ -185,6 +186,7 @@ final class ConversationViewModel {
             dismiss: dismiss
         )
         model.messages = messages
+        model.assistantResponses = assistantResponses
         return model
     }
 
