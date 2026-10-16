@@ -111,7 +111,11 @@ public struct ConversationRepository: DomainRepository, MessageRepositoryContrac
         )
     }
 
-    public func applyCorrection(_ source: ConversationCorrection, context: MutationContext) async throws {
+    public func applyCorrection(
+        _ source: ConversationCorrection,
+        replacementResponse: AssistantResponseWrite? = nil,
+        context: MutationContext
+    ) async throws {
         let correction = try Self.validated(source)
         guard UUIDIdentity.canonical(context.id) != nil,
               UUIDIdentity.canonical(context.deviceID) != nil else { throw RepositoryError.invalidIdentifier }
@@ -137,6 +141,12 @@ public struct ConversationRepository: DomainRepository, MessageRepositoryContrac
                 }
                 try Self.insert(correction.correctedUserMessage, in: db)
                 try Self.insert(correction.regeneratedAssistantMessage, in: db)
+                if let replacementResponse {
+                    guard replacementResponse.message == correction.regeneratedAssistantMessage else {
+                        throw RepositoryError.persistenceFailed
+                    }
+                    try AssistantResponseRepository.insertCompanions(replacementResponse, db: db)
+                }
                 try db.execute(
                     sql: "INSERT INTO message_revisions (id, message_id, original_body, replacement_message_id, created_at_ms) VALUES (?, ?, ?, ?, ?)",
                     arguments: [correction.revisionID, correction.originalUserMessageID, userRow["body"] as String, correction.correctedUserMessage.id, correction.createdAtMS]

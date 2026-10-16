@@ -140,6 +140,12 @@ const CoachingRequestRuntimeSchema = z.object({
       .max(COACHING_GATEWAY_LIMITS.maxRecentMessages),
     memory: z.array(MemoryItemSchema).max(COACHING_GATEWAY_LIMITS.maxMemoryItems),
     evidence: z.array(EvidenceItemSchema).max(COACHING_GATEWAY_LIMITS.maxEvidenceItems),
+    preferenceProfile: z.object({
+      signals: z.array(z.object({
+        factor: z.enum(['intent_alignment', 'coverage', 'coaching_strategy', 'insight_value', 'practical_utility', 'confidence_calibration', 'relational_fit', 'communication_clarity']),
+        direction: z.enum(['helpful', 'not_helpful']),
+      }).strict()).max(5),
+    }).strict().optional(),
   }).strict(),
 }).strict();
 

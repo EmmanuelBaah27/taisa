@@ -1185,6 +1185,14 @@ test('Senior Self prompt serializes only the submitted turn and supplied context
   expect(JSON.parse(prompt.userPrompt)).toEqual(requestFixture);
 });
 
+test('Senior Self uses repeated feedback only to tune response qualities', () => {
+  const { systemPrompt } = buildSeniorSelfPrompt(requestFixture);
+  expect(systemPrompt).toContain('Preference feedback');
+  expect(systemPrompt).toContain('never override safety, relevance, context sufficiency, or evidence');
+  expect(systemPrompt).toContain('helpful signal');
+  expect(systemPrompt).toContain('not_helpful signal');
+});
+
 test('Senior Self decides safety, relevance, context sufficiency, then coaching stance', () => {
   const { systemPrompt } = buildSeniorSelfPrompt(requestFixture);
 

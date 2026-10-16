@@ -1,5 +1,11 @@
 import Foundation
 
+private extension KeyedEncodingContainer where Key == DynamicCodingKey {
+    mutating func encode<T: Encodable>(_ value: T, forKey key: String) throws {
+        try encode(value, forKey: DynamicCodingKey(stringValue: key)!)
+    }
+}
+
 public enum CoachingStreamFailureCode: String, Codable, Sendable {
     case coachingUnavailable = "COACHING_UNAVAILABLE"
     case authenticationFailed = "AUTHENTICATION_FAILED"
@@ -89,7 +95,7 @@ public struct CoachingExplanation: Equatable, Sendable, Decodable {
     }
 }
 
-public struct MemoryCandidate: Equatable, Sendable, Decodable {
+public struct MemoryCandidate: Equatable, Sendable, Codable {
     public let type: MemoryType
     public let statement: String
     public let provenance: MemoryProvenance
@@ -114,9 +120,11 @@ public struct MemoryCandidate: Equatable, Sendable, Decodable {
             throw container.invalid("Memory candidate is invalid")
         }
     }
+
+    enum CodingKeys: String, CodingKey { case type, statement, provenance, lifecycle, confidence, sourceMessageIds, supersedesId }
 }
 
-public enum MemoryDelta: Equatable, Sendable, Decodable {
+public enum MemoryDelta: Equatable, Sendable, Codable {
     case propose(candidate: MemoryCandidate, reason: String, requiresConfirmation: Bool)
     case transition(targetId: String, to: MemoryLifecycle, reason: String, requiresConfirmation: Bool)
     case support(targetId: String, sourceMessageId: String, reason: String)
@@ -151,15 +159,31 @@ public enum MemoryDelta: Equatable, Sendable, Decodable {
             throw container.invalid("Unknown memory operation")
         }
     }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: DynamicCodingKey.self)
+        switch self {
+        case let .propose(candidate, reason, requiresConfirmation):
+            try container.encode("propose", forKey: "operation"); try container.encode(candidate, forKey: "candidate")
+            try container.encode(reason, forKey: "reason"); try container.encode(requiresConfirmation, forKey: "requiresConfirmation")
+        case let .transition(targetId, to, reason, requiresConfirmation):
+            try container.encode("transition", forKey: "operation"); try container.encode(targetId, forKey: "targetId")
+            try container.encode(to, forKey: "to"); try container.encode(reason, forKey: "reason"); try container.encode(requiresConfirmation, forKey: "requiresConfirmation")
+        case let .support(targetId, sourceMessageId, reason):
+            try container.encode("support", forKey: "operation"); try container.encode(targetId, forKey: "targetId")
+            try container.encode(sourceMessageId, forKey: "sourceMessageId"); try container.encode(reason, forKey: "reason")
+            try container.encode(false, forKey: "requiresConfirmation")
+        }
+    }
 }
 
-public struct GoalCoachingProposal: Equatable, Sendable { public let title: String; public let description: String?; public let priority: CoachingPriority?; public let targetDate: String? }
-public struct ActionCoachingProposal: Equatable, Sendable { public let title: String; public let description: String?; public let priority: CoachingPriority?; public let dueAt: String?; public let goalId: String? }
-public struct WeeklyWorkCoachingProposal: Equatable, Sendable { public let actionId: String; public let weekStart: String; public let plannedDay: String? }
-public struct EvidenceCoachingProposal: Equatable, Sendable { public let statement: String; public let occurredAt: String; public let goalId: String?; public let actionId: String? }
-public struct InsightCoachingProposal: Equatable, Sendable { public let body: String; public let isTimeSensitive: Bool; public let homeEligibleUntil: String? }
+public struct GoalCoachingProposal: Equatable, Sendable, Codable { public let title: String; public let description: String?; public let priority: CoachingPriority?; public let targetDate: String? }
+public struct ActionCoachingProposal: Equatable, Sendable, Codable { public let title: String; public let description: String?; public let priority: CoachingPriority?; public let dueAt: String?; public let goalId: String? }
+public struct WeeklyWorkCoachingProposal: Equatable, Sendable, Codable { public let actionId: String; public let weekStart: String; public let plannedDay: String? }
+public struct EvidenceCoachingProposal: Equatable, Sendable, Codable { public let statement: String; public let occurredAt: String; public let goalId: String?; public let actionId: String? }
+public struct InsightCoachingProposal: Equatable, Sendable, Codable { public let body: String; public let isTimeSensitive: Bool; public let homeEligibleUntil: String? }
 
-public enum CoachingProposal: Equatable, Sendable, Decodable {
+public enum CoachingProposal: Equatable, Sendable, Codable {
     case goal(GoalCoachingProposal)
     case action(ActionCoachingProposal)
     case weeklyWork(WeeklyWorkCoachingProposal)
@@ -221,6 +245,18 @@ public enum CoachingProposal: Equatable, Sendable, Decodable {
             self = .insight(.init(body: body, isTimeSensitive: try container.decode(Bool.self, forKey: "isTimeSensitive"), homeEligibleUntil: homeEligibleUntil))
         default:
             throw container.invalid("Unknown coaching proposal kind")
+        }
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: DynamicCodingKey.self)
+        switch self {
+        case .goal(let value): try container.encode("goal", forKey: "kind"); try container.encode(value.title, forKey: "title"); try container.encode(value.description, forKey: "description"); try container.encode(value.priority, forKey: "priority"); try container.encode(value.targetDate, forKey: "targetDate")
+        case .action(let value): try container.encode("action", forKey: "kind"); try container.encode(value.title, forKey: "title"); try container.encode(value.description, forKey: "description"); try container.encode(value.priority, forKey: "priority"); try container.encode(value.dueAt, forKey: "dueAt"); try container.encode(value.goalId, forKey: "goalId")
+        case .weeklyWork(let value): try container.encode("weekly_work", forKey: "kind"); try container.encode(value.actionId, forKey: "actionId"); try container.encode(value.weekStart, forKey: "weekStart"); try container.encode(value.plannedDay, forKey: "plannedDay")
+        case .evidence(let value): try container.encode("evidence", forKey: "kind"); try container.encode(value.statement, forKey: "statement"); try container.encode(value.occurredAt, forKey: "occurredAt"); try container.encode(value.goalId, forKey: "goalId"); try container.encode(value.actionId, forKey: "actionId")
+        case .memory(let value): try container.encode("memory", forKey: "kind"); try container.encode(value, forKey: "memory")
+        case .insight(let value): try container.encode("insight", forKey: "kind"); try container.encode(value.body, forKey: "body"); try container.encode(value.isTimeSensitive, forKey: "isTimeSensitive"); try container.encode(value.homeEligibleUntil, forKey: "homeEligibleUntil")
         }
     }
 }

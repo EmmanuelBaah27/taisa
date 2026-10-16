@@ -28,8 +28,19 @@ public struct AssistantResponseRepository: Sendable {
                     arguments: [write.message.id, write.message.conversationID, write.message.role, write.message.body, write.message.createdAtMS]
                 )
                 try failIfNeeded(.message)
-                let metadata = write.metadata
-                try db.execute(sql: """
+                try Self.insertCompanions(write, db: db, after: failIfNeeded)
+            }
+        } catch let error as RepositoryError { throw error }
+        catch { throw RepositoryError.persistenceFailed }
+    }
+
+    static func insertCompanions(
+        _ write: AssistantResponseWrite,
+        db: Database,
+        after: (AssistantResponseFailurePoint) throws -> Void = { _ in }
+    ) throws {
+        let metadata = write.metadata
+        try db.execute(sql: """
                     INSERT INTO assistant_response_metadata (
                         response_message_id, request_id, idempotency_receipt, mode, relevance,
                         context_sufficiency, stance, inference, confidence, approach, created_at_ms
@@ -40,16 +51,16 @@ public struct AssistantResponseRepository: Sendable {
                         metadata.stance, metadata.inference, metadata.confidence, metadata.approach,
                         metadata.createdAtMS,
                     ])
-                try failIfNeeded(.metadata)
-                for source in write.sources.sorted(by: { $0.ordinal < $1.ordinal }) {
-                    try db.execute(sql: """
+        try after(.metadata)
+        for source in write.sources.sorted(by: { $0.ordinal < $1.ordinal }) {
+            try db.execute(sql: """
                         INSERT INTO assistant_response_sources (id, response_message_id, ordinal, source_id, source_type, excerpt)
                         VALUES (?, ?, ?, ?, ?, ?)
                         """, arguments: [source.id, source.responseMessageID, source.ordinal, source.sourceID, source.sourceType, source.excerpt])
-                }
-                try failIfNeeded(.sources)
-                if let proposal = write.proposal {
-                    try db.execute(sql: """
+        }
+        try after(.sources)
+        if let proposal = write.proposal {
+            try db.execute(sql: """
                         INSERT INTO assistant_proposals (
                             id, response_message_id, kind, canonical_payload, payload_digest, state,
                             target_type, target_id, target_version_id, decision_receipt, created_at_ms, resolved_at_ms
@@ -59,11 +70,8 @@ public struct AssistantResponseRepository: Sendable {
                             proposal.payloadDigest, proposal.state.rawValue, proposal.targetType, proposal.targetID,
                             proposal.targetVersionID, proposal.decisionReceipt, proposal.createdAtMS, proposal.resolvedAtMS,
                         ])
-                }
-                try failIfNeeded(.proposal)
-            }
-        } catch let error as RepositoryError { throw error }
-        catch { throw RepositoryError.persistenceFailed }
+        }
+        try after(.proposal)
     }
 
     public func upsertFeedback(_ feedback: ResponseFeedbackRecord) async throws {
@@ -95,6 +103,17 @@ public struct AssistantResponseRepository: Sendable {
         catch { throw RepositoryError.persistenceFailed }
     }
 
+    public func recentFeedback(limit: Int = 10) async throws -> [ResponseFeedbackRecord] {
+        guard (1...10).contains(limit) else { throw RepositoryError.persistenceFailed }
+        do {
+            return try await store.read { db in
+                try Row.fetchAll(db, sql: "SELECT * FROM response_feedback ORDER BY updated_at_ms DESC, response_message_id COLLATE NOCASE ASC LIMIT ?", arguments: [limit])
+                    .map(Self.decodeFeedback)
+            }
+        } catch let error as RepositoryError { throw error }
+        catch { throw RepositoryError.persistenceFailed }
+    }
+
     static func loadResponses(messageIDs: [String], db: Database) throws -> [String: AssistantResponseRecord] {
         guard !messageIDs.isEmpty else { return [:] }
         let placeholders = Array(repeating: "?", count: messageIDs.count).joined(separator: ",")
@@ -116,7 +135,7 @@ public struct AssistantResponseRepository: Sendable {
         if failurePoint == point { throw RepositoryError.persistenceFailed }
     }
 
-    private static func validate(_ write: AssistantResponseWrite) throws {
+    static func validate(_ write: AssistantResponseWrite) throws {
         guard write.message.role == "assistant",
               UUIDIdentity.canonical(write.message.id) != nil,
               UUIDIdentity.canonical(write.message.conversationID) != nil,

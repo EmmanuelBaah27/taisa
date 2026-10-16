@@ -101,12 +101,16 @@ public struct ConversationTurnRepository: Sendable {
     public func checkpoint(
         _ source: VoiceTurnRecord,
         messages: [MessageRecord],
+        assistantResponse: AssistantResponseWrite? = nil,
         cleanup: VoiceTurnCleanup?,
         context: MutationContext
     ) async throws {
         let turn = try Self.canonical(source)
         let context = try Self.canonical(context)
-        try Self.validate(turn, messages: messages, cleanup: cleanup, context: context)
+        try Self.validate(
+            turn, messages: messages, assistantResponse: assistantResponse,
+            cleanup: cleanup, context: context
+        )
         do {
             try await store.write { db in
                 let existing = try Row.fetchOne(
@@ -127,6 +131,7 @@ public struct ConversationTurnRepository: Sendable {
                           UUIDIdentity.canonical(prior["entity_id"] as String) == turn.id,
                           existing == persisted,
                           try Self.messagesExistIdentically(messages, db: db),
+                          try Self.assistantResponseExistsIdentically(assistantResponse, db: db),
                           try Self.cleanupMatches(cleanup, turnID: turn.id, db: db) else {
                         throw RepositoryError.mutationCollision
                     }
@@ -135,6 +140,9 @@ public struct ConversationTurnRepository: Sendable {
 
                 for message in messages {
                     try Self.insertMessage(message, deviceID: context.deviceID, timestamp: context.timestamp, db: db)
+                }
+                if let assistantResponse {
+                    try AssistantResponseRepository.insertCompanions(assistantResponse, db: db)
                 }
 
                 try Self.persist(persisted, exists: existing != nil, db: db)
@@ -173,6 +181,19 @@ public struct ConversationTurnRepository: Sendable {
         return true
     }
 
+    private static func assistantResponseExistsIdentically(
+        _ write: AssistantResponseWrite?, db: Database
+    ) throws -> Bool {
+        guard let write else { return true }
+        let stored = try AssistantResponseRepository.loadResponses(
+            messageIDs: [write.message.id], db: db
+        )[write.message.id]
+        return stored == AssistantResponseRecord(
+            metadata: write.metadata, sources: write.sources.sorted(by: { $0.ordinal < $1.ordinal }),
+            proposal: write.proposal, feedback: nil
+        )
+    }
+
     private static func cleanupMatches(
         _ cleanup: VoiceTurnCleanup?, turnID: String, db: Database
     ) throws -> Bool {
@@ -188,6 +209,7 @@ public struct ConversationTurnRepository: Sendable {
     private static func validate(
         _ turn: VoiceTurnRecord,
         messages: [MessageRecord],
+        assistantResponse: AssistantResponseWrite?,
         cleanup: VoiceTurnCleanup?,
         context: MutationContext
     ) throws {
@@ -209,6 +231,13 @@ public struct ConversationTurnRepository: Sendable {
         guard Set(messages.map(\.id)).count == messages.count,
               messages.allSatisfy({ $0.conversationID == turn.conversationID }) else {
             throw RepositoryError.persistenceFailed
+        }
+        if let assistantResponse {
+            try AssistantResponseRepository.validate(assistantResponse)
+            guard messages.contains(assistantResponse.message),
+                  turn.assistantMessageID == assistantResponse.message.id else {
+                throw RepositoryError.persistenceFailed
+            }
         }
         if let cleanup {
             guard !cleanup.audioFileID.isEmpty,

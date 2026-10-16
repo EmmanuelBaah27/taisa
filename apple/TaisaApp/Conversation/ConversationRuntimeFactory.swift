@@ -261,12 +261,18 @@ struct ConversationRuntimeFactory: Sendable {
             lifecycle: SystemAudioSessionLifecycleSource()
         )
         let connectivity = SystemConnectivityMonitor()
+        let preferenceSignals: @Sendable () async throws -> [[String: String]] = {
+            let feedback = try await AssistantResponseRepository(store: store).recentFeedback()
+            return ResponsePreferenceProfile.derive(from: feedback).map {
+                ["factor": $0.factor.rawValue, "direction": $0.direction.rawValue]
+            }
+        }
         let voiceCoordinator = VoiceSessionCoordinator(
             initial: initial,
             checkpoints: RepositoryVoiceTurnCheckpointer(repository: turns, deviceID: deviceID),
             transcription: GatewayTranscriptionRunner(configuration: configuration, audio: capture),
             transcriptionReconciliation: GatewayTranscriptionReconciliation(configuration: configuration),
-            coaching: GatewayCoachingRunner(configuration: configuration, recentMessages: messageHistory),
+            coaching: GatewayCoachingRunner(configuration: configuration, recentMessages: messageHistory, preferenceSignals: preferenceSignals),
             connectivity: connectivity,
             reconciliation: GatewayCoachingReconciliation(configuration: configuration),
             capture: capture,
@@ -274,7 +280,7 @@ struct ConversationRuntimeFactory: Sendable {
         )
         let gatewayClient = GatewayConversationClient(
             store: store, deviceID: deviceID,
-            coaching: GatewayCoachingRunner(configuration: configuration, recentMessages: messageHistory)
+            coaching: GatewayCoachingRunner(configuration: configuration, recentMessages: messageHistory, preferenceSignals: preferenceSignals)
         )
         let voiceAdapter = VoiceSessionConversationAdapter(voiceCoordinator)
         let coordinator: ConversationCoordinator

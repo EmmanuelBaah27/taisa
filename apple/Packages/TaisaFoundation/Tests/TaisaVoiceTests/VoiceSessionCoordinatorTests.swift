@@ -261,6 +261,7 @@ private actor CheckpointSpy: VoiceTurnCheckpointing {
     func checkpoint(
         _ record: VoiceTurnRecord,
         messages: [MessageRecord],
+        assistantResponse: AssistantResponseWrite?,
         cleanup: VoiceTurnCleanup?
     ) async throws { states.append(record.state) }
 }

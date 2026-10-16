@@ -180,7 +180,7 @@ export function firstCoachingRequestContractViolation(request: unknown): string 
   if (!isStatement(request.input)) return 'input';
   if (
     !isRecord(request.context) ||
-    !hasOnlyKeys(request.context, ['profile', 'recentMessages', 'memory', 'evidence'])
+    !hasOnlyKeys(request.context, ['profile', 'recentMessages', 'memory', 'evidence', 'preferenceProfile'])
   ) return 'context';
   const invalidProfile = profileViolation(request.context.profile);
   if (invalidProfile !== null) return invalidProfile;
@@ -213,6 +213,18 @@ export function firstCoachingRequestContractViolation(request: unknown): string 
   for (let index = 0; index < request.context.evidence.length; index += 1) {
     const invalidEvidence = evidenceViolation(request.context.evidence[index], index);
     if (invalidEvidence !== null) return invalidEvidence;
+  }
+  if (request.context.preferenceProfile !== undefined) {
+    const profile = request.context.preferenceProfile;
+    if (!isRecord(profile) || !hasOnlyKeys(profile, ['signals']) || !Array.isArray(profile.signals) || profile.signals.length > 5) {
+      return 'context.preferenceProfile';
+    }
+    for (let index = 0; index < profile.signals.length; index += 1) {
+      const signal = profile.signals[index];
+      if (!isRecord(signal) || !hasOnlyKeys(signal, ['factor', 'direction']) ||
+          !isOneOf(signal.factor, ['intent_alignment', 'coverage', 'coaching_strategy', 'insight_value', 'practical_utility', 'confidence_calibration', 'relational_fit', 'communication_clarity']) ||
+          !isOneOf(signal.direction, ['helpful', 'not_helpful'])) return `context.preferenceProfile.signals[${index}]`;
+    }
   }
   return null;
 }
