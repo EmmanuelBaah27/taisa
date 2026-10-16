@@ -124,6 +124,7 @@ final class ConversationViewModel {
             text: { if case .typing(let value) = composer { value } else { "" } }(),
             client: ConversationScreenClient(
                 loadMessages: { messages },
+                loadAssistantResponses: { assistantResponses },
                 beginVoice: {}, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
                 sendText: { _ in }, retry: {}, saveDraft: { _ in }, discardDraft: {}
             ),

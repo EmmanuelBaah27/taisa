@@ -10,6 +10,34 @@ final class ConversationViewModelTests: XCTestCase {
         XCTAssertTrue(ConversationTimelineMotion.animatesNewMessage(reduceMotion: false))
     }
 
+    func testPreviewKeepsSeededAssistantResponsesAfterStart() async {
+        let messageID = UUID().uuidString
+        let response = AssistantResponseRecord(
+            metadata: AssistantResponseMetadataRecord(
+                responseMessageID: messageID,
+                requestID: UUID().uuidString,
+                idempotencyReceipt: "preview-receipt",
+                mode: .coach,
+                relevance: "career-relevant",
+                contextSufficiency: "sufficient",
+                stance: "nudge",
+                inference: "A useful inference.",
+                confidence: "high",
+                approach: "Offer one grounded next step.",
+                createdAtMS: 1
+            ),
+            sources: [], proposal: nil, feedback: nil
+        )
+        let model = ConversationViewModel.preview(
+            composer: .waitingForReply,
+            assistantResponses: [messageID: response]
+        )
+
+        await model.start()
+
+        XCTAssertNotNil(model.assistantResponses[messageID])
+    }
+
     func testKeyboardReplacementRequiresDiscardAndCancelRestoresPause() {
         let model = ConversationViewModel.preview(composer: .paused)
 
