@@ -38,10 +38,7 @@ public struct ConversationActionBar: View {
     }
 
     public var body: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: TaisaSpacing.compact.rawValue) { controls }
-            VStack(spacing: TaisaSpacing.compact.rawValue) { controls }
-        }
+        HStack(spacing: TaisaSpacing.compact.rawValue) { controls }
         .padding(.horizontal, TaisaSpacing.standard.rawValue)
         .padding(.vertical, TaisaSpacing.section.rawValue)
         .background { PageEdgeFade(.navigation).ignoresSafeArea(edges: .horizontal) }
@@ -58,11 +55,20 @@ public struct ConversationActionBar: View {
                 } else {
                     CentralIcon(isPaused ? .play : .voiceMid).frame(width: 24, height: 24)
                 }
-                Text(availability.primaryLabel).font(.system(.body, weight: .medium))
-                if !elapsed.isEmpty { Text(elapsed).font(.caption).foregroundStyle(TaisaColor.mutedForeground.color) }
+                Text(availability.primaryLabel)
+                    .font(.system(.body, weight: .medium))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                if !elapsed.isEmpty {
+                    Text(elapsed)
+                        .font(.caption)
+                        .foregroundStyle(TaisaColor.mutedForeground.color)
+                        .lineLimit(1)
+                }
             }
             .padding(.horizontal, TaisaSpacing.standard.rawValue)
         }
+        .layoutPriority(1)
         .disabled(!availability.canResume)
         if availability.canSend {
             Button(action: onSend) { CentralIcon(.arrowUp).frame(width: 24, height: 24).frame(width: 56, height: 56) }

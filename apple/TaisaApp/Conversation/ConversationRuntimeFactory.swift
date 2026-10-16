@@ -26,6 +26,7 @@ struct ConversationRuntimeFactory: Sendable {
         let voiceTurn: VoiceTurnRecord
         let composer: ComposerState
         let text: String
+        let cleansInterruptedCapture: Bool
     }
 
     let store: TaisaStore
@@ -272,6 +273,10 @@ struct ConversationRuntimeFactory: Sendable {
             capture: capture,
             audio: capture
         )
+        if restoration.cleansInterruptedCapture, pendingConversationRequest == nil {
+            try await voiceCoordinator.recoverIfAuthorized()
+            try await voiceCoordinator.send(.beginNextTurn(fallbackTurn))
+        }
         let gatewayClient = GatewayConversationClient(
             store: store, deviceID: deviceID,
             coaching: GatewayCoachingRunner(configuration: configuration, recentMessages: messageHistory)
@@ -487,12 +492,43 @@ struct ConversationRuntimeFactory: Sendable {
     ) -> Restoration {
         var voiceTurn = linkedVoiceTurn ?? resumableVoiceTurn ?? fallbackVoiceTurn
         guard let draft else {
-            return Restoration(voiceTurn: voiceTurn, composer: .waitingForReply, text: "")
+            if let resumableVoiceTurn,
+               resumableVoiceTurn.stage == .capture || resumableVoiceTurn.stage == .cleanup {
+                let hasFinalizedAudio = resumableVoiceTurn.state == .paused
+                    && resumableVoiceTurn.stage == .capture
+                    && resumableVoiceTurn.audioSHA256 != nil
+                    && resumableVoiceTurn.audioDurationMS != nil
+                if hasFinalizedAudio {
+                    return Restoration(
+                        voiceTurn: resumableVoiceTurn,
+                        composer: .savedVoiceDraft,
+                        text: "",
+                        cleansInterruptedCapture: false
+                    )
+                }
+                return Restoration(
+                    voiceTurn: resumableVoiceTurn,
+                    composer: .waitingForReply,
+                    text: "",
+                    cleansInterruptedCapture: true
+                )
+            }
+            return Restoration(
+                voiceTurn: voiceTurn,
+                composer: .waitingForReply,
+                text: "",
+                cleansInterruptedCapture: false
+            )
         }
         switch draft.inputMode {
         case .text:
             let text = draft.text ?? ""
-            return Restoration(voiceTurn: voiceTurn, composer: .typing(text), text: text)
+            return Restoration(
+                voiceTurn: voiceTurn,
+                composer: .typing(text),
+                text: text,
+                cleansInterruptedCapture: false
+            )
         case .voice:
             let composer: ComposerState
             switch linkedVoiceTurn?.state {
@@ -524,7 +560,12 @@ struct ConversationRuntimeFactory: Sendable {
                     composer = .paused
                 }
             }
-            return Restoration(voiceTurn: voiceTurn, composer: composer, text: "")
+            return Restoration(
+                voiceTurn: voiceTurn,
+                composer: composer,
+                text: "",
+                cleansInterruptedCapture: false
+            )
         }
     }
 
