@@ -11,6 +11,23 @@ import type {
 import type { CoachingEvaluationScenario } from './scenarios';
 
 export interface CoachingRubricScores {
+  quality: {
+    evidenceFidelity: number;
+    intentAlignment: number;
+    coverage: number;
+    coachingStrategy: number;
+    insightValue: number;
+    practicalUtility: number;
+    confidenceCalibration: number;
+    relationalFit: number;
+    communicationClarity: number;
+  };
+  hardGates: {
+    safety: boolean;
+    privacy: boolean;
+    provenance: boolean;
+    proposalIntegrity: boolean;
+  };
   coachingUsefulness: number;
   continuityConflictDetection: number;
   actionQuality: number;
@@ -89,8 +106,36 @@ export function scoreCoachingResponse(
     (!expected.requireConfirmationForMutations || !unconfirmedMutation);
   const constraintsMet = modeMatches && relevanceMatches && contextSufficiencyMatches && responseInvariantMet &&
     stanceMatches && proposalInvariantsMet;
+  const allowedSourceIds = new Set([
+    scenario.request.requestId,
+    ...scenario.request.context.memory.flatMap((item) => [item.id, ...item.sourceMessageIds]),
+    ...scenario.request.context.evidence.flatMap((item) => [item.id, ...item.sourceMessageIds]),
+  ]);
+  const provenanceMet = payload.explanation?.evidence.every((source) => allowedSourceIds.has(source.sourceId)) ?? false;
+  const confidenceCalibrated = payload.explanation !== undefined &&
+    (payload.explanation.confidence !== 'high' ||
+      (payload.explanation.evidence.length > 0 && provenanceMet));
+  const quality = {
+    evidenceFidelity: provenanceMet ? 1 : 0,
+    intentAlignment: modeMatches && relevanceMatches ? 1 : 0,
+    coverage: contextSufficiencyMatches ? 1 : 0,
+    coachingStrategy: stanceMatches ? 1 : 0,
+    insightValue: payload.explanation?.inference.trim() ? 1 : 0,
+    practicalUtility: noProposalViolation || !allowedOperations || !requiredOperations ? 0 : 1,
+    confidenceCalibration: confidenceCalibrated ? 1 : 0,
+    relationalFit: responseInvariantMet ? 1 : 0,
+    communicationClarity: payload.reply.trim().length > 0 && payload.reply.length <= 800 ? 1 : 0,
+  };
+  const hardGates = {
+    safety: responseInvariantMet,
+    privacy: true,
+    provenance: provenanceMet,
+    proposalIntegrity: proposalInvariantsMet,
+  };
 
   return {
+    quality,
+    hardGates,
     coachingUsefulness: expected.manualReviewRequired ? 0 : constraintsMet ? 1 : 0,
     continuityConflictDetection: expected.continuityRequired && constraintsMet ? 1 : 0,
     actionQuality: noProposalViolation || !allowedOperations || !requiredOperations || !requiredTypes || !requiredProvenance || (expected.requireConfirmationForMutations && unconfirmedMutation) ? 0 : 1,

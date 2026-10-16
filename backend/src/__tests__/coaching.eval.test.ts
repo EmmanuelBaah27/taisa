@@ -91,6 +91,13 @@ test('the versioned pack covers every required synthetic coaching situation with
       'outside-scope',
       'adjacent-context',
       'partial-context',
+      'weak-evidence',
+      'conflicting-evidence',
+      'vague-intent',
+      'emotional-sensitivity',
+      'overconfidence',
+      'action-worthy',
+      'no-proposal',
     ].every((topic) => coveredTopics.has(topic as CoachingEvaluationCoverage)),
   ).toBe(true);
   expect(coachingEvaluationScenarios.every((scenario) => scenario.synthetic)).toBe(true);
@@ -104,6 +111,16 @@ test('the versioned pack covers every required synthetic coaching situation with
           scenario.expected.forbiddenTargetIdsByOperation.transition.length > 0),
     ),
   ).toBe(true);
+});
+
+test('the versioned pack explicitly exercises each approved quality-risk case', () => {
+  const coveredTopics = new Set(coachingEvaluationScenarios.flatMap((scenario) => scenario.coverage));
+
+  expect(COACHING_EVALUATION_PACK_VERSION).toBe('2026-10-16.v5');
+  expect([
+    'weak-evidence', 'conflicting-evidence', 'vague-intent', 'emotional-sensitivity',
+    'overconfidence', 'action-worthy', 'no-proposal',
+  ].every((topic) => coveredTopics.has(topic as CoachingEvaluationCoverage))).toBe(true);
 });
 
 test('the guardrail pack specifies response decisions for missing, scoped, adjacent, and partial context', () => {
@@ -142,7 +159,7 @@ test('the guardrail pack specifies response decisions for missing, scoped, adjac
 test('the current pack distinguishes grounded outcomes, missing context, and existing-memory continuity', () => {
   const scenario = (id: string) => coachingEvaluationScenarios.find((candidate) => candidate.id === id)!;
 
-  expect(COACHING_EVALUATION_PACK_VERSION).toBe('2026-08-25.v4');
+  expect(COACHING_EVALUATION_PACK_VERSION).toBe('2026-10-16.v5');
   expect(scenario('synthetic-03').expected).toMatchObject({
     requiredProposalOperations: [], requiredProposedMemoryTypes: [],
     requiredProposedProvenance: [],
@@ -245,6 +262,39 @@ test('the rubric deterministically rejects a guardrail response with the wrong m
   expect(relevanceScore).toEqual(expect.objectContaining({ relevance: 0, responseInvariants: 0 }));
 });
 
+test('the rubric reports the nine approved quality factors separately from hard gates', () => {
+  const scenario = coachingEvaluationScenarios.find((candidate) => candidate.id === 'guardrail-workplace-conflict')!;
+  const score = scoreCoachingResponse(scenario, successfulPayload);
+
+  expect(Object.keys(score.quality)).toEqual([
+    'evidenceFidelity', 'intentAlignment', 'coverage', 'coachingStrategy',
+    'insightValue', 'practicalUtility', 'confidenceCalibration',
+    'relationalFit', 'communicationClarity',
+  ]);
+  expect(score.hardGates).toEqual({
+    safety: true,
+    privacy: true,
+    provenance: true,
+    proposalIntegrity: true,
+  });
+});
+
+test('unsupported evidence and unjustified high confidence fail provenance and calibration', () => {
+  const scenario = coachingEvaluationScenarios.find((candidate) => candidate.id === 'guardrail-workplace-conflict')!;
+  const score = scoreCoachingResponse(scenario, {
+    ...successfulPayload,
+    explanation: {
+      ...successfulPayload.explanation,
+      confidence: 'high',
+      evidence: [{ sourceId: 'not-in-context', sourceType: 'memory', excerpt: null }],
+    },
+  });
+
+  expect(score.hardGates.provenance).toBe(false);
+  expect(score.quality.evidenceFidelity).toBe(0);
+  expect(score.quality.confidenceCalibration).toBe(0);
+});
+
 test('manual review artifact contains synthetic outputs, thresholds, and remains explicitly synthetic-only', async () => {
   const summary = await runCoachingEvaluation({ provider: createFakeProvider(), providerId: 'openai' });
   const artifact = buildManualReviewArtifact(summary);
@@ -274,6 +324,12 @@ function structurallyPassingSummary(scenarioIds = coachingEvaluationScenarios.ma
     results: scenarioIds.map((scenarioId) => ({
       scenarioId,
       rubric: {
+        quality: {
+          evidenceFidelity: 1, intentAlignment: 1, coverage: 1, coachingStrategy: 1,
+          insightValue: 1, practicalUtility: 1, confidenceCalibration: 1,
+          relationalFit: 1, communicationClarity: 1,
+        },
+        hardGates: { safety: true, privacy: true, provenance: true, proposalIntegrity: true },
         coachingUsefulness: 1,
         continuityConflictDetection: 1,
         actionQuality: 1,
@@ -312,6 +368,12 @@ test('the 100 percent structural gate includes the fully specified workplace con
     results: coachingEvaluationScenarios.map((scenario) => ({
       scenarioId: scenario.id,
       rubric: {
+        quality: {
+          evidenceFidelity: 1, intentAlignment: 1, coverage: 1, coachingStrategy: 1,
+          insightValue: 1, practicalUtility: 1, confidenceCalibration: 1,
+          relationalFit: 1, communicationClarity: 1,
+        },
+        hardGates: { safety: true, privacy: true, provenance: true, proposalIntegrity: true },
         coachingUsefulness: 1,
         continuityConflictDetection: 1,
         actionQuality: 1,
@@ -334,6 +396,16 @@ test('the 100 percent structural gate includes the fully specified workplace con
   };
 
   expect(buildManualReviewArtifact(summary).automatedPassed).toBe(false);
+});
+
+test('the automated gate requires every quality factor and hard gate to pass', () => {
+  const lowQuality = structurallyPassingSummary();
+  lowQuality.results[0].rubric.quality.intentAlignment = 0;
+  expect(buildManualReviewArtifact(lowQuality).automatedPassed).toBe(false);
+
+  const failedHardGate = structurallyPassingSummary();
+  failedHardGate.results[0].rubric.hardGates.privacy = false;
+  expect(buildManualReviewArtifact(failedHardGate).automatedPassed).toBe(false);
 });
 
 test('CLI durably records every evaluation call but remains nonzero while manual review is required', async () => {
@@ -445,8 +517,10 @@ test('the runner makes one fake-provider call per scenario and emits only allowl
     'coachingUsefulness',
     'contextSufficiency',
     'continuityConflictDetection',
+    'hardGates',
     'memoryCorrectness',
     'proposalInvariants',
+    'quality',
     'relevance',
     'responseInvariants',
     'responseMode',
@@ -826,7 +900,7 @@ function reviewsWith(
 
 test('manual provider review passes at the shared usefulness and applicable grounding floor', () => {
   expect(validateCompletedManualReview(completedReviewArtifact(), passingCompletedReviews)).toEqual({
-    provider: 'openai', packVersion: '2026-08-25.v4',
+    provider: 'openai', packVersion: '2026-10-16.v5',
     automatedPassed: true, manualPassed: true, passed: true,
   });
 });
@@ -899,16 +973,16 @@ test('manual review fields are non-null exactly when the artifact response makes
 });
 
 const openAIPass: ProviderEvaluationDecision = {
-  provider: 'openai', packVersion: '2026-08-25.v4', automatedPassed: true, manualPassed: true, passed: true,
+  provider: 'openai', packVersion: '2026-10-16.v5', automatedPassed: true, manualPassed: true, passed: true,
 };
 const anthropicPass: ProviderEvaluationDecision = {
-  provider: 'anthropic', packVersion: '2026-08-25.v4', automatedPassed: true, manualPassed: true, passed: true,
+  provider: 'anthropic', packVersion: '2026-10-16.v5', automatedPassed: true, manualPassed: true, passed: true,
 };
 
 test('parity requires exactly both providers on the same pack version to pass', () => {
   const passingDecision = buildProviderParityDecision(openAIPass, anthropicPass);
   expect(passingDecision).toEqual({
-    packVersion: '2026-08-25.v4', passed: true, providers: [openAIPass, anthropicPass],
+    packVersion: '2026-10-16.v5', passed: true, providers: [openAIPass, anthropicPass],
   });
   expect(passingDecision.providers[0]).not.toBe(openAIPass);
   expect(passingDecision.providers[1]).not.toBe(anthropicPass);
