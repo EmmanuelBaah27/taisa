@@ -92,6 +92,8 @@ final class ConversationViewContractTests: XCTestCase {
         XCTAssertTrue(source.contains("ConversationTimelineLayout.userBubbleWidthFraction"))
         XCTAssertTrue(source.contains("ConversationTimelineLayout.jumpIconSize"))
         XCTAssertTrue(source.contains("withAnimation"))
+        XCTAssertTrue(source.contains("decelerationRate = .normal"))
+        XCTAssertTrue(source.contains("alwaysBounceVertical = true"))
         XCTAssertTrue(source.contains("Edit message"))
         XCTAssertTrue(source.contains("UIApplication.openSettingsURLString"))
         XCTAssertFalse(source.contains("Correct transcript"))
