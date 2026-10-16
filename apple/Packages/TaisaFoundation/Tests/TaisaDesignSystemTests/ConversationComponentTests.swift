@@ -84,6 +84,7 @@ struct ConversationComponentTests {
         #expect(InlineRecoveryAlert.Contract.request.message == "Nothing has been discarded. Try again when you’re ready.")
         #expect(InlineRecoveryAlert.Contract.beginRecording.title == "Taisa couldn’t start recording")
         #expect(InlineRecoveryAlert.Contract.beginRecording.message == "Check microphone access, then try again.")
+        #expect(InlineRecoveryAlert.Contract.microphonePermission.retryLabel == "Open Settings")
         #expect(TextComposer.Contract.empty.placeholder == "Reply")
         #expect(TextComposer.Mode.processing.acceptsInput == false)
     }

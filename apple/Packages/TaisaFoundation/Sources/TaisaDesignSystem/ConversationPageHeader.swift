@@ -16,7 +16,7 @@ public struct ConversationPageHeader: View {
     public var body: some View {
         ZStack {
             Text(title)
-                .font(.system(.headline, weight: .semibold))
+                .font(TaisaTypography.navigationLabel.font)
                 .lineLimit(1)
                 .truncationMode(.tail)
                 .frame(width: TaisaControlMetric.conversationTitleWidth, alignment: .center)
@@ -27,6 +27,6 @@ public struct ConversationPageHeader: View {
         }
         .padding(.horizontal, TaisaSpacing.standard.rawValue)
         .frame(height: TaisaControlMetric.appBarHeight)
-        .background { PageEdgeFade(.header).ignoresSafeArea(edges: .horizontal) }
+        .background { PageEdgeFade(.header).ignoresSafeArea(edges: [.horizontal, .top]) }
     }
 }

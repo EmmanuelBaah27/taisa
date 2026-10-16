@@ -18,6 +18,11 @@ public struct InlineRecoveryAlert: View {
             message: "Check microphone access, then try again.",
             cancelLabel: "Close", retryLabel: "Try again"
         )
+        public static let microphonePermission = Contract(
+            title: "Microphone access is off",
+            message: "Allow microphone access in Settings to record with Taisa.",
+            cancelLabel: "Close", retryLabel: "Open Settings"
+        )
         public static let pauseRecording = Contract(
             title: "Taisa couldn’t pause recording",
             message: "Your recording is still safe. Try pausing again.",

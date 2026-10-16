@@ -89,6 +89,13 @@ final class ConversationViewContractTests: XCTestCase {
         XCTAssertTrue(source.contains("userPreviewLineLimit = 6"))
         XCTAssertTrue(source.contains("Updating response…"))
         XCTAssertTrue(source.contains("Jump to latest"))
+        XCTAssertTrue(source.contains("ConversationTimelineLayout.userBubbleWidthFraction"))
+        XCTAssertTrue(source.contains("ConversationTimelineLayout.jumpIconSize"))
+        XCTAssertTrue(source.contains("withAnimation"))
+        XCTAssertTrue(source.contains("Edit message"))
+        XCTAssertTrue(source.contains("UIApplication.openSettingsURLString"))
+        XCTAssertFalse(source.contains("Correct transcript"))
+        XCTAssertFalse(source.contains("Text(message.role == \"assistant\" ? \"Taisa\" : \"You\")"))
         XCTAssertFalse(source.contains("import GRDB"))
     }
 }
