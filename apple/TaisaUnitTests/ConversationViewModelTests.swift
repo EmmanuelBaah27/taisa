@@ -1,5 +1,6 @@
 import XCTest
 import TaisaConversations
+import TaisaAudio
 import TaisaStorage
 import TaisaVoice
 @testable import Taisa
@@ -90,6 +91,22 @@ final class ConversationViewModelTests: XCTestCase {
 
         XCTAssertEqual(model.composer, .failure(.unavailable))
         XCTAssertEqual(model.failureContext, .beginRecording)
+    }
+
+    func testDeniedMicrophoneUsesSettingsRecoveryContext() async {
+        let client = ConversationScreenClient(
+            beginVoice: { throw AudioCaptureError.permissionDenied },
+            pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
+            sendText: { _ in }, retry: {}, saveDraft: { _ in }, discardDraft: {}
+        )
+        let model = ConversationViewModel(
+            conversationID: UUID().uuidString, title: "New conversation",
+            entryIntent: .voice, client: client
+        )
+
+        await model.start()
+
+        XCTAssertEqual(model.failureContext, .microphonePermissionDenied)
     }
 
     func testVoiceCompletionReloadsMessagesAndWaitsForReply() async {

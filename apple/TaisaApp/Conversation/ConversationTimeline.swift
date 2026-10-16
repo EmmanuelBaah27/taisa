@@ -1,6 +1,12 @@
 import SwiftUI
+import TaisaDesignSystem
 import TaisaStorage
 import UIKit
+
+enum ConversationTimelineLayout {
+    static let userBubbleWidthFraction: CGFloat = 0.85
+    static let jumpIconSize: CGFloat = 20
+}
 
 struct ConversationTimeline: View {
     static let userPreviewLineLimit = 6
@@ -21,32 +27,30 @@ struct ConversationTimeline: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 16) {
                     ForEach(messages, id: \.id) { message in
-                        VStack(alignment: message.role == "user" ? .trailing : .leading, spacing: 4) {
-                            Text(message.role == "assistant" ? "Taisa" : "You").font(.caption).foregroundStyle(.secondary)
-                            messageText(message)
-                                .lineLimit(userLineLimit(for: message))
-                                .padding(message.role == "user" ? 12 : 0)
-                                .background(message.role == "user" ? Color.secondary.opacity(0.12) : Color.clear, in: RoundedRectangle(cornerRadius: 16))
-                                .contextMenu {
-                                    Button("Copy", systemImage: "doc.on.doc") { UIPasteboard.general.string = message.body }
-                                    if message.role == "user" {
-                                        Button("Edit", systemImage: "pencil") { correct(message) }
-                                            .accessibilityIdentifier("conversation.correct-transcript")
-                                    }
+                        VStack(alignment: message.role == "user" ? .trailing : .leading, spacing: TaisaSpacing.tight.rawValue) {
+                            if message.role == "user" {
+                                ExpandableUserMessage(
+                                    message: message,
+                                    isExpanded: expandedUserMessages.contains(message.id),
+                                    toggleExpansion: { toggleExpansion(for: message.id) }
+                                )
+                                .containerRelativeFrame(.horizontal, alignment: .trailing) { width, _ in
+                                    width * ConversationTimelineLayout.userBubbleWidthFraction
+                                        - TaisaSpacing.standard.rawValue
                                 }
-                            if message.role == "user", message.body.count > 120 {
-                                Button(expandedUserMessages.contains(message.id) ? "Show less" : "Show more") {
-                                    if expandedUserMessages.contains(message.id) {
-                                        expandedUserMessages.remove(message.id)
-                                    } else {
-                                        expandedUserMessages.insert(message.id)
-                                    }
-                                }
-                                .font(.caption.weight(.medium))
-                                .accessibilityIdentifier("conversation.message.\(message.id).expansion")
+                                .padding(.trailing, TaisaSpacing.standard.rawValue)
+                                .contextMenu { messageActions(for: message) }
+                            } else {
+                                messageText(message)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(.horizontal, TaisaSpacing.standard.rawValue)
+                                    .contextMenu { messageActions(for: message) }
                             }
                             if updatingResponseAfter == message.id {
-                                Text("Updating response…").font(.caption).foregroundStyle(.secondary)
+                                Text("Updating response…")
+                                    .font(TaisaTypography.metadata.font)
+                                    .foregroundStyle(TaisaColor.mutedForeground.color)
+                                    .padding(.horizontal, TaisaSpacing.standard.rawValue)
                             }
                         }
                         .frame(maxWidth: .infinity, alignment: message.role == "user" ? .trailing : .leading)
@@ -55,15 +59,35 @@ struct ConversationTimeline: View {
                         .id(message.id)
                     }
                 }
-                .padding()
+                .padding(.vertical, TaisaSpacing.standard.rawValue)
             }
+            .contentMargins(
+                .top,
+                TaisaControlMetric.appBarHeight + TaisaSpacing.standard.rawValue,
+                for: .scrollContent
+            )
             .onScrollGeometryChange(for: Bool.self) { geometry in
                 geometry.contentOffset.y + geometry.containerSize.height < geometry.contentSize.height - 48
             } action: { _, away in isAwayFromLatest = away }
-            .overlay(alignment: .bottomTrailing) {
+            .overlay(alignment: .bottom) {
                 if isAwayFromLatest, let latest = messages.last?.id {
-                    Button("Jump to latest") { proxy.scrollTo(latest, anchor: .bottom) }
-                        .buttonStyle(.borderedProminent).padding()
+                    TaisaSecondaryCapsuleButton(action: {
+                        withAnimation(.easeOut(duration: TaisaMotion.fast)) {
+                            proxy.scrollTo(latest, anchor: .bottom)
+                        }
+                    }) {
+                        HStack(spacing: TaisaSpacing.compact.rawValue) {
+                            Text("Jump to latest").font(TaisaTypography.navigationLabel.font)
+                            CentralIcon(.chevronDown)
+                                .frame(
+                                    width: ConversationTimelineLayout.jumpIconSize,
+                                    height: ConversationTimelineLayout.jumpIconSize
+                                )
+                        }
+                        .padding(.horizontal, TaisaSpacing.standard.rawValue)
+                    }
+                    .padding(.bottom, TaisaSpacing.standard.rawValue)
+                    .accessibilityIdentifier("conversation.jump-to-latest")
                 }
             }
             .onAppear { scrollToLatest(using: proxy, animated: false) }
@@ -89,11 +113,76 @@ struct ConversationTimeline: View {
         return Text(message.body)
     }
 
-    private func userLineLimit(for message: MessageRecord) -> Int? {
-        guard message.role == "user", message.body.count > 120,
-              !expandedUserMessages.contains(message.id) else { return nil }
-        return Self.userPreviewLineLimit
+    private func toggleExpansion(for messageID: String) {
+        if expandedUserMessages.contains(messageID) {
+            expandedUserMessages.remove(messageID)
+        } else {
+            expandedUserMessages.insert(messageID)
+        }
     }
+
+    @ViewBuilder private func messageActions(for message: MessageRecord) -> some View {
+        Button("Copy", systemImage: "doc.on.doc") { UIPasteboard.general.string = message.body }
+        if message.role == "user" {
+            Button("Edit", systemImage: "pencil") { correct(message) }
+                .accessibilityIdentifier("conversation.correct-transcript")
+        }
+    }
+}
+
+private struct ExpandableUserMessage: View {
+    let message: MessageRecord
+    let isExpanded: Bool
+    let toggleExpansion: () -> Void
+    @State private var limitedHeight: CGFloat = 0
+    @State private var fullHeight: CGFloat = 0
+
+    private var isTruncated: Bool { fullHeight > limitedHeight + 1 }
+
+    var body: some View {
+        VStack(alignment: .trailing, spacing: TaisaSpacing.compact.rawValue) {
+            Text(message.body)
+                .lineLimit(isExpanded ? nil : ConversationTimeline.userPreviewLineLimit)
+                .background { measuredFullText }
+                .background {
+                    GeometryReader { proxy in
+                        Color.clear.preference(key: LimitedMessageHeightKey.self, value: proxy.size.height)
+                    }
+                }
+
+            if isExpanded || isTruncated {
+                Button(isExpanded ? "Show less" : "Show more", action: toggleExpansion)
+                    .font(TaisaTypography.metadata.font.weight(.medium))
+                    .foregroundStyle(TaisaColor.mutedForeground.color)
+                    .accessibilityIdentifier("conversation.message.\(message.id).expansion")
+            }
+        }
+        .padding(TaisaSpacing.control.rawValue)
+        .background(TaisaColor.subtleSurface.color, in: RoundedRectangle(cornerRadius: TaisaRadius.panel.rawValue))
+        .onPreferenceChange(LimitedMessageHeightKey.self) { limitedHeight = $0 }
+        .onPreferenceChange(FullMessageHeightKey.self) { fullHeight = $0 }
+    }
+
+    private var measuredFullText: some View {
+        Text(message.body)
+            .fixedSize(horizontal: false, vertical: true)
+            .hidden()
+            .background {
+                GeometryReader { proxy in
+                    Color.clear.preference(key: FullMessageHeightKey.self, value: proxy.size.height)
+                }
+            }
+    }
+}
+
+private struct LimitedMessageHeightKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
+}
+
+private struct FullMessageHeightKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
 }
 
 enum ConversationTimelineMotion {

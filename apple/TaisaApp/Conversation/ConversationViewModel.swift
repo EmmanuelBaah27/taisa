@@ -1,4 +1,5 @@
 import Observation
+import TaisaAudio
 import TaisaConversations
 import TaisaStorage
 import TaisaVoice
@@ -66,7 +67,9 @@ struct ConversationScreenClient: Sendable {
 @MainActor
 @Observable
 final class ConversationViewModel {
-    enum FailureContext: Equatable { case request, beginRecording, pauseRecording, resumeRecording }
+    enum FailureContext: Equatable {
+        case request, beginRecording, microphonePermissionDenied, pauseRecording, resumeRecording
+    }
     enum Confirmation: Equatable {
         case discardVoiceForKeyboard(returnTo: ComposerState)
         case discardRecording
@@ -215,7 +218,13 @@ final class ConversationViewModel {
         defer { actionInFlight = false }
         composer = .preparingVoice
         do { try await client.beginVoice(); composer = .recording; await refreshCapture() }
-        catch { failureContext = .beginRecording; composer = .failure(.unavailable); throw error }
+        catch {
+            failureContext = error as? AudioCaptureError == .permissionDenied
+                ? .microphonePermissionDenied
+                : .beginRecording
+            composer = .failure(.unavailable)
+            throw error
+        }
     }
 
     func pause() async { await perform(next: .paused, recovery: .pauseRecording) { try await client.pauseVoice() }; await refreshCapture() }
@@ -282,6 +291,8 @@ final class ConversationViewModel {
         switch failureContext {
         case .beginRecording:
             try? await beginVoice()
+        case .microphonePermissionDenied:
+            break
         case .pauseRecording:
             await perform(next: .paused, recovery: .pauseRecording) { try await client.retryPauseVoice() }
             await refreshCapture()
