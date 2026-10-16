@@ -148,6 +148,14 @@ public struct ConversationRepository: DomainRepository, MessageRepositoryContrac
                     )
                 }
                 try db.execute(
+                    sql: """
+                        UPDATE assistant_proposals
+                        SET state = 'superseded', resolved_at_ms = ?
+                        WHERE response_message_id = ? COLLATE NOCASE AND state = 'pending'
+                        """,
+                    arguments: [context.timestamp, correction.originalAssistantMessageID]
+                )
+                try db.execute(
                     sql: "UPDATE conversations SET updated_at_ms = MAX(updated_at_ms, ?) WHERE id = ? COLLATE NOCASE",
                     arguments: [context.timestamp, conversationID]
                 )

@@ -23,17 +23,20 @@ public struct ConversationSnapshot: Sendable, Equatable {
     public let visibleMessages: [MessageRecord]
     public let revisions: [MessageRevisionRecord]
     public let drafts: [ConversationDraftRecord]
+    public let assistantResponses: [String: AssistantResponseRecord]
 
     public init(
         conversation: ConversationRecord,
         visibleMessages: [MessageRecord],
         revisions: [MessageRevisionRecord],
-        drafts: [ConversationDraftRecord]
+        drafts: [ConversationDraftRecord],
+        assistantResponses: [String: AssistantResponseRecord] = [:]
     ) {
         self.conversation = conversation
         self.visibleMessages = visibleMessages
         self.revisions = revisions
         self.drafts = drafts
+        self.assistantResponses = assistantResponses
     }
 }
 

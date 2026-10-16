@@ -145,11 +145,16 @@ public struct ConversationQuery: ConversationQuerying, Sendable {
                     """,
                     arguments: [id]
                 )
+                let messages = messageRows.map(Self.message)
+                let responses = try AssistantResponseRepository.loadResponses(
+                    messageIDs: messages.filter { $0.role == "assistant" }.map(\.id), db: db
+                )
                 return ConversationSnapshot(
                     conversation: Self.conversation(conversationRow),
-                    visibleMessages: messageRows.map(Self.message),
+                    visibleMessages: messages,
                     revisions: revisionRows.map(Self.revision),
-                    drafts: draftRows.map(Self.draft)
+                    drafts: draftRows.map(Self.draft),
+                    assistantResponses: responses
                 )
             }
         } catch let error as RepositoryError {
