@@ -235,6 +235,7 @@ final class ConversationViewModel {
         catch {
             actionInFlight = false
             if await completeVoicePreparationExitIfNeeded() { return }
+            print("TAISA_CAPTURE begin.failure type=\(String(reflecting: type(of: error)))")
             failureContext = error as? AudioCaptureError == .permissionDenied
                 ? .microphonePermissionDenied
                 : .beginRecording
