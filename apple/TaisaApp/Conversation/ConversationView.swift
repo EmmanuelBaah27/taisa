@@ -25,7 +25,7 @@ struct ConversationView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
 
                     composer
-                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(minHeight: TaisaControlMetric.conversationComposerDockHeight, alignment: .bottom)
                         .zIndex(2)
                 }
                 ConversationPageHeader(title: model.title, onDismiss: model.requestClose)
@@ -97,7 +97,11 @@ struct ConversationView: View {
                     .accessibilityIdentifier("conversation.text-composer")
             }
         case .transcribing:
-            ConversationProgressState(label: "Transcribing…")
+            bottomChrome {
+                ConversationProgressState(label: "Transcribing…")
+                    .frame(height: TaisaControlMetric.recordingButtonHeight)
+                    .frame(maxWidth: .infinity)
+            }
         case .coaching:
             VStack(alignment: .leading, spacing: 12) {
                 if model.partialCoaching.isEmpty {
@@ -206,7 +210,7 @@ struct ConversationView: View {
                     Text("Reply").font(TaisaTypography.navigationLabel.font)
                 }
                 .foregroundStyle(TaisaColor.foreground.color)
-                .padding(.horizontal, TaisaSpacing.section.rawValue)
+                .padding(.horizontal, TaisaSpacing.page.rawValue)
                 .frame(height: TaisaControlMetric.recordingButtonHeight)
             }
             .accessibilityLabel("Reply by voice, starts recording")
@@ -218,7 +222,9 @@ struct ConversationView: View {
     private func bottomChrome<Content: View>(@ViewBuilder content: () -> Content) -> some View {
         content()
             .padding(.horizontal, TaisaSpacing.standard.rawValue)
-            .padding(.bottom, TaisaSpacing.standard.rawValue)
+            .padding(.top, TaisaSpacing.section.rawValue)
+            .padding(.bottom, TaisaSpacing.section.rawValue)
+            .frame(minHeight: TaisaControlMetric.conversationComposerDockHeight, alignment: .bottom)
             .background { PageEdgeFade(.navigation).ignoresSafeArea(edges: [.horizontal, .bottom]) }
     }
 

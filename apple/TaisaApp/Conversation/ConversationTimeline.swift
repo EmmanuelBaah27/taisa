@@ -8,7 +8,8 @@ enum ConversationTimelineLayout {
     static let jumpIconSize: CGFloat = 20
     static let jumpVisibilityThreshold: CGFloat = 160
     static let ordinaryMessageSpacing: CGFloat = 12
-    static let userToAssistantSpacing: CGFloat = 24
+    static let userToAssistantSpacing: CGFloat = 32
+    static let firstMessageTopSpacing: CGFloat = 8
 
     static func spacing(afterRole: String, beforeRole: String?) -> CGFloat {
         guard beforeRole != nil else { return 0 }
@@ -144,6 +145,7 @@ struct ConversationTimeline: View {
                             .id("conversation.streaming-response")
                     }
                 }
+                .padding(.top, ConversationTimelineLayout.firstMessageTopSpacing)
                 .padding(.bottom, TaisaSpacing.standard.rawValue)
             }
             .scrollBounceBehavior(.always, axes: .vertical)
@@ -211,10 +213,14 @@ struct ConversationTimeline: View {
     }
 
     private func toggleExpansion(for messageID: String) {
-        if expandedUserMessages.contains(messageID) {
-            expandedUserMessages.remove(messageID)
-        } else {
-            expandedUserMessages.insert(messageID)
+        var transaction = Transaction(animation: nil)
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            if expandedUserMessages.contains(messageID) {
+                expandedUserMessages.remove(messageID)
+            } else {
+                expandedUserMessages.insert(messageID)
+            }
         }
     }
 

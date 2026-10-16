@@ -16,6 +16,7 @@ final class PrimaryAppShellModel {
     private(set) var showsCareerWork = false
     private(set) var navigationDirection: NavigationDirection = .forward
     private(set) var conversationRoute: ConversationRoute?
+    private(set) var conversationReturnGeneration = 0
     @ObservationIgnored private var pendingEntryIntent: ConversationEntryIntent?
     @ObservationIgnored private let makeConversationID: () -> String
 
@@ -74,6 +75,7 @@ final class PrimaryAppShellModel {
     func dismissConversation() {
         pendingEntryIntent = nil
         conversationRoute = nil
+        conversationReturnGeneration += 1
     }
 
     func dismissConversationAndRefresh(_ refresh: @MainActor () async -> Void) async {
@@ -90,7 +92,6 @@ final class PrimaryAppShellModel {
 
 struct PrimaryAppShell: View {
     @State var model: PrimaryAppShellModel
-    @State private var swipeStartSelection: PrimaryDestination?
     let homeModel: HomeModel
     var careerWorkModel: CareerWorkModel = CareerWorkModel(client: .init(loadOverview: { .init(active: [], paused: [], completed: [], archived: []) }))
     let conversationsModel: ConversationsModel
@@ -113,7 +114,6 @@ struct PrimaryAppShell: View {
                     }
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
-                .simultaneousGesture(primaryPageFallbackGesture)
                 .safeAreaPadding(.bottom, model.primaryPageBottomReservation)
             }
 
@@ -158,25 +158,6 @@ struct PrimaryAppShell: View {
         }
     }
 
-    private var primaryPageFallbackGesture: some Gesture {
-        DragGesture(minimumDistance: 24)
-            .onChanged { _ in
-                if swipeStartSelection == nil {
-                    swipeStartSelection = model.selection
-                }
-            }
-            .onEnded { value in
-                let startSelection = swipeStartSelection
-                swipeStartSelection = nil
-                guard let startSelection,
-                      model.selection == startSelection,
-                      abs(value.translation.width) > abs(value.translation.height),
-                      abs(value.translation.width) >= 60
-                else { return }
-                model.selectAdjacent(offset: value.translation.width < 0 ? 1 : -1)
-            }
-    }
-
     @MainActor
     private func dismissConversationAndRefresh() {
         Task {
@@ -208,6 +189,7 @@ struct PrimaryAppShell: View {
         case .conversations:
             ConversationsView(
                 model: conversationsModel,
+                resetID: model.conversationReturnGeneration,
                 resume: { model.openConversation(id: $0.conversationID, title: "Draft") },
                 open: { model.openConversation(id: $0.id, title: $0.title) },
                 openRecovery: openRecovery

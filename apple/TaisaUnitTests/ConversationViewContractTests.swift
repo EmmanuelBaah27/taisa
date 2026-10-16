@@ -130,10 +130,10 @@ final class ConversationViewContractTests: XCTestCase {
 
     func testConversationUsesSemanticTurnSpacing() {
         XCTAssertEqual(ConversationTimelineLayout.ordinaryMessageSpacing, 12)
-        XCTAssertEqual(ConversationTimelineLayout.userToAssistantSpacing, 24)
+        XCTAssertEqual(ConversationTimelineLayout.userToAssistantSpacing, 32)
         XCTAssertEqual(
             ConversationTimelineLayout.spacing(afterRole: "user", beforeRole: "assistant"),
-            24
+            32
         )
         XCTAssertEqual(
             ConversationTimelineLayout.spacing(afterRole: "assistant", beforeRole: "user"),

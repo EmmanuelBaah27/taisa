@@ -475,6 +475,9 @@ final class ConversationViewModel {
     private func discardRecordingAndRemainOrDismiss() async {
         guard !actionInFlight else { return }
         actionInFlight = true
+        if !messages.isEmpty {
+            composer = .waitingForReply
+        }
         do {
             try await client.discardDraft()
             confirmation = nil

@@ -6,7 +6,7 @@ final class ConversationsViewContractTests: XCTestCase {
         let source = try conversationsSource()
 
         for contract in [
-            "TaisaPageHeader(\"Chats\")", "chats.search", "chats.drafts-filter",
+            "TaisaPageHeader(\"Chats\")", "chats.search", "chats.drafts",
             "List", "listRowBackground", "TaisaRadius.historyGroup"
         ] {
             XCTAssertTrue(source.contains(contract), "Missing Figma Chats contract: \(contract)")
@@ -76,7 +76,8 @@ final class ConversationsViewContractTests: XCTestCase {
         let source = try conversationsSource()
 
         XCTAssertTrue(source.contains("if hasDrafts"))
-        XCTAssertTrue(source.contains("if !showsDraftsOnly || snapshot.drafts.isEmpty"))
+        XCTAssertTrue(source.contains("DraftsView("))
+        XCTAssertFalse(source.contains("showsDraftsOnly"))
         XCTAssertTrue(source.contains(".listSectionMargins(.horizontal, 0)"))
         XCTAssertTrue(source.contains(".scrollIndicators(.hidden)"))
         XCTAssertTrue(source.contains("TaisaControlMetric.appBarHeight + TaisaSpacing.standard.rawValue"))
@@ -134,11 +135,18 @@ final class ConversationsViewContractTests: XCTestCase {
 
     func testChatsFailuresUseTopToastWithoutChangingOtherDestinations() throws {
         let source = try conversationsSource()
+        let toast = try designSystemSource(named: "TaisaToast.swift")
 
         XCTAssertTrue(source.contains("TaisaToast("))
         XCTAssertTrue(source.contains("alignment: .top"))
         XCTAssertTrue(source.contains("model.notices.first"))
+        XCTAssertTrue(source.contains("TaisaControlMetric.appBarHeight - TaisaSpacing.control.rawValue"))
         XCTAssertFalse(source.contains("if let issue { issueRow(issue) }"))
+        XCTAssertTrue(toast.contains("TaisaColor.foreground.color"))
+        XCTAssertTrue(toast.contains("TaisaColor.background.color"))
+        XCTAssertTrue(toast.contains(".fixedSize(horizontal: true, vertical: false)"))
+        XCTAssertTrue(toast.contains(".lineLimit(1)"))
+        XCTAssertFalse(toast.contains(".frame(maxWidth: .infinity"))
     }
 
     private func conversationsSource() throws -> String {
