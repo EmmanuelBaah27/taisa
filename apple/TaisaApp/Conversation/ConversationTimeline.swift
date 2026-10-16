@@ -7,6 +7,15 @@ enum ConversationTimelineLayout {
     static let userBubbleWidthFraction: CGFloat = 0.85
     static let jumpIconSize: CGFloat = 20
     static let jumpVisibilityThreshold: CGFloat = 160
+    static let ordinaryMessageSpacing: CGFloat = 12
+    static let userToAssistantSpacing: CGFloat = 24
+
+    static func spacing(afterRole: String, beforeRole: String?) -> CGFloat {
+        guard beforeRole != nil else { return 0 }
+        return afterRole == "user" && beforeRole == "assistant"
+            ? userToAssistantSpacing
+            : ordinaryMessageSpacing
+    }
 
     static func shouldShowJumpToLatest(distanceFromBottom: CGFloat) -> Bool {
         distanceFromBottom >= jumpVisibilityThreshold
@@ -88,8 +97,8 @@ struct ConversationTimeline: View {
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: TaisaSpacing.control.rawValue) {
-                    ForEach(messages, id: \.id) { message in
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(messages.enumerated()), id: \.element.id) { index, message in
                         VStack(alignment: message.role == "user" ? .trailing : .leading, spacing: TaisaSpacing.tight.rawValue) {
                             if message.role == "user" {
                                 TrailingMaximumWidthLayout(
@@ -119,6 +128,13 @@ struct ConversationTimeline: View {
                         .accessibilityElement(children: .contain)
                         .accessibilityIdentifier("conversation.message.\(message.id)")
                         .id(message.id)
+                        .padding(
+                            .bottom,
+                            ConversationTimelineLayout.spacing(
+                                afterRole: message.role,
+                                beforeRole: messages.indices.contains(index + 1) ? messages[index + 1].role : nil
+                            )
+                        )
                     }
                     if !streamingResponse.isEmpty {
                         Text((try? AttributedString(markdown: streamingResponse)) ?? AttributedString(streamingResponse))
@@ -128,13 +144,13 @@ struct ConversationTimeline: View {
                             .id("conversation.streaming-response")
                     }
                 }
-                .padding(.vertical, TaisaSpacing.standard.rawValue)
+                .padding(.bottom, TaisaSpacing.standard.rawValue)
             }
             .scrollBounceBehavior(.always, axes: .vertical)
             .defaultScrollAnchor(.bottom, for: .initialOffset)
             .contentMargins(
                 .top,
-                TaisaControlMetric.appBarHeight + TaisaSpacing.standard.rawValue,
+                TaisaControlMetric.appBarHeight,
                 for: .scrollContent
             )
             .onScrollGeometryChange(for: Bool.self) { geometry in

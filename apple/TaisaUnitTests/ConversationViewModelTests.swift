@@ -146,6 +146,26 @@ final class ConversationViewModelTests: XCTestCase {
         XCTAssertEqual(model.composer, .typing(""))
     }
 
+    func testRecordingStartFailureCanContinueInKeyboardMode() async {
+        struct StartFailure: Error {}
+        let client = ConversationScreenClient(
+            beginVoice: { throw StartFailure() }, pauseVoice: {}, resumeVoice: {},
+            sendVoice: { _ in }, sendText: { _ in }, retry: {},
+            saveDraft: { _ in }, discardDraft: {}
+        )
+        let model = ConversationViewModel(
+            conversationID: UUID().uuidString,
+            title: "New conversation",
+            entryIntent: nil,
+            client: client
+        )
+        try? await model.beginVoice()
+
+        model.continueWithKeyboardAfterRecordingFailure()
+
+        XCTAssertEqual(model.composer, .typing(""))
+    }
+
     func testVoiceCompletionReloadsMessagesAndWaitsForReply() async {
         let client = ConversationScreenClientSpy()
         let model = ConversationViewModel(

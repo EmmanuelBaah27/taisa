@@ -30,6 +30,30 @@ struct ConversationsModelTests {
 
         #expect(await fixture.actions == ["discard", "rename:Renamed", "delete"])
     }
+
+    @Test func mutationFailuresRetainTheirRecoveryOperation() async {
+        struct MutationFailure: Error {}
+        let snapshot = ConversationIndexSnapshot(
+            drafts: [makeDraft(id: "draft", updated: 1)],
+            conversations: [makeConversation(id: "chat", updated: 1)]
+        )
+        let model = ConversationsModel(client: ConversationsClient(
+            load: { snapshot },
+            discardDraft: { _ in throw MutationFailure() },
+            renameConversation: { _, _ in throw MutationFailure() },
+            deleteConversation: { _ in throw MutationFailure() }
+        ))
+        await model.load()
+
+        await model.renameConversation(id: "chat", title: "New title")
+        #expect(model.state == .content(snapshot, isRefreshing: false, issue: .renameFailed(id: "chat", title: "New title")))
+
+        await model.deleteConversation(id: "chat")
+        #expect(model.state == .content(snapshot, isRefreshing: false, issue: .deleteFailed(id: "chat")))
+
+        await model.discardDraft(id: "draft")
+        #expect(model.state == .content(snapshot, isRefreshing: false, issue: .discardFailed(id: "draft")))
+    }
 }
 
 private actor MutationFixture {

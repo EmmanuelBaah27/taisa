@@ -5,6 +5,9 @@ import TaisaStorage
 public enum ConversationsIssue: Sendable, Equatable {
     case storageUnavailable
     case recoveryRequired
+    case renameFailed(id: String, title: String)
+    case deleteFailed(id: String)
+    case discardFailed(id: String)
 }
 
 public enum ConversationsState: Sendable, Equatable {
@@ -112,23 +115,26 @@ public final class ConversationsModel {
     }
 
     public func discardDraft(id: String) async {
-        await mutate { try await client.discardDraft(id) }
+        await mutate(fallback: .discardFailed(id: id)) { try await client.discardDraft(id) }
     }
 
     public func renameConversation(id: String, title: String) async {
-        await mutate { try await client.renameConversation(id, title) }
+        await mutate(fallback: .renameFailed(id: id, title: title)) {
+            try await client.renameConversation(id, title)
+        }
     }
 
     public func deleteConversation(id: String) async {
-        await mutate { try await client.deleteConversation(id) }
+        await mutate(fallback: .deleteFailed(id: id)) { try await client.deleteConversation(id) }
     }
 
-    private func mutate(_ operation: () async throws -> Void) async {
+    private func mutate(fallback: ConversationsIssue, _ operation: () async throws -> Void) async {
         do {
             try await operation()
             await load()
         } catch {
-            let issue = Self.issue(for: error)
+            let mapped = Self.issue(for: error)
+            let issue = mapped == .recoveryRequired ? mapped : fallback
             if let retained = state.snapshot {
                 state = .content(retained, isRefreshing: false, issue: issue)
             } else {

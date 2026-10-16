@@ -66,16 +66,7 @@ struct TranscriptCorrectionView: View {
             .padding(TaisaSpacing.control.rawValue)
             .frame(minHeight: 120)
 
-        if #available(iOS 26.0, *) {
-            editor.glassEffect(.regular, in: RoundedRectangle(cornerRadius: TaisaRadius.panel.rawValue))
-        } else {
-            editor
-                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: TaisaRadius.panel.rawValue))
-                .overlay {
-                    RoundedRectangle(cornerRadius: TaisaRadius.panel.rawValue)
-                        .stroke(TaisaColor.border.color)
-                }
-        }
+        editor.modifier(LiquidTextInputSurface(cornerRadius: TaisaRadius.panel.rawValue))
     }
 
     private func requestCancel() {

@@ -125,6 +125,11 @@ final class ConversationsViewContractTests: XCTestCase {
         XCTAssertFalse(source.contains("Menu(\"Actions\")"))
         XCTAssertFalse(source.contains("New conversation"))
         XCTAssertFalse(source.contains("import GRDB"))
+        XCTAssertTrue(source.contains("Chats couldn’t load"))
+        XCTAssertTrue(source.contains("Chats may be out of date"))
+        XCTAssertTrue(source.contains("Title wasn’t changed"))
+        XCTAssertTrue(source.contains("Conversation wasn’t deleted"))
+        XCTAssertTrue(source.contains("Draft wasn’t discarded"))
     }
 
     private func conversationsSource() throws -> String {

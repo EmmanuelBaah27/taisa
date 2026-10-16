@@ -162,11 +162,11 @@ struct ConversationsView: View {
             .refreshable { await model.load() }
         case let .failure(issue):
             ContentUnavailableView {
-                Label(issue == .recoveryRequired ? "Recovery required" : "Conversations unavailable", systemImage: "exclamationmark.triangle")
+                Label(issueTitle(issue, retainedContent: false), systemImage: "exclamationmark.triangle")
             } description: {
-                Text(issue == .recoveryRequired ? "Restore secure access to read your conversations." : "Taisa couldn’t read your conversations securely.")
+                Text(issueMessage(issue, retainedContent: false))
             } actions: {
-                if issue == .recoveryRequired {
+                if case .recoveryRequired = issue {
                     Button("Open recovery", action: openRecovery).accessibilityIdentifier("conversations.recovery")
                 } else {
                     Button("Try again") { Task { await model.load() } }.accessibilityIdentifier("conversations.retry")
@@ -250,12 +250,60 @@ struct ConversationsView: View {
     }
 
     private func issueRow(_ issue: ConversationsIssue) -> some View {
-        Button {
-            if issue == .recoveryRequired { openRecovery() } else { Task { await model.load() } }
-        } label: {
-            Label(issue == .recoveryRequired ? "Open recovery" : "Try refresh again", systemImage: "exclamationmark.triangle")
+        VStack(alignment: .leading, spacing: TaisaSpacing.compact.rawValue) {
+            Label(issueTitle(issue, retainedContent: true), systemImage: "exclamationmark.triangle")
+                .font(TaisaTypography.navigationLabel.font)
+            Text(issueMessage(issue, retainedContent: true))
+                .font(TaisaTypography.metadata.font)
+                .foregroundStyle(TaisaColor.mutedForeground.color)
+            Button(issueActionLabel(issue)) { retry(issue) }
+                .font(TaisaTypography.metadata.font.weight(.medium))
         }
         .accessibilityIdentifier(issue == .recoveryRequired ? "conversations.recovery" : "conversations.retry")
+    }
+
+    private func retry(_ issue: ConversationsIssue) {
+        switch issue {
+        case .storageUnavailable:
+            Task { await model.load() }
+        case .recoveryRequired:
+            openRecovery()
+        case let .renameFailed(id, title):
+            Task { await model.renameConversation(id: id, title: title) }
+        case let .deleteFailed(id):
+            Task { await model.deleteConversation(id: id) }
+        case let .discardFailed(id):
+            Task { await model.discardDraft(id: id) }
+        }
+    }
+
+    private func issueTitle(_ issue: ConversationsIssue, retainedContent: Bool) -> String {
+        switch issue {
+        case .storageUnavailable: retainedContent ? "Chats may be out of date" : "Chats couldn’t load"
+        case .recoveryRequired: "Secure access needs to be restored"
+        case .renameFailed: "Title wasn’t changed"
+        case .deleteFailed: "Conversation wasn’t deleted"
+        case .discardFailed: "Draft wasn’t discarded"
+        }
+    }
+
+    private func issueMessage(_ issue: ConversationsIssue, retainedContent: Bool) -> String {
+        switch issue {
+        case .storageUnavailable:
+            retainedContent ? "Your existing chats are still shown." : "Taisa couldn’t read your chats."
+        case .recoveryRequired: "Restore secure access to read your chats."
+        case .renameFailed: "The previous title is still in place."
+        case .deleteFailed: "Nothing was removed."
+        case .discardFailed: "Your draft is still available."
+        }
+    }
+
+    private func issueActionLabel(_ issue: ConversationsIssue) -> String {
+        switch issue {
+        case .storageUnavailable: "Refresh"
+        case .recoveryRequired: "Open recovery"
+        case .renameFailed, .deleteFailed, .discardFailed: "Try again"
+        }
     }
 
     private func beginRename(_ conversation: ConversationRecord) {

@@ -9,29 +9,29 @@ public struct InlineRecoveryAlert: View {
             cancelLabel: "Cancel", retryLabel: "Try again"
         )
         public static let request = Contract(
-            title: "Taisa couldn’t finish this response",
-            message: "Nothing has been discarded. Try again when you’re ready.",
-            cancelLabel: "Cancel", retryLabel: "Try again"
+            title: "Taisa couldn’t respond",
+            message: "Your message is saved. Try again now or continue later.",
+            cancelLabel: "Continue later", retryLabel: "Try again"
         )
         public static let beginRecording = Contract(
-            title: "Taisa couldn’t start recording",
-            message: "Recording couldn’t start. Try again, or close and reopen Taisa if it keeps happening.",
-            cancelLabel: "Close", retryLabel: "Try again"
+            title: "Recording didn’t start",
+            message: "Nothing was recorded. Try again or use the keyboard.",
+            cancelLabel: "Use keyboard", retryLabel: "Try again"
         )
         public static let microphonePermission = Contract(
-            title: "Microphone access is off",
-            message: "Allow microphone access in Settings to record with Taisa.",
+            title: "Taisa needs microphone access",
+            message: "Allow microphone access in Settings to record, or continue with the keyboard.",
             cancelLabel: "Use keyboard", retryLabel: "Open Settings"
         )
         public static let pauseRecording = Contract(
-            title: "Taisa couldn’t pause recording",
-            message: "Your recording is still safe. Try pausing again.",
-            cancelLabel: "Close", retryLabel: "Try again"
+            title: "Recording didn’t pause",
+            message: "Your recording is still available. Try pausing again or discard it.",
+            cancelLabel: "Discard recording", retryLabel: "Try again"
         )
         public static let resumeRecording = Contract(
-            title: "Taisa couldn’t resume recording",
-            message: "Your recording is still safe. Try resuming again.",
-            cancelLabel: "Close", retryLabel: "Try again"
+            title: "Recording didn’t resume",
+            message: "Your recording is still paused. Try again or save it for later.",
+            cancelLabel: "Save draft", retryLabel: "Try again"
         )
     }
     private let contract: Contract

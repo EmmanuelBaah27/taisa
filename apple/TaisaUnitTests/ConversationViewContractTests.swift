@@ -98,10 +98,17 @@ final class ConversationViewContractTests: XCTestCase {
         XCTAssertFalse(source.contains("defaultScrollAnchor(.bottom)\n"))
         XCTAssertTrue(source.contains("jumpVisibilityThreshold"))
         XCTAssertTrue(source.contains("isAwayFromLatest = false"))
-        XCTAssertTrue(source.contains("LazyVStack(alignment: .leading, spacing: TaisaSpacing.control.rawValue)"))
+        XCTAssertTrue(source.contains("LazyVStack(alignment: .leading, spacing: 0)"))
         XCTAssertTrue(source.contains("VStack(alignment: .leading, spacing: TaisaSpacing.compact.rawValue)"))
         XCTAssertFalse(source.contains("safeAreaInset(edge: .bottom)"))
         XCTAssertTrue(source.contains("VStack(spacing: 0)"))
+        XCTAssertTrue(source.contains("static let userToAssistantSpacing"))
+        XCTAssertTrue(source.contains("static let ordinaryMessageSpacing"))
+        XCTAssertTrue(source.contains("StatusBarBackground"))
+        XCTAssertTrue(source.contains("TaisaSecondaryCapsuleButton"))
+        XCTAssertTrue(source.contains("HStack(spacing: TaisaSpacing.compact.rawValue)"))
+        XCTAssertTrue(source.contains("CentralIcon(.voiceMid)"))
+        XCTAssertTrue(source.contains("Text(\"Reply\")"))
         XCTAssertTrue(source.contains(".smooth(duration: TaisaMotion.settle)"))
         XCTAssertTrue(source.contains("Edit message"))
         XCTAssertTrue(source.contains("UIApplication.openSettingsURLString"))
@@ -119,6 +126,19 @@ final class ConversationViewContractTests: XCTestCase {
         XCTAssertFalse(ConversationTimelineLayout.shouldShowJumpToLatest(distanceFromBottom: 0))
         XCTAssertFalse(ConversationTimelineLayout.shouldShowJumpToLatest(distanceFromBottom: 159))
         XCTAssertTrue(ConversationTimelineLayout.shouldShowJumpToLatest(distanceFromBottom: 160))
+    }
+
+    func testConversationUsesSemanticTurnSpacing() {
+        XCTAssertEqual(ConversationTimelineLayout.ordinaryMessageSpacing, 12)
+        XCTAssertEqual(ConversationTimelineLayout.userToAssistantSpacing, 24)
+        XCTAssertEqual(
+            ConversationTimelineLayout.spacing(afterRole: "user", beforeRole: "assistant"),
+            24
+        )
+        XCTAssertEqual(
+            ConversationTimelineLayout.spacing(afterRole: "assistant", beforeRole: "user"),
+            12
+        )
     }
 
     func testUserBubbleWidthIsIntrinsicUntilItReachesTheEightyFivePercentCap() {

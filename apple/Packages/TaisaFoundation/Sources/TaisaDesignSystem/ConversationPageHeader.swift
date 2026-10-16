@@ -29,7 +29,7 @@ public struct ConversationPageHeader: View {
         .frame(height: TaisaControlMetric.appBarHeight)
         .background {
             PageEdgeFade(.header)
-                .ignoresSafeArea(edges: .horizontal)
+                .ignoresSafeArea(edges: [.top, .horizontal])
         }
     }
 }

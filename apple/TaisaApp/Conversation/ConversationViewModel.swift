@@ -461,6 +461,12 @@ final class ConversationViewModel {
         composer = .typing("")
     }
 
+    func continueWithKeyboardAfterRecordingFailure() {
+        guard failureContext == .beginRecording else { return }
+        text = ""
+        composer = .typing("")
+    }
+
     func cancelConfirmation() {
         if case .discardVoiceForKeyboard(let prior) = confirmation { composer = prior }
         confirmation = nil

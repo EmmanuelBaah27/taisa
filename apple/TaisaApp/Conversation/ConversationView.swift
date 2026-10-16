@@ -10,6 +10,8 @@ struct ConversationView: View {
     var body: some View {
         NavigationStack {
             ZStack(alignment: .top) {
+                StatusBarBackground()
+                    .zIndex(4)
                 VStack(spacing: 0) {
                     ZStack {
                         ConversationTimeline(
@@ -195,21 +197,22 @@ struct ConversationView: View {
     }
 
     private var voiceReplyButton: some View {
-        Button { Task { try? await model.beginVoice() } } label: {
-            HStack {
-                Text("Reply").font(TaisaTypography.navigationLabel.font)
-                Spacer()
-                CentralIcon(.voiceMid)
-                    .frame(width: TaisaControlMetric.standardIcon, height: TaisaControlMetric.standardIcon)
+        HStack {
+            Spacer()
+            TaisaSecondaryCapsuleButton(action: { Task { try? await model.beginVoice() } }) {
+                HStack(spacing: TaisaSpacing.compact.rawValue) {
+                    CentralIcon(.voiceMid)
+                        .frame(width: TaisaControlMetric.standardIcon, height: TaisaControlMetric.standardIcon)
+                    Text("Reply").font(TaisaTypography.navigationLabel.font)
+                }
+                .foregroundStyle(TaisaColor.foreground.color)
+                .padding(.horizontal, TaisaSpacing.section.rawValue)
+                .frame(height: TaisaControlMetric.recordingButtonHeight)
             }
-            .foregroundStyle(TaisaColor.foreground.color)
-            .padding(.horizontal, TaisaSpacing.standard.rawValue)
-            .frame(maxWidth: .infinity, minHeight: TaisaControlMetric.recordingButtonHeight)
+            .accessibilityLabel("Reply by voice, starts recording")
+            .accessibilityIdentifier("conversation.voice-reply")
+            Spacer()
         }
-        .buttonStyle(.plain)
-        .modifier(ConversationReplyButtonSurface())
-        .accessibilityLabel("Reply by voice, starts recording")
-        .accessibilityIdentifier("conversation.voice-reply")
     }
 
     private func bottomChrome<Content: View>(@ViewBuilder content: () -> Content) -> some View {
@@ -229,20 +232,26 @@ struct ConversationView: View {
     }
 
     private func performRecoverySecondaryAction() {
-        if model.failureContext == .microphonePermissionDenied {
+        switch model.failureContext {
+        case .microphonePermissionDenied:
             model.continueWithKeyboardAfterPermissionDenial()
-        } else {
+        case .beginRecording:
+            model.continueWithKeyboardAfterRecordingFailure()
+        case .pauseRecording:
+            Task { await model.confirmDiscardRecording() }
+        case .resumeRecording:
+            Task { await model.saveAndClose() }
+        case .request:
             model.cancelRecoveryAndClose()
         }
     }
 }
 
-private struct ConversationReplyButtonSurface: ViewModifier {
-    @ViewBuilder func body(content: Content) -> some View {
-        if #available(iOS 26.0, *) {
-            content.glassEffect(.regular.interactive(), in: Capsule())
-        } else {
-            content.background(TaisaColor.raisedSurface.color, in: Capsule())
-        }
+private struct StatusBarBackground: View {
+    var body: some View {
+        TaisaColor.background.color
+            .frame(height: 1)
+            .frame(maxWidth: .infinity)
+            .ignoresSafeArea(edges: .top)
     }
 }
