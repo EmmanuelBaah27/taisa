@@ -27,6 +27,9 @@ public struct ConversationPageHeader: View {
         }
         .padding(.horizontal, TaisaSpacing.standard.rawValue)
         .frame(height: TaisaControlMetric.appBarHeight)
-        .background { PageEdgeFade(.header).ignoresSafeArea(edges: [.horizontal, .top]) }
+        .background {
+            PageEdgeFade(.header)
+                .ignoresSafeArea(edges: .horizontal)
+        }
     }
 }

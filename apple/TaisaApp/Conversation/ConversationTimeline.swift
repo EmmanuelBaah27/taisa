@@ -6,6 +6,11 @@ import UIKit
 enum ConversationTimelineLayout {
     static let userBubbleWidthFraction: CGFloat = 0.85
     static let jumpIconSize: CGFloat = 20
+    static let jumpVisibilityThreshold: CGFloat = 160
+
+    static func shouldShowJumpToLatest(distanceFromBottom: CGFloat) -> Bool {
+        distanceFromBottom >= jumpVisibilityThreshold
+    }
 
     static func userBubbleWidth(
         intrinsicWidth: CGFloat,
@@ -83,7 +88,7 @@ struct ConversationTimeline: View {
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 16) {
+                LazyVStack(alignment: .leading, spacing: TaisaSpacing.control.rawValue) {
                     ForEach(messages, id: \.id) { message in
                         VStack(alignment: message.role == "user" ? .trailing : .leading, spacing: TaisaSpacing.tight.rawValue) {
                             if message.role == "user" {
@@ -126,18 +131,24 @@ struct ConversationTimeline: View {
                 .padding(.vertical, TaisaSpacing.standard.rawValue)
             }
             .scrollBounceBehavior(.always, axes: .vertical)
-            .defaultScrollAnchor(.bottom)
+            .defaultScrollAnchor(.bottom, for: .initialOffset)
             .contentMargins(
                 .top,
                 TaisaControlMetric.appBarHeight + TaisaSpacing.standard.rawValue,
                 for: .scrollContent
             )
             .onScrollGeometryChange(for: Bool.self) { geometry in
-                geometry.contentOffset.y + geometry.containerSize.height < geometry.contentSize.height - 48
+                let distanceFromBottom = geometry.contentSize.height
+                    - geometry.containerSize.height
+                    - geometry.contentOffset.y
+                return ConversationTimelineLayout.shouldShowJumpToLatest(
+                    distanceFromBottom: distanceFromBottom
+                )
             } action: { _, away in isAwayFromLatest = away }
             .overlay(alignment: .bottom) {
                 if isAwayFromLatest, !messages.isEmpty {
                     TaisaSecondaryCapsuleButton(action: {
+                        isAwayFromLatest = false
                         scrollToLatest(using: proxy, animated: !reduceMotion)
                     }) {
                         HStack(spacing: TaisaSpacing.compact.rawValue) {
@@ -210,7 +221,7 @@ private struct ExpandableUserMessage: View {
     private var isTruncated: Bool { fullHeight > limitedHeight + 1 }
 
     var body: some View {
-        VStack(alignment: .trailing, spacing: TaisaSpacing.compact.rawValue) {
+        VStack(alignment: .leading, spacing: TaisaSpacing.compact.rawValue) {
             Text(message.body)
                 .lineLimit(isExpanded ? nil : ConversationTimeline.userPreviewLineLimit)
                 .background { measuredFullText }

@@ -20,7 +20,12 @@ struct TranscriptCorrectionView: View {
                         .font(TaisaTypography.metadata.font)
                         .foregroundStyle(TaisaColor.mutedForeground.color)
                         .padding(.horizontal, TaisaSpacing.compact.rawValue)
-                    TaisaButton(role: .primary, label: "Update and regenerate", action: submit)
+                    TaisaButton(
+                        role: .primary,
+                        shape: .capsule,
+                        label: "Update and regenerate",
+                        action: submit
+                    )
                         .disabled(!canSubmit || isSubmitting)
                         .padding(.top, TaisaSpacing.standard.rawValue)
                 }

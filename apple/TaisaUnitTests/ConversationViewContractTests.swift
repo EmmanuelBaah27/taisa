@@ -94,16 +94,30 @@ final class ConversationViewContractTests: XCTestCase {
         XCTAssertTrue(source.contains("ConversationTimelineLayout.jumpIconSize"))
         XCTAssertTrue(source.contains("withAnimation"))
         XCTAssertTrue(source.contains("scrollBounceBehavior(.always, axes: .vertical)"))
-        XCTAssertTrue(source.contains("defaultScrollAnchor(.bottom)"))
+        XCTAssertTrue(source.contains("defaultScrollAnchor(.bottom, for: .initialOffset)"))
+        XCTAssertFalse(source.contains("defaultScrollAnchor(.bottom)\n"))
+        XCTAssertTrue(source.contains("jumpVisibilityThreshold"))
+        XCTAssertTrue(source.contains("isAwayFromLatest = false"))
+        XCTAssertTrue(source.contains("LazyVStack(alignment: .leading, spacing: TaisaSpacing.control.rawValue)"))
+        XCTAssertTrue(source.contains("VStack(alignment: .leading, spacing: TaisaSpacing.compact.rawValue)"))
+        XCTAssertFalse(source.contains("safeAreaInset(edge: .bottom)"))
+        XCTAssertTrue(source.contains("VStack(spacing: 0)"))
         XCTAssertTrue(source.contains(".smooth(duration: TaisaMotion.settle)"))
         XCTAssertTrue(source.contains("Edit message"))
         XCTAssertTrue(source.contains("UIApplication.openSettingsURLString"))
+        XCTAssertTrue(source.contains("UIApplication.shared.open(settingsURL"))
         XCTAssertFalse(source.contains("Correct transcript"))
         XCTAssertFalse(source.contains("Text(message.role == \"assistant\" ? \"Taisa\" : \"You\")"))
         XCTAssertFalse(source.contains("Text(\"You\")"))
         XCTAssertFalse(source.contains("conversation.transcript-preview"))
         XCTAssertFalse(source.contains("containerRelativeFrame(.horizontal"))
         XCTAssertFalse(source.contains("import GRDB"))
+    }
+
+    func testJumpToLatestAppearsOnlyAfterAUsefulDistance() {
+        XCTAssertFalse(ConversationTimelineLayout.shouldShowJumpToLatest(distanceFromBottom: 0))
+        XCTAssertFalse(ConversationTimelineLayout.shouldShowJumpToLatest(distanceFromBottom: 159))
+        XCTAssertTrue(ConversationTimelineLayout.shouldShowJumpToLatest(distanceFromBottom: 160))
     }
 
     func testUserBubbleWidthIsIntrinsicUntilItReachesTheEightyFivePercentCap() {
