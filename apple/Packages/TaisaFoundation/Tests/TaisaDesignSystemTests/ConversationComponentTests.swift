@@ -18,6 +18,7 @@ struct ConversationComponentTests {
         #expect(TaisaMaterial.composer.reducedTransparencyFallback == .raisedSurface)
         #expect(TaisaSpacing.control.rawValue == 12)
         #expect(TaisaMotion.fast == 0.18)
+        #expect(TaisaMotion.settle == 0.50)
         #expect(TaisaControlMetric.primaryNavigationItemWidth == 56)
         #expect(TaisaControlMetric.primaryNavigationItemHeight == 48)
         #expect(TaisaControlMetric.standardIcon == 24)
@@ -41,6 +42,7 @@ struct ConversationComponentTests {
         #expect(VoiceComposerControls.Contract.paused.resumeLabel == "Resume recording")
         #expect(ConversationFailureActions.Contract.retryable.retryLabel == "Retry request")
         #expect(TextComposer.Contract.empty.voiceLabel == "Reply by voice, starts recording")
+        #expect(InlineRecoveryAlert.Contract.microphonePermission.cancelLabel == "Use keyboard")
     }
 
     @Test func primaryNavigationMotionFallsBackToAnInstantAccessibleTransition() {
@@ -65,6 +67,7 @@ struct ConversationComponentTests {
         #expect(ConversationPageHeader.Contract.usesSharedHeaderFade)
         #expect(ConversationPageHeader.Contract.dismissPlacement == .leading)
         #expect(ConversationActionBar.Availability.recording.canDiscard)
+        #expect(ConversationActionBar.Availability.preparing.canSwitchToKeyboard)
         #expect(ConversationActionBar.Availability.recording.canSwitchToKeyboard)
         #expect(ConversationActionBar.Availability.shortCapture.canSend == false)
         #expect(ConversationActionBar.Availability.sendable.canSend)

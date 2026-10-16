@@ -362,7 +362,11 @@ struct ConversationRuntimeFactory: Sendable {
                 try await coordinator.correctTranscript(messageID: messageID, text: text)
             },
             loadCaptureSnapshot: { await voiceCoordinator.snapshot().capture },
-            loadPartialCoaching: { await voiceCoordinator.snapshot().partialCoaching },
+            loadPartialCoaching: {
+                let voicePartial = await voiceCoordinator.snapshot().partialCoaching
+                if !voicePartial.isEmpty { return voicePartial }
+                return await gatewayClient.partialCoachingSnapshot()
+            },
             recoveryEvents: {
                 AsyncStream { continuation in
                     let task = Task {
