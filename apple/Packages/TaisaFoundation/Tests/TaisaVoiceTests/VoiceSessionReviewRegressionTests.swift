@@ -592,7 +592,7 @@ private func reviewTurn(
 
 private func reviewResponse() throws -> CoachingResponse {
     try JSONDecoder().decode(CoachingResponse.self, from: Data("""
-    {"requestId":"44444444-4444-4444-8444-444444444444","reply":"What changed?","mode":"coach","relevance":"career-relevant","contextSufficiency":"sufficient","stance":"nudge","proposals":[],"usage":{"provider":"anthropic","model":"fixture","estimatedCostUsd":0}}
+    {"requestId":"44444444-4444-4444-8444-444444444444","reply":"What changed?","mode":"coach","relevance":"career-relevant","contextSufficiency":"sufficient","stance":"nudge","explanation":{"mode":"nudge","evidence":[],"inference":"A change may need reflection.","confidence":"medium","approach":"Ask one bounded question."},"proposal":null,"usage":{"provider":"anthropic","model":"fixture","estimatedCostUsd":0}}
     """.utf8))
 }
 
