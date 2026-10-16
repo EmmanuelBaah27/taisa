@@ -7,6 +7,24 @@ import TaisaVoice
 
 @MainActor
 final class ConversationViewModelTests: XCTestCase {
+    func testStartRefreshesPersistedConversationTitle() async {
+        let client = ConversationScreenClient(
+            loadTitle: { "Persisted conversation title" },
+            beginVoice: {}, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
+            sendText: { _ in }, retry: {}, saveDraft: { _ in }, discardDraft: {}
+        )
+        let model = ConversationViewModel(
+            conversationID: UUID().uuidString,
+            title: "Stale route title",
+            entryIntent: nil,
+            client: client
+        )
+
+        await model.start()
+
+        XCTAssertEqual(model.title, "Persisted conversation title")
+    }
+
     func testTimelineMotionDisablesNewMessageAnimationWhenReduceMotionIsEnabled() {
         XCTAssertFalse(ConversationTimelineMotion.animatesNewMessage(reduceMotion: true))
         XCTAssertTrue(ConversationTimelineMotion.animatesNewMessage(reduceMotion: false))

@@ -6,25 +6,31 @@ import UIKit
 
 struct ConversationView: View {
     @State var model: ConversationViewModel
-    @Environment(\.openURL) private var openURL
 
     var body: some View {
         NavigationStack {
             ZStack(alignment: .top) {
-                ZStack {
-                    ConversationTimeline(
-                        messages: model.messages,
-                        updatingResponseAfter: model.correctionRegenerationMessageID,
-                        streamingResponse: model.partialCoaching,
-                        correct: model.requestCorrection
-                    )
-                    if model.messages.isEmpty { emptyState }
+                VStack(spacing: 0) {
+                    ZStack {
+                        ConversationTimeline(
+                            messages: model.messages,
+                            updatingResponseAfter: model.correctionRegenerationMessageID,
+                            streamingResponse: model.partialCoaching,
+                            correct: model.requestCorrection
+                        )
+                        if model.messages.isEmpty { emptyState }
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                    composer
+                        .fixedSize(horizontal: false, vertical: true)
+                        .zIndex(2)
                 }
                 ConversationPageHeader(title: model.title, onDismiss: model.requestClose)
                     .accessibilityIdentifier("conversation.close")
+                    .zIndex(3)
             }
             .toolbar(.hidden, for: .navigationBar)
-            .safeAreaInset(edge: .bottom) { composer }
         }
         .accessibilityIdentifier("conversation.root")
         .interactiveDismissDisabled(true)
@@ -216,7 +222,7 @@ struct ConversationView: View {
     private func performRecoveryPrimaryAction() {
         if model.failureContext == .microphonePermissionDenied,
            let settingsURL = URL(string: UIApplication.openSettingsURLString) {
-            openURL(settingsURL)
+            UIApplication.shared.open(settingsURL, options: [:])
         } else {
             Task { await model.retry() }
         }

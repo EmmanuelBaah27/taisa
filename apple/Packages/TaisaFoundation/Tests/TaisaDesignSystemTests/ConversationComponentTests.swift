@@ -77,6 +77,7 @@ struct ConversationComponentTests {
         #expect(ConversationActionBar.Availability.saved.canSwitchToKeyboard == false)
         #expect(ConversationActionBar.Availability.saved.canResume == false)
         #expect(ConversationActionBar.Availability.waitingForReply.canDiscard == false)
+        #expect(TaisaButtonShape.roundedRectangle != .capsule)
     }
 
     @MainActor @Test func conversationActivityAndRecoveryRemainAccessible() {

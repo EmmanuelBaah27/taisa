@@ -209,6 +209,7 @@ final class ConversationViewModel {
         }
         do {
             messages = try await client.loadMessages()
+            if let loadedTitle = try? await client.loadTitle() { title = loadedTitle }
             capture = await client.loadCaptureSnapshot()
             switch entryIntent {
             case .voice: try await beginVoice()
