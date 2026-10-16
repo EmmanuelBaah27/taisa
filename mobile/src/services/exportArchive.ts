@@ -547,6 +547,21 @@ async function readAttachedArchiveManifest(
   return parseArchiveManifestForValidation(manifestRow);
 }
 
+async function readSupportedAttachedSchemaVersion(
+  database: ArchiveSqlDatabase,
+  schema: 'passphrase_export' | 'source_archive' | 'device_candidate',
+): Promise<number> {
+  const row = await database.getFirstAsync<{ user_version: number }>(
+    `PRAGMA ${schema}.user_version`,
+  );
+  if (!Number.isSafeInteger(row?.user_version)
+    || row!.user_version < 1
+    || row!.user_version > SCHEMA_VERSION) {
+    throw new ArchiveOperationError('UNSUPPORTED_ARCHIVE_VERSION');
+  }
+  return row!.user_version;
+}
+
 async function requireSqlCipher(database: ArchiveSqlDatabase): Promise<void> {
   const row = await database.getFirstAsync<{ cipher_version: string }>('PRAGMA cipher_version');
   if (typeof row?.cipher_version !== 'string' || row.cipher_version.trim().length === 0) {
@@ -814,8 +829,15 @@ export function createSqlCipherArchiveBoundary(
           await database.execAsync('PRAGMA trusted_schema = OFF');
           await attachWithPassphrase(database, sourceUri, 'source_archive', passphrase);
           attached = true;
+          const sourceSchemaVersion = await readSupportedAttachedSchemaVersion(
+            database,
+            'source_archive',
+          );
+          await requireOrdinaryArchiveTables(database, sourceSchemaVersion);
           const sourceManifest = await readAttachedArchiveManifest(database, 'source_archive');
-          await requireOrdinaryArchiveTables(database, sourceManifest.schemaVersion);
+          if (sourceManifest.schemaVersion !== sourceSchemaVersion) {
+            throw new Error('Archive manifest schema version does not match the database');
+          }
           // This is deliberately only a non-executing preliminary inspection. SQLite integrity
           // checks may invoke virtual-table xIntegrity implementations, so content/hash/integrity
           // verification waits until candidate creation has proven exact schema identity against
@@ -835,11 +857,15 @@ export function createSqlCipherArchiveBoundary(
           await database.execAsync('PRAGMA trusted_schema = OFF');
           await attachWithPassphrase(database, sourceUri, 'source_archive', passphrase);
           sourceAttached = true;
+          const sourceSchemaVersion = await readSupportedAttachedSchemaVersion(
+            database,
+            'source_archive',
+          );
+          await requireOrdinaryArchiveTables(database, sourceSchemaVersion);
           const sourceManifest = await readAttachedArchiveManifest(database, 'source_archive');
-          if (sourceManifest.schemaVersion < 1 || sourceManifest.schemaVersion > SCHEMA_VERSION) {
-            throw new Error('Archive schema version is unsupported');
+          if (sourceManifest.schemaVersion !== sourceSchemaVersion) {
+            throw new Error('Archive manifest schema version does not match the database');
           }
-          await requireOrdinaryArchiveTables(database, sourceManifest.schemaVersion);
           const deviceKey = (await dependencies.readDeviceKey()).toLowerCase();
           if (!DEVICE_KEY_PATTERN.test(deviceKey)) throw new Error('Device key is unavailable');
           // The device key is used only to initialize a fresh trusted current-schema database.
