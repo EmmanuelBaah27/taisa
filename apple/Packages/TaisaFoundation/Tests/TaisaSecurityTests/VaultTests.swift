@@ -90,6 +90,26 @@ import Testing
         }
     }
 
+    @Test func seniorSelfSyncEntitiesAreAllowedButLocalOnlyFeedbackIsRejected() throws {
+        let vault = try Vault.generate()
+        for entityType in ["assistant_response_metadata", "assistant_response_source", "assistant_proposal"] {
+            let metadata = EnvelopeMetadata(
+                vaultID: vault.id, recordID: UUID(), entityType: entityType,
+                schemaVersion: 1, tombstone: false
+            )
+            #expect(throws: Never.self) { try vault.seal(Data("private".utf8), metadata: metadata) }
+        }
+        for entityType in ["response_feedback", "preference_profile", "unknown"] {
+            let metadata = EnvelopeMetadata(
+                vaultID: vault.id, recordID: UUID(), entityType: entityType,
+                schemaVersion: 1, tombstone: false
+            )
+            #expect(throws: VaultError.malformedEnvelope) {
+                try vault.seal(Data("private".utf8), metadata: metadata)
+            }
+        }
+    }
+
     @Test func wrappingAndRotationKeepVaultIdentityAndRejectOldKey() throws {
         let vault = try Vault.generate()
         let metadata = EnvelopeMetadata(vaultID: vault.id, recordID: UUID(), entityType: "message", schemaVersion: 1, tombstone: false)
