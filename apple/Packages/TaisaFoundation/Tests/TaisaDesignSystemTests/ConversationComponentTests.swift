@@ -63,6 +63,7 @@ struct ConversationComponentTests {
         #expect(TaisaControlMetric.conversationTitleWidth == 220)
         #expect(TaisaControlMetric.conversationRecordingControl == 56)
         #expect(ConversationPageHeader.Contract.usesSharedHeaderFade)
+        #expect(ConversationPageHeader.Contract.dismissPlacement == .leading)
         #expect(ConversationActionBar.Availability.recording.canDiscard)
         #expect(ConversationActionBar.Availability.recording.canSwitchToKeyboard)
         #expect(ConversationActionBar.Availability.shortCapture.canSend == false)
@@ -81,6 +82,8 @@ struct ConversationComponentTests {
         #expect(InlineRecoveryAlert.Contract.transcription.retryLabel == "Try again")
         #expect(InlineRecoveryAlert.Contract.transcription.cancelLabel == "Cancel")
         #expect(InlineRecoveryAlert.Contract.request.message == "Nothing has been discarded. Try again when you’re ready.")
+        #expect(InlineRecoveryAlert.Contract.beginRecording.title == "Taisa couldn’t start recording")
+        #expect(InlineRecoveryAlert.Contract.beginRecording.message == "Check microphone access, then try again.")
         #expect(TextComposer.Contract.empty.placeholder == "Reply")
         #expect(TextComposer.Mode.processing.acceptsInput == false)
     }

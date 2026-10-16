@@ -1,7 +1,11 @@
 import SwiftUI
 
 public struct ConversationPageHeader: View {
-    public enum Contract { public static let usesSharedHeaderFade = true }
+    public enum DismissPlacement: Sendable { case leading, trailing }
+    public enum Contract {
+        public static let usesSharedHeaderFade = true
+        public static let dismissPlacement = DismissPlacement.leading
+    }
     private let title: String
     private let onDismiss: @MainActor () -> Void
 
@@ -17,8 +21,8 @@ public struct ConversationPageHeader: View {
                 .truncationMode(.tail)
                 .frame(width: TaisaControlMetric.conversationTitleWidth, alignment: .center)
             HStack {
-                Spacer()
                 TaisaSecondaryIconButton(icon: .chevronDown, accessibilityLabel: "Close conversation", action: onDismiss)
+                Spacer()
             }
         }
         .padding(.horizontal, TaisaSpacing.standard.rawValue)

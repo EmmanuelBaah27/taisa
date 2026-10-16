@@ -74,6 +74,24 @@ final class ConversationViewModelTests: XCTestCase {
         XCTAssertEqual(beginCount, 1)
     }
 
+    func testInitialVoiceFailureKeepsStartRecordingRecoveryContext() async {
+        struct StartFailure: Error {}
+        let client = ConversationScreenClient(
+            beginVoice: { throw StartFailure() }, pauseVoice: {}, resumeVoice: {},
+            sendVoice: { _ in }, sendText: { _ in }, retry: {},
+            saveDraft: { _ in }, discardDraft: {}
+        )
+        let model = ConversationViewModel(
+            conversationID: UUID().uuidString, title: "New conversation",
+            entryIntent: .voice, client: client
+        )
+
+        await model.start()
+
+        XCTAssertEqual(model.composer, .failure(.unavailable))
+        XCTAssertEqual(model.failureContext, .beginRecording)
+    }
+
     func testVoiceCompletionReloadsMessagesAndWaitsForReply() async {
         let client = ConversationScreenClientSpy()
         let model = ConversationViewModel(

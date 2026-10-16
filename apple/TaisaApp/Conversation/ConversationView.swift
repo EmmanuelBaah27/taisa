@@ -126,11 +126,20 @@ struct ConversationView: View {
                 .accessibilityIdentifier("conversation.text-composer")
         case .failure:
             InlineRecoveryAlert(
-                contract: .request,
+                contract: recoveryContract,
                 onCancel: model.cancelRecoveryAndClose,
                 onRetry: { Task { await model.retry() } }
             )
             .accessibilityIdentifier("conversation.retry")
+        }
+    }
+
+    private var recoveryContract: InlineRecoveryAlert.Contract {
+        switch model.failureContext {
+        case .request: .request
+        case .beginRecording: .beginRecording
+        case .pauseRecording: .pauseRecording
+        case .resumeRecording: .resumeRecording
         }
     }
 

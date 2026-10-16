@@ -151,6 +151,11 @@ struct ConversationsView: View {
                 TaisaControlMetric.appBarHeight + TaisaSpacing.standard.rawValue,
                 for: .scrollContent
             )
+            .contentMargins(
+                .bottom,
+                TaisaControlMetric.primaryNavigationReservedHeight,
+                for: .scrollContent
+            )
             .listSectionSpacing(TaisaSpacing.section.rawValue)
             .environment(\.defaultMinListRowHeight, 0)
             .padding(.horizontal, TaisaSpacing.standard.rawValue)
