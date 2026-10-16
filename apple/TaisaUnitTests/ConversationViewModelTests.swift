@@ -109,6 +109,25 @@ final class ConversationViewModelTests: XCTestCase {
         XCTAssertEqual(model.failureContext, .microphonePermissionDenied)
     }
 
+    func testDeniedMicrophoneCanContinueInKeyboardMode() async {
+        let client = ConversationScreenClient(
+            beginVoice: { throw AudioCaptureError.permissionDenied },
+            pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
+            sendText: { _ in }, retry: {}, saveDraft: { _ in }, discardDraft: {}
+        )
+        let model = ConversationViewModel(
+            conversationID: UUID().uuidString,
+            title: "New conversation",
+            entryIntent: nil,
+            client: client
+        )
+        try? await model.beginVoice()
+
+        model.continueWithKeyboardAfterPermissionDenial()
+
+        XCTAssertEqual(model.composer, .typing(""))
+    }
+
     func testVoiceCompletionReloadsMessagesAndWaitsForReply() async {
         let client = ConversationScreenClientSpy()
         let model = ConversationViewModel(

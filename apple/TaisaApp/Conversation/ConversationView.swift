@@ -15,6 +15,7 @@ struct ConversationView: View {
                     ConversationTimeline(
                         messages: model.messages,
                         updatingResponseAfter: model.correctionRegenerationMessageID,
+                        streamingResponse: model.partialCoaching,
                         correct: model.requestCorrection
                     )
                     if model.messages.isEmpty { emptyState }
@@ -36,6 +37,8 @@ struct ConversationView: View {
                 TranscriptCorrectionView(
                     text: $model.correctionText,
                     canSubmit: model.canSubmitCorrection,
+                    isDirty: model.isCorrectionDirty,
+                    isSubmitting: model.isCorrectionSubmitting,
                     cancel: model.cancelCorrection,
                     submit: { Task { await model.submitCorrection() } }
                 )
@@ -89,24 +92,8 @@ struct ConversationView: View {
             ConversationProgressState(label: "Transcribing…")
         case .coaching:
             VStack(alignment: .leading, spacing: 12) {
-                if let transcript = model.latestUserTranscript {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("You")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        Text(transcript)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .textSelection(.enabled)
-                    }
-                    .accessibilityElement(children: .combine)
-                    .accessibilityIdentifier("conversation.transcript-preview")
-                }
                 if model.partialCoaching.isEmpty {
                     ConversationProgressState(label: "Preparing coaching…")
-                } else if let markdown = try? AttributedString(markdown: model.partialCoaching) {
-                    Text(markdown)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .accessibilityIdentifier("conversation.streaming-response")
                 }
                 bottomChrome {
                     TextComposer(
@@ -129,7 +116,7 @@ struct ConversationView: View {
             bottomChrome {
                 InlineRecoveryAlert(
                     contract: recoveryContract,
-                    onCancel: model.cancelRecoveryAndClose,
+                    onCancel: performRecoverySecondaryAction,
                     onRetry: performRecoveryPrimaryAction
                 )
                 .accessibilityIdentifier("conversation.retry")
@@ -232,6 +219,14 @@ struct ConversationView: View {
             openURL(settingsURL)
         } else {
             Task { await model.retry() }
+        }
+    }
+
+    private func performRecoverySecondaryAction() {
+        if model.failureContext == .microphonePermissionDenied {
+            model.continueWithKeyboardAfterPermissionDenial()
+        } else {
+            model.cancelRecoveryAndClose()
         }
     }
 }

@@ -4,8 +4,11 @@ import TaisaDesignSystem
 struct TranscriptCorrectionView: View {
     @Binding var text: String
     let canSubmit: Bool
+    let isDirty: Bool
+    let isSubmitting: Bool
     let cancel: @MainActor @Sendable () -> Void
     let submit: @MainActor @Sendable () -> Void
+    @State private var confirmsDiscard = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -18,7 +21,7 @@ struct TranscriptCorrectionView: View {
                         .foregroundStyle(TaisaColor.mutedForeground.color)
                         .padding(.horizontal, TaisaSpacing.compact.rawValue)
                     TaisaButton(role: .primary, label: "Update and regenerate", action: submit)
-                        .disabled(!canSubmit)
+                        .disabled(!canSubmit || isSubmitting)
                         .padding(.top, TaisaSpacing.standard.rawValue)
                 }
                 .padding(.horizontal, TaisaSpacing.standard.rawValue)
@@ -27,17 +30,23 @@ struct TranscriptCorrectionView: View {
         }
         .background(TaisaColor.background.color.ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
+        .interactiveDismissDisabled(isDirty || isSubmitting)
+        .confirmationDialog("Discard changes?", isPresented: $confirmsDiscard) {
+            Button("Discard changes", role: .destructive, action: cancel)
+            Button("Keep editing", role: .cancel) {}
+        }
     }
 
     private var editHeader: some View {
         ZStack {
             Text("Edit message").font(TaisaTypography.navigationLabel.font)
             HStack {
-                TaisaSecondaryCapsuleButton(action: cancel) {
+                TaisaSecondaryCapsuleButton(action: requestCancel) {
                     Text("Cancel")
                         .font(TaisaTypography.navigationLabel.font)
                         .padding(.horizontal, TaisaSpacing.standard.rawValue)
                 }
+                .disabled(isSubmitting)
                 Spacer()
             }
         }
@@ -47,6 +56,7 @@ struct TranscriptCorrectionView: View {
 
     @ViewBuilder private var liquidEditor: some View {
         let editor = TextEditor(text: $text)
+            .disabled(isSubmitting)
             .scrollContentBackground(.hidden)
             .padding(TaisaSpacing.control.rawValue)
             .frame(minHeight: 120)
@@ -61,5 +71,10 @@ struct TranscriptCorrectionView: View {
                         .stroke(TaisaColor.border.color)
                 }
         }
+    }
+
+    private func requestCancel() {
+        guard !isSubmitting else { return }
+        if isDirty { confirmsDiscard = true } else { cancel() }
     }
 }

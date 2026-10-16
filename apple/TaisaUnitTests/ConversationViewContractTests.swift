@@ -1,5 +1,6 @@
 import Foundation
 import XCTest
+@testable import Taisa
 
 final class ConversationViewContractTests: XCTestCase {
     func testConversationOpenFailureReportsAContentFreeStage() throws {
@@ -73,7 +74,7 @@ final class ConversationViewContractTests: XCTestCase {
             "conversation.root", "conversation.close", "conversation.timeline",
             "conversation.voice-composer", "conversation.text-composer",
             "conversation.save-draft", "conversation.discard", "conversation.retry",
-            "conversation.correct-transcript", "conversation.transcript-preview",
+            "conversation.correct-transcript",
             "conversation.unavailable.close"
         ] {
             XCTAssertTrue(source.contains(identifier), "Missing \(identifier)")
@@ -89,15 +90,38 @@ final class ConversationViewContractTests: XCTestCase {
         XCTAssertTrue(source.contains("userPreviewLineLimit = 6"))
         XCTAssertTrue(source.contains("Updating response…"))
         XCTAssertTrue(source.contains("Jump to latest"))
-        XCTAssertTrue(source.contains("ConversationTimelineLayout.userBubbleWidthFraction"))
+        XCTAssertEqual(ConversationTimelineLayout.userBubbleWidthFraction, 0.85)
         XCTAssertTrue(source.contains("ConversationTimelineLayout.jumpIconSize"))
         XCTAssertTrue(source.contains("withAnimation"))
-        XCTAssertTrue(source.contains("decelerationRate = .normal"))
-        XCTAssertTrue(source.contains("alwaysBounceVertical = true"))
+        XCTAssertTrue(source.contains("scrollBounceBehavior(.always, axes: .vertical)"))
+        XCTAssertTrue(source.contains("defaultScrollAnchor(.bottom)"))
+        XCTAssertTrue(source.contains(".smooth(duration: TaisaMotion.settle)"))
         XCTAssertTrue(source.contains("Edit message"))
         XCTAssertTrue(source.contains("UIApplication.openSettingsURLString"))
         XCTAssertFalse(source.contains("Correct transcript"))
         XCTAssertFalse(source.contains("Text(message.role == \"assistant\" ? \"Taisa\" : \"You\")"))
+        XCTAssertFalse(source.contains("Text(\"You\")"))
+        XCTAssertFalse(source.contains("conversation.transcript-preview"))
+        XCTAssertFalse(source.contains("containerRelativeFrame(.horizontal"))
         XCTAssertFalse(source.contains("import GRDB"))
+    }
+
+    func testUserBubbleWidthIsIntrinsicUntilItReachesTheEightyFivePercentCap() {
+        XCTAssertEqual(
+            ConversationTimelineLayout.userBubbleWidth(
+                intrinsicWidth: 120,
+                containerWidth: 400,
+                trailingInset: 16
+            ),
+            120
+        )
+        XCTAssertEqual(
+            ConversationTimelineLayout.userBubbleWidth(
+                intrinsicWidth: 500,
+                containerWidth: 400,
+                trailingInset: 16
+            ),
+            324
+        )
     }
 }

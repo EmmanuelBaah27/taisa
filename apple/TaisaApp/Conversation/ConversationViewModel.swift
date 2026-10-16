@@ -125,7 +125,15 @@ final class ConversationViewModel {
     @ObservationIgnored private let dismiss: @MainActor () -> Void
     @ObservationIgnored private var started = false
     @ObservationIgnored private var actionInFlight = false
+    @ObservationIgnored private var voicePreparationExit: VoicePreparationExit?
     @ObservationIgnored private var recoveryObservation: Task<Void, Never>?
+
+    private enum VoicePreparationExit { case discard, keyboard }
+
+    var isCorrectionSubmitting: Bool { actionInFlight && correctionMessageID != nil }
+    var isCorrectionDirty: Bool {
+        correctionMessageID != nil && correctionText != correctionOriginalText
+    }
 
     deinit { recoveryObservation?.cancel() }
 
@@ -215,16 +223,33 @@ final class ConversationViewModel {
     func beginVoice() async throws {
         guard !actionInFlight else { return }
         actionInFlight = true
-        defer { actionInFlight = false }
         composer = .preparingVoice
-        do { try await client.beginVoice(); composer = .recording; await refreshCapture() }
+        do {
+            try await client.beginVoice()
+            actionInFlight = false
+            if await completeVoicePreparationExitIfNeeded() { return }
+            composer = .recording
+            await refreshCapture()
+        }
         catch {
+            actionInFlight = false
+            if await completeVoicePreparationExitIfNeeded() { return }
             failureContext = error as? AudioCaptureError == .permissionDenied
                 ? .microphonePermissionDenied
                 : .beginRecording
             composer = .failure(.unavailable)
             throw error
         }
+    }
+
+    private func completeVoicePreparationExitIfNeeded() async -> Bool {
+        guard let exit = voicePreparationExit else { return false }
+        voicePreparationExit = nil
+        switch exit {
+        case .discard: await discardRecordingAndRemainOrDismiss()
+        case .keyboard: await discardVoiceAndType()
+        }
+        return true
     }
 
     func pause() async { await perform(next: .paused, recovery: .pauseRecording) { try await client.pauseVoice() }; await refreshCapture() }
@@ -244,10 +269,16 @@ final class ConversationViewModel {
     }
 
     func refreshPartialCoaching() async {
-        partialCoaching = await client.loadPartialCoaching()
+        let latestPartial = await client.loadPartialCoaching()
+        guard !Task.isCancelled, composer == .coaching else { return }
+        partialCoaching = latestPartial
     }
 
     func requestDiscardRecording() {
+        if composer == .preparingVoice, actionInFlight {
+            voicePreparationExit = .discard
+            return
+        }
         if capture.disposition == .empty {
             Task { @MainActor in await discardRecordingAndRemainOrDismiss() }
         } else {
@@ -259,6 +290,7 @@ final class ConversationViewModel {
     func sendVoice() async {
         guard !actionInFlight else { return }
         actionInFlight = true
+        partialCoaching = ""
         composer = .transcribing
         do {
             try await client.sendVoice { [weak self] in
@@ -267,8 +299,10 @@ final class ConversationViewModel {
                 self.composer = .coaching
             }
             await reloadMessages()
+            partialCoaching = ""
             composer = .waitingForReply
         } catch {
+            partialCoaching = ""
             failureContext = .request
             composer = .failure(.retryable)
         }
@@ -280,9 +314,20 @@ final class ConversationViewModel {
         let value = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !value.isEmpty else { return }
         actionInFlight = true
+        partialCoaching = ""
         composer = .coaching
-        do { try await client.sendText(value); text = ""; composer = .waitingForReply; await reloadMessages() }
-        catch { failureContext = .request; composer = .failure(.retryable) }
+        do {
+            try await client.sendText(value)
+            text = ""
+            partialCoaching = ""
+            composer = .waitingForReply
+            await reloadMessages()
+        }
+        catch {
+            partialCoaching = ""
+            failureContext = .request
+            composer = .failure(.retryable)
+        }
         actionInFlight = false
     }
 
@@ -300,8 +345,10 @@ final class ConversationViewModel {
             await perform(next: .recording, recovery: .resumeRecording) { try await client.retryResumeVoice() }
             await refreshCapture()
         case .request:
+            partialCoaching = ""
             composer = .coaching
             await performSuccess { try await client.retry() }
+            partialCoaching = ""
             if composer == .waitingForReply, correctionRegenerationMessageID != nil {
                 correctionRegenerationMessageID = nil
                 submittedCorrectionText = nil
@@ -310,6 +357,10 @@ final class ConversationViewModel {
     }
 
     func requestKeyboard() {
+        if composer == .preparingVoice, actionInFlight {
+            voicePreparationExit = .keyboard
+            return
+        }
         switch composer {
         case .recording, .paused, .preparingVoice:
             if capture.disposition == .empty {
@@ -340,6 +391,10 @@ final class ConversationViewModel {
     }
 
     func requestClose() {
+        if composer == .preparingVoice, actionInFlight {
+            voicePreparationExit = .discard
+            return
+        }
         if capture.disposition == .empty {
             switch composer {
             case .preparingVoice, .recording, .paused:
@@ -397,6 +452,12 @@ final class ConversationViewModel {
     }
 
     func cancelRecoveryAndClose() { dismiss() }
+
+    func continueWithKeyboardAfterPermissionDenial() {
+        guard failureContext == .microphonePermissionDenied else { return }
+        text = ""
+        composer = .typing("")
+    }
 
     func cancelConfirmation() {
         if case .discardVoiceForKeyboard(let prior) = confirmation { composer = prior }
@@ -479,6 +540,7 @@ final class ConversationViewModel {
             submittedCorrectionText = correctedText
         }
         composer = .coaching
+        partialCoaching = ""
         do {
             if isRetryingPreservedRequest {
                 try await client.retry()
@@ -486,11 +548,13 @@ final class ConversationViewModel {
                 try await client.correctTranscript(messageID, correctedText)
             }
             await reloadMessages()
+            partialCoaching = ""
             correctionRegenerationMessageID = nil
             submittedCorrectionText = nil
             cancelCorrection()
             composer = .waitingForReply
         } catch {
+            partialCoaching = ""
             composer = .failure(.retryable)
         }
     }

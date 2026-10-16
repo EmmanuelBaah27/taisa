@@ -8,7 +8,7 @@ public struct ConversationActionBar: View {
         public let canSend: Bool
         public let canResume: Bool
         public let primaryLabel: String
-        public static let preparing = Self(canDiscard: true, canSwitchToKeyboard: false, canSend: false, canResume: false, primaryLabel: "Preparing")
+        public static let preparing = Self(canDiscard: true, canSwitchToKeyboard: true, canSend: false, canResume: false, primaryLabel: "Preparing")
         public static let recording = Self(canDiscard: true, canSwitchToKeyboard: true, canSend: false, canResume: true, primaryLabel: "Pause")
         public static let shortCapture = Self(canDiscard: true, canSwitchToKeyboard: true, canSend: false, canResume: true, primaryLabel: "Pause")
         public static let sendable = Self(canDiscard: true, canSwitchToKeyboard: true, canSend: true, canResume: true, primaryLabel: "Pause")

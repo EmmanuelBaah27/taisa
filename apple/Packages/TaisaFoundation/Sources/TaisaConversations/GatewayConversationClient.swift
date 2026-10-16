@@ -131,6 +131,7 @@ enum ConversationTitleDeriver {
 }
 
 public actor GatewayConversationClient: ConversationClient {
+    private var partialCoaching = ""
     private let query: ConversationQuery
     private let repository: ConversationRepository
     private let turns: ConversationTurnRepository
@@ -286,6 +287,8 @@ public actor GatewayConversationClient: ConversationClient {
         assistantMessageID: String?,
         failureCode: String?
     ) async throws -> CoachingResponse {
+        partialCoaching = ""
+        defer { partialCoaching = "" }
         let turnID = derivedUUID(from: requestID, salt: 1)
         let persisted = try await turns.turn(id: turnID)
         let durableCreatedAt = persisted?.createdAtMS ?? createdAtMS
@@ -305,7 +308,7 @@ public actor GatewayConversationClient: ConversationClient {
         var completion: CoachingResponse?
         for try await event in stream {
             switch event {
-            case .delta: continue
+            case .delta(_, _, let delta): partialCoaching += delta
             case .completed(_, _, let response, _): completion = response
             case .failed(_, _, _, let retryable):
                 throw retryable ? ConversationFailure.retryable : ConversationFailure.unavailable
@@ -314,6 +317,8 @@ public actor GatewayConversationClient: ConversationClient {
         guard let completion else { throw ConversationFailure.retryable }
         return completion
     }
+
+    public func partialCoachingSnapshot() -> String { partialCoaching }
 
     private func finishTurn(
         conversationID: String, requestID: String, text: String, createdAtMS: Int64,

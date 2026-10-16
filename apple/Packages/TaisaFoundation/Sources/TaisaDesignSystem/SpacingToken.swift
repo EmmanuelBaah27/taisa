@@ -13,6 +13,8 @@ public enum TaisaSpacing: CGFloat, CaseIterable, Sendable {
 public enum TaisaMotion {
     /// Repeated page and primary-navigation feedback should feel immediate.
     public static let fast: Double = 0.18
+    /// Longer on-screen movement should remain legible instead of snapping across distance.
+    public static let settle: Double = 0.50
 }
 
 public enum TaisaControlMetric {
