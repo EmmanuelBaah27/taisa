@@ -7,11 +7,16 @@ struct RecordingGlowTuningView: View {
     @State private var preset = RecordingGlowPreset.figmaDefault
     @State private var response = LoudnessEnvelopeConfiguration()
     @State private var loudness = 0.52
+    @State private var simulatedState = SimulatedGlowState.recording
     @State private var copied = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: TaisaSpacing.section.rawValue) {
-            RecordingReactiveGlow(loudness: loudness, state: .recording, preset: preset)
+            RecordingReactiveGlow(
+                loudness: loudness,
+                state: simulatedState.recordingGlowState,
+                preset: preset
+            )
                 .frame(maxWidth: .infinity)
                 .frame(height: 280)
                 .accessibilityElement(children: .ignore)
@@ -20,6 +25,12 @@ struct RecordingGlowTuningView: View {
 
             section("Input") {
                 slider("Simulated loudness", value: $loudness)
+                Picker("Simulated state", selection: $simulatedState) {
+                    ForEach(SimulatedGlowState.allCases) { state in
+                        Text(state.title).tag(state)
+                    }
+                }
+                .pickerStyle(.segmented)
                 slider("Input gain", value: $response.inputGain, range: 0...2)
                 slider("Response curve", value: $response.responseExponent, range: 0.2...2)
                 slider("Attack seconds", value: $response.attackSeconds, range: 0.02...0.6)
@@ -31,8 +42,6 @@ struct RecordingGlowTuningView: View {
                 slider("Center peak height", value: $preset.centerPeakHeight)
                 slider("Center width", value: $preset.centerWidth)
                 slider("Center bloom", value: $preset.centerBloom)
-                slider("Center strength", value: $preset.center.strength)
-                color("Dominant center purple color", value: $preset.center.color)
             }
 
             section("Supporting edges") {
@@ -40,10 +49,22 @@ struct RecordingGlowTuningView: View {
                 slider("Edge spread", value: $preset.edgeSpread)
                 slider("Edge softness", value: $preset.edgeSoftness)
                 slider("Edge balance", value: $preset.edgeBalance)
-                color("Left outer yellow color", value: $preset.leftOuter.color)
-                color("Left inner blue color", value: $preset.leftInner.color)
-                color("Right inner coral color", value: $preset.rightInner.color)
-                color("Right outer green color", value: $preset.rightOuter.color)
+            }
+
+            section("Palette · left outer yellow") {
+                region("Left outer yellow", value: $preset.leftOuter)
+            }
+            section("Palette · left inner blue") {
+                region("Left inner blue", value: $preset.leftInner)
+            }
+            section("Palette · dominant center purple") {
+                region("Dominant center purple", value: $preset.center)
+            }
+            section("Palette · right inner coral") {
+                region("Right inner coral", value: $preset.rightInner)
+            }
+            section("Palette · right outer green") {
+                region("Right outer green", value: $preset.rightOuter)
             }
 
             section("Grain and composition") {
@@ -99,6 +120,15 @@ struct RecordingGlowTuningView: View {
         }
     }
 
+    @ViewBuilder
+    private func region(_ title: String, value: Binding<RecordingGlowRegion>) -> some View {
+        color("\(title) color", value: value.color)
+        slider("\(title) saturation", value: value.saturation)
+        slider("\(title) brightness", value: value.brightness)
+        slider("\(title) opacity", value: value.opacity)
+        slider("\(title) strength", value: value.strength)
+    }
+
     private func colorBinding(_ value: Binding<RecordingGlowColor>) -> Binding<Color> {
         Binding(
             get: {
@@ -123,6 +153,7 @@ struct RecordingGlowTuningView: View {
         preset = .figmaDefault
         response = .init()
         loudness = 0.52
+        simulatedState = .recording
         copied = false
     }
 
@@ -134,6 +165,33 @@ struct RecordingGlowTuningView: View {
               let json = String(data: data, encoding: .utf8) else { return }
         UIPasteboard.general.string = json
         copied = true
+    }
+}
+
+private enum SimulatedGlowState: String, CaseIterable, Identifiable {
+    case recording
+    case paused
+    case reduceMotion
+    case reducedTransparency
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .recording: "Recording"
+        case .paused: "Paused"
+        case .reduceMotion: "Reduce motion"
+        case .reducedTransparency: "Less transparency"
+        }
+    }
+
+    var recordingGlowState: RecordingGlowState {
+        switch self {
+        case .recording: .recording
+        case .paused: .paused
+        case .reduceMotion: .reduceMotion
+        case .reducedTransparency: .reducedTransparency
+        }
     }
 }
 
