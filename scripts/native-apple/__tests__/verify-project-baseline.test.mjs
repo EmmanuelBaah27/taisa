@@ -32,3 +32,11 @@ test('Home owns one stable sheet route for planning and prior-week review', asyn
   assert.match(section, /openPlanning: \(WeeklyWorkItem\) -> Void/);
   assert.match(section, /openPriorWeekReview: \(Int\) -> Void/);
 });
+
+test('preview target compiles every shared conversation response source', async () => {
+  const project = await readFile('apple/project.yml', 'utf8');
+  const previewTarget = project.match(/  TaisaPreview:\n([\s\S]*?)(?=  TaisaPersonal:)/)?.[1];
+
+  assert.ok(previewTarget, 'TaisaPreview target is missing');
+  assert.match(previewTarget, /- path: TaisaApp\/Conversation\/AssistantResponseActions\.swift/);
+});
