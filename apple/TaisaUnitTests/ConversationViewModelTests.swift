@@ -219,6 +219,32 @@ final class ConversationViewModelTests: XCTestCase {
         XCTAssertEqual(model.failureContext, .request)
     }
 
+    func testTextResponseFailureReloadsTheSavedUserMessage() async {
+        struct ResponseFailure: Error {}
+        let savedMessage = message(role: "user", body: "My saved typed message")
+        let client = ConversationScreenClient(
+            loadMessages: { [savedMessage] },
+            beginVoice: {}, pauseVoice: {}, resumeVoice: {},
+            sendVoice: { _ in },
+            sendText: { _ in throw ResponseFailure() },
+            retry: {}, saveDraft: { _ in }, discardDraft: {}
+        )
+        let model = ConversationViewModel(
+            conversationID: savedMessage.conversationID,
+            title: "New conversation",
+            entryIntent: nil,
+            composer: .typing("My saved typed message"),
+            text: "My saved typed message",
+            client: client
+        )
+
+        await model.sendText()
+
+        XCTAssertEqual(model.failureContext, .request)
+        XCTAssertEqual(model.messages.map(\.body), ["My saved typed message"])
+        XCTAssertEqual(model.text, "")
+    }
+
     func testVoiceTranscriptAppearsBeforeCoachingCompletes() async {
         let transcriptShown = AsyncGate()
         let finishCoaching = AsyncGate()

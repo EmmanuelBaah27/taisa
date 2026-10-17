@@ -329,6 +329,8 @@ final class ConversationViewModel {
         }
         catch {
             partialCoaching = ""
+            await reloadMessages()
+            text = ""
             failureContext = .request
             composer = .failure(.retryable)
         }

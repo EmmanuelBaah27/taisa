@@ -15,11 +15,12 @@ The approved native conversation experience adds business-free SwiftUI surfaces 
 - `PrimaryNavigation` renders caller-owned destination identities without owning route state.
 - `VoiceComposerControls` preserves stable recording, paused, and Reply geometry.
 - `TextComposer` uses native multiline input and switches from voice to Send only when non-whitespace text exists.
-- `ConversationProgressState` and `ConversationFailureActions` expose progress, retry, save, and destructive discard semantics without owning workflow state.
+- `ConversationProgressState` and `ConversationFailureActions` expose progress, retry, save, and destructive discard semantics without owning workflow state. `InlineRecoveryAlert` keeps its two equal-width 48pt actions in one horizontal row with the shared 12pt control gap; copy scales within that stable geometry instead of reordering controls.
 - `CentralIcon` is the typed native gateway for Central Icons used by the product. Selected 24×24 vector paths are stored once in `TaisaDesignSystem`; feature views choose an enum case and set only the rendered frame, never duplicate paths or substitute SF Symbols.
 - `PageEdgeFade` supplies the semantic header-bottom and navigation-top fades. The navigation placement extends through the bottom safe area so the page does not end abruptly above the Home indicator.
 - `ConversationPageHeader` fixes its single-line title region at 220pt and truncates at the tail; its chevron dismisses the page and never doubles as an input-cancellation control.
 - `ConversationActionBar` owns the 56pt discard, keyboard, pause/resume, and Send surfaces for empty, short, sendable, paused, saved, and processing voice states. Destructive disposition remains product-owned.
+- `TextComposer` owns one trailing action slot: an empty field shows the secondary glass voice action, and non-whitespace text replaces it with the primary lime Send action. Its first line is vertically centred with the action while multiline text expands upward.
 - `ConversationActivityIndicator` follows the approved two-second recording cycle, freezes while paused or interrupted, and renders a static frame under Reduce Motion.
 - `InlineRecoveryAlert` presents content-free recovery context and explicit Cancel/Try again actions without owning retry policy.
 

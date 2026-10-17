@@ -87,6 +87,12 @@ struct ConversationComponentTests {
         #expect(TextComposer.Contract.usesLiquidEditorSurface)
         #expect(TextComposer.Contract.minimumHeight == 48)
         #expect(TextComposer.Contract.focusesOnEntry)
+        #expect(TextComposer.Contract.emptyActionHierarchy == .secondary)
+        #expect(TextComposer.Contract.filledActionHierarchy == .primary)
+        #expect(TextComposer.Contract.centersSingleLineTextWithAction)
+        #expect(InlineRecoveryAlert.Contract.usesStableHorizontalActions)
+        #expect(InlineRecoveryAlert.Contract.actionHeight == 48)
+        #expect(InlineRecoveryAlert.Contract.actionSpacing == 12)
     }
 
     @MainActor @Test func conversationActivityAndRecoveryRemainAccessible() {

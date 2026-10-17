@@ -3,6 +3,9 @@ import SwiftUI
 public struct InlineRecoveryAlert: View {
     public struct Contract: Sendable, Equatable {
         public let title: String; public let message: String; public let cancelLabel: String; public let retryLabel: String
+        public static let usesStableHorizontalActions = true
+        public static let actionHeight: CGFloat = 48
+        public static let actionSpacing: CGFloat = TaisaSpacing.control.rawValue
         public static let transcription = Contract(
             title: "Recording couldn’t be transcribed",
             message: "Your recording is saved.",
@@ -47,10 +50,7 @@ public struct InlineRecoveryAlert: View {
                 .frame(width: 24, height: 24)
             Text(contract.title).font(.system(.body, weight: .medium))
             Text(contract.message).font(.system(.subheadline)).foregroundStyle(TaisaColor.mutedForeground.color)
-            ViewThatFits(in: .horizontal) {
-                HStack { Spacer(); actions }
-                VStack(alignment: .trailing) { actions }
-            }
+            HStack(spacing: Contract.actionSpacing) { actions }
         }
         .padding(TaisaSpacing.standard.rawValue)
         .background(TaisaColor.background.color, in: RoundedRectangle(cornerRadius: TaisaRadius.panel.rawValue))
@@ -58,8 +58,19 @@ public struct InlineRecoveryAlert: View {
     }
     private var actions: some View {
         Group {
-            TaisaSecondaryCapsuleButton(action: onCancel) { Text(contract.cancelLabel).padding(.horizontal, TaisaSpacing.standard.rawValue) }
-            TaisaSecondaryCapsuleButton(action: onRetry) { Text(contract.retryLabel).padding(.horizontal, TaisaSpacing.standard.rawValue) }
+            recoveryButton(contract.cancelLabel, action: onCancel)
+            recoveryButton(contract.retryLabel, action: onRetry)
         }
+    }
+
+    private func recoveryButton(_ label: String, action: @escaping @MainActor () -> Void) -> some View {
+        TaisaSecondaryCapsuleButton(action: action) {
+            Text(label)
+                .font(TaisaTypography.navigationLabel.font)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+                .frame(maxWidth: .infinity, minHeight: Contract.actionHeight)
+        }
+        .frame(maxWidth: .infinity)
     }
 }
