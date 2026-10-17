@@ -145,6 +145,45 @@ test('invalid primary structured output falls back before visible text', async (
   expect(observer.beginAttempt.mock.calls).toEqual([['primary'], ['fallback']]);
 });
 
+test('wrapped transient primary failure uses the reserved fallback attempt', async () => {
+  const failedPrimary = {
+    id: 'openai' as const,
+    estimateMaximumUsage: () => ({ provider: 'openai' as const, model: 'fixture', estimatedCostUsd: 0.01 }),
+    respond: jest.fn(),
+    async *streamRespond() {
+      throw Object.assign(new Error('private outer detail'), {
+        cause: Object.assign(new Error('private provider detail'), { status: 503 }),
+      });
+    },
+  };
+  const successfulFallback = {
+    id: 'anthropic' as const,
+    estimateMaximumUsage: () => ({ provider: 'anthropic' as const, model: 'fixture', estimatedCostUsd: 0.01 }),
+    respond: jest.fn(),
+    async *streamRespond() {
+      yield { kind: 'completed' as const, result: { payload, usage: { provider: 'anthropic' as const, model: 'fixture', estimatedCostUsd: 0.01 } } };
+    },
+  };
+  const environment = {
+    TAISA_COACHING_PROVIDER: 'openai',
+    TAISA_OPENAI_MODEL: 'fixture', TAISA_OPENAI_INPUT_PRICE_USD_PER_MILLION_TOKENS: '1',
+    TAISA_OPENAI_OUTPUT_PRICE_USD_PER_MILLION_TOKENS: '1', TAISA_OPENAI_MAX_OUTPUT_TOKENS: '10',
+    TAISA_OPENAI_STRUCTURED_OUTPUT_INPUT_TOKEN_OVERHEAD: '1',
+    TAISA_ANTHROPIC_MODEL: 'fixture', TAISA_ANTHROPIC_INPUT_PRICE_USD_PER_MILLION_TOKENS: '1',
+    TAISA_ANTHROPIC_OUTPUT_PRICE_USD_PER_MILLION_TOKENS: '1', TAISA_ANTHROPIC_MAX_OUTPUT_TOKENS: '10',
+    TAISA_ANTHROPIC_STRUCTURED_OUTPUT_INPUT_TOKEN_OVERHEAD: '1',
+  };
+  const provider = getConfiguredFallbackProvider(environment, {
+    openai: failedPrimary, anthropic: successfulFallback,
+  });
+  const observer = { beginAttempt: jest.fn(), settleAttempt: jest.fn() };
+
+  await expect(collect(provider.stream(input, observer))).resolves.toMatchObject([
+    { kind: 'completed', result: { payload } },
+  ]);
+  expect(observer.beginAttempt.mock.calls).toEqual([['primary'], ['fallback']]);
+});
+
 test('OpenAI length exhaustion falls back before visible text without leaking SDK details', async () => {
   const stream = {
     async *[Symbol.asyncIterator]() {
