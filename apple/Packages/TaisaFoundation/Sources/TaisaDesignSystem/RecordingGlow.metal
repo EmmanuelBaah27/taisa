@@ -25,6 +25,10 @@ static float glowLobe(float2 point, float centerX, float width, float height, fl
     return exp(-dot(delta, delta) * mix(4.8, 1.4, softness));
 }
 
+static float softUnion(float totalWeight) {
+    return 1.0 - exp(-max(totalWeight, 0.0) * 1.6);
+}
+
 [[ stitchable ]] half4 recordingGlow(
     float2 position,
     half4 currentColor,
@@ -88,11 +92,7 @@ static float glowLobe(float2 point, float centerX, float width, float height, fl
         1.0
     );
 
-    float weightedField = max(
-        max(max(leftOuterWeight, leftInnerWeight), centerWeight),
-        max(rightInnerWeight, rightOuterWeight)
-    );
-    float alpha = clamp(weightedField * globalOpacity * 1.25, 0.0, 1.0);
+    float alpha = clamp(softUnion(weightSum) * globalOpacity * 1.35, 0.0, 1.0);
     float3 compositedColor = mix(float3(1.0), glowColor, alpha);
     return half4(half3(compositedColor), half(1.0));
 }

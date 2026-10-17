@@ -36,6 +36,17 @@ test('recording glow composites its color field over white instead of producing 
   assert.doesNotMatch(metal, /rgb\s*=\s*clamp\(rgb,\s*0\.0,\s*1\.0\)\s*\*\s*alpha/);
 });
 
+test('recording glow softly unions adjacent lobes so white seams cannot split the palette', async () => {
+  const metal = await readFile(
+    'apple/Packages/TaisaFoundation/Sources/TaisaDesignSystem/RecordingGlow.metal',
+    'utf8',
+  );
+
+  assert.match(metal, /static float softUnion\s*\(float totalWeight\)/);
+  assert.match(metal, /softUnion\(weightSum\)/);
+  assert.doesNotMatch(metal, /float weightedField\s*=\s*max\s*\(/);
+});
+
 test('recording glow exposes fine adjustable film grain rather than coarse pixel cells', async () => {
   const metal = await readFile(
     'apple/Packages/TaisaFoundation/Sources/TaisaDesignSystem/RecordingGlow.metal',
