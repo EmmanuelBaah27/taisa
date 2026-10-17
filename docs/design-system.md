@@ -52,13 +52,22 @@ The React Native inventory below remains authoritative for the existing mobile c
 
 ## How to use tokens
 
-**Always use the semantic utility layer — never raw hex, never palette classes unless no semantic exists.**
+**Every authored visual style must use an existing semantic design-system token or component.**
 
 ```
-1. Semantic utility first  — bg-background, text-foreground, bg-primary
-2. Named palette fallback  — bg-lime-100 (only when no semantic alias covers the role)
-3. Never                   — raw hex values
+1. Use an existing semantic role — bg-background, text-foreground, bg-primary
+2. Reuse a DS component        — consume its typed, documented variants
+3. Missing role                — extend and verify the DS before using it in Product UI
+4. Never                       — raw/arbitrary values or one-off visual variants
 ```
+
+This applies to authored colors, typography, spacing, radii, shadows, materials, motion values,
+and component styles in both SwiftUI and React Native. Do not reach for a palette value, arbitrary
+utility, literal constant, or feature-local variant when no semantic role exists. Treat that as a
+design-system gap: name the role by intent, add its platform mappings and documentation, add or
+update verification, and only then consume it from a screen. Standard platform defaults and values
+derived at runtime from accessibility settings, safe areas, geometry, or state are not authored
+tokens; any explicit styling layered on top of them still follows this rule.
 
 ---
 
@@ -189,7 +198,10 @@ Never use raw `text-sm font-semibold` combinations — use the composite utiliti
 | `NaviiAvatar` | `seed`, `size` | Deterministic generated avatar presentation |
 
 **Extraction rule:** pattern appears in 2+ places → extract to `ui/`. Do not extract speculatively.
-**DS compliance:** no `StyleSheet.create()`, no raw hex, import tokens from Tailwind classes only.
+**DS compliance:** no `StyleSheet.create()`, raw/arbitrary visual values, palette fallbacks, or
+feature-local style variants. Use documented semantic tokens and typed DS components only; close a
+DS gap before Product consumption.
+
 ## Voice composer
 
 `VoiceComposer` is the bottom-loaded mixed-input control used by coaching conversations. The
