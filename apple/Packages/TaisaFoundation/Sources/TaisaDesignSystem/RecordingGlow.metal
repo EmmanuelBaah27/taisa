@@ -52,21 +52,36 @@ static float glowLobe(float2 point, float centerX, float width, float height, fl
     float innerRight = glowLobe(point, 0.75, edgeWidth * 1.18, edgeHeight * 1.18, originY, edgeSoftness);
     float outerRight = glowLobe(point, 1.02, edgeWidth, edgeHeight, originY, edgeSoftness);
 
-    float3 rgb = float3(leftOuterColor.rgb) * outerLeft * leftOuterContribution;
-    rgb += float3(leftInnerColor.rgb) * innerLeft * leftInnerContribution;
-    rgb += float3(centerColor.rgb) * middle * centerContribution * mix(0.68, 1.2, loudness);
-    rgb += float3(rightInnerColor.rgb) * innerRight * rightInnerContribution;
-    rgb += float3(rightOuterColor.rgb) * outerRight * rightOuterContribution;
+    float leftOuterWeight = outerLeft * leftOuterContribution;
+    float leftInnerWeight = innerLeft * leftInnerContribution;
+    float centerWeight = middle * centerContribution * mix(0.68, 1.2, loudness);
+    float rightInnerWeight = innerRight * rightInnerContribution;
+    float rightOuterWeight = outerRight * rightOuterContribution;
+    float weightSum = leftOuterWeight + leftInnerWeight + centerWeight
+        + rightInnerWeight + rightOuterWeight;
 
-    float field = max(max(max(outerLeft, innerLeft), middle), max(innerRight, outerRight));
+    float3 rgb = float3(leftOuterColor.rgb) * leftOuterWeight;
+    rgb += float3(leftInnerColor.rgb) * leftInnerWeight;
+    rgb += float3(centerColor.rgb) * centerWeight;
+    rgb += float3(rightInnerColor.rgb) * rightInnerWeight;
+    rgb += float3(rightOuterColor.rgb) * rightOuterWeight;
+
     float grainVisibility = grain.x * (1.0 + loudness * grainLoudnessInfluence);
     float2 grainCell = floor(position * mix(0.08, 0.34, grain.y));
     float noise = anchoredNoise(grainCell, grainSeed);
     noise = smoothstep(grain.w, 1.0, noise);
     float grit = mix(1.0 - grainVisibility, 1.0 + grainVisibility, noise);
-    rgb *= mix(1.0, grit, grain.z) * field;
+    float3 glowColor = clamp(
+        (rgb / max(weightSum, 0.0001)) * mix(1.0, grit, grain.z),
+        0.0,
+        1.0
+    );
 
-    float alpha = clamp(field * globalOpacity, 0.0, 1.0);
-    rgb = clamp(rgb, 0.0, 1.0) * alpha;
-    return half4(half3(rgb), half(alpha));
+    float weightedField = max(
+        max(max(leftOuterWeight, leftInnerWeight), centerWeight),
+        max(rightInnerWeight, rightOuterWeight)
+    );
+    float alpha = clamp(weightedField * globalOpacity * 1.25, 0.0, 1.0);
+    float3 compositedColor = mix(float3(1.0), glowColor, alpha);
+    return half4(half3(compositedColor), half(1.0));
 }

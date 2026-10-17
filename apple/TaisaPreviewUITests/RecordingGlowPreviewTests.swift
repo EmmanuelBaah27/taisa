@@ -65,4 +65,25 @@ final class RecordingGlowPreviewTests: XCTestCase {
         XCTAssertTrue(app.sliders["Center peak height"].exists)
         XCTAssertTrue(app.staticTexts["#CBAEFF"].exists)
     }
+
+    func testTunerUsesFullLabelStateChoicesAndOffersLiveMicrophoneInput() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-TAISAPreviewScenario", "recording-glow.tuner"]
+        app.launch()
+
+        XCTAssertTrue(app.buttons["Recording"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Paused"].exists)
+        XCTAssertTrue(app.buttons["Reduce motion"].exists)
+        XCTAssertTrue(app.buttons["Less transparency"].exists)
+        XCTAssertTrue(app.buttons["Simulated"].exists)
+        XCTAssertTrue(app.buttons["Live microphone"].exists)
+        XCTAssertEqual(app.segmentedControls.count, 0)
+
+        let controls = app.scrollViews["recording-glow.controls"]
+        XCTAssertTrue(controls.exists)
+        let surface = app.descendants(matching: .any)["recording-glow.surface"]
+        let originalSurfaceFrame = surface.frame
+        controls.swipeUp()
+        XCTAssertEqual(surface.frame, originalSurfaceFrame)
+    }
 }

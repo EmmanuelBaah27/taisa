@@ -23,3 +23,27 @@ test('recording glow uses one linked stitchable shader with anchored procedural 
   assert.doesNotMatch(swift, /TimelineView|figma\.com|https?:\/\//);
   assert.doesNotMatch(metal, /\btime\b|texture2d/);
 });
+
+test('recording glow composites its color field over white instead of producing dark alpha lobes', async () => {
+  const metal = await readFile(
+    'apple/Packages/TaisaFoundation/Sources/TaisaDesignSystem/RecordingGlow.metal',
+    'utf8',
+  );
+
+  assert.match(metal, /mix\(float3\(1\.0\),\s*glowColor,\s*alpha\)/);
+  assert.match(metal, /rgb\s*\/\s*max\(weightSum,\s*0\.0001\)/);
+  assert.match(metal, /return half4\(half3\(compositedColor\),\s*half\(1\.0\)\)/);
+  assert.doesNotMatch(metal, /rgb\s*=\s*clamp\(rgb,\s*0\.0,\s*1\.0\)\s*\*\s*alpha/);
+});
+
+test('recording glow tuning offers an ephemeral live microphone input', async () => {
+  const tuner = await readFile(
+    'apple/TaisaPreview/RecordingGlowTuningView.swift',
+    'utf8',
+  );
+
+  assert.match(tuner, /AVAudioEngine/);
+  assert.match(tuner, /Live microphone/);
+  assert.match(tuner, /installTap/);
+  assert.doesNotMatch(tuner, /write\(|FileHandle|Data\.write|AVAudioRecorder/);
+});
