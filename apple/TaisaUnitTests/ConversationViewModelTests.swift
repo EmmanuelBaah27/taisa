@@ -7,6 +7,24 @@ import TaisaVoice
 
 @MainActor
 final class ConversationViewModelTests: XCTestCase {
+    func testStartRefreshesPersistedConversationTitle() async {
+        let client = ConversationScreenClient(
+            loadTitle: { "Persisted conversation title" },
+            beginVoice: {}, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
+            sendText: { _ in }, retry: {}, saveDraft: { _ in }, discardDraft: {}
+        )
+        let model = ConversationViewModel(
+            conversationID: UUID().uuidString,
+            title: "Stale route title",
+            entryIntent: nil,
+            client: client
+        )
+
+        await model.start()
+
+        XCTAssertEqual(model.title, "Persisted conversation title")
+    }
+
     func testTimelineMotionDisablesNewMessageAnimationWhenReduceMotionIsEnabled() {
         XCTAssertFalse(ConversationTimelineMotion.animatesNewMessage(reduceMotion: true))
         XCTAssertTrue(ConversationTimelineMotion.animatesNewMessage(reduceMotion: false))
@@ -137,6 +155,45 @@ final class ConversationViewModelTests: XCTestCase {
         XCTAssertEqual(model.failureContext, .microphonePermissionDenied)
     }
 
+    func testDeniedMicrophoneCanContinueInKeyboardMode() async {
+        let client = ConversationScreenClient(
+            beginVoice: { throw AudioCaptureError.permissionDenied },
+            pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
+            sendText: { _ in }, retry: {}, saveDraft: { _ in }, discardDraft: {}
+        )
+        let model = ConversationViewModel(
+            conversationID: UUID().uuidString,
+            title: "New conversation",
+            entryIntent: nil,
+            client: client
+        )
+        try? await model.beginVoice()
+
+        model.continueWithKeyboardAfterPermissionDenial()
+
+        XCTAssertEqual(model.composer, .typing(""))
+    }
+
+    func testRecordingStartFailureCanContinueInKeyboardMode() async {
+        struct StartFailure: Error {}
+        let client = ConversationScreenClient(
+            beginVoice: { throw StartFailure() }, pauseVoice: {}, resumeVoice: {},
+            sendVoice: { _ in }, sendText: { _ in }, retry: {},
+            saveDraft: { _ in }, discardDraft: {}
+        )
+        let model = ConversationViewModel(
+            conversationID: UUID().uuidString,
+            title: "New conversation",
+            entryIntent: nil,
+            client: client
+        )
+        try? await model.beginVoice()
+
+        model.continueWithKeyboardAfterRecordingFailure()
+
+        XCTAssertEqual(model.composer, .typing(""))
+    }
+
     func testVoiceCompletionReloadsMessagesAndWaitsForReply() async {
         let client = ConversationScreenClientSpy()
         let model = ConversationViewModel(
@@ -151,6 +208,43 @@ final class ConversationViewModelTests: XCTestCase {
 
         XCTAssertEqual(model.composer, .waitingForReply)
         XCTAssertEqual(model.messages.map(\.body), ["Ready"])
+    }
+
+    func testVoiceFailureBeforeTranscriptUsesTranscriptionRecovery() async {
+        struct VoiceFailure: Error {}
+        let client = ConversationScreenClient(
+            beginVoice: {}, pauseVoice: {}, resumeVoice: {},
+            sendVoice: { _ in throw VoiceFailure() }, sendText: { _ in }, retry: {},
+            saveDraft: { _ in }, discardDraft: {}
+        )
+        let model = ConversationViewModel(
+            conversationID: UUID().uuidString, title: "Chat", entryIntent: nil,
+            composer: .recording, client: client
+        )
+
+        await model.sendVoice()
+
+        XCTAssertEqual(model.failureContext, .transcription)
+    }
+
+    func testVoiceFailureAfterTranscriptUsesResponseRecovery() async {
+        struct VoiceFailure: Error {}
+        let client = ConversationScreenClient(
+            beginVoice: {}, pauseVoice: {}, resumeVoice: {},
+            sendVoice: { transcriptAvailable in
+                await transcriptAvailable()
+                throw VoiceFailure()
+            },
+            sendText: { _ in }, retry: {}, saveDraft: { _ in }, discardDraft: {}
+        )
+        let model = ConversationViewModel(
+            conversationID: UUID().uuidString, title: "Chat", entryIntent: nil,
+            composer: .recording, client: client
+        )
+
+        await model.sendVoice()
+
+        XCTAssertEqual(model.failureContext, .request)
     }
 
     func testVoiceTranscriptAppearsBeforeCoachingCompletes() async {

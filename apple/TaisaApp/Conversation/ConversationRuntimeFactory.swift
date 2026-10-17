@@ -26,6 +26,7 @@ struct ConversationRuntimeFactory: Sendable {
         let voiceTurn: VoiceTurnRecord
         let composer: ComposerState
         let text: String
+        let cleansInterruptedCapture: Bool
     }
 
     let store: TaisaStore
@@ -251,7 +252,6 @@ struct ConversationRuntimeFactory: Sendable {
             fallbackVoiceTurn: fallbackTurn,
             recoveryTranscript: recoveryTranscript ?? lastUserMessage?.body
         )
-        let initial = pendingConversationRequest == nil ? restoration.voiceTurn : fallbackTurn
         let files = try await openStage(.audioFiles) {
             try ProtectedAudioFileStore()
         }
@@ -275,17 +275,37 @@ struct ConversationRuntimeFactory: Sendable {
                 ["factor": $0.factor.rawValue, "direction": $0.direction.rawValue]
             }
         }
-        let voiceCoordinator = VoiceSessionCoordinator(
-            initial: initial,
-            checkpoints: RepositoryVoiceTurnCheckpointer(repository: turns, deviceID: deviceID),
-            transcription: GatewayTranscriptionRunner(configuration: configuration, audio: capture),
-            transcriptionReconciliation: GatewayTranscriptionReconciliation(configuration: configuration),
-            coaching: GatewayCoachingRunner(configuration: configuration, recentMessages: messageHistory, preferenceSignals: preferenceSignals),
-            connectivity: connectivity,
-            reconciliation: GatewayCoachingReconciliation(configuration: configuration),
-            capture: capture,
-            audio: capture
+        let makeVoiceCoordinator: (VoiceTurnRecord) -> VoiceSessionCoordinator = { initial in
+            VoiceSessionCoordinator(
+                initial: initial,
+                checkpoints: RepositoryVoiceTurnCheckpointer(repository: turns, deviceID: deviceID),
+                transcription: GatewayTranscriptionRunner(configuration: configuration, audio: capture),
+                transcriptionReconciliation: GatewayTranscriptionReconciliation(configuration: configuration),
+                coaching: GatewayCoachingRunner(
+                    configuration: configuration,
+                    recentMessages: messageHistory,
+                    preferenceSignals: preferenceSignals
+                ),
+                connectivity: connectivity,
+                reconciliation: GatewayCoachingReconciliation(configuration: configuration),
+                capture: capture,
+                audio: capture
+            )
+        }
+        if restoration.cleansInterruptedCapture, pendingConversationRequest == nil {
+            let cleanupCoordinator = makeVoiceCoordinator(restoration.voiceTurn)
+            do {
+                try await cleanupCoordinator.recoverIfAuthorized()
+            } catch {
+                print("TAISA_CONVERSATION_OPEN_RECOVERY deferred=true")
+            }
+        }
+        let initial = Self.runtimeInitialTurn(
+            restoration: restoration,
+            fallbackVoiceTurn: fallbackTurn,
+            hasPendingConversationRequest: pendingConversationRequest != nil
         )
+        let voiceCoordinator = makeVoiceCoordinator(initial)
         let gatewayClient = GatewayConversationClient(
             store: store, deviceID: deviceID,
             coaching: GatewayCoachingRunner(configuration: configuration, recentMessages: messageHistory, preferenceSignals: preferenceSignals)
@@ -380,7 +400,11 @@ struct ConversationRuntimeFactory: Sendable {
                 try await coordinator.correctTranscript(messageID: messageID, text: text)
             },
             loadCaptureSnapshot: { await voiceCoordinator.snapshot().capture },
-            loadPartialCoaching: { await voiceCoordinator.snapshot().partialCoaching },
+            loadPartialCoaching: {
+                let voicePartial = await voiceCoordinator.snapshot().partialCoaching
+                if !voicePartial.isEmpty { return voicePartial }
+                return await gatewayClient.partialCoachingSnapshot()
+            },
             recoveryEvents: {
                 AsyncStream { continuation in
                     let task = Task {
@@ -538,6 +562,17 @@ struct ConversationRuntimeFactory: Sendable {
         }
     }
 
+    static func runtimeInitialTurn(
+        restoration: Restoration,
+        fallbackVoiceTurn: VoiceTurnRecord,
+        hasPendingConversationRequest: Bool
+    ) -> VoiceTurnRecord {
+        if hasPendingConversationRequest || restoration.cleansInterruptedCapture {
+            return fallbackVoiceTurn
+        }
+        return restoration.voiceTurn
+    }
+
     static func restoration(
         draft: ConversationDraftRecord?,
         linkedVoiceTurn: VoiceTurnRecord?,
@@ -547,12 +582,43 @@ struct ConversationRuntimeFactory: Sendable {
     ) -> Restoration {
         var voiceTurn = linkedVoiceTurn ?? resumableVoiceTurn ?? fallbackVoiceTurn
         guard let draft else {
-            return Restoration(voiceTurn: voiceTurn, composer: .waitingForReply, text: "")
+            if let resumableVoiceTurn,
+               resumableVoiceTurn.stage == .capture || resumableVoiceTurn.stage == .cleanup {
+                let hasFinalizedAudio = resumableVoiceTurn.state == .paused
+                    && resumableVoiceTurn.stage == .capture
+                    && resumableVoiceTurn.audioSHA256 != nil
+                    && resumableVoiceTurn.audioDurationMS != nil
+                if hasFinalizedAudio {
+                    return Restoration(
+                        voiceTurn: resumableVoiceTurn,
+                        composer: .savedVoiceDraft,
+                        text: "",
+                        cleansInterruptedCapture: false
+                    )
+                }
+                return Restoration(
+                    voiceTurn: resumableVoiceTurn,
+                    composer: .waitingForReply,
+                    text: "",
+                    cleansInterruptedCapture: true
+                )
+            }
+            return Restoration(
+                voiceTurn: voiceTurn,
+                composer: .waitingForReply,
+                text: "",
+                cleansInterruptedCapture: false
+            )
         }
         switch draft.inputMode {
         case .text:
             let text = draft.text ?? ""
-            return Restoration(voiceTurn: voiceTurn, composer: .typing(text), text: text)
+            return Restoration(
+                voiceTurn: voiceTurn,
+                composer: .typing(text),
+                text: text,
+                cleansInterruptedCapture: false
+            )
         case .voice:
             let composer: ComposerState
             switch linkedVoiceTurn?.state {
@@ -584,7 +650,12 @@ struct ConversationRuntimeFactory: Sendable {
                     composer = .paused
                 }
             }
-            return Restoration(voiceTurn: voiceTurn, composer: composer, text: "")
+            return Restoration(
+                voiceTurn: voiceTurn,
+                composer: composer,
+                text: "",
+                cleansInterruptedCapture: false
+            )
         }
     }
 
@@ -632,9 +703,9 @@ struct ConversationHostView: View {
             else if failed {
                 VStack {
                     ContentUnavailableView {
-                        Label("Conversation unavailable", systemImage: "exclamationmark.triangle")
+                        Label("Conversation couldn’t open", systemImage: "exclamationmark.triangle")
                     } description: {
-                        Text("Taisa couldn’t open this conversation securely.")
+                        Text("Taisa couldn’t access it securely.")
                     } actions: {
                         Button("Close", action: dismiss)
                             .accessibilityIdentifier("conversation.unavailable.close")

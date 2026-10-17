@@ -5,6 +5,19 @@ import TaisaStorage
 public enum ConversationsIssue: Sendable, Equatable {
     case storageUnavailable
     case recoveryRequired
+    case renameFailed(id: String, title: String)
+    case deleteFailed(id: String)
+    case discardFailed(id: String)
+}
+
+public struct ConversationsNotice: Identifiable, Sendable, Equatable {
+    public let id: Int
+    public let issue: ConversationsIssue
+
+    public init(id: Int, issue: ConversationsIssue) {
+        self.id = id
+        self.issue = issue
+    }
 }
 
 public enum ConversationsState: Sendable, Equatable {
@@ -47,7 +60,7 @@ public struct ConversationsClient: Sendable {
             load: {
                 let index = try await query.loadIndex()
                 var repaired = false
-                for conversation in index.conversations where conversation.titleAuthority == .localFallback {
+                for conversation in index.conversations where conversation.titleAuthority != .user {
                     guard let firstUserMessage = try await query.loadConversation(id: conversation.id)
                         .visibleMessages.first(where: { $0.role == "user" })?.body,
                           let title = ConversationTitleDeriver.derive(from: firstUserMessage),
@@ -75,8 +88,10 @@ public struct ConversationsClient: Sendable {
 @Observable
 public final class ConversationsModel {
     public private(set) var state: ConversationsState
+    public private(set) var notices: [ConversationsNotice] = []
     @ObservationIgnored private let client: ConversationsClient
     @ObservationIgnored private var generation = 0
+    @ObservationIgnored private var nextNoticeID = 0
 
     public init(client: ConversationsClient, initialState: ConversationsState = .idle) {
         self.client = client
@@ -107,34 +122,58 @@ public final class ConversationsModel {
         } catch {
             guard generation == activeGeneration else { return }
             let issue = Self.issue(for: error)
-            state = retained.map { .content($0, isRefreshing: false, issue: issue) } ?? .failure(issue)
-        }
-    }
-
-    public func discardDraft(id: String) async {
-        await mutate { try await client.discardDraft(id) }
-    }
-
-    public func renameConversation(id: String, title: String) async {
-        await mutate { try await client.renameConversation(id, title) }
-    }
-
-    public func deleteConversation(id: String) async {
-        await mutate { try await client.deleteConversation(id) }
-    }
-
-    private func mutate(_ operation: () async throws -> Void) async {
-        do {
-            try await operation()
-            await load()
-        } catch {
-            let issue = Self.issue(for: error)
-            if let retained = state.snapshot {
-                state = .content(retained, isRefreshing: false, issue: issue)
+            if issue == .recoveryRequired {
+                notices.removeAll()
+                state = .failure(issue)
+            } else if let retained {
+                state = .content(retained, isRefreshing: false, issue: nil)
+                enqueue(issue)
             } else {
                 state = .failure(issue)
             }
         }
+    }
+
+    public func discardDraft(id: String) async {
+        await mutate(fallback: .discardFailed(id: id)) { try await client.discardDraft(id) }
+    }
+
+    public func renameConversation(id: String, title: String) async {
+        await mutate(fallback: .renameFailed(id: id, title: title)) {
+            try await client.renameConversation(id, title)
+        }
+    }
+
+    public func deleteConversation(id: String) async {
+        await mutate(fallback: .deleteFailed(id: id)) { try await client.deleteConversation(id) }
+    }
+
+    public func dismissNotice(id: Int) {
+        notices.removeAll { $0.id == id }
+    }
+
+    private func mutate(fallback: ConversationsIssue, _ operation: () async throws -> Void) async {
+        do {
+            try await operation()
+            await load()
+        } catch {
+            let mapped = Self.issue(for: error)
+            let issue = mapped == .recoveryRequired ? mapped : fallback
+            if issue == .recoveryRequired {
+                notices.removeAll()
+                state = .failure(issue)
+            } else if let retained = state.snapshot {
+                state = .content(retained, isRefreshing: false, issue: nil)
+                enqueue(issue)
+            } else {
+                state = .failure(issue)
+            }
+        }
+    }
+
+    private func enqueue(_ issue: ConversationsIssue) {
+        nextNoticeID += 1
+        notices.append(ConversationsNotice(id: nextNoticeID, issue: issue))
     }
 
     private static func newerDraft(_ lhs: ConversationDraftRecord, _ rhs: ConversationDraftRecord) -> Bool {

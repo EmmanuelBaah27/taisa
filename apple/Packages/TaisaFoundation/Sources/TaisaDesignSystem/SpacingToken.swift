@@ -13,9 +13,12 @@ public enum TaisaSpacing: CGFloat, CaseIterable, Sendable {
 public enum TaisaMotion {
     /// Repeated page and primary-navigation feedback should feel immediate.
     public static let fast: Double = 0.18
+    /// Longer on-screen movement should remain legible instead of snapping across distance.
+    public static let settle: Double = 0.50
 }
 
 public enum TaisaControlMetric {
+    public static let conversationComposerDockHeight: CGFloat = 96
     public static let standardIcon: CGFloat = 24
     public static let appBarHeight: CGFloat = 64
     public static let headerActionHeight: CGFloat = 44
@@ -26,7 +29,9 @@ public enum TaisaControlMetric {
     public static let primaryNavigationReservedHeight: CGFloat = 152
     public static let chatPreviewLineHeight: CGFloat = 20
     public static let conversationTitleWidth: CGFloat = 220
-    public static let conversationRecordingControl: CGFloat = 56
+    public static let conversationRecordingControl: CGFloat = 48
+    public static let conversationActionSpacing: CGFloat = 12
+    public static let toastMinimumHeight: CGFloat = 44
 }
 
 public enum TaisaEffect {

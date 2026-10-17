@@ -6,16 +6,19 @@ import UIKit
 
 struct ConversationView: View {
     @State var model: ConversationViewModel
-    @Environment(\.openURL) private var openURL
 
     var body: some View {
         NavigationStack {
             ZStack(alignment: .top) {
-                ZStack {
-                    ConversationTimeline(
+                StatusBarBackground()
+                    .zIndex(4)
+                VStack(spacing: 0) {
+                    ZStack {
+                        ConversationTimeline(
                         messages: model.messages,
                         updatingResponseAfter: model.correctionRegenerationMessageID,
                         assistantResponses: model.assistantResponses,
+                        streamingResponse: model.partialCoaching,
                         correct: model.requestCorrection,
                         saveFeedback: { messageID, direction, factors in
                             Task { await model.saveFeedback(
@@ -24,14 +27,20 @@ struct ConversationView: View {
                         },
                         acceptProposal: { id in Task { await model.acceptProposal(id) } },
                         dismissProposal: { id in Task { await model.dismissProposal(id) } }
-                    )
-                    if model.messages.isEmpty { emptyState }
+                        )
+                        if model.messages.isEmpty { emptyState }
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                    composer
+                        .frame(minHeight: TaisaControlMetric.conversationComposerDockHeight, alignment: .bottom)
+                        .zIndex(2)
                 }
                 ConversationPageHeader(title: model.title, onDismiss: model.requestClose)
                     .accessibilityIdentifier("conversation.close")
+                    .zIndex(3)
             }
             .toolbar(.hidden, for: .navigationBar)
-            .safeAreaInset(edge: .bottom) { composer }
         }
         .accessibilityIdentifier("conversation.root")
         .interactiveDismissDisabled(true)
@@ -44,6 +53,8 @@ struct ConversationView: View {
                 TranscriptCorrectionView(
                     text: $model.correctionText,
                     canSubmit: model.canSubmitCorrection,
+                    isDirty: model.isCorrectionDirty,
+                    isSubmitting: model.isCorrectionSubmitting,
                     cancel: model.cancelCorrection,
                     submit: { Task { await model.submitCorrection() } }
                 )
@@ -94,27 +105,15 @@ struct ConversationView: View {
                     .accessibilityIdentifier("conversation.text-composer")
             }
         case .transcribing:
-            ConversationProgressState(label: "Transcribing…")
+            bottomChrome {
+                ConversationProgressState(label: "Transcribing…")
+                    .frame(height: TaisaControlMetric.recordingButtonHeight)
+                    .frame(maxWidth: .infinity)
+            }
         case .coaching:
             VStack(alignment: .leading, spacing: 12) {
-                if let transcript = model.latestUserTranscript {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("You")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        Text(transcript)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .textSelection(.enabled)
-                    }
-                    .accessibilityElement(children: .combine)
-                    .accessibilityIdentifier("conversation.transcript-preview")
-                }
                 if model.partialCoaching.isEmpty {
                     ConversationProgressState(label: "Preparing coaching…")
-                } else if let markdown = try? AttributedString(markdown: model.partialCoaching) {
-                    Text(markdown)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .accessibilityIdentifier("conversation.streaming-response")
                 }
                 bottomChrome {
                     TextComposer(
@@ -137,7 +136,7 @@ struct ConversationView: View {
             bottomChrome {
                 InlineRecoveryAlert(
                     contract: recoveryContract,
-                    onCancel: model.cancelRecoveryAndClose,
+                    onCancel: performRecoverySecondaryAction,
                     onRetry: performRecoveryPrimaryAction
                 )
                 .accessibilityIdentifier("conversation.retry")
@@ -147,6 +146,7 @@ struct ConversationView: View {
 
     private var recoveryContract: InlineRecoveryAlert.Contract {
         switch model.failureContext {
+        case .transcription: .transcription
         case .request: .request
         case .beginRecording: .beginRecording
         case .microphonePermissionDenied: .microphonePermission
@@ -210,46 +210,65 @@ struct ConversationView: View {
     }
 
     private var voiceReplyButton: some View {
-        Button { Task { try? await model.beginVoice() } } label: {
-            HStack {
-                Text("Reply").font(TaisaTypography.navigationLabel.font)
-                Spacer()
-                CentralIcon(.voiceMid)
-                    .frame(width: TaisaControlMetric.standardIcon, height: TaisaControlMetric.standardIcon)
+        HStack {
+            Spacer()
+            TaisaSecondaryCapsuleButton(action: { Task { try? await model.beginVoice() } }) {
+                HStack(spacing: TaisaSpacing.compact.rawValue) {
+                    CentralIcon(.voiceMid)
+                        .frame(width: TaisaControlMetric.standardIcon, height: TaisaControlMetric.standardIcon)
+                    Text("Reply").font(TaisaTypography.navigationLabel.font)
+                }
+                .foregroundStyle(TaisaColor.foreground.color)
+                .padding(.horizontal, TaisaSpacing.page.rawValue)
+                .frame(height: TaisaControlMetric.recordingButtonHeight)
             }
-            .foregroundStyle(TaisaColor.foreground.color)
-            .padding(.horizontal, TaisaSpacing.standard.rawValue)
-            .frame(maxWidth: .infinity, minHeight: TaisaControlMetric.recordingButtonHeight)
+            .accessibilityLabel("Reply by voice, starts recording")
+            .accessibilityIdentifier("conversation.voice-reply")
+            Spacer()
         }
-        .buttonStyle(.plain)
-        .modifier(ConversationReplyButtonSurface())
-        .accessibilityLabel("Reply by voice, starts recording")
-        .accessibilityIdentifier("conversation.voice-reply")
     }
 
     private func bottomChrome<Content: View>(@ViewBuilder content: () -> Content) -> some View {
         content()
             .padding(.horizontal, TaisaSpacing.standard.rawValue)
-            .padding(.bottom, TaisaSpacing.standard.rawValue)
+            .padding(.top, TaisaSpacing.section.rawValue)
+            .padding(.bottom, TaisaSpacing.section.rawValue)
+            .frame(minHeight: TaisaControlMetric.conversationComposerDockHeight, alignment: .bottom)
             .background { PageEdgeFade(.navigation).ignoresSafeArea(edges: [.horizontal, .bottom]) }
     }
 
     private func performRecoveryPrimaryAction() {
         if model.failureContext == .microphonePermissionDenied,
            let settingsURL = URL(string: UIApplication.openSettingsURLString) {
-            openURL(settingsURL)
+            UIApplication.shared.open(settingsURL, options: [:])
         } else {
             Task { await model.retry() }
         }
     }
+
+    private func performRecoverySecondaryAction() {
+        switch model.failureContext {
+        case .transcription:
+            Task { await model.saveAndClose() }
+        case .microphonePermissionDenied:
+            model.continueWithKeyboardAfterPermissionDenial()
+        case .beginRecording:
+            model.continueWithKeyboardAfterRecordingFailure()
+        case .pauseRecording:
+            Task { await model.confirmDiscardRecording() }
+        case .resumeRecording:
+            Task { await model.saveAndClose() }
+        case .request:
+            model.cancelRecoveryAndClose()
+        }
+    }
 }
 
-private struct ConversationReplyButtonSurface: ViewModifier {
-    @ViewBuilder func body(content: Content) -> some View {
-        if #available(iOS 26.0, *) {
-            content.glassEffect(.regular.interactive(), in: Capsule())
-        } else {
-            content.background(TaisaColor.raisedSurface.color, in: Capsule())
-        }
+private struct StatusBarBackground: View {
+    var body: some View {
+        TaisaColor.background.color
+            .frame(height: 1)
+            .frame(maxWidth: .infinity)
+            .ignoresSafeArea(edges: .top)
     }
 }

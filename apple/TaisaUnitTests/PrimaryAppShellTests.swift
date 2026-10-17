@@ -79,6 +79,7 @@ final class PrimaryAppShellTests: XCTestCase {
         let source = try String(contentsOf: root.appendingPathComponent("TaisaApp/AppShell/PrimaryAppShell.swift"), encoding: .utf8)
         XCTAssertTrue(source.contains("TabView(selection:"))
         XCTAssertTrue(source.contains(".tabViewStyle(.page(indexDisplayMode: .never))"))
+        XCTAssertFalse(source.contains("primaryPageFallbackGesture"))
         XCTAssertTrue(source.contains("model.select(destination)"))
         XCTAssertFalse(source.contains("if model.selection == .careerWork"))
         XCTAssertTrue(source.contains("model.showsCareerWork"))
@@ -108,5 +109,6 @@ final class PrimaryAppShellTests: XCTestCase {
         XCTAssertEqual(model.selection, .conversations)
         XCTAssertNil(model.conversationRoute)
         XCTAssertTrue(model.showsConversationDock)
+        XCTAssertEqual(model.conversationReturnGeneration, 1)
     }
 }

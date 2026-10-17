@@ -8,6 +8,146 @@ import TaisaYou
 
 @MainActor
 final class AppRuntimeTests: XCTestCase {
+    func testInterruptedCaptureWithoutSavedDraftStartsFromFreshReplyState() {
+        let conversationID = UUID().uuidString
+        let interruptedTurn = voiceTurn(
+            conversationID: conversationID,
+            state: .paused,
+            stage: .capture
+        )
+        let fallbackTurn = voiceTurn(
+            conversationID: conversationID,
+            state: .draft,
+            stage: .capture
+        )
+
+        let restoration = ConversationRuntimeFactory.restoration(
+            draft: nil,
+            linkedVoiceTurn: nil,
+            resumableVoiceTurn: interruptedTurn,
+            fallbackVoiceTurn: fallbackTurn
+        )
+
+        XCTAssertEqual(restoration.voiceTurn.id, interruptedTurn.id)
+        XCTAssertEqual(restoration.composer, .waitingForReply)
+        XCTAssertTrue(restoration.cleansInterruptedCapture)
+    }
+
+    func testRecordingCaptureWithoutSavedDraftStartsFromFreshReplyState() {
+        let conversationID = UUID().uuidString
+        let interruptedTurn = voiceTurn(
+            conversationID: conversationID,
+            state: .recording,
+            stage: .capture
+        )
+        let fallbackTurn = voiceTurn(
+            conversationID: conversationID,
+            state: .draft,
+            stage: .capture
+        )
+
+        let restoration = ConversationRuntimeFactory.restoration(
+            draft: nil,
+            linkedVoiceTurn: nil,
+            resumableVoiceTurn: interruptedTurn,
+            fallbackVoiceTurn: fallbackTurn
+        )
+
+        XCTAssertEqual(restoration.voiceTurn.id, interruptedTurn.id)
+        XCTAssertEqual(restoration.composer, .waitingForReply)
+        XCTAssertTrue(restoration.cleansInterruptedCapture)
+    }
+
+    func testFinalizedCaptureWithoutDraftRemainsAvailableToSend() {
+        let conversationID = UUID().uuidString
+        let finalizedTurn = VoiceTurnRecord(
+            id: UUID().uuidString, conversationID: conversationID,
+            transcriptionRequestID: UUID().uuidString,
+            transcriptionIdempotencyKey: UUID().uuidString,
+            coachingRequestID: UUID().uuidString,
+            coachingIdempotencyKey: UUID().uuidString,
+            state: .paused, stage: .capture,
+            audioFileID: UUID().uuidString, audioSHA256: "saved-audio",
+            audioDurationMS: 2_000, cleanupState: .pending,
+            createdAtMS: 1, updatedAtMS: 2
+        )
+        let fallbackTurn = voiceTurn(
+            conversationID: conversationID,
+            state: .draft,
+            stage: .capture
+        )
+
+        let restoration = ConversationRuntimeFactory.restoration(
+            draft: nil,
+            linkedVoiceTurn: nil,
+            resumableVoiceTurn: finalizedTurn,
+            fallbackVoiceTurn: fallbackTurn
+        )
+
+        XCTAssertEqual(restoration.voiceTurn.id, finalizedTurn.id)
+        XCTAssertEqual(restoration.composer, .savedVoiceDraft)
+        XCTAssertFalse(restoration.cleansInterruptedCapture)
+    }
+
+    func testInterruptedCaptureCleanupRetriesBeforeFreshReplyState() {
+        let conversationID = UUID().uuidString
+        let cleanupTurn = VoiceTurnRecord(
+            id: UUID().uuidString, conversationID: conversationID,
+            transcriptionRequestID: UUID().uuidString,
+            transcriptionIdempotencyKey: UUID().uuidString,
+            coachingRequestID: UUID().uuidString,
+            coachingIdempotencyKey: UUID().uuidString,
+            state: .terminalFailure, stage: .cleanup,
+            audioFileID: UUID().uuidString, failureCode: "CAPTURE_INTERRUPTED",
+            cleanupState: .pending, createdAtMS: 1, updatedAtMS: 2
+        )
+        let fallbackTurn = voiceTurn(
+            conversationID: conversationID,
+            state: .draft,
+            stage: .capture
+        )
+
+        let restoration = ConversationRuntimeFactory.restoration(
+            draft: nil,
+            linkedVoiceTurn: nil,
+            resumableVoiceTurn: cleanupTurn,
+            fallbackVoiceTurn: fallbackTurn
+        )
+
+        XCTAssertEqual(restoration.voiceTurn.id, cleanupTurn.id)
+        XCTAssertEqual(restoration.composer, .waitingForReply)
+        XCTAssertTrue(restoration.cleansInterruptedCapture)
+    }
+
+    func testInterruptedCaptureCleanupCannotOwnTheReadableChatRuntime() {
+        let conversationID = UUID().uuidString
+        let interruptedTurn = voiceTurn(
+            conversationID: conversationID,
+            state: .terminalFailure,
+            stage: .cleanup
+        )
+        let fallbackTurn = voiceTurn(
+            conversationID: conversationID,
+            state: .draft,
+            stage: .capture
+        )
+        let restoration = ConversationRuntimeFactory.restoration(
+            draft: nil,
+            linkedVoiceTurn: nil,
+            resumableVoiceTurn: interruptedTurn,
+            fallbackVoiceTurn: fallbackTurn
+        )
+
+        XCTAssertEqual(
+            ConversationRuntimeFactory.runtimeInitialTurn(
+                restoration: restoration,
+                fallbackVoiceTurn: fallbackTurn,
+                hasPendingConversationRequest: false
+            ).id,
+            fallbackTurn.id
+        )
+    }
+
     func testSavedTerminalVoiceFailureRestoresTheLinkedTurnForRetry() {
         let conversationID = UUID().uuidString
         let linkedTurn = voiceTurn(

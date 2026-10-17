@@ -110,27 +110,22 @@ enum ConversationTitleDeriver {
         return replacement + punctuation
     }
 
-    /// Stable fallbacks for common capture intents. Server suggestions remain the
-    /// preferred title; these phrases keep offline/legacy history grammatical.
+    /// Stable titles for recurring capture intents. Prefix matching lets a
+    /// complete transcript retain the same concise subject as its preview.
     private static func reportedPhrase(for source: String) -> String? {
-        switch source {
-        case "if i type now, will it show":
-            "Checking whether typed messages appear"
-        case "i'm going to start another one in drafts":
-            "Starting another conversation draft"
-        case "i'm recording one last time. i don't know why you":
-            "Retrying a recording one last time"
-        case "why is it that when i try to record, like for some":
-            "Troubleshooting a recording problem"
-        case "i'm trying a new one. i don't know why if i tap":
-            "Testing a new recording attempt"
-        default:
-            nil
-        }
+        let phrases = [
+            ("if i type now, will it show", "Checking whether typed messages appear"),
+            ("i'm going to start another one in drafts", "Starting another conversation draft"),
+            ("i'm recording one last time. i don't know why you", "Retrying a recording one last time"),
+            ("why is it that when i try to record, like for some", "Troubleshooting a recording problem"),
+            ("i'm trying a new one. i don't know why if i tap", "Testing a new recording attempt"),
+        ]
+        return phrases.first(where: { source.hasPrefix($0.0) })?.1
     }
 }
 
 public actor GatewayConversationClient: ConversationClient {
+    private var partialCoaching = ""
     private let query: ConversationQuery
     private let repository: ConversationRepository
     private let turns: ConversationTurnRepository
@@ -311,6 +306,8 @@ public actor GatewayConversationClient: ConversationClient {
         assistantMessageID: String?,
         failureCode: String?
     ) async throws -> TerminalCompletion {
+        partialCoaching = ""
+        defer { partialCoaching = "" }
         let turnID = derivedUUID(from: requestID, salt: 1)
         let persisted = try await turns.turn(id: turnID)
         let durableCreatedAt = persisted?.createdAtMS ?? createdAtMS
@@ -330,7 +327,7 @@ public actor GatewayConversationClient: ConversationClient {
         var completion: TerminalCompletion?
         for try await event in stream {
             switch event {
-            case .delta: continue
+            case .delta(_, _, let delta): partialCoaching += delta
             case .completed(_, _, let response, let receipt):
                 completion = TerminalCompletion(response: response, idempotencyReceipt: receipt)
             case .failed(_, _, _, let retryable):
@@ -340,6 +337,8 @@ public actor GatewayConversationClient: ConversationClient {
         guard let completion else { throw ConversationFailure.retryable }
         return completion
     }
+
+    public func partialCoachingSnapshot() -> String { partialCoaching }
 
     private func finishTurn(
         conversationID: String, requestID: String, text: String, createdAtMS: Int64,

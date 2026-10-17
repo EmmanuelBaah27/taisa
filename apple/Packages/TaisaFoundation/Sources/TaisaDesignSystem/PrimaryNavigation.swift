@@ -48,7 +48,6 @@ public struct PrimaryNavigation<Item: Hashable>: View {
                             Text(label)
                                 .font(TaisaTypography.navigationLabel.font)
                                 .lineLimit(1)
-                                .transition(reduceMotion ? .identity : .opacity)
                         }
                     }
                     .foregroundStyle(selection == item ? TaisaColor.foreground.color : TaisaColor.inactiveForeground.color)
@@ -71,7 +70,6 @@ public struct PrimaryNavigation<Item: Hashable>: View {
                 .accessibilityAddTraits(selection == item ? .isSelected : [])
             }
         }
-        .animation(reduceMotion ? nil : .snappy(duration: TaisaMotion.fast), value: selection)
     }
 
     @ViewBuilder private var selectedSurface: some View {
@@ -85,10 +83,6 @@ public struct PrimaryNavigation<Item: Hashable>: View {
 
     private func select(_ item: Item) {
         guard selection != item else { return }
-        if PrimaryNavigationMotion.transition(reduceMotion: reduceMotion) == .instant {
-            selection = item
-        } else {
-            withAnimation(.snappy(duration: TaisaMotion.fast)) { selection = item }
-        }
+        selection = item
     }
 }

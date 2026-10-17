@@ -18,6 +18,7 @@ struct ConversationComponentTests {
         #expect(TaisaMaterial.composer.reducedTransparencyFallback == .raisedSurface)
         #expect(TaisaSpacing.control.rawValue == 12)
         #expect(TaisaMotion.fast == 0.18)
+        #expect(TaisaMotion.settle == 0.50)
         #expect(TaisaControlMetric.primaryNavigationItemWidth == 56)
         #expect(TaisaControlMetric.primaryNavigationItemHeight == 48)
         #expect(TaisaControlMetric.standardIcon == 24)
@@ -33,6 +34,7 @@ struct ConversationComponentTests {
         #expect(TaisaEffect.edgeFadeBlurOpacity == 0.42)
         #expect(TaisaControlMetric.appBarHeight == 64)
         #expect(TaisaControlMetric.headerActionHeight == 44)
+        #expect(TaisaControlMetric.toastMinimumHeight == 44)
         #expect(TaisaRadius.historyGroup.rawValue == 20)
     }
 
@@ -41,6 +43,7 @@ struct ConversationComponentTests {
         #expect(VoiceComposerControls.Contract.paused.resumeLabel == "Resume recording")
         #expect(ConversationFailureActions.Contract.retryable.retryLabel == "Retry request")
         #expect(TextComposer.Contract.empty.voiceLabel == "Reply by voice, starts recording")
+        #expect(InlineRecoveryAlert.Contract.microphonePermission.cancelLabel == "Use keyboard")
     }
 
     @Test func primaryNavigationMotionFallsBackToAnInstantAccessibleTransition() {
@@ -61,12 +64,18 @@ struct ConversationComponentTests {
 
     @Test func conversationHeaderAndActionBarMatchFigmaContracts() {
         #expect(TaisaControlMetric.conversationTitleWidth == 220)
-        #expect(TaisaControlMetric.conversationRecordingControl == 56)
+        #expect(TaisaControlMetric.conversationRecordingControl == 48)
+        #expect(TaisaControlMetric.conversationActionSpacing == 12)
         #expect(ConversationPageHeader.Contract.usesSharedHeaderFade)
         #expect(ConversationPageHeader.Contract.dismissPlacement == .leading)
         #expect(ConversationActionBar.Availability.recording.canDiscard)
+        #expect(ConversationActionBar.Availability.preparing.canSwitchToKeyboard)
         #expect(ConversationActionBar.Availability.recording.canSwitchToKeyboard)
+        #expect(ConversationActionBar.Availability.recording.showsSend)
+        #expect(ConversationActionBar.Availability.recording.canSend == false)
+        #expect(ConversationActionBar.Availability.shortCapture.showsSend)
         #expect(ConversationActionBar.Availability.shortCapture.canSend == false)
+        #expect(ConversationActionBar.Availability.sendable.showsSend)
         #expect(ConversationActionBar.Availability.sendable.canSend)
         #expect(ConversationActionBar.Availability.pausedEmpty.canSend == false)
         #expect(ConversationActionBar.Availability.pausedShort.canSend == false)
@@ -74,17 +83,33 @@ struct ConversationComponentTests {
         #expect(ConversationActionBar.Availability.saved.canSwitchToKeyboard == false)
         #expect(ConversationActionBar.Availability.saved.canResume == false)
         #expect(ConversationActionBar.Availability.waitingForReply.canDiscard == false)
+        #expect(TaisaButtonShape.roundedRectangle != .capsule)
+        #expect(TextComposer.Contract.usesLiquidEditorSurface)
+        #expect(TextComposer.Contract.minimumHeight == 48)
+        #expect(TextComposer.Contract.focusesOnEntry)
     }
 
     @MainActor @Test func conversationActivityAndRecoveryRemainAccessible() {
         #expect(ConversationActivityIndicator.animationDuration == 2)
         #expect(ConversationActivityIndicator.Motion.reduced == .staticFrame)
-        #expect(InlineRecoveryAlert.Contract.transcription.retryLabel == "Try again")
-        #expect(InlineRecoveryAlert.Contract.transcription.cancelLabel == "Cancel")
-        #expect(InlineRecoveryAlert.Contract.request.message == "Nothing has been discarded. Try again when you’re ready.")
-        #expect(InlineRecoveryAlert.Contract.beginRecording.title == "Taisa couldn’t start recording")
-        #expect(InlineRecoveryAlert.Contract.beginRecording.message == "Check microphone access, then try again.")
+        #expect(InlineRecoveryAlert.Contract.transcription.title == "Recording couldn’t be transcribed")
+        #expect(InlineRecoveryAlert.Contract.transcription.message == "Your recording is saved.")
+        #expect(InlineRecoveryAlert.Contract.transcription.retryLabel == "Retry transcription")
+        #expect(InlineRecoveryAlert.Contract.transcription.cancelLabel == "Save for later")
+        #expect(InlineRecoveryAlert.Contract.request.title == "Taisa couldn’t respond")
+        #expect(InlineRecoveryAlert.Contract.request.message == "Your message is saved.")
+        #expect(InlineRecoveryAlert.Contract.request.cancelLabel == "Continue later")
+        #expect(InlineRecoveryAlert.Contract.request.retryLabel == "Retry response")
+        #expect(InlineRecoveryAlert.Contract.beginRecording.title == "Recording didn’t start")
+        #expect(InlineRecoveryAlert.Contract.beginRecording.message == "Nothing was recorded. Try again or use the keyboard.")
+        #expect(InlineRecoveryAlert.Contract.beginRecording.cancelLabel == "Use keyboard")
+        #expect(InlineRecoveryAlert.Contract.beginRecording.retryLabel == "Try recording again")
+        #expect(InlineRecoveryAlert.Contract.microphonePermission.title == "Microphone access is off")
         #expect(InlineRecoveryAlert.Contract.microphonePermission.retryLabel == "Open Settings")
+        #expect(InlineRecoveryAlert.Contract.pauseRecording.cancelLabel == "Discard recording")
+        #expect(InlineRecoveryAlert.Contract.pauseRecording.retryLabel == "Pause again")
+        #expect(InlineRecoveryAlert.Contract.resumeRecording.cancelLabel == "Save draft")
+        #expect(InlineRecoveryAlert.Contract.resumeRecording.retryLabel == "Resume again")
         #expect(TextComposer.Contract.empty.placeholder == "Reply")
         #expect(TextComposer.Mode.processing.acceptsInput == false)
     }
@@ -93,5 +118,12 @@ struct ConversationComponentTests {
         #expect(CentralIconName.cross != .keyboard)
         #expect(CentralIconName.arrowUp != .pause)
         #expect(CentralIconName.play != .chevronDown)
+    }
+
+    @Test func toastContractIsTopPlacedAndAccessible() {
+        #expect(TaisaToast.Contract.default.placement == .top)
+        #expect(TaisaToast.Contract.default.dismissAfter == 4)
+        #expect(TaisaToast.Contract.default.swipeDirection == .up)
+        #expect(TaisaToast.Contract.default.announcesWithVoiceOver)
     }
 }

@@ -13,21 +13,25 @@ struct ConversationsView: View {
     }
 
     @State private var model: ConversationsModel
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var confirmation: Confirmation?
     @State private var renameTarget: ConversationRecord?
     @State private var renameText = ""
-    @State private var showsDraftsOnly = false
+    @State private var showsDrafts = false
+    let resetID: Int
     let resume: (ConversationDraftRecord) -> Void
     let open: (ConversationRecord) -> Void
     let openRecovery: () -> Void
 
     init(
         model: ConversationsModel,
+        resetID: Int = 0,
         resume: @escaping (ConversationDraftRecord) -> Void,
         open: @escaping (ConversationRecord) -> Void,
         openRecovery: @escaping () -> Void
     ) {
         _model = State(initialValue: model)
+        self.resetID = resetID
         self.resume = resume
         self.open = open
         self.openRecovery = openRecovery
@@ -37,12 +41,28 @@ struct ConversationsView: View {
         ZStack(alignment: .top) {
             content
             header
+            if let notice = model.notices.first {
+                toast(notice)
+                    .id(notice.id)
+                    .padding(.horizontal, TaisaSpacing.standard.rawValue)
+                    .padding(.top, TaisaControlMetric.appBarHeight - TaisaSpacing.control.rawValue)
+                    .transition(toastTransition)
+                    .zIndex(2)
+            }
         }
+        .animation(toastAnimation, value: model.notices.first?.id)
         .background(TaisaColor.background.color)
         .toolbar(.hidden, for: .navigationBar)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("conversations.root")
         .task { if model.state == .idle { await model.load() } }
+        .navigationDestination(isPresented: $showsDrafts) {
+            DraftsView(
+                drafts: model.snapshot.drafts,
+                resume: resume,
+                discard: { confirmation = .discard($0) }
+            )
+        }
         .confirmationDialog(
                 confirmationTitle,
                 isPresented: Binding(
@@ -98,24 +118,9 @@ struct ConversationsView: View {
                 description: Text("Completed chats and saved drafts will appear here.")
             )
             .accessibilityIdentifier("conversations.empty")
-        case let .content(snapshot, isRefreshing, issue):
+        case let .content(snapshot, isRefreshing, _):
             List {
-                if let issue { issueRow(issue) }
-                if !snapshot.drafts.isEmpty {
-                    Section("Drafts") {
-                        ForEach(snapshot.drafts) { draft in
-                            Button { resume(draft) } label: { DraftRow(draft: draft) }
-                                .buttonStyle(.plain)
-                                .listRowSeparatorTint(TaisaColor.background.color)
-                                .contextMenu {
-                                    Button("Discard", role: .destructive) { confirmation = .discard(draft) }
-                                }
-                        }
-                    }
-                    .accessibilityIdentifier("conversations.drafts")
-                }
-                if !showsDraftsOnly || snapshot.drafts.isEmpty {
-                    ForEach(groupedConversations(snapshot.conversations), id: \.month) { group in
+                ForEach(groupedConversations(snapshot.conversations), id: \.month) { group in
                         Section {
                             monthHeader(group.month)
                                 .listRowInsets(EdgeInsets())
@@ -139,7 +144,6 @@ struct ConversationsView: View {
                             }
                         }
                         .listSectionMargins(.horizontal, 0)
-                    }
                 }
                 if isRefreshing { ProgressView().frame(maxWidth: .infinity) }
             }
@@ -160,13 +164,14 @@ struct ConversationsView: View {
             .environment(\.defaultMinListRowHeight, 0)
             .padding(.horizontal, TaisaSpacing.standard.rawValue)
             .refreshable { await model.load() }
+            .id(resetID)
         case let .failure(issue):
             ContentUnavailableView {
-                Label(issue == .recoveryRequired ? "Recovery required" : "Conversations unavailable", systemImage: "exclamationmark.triangle")
+                Label(issueTitle(issue, retainedContent: false), systemImage: "exclamationmark.triangle")
             } description: {
-                Text(issue == .recoveryRequired ? "Restore secure access to read your conversations." : "Taisa couldn’t read your conversations securely.")
+                Text(issueMessage(issue, retainedContent: false))
             } actions: {
-                if issue == .recoveryRequired {
+                if case .recoveryRequired = issue {
                     Button("Open recovery", action: openRecovery).accessibilityIdentifier("conversations.recovery")
                 } else {
                     Button("Try again") { Task { await model.load() } }.accessibilityIdentifier("conversations.retry")
@@ -187,7 +192,7 @@ struct ConversationsView: View {
     }
 
     private var draftsButton: some View {
-        TaisaSecondaryCapsuleButton(action: { showsDraftsOnly.toggle() }) {
+        TaisaSecondaryCapsuleButton(action: { showsDrafts = true }) {
             HStack(spacing: 6) {
                 Text("Drafts").font(.system(size: 16, weight: .medium))
                 Circle()
@@ -196,8 +201,7 @@ struct ConversationsView: View {
             }
             .padding(.horizontal, TaisaSpacing.content.rawValue)
         }
-        .accessibilityValue(showsDraftsOnly ? "Showing drafts" : "Showing all chats")
-        .accessibilityIdentifier("chats.drafts-filter")
+        .accessibilityIdentifier("chats.drafts")
     }
 
     private func monthHeader(_ month: String) -> some View {
@@ -249,13 +253,70 @@ struct ConversationsView: View {
             }
     }
 
-    private func issueRow(_ issue: ConversationsIssue) -> some View {
-        Button {
-            if issue == .recoveryRequired { openRecovery() } else { Task { await model.load() } }
-        } label: {
-            Label(issue == .recoveryRequired ? "Open recovery" : "Try refresh again", systemImage: "exclamationmark.triangle")
+    private var toastTransition: AnyTransition {
+        reduceMotion
+            ? .opacity
+            : .move(edge: .top).combined(with: .opacity)
+    }
+
+    private var toastAnimation: Animation? {
+        reduceMotion ? nil : .snappy(duration: TaisaMotion.fast)
+    }
+
+    private func toast(_ notice: ConversationsNotice) -> some View {
+        TaisaToast(
+            message: issueTitle(notice.issue, retainedContent: true),
+            actionLabel: issueActionLabel(notice.issue),
+            action: {
+                model.dismissNotice(id: notice.id)
+                retry(notice.issue)
+            },
+            dismiss: { model.dismissNotice(id: notice.id) }
+        )
+        .accessibilityIdentifier("conversations.toast")
+    }
+
+    private func retry(_ issue: ConversationsIssue) {
+        switch issue {
+        case .storageUnavailable:
+            Task { await model.load() }
+        case .recoveryRequired:
+            openRecovery()
+        case let .renameFailed(id, title):
+            Task { await model.renameConversation(id: id, title: title) }
+        case let .deleteFailed(id):
+            Task { await model.deleteConversation(id: id) }
+        case let .discardFailed(id):
+            Task { await model.discardDraft(id: id) }
         }
-        .accessibilityIdentifier(issue == .recoveryRequired ? "conversations.recovery" : "conversations.retry")
+    }
+
+    private func issueTitle(_ issue: ConversationsIssue, retainedContent: Bool) -> String {
+        switch issue {
+        case .storageUnavailable: retainedContent ? "Couldn’t refresh chats" : "Chats couldn’t load"
+        case .recoveryRequired: "Secure access is unavailable"
+        case .renameFailed: "Title wasn’t changed"
+        case .deleteFailed: "Conversation wasn’t deleted"
+        case .discardFailed: "Draft wasn’t discarded"
+        }
+    }
+
+    private func issueMessage(_ issue: ConversationsIssue, retainedContent: Bool) -> String {
+        switch issue {
+        case .storageUnavailable:
+            retainedContent ? "Your existing chats are still shown." : "Try loading them again."
+        case .recoveryRequired: "Restore access to open your chats."
+        case .renameFailed: "The previous title is still in place."
+        case .deleteFailed: "Nothing was removed."
+        case .discardFailed: "Your draft is still available."
+        }
+    }
+
+    private func issueActionLabel(_ issue: ConversationsIssue) -> String {
+        switch issue {
+        case .storageUnavailable, .renameFailed, .deleteFailed, .discardFailed: "Retry"
+        case .recoveryRequired: "Open Recovery"
+        }
     }
 
     private func beginRename(_ conversation: ConversationRecord) {
@@ -269,5 +330,39 @@ struct ConversationsView: View {
         case .delete: "Delete this conversation?"
         case nil: "Confirm action"
         }
+    }
+}
+
+private struct DraftsView: View {
+    @Environment(\.dismiss) private var dismiss
+    let drafts: [ConversationDraftRecord]
+    let resume: (ConversationDraftRecord) -> Void
+    let discard: (ConversationDraftRecord) -> Void
+
+    var body: some View {
+        ZStack(alignment: .top) {
+            List(drafts) { draft in
+                Button { resume(draft) } label: { DraftRow(draft: draft) }
+                    .buttonStyle(.plain)
+                    .contextMenu {
+                        Button("Discard", role: .destructive) { discard(draft) }
+                    }
+            }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .contentMargins(.top, TaisaControlMetric.appBarHeight + TaisaSpacing.compact.rawValue, for: .scrollContent)
+            .padding(.horizontal, TaisaSpacing.standard.rawValue)
+
+            TaisaPageHeader("Drafts") {
+                TaisaSecondaryIconButton(
+                    icon: .chevronDown,
+                    accessibilityLabel: "Close drafts",
+                    action: { dismiss() }
+                )
+            }
+        }
+        .background(TaisaColor.background.color)
+        .toolbar(.hidden, for: .navigationBar)
+        .accessibilityIdentifier("conversations.drafts")
     }
 }
