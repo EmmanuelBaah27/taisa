@@ -10,7 +10,6 @@ node_modules/
 .expo/
 dist/
 .cache/
-package-lock.json
 .superpowers/
 .worktrees/
 apple/DerivedData/
