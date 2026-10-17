@@ -126,12 +126,12 @@ final class ConversationsViewContractTests: XCTestCase {
         XCTAssertFalse(source.contains("Menu(\"Actions\")"))
         XCTAssertFalse(source.contains("New conversation"))
         XCTAssertFalse(source.contains("import GRDB"))
-        XCTAssertTrue(source.contains("Chats couldn’t load"))
+        XCTAssertTrue(source.contains("Couldn’t load chats"))
         XCTAssertTrue(source.contains("Couldn’t refresh chats"))
-        XCTAssertTrue(source.contains("Title wasn’t changed"))
-        XCTAssertTrue(source.contains("Conversation wasn’t deleted"))
-        XCTAssertTrue(source.contains("Draft wasn’t discarded"))
-        XCTAssertTrue(source.contains("Secure access is unavailable"))
+        XCTAssertTrue(source.contains("Couldn’t rename conversation"))
+        XCTAssertTrue(source.contains("Couldn’t delete conversation"))
+        XCTAssertTrue(source.contains("Couldn’t discard draft"))
+        XCTAssertTrue(source.contains("Unlock your chats to continue"))
         XCTAssertTrue(source.contains("Open Recovery"))
     }
 

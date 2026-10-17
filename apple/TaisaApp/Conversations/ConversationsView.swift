@@ -293,28 +293,29 @@ struct ConversationsView: View {
 
     private func issueTitle(_ issue: ConversationsIssue, retainedContent: Bool) -> String {
         switch issue {
-        case .storageUnavailable: retainedContent ? "Couldn’t refresh chats" : "Chats couldn’t load"
-        case .recoveryRequired: "Secure access is unavailable"
-        case .renameFailed: "Title wasn’t changed"
-        case .deleteFailed: "Conversation wasn’t deleted"
-        case .discardFailed: "Draft wasn’t discarded"
+        case .storageUnavailable: retainedContent ? "Couldn’t refresh chats" : "Couldn’t load chats"
+        case .recoveryRequired: "Unlock your chats to continue"
+        case .renameFailed: "Couldn’t rename conversation"
+        case .deleteFailed: "Couldn’t delete conversation"
+        case .discardFailed: "Couldn’t discard draft"
         }
     }
 
     private func issueMessage(_ issue: ConversationsIssue, retainedContent: Bool) -> String {
         switch issue {
         case .storageUnavailable:
-            retainedContent ? "Your existing chats are still shown." : "Try loading them again."
-        case .recoveryRequired: "Restore access to open your chats."
-        case .renameFailed: "The previous title is still in place."
-        case .deleteFailed: "Nothing was removed."
-        case .discardFailed: "Your draft is still available."
+            retainedContent ? "You’re seeing the last saved version." : "Check your connection and try again."
+        case .recoveryRequired: "Open Recovery to restore secure access."
+        case .renameFailed: "Your original title is unchanged."
+        case .deleteFailed: "It’s still in your chat history."
+        case .discardFailed: "Your draft is still saved."
         }
     }
 
     private func issueActionLabel(_ issue: ConversationsIssue) -> String {
         switch issue {
-        case .storageUnavailable, .renameFailed, .deleteFailed, .discardFailed: "Retry"
+        case .storageUnavailable: "Refresh"
+        case .renameFailed, .deleteFailed, .discardFailed: "Try again"
         case .recoveryRequired: "Open Recovery"
         }
     }
