@@ -3,38 +3,39 @@ import SwiftUI
 public struct InlineRecoveryAlert: View {
     public struct Contract: Sendable, Equatable {
         public let title: String; public let message: String; public let cancelLabel: String; public let retryLabel: String
-        public static let usesStableHorizontalActions = true
+        public static let alwaysFillsAvailableWidth = true
+        public static let stackedActionsFillAvailableWidth = true
         public static let actionHeight: CGFloat = 48
         public static let actionSpacing: CGFloat = TaisaSpacing.control.rawValue
         public static let transcription = Contract(
-            title: "Recording couldn’t be transcribed",
-            message: "Your recording is saved.",
-            cancelLabel: "Save for later", retryLabel: "Retry transcription"
+            title: "Couldn’t transcribe recording",
+            message: "Your recording is saved. Try again now or keep it for later.",
+            cancelLabel: "Keep for later", retryLabel: "Try again"
         )
         public static let request = Contract(
-            title: "Taisa couldn’t respond",
-            message: "Your message is saved.",
-            cancelLabel: "Continue later", retryLabel: "Retry response"
+            title: "Couldn’t get a response",
+            message: "Your message is saved. Try again now or continue later.",
+            cancelLabel: "Continue later", retryLabel: "Try again"
         )
         public static let beginRecording = Contract(
-            title: "Recording didn’t start",
-            message: "Nothing was recorded. Try again or use the keyboard.",
-            cancelLabel: "Use keyboard", retryLabel: "Try recording again"
+            title: "Couldn’t start recording",
+            message: "No audio was captured. Try again or type instead.",
+            cancelLabel: "Use keyboard", retryLabel: "Try again"
         )
         public static let microphonePermission = Contract(
-            title: "Microphone access is off",
-            message: "Allow microphone access in Settings to record, or continue with the keyboard.",
+            title: "Microphone access needed",
+            message: "Allow access in Settings to record, or type instead.",
             cancelLabel: "Use keyboard", retryLabel: "Open Settings"
         )
         public static let pauseRecording = Contract(
-            title: "Recording didn’t pause",
-            message: "Your recording is still available. Try pausing again or discard it.",
-            cancelLabel: "Discard recording", retryLabel: "Pause again"
+            title: "Couldn’t pause recording",
+            message: "Recording may still be active. Try again or discard it.",
+            cancelLabel: "Discard recording", retryLabel: "Try again"
         )
         public static let resumeRecording = Contract(
-            title: "Recording didn’t resume",
+            title: "Couldn’t resume recording",
             message: "Your recording is still paused. Try again or save it for later.",
-            cancelLabel: "Save draft", retryLabel: "Resume again"
+            cancelLabel: "Save draft", retryLabel: "Try again"
         )
     }
     private let contract: Contract
@@ -50,9 +51,13 @@ public struct InlineRecoveryAlert: View {
                 .frame(width: 24, height: 24)
             Text(contract.title).font(.system(.body, weight: .medium))
             Text(contract.message).font(.system(.subheadline)).foregroundStyle(TaisaColor.mutedForeground.color)
-            HStack(spacing: Contract.actionSpacing) { actions }
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: Contract.actionSpacing) { actions }
+                VStack(spacing: Contract.actionSpacing) { actions }
+            }
         }
         .padding(TaisaSpacing.standard.rawValue)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(TaisaColor.background.color, in: RoundedRectangle(cornerRadius: TaisaRadius.panel.rawValue))
         .overlay { RoundedRectangle(cornerRadius: TaisaRadius.panel.rawValue).stroke(TaisaColor.border.color) }
     }
@@ -68,7 +73,7 @@ public struct InlineRecoveryAlert: View {
             Text(label)
                 .font(TaisaTypography.navigationLabel.font)
                 .lineLimit(1)
-                .minimumScaleFactor(0.75)
+                .fixedSize(horizontal: true, vertical: false)
                 .frame(maxWidth: .infinity, minHeight: Contract.actionHeight)
         }
         .frame(maxWidth: .infinity)

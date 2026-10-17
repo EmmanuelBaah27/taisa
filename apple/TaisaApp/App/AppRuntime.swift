@@ -172,6 +172,7 @@ final class AppRuntime {
             conversationFactory = clients.conversationFactory
             state = .ready
         } catch {
+            print("TAISA_RUNTIME_START failure=\(String(reflecting: error))")
             clearServices()
             state = .recoveryRequired
         }
