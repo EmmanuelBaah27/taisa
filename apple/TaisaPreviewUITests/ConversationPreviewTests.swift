@@ -27,6 +27,14 @@ final class ConversationPreviewTests: XCTestCase {
 
         notHelpful.tap()
         XCTAssertTrue(factors.waitForExistence(timeout: 5))
+
+        let remove = app.buttons["conversation.feedback.remove"]
+        XCTAssertTrue(remove.waitForExistence(timeout: 5))
+        remove.tap()
+        XCTAssertFalse(factors.waitForExistence(timeout: 1))
+
+        notHelpful.tap()
+        XCTAssertTrue(factors.waitForExistence(timeout: 5))
     }
 
     func testEveryConversationStateOpensDeterministicallyWithoutProductionRuntime() {

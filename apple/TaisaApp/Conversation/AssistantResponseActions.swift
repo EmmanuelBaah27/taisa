@@ -34,17 +34,18 @@ struct AssistantResponseActions: View {
                 Button {
                     showsExplanation = true
                 } label: {
-                    Label("About this response", systemImage: "info.circle")
-                        .font(.caption)
+                    Image(systemName: "info.circle")
                         .frame(minHeight: TaisaControlMetric.headerActionHeight)
                 }
                 .buttonStyle(.plain)
+                .foregroundStyle(TaisaColor.mutedForeground.color)
+                .accessibilityLabel("About this response")
                 .accessibilityIdentifier("conversation.response-info")
-
-                Spacer()
 
                 feedbackButton(.helpful, systemImage: "hand.thumbsup", label: "Helpful")
                 feedbackButton(.notHelpful, systemImage: "hand.thumbsdown", label: "Not helpful")
+
+                Spacer()
             }
 
             if let proposal = response.proposal {
@@ -84,7 +85,14 @@ struct AssistantResponseActions: View {
             NavigationStack {
                 ScrollView {
                     if let direction {
-                        feedbackFactors(for: direction)
+                        VStack(alignment: .leading, spacing: TaisaSpacing.section.rawValue) {
+                            feedbackFactors(for: direction)
+                            Button("Remove rating", role: .destructive) {
+                                removeRating()
+                            }
+                            .buttonStyle(.bordered)
+                            .accessibilityIdentifier("conversation.feedback.remove")
+                        }
                             .padding(TaisaSpacing.standard.rawValue)
                     }
                 }
@@ -151,6 +159,13 @@ struct AssistantResponseActions: View {
     private func toggle(_ factor: ResponseQualityFactor, direction: ResponseFeedbackDirection) {
         if factors.contains(factor) { factors.remove(factor) } else { factors.insert(factor) }
         saveFeedback(direction, factors.sorted())
+    }
+
+    private func removeRating() {
+        direction = nil
+        factors = []
+        saveFeedback(nil, [])
+        showsFeedback = false
     }
 
     @ViewBuilder private func proposalReview(_ proposal: AssistantProposalRecord) -> some View {
