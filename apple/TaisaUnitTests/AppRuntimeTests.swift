@@ -358,7 +358,7 @@ final class AppRuntimeTests: XCTestCase {
         XCTAssertEqual(restoration.composer, .savedVoiceDraft)
     }
 
-    func testVoiceConfigurationUsesEnrolledOriginBoundCredential() async throws {
+    func testVoiceConfigurationUsesEnrolledCredentialAndDeviceIdentity() async throws {
         let store = InMemoryVoiceGatewayCredentialStore()
         let credential = try VoiceGatewayCredential(
             origin: XCTUnwrap(URL(string: "https://voice.example.com/path?ignored=true")),
@@ -369,21 +369,34 @@ final class AppRuntimeTests: XCTestCase {
 
         let configuration = try await AppRuntime.voiceConfiguration(
             gatewayURLString: "https://voice.example.com/another-path",
-            credentialStore: store
+            credentialStore: store,
+            ownerID: "device-uuid-1"
         )
 
         XCTAssertEqual(configuration?.baseURL, URL(string: "https://voice.example.com"))
         XCTAssertEqual(configuration?.bearerToken, "secret-token")
-        XCTAssertEqual(configuration?.ownerID, "credential-1")
+        XCTAssertEqual(configuration?.ownerID, "device-uuid-1")
     }
 
     func testVoiceConfigurationIsUnavailableWithoutEnrollment() async throws {
         let configuration = try await AppRuntime.voiceConfiguration(
             gatewayURLString: "https://voice.example.com",
-            credentialStore: InMemoryVoiceGatewayCredentialStore()
+            credentialStore: InMemoryVoiceGatewayCredentialStore(),
+            ownerID: "device-uuid-1"
         )
 
         XCTAssertNil(configuration)
+    }
+
+    func testPersonalBuildCanOpenVoiceEnrollmentDirectlyForDeviceRecovery() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let source = try String(
+            contentsOf: root.appendingPathComponent("TaisaApp/App/AppRootView.swift"),
+            encoding: .utf8
+        )
+
+        XCTAssertTrue(source.contains("--taisa-voice-enrollment"))
+        XCTAssertTrue(source.contains("PersonalVoiceSessionView()"))
     }
 
     func testOperationalFactsRemainHonestWithoutLiveHealthProof() {

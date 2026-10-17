@@ -92,6 +92,7 @@ final class PrimaryAppShellModel {
 
 struct PrimaryAppShell: View {
     @State var model: PrimaryAppShellModel
+    @State private var swipeStartSelection: PrimaryDestination?
     let homeModel: HomeModel
     var careerWorkModel: CareerWorkModel = CareerWorkModel(client: .init(loadOverview: { .init(active: [], paused: [], completed: [], archived: []) }))
     let conversationsModel: ConversationsModel
@@ -114,6 +115,7 @@ struct PrimaryAppShell: View {
                     }
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
+                .simultaneousGesture(primaryPageCompletionGesture)
                 .safeAreaPadding(.bottom, model.primaryPageBottomReservation)
             }
 
@@ -122,6 +124,7 @@ struct PrimaryAppShell: View {
                     .frame(maxWidth: .infinity)
                     .frame(height: 104)
                     .ignoresSafeArea(edges: [.horizontal, .bottom])
+                    .allowsHitTesting(false)
 
                 VStack(spacing: TaisaSpacing.compact.rawValue) {
                     ConversationEntryDock(
@@ -156,6 +159,25 @@ struct PrimaryAppShell: View {
                 dismiss: dismissConversationAndRefresh
             )
         }
+    }
+
+    /// Lets the native pager own the interactive motion, then only completes a
+    /// clearly horizontal page gesture when nested scroll content consumed it.
+    private var primaryPageCompletionGesture: some Gesture {
+        DragGesture(minimumDistance: 24)
+            .onChanged { _ in
+                if swipeStartSelection == nil { swipeStartSelection = model.selection }
+            }
+            .onEnded { value in
+                let startSelection = swipeStartSelection
+                swipeStartSelection = nil
+                guard let startSelection,
+                      model.selection == startSelection,
+                      abs(value.translation.width) > abs(value.translation.height),
+                      abs(value.translation.width) >= 60
+                else { return }
+                model.selectAdjacent(offset: value.translation.width < 0 ? 1 : -1)
+            }
     }
 
     @MainActor

@@ -23,7 +23,11 @@ struct AppRootView: View {
 
     var body: some View {
         Group {
-            if showsChatsVisualQA {
+            if showsVoiceEnrollmentQA {
+#if TAISA_PERSONAL
+                PersonalVoiceSessionView()
+#endif
+            } else if showsChatsVisualQA {
                 chatsVisualQAShell
             } else if showsConversationOverflowQA {
                 ConversationView(model: .overflowQAPreview())
@@ -118,6 +122,14 @@ struct AppRootView: View {
     private var showsConversationOverflowQA: Bool {
 #if DEBUG || TAISA_PERSONAL
         ProcessInfo.processInfo.arguments.contains("--taisa-conversation-overflow-qa")
+#else
+        false
+#endif
+    }
+
+    private var showsVoiceEnrollmentQA: Bool {
+#if TAISA_PERSONAL
+        ProcessInfo.processInfo.arguments.contains("--taisa-voice-enrollment")
 #else
         false
 #endif

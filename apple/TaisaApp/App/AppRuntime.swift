@@ -72,13 +72,15 @@ final class AppRuntime {
             } else {
                 configuration = try await voiceConfiguration(
                     gatewayURLString: rawURL,
-                    credentialStore: KeychainVoiceGatewayCredentialStore()
+                    credentialStore: KeychainVoiceGatewayCredentialStore(),
+                    ownerID: context.deviceID.uuidString.lowercased()
                 )
             }
 #else
             configuration = try await voiceConfiguration(
                 gatewayURLString: rawURL,
-                credentialStore: KeychainVoiceGatewayCredentialStore()
+                credentialStore: KeychainVoiceGatewayCredentialStore(),
+                ownerID: context.deviceID.uuidString.lowercased()
             )
 #endif
             let hasGatewayConfiguration = configuration != nil
@@ -107,7 +109,8 @@ final class AppRuntime {
 
     static func voiceConfiguration(
         gatewayURLString: String,
-        credentialStore: any VoiceGatewayCredentialStoring
+        credentialStore: any VoiceGatewayCredentialStoring,
+        ownerID: String
     ) async throws -> VoiceGatewayConfiguration? {
         guard let gatewayURL = URL(string: gatewayURLString),
               let credential = try await credentialStore.load(origin: gatewayURL)
@@ -115,7 +118,7 @@ final class AppRuntime {
         return try VoiceGatewayConfiguration(
             baseURL: credential.origin,
             bearerToken: credential.bearerToken,
-            ownerID: credential.credentialID
+            ownerID: ownerID
         )
     }
 
