@@ -130,7 +130,7 @@ struct GatewayConversationClientTests {
         #expect(index.conversations.first?.updatedAtMS == 1)
     }
 
-    @Test func loadingHistoryPreservesAuthoredAndAssistantSuggestedTitles() async throws {
+    @Test func loadingHistoryRepairsGeneratedTitlesButPreservesUserTitles() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -158,7 +158,9 @@ struct GatewayConversationClientTests {
                 id: "00000000-0000-4000-8000-00000000081\(offset)",
                 conversationID: record.0,
                 role: "user",
-                body: "This message would derive a different fallback title",
+                body: offset == 0
+                    ? "Why is it that when I try to record, like for some reason it keeps failing"
+                    : "This message would derive a different fallback title",
                 createdAtMS: Int64(offset + 10)
             ), context: .init(id: UUID().uuidString, deviceID: deviceID, timestamp: Int64(offset + 10)))
         }
@@ -166,8 +168,8 @@ struct GatewayConversationClientTests {
         let index = try await ConversationsClient.local(store: store, deviceID: deviceID).load()
         let titles = Dictionary(uniqueKeysWithValues: index.conversations.map { ($0.id, ($0.title, $0.titleAuthority)) })
 
-        #expect(titles[records[0].0]?.0 == records[0].1)
-        #expect(titles[records[0].0]?.1 == .assistantSuggested)
+        #expect(titles[records[0].0]?.0 == "Troubleshooting a recording problem")
+        #expect(titles[records[0].0]?.1 == .localFallback)
         #expect(titles[records[1].0]?.0 == records[1].1)
         #expect(titles[records[1].0]?.1 == .user)
     }

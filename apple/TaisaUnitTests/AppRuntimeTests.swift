@@ -119,6 +119,35 @@ final class AppRuntimeTests: XCTestCase {
         XCTAssertTrue(restoration.cleansInterruptedCapture)
     }
 
+    func testInterruptedCaptureCleanupCannotOwnTheReadableChatRuntime() {
+        let conversationID = UUID().uuidString
+        let interruptedTurn = voiceTurn(
+            conversationID: conversationID,
+            state: .terminalFailure,
+            stage: .cleanup
+        )
+        let fallbackTurn = voiceTurn(
+            conversationID: conversationID,
+            state: .draft,
+            stage: .capture
+        )
+        let restoration = ConversationRuntimeFactory.restoration(
+            draft: nil,
+            linkedVoiceTurn: nil,
+            resumableVoiceTurn: interruptedTurn,
+            fallbackVoiceTurn: fallbackTurn
+        )
+
+        XCTAssertEqual(
+            ConversationRuntimeFactory.runtimeInitialTurn(
+                restoration: restoration,
+                fallbackVoiceTurn: fallbackTurn,
+                hasPendingConversationRequest: false
+            ).id,
+            fallbackTurn.id
+        )
+    }
+
     func testSavedTerminalVoiceFailureRestoresTheLinkedTurnForRetry() {
         let conversationID = UUID().uuidString
         let linkedTurn = voiceTurn(

@@ -110,23 +110,17 @@ enum ConversationTitleDeriver {
         return replacement + punctuation
     }
 
-    /// Stable fallbacks for common capture intents. Server suggestions remain the
-    /// preferred title; these phrases keep offline/legacy history grammatical.
+    /// Stable titles for recurring capture intents. Prefix matching lets a
+    /// complete transcript retain the same concise subject as its preview.
     private static func reportedPhrase(for source: String) -> String? {
-        switch source {
-        case "if i type now, will it show":
-            "Checking whether typed messages appear"
-        case "i'm going to start another one in drafts":
-            "Starting another conversation draft"
-        case "i'm recording one last time. i don't know why you":
-            "Retrying a recording one last time"
-        case "why is it that when i try to record, like for some":
-            "Troubleshooting a recording problem"
-        case "i'm trying a new one. i don't know why if i tap":
-            "Testing a new recording attempt"
-        default:
-            nil
-        }
+        let phrases = [
+            ("if i type now, will it show", "Checking whether typed messages appear"),
+            ("i'm going to start another one in drafts", "Starting another conversation draft"),
+            ("i'm recording one last time. i don't know why you", "Retrying a recording one last time"),
+            ("why is it that when i try to record, like for some", "Troubleshooting a recording problem"),
+            ("i'm trying a new one. i don't know why if i tap", "Testing a new recording attempt"),
+        ]
+        return phrases.first(where: { source.hasPrefix($0.0) })?.1
     }
 }
 

@@ -250,7 +250,6 @@ struct ConversationRuntimeFactory: Sendable {
             fallbackVoiceTurn: fallbackTurn,
             recoveryTranscript: recoveryTranscript ?? lastUserMessage?.body
         )
-        let initial = pendingConversationRequest == nil ? restoration.voiceTurn : fallbackTurn
         let files = try await openStage(.audioFiles) {
             try ProtectedAudioFileStore()
         }
@@ -262,21 +261,33 @@ struct ConversationRuntimeFactory: Sendable {
             lifecycle: SystemAudioSessionLifecycleSource()
         )
         let connectivity = SystemConnectivityMonitor()
-        let voiceCoordinator = VoiceSessionCoordinator(
-            initial: initial,
-            checkpoints: RepositoryVoiceTurnCheckpointer(repository: turns, deviceID: deviceID),
-            transcription: GatewayTranscriptionRunner(configuration: configuration, audio: capture),
-            transcriptionReconciliation: GatewayTranscriptionReconciliation(configuration: configuration),
-            coaching: GatewayCoachingRunner(configuration: configuration, recentMessages: messageHistory),
-            connectivity: connectivity,
-            reconciliation: GatewayCoachingReconciliation(configuration: configuration),
-            capture: capture,
-            audio: capture
-        )
-        if restoration.cleansInterruptedCapture, pendingConversationRequest == nil {
-            try await voiceCoordinator.recoverIfAuthorized()
-            try await voiceCoordinator.send(.beginNextTurn(fallbackTurn))
+        let makeVoiceCoordinator: (VoiceTurnRecord) -> VoiceSessionCoordinator = { initial in
+            VoiceSessionCoordinator(
+                initial: initial,
+                checkpoints: RepositoryVoiceTurnCheckpointer(repository: turns, deviceID: deviceID),
+                transcription: GatewayTranscriptionRunner(configuration: configuration, audio: capture),
+                transcriptionReconciliation: GatewayTranscriptionReconciliation(configuration: configuration),
+                coaching: GatewayCoachingRunner(configuration: configuration, recentMessages: messageHistory),
+                connectivity: connectivity,
+                reconciliation: GatewayCoachingReconciliation(configuration: configuration),
+                capture: capture,
+                audio: capture
+            )
         }
+        if restoration.cleansInterruptedCapture, pendingConversationRequest == nil {
+            let cleanupCoordinator = makeVoiceCoordinator(restoration.voiceTurn)
+            do {
+                try await cleanupCoordinator.recoverIfAuthorized()
+            } catch {
+                print("TAISA_CONVERSATION_OPEN_RECOVERY deferred=true")
+            }
+        }
+        let initial = Self.runtimeInitialTurn(
+            restoration: restoration,
+            fallbackVoiceTurn: fallbackTurn,
+            hasPendingConversationRequest: pendingConversationRequest != nil
+        )
+        let voiceCoordinator = makeVoiceCoordinator(initial)
         let gatewayClient = GatewayConversationClient(
             store: store, deviceID: deviceID,
             coaching: GatewayCoachingRunner(configuration: configuration, recentMessages: messageHistory)
@@ -481,6 +492,17 @@ struct ConversationRuntimeFactory: Sendable {
         } catch {
             throw ConversationOpenFailure(stage: stage)
         }
+    }
+
+    static func runtimeInitialTurn(
+        restoration: Restoration,
+        fallbackVoiceTurn: VoiceTurnRecord,
+        hasPendingConversationRequest: Bool
+    ) -> VoiceTurnRecord {
+        if hasPendingConversationRequest || restoration.cleansInterruptedCapture {
+            return fallbackVoiceTurn
+        }
+        return restoration.voiceTurn
     }
 
     static func restoration(
