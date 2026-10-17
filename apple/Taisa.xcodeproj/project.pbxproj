@@ -1161,6 +1161,7 @@
 				CODE_SIGN_ENTITLEMENTS = Config/TaisaPreview.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				INFOPLIST_KEY_CFBundleDisplayName = "Taisa Preview";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Taisa uses the microphone only when you choose to test live audio.";
 				INFOPLIST_KEY_TaisaEnvironment = "$(TAISA_ENVIRONMENT)";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -1218,6 +1219,7 @@
 				CODE_SIGN_ENTITLEMENTS = Config/TaisaPreview.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				INFOPLIST_KEY_CFBundleDisplayName = "Taisa Preview";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Taisa uses the microphone only when you choose to test live audio.";
 				INFOPLIST_KEY_TaisaEnvironment = "$(TAISA_ENVIRONMENT)";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -1433,6 +1435,7 @@
 				CODE_SIGN_ENTITLEMENTS = Config/TaisaPreview.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				INFOPLIST_KEY_CFBundleDisplayName = "Taisa Preview";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Taisa uses the microphone only when you choose to test live audio.";
 				INFOPLIST_KEY_TaisaEnvironment = "$(TAISA_ENVIRONMENT)";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -1648,6 +1651,7 @@
 				CODE_SIGN_ENTITLEMENTS = Config/TaisaPreview.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				INFOPLIST_KEY_CFBundleDisplayName = "Taisa Preview";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Taisa uses the microphone only when you choose to test live audio.";
 				INFOPLIST_KEY_TaisaEnvironment = "$(TAISA_ENVIRONMENT)";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

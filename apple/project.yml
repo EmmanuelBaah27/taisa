@@ -104,6 +104,7 @@ targets:
         TAISA_ENVIRONMENT: preview
         SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) DEBUG TAISA_PREVIEW"
         INFOPLIST_KEY_CFBundleDisplayName: Taisa Preview
+        INFOPLIST_KEY_NSMicrophoneUsageDescription: "Taisa uses the microphone only when you choose to test live audio."
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"

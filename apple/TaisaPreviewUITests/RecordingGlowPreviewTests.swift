@@ -86,4 +86,24 @@ final class RecordingGlowPreviewTests: XCTestCase {
         controls.swipeUp()
         XCTAssertEqual(surface.frame, originalSurfaceFrame)
     }
+
+    func testLiveMicrophoneRequestKeepsTunerRunning() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-TAISAPreviewScenario", "recording-glow.tuner"]
+        addUIInterruptionMonitor(withDescription: "Microphone permission") { alert in
+            let allow = alert.buttons["Allow"]
+            guard allow.exists else { return false }
+            allow.tap()
+            return true
+        }
+        app.launch()
+
+        let liveMicrophone = app.buttons["Live microphone"]
+        XCTAssertTrue(liveMicrophone.waitForExistence(timeout: 5))
+        liveMicrophone.tap()
+        app.tap()
+
+        XCTAssertTrue(app.staticTexts["Live level"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.state, .runningForeground)
+    }
 }
