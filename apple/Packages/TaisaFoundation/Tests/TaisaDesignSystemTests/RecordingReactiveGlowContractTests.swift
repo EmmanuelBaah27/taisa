@@ -62,7 +62,7 @@ struct RecordingReactiveGlowContractTests {
         let motion = RecordingGlowWaveMotion.default
 
         #expect(motion.attackBounce > 0)
-        #expect(motion.attackBounce == 0.2)
+        #expect(motion.attackBounce == 0.45)
         #expect(motion.attackDuration == 0.16)
         #expect(motion.releaseDuration == 0.16)
     }
