@@ -108,6 +108,6 @@ final class RecordingGlowPreviewTests: XCTestCase {
             app.staticTexts["Listening — receiving audio"]
                 .waitForExistence(timeout: 5)
         )
-        XCTAssertEqual(app.state, .runningForeground)
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 5))
     }
 }
