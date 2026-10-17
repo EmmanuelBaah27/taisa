@@ -347,6 +347,13 @@ only the previously recorded broken interaction before final verification and pu
 - Use real encrypted local data in production UI; never production mocks.
 - No AI/network request during ordinary local browsing unless approved behavior requires it.
 - Keep business logic outside presentation components.
+- Every authored visual style must use an existing semantic design-system token or
+  component. Product UI must not introduce raw or arbitrary colors, typography, spacing,
+  radii, shadows, materials, motion values, or one-off style variants. When no suitable role
+  exists, add the semantic token or component to the design system, document its intent and
+  platform mappings, and verify it before any screen consumes it. Platform-provided defaults
+  and runtime values derived from accessibility, safe areas, geometry, or state are not new
+  authored tokens.
 - Support Dynamic Type, VoiceOver, increased contrast, Reduce Motion, reduced transparency,
   safe areas, keyboard use, and suitable touch targets.
 - DS breaking changes always require Baah confirmation with affected usages; global behavior

@@ -241,6 +241,11 @@ served or installed. Repeat for every QA revision.
   keyboard use, and touch targets.
 - Keep business logic outside presentation and add shared DS only when reuse is proven.
 - Product DS order: shared typed presentation first, screens/data/navigation second.
+- Every authored visual style must use an existing semantic DS token or component. Raw or
+  arbitrary colors, typography, spacing, radii, shadows, materials, motion values, and one-off
+  style variants are prohibited in Product UI. A missing semantic role is a DS gap: extend,
+  document, and verify the DS before a screen consumes it. Platform defaults and runtime values
+  derived from accessibility, safe areas, geometry, or state do not create new authored tokens.
 - Backward-compatible DS variants are autonomous; global behavior and breaking changes need
   Baah confirmation with affected usages.
 - Phone-authoritative personal data; deliberate bounded AI requests; provenance; explicit

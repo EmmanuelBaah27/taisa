@@ -78,6 +78,10 @@ legacy migration source until its required behavior and unique work are accounte
   root workspaces are `backend` and `shared` only.
 - New or rebuilt legacy UI uses NativeWind and the documented design system; do not add
   `StyleSheet.create()` to new or rebuilt components.
+- Every authored visual style must use an existing semantic design-system token or component.
+  Do not introduce raw or arbitrary colors, typography, spacing, radii, shadows, materials,
+  motion values, or one-off style variants in Product UI. If the required semantic role does
+  not exist, extend, document, and verify the design system before consuming it in a screen.
 - Do not confuse the legacy one-shot journal analyser with the unimplemented four-mode Senior
   Self experience: Mirror, Nudge, Challenge, and Direct.
 

@@ -200,6 +200,24 @@ rg -q 'e95356d8-17f7-4700-bdfe-222782bea546' \
 rg -qi 'every actionable task.*Linear issue|Linear issue.*every actionable task' \
   .agents/skills/taisa-workflow/SKILL.md || fail "universal Linear issue intake is missing"
 
+for design_system_authority in \
+  AGENTS.md \
+  docs/workflow.md \
+  .agents/skills/taisa-workflow/SKILL.md \
+  docs/design-system.md; do
+  rg -qi 'every authored visual style.*must use.*existing semantic' \
+    "$design_system_authority" ||
+    fail "$design_system_authority is missing the existing semantic token/component invariant"
+  rg -qi 'token or component|token/component' "$design_system_authority" ||
+    fail "$design_system_authority does not require a design-system token or component"
+  rg -qi 'missing (semantic )?role|no suitable role|required semantic role|DS gap' \
+    "$design_system_authority" ||
+    fail "$design_system_authority does not identify missing visual roles as design-system gaps"
+  rg -qi 'before.*(screen|Product)|DS gap before Product consumption' \
+    "$design_system_authority" ||
+    fail "$design_system_authority is missing the gap-before-Product-consumption rule"
+done
+
 for authority_file in docs/workflow.md .agents/skills/taisa-workflow/SKILL.md; do
   rg -qi 'Captured.*Watching.*Candidate.*Planned.*Shipped.*Dropped' "$authority_file" ||
     fail "$authority_file is missing the deferred-capability lifecycle"

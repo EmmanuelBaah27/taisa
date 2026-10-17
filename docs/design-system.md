@@ -18,8 +18,16 @@ The approved native conversation experience adds business-free SwiftUI surfaces 
 - `ConversationProgressState` and `ConversationFailureActions` expose progress, retry, save, and destructive discard semantics without owning workflow state.
 - `CentralIcon` is the typed native gateway for Central Icons used by the product. Selected 24×24 vector paths are stored once in `TaisaDesignSystem`; feature views choose an enum case and set only the rendered frame, never duplicate paths or substitute SF Symbols.
 - `PageEdgeFade` supplies the semantic header-bottom and navigation-top fades. The navigation placement extends through the bottom safe area so the page does not end abruptly above the Home indicator.
+- `ConversationPageHeader` fixes its single-line title region at 220pt and truncates at the tail; its chevron dismisses the page and never doubles as an input-cancellation control.
+- `ConversationActionBar` owns the 56pt discard, keyboard, pause/resume, and Send surfaces for empty, short, sendable, paused, saved, and processing voice states. Destructive disposition remains product-owned.
+- `ConversationActivityIndicator` follows the approved two-second recording cycle, freezes while paused or interrupted, and renders a static frame under Reduce Motion.
+- `InlineRecoveryAlert` presents content-free recovery context and explicit Cancel/Try again actions without owning retry policy.
+
+Conversation details reuse `PageEdgeFade` at both edges. User messages are trailing bubbles with a six-line timeline preview; Taisa responses remain full-width and support Markdown. Native context menus expose Copy for messages and Edit only for user messages. Editing always opens the complete source text, disables unchanged or empty submission, and regenerates through the provenance-aware correction client instead of mutating durable message rows in place.
 
 Native semantic additions are `raisedSurface`, `selectedSurface`, `subtleSurface`, `destructive`, and `warning`; `TaisaRadius` supplies control, panel, history-group, composer, and circular roles. `TaisaSpacing.control` is the 12pt compact control/row inset and `TaisaSpacing.content` is the 20pt page-content inset. `TaisaMotion.fast` is the shared 180ms page/navigation response duration. Composer/dock material falls back to `raisedSurface` when Reduce Transparency is enabled. On iOS 26, primary navigation and prominent entry actions use native Liquid Glass with a semantic non-glass fallback. Frequent composer actions do not add decorative motion; Product presentation may use restrained native opacity/state transitions and must honor Reduce Motion.
+
+`TaisaToast` is the shared transient-feedback surface. It is a compact, content-width dark capsule that docks to the lower edge of top page chrome, supports one optional action, dismisses automatically after four seconds, can be swiped upward, announces its message through the accessibility system, and uses an opacity-only transition under Reduce Motion. Feature screens own error mapping and FIFO queueing; the component contains no business logic.
 
 Primary navigation uses the default system face (SF Pro), not the rounded system variant. Its semantic `navigationLabel` role is 16pt medium on a 24pt line height. Every destination owns a minimum 56×48pt capsule hit region and uses the shared 24pt Central icon metric; spacing between destinations is visual spacing, never dead touch space. The record control is 104×48pt with a 24pt Central icon. Its semantic recording glow is a bounded layer using primary lime at 35% opacity, 4pt spread, and a 10pt Core Graphics blur radius (the rendering equivalent of Figma's 20px blur); the glow never changes the control's layout or hit frame.
 
@@ -52,13 +60,22 @@ The React Native inventory below remains authoritative for the existing mobile c
 
 ## How to use tokens
 
-**Always use the semantic utility layer — never raw hex, never palette classes unless no semantic exists.**
+**Every authored visual style must use an existing semantic design-system token or component.**
 
 ```
-1. Semantic utility first  — bg-background, text-foreground, bg-primary
-2. Named palette fallback  — bg-lime-100 (only when no semantic alias covers the role)
-3. Never                   — raw hex values
+1. Use an existing semantic role — bg-background, text-foreground, bg-primary
+2. Reuse a DS component        — consume its typed, documented variants
+3. Missing role                — extend and verify the DS before using it in Product UI
+4. Never                       — raw/arbitrary values or one-off visual variants
 ```
+
+This applies to authored colors, typography, spacing, radii, shadows, materials, motion values,
+and component styles in both SwiftUI and React Native. Do not reach for a palette value, arbitrary
+utility, literal constant, or feature-local variant when no semantic role exists. Treat that as a
+design-system gap: name the role by intent, add its platform mappings and documentation, add or
+update verification, and only then consume it from a screen. Standard platform defaults and values
+derived at runtime from accessibility settings, safe areas, geometry, or state are not authored
+tokens; any explicit styling layered on top of them still follows this rule.
 
 ---
 
@@ -189,7 +206,10 @@ Never use raw `text-sm font-semibold` combinations — use the composite utiliti
 | `NaviiAvatar` | `seed`, `size` | Deterministic generated avatar presentation |
 
 **Extraction rule:** pattern appears in 2+ places → extract to `ui/`. Do not extract speculatively.
-**DS compliance:** no `StyleSheet.create()`, no raw hex, import tokens from Tailwind classes only.
+**DS compliance:** no `StyleSheet.create()`, raw/arbitrary visual values, palette fallbacks, or
+feature-local style variants. Use documented semantic tokens and typed DS components only; close a
+DS gap before Product consumption.
+
 ## Voice composer
 
 `VoiceComposer` is the bottom-loaded mixed-input control used by coaching conversations. The
