@@ -138,6 +138,7 @@ struct ConversationView: View {
 
     private var recoveryContract: InlineRecoveryAlert.Contract {
         switch model.failureContext {
+        case .transcription: .transcription
         case .request: .request
         case .beginRecording: .beginRecording
         case .microphonePermissionDenied: .microphonePermission
@@ -239,6 +240,8 @@ struct ConversationView: View {
 
     private func performRecoverySecondaryAction() {
         switch model.failureContext {
+        case .transcription:
+            Task { await model.saveAndClose() }
         case .microphonePermissionDenied:
             model.continueWithKeyboardAfterPermissionDenial()
         case .beginRecording:

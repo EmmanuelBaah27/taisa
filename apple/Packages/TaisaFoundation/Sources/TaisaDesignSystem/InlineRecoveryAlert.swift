@@ -4,34 +4,34 @@ public struct InlineRecoveryAlert: View {
     public struct Contract: Sendable, Equatable {
         public let title: String; public let message: String; public let cancelLabel: String; public let retryLabel: String
         public static let transcription = Contract(
-            title: "Taisa couldn’t transcribe your recording",
-            message: "Your recording is safe. Try again when you’re ready.",
-            cancelLabel: "Cancel", retryLabel: "Try again"
+            title: "Recording couldn’t be transcribed",
+            message: "Your recording is saved.",
+            cancelLabel: "Save for later", retryLabel: "Retry transcription"
         )
         public static let request = Contract(
             title: "Taisa couldn’t respond",
-            message: "Your message is saved. Try again now or continue later.",
-            cancelLabel: "Continue later", retryLabel: "Try again"
+            message: "Your message is saved.",
+            cancelLabel: "Continue later", retryLabel: "Retry response"
         )
         public static let beginRecording = Contract(
             title: "Recording didn’t start",
             message: "Nothing was recorded. Try again or use the keyboard.",
-            cancelLabel: "Use keyboard", retryLabel: "Try again"
+            cancelLabel: "Use keyboard", retryLabel: "Try recording again"
         )
         public static let microphonePermission = Contract(
-            title: "Taisa needs microphone access",
+            title: "Microphone access is off",
             message: "Allow microphone access in Settings to record, or continue with the keyboard.",
             cancelLabel: "Use keyboard", retryLabel: "Open Settings"
         )
         public static let pauseRecording = Contract(
             title: "Recording didn’t pause",
             message: "Your recording is still available. Try pausing again or discard it.",
-            cancelLabel: "Discard recording", retryLabel: "Try again"
+            cancelLabel: "Discard recording", retryLabel: "Pause again"
         )
         public static let resumeRecording = Contract(
             title: "Recording didn’t resume",
             message: "Your recording is still paused. Try again or save it for later.",
-            cancelLabel: "Save draft", retryLabel: "Try again"
+            cancelLabel: "Save draft", retryLabel: "Resume again"
         )
     }
     private let contract: Contract
@@ -42,7 +42,9 @@ public struct InlineRecoveryAlert: View {
     }
     public var body: some View {
         VStack(alignment: .leading, spacing: TaisaSpacing.control.rawValue) {
-            CentralIcon(.exclamationCircle).frame(width: 24, height: 24)
+            CentralIcon(.exclamationCircle)
+                .foregroundStyle(TaisaColor.destructive.color)
+                .frame(width: 24, height: 24)
             Text(contract.title).font(.system(.body, weight: .medium))
             Text(contract.message).font(.system(.subheadline)).foregroundStyle(TaisaColor.mutedForeground.color)
             ViewThatFits(in: .horizontal) {

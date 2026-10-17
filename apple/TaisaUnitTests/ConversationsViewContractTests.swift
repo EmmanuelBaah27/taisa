@@ -127,10 +127,12 @@ final class ConversationsViewContractTests: XCTestCase {
         XCTAssertFalse(source.contains("New conversation"))
         XCTAssertFalse(source.contains("import GRDB"))
         XCTAssertTrue(source.contains("Chats couldn’t load"))
-        XCTAssertTrue(source.contains("Chats couldn’t refresh"))
+        XCTAssertTrue(source.contains("Couldn’t refresh chats"))
         XCTAssertTrue(source.contains("Title wasn’t changed"))
         XCTAssertTrue(source.contains("Conversation wasn’t deleted"))
         XCTAssertTrue(source.contains("Draft wasn’t discarded"))
+        XCTAssertTrue(source.contains("Secure access is unavailable"))
+        XCTAssertTrue(source.contains("Open Recovery"))
     }
 
     func testChatsFailuresUseTopToastWithoutChangingOtherDestinations() throws {
@@ -148,6 +150,12 @@ final class ConversationsViewContractTests: XCTestCase {
         XCTAssertTrue(toast.contains(".layoutPriority(1)"))
         XCTAssertTrue(toast.contains(".lineLimit(1)"))
         XCTAssertFalse(toast.contains(".frame(maxWidth: .infinity"))
+    }
+
+    func testConversationRecoveryUsesDestructiveColorForErrorIcon() throws {
+        let recovery = try designSystemSource(named: "InlineRecoveryAlert.swift")
+
+        XCTAssertTrue(recovery.contains(".foregroundStyle(TaisaColor.destructive.color)"))
     }
 
     private func conversationsSource() throws -> String {

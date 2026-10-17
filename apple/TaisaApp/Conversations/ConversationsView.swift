@@ -293,8 +293,8 @@ struct ConversationsView: View {
 
     private func issueTitle(_ issue: ConversationsIssue, retainedContent: Bool) -> String {
         switch issue {
-        case .storageUnavailable: retainedContent ? "Chats couldn’t refresh" : "Chats couldn’t load"
-        case .recoveryRequired: "Secure access needs to be restored"
+        case .storageUnavailable: retainedContent ? "Couldn’t refresh chats" : "Chats couldn’t load"
+        case .recoveryRequired: "Secure access is unavailable"
         case .renameFailed: "Title wasn’t changed"
         case .deleteFailed: "Conversation wasn’t deleted"
         case .discardFailed: "Draft wasn’t discarded"
@@ -304,8 +304,8 @@ struct ConversationsView: View {
     private func issueMessage(_ issue: ConversationsIssue, retainedContent: Bool) -> String {
         switch issue {
         case .storageUnavailable:
-            retainedContent ? "Your existing chats are still shown." : "Taisa couldn’t read your chats."
-        case .recoveryRequired: "Restore secure access to read your chats."
+            retainedContent ? "Your existing chats are still shown." : "Try loading them again."
+        case .recoveryRequired: "Restore access to open your chats."
         case .renameFailed: "The previous title is still in place."
         case .deleteFailed: "Nothing was removed."
         case .discardFailed: "Your draft is still available."
@@ -314,9 +314,8 @@ struct ConversationsView: View {
 
     private func issueActionLabel(_ issue: ConversationsIssue) -> String {
         switch issue {
-        case .storageUnavailable: "Refresh"
-        case .recoveryRequired: "Open recovery"
-        case .renameFailed, .deleteFailed, .discardFailed: "Try again"
+        case .storageUnavailable, .renameFailed, .deleteFailed, .discardFailed: "Retry"
+        case .recoveryRequired: "Open Recovery"
         }
     }
 

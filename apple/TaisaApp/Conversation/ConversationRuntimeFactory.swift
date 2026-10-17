@@ -623,9 +623,9 @@ struct ConversationHostView: View {
             else if failed {
                 VStack {
                     ContentUnavailableView {
-                        Label("Conversation unavailable", systemImage: "exclamationmark.triangle")
+                        Label("Conversation couldn’t open", systemImage: "exclamationmark.triangle")
                     } description: {
-                        Text("Taisa couldn’t open this conversation securely.")
+                        Text("Taisa couldn’t access it securely.")
                     } actions: {
                         Button("Close", action: dismiss)
                             .accessibilityIdentifier("conversation.unavailable.close")

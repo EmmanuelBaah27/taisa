@@ -182,6 +182,43 @@ final class ConversationViewModelTests: XCTestCase {
         XCTAssertEqual(model.messages.map(\.body), ["Ready"])
     }
 
+    func testVoiceFailureBeforeTranscriptUsesTranscriptionRecovery() async {
+        struct VoiceFailure: Error {}
+        let client = ConversationScreenClient(
+            beginVoice: {}, pauseVoice: {}, resumeVoice: {},
+            sendVoice: { _ in throw VoiceFailure() }, sendText: { _ in }, retry: {},
+            saveDraft: { _ in }, discardDraft: {}
+        )
+        let model = ConversationViewModel(
+            conversationID: UUID().uuidString, title: "Chat", entryIntent: nil,
+            composer: .recording, client: client
+        )
+
+        await model.sendVoice()
+
+        XCTAssertEqual(model.failureContext, .transcription)
+    }
+
+    func testVoiceFailureAfterTranscriptUsesResponseRecovery() async {
+        struct VoiceFailure: Error {}
+        let client = ConversationScreenClient(
+            beginVoice: {}, pauseVoice: {}, resumeVoice: {},
+            sendVoice: { transcriptAvailable in
+                await transcriptAvailable()
+                throw VoiceFailure()
+            },
+            sendText: { _ in }, retry: {}, saveDraft: { _ in }, discardDraft: {}
+        )
+        let model = ConversationViewModel(
+            conversationID: UUID().uuidString, title: "Chat", entryIntent: nil,
+            composer: .recording, client: client
+        )
+
+        await model.sendVoice()
+
+        XCTAssertEqual(model.failureContext, .request)
+    }
+
     func testVoiceTranscriptAppearsBeforeCoachingCompletes() async {
         let transcriptShown = AsyncGate()
         let finishCoaching = AsyncGate()

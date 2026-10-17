@@ -68,7 +68,7 @@ struct ConversationScreenClient: Sendable {
 @Observable
 final class ConversationViewModel {
     enum FailureContext: Equatable {
-        case request, beginRecording, microphonePermissionDenied, pauseRecording, resumeRecording
+        case transcription, request, beginRecording, microphonePermissionDenied, pauseRecording, resumeRecording
     }
     enum Confirmation: Equatable {
         case discardVoiceForKeyboard(returnTo: ComposerState)
@@ -294,9 +294,11 @@ final class ConversationViewModel {
         actionInFlight = true
         partialCoaching = ""
         composer = .transcribing
+        var transcriptBecameAvailable = false
         do {
             try await client.sendVoice { [weak self] in
                 guard let self else { return }
+                transcriptBecameAvailable = true
                 await self.reloadMessages()
                 self.composer = .coaching
             }
@@ -305,7 +307,7 @@ final class ConversationViewModel {
             composer = .waitingForReply
         } catch {
             partialCoaching = ""
-            failureContext = .request
+            failureContext = transcriptBecameAvailable ? .request : .transcription
             composer = .failure(.retryable)
         }
         actionInFlight = false
@@ -336,6 +338,10 @@ final class ConversationViewModel {
     func retry() async {
         guard !actionInFlight else { return }
         switch failureContext {
+        case .transcription:
+            partialCoaching = ""
+            composer = .transcribing
+            await performSuccess { try await client.retry() }
         case .beginRecording:
             try? await beginVoice()
         case .microphonePermissionDenied:
