@@ -515,6 +515,17 @@ struct ConversationRuntimeFactory: Sendable {
         var voiceTurn = linkedVoiceTurn ?? resumableVoiceTurn ?? fallbackVoiceTurn
         guard let draft else {
             if let resumableVoiceTurn,
+               resumableVoiceTurn.state == .terminalFailure,
+               resumableVoiceTurn.stage == .finished,
+               resumableVoiceTurn.acceptedTranscript != nil {
+                return Restoration(
+                    voiceTurn: resumableVoiceTurn,
+                    composer: .failure(.retryable),
+                    text: "",
+                    cleansInterruptedCapture: false
+                )
+            }
+            if let resumableVoiceTurn,
                resumableVoiceTurn.stage == .capture || resumableVoiceTurn.stage == .cleanup {
                 let hasFinalizedAudio = resumableVoiceTurn.state == .paused
                     && resumableVoiceTurn.stage == .capture

@@ -471,6 +471,37 @@ struct ConversationTurnRepositoryTests {
         #expect(try await repository.latestResumableTurn(conversationID: conversationID) == nil)
     }
 
+    @Test func latestResumableTurnRestoresFinishedCoachingFailure() async throws {
+        let fixture = try await makeFixture(); defer { fixture.remove() }
+        let repository = ConversationTurnRepository(store: fixture.store)
+        let failed = VoiceTurnRecord(
+            id: turnID, conversationID: conversationID,
+            transcriptionRequestID: "00000000-0000-0000-0000-000000000041",
+            transcriptionIdempotencyKey: "transcription-key",
+            coachingRequestID: "00000000-0000-0000-0000-000000000042",
+            coachingIdempotencyKey: "coaching-key",
+            state: .terminalFailure, stage: .finished,
+            acceptedTranscript: "Saved voice message",
+            failureCode: "COACHING_UNAVAILABLE", cleanupState: .completed,
+            createdAtMS: 1, updatedAtMS: 2
+        )
+        try await repository.checkpoint(
+            failed,
+            messages: [MessageRecord(
+                id: "00000000-0000-0000-0000-000000000043",
+                conversationID: conversationID, role: "user",
+                body: "Saved voice message", createdAtMS: 1
+            )],
+            cleanup: nil,
+            context: .init(
+                id: "00000000-0000-0000-0000-000000000076",
+                deviceID: deviceID, timestamp: 76
+            )
+        )
+
+        #expect(try await repository.latestResumableTurn(conversationID: conversationID) == failed)
+    }
+
     @Test func latestResumableTurnRestoresCaptureOnlyAfterAudioIdentityIsDurable() async throws {
         let fixture = try await makeFixture(); defer { fixture.remove() }
         let repository = ConversationTurnRepository(store: fixture.store)

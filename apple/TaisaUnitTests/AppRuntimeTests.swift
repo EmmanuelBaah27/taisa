@@ -187,6 +187,31 @@ final class AppRuntimeTests: XCTestCase {
         XCTAssertEqual(restoration.composer, .failure(.retryable))
     }
 
+    func testUnsavedFinishedVoiceResponseFailureRestoresRetryAlert() {
+        let conversationID = UUID().uuidString
+        let failedTurn = voiceTurn(
+            conversationID: conversationID,
+            state: .terminalFailure,
+            stage: .finished
+        )
+        let fallbackTurn = voiceTurn(
+            conversationID: conversationID,
+            state: .draft,
+            stage: .capture
+        )
+
+        let restoration = ConversationRuntimeFactory.restoration(
+            draft: nil,
+            linkedVoiceTurn: nil,
+            resumableVoiceTurn: failedTurn,
+            fallbackVoiceTurn: fallbackTurn
+        )
+
+        XCTAssertEqual(restoration.voiceTurn.id, failedTurn.id)
+        XCTAssertEqual(restoration.composer, .failure(.retryable))
+        XCTAssertFalse(restoration.cleansInterruptedCapture)
+    }
+
     func testSavedVoiceDraftWithUnreadableTurnRestoresRetryFromPersistedTranscript() {
         let conversationID = UUID().uuidString
         let fallbackTurn = voiceTurn(
