@@ -8,6 +8,7 @@ public protocol VoiceTurnCheckpointing: Sendable {
     func checkpoint(
         _ record: VoiceTurnRecord,
         messages: [MessageRecord],
+        assistantResponse: AssistantResponseWrite?,
         cleanup: VoiceTurnCleanup?
     ) async throws
 }
@@ -125,7 +126,7 @@ public actor VoiceSessionCoordinator {
     private var durable: VoiceTurnRecord
     private var partialTranscript = ""
     private var partialCoaching = ""
-    private var pendingAssistantReply: String?
+    private var pendingAssistantCompletion: (response: CoachingResponse, receipt: String)?
     private var activeStage: VoiceTurnStage?
     private var activeTask: Task<Void, Never>?
     private var captureEventsTask: Task<Void, Never>?
@@ -372,11 +373,17 @@ public actor VoiceSessionCoordinator {
             ))
         }
         if record.assistantMessageID != durable.assistantMessageID,
-           let id = record.assistantMessageID, let body = pendingAssistantReply {
+           let id = record.assistantMessageID, let completion = pendingAssistantCompletion {
             messages.append(.init(
                 id: id, conversationID: record.conversationID,
-                role: "assistant", body: body, createdAtMS: timestamp
+                role: "assistant", body: completion.response.reply, createdAtMS: timestamp
             ))
+        }
+        let assistantResponse = try messages.first(where: { $0.role == "assistant" }).map {
+            try VoiceAssistantResponseWrite.make(
+                message: $0, response: pendingAssistantCompletion!.response,
+                receipt: pendingAssistantCompletion!.receipt
+            )
         }
         let cleanup: VoiceTurnCleanup?
         if record.cleanupState == .completed, let fileID = durable.audioFileID {
@@ -388,10 +395,12 @@ public actor VoiceSessionCoordinator {
         } else {
             cleanup = nil
         }
-        try await checkpoints.checkpoint(record, messages: messages, cleanup: cleanup)
+        try await checkpoints.checkpoint(
+            record, messages: messages, assistantResponse: assistantResponse, cleanup: cleanup
+        )
         durable = record
         print("TAISA_VOICE persist.end state=\(record.state.rawValue) stage=\(record.stage.rawValue)")
-        if messages.contains(where: { $0.role == "assistant" }) { pendingAssistantReply = nil }
+        if assistantResponse != nil { pendingAssistantCompletion = nil }
     }
 
     private func launchTranscription() {
@@ -504,7 +513,7 @@ public actor VoiceSessionCoordinator {
                 case .completed(_, _, let response, let receipt):
                     print("TAISA_VOICE coaching.completed")
                     partialCoaching = ""
-                    pendingAssistantReply = response.reply
+                    pendingAssistantCompletion = (response, receipt)
                     try await send(.coachingCompleted(
                         receipt: receipt, assistantMessageID: makeMessageID().uuidString
                     ))
@@ -562,7 +571,7 @@ public actor VoiceSessionCoordinator {
                 ))
                 return
             }
-            pendingAssistantReply = response.reply
+            pendingAssistantCompletion = (response, receipt)
             try await send(.coachingCompleted(
                 receipt: receipt, assistantMessageID: makeMessageID().uuidString
             ))

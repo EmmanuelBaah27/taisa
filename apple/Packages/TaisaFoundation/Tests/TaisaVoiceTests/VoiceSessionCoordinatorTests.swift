@@ -261,6 +261,7 @@ private actor CheckpointSpy: VoiceTurnCheckpointing {
     func checkpoint(
         _ record: VoiceTurnRecord,
         messages: [MessageRecord],
+        assistantResponse: AssistantResponseWrite?,
         cleanup: VoiceTurnCleanup?
     ) async throws { states.append(record.state) }
 }
@@ -301,7 +302,7 @@ private actor SuccessfulCoachingSpy: VoiceCoachingRunning {
     func stream(for turn: VoiceTurnRecord) async throws -> AsyncThrowingStream<CoachingStreamEvent, Error> {
         calls += 1
         let response = try JSONDecoder().decode(CoachingResponse.self, from: Data("""
-            {"requestId":"\(turn.coachingRequestID)","reply":"Recovered coaching","mode":"coach","relevance":"career-relevant","contextSufficiency":"sufficient","stance":"nudge","proposals":[],"usage":{"provider":"openai","model":"test","inputTokens":1,"outputTokens":1,"estimatedCostUsd":0},"titleSuggestion":null}
+            {"requestId":"\(turn.coachingRequestID)","reply":"Recovered coaching","mode":"coach","relevance":"career-relevant","contextSufficiency":"sufficient","stance":"nudge","explanation":{"mode":"nudge","evidence":[],"inference":"Recovery can continue.","confidence":"medium","approach":"Resume the bounded response."},"proposal":null,"usage":{"provider":"openai","model":"test","inputTokens":1,"outputTokens":1,"estimatedCostUsd":0},"titleSuggestion":null}
             """.utf8))
         return AsyncThrowingStream<CoachingStreamEvent, Error> { continuation in
             continuation.yield(.completed(

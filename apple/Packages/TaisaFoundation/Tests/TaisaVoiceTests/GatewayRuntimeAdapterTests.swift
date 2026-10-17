@@ -43,7 +43,8 @@ struct GatewayRuntimeAdapterTests {
                     conversationID: "22222222-2222-4222-8222-222222222222",
                     role: "assistant", body: "Earlier guidance", createdAtMS: 0
                 )
-            ] }
+            ] },
+            preferenceSignals: { [["factor": "communication_clarity", "direction": "helpful"]] }
         )
         let stream = try await runner.stream(for: gatewayTurn())
         for try await _ in stream {}
@@ -61,6 +62,9 @@ struct GatewayRuntimeAdapterTests {
         #expect(messages.count == 1)
         #expect(messages[0]["role"] as? String == "assistant")
         #expect(messages[0]["content"] as? String == "Earlier guidance")
+        let profile = try #require(context["preferenceProfile"] as? [String: Any])
+        let signals = try #require(profile["signals"] as? [[String: String]])
+        #expect(signals == [["factor": "communication_clarity", "direction": "helpful"]])
     }
 
     @Test("coaching retry rebuilds the exact original idempotent payload")

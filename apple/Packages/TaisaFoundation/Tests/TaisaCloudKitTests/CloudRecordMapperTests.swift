@@ -51,4 +51,36 @@ import TaisaSync
             #expect(try CloudRecordMapper.change(from: record) == change)
         }
     }
+
+    @Test func seniorSelfEncryptedEntitiesRoundTripAndLocalOnlyEntitiesFailClosed() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        for entityType in ["assistant_response_metadata", "assistant_response_source", "assistant_proposal"] {
+            let id = UUID()
+            let change = EncryptedChange(
+                id: id.uuidString,
+                envelope: .init(
+                    version: 1,
+                    metadata: .init(vaultID: UUID(), recordID: id, entityType: entityType, schemaVersion: 1, tombstone: false),
+                    ciphertext: Data(repeating: 0xA5, count: 64)
+                )
+            )
+            #expect(try CloudRecordMapper.change(from: CloudRecordMapper.makeRecord(change, assetDirectory: directory)) == change)
+        }
+        for entityType in ["response_feedback", "preference_profile", "unknown"] {
+            let id = UUID()
+            let change = EncryptedChange(
+                id: id.uuidString,
+                envelope: .init(
+                    version: 1,
+                    metadata: .init(vaultID: UUID(), recordID: id, entityType: entityType, schemaVersion: 1, tombstone: false),
+                    ciphertext: Data(repeating: 0xA5, count: 64)
+                )
+            )
+            #expect(throws: CloudRecordMappingError.invalidRecord) {
+                try CloudRecordMapper.makeRecord(change, assetDirectory: directory)
+            }
+        }
+    }
 }
