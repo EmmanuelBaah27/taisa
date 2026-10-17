@@ -583,8 +583,7 @@ struct ConversationRuntimeFactory: Sendable {
         var voiceTurn = linkedVoiceTurn ?? resumableVoiceTurn ?? fallbackVoiceTurn
         guard let draft else {
             if let resumableVoiceTurn,
-               resumableVoiceTurn.state == .terminalFailure,
-               resumableVoiceTurn.stage == .finished,
+               isResponseFailureAwaitingRetry(resumableVoiceTurn),
                resumableVoiceTurn.acceptedTranscript != nil {
                 return Restoration(
                     voiceTurn: resumableVoiceTurn,
@@ -667,6 +666,17 @@ struct ConversationRuntimeFactory: Sendable {
                 text: "",
                 cleansInterruptedCapture: false
             )
+        }
+    }
+
+    private static func isResponseFailureAwaitingRetry(_ turn: VoiceTurnRecord) -> Bool {
+        switch (turn.state, turn.stage) {
+        case (.recoverableFailure, .coaching),
+             (.resumeRequiresConfirmation, .coaching),
+             (.terminalFailure, .finished):
+            true
+        default:
+            false
         }
     }
 

@@ -187,6 +187,58 @@ final class AppRuntimeTests: XCTestCase {
         XCTAssertEqual(restoration.composer, .failure(.retryable))
     }
 
+    func testRecoverableCoachingFailureReopensWithRetryInsteadOfReply() {
+        let conversationID = UUID().uuidString
+        let failedTurn = voiceTurn(
+            conversationID: conversationID,
+            state: .recoverableFailure,
+            stage: .coaching
+        )
+        let fallbackTurn = voiceTurn(
+            conversationID: conversationID,
+            state: .draft,
+            stage: .capture
+        )
+
+        let restoration = ConversationRuntimeFactory.restoration(
+            draft: nil,
+            linkedVoiceTurn: nil,
+            resumableVoiceTurn: failedTurn,
+            fallbackVoiceTurn: fallbackTurn,
+            recoveryTranscript: "Saved voice message"
+        )
+
+        XCTAssertEqual(restoration.voiceTurn.id, failedTurn.id)
+        XCTAssertEqual(restoration.composer, .failure(.retryable))
+        XCTAssertFalse(restoration.cleansInterruptedCapture)
+    }
+
+    func testAmbiguousCoachingFailureReopensWithRetryInsteadOfReply() {
+        let conversationID = UUID().uuidString
+        let failedTurn = voiceTurn(
+            conversationID: conversationID,
+            state: .resumeRequiresConfirmation,
+            stage: .coaching
+        )
+        let fallbackTurn = voiceTurn(
+            conversationID: conversationID,
+            state: .draft,
+            stage: .capture
+        )
+
+        let restoration = ConversationRuntimeFactory.restoration(
+            draft: nil,
+            linkedVoiceTurn: nil,
+            resumableVoiceTurn: failedTurn,
+            fallbackVoiceTurn: fallbackTurn,
+            recoveryTranscript: "Saved voice message"
+        )
+
+        XCTAssertEqual(restoration.voiceTurn.id, failedTurn.id)
+        XCTAssertEqual(restoration.composer, .failure(.retryable))
+        XCTAssertFalse(restoration.cleansInterruptedCapture)
+    }
+
     func testUnsavedFinishedVoiceResponseFailureRestoresRetryAlert() {
         let conversationID = UUID().uuidString
         let failedTurn = voiceTurn(
