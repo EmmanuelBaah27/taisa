@@ -35,6 +35,7 @@ static float softUnion(float totalWeight) {
     float2 size,
     float loudness,
     float spatialLoudness,
+    float4 edgeLoudness,
     half4 leftOuterColor,
     half4 leftInnerColor,
     half4 centerColor,
@@ -58,21 +59,23 @@ static float softUnion(float totalWeight) {
     float centerHeight = mix(centerGeometry.x, centerGeometry.y, spatialLoudness);
     float centerWidth = centerGeometry.z * mix(0.82, 1.22, spatialLoudness);
     float centerSoftness = clamp(centerGeometry.w + spatialLoudness * 0.18, 0.0, 1.0);
-    float edgeHeight = mix(0.09, 0.2, spatialLoudness);
     float edgeWidth = mix(0.12, 0.22, edgeGeometry.x);
     float edgeSoftness = edgeGeometry.y;
 
-    float outerLeft = glowLobe(point, -0.02, edgeWidth, edgeHeight, originY, edgeSoftness);
-    float innerLeft = glowLobe(point, 0.25, edgeWidth * 1.18, edgeHeight * 1.18, originY, edgeSoftness);
+    float4 edgeHeight = mix(float4(0.09), float4(0.2), edgeLoudness);
+    float4 edgeWidthResponse = mix(float4(0.9), float4(1.12), edgeLoudness);
+    float outerLeft = glowLobe(point, -0.02, edgeWidth * edgeWidthResponse.x, edgeHeight.x, originY, edgeSoftness);
+    float innerLeft = glowLobe(point, 0.25, edgeWidth * 1.18 * edgeWidthResponse.y, edgeHeight.y * 1.18, originY, edgeSoftness);
     float middle = glowLobe(point, 0.5, centerWidth, centerHeight, originY, centerSoftness);
-    float innerRight = glowLobe(point, 0.75, edgeWidth * 1.18, edgeHeight * 1.18, originY, edgeSoftness);
-    float outerRight = glowLobe(point, 1.02, edgeWidth, edgeHeight, originY, edgeSoftness);
+    float innerRight = glowLobe(point, 0.75, edgeWidth * 1.18 * edgeWidthResponse.z, edgeHeight.z * 1.18, originY, edgeSoftness);
+    float outerRight = glowLobe(point, 1.02, edgeWidth * edgeWidthResponse.w, edgeHeight.w, originY, edgeSoftness);
 
-    float leftOuterWeight = outerLeft * leftOuterContribution;
-    float leftInnerWeight = innerLeft * leftInnerContribution;
+    float4 edgeResponse = mix(float4(0.78), float4(1.12), edgeLoudness);
+    float leftOuterWeight = outerLeft * leftOuterContribution * edgeResponse.x;
+    float leftInnerWeight = innerLeft * leftInnerContribution * edgeResponse.y;
     float centerWeight = middle * centerContribution * mix(0.68, 1.2, loudness);
-    float rightInnerWeight = innerRight * rightInnerContribution;
-    float rightOuterWeight = outerRight * rightOuterContribution;
+    float rightInnerWeight = innerRight * rightInnerContribution * edgeResponse.z;
+    float rightOuterWeight = outerRight * rightOuterContribution * edgeResponse.w;
     float weightSum = leftOuterWeight + leftInnerWeight + centerWeight
         + rightInnerWeight + rightOuterWeight;
 

@@ -11,6 +11,7 @@ struct RecordingGlowTuningView: View {
     @State private var loudness = 0.52
     @State private var inputMode = TuningInputMode.simulated
     @State private var simulatedState = SimulatedGlowState.recording
+    @State private var waveStagger = 0.06
     @State private var copied = false
 
     var body: some View {
@@ -18,7 +19,8 @@ struct RecordingGlowTuningView: View {
             RecordingReactiveGlow(
                 loudness: displayedLoudness,
                 state: simulatedState.recordingGlowState,
-                preset: preset
+                preset: preset,
+                waveStagger: waveStagger
             )
                 .frame(maxWidth: .infinity)
                 .frame(height: 240)
@@ -52,6 +54,7 @@ struct RecordingGlowTuningView: View {
                         slider("Response curve", value: $response.responseExponent, range: 0.2...2)
                         slider("Attack seconds", value: $response.attackSeconds, range: 0.02...0.6)
                         slider("Release seconds", value: $response.releaseSeconds, range: 0.1...1.5)
+                        slider("Wave stagger seconds", value: $waveStagger, range: 0...0.18)
                     }
 
                     section("Center") {
@@ -232,6 +235,7 @@ struct RecordingGlowTuningView: View {
         loudness = 0.52
         inputMode = .simulated
         simulatedState = .recording
+        waveStagger = 0.06
         copied = false
     }
 
