@@ -36,7 +36,8 @@ jest.mock('../services/coaching/coachingGateway', () => ({
       contextSufficiency: 'sufficient',
       reply: 'What changed?',
       stance: 'nudge',
-      proposals: [],
+  explanation: { mode: 'nudge', evidence: [], inference: 'Bounded fixture inference.', confidence: 'medium', approach: 'Bounded fixture approach.' },
+  proposal: null,
       usage: {
         provider: 'openai',
         model: 'openai-mock',
@@ -147,7 +148,8 @@ test('accepts supplied context without loading backend user data', async () => {
     relevance: 'career-relevant',
     contextSufficiency: 'sufficient',
     stance: 'nudge',
-    proposals: [],
+  explanation: { mode: 'nudge', evidence: [], inference: 'Bounded fixture inference.', confidence: 'medium', approach: 'Bounded fixture approach.' },
+  proposal: null,
   });
   const gateway = jest.requireMock('../services/coaching/coachingGateway');
   const usageLedger = jest.requireMock('../services/usage/costLedger');
@@ -201,7 +203,8 @@ test('settles failed primary conservatively then commits fallback actual usage',
         contextSufficiency: 'sufficient',
         reply: 'Fallback response',
         stance: 'nudge',
-        proposals: [],
+  explanation: { mode: 'nudge', evidence: [], inference: 'Bounded fixture inference.', confidence: 'medium', approach: 'Bounded fixture approach.' },
+  proposal: null,
         usage: fallbackUsage,
       },
       attempts: [
@@ -264,7 +267,8 @@ test.each([
         contextSufficiency: 'sufficient' as const,
         reply: `${provider} response`,
         stance: 'nudge' as const,
-        proposals: [],
+  explanation: { mode: 'nudge' as const, evidence: [], inference: 'Bounded fixture inference.', confidence: 'medium' as const, approach: 'Bounded fixture approach.' },
+  proposal: null,
       },
       usage: providerUsage(provider),
     });

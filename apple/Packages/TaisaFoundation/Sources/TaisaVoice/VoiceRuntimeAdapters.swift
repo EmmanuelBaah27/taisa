@@ -25,11 +25,13 @@ public struct RepositoryVoiceTurnCheckpointer: VoiceTurnCheckpointing {
     public func checkpoint(
         _ record: VoiceTurnRecord,
         messages: [MessageRecord],
+        assistantResponse: AssistantResponseWrite?,
         cleanup: VoiceTurnCleanup?
     ) async throws {
         try await repository.checkpoint(
             record,
             messages: messages,
+            assistantResponse: assistantResponse,
             cleanup: cleanup,
             context: .init(
                 id: makeMutationID().uuidString,

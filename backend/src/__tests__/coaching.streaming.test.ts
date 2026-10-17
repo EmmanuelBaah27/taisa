@@ -24,7 +24,7 @@ const response: CoachingResponse = {
   relevance: 'career-relevant',
   contextSufficiency: 'sufficient',
   stance: 'nudge',
-  proposals: [],
+  explanation: { mode: 'nudge', evidence: [], inference: 'The outcome is not yet explicit.', confidence: 'medium', approach: 'Ask one bounded question.' }, proposal: null,
   usage: { provider: 'anthropic', model: 'fixture', estimatedCostUsd: 0.01 },
 };
 
@@ -117,7 +117,9 @@ test('gateway forwards provider deltas before validating the structured terminal
         result: {
           payload: {
             mode: 'coach', relevance: 'career-relevant', contextSufficiency: 'sufficient',
-            reply: 'What changed?', stance: 'nudge', proposals: [],
+            reply: 'What changed?', stance: 'nudge',
+            explanation: response.explanation,
+            proposal: null,
           },
           usage: response.usage,
         },

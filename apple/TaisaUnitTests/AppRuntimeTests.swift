@@ -400,6 +400,25 @@ final class AppRuntimeTests: XCTestCase {
         XCTAssertEqual(model.title, "A stored conversation")
     }
 
+    func testFeedbackRemovalRevisionCanClearANewerMaterializedPreference() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = try await TaisaStore.open(
+            at: directory.appendingPathComponent("store.sqlite"),
+            keyStore: AppRuntimeTestKeys()
+        )
+        let repository = AssistantResponseRepository(store: store)
+        try await repository.replacePreferenceProfile(
+            [.init(factor: .coverage, direction: .helpful)], updatedAtMS: 40
+        )
+
+        try await ConversationRuntimeFactory.materializePreferenceProfile(repository, revision: 50)
+
+        let profile = try await repository.preferenceProfile()
+        XCTAssertEqual(profile, [])
+    }
+
     func testLiveRuntimeUsesMutationCapableLocalHomeClient() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let source = try String(

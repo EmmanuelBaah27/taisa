@@ -1,4 +1,5 @@
 import TaisaStorage
+import TaisaContracts
 
 public enum ConversationInput: Sendable, Equatable {
     case voice
@@ -30,10 +31,18 @@ public enum ComposerState: Sendable, Equatable {
 public struct ConversationReply: Sendable, Equatable {
     public let text: String
     public let titleSuggestion: String?
+    public let terminalResponse: CoachingResponse?
 
     public init(text: String, titleSuggestion: String?) {
         self.text = text
         self.titleSuggestion = titleSuggestion
+        terminalResponse = nil
+    }
+
+    public init(terminalResponse: CoachingResponse) {
+        self.text = terminalResponse.reply
+        self.titleSuggestion = terminalResponse.titleSuggestion
+        self.terminalResponse = terminalResponse
     }
 }
 

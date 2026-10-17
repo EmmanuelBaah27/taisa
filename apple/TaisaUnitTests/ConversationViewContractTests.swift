@@ -75,7 +75,10 @@ final class ConversationViewContractTests: XCTestCase {
             "conversation.voice-composer", "conversation.text-composer",
             "conversation.save-draft", "conversation.discard", "conversation.retry",
             "conversation.correct-transcript",
-            "conversation.unavailable.close"
+            "conversation.unavailable.close", "conversation.response-info",
+            "conversation.feedback.helpful", "conversation.feedback.not_helpful",
+            "conversation.feedback-factors", "conversation.proposal-review",
+            "conversation.proposal.accept", "conversation.proposal.dismiss"
         ] {
             XCTAssertTrue(source.contains(identifier), "Missing \(identifier)")
         }
@@ -158,5 +161,38 @@ final class ConversationViewContractTests: XCTestCase {
             ),
             324
         )
+    }
+
+    func testResponseFeedbackUsesAlwaysVisibleThumbsAndSelectableQualityFactors() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let source = try String(
+            contentsOf: root.appendingPathComponent("TaisaApp/Conversation/AssistantResponseActions.swift"),
+            encoding: .utf8
+        )
+
+        XCTAssertTrue(source.contains("hand.thumbsup"))
+        XCTAssertTrue(source.contains("hand.thumbsdown"))
+        XCTAssertTrue(source.contains("About this response"))
+        XCTAssertTrue(source.contains("What worked well?"))
+        XCTAssertTrue(source.contains("What could be better?"))
+        XCTAssertTrue(source.contains("Source unavailable"))
+        XCTAssertTrue(source.contains("direction == value ? nil : value"))
+        XCTAssertTrue(source.contains("ResponseFeedbackCopy.options"))
+        XCTAssertTrue(source.contains("minWidth: TaisaControlMetric.headerActionHeight"))
+        XCTAssertFalse(source.contains("TextField"))
+        XCTAssertFalse(source.contains("TextEditor"))
+    }
+
+    func testSeniorSelfResponseHasDeterministicPreviewScenario() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let source = try String(
+            contentsOf: root.appendingPathComponent("TaisaPreview/ConversationScenarios.swift"),
+            encoding: .utf8
+        )
+
+        XCTAssertTrue(source.contains("conversation.senior-self-response"))
+        XCTAssertTrue(source.contains("assistantResponses:"))
+        XCTAssertTrue(source.contains("AssistantResponseMetadataRecord"))
+        XCTAssertTrue(source.contains("AssistantProposalRecord"))
     }
 }

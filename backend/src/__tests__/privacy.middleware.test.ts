@@ -51,7 +51,8 @@ jest.mock('../services/coaching/coachingGateway', () => ({
         requestId: '11111111-1111-4111-8111-111111111111',
         reply: 'What changed?',
         stance: 'nudge',
-        proposals: [],
+  explanation: { mode: 'nudge', evidence: [], inference: 'Bounded fixture inference.', confidence: 'medium', approach: 'Bounded fixture approach.' },
+  proposal: null,
         usage,
       },
       attempts: [{

@@ -153,6 +153,8 @@ struct ConversationRuntimeFactory: Sendable {
     ) async throws -> ConversationViewModel {
         let conversations = ConversationRepository(store: store)
         let query = ConversationQuery(store: store)
+        let assistantResponses = AssistantResponseRepository(store: store)
+        let proposalRouter = AssistantProposalRouter(store: store)
         let messageHistory: @Sendable (String) async throws -> [MessageRecord] = { conversationID in
             try await query.loadConversation(id: conversationID).visibleMessages
         }
@@ -261,13 +263,29 @@ struct ConversationRuntimeFactory: Sendable {
             lifecycle: SystemAudioSessionLifecycleSource()
         )
         let connectivity = SystemConnectivityMonitor()
+        let preferenceSignals: @Sendable () async throws -> [[String: String]] = {
+            let repository = AssistantResponseRepository(store: store)
+            let feedback = try await repository.recentFeedback()
+            let derived = ResponsePreferenceProfile.derive(from: feedback)
+            try await repository.replacePreferenceProfile(
+                derived.map { .init(factor: $0.factor, direction: $0.direction) },
+                updatedAtMS: feedback.map(\.updatedAtMS).max() ?? 0
+            )
+            return try await repository.preferenceProfile().map {
+                ["factor": $0.factor.rawValue, "direction": $0.direction.rawValue]
+            }
+        }
         let makeVoiceCoordinator: (VoiceTurnRecord) -> VoiceSessionCoordinator = { initial in
             VoiceSessionCoordinator(
                 initial: initial,
                 checkpoints: RepositoryVoiceTurnCheckpointer(repository: turns, deviceID: deviceID),
                 transcription: GatewayTranscriptionRunner(configuration: configuration, audio: capture),
                 transcriptionReconciliation: GatewayTranscriptionReconciliation(configuration: configuration),
-                coaching: GatewayCoachingRunner(configuration: configuration, recentMessages: messageHistory),
+                coaching: GatewayCoachingRunner(
+                    configuration: configuration,
+                    recentMessages: messageHistory,
+                    preferenceSignals: preferenceSignals
+                ),
                 connectivity: connectivity,
                 reconciliation: GatewayCoachingReconciliation(configuration: configuration),
                 capture: capture,
@@ -290,7 +308,7 @@ struct ConversationRuntimeFactory: Sendable {
         let voiceCoordinator = makeVoiceCoordinator(initial)
         let gatewayClient = GatewayConversationClient(
             store: store, deviceID: deviceID,
-            coaching: GatewayCoachingRunner(configuration: configuration, recentMessages: messageHistory)
+            coaching: GatewayCoachingRunner(configuration: configuration, recentMessages: messageHistory, preferenceSignals: preferenceSignals)
         )
         let voiceAdapter = VoiceSessionConversationAdapter(voiceCoordinator)
         let coordinator: ConversationCoordinator
@@ -326,6 +344,10 @@ struct ConversationRuntimeFactory: Sendable {
 
         let client = ConversationScreenClient(
             loadMessages: { try await query.loadConversation(id: route.id).visibleMessages },
+            loadAssistantResponses: {
+                let values = try await query.loadConversation(id: route.id).assistantResponses
+                return try await assistantResponses.resolveSources(in: values)
+            },
             loadTitle: { try await query.loadConversation(id: route.id).conversation.title },
             beginVoice: { try await coordinator.beginReply(mode: .voice) },
             pauseVoice: { try await coordinator.pauseVoice() },
@@ -400,6 +422,26 @@ struct ConversationRuntimeFactory: Sendable {
                     }
                     continuation.onTermination = { _ in task.cancel() }
                 }
+            },
+            saveFeedback: {
+                try await assistantResponses.upsertFeedback($0)
+                try await Self.materializePreferenceProfile(assistantResponses, revision: $0.updatedAtMS)
+            },
+            removeFeedback: { responseMessageID, revision in
+                try await assistantResponses.removeFeedback(responseMessageID: responseMessageID)
+                try await Self.materializePreferenceProfile(assistantResponses, revision: revision)
+            },
+            acceptProposal: { proposalID in
+                _ = try await proposalRouter.accept(
+                    proposalID: proposalID, deviceID: deviceID,
+                    resolvedAtMS: Int64(Date().timeIntervalSince1970 * 1_000)
+                )
+            },
+            dismissProposal: { proposalID in
+                _ = try await proposalRouter.dismiss(
+                    proposalID: proposalID, deviceID: deviceID,
+                    resolvedAtMS: Int64(Date().timeIntervalSince1970 * 1_000)
+                )
             }
         )
         return await ConversationViewModel(
@@ -429,10 +471,16 @@ struct ConversationRuntimeFactory: Sendable {
         let unavailable: @Sendable () async throws -> Void = {
             throw ConversationFailure.unavailable
         }
+        let assistantResponses = AssistantResponseRepository(store: store)
+        let proposalRouter = AssistantProposalRouter(store: store)
         let textDraft = history.drafts.first(where: { $0.inputMode == .text })?.text ?? ""
         let composer: ComposerState = textDraft.isEmpty ? .waitingForReply : .typing(textDraft)
         let client = ConversationScreenClient(
             loadMessages: { try await query.loadConversation(id: route.id).visibleMessages },
+            loadAssistantResponses: {
+                let values = try await query.loadConversation(id: route.id).assistantResponses
+                return try await assistantResponses.resolveSources(in: values)
+            },
             loadTitle: { try await query.loadConversation(id: route.id).conversation.title },
             beginVoice: unavailable,
             pauseVoice: unavailable,
@@ -470,7 +518,27 @@ struct ConversationRuntimeFactory: Sendable {
                     context: mutation(at: Int64(Date().timeIntervalSince1970 * 1_000))
                 )
             },
-            correctTranscript: { _, _ in try await unavailable() }
+            correctTranscript: { _, _ in try await unavailable() },
+            saveFeedback: {
+                try await assistantResponses.upsertFeedback($0)
+                try await Self.materializePreferenceProfile(assistantResponses, revision: $0.updatedAtMS)
+            },
+            removeFeedback: { responseMessageID, revision in
+                try await assistantResponses.removeFeedback(responseMessageID: responseMessageID)
+                try await Self.materializePreferenceProfile(assistantResponses, revision: revision)
+            },
+            acceptProposal: { proposalID in
+                _ = try await proposalRouter.accept(
+                    proposalID: proposalID, deviceID: deviceID,
+                    resolvedAtMS: Int64(Date().timeIntervalSince1970 * 1_000)
+                )
+            },
+            dismissProposal: { proposalID in
+                _ = try await proposalRouter.dismiss(
+                    proposalID: proposalID, deviceID: deviceID,
+                    resolvedAtMS: Int64(Date().timeIntervalSince1970 * 1_000)
+                )
+            }
         )
         return ConversationViewModel(
             conversationID: route.id,
@@ -609,6 +677,18 @@ struct ConversationRuntimeFactory: Sendable {
             transcriptionRequestID: UUID().uuidString, transcriptionIdempotencyKey: UUID().uuidString,
             coachingRequestID: UUID().uuidString, coachingIdempotencyKey: UUID().uuidString,
             state: .draft, stage: .capture, createdAtMS: now, updatedAtMS: now
+        )
+    }
+
+    static func materializePreferenceProfile(
+        _ repository: AssistantResponseRepository,
+        revision: Int64
+    ) async throws {
+        let feedback = try await repository.recentFeedback()
+        let derived = ResponsePreferenceProfile.derive(from: feedback)
+        try await repository.replacePreferenceProfile(
+            derived.map { .init(factor: $0.factor, direction: $0.direction) },
+            updatedAtMS: max(revision, feedback.map(\.updatedAtMS).max() ?? 0)
         )
     }
 

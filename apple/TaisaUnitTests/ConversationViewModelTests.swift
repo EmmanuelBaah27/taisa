@@ -30,6 +30,34 @@ final class ConversationViewModelTests: XCTestCase {
         XCTAssertTrue(ConversationTimelineMotion.animatesNewMessage(reduceMotion: false))
     }
 
+    func testPreviewKeepsSeededAssistantResponsesAfterStart() async {
+        let messageID = UUID().uuidString
+        let response = AssistantResponseRecord(
+            metadata: AssistantResponseMetadataRecord(
+                responseMessageID: messageID,
+                requestID: UUID().uuidString,
+                idempotencyReceipt: "preview-receipt",
+                mode: .coach,
+                relevance: "career-relevant",
+                contextSufficiency: "sufficient",
+                stance: "nudge",
+                inference: "A useful inference.",
+                confidence: "high",
+                approach: "Offer one grounded next step.",
+                createdAtMS: 1
+            ),
+            sources: [], proposal: nil, feedback: nil
+        )
+        let model = ConversationViewModel.preview(
+            composer: .waitingForReply,
+            assistantResponses: [messageID: response]
+        )
+
+        await model.start()
+
+        XCTAssertNotNil(model.assistantResponses[messageID])
+    }
+
     func testNonemptyKeyboardReplacementRequiresDiscardAndCancelRestoresPause() async {
         let client = ConversationScreenClientSpy(captureDisposition: .sendable)
         let model = ConversationViewModel(
@@ -452,6 +480,72 @@ final class ConversationViewModelTests: XCTestCase {
         XCTAssertEqual(saved, .text("Keep this text"))
     }
 
+    func testFeedbackSelectionAutosavesWithoutTypedDetail() async {
+        let client = ConversationScreenClientSpy()
+        let model = ConversationViewModel(
+            conversationID: UUID().uuidString, title: "New conversation", entryIntent: nil,
+            client: await client.makeClient()
+        )
+        let responseID = UUID().uuidString
+
+        await model.saveFeedback(
+            responseMessageID: responseID,
+            direction: .notHelpful,
+            factors: [.communicationClarity, .intentAlignment]
+        )
+
+        let saved = await client.savedFeedback()
+        XCTAssertEqual(saved?.responseMessageID, UUID(uuidString: responseID)?.uuidString)
+        XCTAssertEqual(saved?.direction, .notHelpful)
+        XCTAssertEqual(saved?.factors, [.communicationClarity, .intentAlignment])
+        XCTAssertNil(saved?.detail)
+    }
+
+    func testRemovingSelectedFeedbackDeletesTheLocalRating() async {
+        let client = ConversationScreenClientSpy()
+        let model = ConversationViewModel(
+            conversationID: UUID().uuidString, title: "New conversation", entryIntent: nil,
+            client: await client.makeClient()
+        )
+        let responseID = UUID().uuidString
+
+        await model.saveFeedback(responseMessageID: responseID, direction: nil, factors: [])
+
+        let removedFeedbackID = await client.removedFeedbackID()
+        XCTAssertEqual(removedFeedbackID, UUID(uuidString: responseID)?.uuidString)
+    }
+
+    func testFeedbackSaveAndRemovalAreSerializedInTapOrder() async {
+        let gate = AsyncGate()
+        let events = EventRecorder()
+        let client = ConversationScreenClient(
+            beginVoice: {}, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
+            sendText: { _ in }, retry: {}, saveDraft: { _ in }, discardDraft: {},
+            saveFeedback: { _ in
+                await events.append("save-start")
+                await gate.wait()
+                await events.append("save-end")
+            },
+            removeFeedback: { _, _ in await events.append("remove") }
+        )
+        let model = ConversationViewModel(
+            conversationID: UUID().uuidString, title: "New conversation", entryIntent: nil,
+            client: client
+        )
+        let responseID = UUID().uuidString
+        let save = Task { await model.saveFeedback(responseMessageID: responseID, direction: .helpful, factors: [.coverage]) }
+        while !(await events.values()).contains("save-start") { await Task.yield() }
+        let remove = Task { await model.saveFeedback(responseMessageID: responseID, direction: nil, factors: []) }
+        await Task.yield()
+        let beforeRelease = await events.values()
+        XCTAssertEqual(beforeRelease, ["save-start"])
+        await gate.open()
+        await save.value
+        await remove.value
+        let finalEvents = await events.values()
+        XCTAssertEqual(finalEvents, ["save-start", "save-end", "remove"])
+    }
+
     private func message(role: String, body: String) -> MessageRecord {
         MessageRecord(
             id: UUID().uuidString, conversationID: UUID().uuidString,
@@ -477,6 +571,12 @@ private actor AsyncGate {
     }
 }
 
+private actor EventRecorder {
+    private var events: [String] = []
+    func append(_ event: String) { events.append(event) }
+    func values() -> [String] { events }
+}
+
 private actor MessageSequence {
     private let snapshots: [[MessageRecord]]
     private var index = 0
@@ -500,6 +600,8 @@ private actor ConversationScreenClientSpy {
     private var discardedConversationCount = 0
     private var correctionRequestCount = 0
     private var retryCount = 0
+    private var feedback: ResponseFeedbackRecord?
+    private var removedFeedback: String?
 
     init(messages: [MessageRecord] = [], correctionFails: Bool = false, captureDisposition: VoiceCaptureDisposition = .empty) {
         self.messages = messages
@@ -522,11 +624,15 @@ private actor ConversationScreenClientSpy {
             },
             loadCaptureSnapshot: { [captureDisposition] in
                 .init(activity: .recording, elapsedMilliseconds: 0, meter: .init(averagePower: -160, peakPower: -160), disposition: captureDisposition)
-            }
+            },
+            saveFeedback: { [self] value in await save(value) },
+            removeFeedback: { [self] id, _ in await removeFeedback(id) }
         )
     }
     private func recordBegin() { beginVoiceCount += 1 }
     private func save(_ input: ConversationInput) { saved = input }
+    private func save(_ value: ResponseFeedbackRecord) { feedback = value }
+    private func removeFeedback(_ id: String) { removedFeedback = UUID(uuidString: id)?.uuidString ?? id }
     func count() -> Int { beginVoiceCount }
     func savedInput() -> ConversationInput? { saved }
     private func recordDraftDiscard() { discardedDraftCount += 1 }
@@ -535,4 +641,6 @@ private actor ConversationScreenClientSpy {
     private func recordCorrectionRequest() { correctionRequestCount += 1 }
     private func recordRetry() { retryCount += 1 }
     func correctionRequestCounts() -> [Int] { [correctionRequestCount, retryCount] }
+    func savedFeedback() -> ResponseFeedbackRecord? { feedback }
+    func removedFeedbackID() -> String? { removedFeedback }
 }

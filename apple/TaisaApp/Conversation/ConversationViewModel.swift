@@ -1,3 +1,4 @@
+import Foundation
 import Observation
 import TaisaAudio
 import TaisaConversations
@@ -6,6 +7,7 @@ import TaisaVoice
 
 struct ConversationScreenClient: Sendable {
     var loadMessages: @Sendable () async throws -> [MessageRecord]
+    var loadAssistantResponses: @Sendable () async throws -> [String: AssistantResponseRecord]
     var loadTitle: @Sendable () async throws -> String
     var beginVoice: @Sendable () async throws -> Void
     var pauseVoice: @Sendable () async throws -> Void
@@ -22,9 +24,14 @@ struct ConversationScreenClient: Sendable {
     var loadCaptureSnapshot: @Sendable () async -> VoiceCaptureSnapshot
     var loadPartialCoaching: @Sendable () async -> String
     var recoveryEvents: @Sendable () async -> AsyncStream<Void>
+    var saveFeedback: @Sendable (ResponseFeedbackRecord) async throws -> Void
+    var removeFeedback: @Sendable (String, Int64) async throws -> Void
+    var acceptProposal: @Sendable (String) async throws -> Void
+    var dismissProposal: @Sendable (String) async throws -> Void
 
     init(
         loadMessages: @escaping @Sendable () async throws -> [MessageRecord] = { [] },
+        loadAssistantResponses: @escaping @Sendable () async throws -> [String: AssistantResponseRecord] = { [:] },
         loadTitle: @escaping @Sendable () async throws -> String = { "New conversation" },
         beginVoice: @escaping @Sendable () async throws -> Void,
         pauseVoice: @escaping @Sendable () async throws -> Void,
@@ -42,9 +49,14 @@ struct ConversationScreenClient: Sendable {
             .init(activity: .prepared, elapsedMilliseconds: 0, meter: .init(averagePower: -160, peakPower: -160), disposition: .empty)
         },
         loadPartialCoaching: @escaping @Sendable () async -> String = { "" },
-        recoveryEvents: @escaping @Sendable () async -> AsyncStream<Void> = { AsyncStream { $0.finish() } }
+        recoveryEvents: @escaping @Sendable () async -> AsyncStream<Void> = { AsyncStream { $0.finish() } },
+        saveFeedback: @escaping @Sendable (ResponseFeedbackRecord) async throws -> Void = { _ in },
+        removeFeedback: @escaping @Sendable (String, Int64) async throws -> Void = { _, _ in },
+        acceptProposal: @escaping @Sendable (String) async throws -> Void = { _ in },
+        dismissProposal: @escaping @Sendable (String) async throws -> Void = { _ in }
     ) {
         self.loadMessages = loadMessages
+        self.loadAssistantResponses = loadAssistantResponses
         self.loadTitle = loadTitle
         self.beginVoice = beginVoice
         self.pauseVoice = pauseVoice
@@ -61,6 +73,10 @@ struct ConversationScreenClient: Sendable {
         self.loadCaptureSnapshot = loadCaptureSnapshot
         self.loadPartialCoaching = loadPartialCoaching
         self.recoveryEvents = recoveryEvents
+        self.saveFeedback = saveFeedback
+        self.removeFeedback = removeFeedback
+        self.acceptProposal = acceptProposal
+        self.dismissProposal = dismissProposal
     }
 }
 
@@ -83,6 +99,7 @@ final class ConversationViewModel {
     private(set) var title: String
     private(set) var composer: ComposerState
     private(set) var messages: [MessageRecord] = []
+    private(set) var assistantResponses: [String: AssistantResponseRecord] = [:]
     private(set) var confirmation: Confirmation?
     private(set) var capture: VoiceCaptureSnapshot = .init(
         activity: .prepared, elapsedMilliseconds: 0,
@@ -135,7 +152,13 @@ final class ConversationViewModel {
         correctionMessageID != nil && correctionText != correctionOriginalText
     }
 
-    deinit { recoveryObservation?.cancel() }
+    @ObservationIgnored private var feedbackRevisionMS: Int64 = 0
+    @ObservationIgnored private var feedbackMutationTails: [String: Task<Void, Never>] = [:]
+
+    deinit {
+        recoveryObservation?.cancel()
+        feedbackMutationTails.values.forEach { $0.cancel() }
+    }
 
     init(
         conversationID: String,
@@ -158,6 +181,7 @@ final class ConversationViewModel {
     static func preview(
         composer: ComposerState,
         messages: [MessageRecord] = [],
+        assistantResponses: [String: AssistantResponseRecord] = [:],
         dismiss: @escaping @MainActor () -> Void = {}
     ) -> ConversationViewModel {
         let model = ConversationViewModel(
@@ -168,12 +192,14 @@ final class ConversationViewModel {
             text: { if case .typing(let value) = composer { value } else { "" } }(),
             client: ConversationScreenClient(
                 loadMessages: { messages },
+                loadAssistantResponses: { assistantResponses },
                 beginVoice: {}, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
                 sendText: { _ in }, retry: {}, saveDraft: { _ in }, discardDraft: {}
             ),
             dismiss: dismiss
         )
         model.messages = messages
+        model.assistantResponses = assistantResponses
         return model
     }
 
@@ -211,6 +237,7 @@ final class ConversationViewModel {
             messages = try await client.loadMessages()
             if let loadedTitle = try? await client.loadTitle() { title = loadedTitle }
             capture = await client.loadCaptureSnapshot()
+            assistantResponses = try await client.loadAssistantResponses()
             switch entryIntent {
             case .voice: try await beginVoice()
             case .text: composer = .typing(""); text = ""
@@ -578,6 +605,43 @@ final class ConversationViewModel {
         }
     }
 
+    func saveFeedback(
+        responseMessageID: String,
+        direction: ResponseFeedbackDirection?,
+        factors: [ResponseQualityFactor]
+    ) async {
+        let now = Int64(Date().timeIntervalSince1970 * 1_000)
+        feedbackRevisionMS = max(now, feedbackRevisionMS + 1)
+        let revision = feedbackRevisionMS
+        let previous = feedbackMutationTails[responseMessageID]
+        let task = Task { @MainActor in
+            await previous?.value
+            do {
+                if let direction {
+                    try await client.saveFeedback(.init(
+                        responseMessageID: responseMessageID, direction: direction,
+                        factors: factors, detail: nil, updatedAtMS: revision
+                    ))
+                } else {
+                    try await client.removeFeedback(responseMessageID, revision)
+                }
+                await reloadMessages()
+            } catch { composer = .failure(.retryable) }
+        }
+        feedbackMutationTails[responseMessageID] = task
+        await task.value
+    }
+
+    func acceptProposal(_ id: String) async {
+        do { try await client.acceptProposal(id); await reloadMessages() }
+        catch { composer = .failure(.retryable) }
+    }
+
+    func dismissProposal(_ id: String) async {
+        do { try await client.dismissProposal(id); await reloadMessages() }
+        catch { composer = .failure(.retryable) }
+    }
+
     private var hasUnsentInput: Bool {
         switch composer {
         case .typing: !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -613,6 +677,7 @@ final class ConversationViewModel {
 
     private func reloadMessages() async {
         if let loaded = try? await client.loadMessages() { messages = loaded }
+        if let loaded = try? await client.loadAssistantResponses() { assistantResponses = loaded }
         if let loadedTitle = try? await client.loadTitle() { title = loadedTitle }
     }
 }

@@ -15,7 +15,9 @@ const config = {
 const input = { systemPrompt: 'system', userPrompt: 'user' };
 const payload = {
   mode: 'coach', relevance: 'career-relevant', contextSufficiency: 'sufficient',
-  reply: 'What changed?', stance: 'nudge', proposals: [],
+  reply: 'What changed?', stance: 'nudge',
+  explanation: { mode: 'nudge', evidence: [], inference: 'Bounded fixture inference.', confidence: 'medium', approach: 'Bounded fixture approach.' },
+  proposal: null,
 };
 
 async function collect<T>(stream: AsyncIterable<T>): Promise<T[]> {

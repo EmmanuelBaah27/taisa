@@ -8,7 +8,7 @@ enum TaisaSchema {
         let body: [String]
     }
 
-    static let currentVersion = 6
+    static let currentVersion = 7
 
     static func createVersion1(in db: Database) throws {
         for statement in version1Statements { try db.execute(sql: statement) }
@@ -34,6 +34,10 @@ enum TaisaSchema {
         for statement in version6Statements { try db.execute(sql: statement) }
     }
 
+    static func createVersion7(in db: Database) throws {
+        for statement in version7Statements { try db.execute(sql: statement) }
+    }
+
     static var migrationLedger: [MigrationLedgerEntry] {
         [
             .init(version: 1, identifier: "v1", predecessor: nil, body: version1Statements),
@@ -42,6 +46,7 @@ enum TaisaSchema {
             .init(version: 4, identifier: "v4", predecessor: "v3", body: version4Statements),
             .init(version: 5, identifier: "v5", predecessor: "v4", body: version5Statements),
             .init(version: 6, identifier: "v6", predecessor: "v5", body: version6Statements),
+            .init(version: 7, identifier: "v7", predecessor: "v6", body: version7Statements),
         ]
     }
 
@@ -525,6 +530,75 @@ enum TaisaSchema {
         "ALTER TABLE goals_v6 RENAME TO goals",
     ]
 
+    private static let version7Statements: [String] = [
+        """
+        CREATE TABLE assistant_response_metadata (
+            response_message_id TEXT PRIMARY KEY NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+            request_id TEXT NOT NULL UNIQUE CHECK (length(request_id) = 36),
+            idempotency_receipt TEXT NOT NULL UNIQUE CHECK (length(idempotency_receipt) > 0),
+            mode TEXT NOT NULL CHECK (mode IN ('coach', 'clarify', 'redirect')),
+            relevance TEXT NOT NULL CHECK (relevance IN ('career-relevant', 'adjacent', 'outside-scope')),
+            context_sufficiency TEXT NOT NULL CHECK (context_sufficiency IN ('sufficient', 'partial', 'insufficient')),
+            stance TEXT CHECK (stance IS NULL OR stance IN ('mirror', 'nudge', 'challenge', 'direct')),
+            inference TEXT NOT NULL CHECK (length(trim(inference)) > 0),
+            confidence TEXT NOT NULL CHECK (confidence IN ('low', 'medium', 'high')),
+            approach TEXT NOT NULL CHECK (length(trim(approach)) > 0),
+            created_at_ms INTEGER NOT NULL CHECK (created_at_ms >= 0),
+            CHECK ((mode = 'coach' AND stance IS NOT NULL AND relevance != 'outside-scope' AND context_sufficiency != 'insufficient')
+                OR (mode = 'clarify' AND stance IS NULL AND context_sufficiency = 'insufficient')
+                OR (mode = 'redirect' AND stance IS NULL AND relevance = 'outside-scope' AND context_sufficiency != 'insufficient'))
+        )
+        """,
+        """
+        CREATE TABLE assistant_response_sources (
+            id TEXT PRIMARY KEY NOT NULL CHECK (length(id) = 36),
+            response_message_id TEXT NOT NULL REFERENCES assistant_response_metadata(response_message_id) ON DELETE CASCADE,
+            ordinal INTEGER NOT NULL CHECK (ordinal >= 0 AND ordinal < 8),
+            source_id TEXT NOT NULL CHECK (length(source_id) > 0 AND length(source_id) <= 128),
+            source_type TEXT NOT NULL CHECK (source_type IN ('message', 'goal', 'action', 'evidence', 'memory', 'insight')),
+            excerpt TEXT CHECK (excerpt IS NULL OR (length(trim(excerpt)) > 0 AND length(excerpt) <= 4000)),
+            UNIQUE (response_message_id, ordinal)
+        )
+        """,
+        """
+        CREATE TABLE assistant_proposals (
+            id TEXT PRIMARY KEY NOT NULL CHECK (length(id) = 36),
+            response_message_id TEXT NOT NULL UNIQUE REFERENCES assistant_response_metadata(response_message_id) ON DELETE CASCADE,
+            kind TEXT NOT NULL CHECK (kind IN ('goal', 'action', 'weekly_work', 'evidence', 'memory', 'insight')),
+            canonical_payload BLOB NOT NULL,
+            payload_digest TEXT NOT NULL CHECK (length(payload_digest) > 0),
+            state TEXT NOT NULL CHECK (state IN ('pending', 'accepted', 'dismissed', 'superseded', 'stale', 'unsupported')),
+            target_type TEXT,
+            target_id TEXT,
+            target_version_id TEXT,
+            decision_receipt TEXT,
+            created_at_ms INTEGER NOT NULL CHECK (created_at_ms >= 0),
+            resolved_at_ms INTEGER CHECK (resolved_at_ms IS NULL OR resolved_at_ms >= created_at_ms),
+            CHECK ((state = 'pending' AND resolved_at_ms IS NULL) OR state != 'pending')
+        )
+        """,
+        """
+        CREATE TABLE response_feedback (
+            response_message_id TEXT PRIMARY KEY NOT NULL REFERENCES assistant_response_metadata(response_message_id) ON DELETE CASCADE,
+            direction TEXT NOT NULL CHECK (direction IN ('helpful', 'not_helpful')),
+            factors_json BLOB NOT NULL,
+            detail TEXT CHECK (detail IS NULL OR (length(trim(detail)) > 0 AND length(detail) <= 4000)),
+            updated_at_ms INTEGER NOT NULL CHECK (updated_at_ms >= 0)
+        )
+        """,
+        """
+        CREATE TABLE preference_profiles (
+            id INTEGER PRIMARY KEY NOT NULL CHECK (id = 1),
+            signals_json BLOB NOT NULL,
+            enabled INTEGER NOT NULL CHECK (enabled IN (0, 1)),
+            updated_at_ms INTEGER NOT NULL CHECK (updated_at_ms >= 0)
+        )
+        """,
+        "CREATE INDEX assistant_response_sources_by_response ON assistant_response_sources(response_message_id, ordinal)",
+        "CREATE INDEX assistant_proposals_by_state ON assistant_proposals(state, created_at_ms)",
+        "CREATE INDEX response_feedback_by_updated ON response_feedback(updated_at_ms)",
+    ]
+
     static func validateVersion1(in db: Database, allowingConversationExtensions: Bool = false, allowingGoalLifecycleExtension: Bool = false) throws {
         let requiredColumns: [String: Set<String>] = [
             "profile": ["id", "display_name", "headline", "biography", "updated_at_ms"],
@@ -708,6 +782,33 @@ enum TaisaSchema {
             let stored = try String.fetchOne(db, sql: "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'goals'")
             let expected = version6GoalTable.replacingOccurrences(of: "goals_v6", with: "\"goals\"")
             guard stored == expected else { throw StorageError.schemaMismatch }
+        } catch {
+            throw StorageError.schemaMismatch
+        }
+    }
+
+    static func validateVersion7(in db: Database) throws {
+        try validateVersion6(in: db)
+        let requiredColumns: [String: Set<String>] = [
+            "assistant_response_metadata": ["response_message_id", "request_id", "idempotency_receipt", "mode", "relevance", "context_sufficiency", "stance", "inference", "confidence", "approach", "created_at_ms"],
+            "assistant_response_sources": ["id", "response_message_id", "ordinal", "source_id", "source_type", "excerpt"],
+            "assistant_proposals": ["id", "response_message_id", "kind", "canonical_payload", "payload_digest", "state", "target_type", "target_id", "target_version_id", "decision_receipt", "created_at_ms", "resolved_at_ms"],
+            "response_feedback": ["response_message_id", "direction", "factors_json", "detail", "updated_at_ms"],
+            "preference_profiles": ["id", "signals_json", "enabled", "updated_at_ms"],
+        ]
+        do {
+            for (table, expected) in requiredColumns {
+                guard try db.tableExists(table), Set(try db.columns(in: table).map(\.name)) == expected else {
+                    throw StorageError.schemaMismatch
+                }
+            }
+            for statement in version7Statements where statement.hasPrefix("CREATE TABLE ") || statement.hasPrefix("CREATE INDEX ") {
+                let name = String(statement.split(separator: " ", maxSplits: 3)[2])
+                let objectType = statement.hasPrefix("CREATE TABLE ") ? "table" : "index"
+                guard try String.fetchOne(db, sql: "SELECT sql FROM sqlite_master WHERE type = ? AND name = ?", arguments: [objectType, name]) == statement else {
+                    throw StorageError.schemaMismatch
+                }
+            }
         } catch {
             throw StorageError.schemaMismatch
         }

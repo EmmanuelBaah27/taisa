@@ -16,9 +16,17 @@ struct ConversationView: View {
                     ZStack {
                         ConversationTimeline(
                             messages: model.messages,
+                            assistantResponses: model.assistantResponses,
                             updatingResponseAfter: model.correctionRegenerationMessageID,
                             streamingResponse: model.partialCoaching,
-                            correct: model.requestCorrection
+                            correct: model.requestCorrection,
+                            saveFeedback: { messageID, direction, factors in
+                                Task { await model.saveFeedback(
+                                    responseMessageID: messageID, direction: direction, factors: factors
+                                ) }
+                            },
+                            acceptProposal: { id in Task { await model.acceptProposal(id) } },
+                            dismissProposal: { id in Task { await model.dismissProposal(id) } }
                         )
                         if model.messages.isEmpty { emptyState }
                     }
