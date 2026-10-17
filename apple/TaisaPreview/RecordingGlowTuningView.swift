@@ -315,25 +315,15 @@ private final class PreviewLiveLoudnessMonitor: ObservableObject {
                 return
             }
 
-            input.installTap(onBus: 0, bufferSize: 1_024, format: format) { [weak self] buffer, _ in
-                guard let channel = buffer.floatChannelData?.pointee else { return }
-                let count = Int(buffer.frameLength)
-                guard count > 0 else { return }
-                var sumSquares: Float = 0
-                var peak: Float = 0
-                for index in 0..<count {
-                    let sample = abs(channel[index])
-                    sumSquares += sample * sample
-                    peak = max(peak, sample)
+            let sampleRate = format.sampleRate
+            input.installTap(onBus: 0, bufferSize: 1_024, format: format) { @Sendable [weak self] buffer, _ in
+                guard let reading = Self.meterReading(from: buffer, sampleRate: sampleRate) else {
+                    return
                 }
-                let average = sqrt(sumSquares / Float(count))
-                let averageDB = 20 * log10(max(average, 0.000_000_1))
-                let peakDB = 20 * log10(max(peak, 0.000_000_1))
-                let seconds = Double(count) / format.sampleRate
                 Task { @MainActor [weak self] in
                     self?.consume(
-                        AudioMeterSample(averagePower: averageDB, peakPower: peakDB),
-                        delta: .seconds(seconds)
+                        reading.sample,
+                        delta: reading.delta
                     )
                 }
             }
@@ -364,6 +354,32 @@ private final class PreviewLiveLoudnessMonitor: ObservableObject {
 
     private func consume(_ sample: AudioMeterSample, delta: Duration) {
         loudness = envelope.update(sample: sample, delta: delta)
+        status = "Listening — receiving audio"
+    }
+
+    private nonisolated static func meterReading(
+        from buffer: AVAudioPCMBuffer,
+        sampleRate: Double
+    ) -> (sample: AudioMeterSample, delta: Duration)? {
+        guard let channel = buffer.floatChannelData?.pointee else { return nil }
+        let count = Int(buffer.frameLength)
+        guard count > 0 else { return nil }
+
+        var sumSquares: Float = 0
+        var peak: Float = 0
+        for index in 0..<count {
+            let sample = abs(channel[index])
+            sumSquares += sample * sample
+            peak = max(peak, sample)
+        }
+
+        let average = sqrt(sumSquares / Float(count))
+        let averageDB = 20 * log10(max(average, 0.000_000_1))
+        let peakDB = 20 * log10(max(peak, 0.000_000_1))
+        return (
+            AudioMeterSample(averagePower: averageDB, peakPower: peakDB),
+            .seconds(Double(count) / sampleRate)
+        )
     }
 }
 
