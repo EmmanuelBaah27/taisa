@@ -29,6 +29,7 @@ const SNAPSHOT: ArchiveSnapshot = {
     usage_receipts: 3,
     migration_state: 0,
     mutation_receipts: 12,
+    response_feedback: 3,
   },
   contentHash: 'a'.repeat(64),
 };
@@ -216,6 +217,34 @@ describe('encrypted archive recovery', () => {
 
     expect(snapshot.schemaVersion).toBe(SCHEMA_VERSION + 1);
     expect(snapshot.counts).toEqual(SNAPSHOT.counts);
+  });
+
+  test('requires response feedback counts for schema-v3 and schema-v4 manifests', () => {
+    const withoutFeedback = { ...SNAPSHOT.counts } as Record<string, number>;
+    delete withoutFeedback.response_feedback;
+
+    for (const schemaVersion of [3, 4]) {
+      expect(() => parseArchiveManifestForValidation({
+        archive_format_version: 1,
+        schema_version: schemaVersion,
+        counts_json: JSON.stringify(withoutFeedback),
+        content_hash: SNAPSHOT.contentHash,
+      })).toThrow('count set');
+    }
+  });
+
+  test('accepts schema-v1 and schema-v2 manifests without response feedback counts', () => {
+    const legacyCounts = { ...SNAPSHOT.counts } as Record<string, number>;
+    delete legacyCounts.response_feedback;
+
+    for (const schemaVersion of [1, 2]) {
+      expect(parseArchiveManifestForValidation({
+        archive_format_version: 1,
+        schema_version: schemaVersion,
+        counts_json: JSON.stringify(legacyCounts),
+        content_hash: SNAPSHOT.contentHash,
+      })).toMatchObject({ schemaVersion, counts: legacyCounts });
+    }
   });
 
   test('fails before export when free space cannot hold a complete new archive', async () => {
@@ -576,6 +605,76 @@ describe('encrypted archive recovery', () => {
         expect.stringContaining('source_archive.integrity_check'),
       );
       expect(source.runAsync).not.toHaveBeenCalledWith(expect.stringContaining('integrity-check'));
+  });
+
+  test('rejects a manifest view before evaluating archive-owned manifest SQL', async () => {
+    const source = {
+      execAsync: jest.fn(async () => undefined),
+      runAsync: jest.fn(async () => ({ changes: 0, lastInsertRowId: 0 })),
+      getFirstAsync: jest.fn(async (sql: string) => {
+        if (sql === 'PRAGMA cipher_version') return { cipher_version: '4.6.1' };
+        if (sql.includes('source_archive.user_version')) return { user_version: SCHEMA_VERSION };
+        if (sql.includes('taisa_archive_manifest')) {
+          throw new Error('archive-owned manifest view executed');
+        }
+        return null;
+      }),
+      getAllAsync: jest.fn(async (sql: string) => {
+        if (sql.includes('sqlite_schema')) {
+          return SOURCE_SCHEMA_OBJECTS.map((object) => object.name === 'taisa_archive_manifest'
+            ? { ...object, type: 'view', tbl_name: 'taisa_archive_manifest' }
+            : object);
+        }
+        return [];
+      }),
+      closeAsync: jest.fn(async () => undefined),
+    };
+    const boundary = createSqlCipherArchiveBoundary({
+      openActive: jest.fn(async () => source),
+      openMaintenance: jest.fn(async () => source),
+      openDeviceCandidate: jest.fn(async () => source),
+      deleteMaintenance: jest.fn(async () => undefined),
+      readDeviceKey: jest.fn(async () => 'b'.repeat(64)),
+      sha256: jest.fn(async () => EMPTY_SNAPSHOT.contentHash),
+    });
+
+    await expect(boundary.inspectPassphraseArchive({
+      sourceUri: 'file:///restore-input.db',
+      passphrase: 'correct horse battery',
+    })).rejects.toThrow('trusted schema');
+    expect(source.getFirstAsync).not.toHaveBeenCalledWith(
+      expect.stringContaining('taisa_archive_manifest'),
+    );
+  });
+
+  test('rejects a future source version before reading its manifest', async () => {
+    const source = {
+      execAsync: jest.fn(async () => undefined),
+      runAsync: jest.fn(async () => ({ changes: 0, lastInsertRowId: 0 })),
+      getFirstAsync: jest.fn(async (sql: string) => {
+        if (sql === 'PRAGMA cipher_version') return { cipher_version: '4.6.1' };
+        if (sql.includes('source_archive.user_version')) return { user_version: SCHEMA_VERSION + 1 };
+        if (sql.includes('taisa_archive_manifest')) throw new Error('future manifest read');
+        return null;
+      }),
+      getAllAsync: jest.fn(async () => []),
+      closeAsync: jest.fn(async () => undefined),
+    };
+    const boundary = createSqlCipherArchiveBoundary({
+      openActive: jest.fn(async () => source),
+      openMaintenance: jest.fn(async () => source),
+      openDeviceCandidate: jest.fn(async () => source),
+      deleteMaintenance: jest.fn(async () => undefined),
+      readDeviceKey: jest.fn(async () => 'b'.repeat(64)),
+      sha256: jest.fn(async () => EMPTY_SNAPSHOT.contentHash),
+    });
+
+    await expect(boundary.inspectPassphraseArchive({
+      sourceUri: 'file:///future.db', passphrase: 'correct horse battery',
+    })).rejects.toMatchObject({ code: 'UNSUPPORTED_ARCHIVE_VERSION' });
+    expect(source.getFirstAsync).not.toHaveBeenCalledWith(
+      expect.stringContaining('taisa_archive_manifest'),
+    );
   });
 
   test('rejects extra or omitted source columns instead of importing archive-owned schema', async () => {

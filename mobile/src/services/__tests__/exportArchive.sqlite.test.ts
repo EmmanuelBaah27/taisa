@@ -25,6 +25,7 @@ const TABLES = [
   ['memory_confirmations', 'id'], ['coaching_requests', 'id'],
   ['audio_cleanup_queue', 'audio_uri'], ['usage_receipts', 'id'],
   ['migration_state', 'id'], ['mutation_receipts', 'idempotency_id'],
+  ['response_feedback', 'response_message_id'],
 ] as const;
 const NOW = '2026-08-10T09:00:00.000Z';
 const hash = (value: string) => createHash('sha256').update(value).digest('hex');
@@ -41,7 +42,11 @@ function migrate(database: Database.Database, targetVersion = 2): void {
 function fingerprint(database: Database.Database): ArchiveSnapshot {
   const counts = {} as ArchiveSnapshot['counts'];
   const canonical: unknown[] = [];
-  for (const [table, order] of TABLES) {
+  const schemaVersion = Number(database.pragma('user_version', { simple: true }));
+  const tables = schemaVersion >= 3
+    ? TABLES
+    : TABLES.filter(([table]) => table !== 'response_feedback');
+  for (const [table, order] of tables) {
     const rows = database.prepare(`SELECT * FROM "${table}" ORDER BY "${order}"`).all();
     counts[table] = rows.length;
     canonical.push([table, rows]);
@@ -80,6 +85,16 @@ function populate(database: Database.Database, schemaVersion = 2): void {
   database.prepare(`INSERT INTO messages
     (id, conversation_id, parent_message_id, role, content, lifecycle, created_at, updated_at)
     VALUES ('a-child', 'c', 'z-parent', 'assistant', 'Child response', 'received', ?, ?)`).run(NOW, NOW);
+  if (schemaVersion >= 3) {
+    database.prepare(`INSERT INTO messages
+      (id, conversation_id, parent_message_id, role, content, lifecycle, created_at, updated_at)
+      VALUES ('b-local', 'c', 'z-parent', 'assistant', 'Local response', 'received', ?, ?)`)
+      .run(NOW, NOW);
+    database.prepare(`INSERT INTO messages
+      (id, conversation_id, parent_message_id, role, content, lifecycle, created_at, updated_at)
+      VALUES ('c-preview', 'c', 'z-parent', 'assistant', 'Preview response', 'received', ?, ?)`)
+      .run(NOW, NOW);
+  }
   database.prepare(`INSERT INTO goals
     (id, title, lifecycle, created_at, updated_at, status_changed_at)
     VALUES ('z-goal', 'Earlier', 'superseded', ?, ?, ?)`).run(NOW, NOW, NOW);
@@ -105,6 +120,21 @@ function populate(database: Database.Database, schemaVersion = 2): void {
   database.prepare(`INSERT INTO evidence
     (id, statement, occurred_at, created_at, updated_at)
     VALUES ('e', 'Led launch', ?, ?, ?)`).run(NOW, NOW, NOW);
+  if (schemaVersion >= 3) {
+    database.prepare(`INSERT INTO response_feedback
+      (response_message_id, reaction, note, share_status, share_consent_at,
+       share_receipt_id, created_at, updated_at)
+      VALUES ('a-child', 'helpful', 'Keep this framing', 'shared', ?, 'receipt-1', ?, ?)`)
+      .run(NOW, NOW, NOW);
+    database.prepare(`INSERT INTO response_feedback
+      (response_message_id, reaction, note, share_status, created_at, updated_at)
+      VALUES ('b-local', 'unhelpful', NULL, 'local-only', ?, ?)`)
+      .run(NOW, NOW);
+    database.prepare(`INSERT INTO response_feedback
+      (response_message_id, reaction, note, share_status, created_at, updated_at)
+      VALUES ('c-preview', 'helpful', 'Preview note', 'previewed', ?, ?)`)
+      .run(NOW, NOW);
+  }
 }
 
 function adapter(
@@ -200,6 +230,24 @@ describe('real SQLite archive boundaries', () => {
       .toEqual({ supersedes_id: 'z-memory' });
     expect(candidate.prepare(`SELECT preferred_input_mode FROM conversations WHERE id='c'`).get())
       .toEqual({ preferred_input_mode: 'voice' });
+    expect(candidate.prepare(`SELECT * FROM response_feedback ORDER BY response_message_id`).all())
+      .toEqual([
+        {
+          response_message_id: 'a-child', reaction: 'helpful', note: 'Keep this framing',
+          share_status: 'shared', share_consent_at: NOW, share_receipt_id: 'receipt-1',
+          created_at: NOW, updated_at: NOW,
+        },
+        {
+          response_message_id: 'b-local', reaction: 'unhelpful', note: null,
+          share_status: 'local-only', share_consent_at: null, share_receipt_id: null,
+          created_at: NOW, updated_at: NOW,
+        },
+        {
+          response_message_id: 'c-preview', reaction: 'helpful', note: 'Preview note',
+          share_status: 'previewed', share_consent_at: null, share_receipt_id: null,
+          created_at: NOW, updated_at: NOW,
+        },
+      ]);
     expect(candidate.pragma('foreign_key_check')).toEqual([]);
     candidate.close();
   });
@@ -215,12 +263,56 @@ describe('real SQLite archive boundaries', () => {
 
     expect(sourceV1.schemaVersion).toBe(1);
     expect(restored.schemaVersion).toBe(SCHEMA_VERSION);
-    expect(restored.counts).toEqual(sourceV1.counts);
+    expect(restored.counts).toEqual({ ...sourceV1.counts, response_feedback: 0 });
     const candidate = new Database(candidatePath, { readonly: true });
     expect(candidate.prepare(`SELECT preferred_input_mode FROM conversations WHERE id='c'`).get())
       .toEqual({ preferred_input_mode: 'text' });
     expect(candidate.pragma('foreign_key_check')).toEqual([]);
     candidate.close();
+  });
+
+  test('imports a trusted schema-v2 backup without fabricating feedback', async () => {
+    const sourceV2 = createSource(true, 2);
+
+    const restored = await makeBoundary().createDeviceEncryptedCandidate({
+      sourceUri: sourcePath,
+      destinationUri: candidatePath,
+      passphrase: 'long passphrase',
+    });
+
+    expect(restored).toMatchObject({
+      schemaVersion: SCHEMA_VERSION,
+      counts: { ...sourceV2.counts, response_feedback: 0 },
+    });
+    const candidate = new Database(candidatePath, { readonly: true });
+    expect(candidate.prepare('SELECT COUNT(*) AS count FROM response_feedback').get())
+      .toEqual({ count: 0 });
+    candidate.close();
+  });
+
+  test.each([
+    ['removed row', `DELETE FROM response_feedback`],
+    ['changed reaction', `UPDATE response_feedback SET reaction = 'unhelpful'
+      WHERE response_message_id = 'a-child'`],
+    ['changed note', `UPDATE response_feedback SET note = 'Altered note'
+      WHERE response_message_id = 'a-child'`],
+    ['changed consent evidence', `UPDATE response_feedback
+      SET share_consent_at = '${NOW.replace('09:00', '10:00')}', share_receipt_id = 'receipt-2'
+      WHERE response_message_id = 'a-child'`],
+    ['changed sharing state', `UPDATE response_feedback
+      SET share_status = 'local-only', share_consent_at = NULL, share_receipt_id = NULL
+      WHERE response_message_id = 'a-child'`],
+  ])('rejects feedback tampering after manifest creation: %s', async (_name, sql) => {
+    createSource(true, 4);
+    const source = new Database(sourcePath);
+    source.exec(sql);
+    source.close();
+
+    await expect(makeBoundary().createDeviceEncryptedCandidate({
+      sourceUri: sourcePath,
+      destinationUri: candidatePath,
+      passphrase: 'long passphrase',
+    })).rejects.toThrow(/fingerprint/i);
   });
 
   test('never runs executable schema checks while preliminarily inspecting a selected archive', async () => {

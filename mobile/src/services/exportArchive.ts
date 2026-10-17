@@ -25,7 +25,7 @@ const MAINTENANCE_DATABASE_NAME = 'taisa-archive-maintenance.db';
 const DEVICE_KEY_NAME = 'taisa.database-key.v1';
 const DEVICE_KEY_PATTERN = /^[0-9a-f]{64}$/i;
 
-const ARCHIVE_TABLES = [
+const BASE_ARCHIVE_TABLES = [
   'profile',
   'conversations',
   'messages',
@@ -44,8 +44,19 @@ const ARCHIVE_TABLES = [
   'mutation_receipts',
 ] as const;
 
-export type ArchiveTable = typeof ARCHIVE_TABLES[number];
-export type ArchiveEntityCounts = Record<ArchiveTable, number>;
+const FEEDBACK_ARCHIVE_TABLES = ['response_feedback'] as const;
+
+type BaseArchiveTable = typeof BASE_ARCHIVE_TABLES[number];
+export type ArchiveTable = BaseArchiveTable | typeof FEEDBACK_ARCHIVE_TABLES[number];
+export type ArchiveEntityCounts = Record<BaseArchiveTable, number> & {
+  response_feedback?: number;
+};
+
+export function archiveTablesForSchemaVersion(schemaVersion: number): readonly ArchiveTable[] {
+  return schemaVersion >= 3
+    ? [...BASE_ARCHIVE_TABLES, ...FEEDBACK_ARCHIVE_TABLES]
+    : BASE_ARCHIVE_TABLES;
+}
 
 const TABLE_ORDER_COLUMNS: Record<ArchiveTable, string> = {
   profile: 'id',
@@ -64,6 +75,7 @@ const TABLE_ORDER_COLUMNS: Record<ArchiveTable, string> = {
   usage_receipts: 'id',
   migration_state: 'id',
   mutation_receipts: 'idempotency_id',
+  response_feedback: 'response_message_id',
 };
 
 export interface ArchiveSnapshot {
@@ -174,7 +186,8 @@ function snapshotsMatch(left: ArchiveSnapshot, right: ArchiveSnapshot): boolean 
   if (left.archiveFormatVersion !== right.archiveFormatVersion
     || left.schemaVersion !== right.schemaVersion
     || left.contentHash !== right.contentHash) return false;
-  return ARCHIVE_TABLES.every((table) => left.counts[table] === right.counts[table]);
+  return archiveTablesForSchemaVersion(left.schemaVersion)
+    .every((table) => left.counts[table] === right.counts[table]);
 }
 
 function requireCurrentSnapshot(snapshot: ArchiveSnapshot): void {
@@ -198,7 +211,8 @@ function candidateMatchesVerifiedSource(
 ): boolean {
   if (candidate.archiveFormatVersion !== ARCHIVE_FORMAT_VERSION
     || candidate.schemaVersion !== SCHEMA_VERSION) return false;
-  if (!ARCHIVE_TABLES.every((table) => source.counts[table] === candidate.counts[table])) {
+  if (!archiveTablesForSchemaVersion(source.schemaVersion)
+    .every((table) => source.counts[table] === candidate.counts[table])) {
     return false;
   }
   return source.schemaVersion !== candidate.schemaVersion || source.contentHash === candidate.contentHash;
@@ -417,7 +431,7 @@ async function fingerprintSchema(
 
   const counts = {} as ArchiveEntityCounts;
   const canonicalTables: unknown[] = [];
-  for (const table of ARCHIVE_TABLES) {
+  for (const table of archiveTablesForSchemaVersion(versionRow!.user_version)) {
     const rows = await database.getAllAsync<Record<string, unknown>>(
       `SELECT * FROM ${qualified(schema, table)} ORDER BY "${TABLE_ORDER_COLUMNS[table]}"`,
     );
@@ -469,11 +483,15 @@ export function parseArchiveManifestForValidation(row: {
   }
   const parsed = JSON.parse(row.counts_json) as Record<string, unknown>;
   const counts = {} as ArchiveEntityCounts;
-  if (row.schema_version === SCHEMA_VERSION
-    && Object.keys(parsed).length !== ARCHIVE_TABLES.length) {
+  const tables = archiveTablesForSchemaVersion(
+    row.schema_version > SCHEMA_VERSION ? SCHEMA_VERSION : row.schema_version,
+  );
+  if (row.schema_version <= SCHEMA_VERSION
+    && (Object.keys(parsed).length !== tables.length
+      || Object.keys(parsed).some((table) => !tables.includes(table as ArchiveTable)))) {
     throw new Error('Archive manifest count set is invalid');
   }
-  for (const table of ARCHIVE_TABLES) {
+  for (const table of tables) {
     const count = parsed[table];
     if (!Number.isSafeInteger(count) || (count as number) < 0) {
       throw new Error('Archive manifest count is invalid');
@@ -527,6 +545,21 @@ async function readAttachedArchiveManifest(
   );
   if (manifestRow === null) throw new Error('Archive manifest is missing');
   return parseArchiveManifestForValidation(manifestRow);
+}
+
+async function readSupportedAttachedSchemaVersion(
+  database: ArchiveSqlDatabase,
+  schema: 'passphrase_export' | 'source_archive' | 'device_candidate',
+): Promise<number> {
+  const row = await database.getFirstAsync<{ user_version: number }>(
+    `PRAGMA ${schema}.user_version`,
+  );
+  if (!Number.isSafeInteger(row?.user_version)
+    || row!.user_version < 1
+    || row!.user_version > SCHEMA_VERSION) {
+    throw new ArchiveOperationError('UNSUPPORTED_ARCHIVE_VERSION');
+  }
+  return row!.user_version;
 }
 
 async function requireSqlCipher(database: ArchiveSqlDatabase): Promise<void> {
@@ -602,10 +635,13 @@ async function schemaObjects(
   );
 }
 
-async function requireOrdinaryArchiveTables(database: ArchiveSqlDatabase): Promise<void> {
+async function requireOrdinaryArchiveTables(
+  database: ArchiveSqlDatabase,
+  schemaVersion: number,
+): Promise<void> {
   const objects = await schemaObjects(database, 'source_archive');
   const byName = new Map(objects.map((object) => [object.name, object]));
-  for (const table of [...ARCHIVE_TABLES, 'taisa_archive_manifest'] as const) {
+  for (const table of [...archiveTablesForSchemaVersion(schemaVersion), 'taisa_archive_manifest'] as const) {
     const object = byName.get(table);
     if (object?.type !== 'table'
       || object.tbl_name !== table
@@ -678,12 +714,13 @@ function bindableRowValue(value: unknown): string | number | null | Uint8Array {
 async function importAllowlistedTables(
   source: ArchiveSqlDatabase,
   candidate: ArchiveSqlDatabase,
+  tables: readonly ArchiveTable[],
 ): Promise<void> {
   await candidate.execAsync('BEGIN IMMEDIATE');
   try {
     await candidate.execAsync('PRAGMA defer_foreign_keys = ON');
     await requireTrustedSchemaIdentity(source, candidate);
-    for (const table of ARCHIVE_TABLES) {
+    for (const table of tables) {
       const [sourceColumns, trustedColumns] = await Promise.all([
         tableInfo(source, 'source_archive', table),
         tableInfo(candidate, 'main', table),
@@ -792,12 +829,20 @@ export function createSqlCipherArchiveBoundary(
           await database.execAsync('PRAGMA trusted_schema = OFF');
           await attachWithPassphrase(database, sourceUri, 'source_archive', passphrase);
           attached = true;
-          await requireOrdinaryArchiveTables(database);
+          const sourceSchemaVersion = await readSupportedAttachedSchemaVersion(
+            database,
+            'source_archive',
+          );
+          await requireOrdinaryArchiveTables(database, sourceSchemaVersion);
+          const sourceManifest = await readAttachedArchiveManifest(database, 'source_archive');
+          if (sourceManifest.schemaVersion !== sourceSchemaVersion) {
+            throw new Error('Archive manifest schema version does not match the database');
+          }
           // This is deliberately only a non-executing preliminary inspection. SQLite integrity
           // checks may invoke virtual-table xIntegrity implementations, so content/hash/integrity
           // verification waits until candidate creation has proven exact schema identity against
           // a locally generated trusted schema.
-          return readAttachedArchiveManifest(database, 'source_archive');
+          return sourceManifest;
         } finally {
           if (attached) await detachQuietly(database, 'source_archive');
         }
@@ -812,10 +857,14 @@ export function createSqlCipherArchiveBoundary(
           await database.execAsync('PRAGMA trusted_schema = OFF');
           await attachWithPassphrase(database, sourceUri, 'source_archive', passphrase);
           sourceAttached = true;
-          await requireOrdinaryArchiveTables(database);
+          const sourceSchemaVersion = await readSupportedAttachedSchemaVersion(
+            database,
+            'source_archive',
+          );
+          await requireOrdinaryArchiveTables(database, sourceSchemaVersion);
           const sourceManifest = await readAttachedArchiveManifest(database, 'source_archive');
-          if (sourceManifest.schemaVersion < 1 || sourceManifest.schemaVersion > SCHEMA_VERSION) {
-            throw new Error('Archive schema version is unsupported');
+          if (sourceManifest.schemaVersion !== sourceSchemaVersion) {
+            throw new Error('Archive manifest schema version does not match the database');
           }
           const deviceKey = (await dependencies.readDeviceKey()).toLowerCase();
           if (!DEVICE_KEY_PATTERN.test(deviceKey)) throw new Error('Device key is unavailable');
@@ -837,7 +886,11 @@ export function createSqlCipherArchiveBoundary(
           // After FTS integrity and schema identity checks, the maintenance connection becomes
           // strictly source-only for the bound-value copy.
           await database.execAsync('PRAGMA query_only = ON');
-          await importAllowlistedTables(database, candidate);
+          await importAllowlistedTables(
+            database,
+            candidate,
+            archiveTablesForSchemaVersion(sourceManifest.schemaVersion),
+          );
           const importedSnapshot = await fingerprintSchema(
             candidate,
             'main',
