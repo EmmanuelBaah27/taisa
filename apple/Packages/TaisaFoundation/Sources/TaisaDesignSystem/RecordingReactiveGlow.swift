@@ -32,7 +32,7 @@ struct RecordingGlowWaveMotion: Sendable, Equatable {
     let attackBounce: Double
     let releaseDuration: Double
 
-    static let `default` = Self(attackDuration: 0.17, attackBounce: 0.16, releaseDuration: 0.24)
+    static let `default` = Self(attackDuration: 0.13, attackBounce: 0.08, releaseDuration: 0.18)
 }
 
 struct RecordingGlowWaveLevels: Sendable, Equatable {

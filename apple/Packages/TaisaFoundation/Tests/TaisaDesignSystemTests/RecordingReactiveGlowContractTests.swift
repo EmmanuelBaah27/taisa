@@ -57,12 +57,14 @@ struct RecordingReactiveGlowContractTests {
         #expect(RecordingGlowWaveTiming(staggerSeconds: 2).outerDelay == 0.36)
     }
 
-    @Test("rising voice energy has restrained spring while settling is quicker and calm")
-    func waveMotionSeparatesAttackFromRelease() {
+    @Test("voice energy feels light and fluid rather than viscous")
+    func waveMotionStaysLightAndFluid() {
         let motion = RecordingGlowWaveMotion.default
 
         #expect(motion.attackBounce > 0)
+        #expect(motion.attackBounce <= 0.1)
         #expect(motion.attackDuration < motion.releaseDuration)
-        #expect(motion.releaseDuration == 0.24)
+        #expect(motion.attackDuration == 0.13)
+        #expect(motion.releaseDuration == 0.18)
     }
 }
