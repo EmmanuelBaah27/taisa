@@ -14,13 +14,14 @@ final class ConversationsViewContractTests: XCTestCase {
         XCTAssertFalse(source.contains(".navigationTitle(\"Conversations\")"))
     }
 
-    func testChatsVisualRepairUsesDefaultTypographyAndWhiteSeparators() throws {
+    func testChatsVisualRepairUsesDefaultTypographyAndGroupedRowBackgrounds() throws {
         let source = try conversationsSource()
 
         XCTAssertFalse(source.contains("design: .rounded"))
         XCTAssertTrue(source.contains("monthHeader(group.month)"))
         XCTAssertTrue(source.contains(".system(size: 14, weight: .medium)"))
-        XCTAssertTrue(source.contains(".listRowSeparatorTint(TaisaColor.background.color)"))
+        XCTAssertTrue(source.contains(".listRowSeparator(.hidden)"))
+        XCTAssertTrue(source.contains("historyRowBackground(index: index, count: group.conversations.count)"))
         XCTAssertFalse(source.contains(".lineLimit(2)"))
         XCTAssertTrue(source.contains("preview: snapshot.lastMessagePreview"))
         XCTAssertTrue(source.contains("TaisaControlMetric.chatPreviewLineHeight"))
