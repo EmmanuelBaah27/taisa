@@ -85,8 +85,8 @@ struct RecordingGlowTuningView: View {
                     }
 
                     section("Grain and composition") {
-                        slider("Grain amount", value: $preset.grain.amount)
-                        slider("Grain scale", value: $preset.grain.scale)
+                        slider("Grain intensity", value: $preset.grain.amount)
+                        slider("Grain size", value: $preset.grain.scale)
                         slider("Grain contrast", value: $preset.grain.contrast)
                         slider("Grain softness", value: $preset.grain.softness)
                         slider("Grain loudness influence", value: $preset.grain.loudnessInfluence)

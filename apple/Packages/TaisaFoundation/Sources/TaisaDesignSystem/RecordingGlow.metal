@@ -6,6 +6,18 @@ static float anchoredNoise(float2 cell, float seed) {
     return fract(sin(value) * 43758.5453);
 }
 
+static float filmNoise(float2 position, float size, float seed) {
+    // A larger control value means visibly larger grain while the full range
+    // stays close to the pixel scale. A second octave prevents square cells.
+    float frequency = mix(1.25, 0.45, size);
+    float primary = anchoredNoise(floor(position * frequency), seed);
+    float micro = anchoredNoise(
+        floor(position * frequency * 1.73 + float2(19.0, 43.0)),
+        seed + 41.0
+    );
+    return mix(primary, micro, 0.36);
+}
+
 static float glowLobe(float2 point, float centerX, float width, float height, float originY, float softness) {
     float safeWidth = max(width, 0.01);
     float safeHeight = max(height, 0.01);
@@ -67,8 +79,7 @@ static float glowLobe(float2 point, float centerX, float width, float height, fl
     rgb += float3(rightOuterColor.rgb) * rightOuterWeight;
 
     float grainVisibility = grain.x * (1.0 + loudness * grainLoudnessInfluence);
-    float2 grainCell = floor(position * mix(0.08, 0.34, grain.y));
-    float noise = anchoredNoise(grainCell, grainSeed);
+    float noise = filmNoise(position, grain.y, grainSeed);
     noise = smoothstep(grain.w, 1.0, noise);
     float grit = mix(1.0 - grainVisibility, 1.0 + grainVisibility, noise);
     float3 glowColor = clamp(

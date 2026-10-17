@@ -36,6 +36,24 @@ test('recording glow composites its color field over white instead of producing 
   assert.doesNotMatch(metal, /rgb\s*=\s*clamp\(rgb,\s*0\.0,\s*1\.0\)\s*\*\s*alpha/);
 });
 
+test('recording glow exposes fine adjustable film grain rather than coarse pixel cells', async () => {
+  const metal = await readFile(
+    'apple/Packages/TaisaFoundation/Sources/TaisaDesignSystem/RecordingGlow.metal',
+    'utf8',
+  );
+  const tuner = await readFile(
+    'apple/TaisaPreview/RecordingGlowTuningView.swift',
+    'utf8',
+  );
+
+  assert.match(metal, /static float filmNoise\s*\(/);
+  assert.match(metal, /mix\(1\.25,\s*0\.45,\s*size\)/);
+  assert.match(metal, /frequency \* 1\.73/);
+  assert.doesNotMatch(metal, /mix\(0\.08,\s*0\.34,\s*grain\.y\)/);
+  assert.match(tuner, /slider\("Grain intensity",\s*value:\s*\$preset\.grain\.amount\)/);
+  assert.match(tuner, /slider\("Grain size",\s*value:\s*\$preset\.grain\.scale\)/);
+});
+
 test('recording glow tuning offers an ephemeral live microphone input', async () => {
   const tuner = await readFile(
     'apple/TaisaPreview/RecordingGlowTuningView.swift',
