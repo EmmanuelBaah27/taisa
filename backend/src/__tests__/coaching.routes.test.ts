@@ -418,6 +418,35 @@ test.each([
   expect(jest.requireMock('../services/coaching/coachingGateway').requestCoaching).not.toHaveBeenCalled();
 });
 
+test('validation diagnostics identify unexpected context keys without logging message content', async () => {
+  const warning = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+  const privateCanary = 'PRIVATE-CONTEXT-CANARY';
+
+  const res = await request(app)
+    .post('/api/v1/coaching/respond')
+    .set('x-user-id', 'device-1')
+    .send({
+      ...validRequest,
+      context: { ...validRequest.context, legacyContext: privateCanary },
+    });
+
+  expect(res.status).toBe(400);
+  expect(warning).toHaveBeenCalledWith(
+    '[Taisa diagnostic] COACHING_REQUEST_VALIDATION_FAILED',
+    {
+      issues: [{
+        field: 'context',
+        code: 'unrecognized_keys',
+        keys: ['legacyContext'],
+        expected: undefined,
+        received: undefined,
+      }],
+    },
+  );
+  expect(JSON.stringify(warning.mock.calls)).not.toContain(privateCanary);
+  warning.mockRestore();
+});
+
 test.each([
   [
     'archive-shaped profile',
