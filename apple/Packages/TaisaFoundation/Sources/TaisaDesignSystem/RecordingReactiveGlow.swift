@@ -20,11 +20,19 @@ struct RecordingGlowWaveTiming: Sendable, Equatable {
     init(staggerSeconds: Double) {
         let stagger = staggerSeconds.isFinite ? min(max(staggerSeconds, 0), 0.18) : 0
         centerDelay = 0
-        leftInnerDelay = stagger
+        leftInnerDelay = stagger * 0.75
         rightInnerDelay = stagger
-        leftOuterDelay = stagger * 2
+        leftOuterDelay = stagger * 1.5
         rightOuterDelay = stagger * 2
     }
+}
+
+struct RecordingGlowWaveMotion: Sendable, Equatable {
+    let attackDuration: Double
+    let attackBounce: Double
+    let releaseDuration: Double
+
+    static let `default` = Self(attackDuration: 0.17, attackBounce: 0.16, releaseDuration: 0.24)
 }
 
 struct RecordingGlowWaveLevels: Sendable, Equatable {
@@ -167,21 +175,25 @@ public struct RecordingReactiveGlow: View {
     private func animateWave(to target: Double) {
         let timing = RecordingGlowWaveTiming(staggerSeconds: waveStagger)
         let level = state == .recording ? RecordingGlowWaveLevels.uniform(target).center : 0
-        let duration = target >= waveLevels.center ? 0.16 : 0.28
+        let motion = RecordingGlowWaveMotion.default
+        let isRising = target >= waveLevels.center
+        let animation = isRising
+            ? Animation.spring(duration: motion.attackDuration, bounce: motion.attackBounce)
+            : Animation.easeOut(duration: motion.releaseDuration)
 
-        withAnimation(.easeOut(duration: duration).delay(timing.centerDelay)) {
+        withAnimation(animation.delay(timing.centerDelay)) {
             waveLevels.center = level
         }
-        withAnimation(.easeOut(duration: duration).delay(timing.leftInnerDelay)) {
+        withAnimation(animation.delay(timing.leftInnerDelay)) {
             waveLevels.leftInner = level
         }
-        withAnimation(.easeOut(duration: duration).delay(timing.rightInnerDelay)) {
+        withAnimation(animation.delay(timing.rightInnerDelay)) {
             waveLevels.rightInner = level
         }
-        withAnimation(.easeOut(duration: duration).delay(timing.leftOuterDelay)) {
+        withAnimation(animation.delay(timing.leftOuterDelay)) {
             waveLevels.leftOuter = level
         }
-        withAnimation(.easeOut(duration: duration).delay(timing.rightOuterDelay)) {
+        withAnimation(animation.delay(timing.rightOuterDelay)) {
             waveLevels.rightOuter = level
         }
     }
