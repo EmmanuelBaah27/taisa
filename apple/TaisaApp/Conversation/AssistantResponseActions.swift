@@ -10,6 +10,7 @@ struct AssistantResponseActions: View {
     let dismissProposal: (String) -> Void
 
     @State private var showsExplanation = false
+    @State private var showsFeedback = false
     @State private var direction: ResponseFeedbackDirection?
     @State private var factors: Set<ResponseQualityFactor>
 
@@ -46,10 +47,6 @@ struct AssistantResponseActions: View {
                 feedbackButton(.notHelpful, systemImage: "hand.thumbsdown", label: "Not helpful")
             }
 
-            if let direction {
-                feedbackFactors(for: direction)
-            }
-
             if let proposal = response.proposal {
                 proposalReview(proposal)
             }
@@ -83,16 +80,36 @@ struct AssistantResponseActions: View {
             }
             .presentationDetents([.medium, .large])
         }
+        .sheet(isPresented: $showsFeedback) {
+            NavigationStack {
+                ScrollView {
+                    if let direction {
+                        feedbackFactors(for: direction)
+                            .padding(TaisaSpacing.standard.rawValue)
+                    }
+                }
+                .navigationTitle("Response feedback")
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Done") { showsFeedback = false }
+                            .accessibilityIdentifier("conversation.feedback.done")
+                    }
+                }
+            }
+            .presentationDetents([.medium, .large])
+        }
     }
 
     private func feedbackButton(
         _ value: ResponseFeedbackDirection, systemImage: String, label: String
     ) -> some View {
         Button {
-            let nextDirection: ResponseFeedbackDirection? = direction == value ? nil : value
-            direction = nextDirection
-            factors = []
-            saveFeedback(nextDirection, [])
+            if direction != value {
+                direction = value
+                factors = []
+                saveFeedback(value, [])
+            }
+            showsFeedback = true
         } label: {
             Image(systemName: direction == value ? "\(systemImage).fill" : systemImage)
                 .frame(

@@ -76,7 +76,7 @@ final class ConversationViewContractTests: XCTestCase {
             "conversation.correct-transcript", "conversation.transcript-preview",
             "conversation.unavailable.close", "conversation.response-info",
             "conversation.feedback.helpful", "conversation.feedback.not_helpful",
-            "conversation.feedback-factors", "conversation.proposal-review",
+            "conversation.feedback-factors", "conversation.feedback.done", "conversation.proposal-review",
             "conversation.proposal.accept", "conversation.proposal.dismiss"
         ] {
             XCTAssertTrue(source.contains(identifier), "Missing \(identifier)")
@@ -102,7 +102,11 @@ final class ConversationViewContractTests: XCTestCase {
         XCTAssertTrue(source.contains("What worked well?"))
         XCTAssertTrue(source.contains("What could be better?"))
         XCTAssertTrue(source.contains("Source unavailable"))
-        XCTAssertTrue(source.contains("direction == value ? nil : value"))
+        XCTAssertTrue(source.contains(".sheet(isPresented: $showsFeedback)"))
+        XCTAssertTrue(source.contains("Button(\"Done\") { showsFeedback = false }"))
+        XCTAssertTrue(source.contains(".accessibilityIdentifier(\"conversation.feedback.done\")"))
+        XCTAssertFalse(source.contains("direction == value ? nil : value"))
+        XCTAssertFalse(source.contains("if let direction {\n                feedbackFactors(for: direction)\n            }"))
         XCTAssertTrue(source.contains("ResponseFeedbackCopy.options"))
         XCTAssertTrue(source.contains("minWidth: TaisaControlMetric.headerActionHeight"))
         XCTAssertFalse(source.contains("TextField"))
