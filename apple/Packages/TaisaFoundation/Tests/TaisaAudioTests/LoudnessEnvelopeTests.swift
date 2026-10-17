@@ -6,6 +6,15 @@ import Testing
 struct LoudnessEnvelopeTests {
     private let frame = Duration.milliseconds(100)
 
+    @Test("default voice response is immediate enough to drive expressive visuals")
+    func defaultResponseIsLowLatency() {
+        let configuration = LoudnessEnvelopeConfiguration()
+
+        #expect(configuration.attackSeconds == 0.07)
+        #expect(configuration.releaseSeconds == 0.28)
+        #expect(configuration.maximumRisePerSecond == 7)
+    }
+
     @Test("silence and sub-threshold room noise stay flat")
     func silenceAndSubthresholdNoiseStayAtZero() {
         var envelope = LoudnessEnvelope()

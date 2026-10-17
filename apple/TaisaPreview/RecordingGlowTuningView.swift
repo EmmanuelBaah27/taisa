@@ -11,7 +11,7 @@ struct RecordingGlowTuningView: View {
     @State private var loudness = 0.52
     @State private var inputMode = TuningInputMode.simulated
     @State private var simulatedState = SimulatedGlowState.recording
-    @State private var waveStagger = 0.06
+    @State private var waveStagger = 0.035
     @State private var copied = false
 
     var body: some View {
@@ -235,7 +235,7 @@ struct RecordingGlowTuningView: View {
         loudness = 0.52
         inputMode = .simulated
         simulatedState = .recording
-        waveStagger = 0.06
+        waveStagger = 0.035
         copied = false
     }
 

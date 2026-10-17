@@ -16,9 +16,9 @@ public struct LoudnessEnvelopeConfiguration: Codable, Sendable, Equatable {
         inputGain: Double = 1,
         responseExponent: Double = 0.75,
         peakContribution: Double = 0.2,
-        attackSeconds: Double = 0.18,
-        releaseSeconds: Double = 0.55,
-        maximumRisePerSecond: Double = 3
+        attackSeconds: Double = 0.07,
+        releaseSeconds: Double = 0.28,
+        maximumRisePerSecond: Double = 7
     ) {
         self.noiseFloorDecibels = noiseFloorDecibels
         self.ceilingDecibels = ceilingDecibels

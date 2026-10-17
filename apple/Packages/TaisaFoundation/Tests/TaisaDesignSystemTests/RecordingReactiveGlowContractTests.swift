@@ -41,13 +41,13 @@ struct RecordingReactiveGlowContractTests {
 
     @Test("voice energy travels from the center through inner and outer colours")
     func waveTimingTravelsCenterOut() {
-        let timing = RecordingGlowWaveTiming(staggerSeconds: 0.06)
+        let timing = RecordingGlowWaveTiming(staggerSeconds: 0.035)
 
         #expect(timing.centerDelay == 0)
-        #expect(timing.leftInnerDelay == 0.045)
-        #expect(timing.rightInnerDelay == 0.06)
-        #expect(timing.leftOuterDelay == 0.09)
-        #expect(timing.rightOuterDelay == 0.12)
+        #expect(abs(timing.leftInnerDelay - 0.02625) < 0.000_001)
+        #expect(timing.rightInnerDelay == 0.035)
+        #expect(abs(timing.leftOuterDelay - 0.0525) < 0.000_001)
+        #expect(timing.rightOuterDelay == 0.07)
     }
 
     @Test("invalid wave stagger values are bounded before animation")
@@ -62,9 +62,8 @@ struct RecordingReactiveGlowContractTests {
         let motion = RecordingGlowWaveMotion.default
 
         #expect(motion.attackBounce > 0)
-        #expect(motion.attackBounce <= 0.1)
-        #expect(motion.attackDuration < motion.releaseDuration)
-        #expect(motion.attackDuration == 0.13)
-        #expect(motion.releaseDuration == 0.18)
+        #expect(motion.attackBounce == 0.2)
+        #expect(motion.attackDuration == 0.16)
+        #expect(motion.releaseDuration == 0.16)
     }
 }

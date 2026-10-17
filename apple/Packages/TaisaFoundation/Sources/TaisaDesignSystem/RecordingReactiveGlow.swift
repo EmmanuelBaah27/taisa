@@ -32,7 +32,7 @@ struct RecordingGlowWaveMotion: Sendable, Equatable {
     let attackBounce: Double
     let releaseDuration: Double
 
-    static let `default` = Self(attackDuration: 0.13, attackBounce: 0.08, releaseDuration: 0.18)
+    static let `default` = Self(attackDuration: 0.16, attackBounce: 0.2, releaseDuration: 0.16)
 }
 
 struct RecordingGlowWaveLevels: Sendable, Equatable {
@@ -92,7 +92,7 @@ public struct RecordingReactiveGlow: View {
         loudness: Double,
         state: RecordingGlowState,
         preset: RecordingGlowPreset = .figmaDefault,
-        waveStagger: Double = 0.06
+        waveStagger: Double = 0.035
     ) {
         self.loudness = loudness
         self.state = state
