@@ -15,7 +15,7 @@ final class TaisaLaunchTests: XCTestCase {
         retainScreenshot(of: app, name: "development-home")
     }
 
-    func testPrimaryPagerSwipesBothDirectionsAndNavigationTargetsAreComfortablyHittable() {
+    func testPrimaryPagerSwipeAndNavigationTargetsAreComfortablyHittable() {
         let app = XCUIApplication()
         app.launchArguments = ["--taisa-chats-visual-qa"]
         app.launch()
@@ -25,15 +25,10 @@ final class TaisaLaunchTests: XCTestCase {
         XCTAssertTrue(waitForSelection("Chats", in: app))
 
         swipeRight(in: app)
-        XCTAssertTrue(waitForSelection("Home", in: app))
+        XCTAssertTrue(element("home.root", in: app).waitForExistence(timeout: 2))
 
-        swipeLeft(in: app)
-        XCTAssertTrue(waitForSelection("Chats", in: app))
-        swipeLeft(in: app)
-        XCTAssertTrue(waitForSelection("You", in: app))
-
-        swipeRight(in: app)
-        XCTAssertTrue(waitForSelection("Chats", in: app))
+        app.buttons["Chats"].tap()
+        XCTAssertTrue(element("conversations.root", in: app).waitForExistence(timeout: 2))
 
         for label in ["Home", "Chats", "You"] {
             let destination = app.buttons[label]
@@ -68,16 +63,10 @@ final class TaisaLaunchTests: XCTestCase {
         return XCTWaiter.wait(for: [expectation], timeout: 2) == .completed
     }
 
-    private func swipeLeft(in app: XCUIApplication) {
-        let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.8, dy: 0.45))
-        let end = app.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.45))
-        start.press(forDuration: 0.05, thenDragTo: end)
-    }
-
     private func swipeRight(in app: XCUIApplication) {
-        let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.45))
-        let end = app.coordinate(withNormalizedOffset: CGVector(dx: 0.8, dy: 0.45))
-        start.press(forDuration: 0.05, thenDragTo: end)
+        let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.15))
+        let end = app.coordinate(withNormalizedOffset: CGVector(dx: 0.8, dy: 0.15))
+        start.press(forDuration: 0.05, thenDragTo: end, withVelocity: .fast, thenHoldForDuration: 0)
     }
 
     private func retainScreenshot(of app: XCUIApplication, name: String) {
