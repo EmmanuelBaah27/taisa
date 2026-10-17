@@ -1451,6 +1451,22 @@ test.each([
   expect(classifyOperationalProviderFailure(error)).toBe(expected);
 });
 
+test('classifies a provider SDK wrapper around an allowlisted transient cause', () => {
+  const wrapped = Object.assign(new Error('private outer detail'), {
+    cause: Object.assign(new Error('private provider detail'), { status: 503 }),
+  });
+
+  expect(classifyOperationalProviderFailure(wrapped)).toBe('unavailable');
+});
+
+test('does not classify a provider SDK wrapper around a denied cause', () => {
+  const wrapped = Object.assign(new Error('private outer detail'), {
+    cause: { status: 503, type: 'content_policy_error' },
+  });
+
+  expect(classifyOperationalProviderFailure(wrapped)).toBeNull();
+});
+
 test.each([
   { status: 400, type: 'invalid_request_error' },
   { status: 400, type: 'provider_error' },
