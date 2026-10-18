@@ -145,6 +145,17 @@ function anthropicType(error: { error?: unknown }): string | null {
   return stringField(nestedError, 'type');
 }
 
+function anthropicMessage(error: { error?: unknown }): string | null {
+  const response = asRecord(error.error);
+  const nestedError = asRecord(response?.error);
+  return stringField(nestedError, 'message');
+}
+
+function isAnthropicBillingMessage(message: string | null): boolean {
+  if (!message) return false;
+  return /(?:credit balance|credits? exhausted|insufficient credits?|billing)/i.test(message);
+}
+
 export function normalizeOpenAISdkFailure(error: unknown): unknown {
   if (error instanceof ContentFilterFinishReasonError) {
     return Object.freeze({ type: 'content_policy_error' });
@@ -180,6 +191,9 @@ export function normalizeOpenAISdkFailure(error: unknown): unknown {
 export function normalizeAnthropicSdkFailure(error: unknown): unknown {
   if (!(error instanceof Anthropic.APIError)) return error;
 
+  if (isAnthropicBillingMessage(anthropicMessage(error))) {
+    return Object.freeze({ type: 'billing_error' });
+  }
   const normalizedType = knownType(anthropicType(error));
   if (normalizedType) return normalizedType;
   if (error instanceof Anthropic.APIConnectionTimeoutError) {

@@ -819,6 +819,28 @@ test.each(sdkOperationalFailureCases)(
   },
 );
 
+test('Anthropic credit-balance rejection is normalized as billing without retaining its message', async () => {
+  const failure = new Anthropic.BadRequestError(400, {
+    type: 'error',
+    error: {
+      type: 'invalid_request_error',
+      message: 'Your credit balance is too low to access the Anthropic API.',
+    },
+  }, sdkFailureSecret, sdkHeaders);
+  const adapter = sdkAdapterRejecting('anthropic', failure);
+
+  let normalizedFailure: unknown;
+  try {
+    await adapter.respond(providerInput);
+  } catch (error) {
+    normalizedFailure = error;
+  }
+
+  expect(normalizedFailure).toEqual({ type: 'billing_error' });
+  expect(JSON.stringify(normalizedFailure)).not.toContain('credit balance');
+  expect(classifyOperationalProviderFailure(normalizedFailure)).toBe('billing');
+});
+
 test.each(sdkDeniedFailureCases)(
   '%s remains content-free and never invokes fallback',
   async (_name, primaryId, failureFactory, expectedType) => {
