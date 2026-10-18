@@ -86,14 +86,19 @@ public struct VoiceSessionConversationAdapter: ConversationVoiceControlling {
         let failed = await coordinator.snapshot().durable
         if failed.state == .terminalFailure, failed.stage == .finished {
             try await coordinator.restartFailedCoaching(with: retryTurn(for: failed))
-        } else if failed.state == .resumeRequiresConfirmation, failed.stage == .coaching {
-            do {
-                try await coordinator.send(.confirmResume)
-            } catch {
-                let afterConfirmation = await coordinator.snapshot().durable
-                try await coordinator.restartCoachingIfServerSafe(
-                    with: retryTurn(for: afterConfirmation)
-                )
+        } else if failed.stage == .coaching,
+                  (failed.state == .resumeRequiresConfirmation || failed.state == .coaching) {
+            if failed.state == .resumeRequiresConfirmation {
+                do {
+                    try await coordinator.send(.confirmResume)
+                } catch {
+                    let afterConfirmation = await coordinator.snapshot().durable
+                    try await coordinator.restartCoachingIfServerSafe(
+                        with: retryTurn(for: afterConfirmation)
+                    )
+                }
+            } else {
+                try await coordinator.restartCoachingIfServerSafe(with: retryTurn(for: failed))
             }
         } else {
             try await coordinator.send(Self.retryCommand(for: failed.state))

@@ -673,7 +673,8 @@ struct ConversationRuntimeFactory: Sendable {
 
     private static func isResponseFailureAwaitingRetry(_ turn: VoiceTurnRecord) -> Bool {
         switch (turn.state, turn.stage) {
-        case (.recoverableFailure, .coaching),
+        case (.coaching, .coaching),
+             (.recoverableFailure, .coaching),
              (.resumeRequiresConfirmation, .coaching),
              (.terminalFailure, .finished):
             true
