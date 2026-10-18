@@ -264,6 +264,65 @@ final class AppRuntimeTests: XCTestCase {
         XCTAssertFalse(restoration.cleansInterruptedCapture)
     }
 
+    func testRetryableTextDraftWithoutAssistantRebuildsPendingRequest() throws {
+        let conversationID = UUID().uuidString
+        let requestID = UUID().uuidString
+        let userMessage = MessageRecord(
+            id: requestID,
+            conversationID: conversationID,
+            role: "user",
+            body: "Keep this message available for retry",
+            createdAtMS: 10
+        )
+        let draft = ConversationDraftRecord(
+            id: UUID().uuidString,
+            conversationID: conversationID,
+            inputMode: .text,
+            text: userMessage.body,
+            voiceTurnID: nil,
+            recoveryKind: .retryableCoaching,
+            createdAtMS: 10,
+            updatedAtMS: 11
+        )
+
+        let pending = try XCTUnwrap(ConversationRuntimeFactory.pendingConversationRequest(
+            resumable: nil,
+            drafts: [draft],
+            messages: [userMessage]
+        ))
+
+        XCTAssertEqual(pending.coachingRequestID, requestID)
+        XCTAssertEqual(pending.acceptedTranscript, userMessage.body)
+        XCTAssertEqual(pending.failureCode, "pending_text")
+        XCTAssertEqual(pending.userMessageID, requestID)
+        XCTAssertEqual(pending.state, .coaching)
+        XCTAssertEqual(pending.stage, .coaching)
+    }
+
+    func testRetryableTextDraftWithAssistantIsNotRebuilt() {
+        let conversationID = UUID().uuidString
+        let requestID = UUID().uuidString
+        let userMessage = MessageRecord(
+            id: requestID, conversationID: conversationID, role: "user",
+            body: "Already answered", createdAtMS: 10
+        )
+        let assistantMessage = MessageRecord(
+            id: UUID().uuidString, conversationID: conversationID, role: "assistant",
+            body: "Existing response", createdAtMS: 12
+        )
+        let draft = ConversationDraftRecord(
+            id: UUID().uuidString, conversationID: conversationID,
+            inputMode: .text, text: userMessage.body, voiceTurnID: nil,
+            recoveryKind: .retryableCoaching, createdAtMS: 10, updatedAtMS: 11
+        )
+
+        XCTAssertNil(ConversationRuntimeFactory.pendingConversationRequest(
+            resumable: nil,
+            drafts: [draft],
+            messages: [userMessage, assistantMessage]
+        ))
+    }
+
     func testSavedVoiceDraftWithUnreadableTurnRestoresRetryFromPersistedTranscript() {
         let conversationID = UUID().uuidString
         let fallbackTurn = voiceTurn(

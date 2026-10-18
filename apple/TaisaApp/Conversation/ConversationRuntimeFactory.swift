@@ -199,9 +199,11 @@ struct ConversationRuntimeFactory: Sendable {
         } else {
             rawResumable
         }
-        let pendingConversationRequest = resumable.flatMap { turn in
-            ["pending_text", "pending_correction"].contains(turn.failureCode) ? turn : nil
-        }
+        let pendingConversationRequest = Self.pendingConversationRequest(
+            resumable: resumable,
+            drafts: history.drafts,
+            messages: history.visibleMessages
+        )
         let lastUserMessage = history.visibleMessages.last(where: { $0.role == "user" })
         if pendingConversationRequest == nil {
             for draft in history.drafts {
@@ -678,6 +680,48 @@ struct ConversationRuntimeFactory: Sendable {
         default:
             false
         }
+    }
+
+    static func pendingConversationRequest(
+        resumable: VoiceTurnRecord?,
+        drafts: [ConversationDraftRecord],
+        messages: [MessageRecord]
+    ) -> VoiceTurnRecord? {
+        if let resumable,
+           ["pending_text", "pending_correction"].contains(resumable.failureCode) {
+            return resumable
+        }
+
+        guard let draft = drafts.first(where: {
+            $0.inputMode == .text && $0.recoveryKind == .retryableCoaching
+        }),
+        let text = draft.text?.trimmingCharacters(in: .whitespacesAndNewlines),
+        !text.isEmpty,
+        let userIndex = messages.lastIndex(where: {
+            $0.role == "user" && $0.body == text
+        }),
+        !messages[messages.index(after: userIndex)...].contains(where: { $0.role == "assistant" }),
+        let requestID = UUID(uuidString: messages[userIndex].id) else {
+            return nil
+        }
+
+        let request = requestID.uuidString.lowercased()
+        let turnID = derivedUUID(from: request, salt: 1)
+        return VoiceTurnRecord(
+            id: turnID,
+            conversationID: draft.conversationID,
+            transcriptionRequestID: derivedUUID(from: request, salt: 2),
+            transcriptionIdempotencyKey: "text-no-transcription-\(request)",
+            coachingRequestID: request,
+            coachingIdempotencyKey: "text-coaching-\(request)",
+            state: .coaching,
+            stage: .coaching,
+            acceptedTranscript: text,
+            failureCode: "pending_text",
+            userMessageID: request,
+            createdAtMS: draft.createdAtMS,
+            updatedAtMS: draft.updatedAtMS
+        )
     }
 
     private func makeTurn(conversationID: String) -> VoiceTurnRecord {
