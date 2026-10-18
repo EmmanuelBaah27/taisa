@@ -11,9 +11,10 @@ struct ConversationView: View {
                 messages: model.messages,
                 assistantResponses: model.assistantResponses,
                 correct: model.requestCorrection,
-                saveFeedback: { messageID, direction, factors in
+                saveFeedback: { messageID, direction, factors, detail in
                     Task { await model.saveFeedback(
-                        responseMessageID: messageID, direction: direction, factors: factors
+                        responseMessageID: messageID, direction: direction,
+                        factors: factors, detail: detail
                     ) }
                 },
                 acceptProposal: { id in Task { await model.acceptProposal(id) } },

@@ -76,7 +76,8 @@ final class ConversationViewContractTests: XCTestCase {
             "conversation.correct-transcript", "conversation.transcript-preview",
             "conversation.unavailable.close", "conversation.response-info",
             "conversation.feedback.helpful", "conversation.feedback.not_helpful",
-            "conversation.feedback-factors", "conversation.feedback.done",
+            "conversation.feedback-factors", "conversation.feedback.close",
+            "conversation.feedback.save", "conversation.feedback.detail",
             "conversation.feedback.remove", "conversation.proposal-review",
             "conversation.proposal.accept", "conversation.proposal.dismiss"
         ] {
@@ -105,18 +106,22 @@ final class ConversationViewContractTests: XCTestCase {
         XCTAssertTrue(source.contains("What worked well?"))
         XCTAssertTrue(source.contains("What could be better?"))
         XCTAssertTrue(source.contains("Source unavailable"))
-        XCTAssertTrue(source.contains(".sheet(isPresented: $showsFeedback)"))
-        XCTAssertTrue(source.contains("Button(\"Done\") { showsFeedback = false }"))
-        XCTAssertTrue(source.contains(".accessibilityIdentifier(\"conversation.feedback.done\")"))
+        XCTAssertTrue(source.contains(".sheet(isPresented: $showsFeedback, onDismiss:"))
+        XCTAssertTrue(source.contains("Button(\"Close\")"))
+        XCTAssertTrue(source.contains("Button(\"Save feedback\")"))
+        XCTAssertTrue(source.contains(".accessibilityIdentifier(\"conversation.feedback.close\")"))
+        XCTAssertTrue(source.contains(".accessibilityIdentifier(\"conversation.feedback.save\")"))
+        XCTAssertTrue(source.contains("TextEditor"))
+        XCTAssertTrue(source.contains("Add more detail (optional)"))
+        XCTAssertTrue(source.contains(".accessibilityIdentifier(\"conversation.feedback.detail\")"))
         XCTAssertTrue(source.contains("Button(\"Remove rating\", role: .destructive)"))
-        XCTAssertTrue(source.contains("saveFeedback(nil, [])"))
+        XCTAssertTrue(source.contains("saveFeedback(nil, [], nil)"))
         XCTAssertTrue(source.contains(".accessibilityIdentifier(\"conversation.feedback.remove\")"))
         XCTAssertFalse(source.contains("direction == value ? nil : value"))
         XCTAssertFalse(source.contains("if let direction {\n                feedbackFactors(for: direction)\n            }"))
         XCTAssertTrue(source.contains("ResponseFeedbackCopy.options"))
         XCTAssertTrue(source.contains("minWidth: TaisaControlMetric.headerActionHeight"))
         XCTAssertFalse(source.contains("TextField"))
-        XCTAssertFalse(source.contains("TextEditor"))
     }
 
     func testSeniorSelfResponseHasDeterministicPreviewScenario() throws {

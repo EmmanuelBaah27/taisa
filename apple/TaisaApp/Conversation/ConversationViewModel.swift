@@ -295,7 +295,8 @@ final class ConversationViewModel {
     func saveFeedback(
         responseMessageID: String,
         direction: ResponseFeedbackDirection?,
-        factors: [ResponseQualityFactor]
+        factors: [ResponseQualityFactor],
+        detail: String?
     ) async {
         let now = Int64(Date().timeIntervalSince1970 * 1_000)
         feedbackRevisionMS = max(now, feedbackRevisionMS + 1)
@@ -307,7 +308,7 @@ final class ConversationViewModel {
                 if let direction {
                     try await client.saveFeedback(.init(
                         responseMessageID: responseMessageID, direction: direction,
-                        factors: factors, detail: nil, updatedAtMS: revision
+                        factors: factors, detail: detail, updatedAtMS: revision
                     ))
                 } else {
                     try await client.removeFeedback(responseMessageID, revision)

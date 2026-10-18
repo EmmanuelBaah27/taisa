@@ -8,7 +8,7 @@ struct ConversationTimeline: View {
     let messages: [MessageRecord]
     let assistantResponses: [String: AssistantResponseRecord]
     let correct: (MessageRecord) -> Void
-    let saveFeedback: (String, ResponseFeedbackDirection?, [ResponseQualityFactor]) -> Void
+    let saveFeedback: (String, ResponseFeedbackDirection?, [ResponseQualityFactor], String?) -> Void
     let acceptProposal: (String) -> Void
     let dismissProposal: (String) -> Void
 
@@ -23,8 +23,8 @@ struct ConversationTimeline: View {
                             if message.role == "assistant", let response = assistantResponses[message.id] {
                                 AssistantResponseActions(
                                     response: response,
-                                    saveFeedback: { direction, factors in
-                                        saveFeedback(message.id, direction, factors)
+                                    saveFeedback: { direction, factors, detail in
+                                        saveFeedback(message.id, direction, factors, detail)
                                     },
                                     acceptProposal: acceptProposal,
                                     dismissProposal: dismissProposal
