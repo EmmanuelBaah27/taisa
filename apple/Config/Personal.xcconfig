@@ -2,4 +2,5 @@
 PRODUCT_BUNDLE_IDENTIFIER = com.taisa.app.personal
 TAISA_ENVIRONMENT = personal
 SWIFT_ACTIVE_COMPILATION_CONDITIONS = $(inherited) DEBUG TAISA_PERSONAL
-TAISA_VOICE_GATEWAY_URL =
+// `$()` expands to an empty value while preventing `//` from starting an xcconfig comment.
+TAISA_VOICE_GATEWAY_URL = https:/$()/taisa-production.up.railway.app
