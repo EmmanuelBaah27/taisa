@@ -109,6 +109,7 @@ final class ConversationViewContractTests: XCTestCase {
         XCTAssertTrue(source.contains("static let ordinaryMessageSpacing"))
         XCTAssertTrue(source.contains("StatusBarBackground"))
         XCTAssertTrue(source.contains("TaisaSecondaryCapsuleButton"))
+        XCTAssertTrue(source.contains("height: TaisaControlMetric.recordingButtonHeight"))
         XCTAssertTrue(source.contains("HStack(spacing: TaisaSpacing.compact.rawValue)"))
         XCTAssertTrue(source.contains("CentralIcon(.voiceMid)"))
         XCTAssertTrue(source.contains("Text(\"Reply\")"))

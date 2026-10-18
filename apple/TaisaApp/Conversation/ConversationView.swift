@@ -211,7 +211,10 @@ struct ConversationView: View {
     private var voiceReplyButton: some View {
         HStack {
             Spacer()
-            TaisaSecondaryCapsuleButton(action: { Task { try? await model.beginVoice() } }) {
+            TaisaSecondaryCapsuleButton(
+                height: TaisaControlMetric.recordingButtonHeight,
+                action: { Task { try? await model.beginVoice() } }
+            ) {
                 HStack(spacing: TaisaSpacing.compact.rawValue) {
                     CentralIcon(.voiceMid)
                         .frame(width: TaisaControlMetric.standardIcon, height: TaisaControlMetric.standardIcon)
