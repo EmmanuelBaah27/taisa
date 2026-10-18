@@ -70,6 +70,7 @@ struct ConversationComponentTests {
         #expect(ConversationPageHeader.Contract.dismissPlacement == .leading)
         #expect(ConversationActionBar.Availability.recording.canDiscard)
         #expect(ConversationActionBar.Availability.preparing.canSwitchToKeyboard)
+        #expect(ConversationActionBar.Availability.preparing.showsPause)
         #expect(ConversationActionBar.Availability.recording.canSwitchToKeyboard)
         #expect(ConversationActionBar.Availability.recording.showsSend)
         #expect(ConversationActionBar.Availability.recording.canSend == false)
