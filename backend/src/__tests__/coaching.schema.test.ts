@@ -249,6 +249,29 @@ test('the backend accepts one typed Senior Self proposal with bounded explanatio
   }).success).toBe(true);
 });
 
+test('the backend repairs a blank provider approach without discarding a valid response', () => {
+  const parsed = CoachingResponsePayloadSchema.parse({
+    mode: 'coach',
+    relevance: 'career-relevant',
+    contextSufficiency: 'sufficient',
+    reply: 'Keep the next step small and observable.',
+    stance: 'nudge',
+    explanation: {
+      mode: 'nudge',
+      evidence: [],
+      inference: 'A bounded next step can preserve momentum.',
+      confidence: 'medium',
+      approach: '   ',
+    },
+    proposal: null,
+    titleSuggestion: null,
+  });
+
+  expect(parsed.explanation.approach).toBe(
+    'Use the selected response mode and available context.',
+  );
+});
+
 test('the backend rejects legacy proposal arrays once the singular contract is active', () => {
   expect(CoachingResponsePayloadSchema.safeParse({
     mode: 'coach', relevance: 'career-relevant', contextSufficiency: 'sufficient',

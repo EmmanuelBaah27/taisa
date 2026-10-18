@@ -167,7 +167,12 @@ const ResponseExplanationSchema = z.object({
   evidence: z.array(ResponseSourceSchema).max(COACHING_GATEWAY_LIMITS.maxEvidenceItems),
   inference: StatementSchema,
   confidence: z.enum(['low', 'medium', 'high']),
-  approach: StatementSchema,
+  approach: z.preprocess(
+    (value) => typeof value === 'string' && value.trim().length === 0
+      ? 'Use the selected response mode and available context.'
+      : value,
+    StatementSchema,
+  ),
 }).strict();
 
 const CoachingProposalSchema = z.discriminatedUnion('kind', [
