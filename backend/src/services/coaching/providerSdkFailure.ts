@@ -55,6 +55,14 @@ const SAFE_PROVIDER_PARAMS = new Set([
   'tools',
   'tool_choice',
 ]);
+const SAFE_ERROR_NAMES = new Set([
+  'APIConnectionError',
+  'APIConnectionTimeoutError',
+  'BadRequestError',
+  'ContentFilterFinishReasonError',
+  'LengthFinishReasonError',
+  'ZodError',
+]);
 
 function contentFreeToken(value: unknown): string | null {
   return typeof value === 'string' && CONTENT_FREE_TOKEN.test(value) ? value : null;
@@ -71,6 +79,8 @@ export function contentFreeProviderDiagnostic(error: unknown): FailureRecord {
   const value = asRecord(error);
   if (!value) return Object.freeze({});
   const diagnostic: Record<string, unknown> = {};
+  const name = typeof value.name === 'string' ? value.name : null;
+  if (name && SAFE_ERROR_NAMES.has(name)) diagnostic.name = name;
   if (typeof value.status === 'number' && Number.isInteger(value.status)) {
     diagnostic.status = value.status;
   }
@@ -80,6 +90,11 @@ export function contentFreeProviderDiagnostic(error: unknown): FailureRecord {
   }
   const param = contentFreeParam(value.param);
   if (param) diagnostic.param = param;
+  const cause = asRecord(value.cause);
+  if (cause) {
+    const nested = contentFreeProviderDiagnostic(cause);
+    if (Object.keys(nested).length > 0) diagnostic.cause = nested;
+  }
   return Object.freeze(diagnostic);
 }
 

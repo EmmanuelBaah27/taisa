@@ -337,6 +337,28 @@ test('provider diagnostics drop unsafe free-form SDK fields', () => {
   })).toEqual({ status: 400 });
 });
 
+test('provider diagnostics retain allowlisted content-free error classes and causes', () => {
+  const failure = Object.assign(new Error(sdkFailureSecret), {
+    name: 'ZodError',
+    cause: Object.assign(new Error(sdkFailureSecret), {
+      name: 'LengthFinishReasonError',
+    }),
+  });
+
+  expect(contentFreeProviderDiagnostic(failure)).toEqual({
+    name: 'ZodError',
+    cause: { name: 'LengthFinishReasonError' },
+  });
+  expect(JSON.stringify(contentFreeProviderDiagnostic(failure))).not.toContain(sdkFailureSecret);
+});
+
+test('provider diagnostics reject arbitrary error names recursively', () => {
+  expect(contentFreeProviderDiagnostic(Object.assign(new Error(sdkFailureSecret), {
+    name: sdkFailureSecret,
+    cause: { name: sdkFailureSecret, message: sdkFailureSecret },
+  }))).toEqual({});
+});
+
 const sdkOperationalFailureCases = [
   [
     'OpenAI connection',
