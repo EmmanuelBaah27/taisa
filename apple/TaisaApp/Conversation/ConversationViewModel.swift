@@ -234,7 +234,7 @@ final class ConversationViewModel {
                 await reloadMessages()
                 capture = await client.loadCaptureSnapshot()
                 if composer == .failure(.retryable) || composer == .coaching || composer == .transcribing {
-                    composer = .waitingForReply
+                    finishResponseIfPersisted()
                 }
             }
         }
@@ -336,7 +336,7 @@ final class ConversationViewModel {
             }
             await reloadMessages()
             partialCoaching = ""
-            composer = .waitingForReply
+            finishResponseIfPersisted()
         } catch {
             partialCoaching = ""
             failureContext = transcriptBecameAvailable ? .request : .transcription
@@ -358,9 +358,9 @@ final class ConversationViewModel {
                 self.text = ""
                 self.composer = .coaching
             }
-            partialCoaching = ""
-            composer = .waitingForReply
             await reloadMessages()
+            partialCoaching = ""
+            finishResponseIfPersisted()
         }
         catch {
             partialCoaching = ""
@@ -674,7 +674,7 @@ final class ConversationViewModel {
         do {
             try await operation()
             await reloadMessages()
-            composer = .waitingForReply
+            finishResponseIfPersisted()
         } catch {
             composer = .failure(.retryable)
         }
@@ -685,5 +685,22 @@ final class ConversationViewModel {
         if let loaded = try? await client.loadMessages() { messages = loaded }
         if let loaded = try? await client.loadAssistantResponses() { assistantResponses = loaded }
         if let loadedTitle = try? await client.loadTitle() { title = loadedTitle }
+    }
+
+    private func finishResponseIfPersisted() {
+        let hasAssistantReply: Bool
+        if let latestUserIndex = messages.lastIndex(where: { $0.role == "user" }) {
+            hasAssistantReply = messages[messages.index(after: latestUserIndex)...]
+                .contains(where: { $0.role == "assistant" })
+        } else {
+            hasAssistantReply = messages.contains(where: { $0.role == "assistant" })
+        }
+
+        if hasAssistantReply {
+            composer = .waitingForReply
+        } else {
+            failureContext = .request
+            composer = .failure(.retryable)
+        }
     }
 }

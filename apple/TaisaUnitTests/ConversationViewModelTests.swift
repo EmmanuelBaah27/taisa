@@ -294,6 +294,30 @@ final class ConversationViewModelTests: XCTestCase {
         XCTAssertEqual(model.text, "")
     }
 
+    func testTextSendDoesNotReturnToReplyWithoutAnAssistantResponse() async {
+        let savedMessage = message(role: "user", body: "Persisted but unanswered")
+        let client = ConversationScreenClient(
+            loadMessages: { [savedMessage] },
+            beginVoice: {}, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
+            sendText: { _, available in await available() },
+            retry: {}, saveDraft: { _ in }, discardDraft: {}
+        )
+        let model = ConversationViewModel(
+            conversationID: savedMessage.conversationID,
+            title: "Chat",
+            entryIntent: nil,
+            composer: .typing(savedMessage.body),
+            text: savedMessage.body,
+            client: client
+        )
+
+        await model.sendText()
+
+        XCTAssertEqual(model.composer, .failure(.retryable))
+        XCTAssertEqual(model.failureContext, .request)
+        XCTAssertEqual(model.messages.map(\.body), [savedMessage.body])
+    }
+
     func testTextPersistenceFailureDoesNotDiscardUnsentText() async {
         struct PersistenceFailure: Error {}
         let client = ConversationScreenClient(
@@ -416,6 +440,55 @@ final class ConversationViewModelTests: XCTestCase {
         XCTAssertEqual(model.messages.map(\.body), ["Recovered"])
     }
 
+    func testRetryDoesNotHideRecoveryWhenNoAssistantResponseWasPersisted() async {
+        let unanswered = message(role: "user", body: "Still waiting")
+        let client = ConversationScreenClient(
+            loadMessages: { [unanswered] },
+            beginVoice: {}, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
+            sendText: { _, available in await available() },
+            retry: {}, saveDraft: { _ in }, discardDraft: {}
+        )
+        let model = ConversationViewModel(
+            conversationID: unanswered.conversationID,
+            title: "Chat",
+            entryIntent: nil,
+            composer: .failure(.retryable),
+            client: client
+        )
+
+        await model.retry()
+
+        XCTAssertEqual(model.composer, .failure(.retryable))
+        XCTAssertEqual(model.failureContext, .request)
+    }
+
+    func testRecoveryEventDoesNotHideRetryWhenAssistantResponseIsStillMissing() async {
+        let unanswered = message(role: "user", body: "Recovered transport, missing response")
+        let (events, continuation) = AsyncStream<Void>.makeStream()
+        let client = ConversationScreenClient(
+            loadMessages: { [unanswered] },
+            beginVoice: {}, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
+            sendText: { _, available in await available() },
+            retry: {}, saveDraft: { _ in }, discardDraft: {},
+            recoveryEvents: { events }
+        )
+        let model = ConversationViewModel(
+            conversationID: unanswered.conversationID,
+            title: "Chat",
+            entryIntent: nil,
+            composer: .coaching,
+            client: client
+        )
+        await model.start()
+
+        continuation.yield(())
+        for _ in 0..<100 where model.composer == .coaching { await Task.yield() }
+
+        XCTAssertEqual(model.composer, .failure(.retryable))
+        XCTAssertEqual(model.failureContext, .request)
+        continuation.finish()
+    }
+
     func testFailedCorrectionRemainsAvailableForRetry() async {
         let client = ConversationScreenClientSpy(correctionFails: true)
         let original = message(role: "user", body: "Original")
@@ -460,9 +533,10 @@ final class ConversationViewModelTests: XCTestCase {
     func testCancellingFailedCorrectionDoesNotAllowReplacingPendingRequest() async {
         let client = ConversationScreenClientSpy(correctionFails: true)
         let original = message(role: "user", body: "Original")
+        let regenerated = message(role: "assistant", body: "Regenerated reply")
         let model = ConversationViewModel(
             conversationID: original.conversationID, title: "Chat", entryIntent: nil,
-            client: await client.makeClient(messages: [original])
+            client: await client.makeClient(messages: [original, regenerated])
         )
         await model.start()
         model.requestCorrection(original)
