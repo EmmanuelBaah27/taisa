@@ -4,6 +4,7 @@ import { getConfiguredFallbackProvider } from '../services/coaching/fallbackProv
 import { UsageExceedsReservationError } from '../services/usage/costLedger';
 import { CoachingResponsePayloadSchema } from '../schemas/coaching';
 import { LengthFinishReasonError } from 'openai/error';
+import Anthropic from '@anthropic-ai/sdk';
 
 const config = {
   model: 'fixture-model',
@@ -70,6 +71,31 @@ test('Anthropic adapter emits tool-input reply deltas before its validated termi
     { kind: 'delta', delta: 'changed?' },
     { kind: 'completed', result: expect.objectContaining({ payload }) },
   ]);
+});
+
+test('Anthropic stream failures emit only content-free provider diagnostics', async () => {
+  const secret = 'PRIVATE_ANTHROPIC_FAILURE_DETAIL';
+  const failure = new Anthropic.AuthenticationError(401, {
+    type: 'error',
+    error: { type: 'authentication_error', message: secret },
+  }, secret, {} as any);
+  const stream = {
+    async *[Symbol.asyncIterator]() { throw failure; },
+    finalMessage: jest.fn(),
+  };
+  const client = { messages: { stream: jest.fn(() => stream) } };
+  const provider = createAnthropicProvider(config, client as any);
+  const warning = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+  await expect(collect(provider.streamRespond!(input))).rejects.toEqual({
+    type: 'authentication_error',
+  });
+  expect(warning.mock.calls).toEqual([[
+    '[Taisa diagnostic] ANTHROPIC_COACHING_PROVIDER_FAILURE',
+    { status: 401 },
+  ]]);
+  expect(JSON.stringify(warning.mock.calls)).not.toContain(secret);
+  warning.mockRestore();
 });
 
 test('fallback is allowed only before the primary emits visible text', async () => {

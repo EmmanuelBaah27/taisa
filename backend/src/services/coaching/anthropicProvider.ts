@@ -8,7 +8,10 @@ import type {
   ProviderCoachingInput,
 } from './provider';
 import { estimateCostUsd, estimateMaximumCoachingUsage } from './provider';
-import { normalizeAnthropicSdkFailure } from './providerSdkFailure';
+import {
+  contentFreeProviderDiagnostic,
+  normalizeAnthropicSdkFailure,
+} from './providerSdkFailure';
 import { extractReplyPrefix } from './streamingCoaching';
 
 type AnthropicClient = Pick<Anthropic, 'messages'>;
@@ -262,7 +265,13 @@ export function createAnthropicProvider(
           provider: 'anthropic', model: config.model, inputTokens, outputTokens,
           estimatedCostUsd: estimateCostUsd(inputTokens, outputTokens, config),
         } } } as const;
-      } catch (error) { throw normalizeAnthropicSdkFailure(error); }
+      } catch (error) {
+        console.warn(
+          '[Taisa diagnostic] ANTHROPIC_COACHING_PROVIDER_FAILURE',
+          contentFreeProviderDiagnostic(error),
+        );
+        throw normalizeAnthropicSdkFailure(error);
+      }
     },
   };
 }
