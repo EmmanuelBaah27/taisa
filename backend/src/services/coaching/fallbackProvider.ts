@@ -62,15 +62,18 @@ export interface ContentFreeFailedAttempt {
 function classifyContentFreeProviderFailure(
   error: unknown,
 ): OperationalFailureClass | 'invalid_output' | null {
-  if (error instanceof ZodError) return 'invalid_output';
-  if (
-    error !== null
-    && typeof error === 'object'
-    && (error as Record<string, unknown>).type === 'length_finish_reason_error'
-  ) {
-    return 'invalid_output';
-  }
+  if (isInvalidOutputFailure(error, 0)) return 'invalid_output';
   return classifyOperationalProviderFailure(error);
+}
+
+function isInvalidOutputFailure(error: unknown, depth: number): boolean {
+  if (error instanceof ZodError) return true;
+  if (error === null || typeof error !== 'object') return false;
+  const value = error as Record<string, unknown>;
+  if (value.type === 'length_finish_reason_error') return true;
+  return depth < 2 && 'cause' in value
+    ? isInvalidOutputFailure(value.cause, depth + 1)
+    : false;
 }
 
 export class ContentFreeFallbackError extends Error {
