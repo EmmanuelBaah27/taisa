@@ -27,6 +27,7 @@ import {
   requestCoaching,
 } from '../services/coaching/coachingGateway';
 import { classifyOperationalProviderFailure } from '../services/coaching/providerFailure';
+import { contentFreeProviderDiagnostic } from '../services/coaching/providerSdkFailure';
 import { buildSeniorSelfPrompt } from '../prompts/system/seniorSelf';
 import { UsageExceedsReservationError } from '../services/usage/costLedger';
 
@@ -303,6 +304,38 @@ function sdkAdapterRejecting(
 
 const sdkHeaders = {} as any;
 const sdkFailureSecret = 'SDK_FAILURE_SECRET';
+
+test('provider diagnostics retain only allowlisted content-free SDK fields', () => {
+  const failure = new OpenAI.BadRequestError(400, {
+    message: sdkFailureSecret,
+    type: 'invalid_request_error',
+    code: 'invalid_json_schema',
+    param: 'response_format.json_schema.schema',
+  }, sdkFailureSecret, sdkHeaders);
+
+  const diagnostic = contentFreeProviderDiagnostic(failure);
+
+  expect(diagnostic).toEqual({
+    status: 400,
+    type: 'invalid_request_error',
+    code: 'invalid_json_schema',
+    param: 'response_format.json_schema.schema',
+  });
+  expect(JSON.stringify(diagnostic)).not.toContain(sdkFailureSecret);
+  expect(diagnostic).not.toHaveProperty('message');
+  expect(diagnostic).not.toHaveProperty('headers');
+  expect(diagnostic).not.toHaveProperty('request_id');
+});
+
+test('provider diagnostics drop unsafe free-form SDK fields', () => {
+  expect(contentFreeProviderDiagnostic({
+    status: 400,
+    type: 'invalid request with spaces',
+    code: sdkFailureSecret,
+    param: 'prompt.' + sdkFailureSecret,
+    message: sdkFailureSecret,
+  })).toEqual({ status: 400 });
+});
 
 const sdkOperationalFailureCases = [
   [
