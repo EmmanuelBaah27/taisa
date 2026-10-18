@@ -110,11 +110,12 @@ export function createOpenAIProvider(
           { maxRetries: 0 },
         );
       } catch (error) {
+        const normalized = normalizeOpenAISdkFailure(error);
         console.warn(
           '[Taisa diagnostic] OPENAI_COACHING_PROVIDER_FAILURE',
-          contentFreeProviderDiagnostic(error),
+          JSON.stringify(contentFreeProviderDiagnostic(normalized)),
         );
-        throw normalizeOpenAISdkFailure(error);
+        throw normalized;
       }
 
       const payload = CoachingResponsePayloadSchema.parse(
@@ -161,11 +162,12 @@ export function createOpenAIProvider(
           estimatedCostUsd: estimateCostUsd(inputTokens, outputTokens, config),
         } } } as const;
       } catch (error) {
+        const normalized = normalizeOpenAISdkFailure(error);
         console.warn(
           '[Taisa diagnostic] OPENAI_COACHING_PROVIDER_FAILURE',
-          contentFreeProviderDiagnostic(error),
+          JSON.stringify(contentFreeProviderDiagnostic(normalized)),
         );
-        throw normalizeOpenAISdkFailure(error);
+        throw normalized;
       }
     },
   };

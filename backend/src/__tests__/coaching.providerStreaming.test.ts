@@ -92,7 +92,7 @@ test('Anthropic stream failures emit only content-free provider diagnostics', as
   });
   expect(warning.mock.calls).toEqual([[
     '[Taisa diagnostic] ANTHROPIC_COACHING_PROVIDER_FAILURE',
-    { status: 401 },
+    '{"type":"authentication_error"}',
   ]]);
   expect(JSON.stringify(warning.mock.calls)).not.toContain(secret);
   warning.mockRestore();

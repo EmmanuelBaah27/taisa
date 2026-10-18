@@ -216,7 +216,12 @@ export function createAnthropicProvider(
           { maxRetries: 0 },
         );
       } catch (error) {
-        throw normalizeAnthropicSdkFailure(error);
+        const normalized = normalizeAnthropicSdkFailure(error);
+        console.warn(
+          '[Taisa diagnostic] ANTHROPIC_COACHING_PROVIDER_FAILURE',
+          JSON.stringify(contentFreeProviderDiagnostic(normalized)),
+        );
+        throw normalized;
       }
 
       const toolUse = message.content.find(
@@ -266,11 +271,12 @@ export function createAnthropicProvider(
           estimatedCostUsd: estimateCostUsd(inputTokens, outputTokens, config),
         } } } as const;
       } catch (error) {
+        const normalized = normalizeAnthropicSdkFailure(error);
         console.warn(
           '[Taisa diagnostic] ANTHROPIC_COACHING_PROVIDER_FAILURE',
-          contentFreeProviderDiagnostic(error),
+          JSON.stringify(contentFreeProviderDiagnostic(normalized)),
         );
-        throw normalizeAnthropicSdkFailure(error);
+        throw normalized;
       }
     },
   };
