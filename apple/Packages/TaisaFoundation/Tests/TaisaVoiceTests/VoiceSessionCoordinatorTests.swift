@@ -75,6 +75,29 @@ struct VoiceSessionCoordinatorTests {
         #expect(await coordinator.snapshot().durable.state == .completed)
     }
 
+    @Test("definitively failed server request restarts ambiguous coaching with a fresh identity")
+    func failedServerRequestRestartsAmbiguousCoaching() async throws {
+        let transcription = TranscriptionSpy(events: [])
+        let coaching = SuccessfulCoachingSpy()
+        let ambiguous = turn(
+            state: .resumeRequiresConfirmation, stage: .coaching, transcript: "accepted"
+        )
+        let coordinator = VoiceSessionCoordinator(
+            initial: ambiguous,
+            checkpoints: CheckpointSpy(), transcription: transcription, coaching: coaching,
+            connectivity: ConnectivitySpy(available: true),
+            reconciliation: ReconciliationSpy(.failed(code: "PROVIDER_FAILURE", retryable: false)),
+            capture: NoopCapture(), audio: NoopAudio()
+        )
+
+        try await coordinator.restartCoachingIfServerSafe(with: replacementTurn(from: ambiguous))
+        await coordinator.waitForIdle()
+
+        #expect(await transcription.calls == 0)
+        #expect(await coaching.calls == 1)
+        #expect(await coordinator.snapshot().durable.state == .completed)
+    }
+
     @Test("offline Send checkpoints once and resumes one upload when network returns")
     func offlineSendQueuesThenAutoResumesOnceWhenNetworkReturns() async throws {
         let store = CheckpointSpy()
