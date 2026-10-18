@@ -3,7 +3,10 @@ import TaisaStorage
 import TaisaVoice
 
 public protocol ConversationClient: Sendable {
-    func sendText(conversationID: String, requestID: String, text: String) async throws -> ConversationReply
+    func sendText(
+        conversationID: String, requestID: String, text: String,
+        onMessageAvailable: @escaping @Sendable () async -> Void
+    ) async throws -> ConversationReply
     func saveDraft(conversationID: String, input: ConversationInput) async throws
     func discardDraft(conversationID: String) async throws
     func completeVoiceConversation(conversationID: String) async throws
@@ -11,6 +14,12 @@ public protocol ConversationClient: Sendable {
 }
 
 public extension ConversationClient {
+    func sendText(conversationID: String, requestID: String, text: String) async throws -> ConversationReply {
+        try await sendText(
+            conversationID: conversationID, requestID: requestID, text: text,
+            onMessageAvailable: {}
+        )
+    }
     func saveDraft(conversationID: String, input: ConversationInput) async throws {}
     func discardDraft(conversationID: String) async throws {}
     func correctTranscript(conversationID: String, requestID: String, messageID: String, text: String) async throws -> ConversationReply {

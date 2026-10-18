@@ -80,6 +80,7 @@ struct ConversationTimeline: View {
     let assistantResponses: [String: AssistantResponseRecord]
     let updatingResponseAfter: String?
     let streamingResponse: String
+    let isThinking: Bool
     let correct: (MessageRecord) -> Void
     let saveFeedback: (String, ResponseFeedbackDirection?, [ResponseQualityFactor]) -> Void
     let acceptProposal: (String) -> Void
@@ -92,6 +93,7 @@ struct ConversationTimeline: View {
         assistantResponses: [String: AssistantResponseRecord] = [:],
         updatingResponseAfter: String? = nil,
         streamingResponse: String = "",
+        isThinking: Bool = false,
         correct: @escaping (MessageRecord) -> Void,
         saveFeedback: @escaping (String, ResponseFeedbackDirection?, [ResponseQualityFactor]) -> Void = { _, _, _ in },
         acceptProposal: @escaping (String) -> Void = { _ in },
@@ -101,6 +103,7 @@ struct ConversationTimeline: View {
         self.assistantResponses = assistantResponses
         self.updatingResponseAfter = updatingResponseAfter
         self.streamingResponse = streamingResponse
+        self.isThinking = isThinking
         self.correct = correct
         self.saveFeedback = saveFeedback
         self.acceptProposal = acceptProposal
@@ -156,11 +159,18 @@ struct ConversationTimeline: View {
                             .bottom,
                             ConversationTimelineLayout.spacing(
                                 afterRole: message.role,
-                                beforeRole: messages.indices.contains(index + 1) ? messages[index + 1].role : nil
+                                beforeRole: messages.indices.contains(index + 1)
+                                    ? messages[index + 1].role
+                                    : (isThinking || !streamingResponse.isEmpty ? "assistant" : nil)
                             )
                         )
                     }
-                    if !streamingResponse.isEmpty {
+                    if isThinking, streamingResponse.isEmpty {
+                        ThinkingIndicator()
+                            .padding(.horizontal, TaisaSpacing.standard.rawValue)
+                            .accessibilityIdentifier("conversation.thinking")
+                            .id("conversation.thinking")
+                    } else if !streamingResponse.isEmpty {
                         Text((try? AttributedString(markdown: streamingResponse)) ?? AttributedString(streamingResponse))
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.horizontal, TaisaSpacing.standard.rawValue)
@@ -214,12 +224,22 @@ struct ConversationTimeline: View {
                 guard !isAwayFromLatest else { return }
                 scrollToLatest(using: proxy, animated: false)
             }
+            .onChange(of: isThinking) { _, thinking in
+                guard thinking, !isAwayFromLatest else { return }
+                scrollToLatest(using: proxy, animated: false)
+            }
         }
         .accessibilityIdentifier("conversation.timeline")
     }
 
     private func scrollToLatest(using proxy: ScrollViewProxy, animated: Bool) {
-        let anchorID = streamingResponse.isEmpty ? messages.last?.id : "conversation.streaming-response"
+        let anchorID: String? = if !streamingResponse.isEmpty {
+            "conversation.streaming-response"
+        } else if isThinking {
+            "conversation.thinking"
+        } else {
+            messages.last?.id
+        }
         guard let anchorID else { return }
         if animated {
             withAnimation(.smooth(duration: TaisaMotion.settle)) {
@@ -253,6 +273,47 @@ struct ConversationTimeline: View {
             Button("Edit", systemImage: "pencil") { correct(message) }
                 .accessibilityIdentifier("conversation.correct-transcript")
         }
+    }
+}
+
+private struct ThinkingIndicator: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var shimmerOffset: CGFloat = -1
+
+    var body: some View {
+        Text("Thinking")
+            .font(TaisaTypography.body.font)
+            .foregroundStyle(TaisaColor.mutedForeground.color)
+            .overlay {
+                if !reduceMotion {
+                    GeometryReader { geometry in
+                        LinearGradient(
+                            colors: [
+                                .clear,
+                                TaisaColor.raisedSurface.color.opacity(0.9),
+                                .clear,
+                            ],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                        .frame(width: geometry.size.width * 0.55)
+                        .offset(x: shimmerOffset * geometry.size.width)
+                    }
+                    .mask(Text("Thinking").font(TaisaTypography.body.font))
+                    .allowsHitTesting(false)
+                }
+            }
+            .accessibilityLabel("Thinking")
+            .onAppear {
+                guard !reduceMotion else { return }
+                shimmerOffset = -1
+                withAnimation(
+                    .linear(duration: TaisaMotion.settle * 3)
+                    .repeatForever(autoreverses: false)
+                ) {
+                    shimmerOffset = 1.5
+                }
+            }
     }
 }
 

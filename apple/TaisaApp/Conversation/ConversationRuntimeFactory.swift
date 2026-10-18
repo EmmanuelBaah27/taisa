@@ -379,7 +379,11 @@ struct ConversationRuntimeFactory: Sendable {
                 let snapshot = try await query.loadConversation(id: route.id)
                 for draft in snapshot.drafts { try await conversations.discardDraft(id: draft.id) }
             },
-            sendText: { try await coordinator.send(.text($0)) },
+            sendText: { text, messageAvailable in
+                try await coordinator.send(
+                    .text(text), onMessageAvailable: messageAvailable
+                )
+            },
             retry: {
                 try await coordinator.retry()
                 if let restoredDraftID {
@@ -506,7 +510,7 @@ struct ConversationRuntimeFactory: Sendable {
             pauseVoice: unavailable,
             resumeVoice: unavailable,
             sendVoice: { _ in try await unavailable() },
-            sendText: { _ in try await unavailable() },
+            sendText: { _, _ in try await unavailable() },
             retry: unavailable,
             saveDraft: { input in
                 guard case .text = input else { try await unavailable(); return }

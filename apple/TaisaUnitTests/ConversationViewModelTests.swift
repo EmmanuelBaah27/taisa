@@ -11,7 +11,7 @@ final class ConversationViewModelTests: XCTestCase {
         let client = ConversationScreenClient(
             loadTitle: { "Persisted conversation title" },
             beginVoice: {}, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
-            sendText: { _ in }, retry: {}, saveDraft: { _ in }, discardDraft: {}
+            sendText: { _, available in await available() }, retry: {}, saveDraft: { _ in }, discardDraft: {}
         )
         let model = ConversationViewModel(
             conversationID: UUID().uuidString,
@@ -145,7 +145,7 @@ final class ConversationViewModelTests: XCTestCase {
         struct StartFailure: Error {}
         let client = ConversationScreenClient(
             beginVoice: { throw StartFailure() }, pauseVoice: {}, resumeVoice: {},
-            sendVoice: { _ in }, sendText: { _ in }, retry: {},
+            sendVoice: { _ in }, sendText: { _, available in await available() }, retry: {},
             saveDraft: { _ in }, discardDraft: {}
         )
         let model = ConversationViewModel(
@@ -163,7 +163,7 @@ final class ConversationViewModelTests: XCTestCase {
         let client = ConversationScreenClient(
             beginVoice: { throw AudioCaptureError.permissionDenied },
             pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
-            sendText: { _ in }, retry: {}, saveDraft: { _ in }, discardDraft: {}
+            sendText: { _, available in await available() }, retry: {}, saveDraft: { _ in }, discardDraft: {}
         )
         let model = ConversationViewModel(
             conversationID: UUID().uuidString, title: "New conversation",
@@ -179,7 +179,7 @@ final class ConversationViewModelTests: XCTestCase {
         let client = ConversationScreenClient(
             beginVoice: { throw AudioCaptureError.permissionDenied },
             pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
-            sendText: { _ in }, retry: {}, saveDraft: { _ in }, discardDraft: {}
+            sendText: { _, available in await available() }, retry: {}, saveDraft: { _ in }, discardDraft: {}
         )
         let model = ConversationViewModel(
             conversationID: UUID().uuidString,
@@ -198,7 +198,7 @@ final class ConversationViewModelTests: XCTestCase {
         struct StartFailure: Error {}
         let client = ConversationScreenClient(
             beginVoice: { throw StartFailure() }, pauseVoice: {}, resumeVoice: {},
-            sendVoice: { _ in }, sendText: { _ in }, retry: {},
+            sendVoice: { _ in }, sendText: { _, available in await available() }, retry: {},
             saveDraft: { _ in }, discardDraft: {}
         )
         let model = ConversationViewModel(
@@ -234,7 +234,8 @@ final class ConversationViewModelTests: XCTestCase {
         struct VoiceFailure: Error {}
         let client = ConversationScreenClient(
             beginVoice: {}, pauseVoice: {}, resumeVoice: {},
-            sendVoice: { _ in throw VoiceFailure() }, sendText: { _ in }, retry: {},
+            sendVoice: { _ in throw VoiceFailure() },
+            sendText: { _, available in await available() }, retry: {},
             saveDraft: { _ in }, discardDraft: {}
         )
         let model = ConversationViewModel(
@@ -255,7 +256,7 @@ final class ConversationViewModelTests: XCTestCase {
                 await transcriptAvailable()
                 throw VoiceFailure()
             },
-            sendText: { _ in }, retry: {}, saveDraft: { _ in }, discardDraft: {}
+            sendText: { _, available in await available() }, retry: {}, saveDraft: { _ in }, discardDraft: {}
         )
         let model = ConversationViewModel(
             conversationID: UUID().uuidString, title: "Chat", entryIntent: nil,
@@ -274,7 +275,7 @@ final class ConversationViewModelTests: XCTestCase {
             loadMessages: { [savedMessage] },
             beginVoice: {}, pauseVoice: {}, resumeVoice: {},
             sendVoice: { _ in },
-            sendText: { _ in throw ResponseFailure() },
+            sendText: { _, available in await available(); throw ResponseFailure() },
             retry: {}, saveDraft: { _ in }, discardDraft: {}
         )
         let model = ConversationViewModel(
@@ -291,6 +292,71 @@ final class ConversationViewModelTests: XCTestCase {
         XCTAssertEqual(model.failureContext, .request)
         XCTAssertEqual(model.messages.map(\.body), ["My saved typed message"])
         XCTAssertEqual(model.text, "")
+    }
+
+    func testTextPersistenceFailureDoesNotDiscardUnsentText() async {
+        struct PersistenceFailure: Error {}
+        let client = ConversationScreenClient(
+            loadMessages: { [] },
+            beginVoice: {}, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
+            sendText: { _, _ in throw PersistenceFailure() },
+            retry: {}, saveDraft: { _ in }, discardDraft: {}
+        )
+        let model = ConversationViewModel(
+            conversationID: UUID().uuidString,
+            title: "Chat",
+            entryIntent: nil,
+            composer: .typing("Unsent thought"),
+            text: "Unsent thought",
+            client: client
+        )
+
+        await model.sendText()
+
+        XCTAssertEqual(model.text, "Unsent thought")
+        XCTAssertTrue(model.messages.isEmpty)
+    }
+
+    func testTypedMessageAppearsBeforeCoachingCompletes() async {
+        let messageShown = AsyncGate()
+        let finishCoaching = AsyncGate()
+        let messages = MessageSequence([
+            [message(role: "user", body: "Typed follow-up")],
+            [
+                message(role: "user", body: "Typed follow-up"),
+                message(role: "assistant", body: "Coaching reply"),
+            ],
+        ])
+        let client = ConversationScreenClient(
+            loadMessages: { await messages.next() },
+            beginVoice: {}, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
+            sendText: { _, messageAvailable in
+                await messageAvailable()
+                await messageShown.open()
+                await finishCoaching.wait()
+            },
+            retry: {}, saveDraft: { _ in }, discardDraft: {}
+        )
+        let model = ConversationViewModel(
+            conversationID: UUID().uuidString,
+            title: "Chat",
+            entryIntent: nil,
+            composer: .typing("Typed follow-up"),
+            text: "Typed follow-up",
+            client: client
+        )
+
+        let send = Task { await model.sendText() }
+        await messageShown.wait()
+
+        XCTAssertEqual(model.composer, .coaching)
+        XCTAssertEqual(model.messages.map(\.body), ["Typed follow-up"])
+        XCTAssertEqual(model.text, "")
+
+        await finishCoaching.open()
+        await send.value
+        XCTAssertEqual(model.composer, .waitingForReply)
+        XCTAssertEqual(model.messages.map(\.body), ["Typed follow-up", "Coaching reply"])
     }
 
     func testVoiceTranscriptAppearsBeforeCoachingCompletes() async {
@@ -311,7 +377,7 @@ final class ConversationViewModelTests: XCTestCase {
                 await transcriptShown.open()
                 await finishCoaching.wait()
             },
-            sendText: { _ in }, retry: {}, saveDraft: { _ in }, discardDraft: {}
+            sendText: { _, available in await available() }, retry: {}, saveDraft: { _ in }, discardDraft: {}
         )
         let model = ConversationViewModel(
             conversationID: UUID().uuidString,
@@ -540,7 +606,7 @@ final class ConversationViewModelTests: XCTestCase {
         let events = EventRecorder()
         let client = ConversationScreenClient(
             beginVoice: {}, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
-            sendText: { _ in }, retry: {}, saveDraft: { _ in }, discardDraft: {},
+            sendText: { _, available in await available() }, retry: {}, saveDraft: { _ in }, discardDraft: {},
             saveFeedback: { _ in
                 await events.append("save-start")
                 await gate.wait()
@@ -635,7 +701,8 @@ private actor ConversationScreenClientSpy {
             loadMessages: { loaded },
             beginVoice: { [self] in await recordBegin() },
             pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
-            sendText: { _ in }, retry: { [self] in await recordRetry() }, saveDraft: { [self] input in await save(input) },
+            sendText: { _, available in await available() },
+            retry: { [self] in await recordRetry() }, saveDraft: { [self] input in await save(input) },
             discardDraft: { [self] in await recordDraftDiscard() },
             discardEmptyConversation: { [self] in await recordConversationDiscard() },
             correctTranscript: { [self, correctionFails] _, _ in

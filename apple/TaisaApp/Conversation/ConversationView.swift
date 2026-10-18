@@ -19,6 +19,7 @@ struct ConversationView: View {
                             assistantResponses: model.assistantResponses,
                             updatingResponseAfter: model.correctionRegenerationMessageID,
                             streamingResponse: model.partialCoaching,
+                            isThinking: model.composer == .coaching && model.partialCoaching.isEmpty,
                             correct: model.requestCorrection,
                             saveFeedback: { messageID, direction, factors in
                                 Task { await model.saveFeedback(
@@ -115,19 +116,13 @@ struct ConversationView: View {
                     .frame(maxWidth: .infinity)
             }
         case .coaching:
-            VStack(alignment: .leading, spacing: 12) {
-                if model.partialCoaching.isEmpty {
-                    ConversationProgressState(label: "Preparing coaching…")
-                }
-                bottomChrome {
-                    TextComposer(
-                        text: $model.text, mode: .processing,
-                        onSend: {}, onVoice: {}
-                    )
-                    .accessibilityIdentifier("conversation.text-composer.processing")
-                }
+            bottomChrome {
+                TextComposer(
+                    text: $model.text, mode: .processing,
+                    onSend: {}, onVoice: {}
+                )
+                .accessibilityIdentifier("conversation.text-composer.processing")
             }
-            .padding(.horizontal)
             .task {
                 while !Task.isCancelled, model.composer == .coaching {
                     await model.refreshPartialCoaching()

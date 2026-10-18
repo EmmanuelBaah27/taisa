@@ -149,7 +149,10 @@ public actor GatewayConversationClient: ConversationClient {
         self.nowMS = nowMS
     }
 
-    public func sendText(conversationID: String, requestID: String, text: String) async throws -> ConversationReply {
+    public func sendText(
+        conversationID: String, requestID: String, text: String,
+        onMessageAvailable: @escaping @Sendable () async -> Void
+    ) async throws -> ConversationReply {
         guard UUID(uuidString: conversationID) != nil, let requestUUID = UUID(uuidString: requestID) else {
             throw ConversationFailure.invalidInput
         }
@@ -167,6 +170,7 @@ public actor GatewayConversationClient: ConversationClient {
             id: userMessageID, conversationID: conversationID,
             role: "user", body: normalized, createdAtMS: createdAt
         ))
+        await onMessageAvailable()
 
         let completion = try await requestCoaching(
             conversationID: conversationID, requestID: requestID,

@@ -15,7 +15,9 @@ struct ConversationScreenClient: Sendable {
     var retryPauseVoice: @Sendable () async throws -> Void
     var retryResumeVoice: @Sendable () async throws -> Void
     var sendVoice: @Sendable (@escaping @MainActor @Sendable () async -> Void) async throws -> Void
-    var sendText: @Sendable (String) async throws -> Void
+    var sendText: @Sendable (
+        String, @escaping @MainActor @Sendable () async -> Void
+    ) async throws -> Void
     var retry: @Sendable () async throws -> Void
     var saveDraft: @Sendable (ConversationInput) async throws -> Void
     var discardDraft: @Sendable () async throws -> Void
@@ -39,7 +41,9 @@ struct ConversationScreenClient: Sendable {
         retryPauseVoice: @escaping @Sendable () async throws -> Void = {},
         retryResumeVoice: @escaping @Sendable () async throws -> Void = {},
         sendVoice: @escaping @Sendable (@escaping @MainActor @Sendable () async -> Void) async throws -> Void,
-        sendText: @escaping @Sendable (String) async throws -> Void,
+        sendText: @escaping @Sendable (
+            String, @escaping @MainActor @Sendable () async -> Void
+        ) async throws -> Void,
         retry: @escaping @Sendable () async throws -> Void,
         saveDraft: @escaping @Sendable (ConversationInput) async throws -> Void,
         discardDraft: @escaping @Sendable () async throws -> Void,
@@ -194,7 +198,8 @@ final class ConversationViewModel {
                 loadMessages: { messages },
                 loadAssistantResponses: { assistantResponses },
                 beginVoice: {}, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
-                sendText: { _ in }, retry: {}, saveDraft: { _ in }, discardDraft: {}
+                sendText: { _, messageAvailable in await messageAvailable() },
+                retry: {}, saveDraft: { _ in }, discardDraft: {}
             ),
             dismiss: dismiss
         )
@@ -346,10 +351,13 @@ final class ConversationViewModel {
         guard !value.isEmpty else { return }
         actionInFlight = true
         partialCoaching = ""
-        composer = .coaching
         do {
-            try await client.sendText(value)
-            text = ""
+            try await client.sendText(value) { [weak self] in
+                guard let self else { return }
+                await self.reloadMessages()
+                self.text = ""
+                self.composer = .coaching
+            }
             partialCoaching = ""
             composer = .waitingForReply
             await reloadMessages()
@@ -357,7 +365,6 @@ final class ConversationViewModel {
         catch {
             partialCoaching = ""
             await reloadMessages()
-            text = ""
             failureContext = .request
             composer = .failure(.retryable)
         }
