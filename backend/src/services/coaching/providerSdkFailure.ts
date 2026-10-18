@@ -63,6 +63,41 @@ const SAFE_ERROR_NAMES = new Set([
   'LengthFinishReasonError',
   'ZodError',
 ]);
+const SAFE_ZOD_PATH_ROOTS = new Set([
+  'response',
+  'mode',
+  'relevance',
+  'contextSufficiency',
+  'reply',
+  'stance',
+  'explanation',
+  'proposal',
+  'titleSuggestion',
+]);
+const SAFE_ZOD_PATH_SEGMENT = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
+
+function contentFreeZodIssues(value: FailureRecord): readonly FailureRecord[] | null {
+  if (value.name !== 'ZodError' || !Array.isArray(value.issues)) return null;
+  const issues = value.issues.slice(0, 5).flatMap((candidate) => {
+    const issue = asRecord(candidate);
+    const code = contentFreeToken(issue?.code);
+    const rawPath = issue?.path;
+    if (!code || !Array.isArray(rawPath) || rawPath.length === 0 || rawPath.length > 8) return [];
+    const segments = rawPath.map((segment) => {
+      if (typeof segment === 'number' && Number.isSafeInteger(segment) && segment >= 0) {
+        return String(segment);
+      }
+      return typeof segment === 'string' && SAFE_ZOD_PATH_SEGMENT.test(segment)
+        ? segment
+        : null;
+    });
+    if (segments.some((segment) => segment === null) || !SAFE_ZOD_PATH_ROOTS.has(segments[0]!)) {
+      return [];
+    }
+    return [Object.freeze({ code, path: segments.join('.') })];
+  });
+  return issues.length > 0 ? Object.freeze(issues) : null;
+}
 
 function contentFreeToken(value: unknown): string | null {
   return typeof value === 'string' && CONTENT_FREE_TOKEN.test(value) ? value : null;
@@ -90,6 +125,8 @@ export function contentFreeProviderDiagnostic(error: unknown): FailureRecord {
   }
   const param = contentFreeParam(value.param);
   if (param) diagnostic.param = param;
+  const issues = contentFreeZodIssues(value);
+  if (issues) diagnostic.issues = issues;
   const cause = asRecord(value.cause);
   if (cause) {
     const nested = contentFreeProviderDiagnostic(cause);

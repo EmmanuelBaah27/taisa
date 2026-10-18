@@ -352,6 +352,35 @@ test('provider diagnostics retain allowlisted content-free error classes and cau
   expect(JSON.stringify(contentFreeProviderDiagnostic(failure))).not.toContain(sdkFailureSecret);
 });
 
+test('provider diagnostics retain only structural Zod issue paths and codes', () => {
+  const failure = Object.assign(new Error(sdkFailureSecret), {
+    name: 'ZodError',
+    issues: [
+      {
+        code: 'invalid_type',
+        path: ['response', 'titleSuggestion'],
+        message: sdkFailureSecret,
+        expected: sdkFailureSecret,
+        received: sdkFailureSecret,
+      },
+      {
+        code: 'too_big',
+        path: ['response', 'reply'],
+        message: sdkFailureSecret,
+      },
+    ],
+  });
+
+  expect(contentFreeProviderDiagnostic(failure)).toEqual({
+    name: 'ZodError',
+    issues: [
+      { code: 'invalid_type', path: 'response.titleSuggestion' },
+      { code: 'too_big', path: 'response.reply' },
+    ],
+  });
+  expect(JSON.stringify(contentFreeProviderDiagnostic(failure))).not.toContain(sdkFailureSecret);
+});
+
 test('provider diagnostics reject arbitrary error names recursively', () => {
   expect(contentFreeProviderDiagnostic(Object.assign(new Error(sdkFailureSecret), {
     name: sdkFailureSecret,
