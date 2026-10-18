@@ -5,6 +5,7 @@ type Environment = Record<string, string | undefined>;
 
 export interface ProductionConfig {
   readonly publicOrigin: string;
+  readonly trustProxyHops: 1;
 }
 
 function positiveNumber(environment: Environment, name: string): boolean {
@@ -63,5 +64,5 @@ export function readProductionConfig(environment: Environment = process.env): Pr
     && positiveNumber(environment, 'TAISA_TRANSCRIPTION_PRICE_USD_PER_MINUTE');
   if (!valid) throw new Error('Production configuration is incomplete');
   validateCoachingProviderStartupConfiguration(environment);
-  return { publicOrigin };
+  return { publicOrigin, trustProxyHops: 1 };
 }

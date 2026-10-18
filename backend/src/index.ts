@@ -34,6 +34,10 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const productionConfig = readProductionConfig();
 
+// Railway terminates TLS at one edge proxy and forwards the originating address. Trust exactly
+// that hop so request IPs and rate-limit keys cannot collapse onto the platform proxy address.
+if (productionConfig !== null) app.set('trust proxy', productionConfig.trustProxyHops);
+
 // Middleware
 app.use(requestContext);
 app.use(helmet());
