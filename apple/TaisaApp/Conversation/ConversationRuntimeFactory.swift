@@ -343,6 +343,24 @@ struct ConversationRuntimeFactory: Sendable {
             : .failure(.retryable)
         let initialText = restoration.text
         let restoredDraftID = restoredDraft?.id
+        let rawState = rawResumable?.state.rawValue ?? "none"
+        let rawStage = rawResumable?.stage.rawValue ?? "none"
+        let draftMode = restoredDraft?.inputMode.rawValue ?? "none"
+        let newerCompleted = latestCompleted.map { completed in
+            rawResumable.map { completed.updatedAtMS > $0.updatedAtMS } ?? false
+        } ?? false
+        print(
+            "TAISA_CONVERSATION_RESTORE "
+                + "rawState=\(rawState) "
+                + "rawStage=\(rawStage) "
+                + "selected=\(resumable != nil) "
+                + "newerCompleted=\(newerCompleted) "
+                + "draftMode=\(draftMode) "
+                + "pending=\(pendingConversationRequest != nil) "
+                + "restoredState=\(restoration.voiceTurn.state.rawValue) "
+                + "restoredStage=\(restoration.voiceTurn.stage.rawValue) "
+                + "entryIntent=\(entryIntent != nil)"
+        )
 
         let client = ConversationScreenClient(
             loadMessages: { try await query.loadConversation(id: route.id).visibleMessages },
