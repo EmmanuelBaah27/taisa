@@ -73,6 +73,26 @@ final class ConversationViewModelTests: XCTestCase {
         XCTAssertEqual(model.composer, .paused)
     }
 
+    func testKeyboardReplacementSurvivesDialogDismissalBeforeAsyncActionStarts() async {
+        let client = ConversationScreenClientSpy(captureDisposition: .sendable)
+        let model = ConversationViewModel(
+            conversationID: UUID().uuidString, title: "Chat", entryIntent: nil,
+            composer: .recording, client: await client.makeClient()
+        )
+        await model.start()
+
+        model.requestKeyboard()
+        XCTAssertEqual(model.confirmation, .discardVoiceForKeyboard(returnTo: .recording))
+
+        // SwiftUI dismisses a confirmation dialog before the Task created by
+        // its selected button is guaranteed to start.
+        model.cancelConfirmation()
+        await model.confirmKeyboardReplacement()
+
+        XCTAssertEqual(model.composer, .typing(""))
+        XCTAssertNil(model.confirmation)
+    }
+
     func testCloseWithInputOffersSaveDiscardCancel() {
         let model = ConversationViewModel.preview(composer: .typing("keep this"))
 

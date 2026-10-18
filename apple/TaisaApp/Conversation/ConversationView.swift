@@ -62,7 +62,11 @@ struct ConversationView: View {
         }
         .confirmationDialog("Keep this unfinished thought?", isPresented: Binding(
             get: { model.confirmation != nil },
-            set: { if !$0 { model.cancelConfirmation() } }
+            // Each dialog action owns clearing the pending confirmation. SwiftUI
+            // writes `false` while dismissing a tapped action, before an async
+            // action's task necessarily starts; clearing here can erase the
+            // command that action is about to confirm.
+            set: { _ in }
         )) {
             switch model.confirmation {
             case .discardVoiceForKeyboard:

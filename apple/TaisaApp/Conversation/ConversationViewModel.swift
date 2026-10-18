@@ -415,7 +415,6 @@ final class ConversationViewModel {
     }
 
     func confirmKeyboardReplacement() async {
-        guard case .discardVoiceForKeyboard = confirmation else { return }
         await discardVoiceAndType()
     }
 
