@@ -613,6 +613,86 @@ final class ConversationViewModelTests: XCTestCase {
         XCTAssertEqual(dismissed, 1)
     }
 
+    func testDiscardKeepsRecordingPresentationStableUntilProvisionalChatDismisses() async {
+        let gate = AsyncGate()
+        let events = EventRecorder()
+        let capture = BlockingCaptureSnapshot()
+        let client = ConversationScreenClient(
+            beginVoice: {}, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
+            sendText: { _, available in await available() }, retry: {}, saveDraft: { _ in },
+            discardDraft: {
+                await events.append("discard-start")
+                await gate.wait()
+            },
+            discardEmptyConversation: {},
+            loadCaptureSnapshot: { await capture.load() }
+        )
+        let model = ConversationViewModel(
+            conversationID: UUID().uuidString, title: "New chat", entryIntent: nil,
+            composer: .recording, client: client
+        )
+
+        let refresh = Task { await model.refreshCapture() }
+        while !(await capture.hasStarted) { await Task.yield() }
+        let discard = Task { await model.confirmDiscardRecording() }
+        while !(await events.values()).contains("discard-start") { await Task.yield() }
+        await capture.release()
+        await refresh.value
+
+        XCTAssertEqual(model.composer, .recording)
+        await gate.open()
+        await discard.value
+    }
+
+    func testTypedSendClearsComposerBeforeDurableCommitCompletes() async {
+        let gate = AsyncGate()
+        let events = EventRecorder()
+        let client = ConversationScreenClient(
+            beginVoice: {}, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
+            sendText: { _, available in
+                await events.append("send-start")
+                await gate.wait()
+                await available()
+            },
+            retry: {}, saveDraft: { _ in }, discardDraft: {}
+        )
+        let model = ConversationViewModel(
+            conversationID: UUID().uuidString, title: "Chat", entryIntent: nil,
+            composer: .typing("Send once"), text: "Send once", client: client
+        )
+
+        let send = Task { await model.sendText() }
+        while !(await events.values()).contains("send-start") { await Task.yield() }
+
+        XCTAssertEqual(model.text, "")
+        XCTAssertEqual(model.composer, .coaching)
+        await gate.open()
+        await send.value
+    }
+
+    func testFailedRepeatedTextDoesNotTreatHistoricalMessageAsCurrentSend() async {
+        let existing = MessageRecord(
+            id: UUID().uuidString, conversationID: UUID().uuidString,
+            role: "user", body: "Same words", createdAtMS: 1
+        )
+        let client = ConversationScreenClient(
+            loadMessages: { [existing] },
+            beginVoice: {}, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
+            sendText: { _, _ in throw ConversationFailure.retryable },
+            retry: {}, saveDraft: { _ in }, discardDraft: {}
+        )
+        let model = ConversationViewModel(
+            conversationID: existing.conversationID, title: "Chat", entryIntent: nil,
+            composer: .typing("Same words"), text: "Same words", client: client
+        )
+        await model.start()
+
+        await model.sendText()
+
+        XCTAssertEqual(model.composer, .typing("Same words"))
+        XCTAssertEqual(model.text, "Same words")
+    }
+
     func testCancelRecoveryClosesWithoutDiscardingRecoverableInput() async {
         let client = ConversationScreenClientSpy()
         var dismissed = 0
