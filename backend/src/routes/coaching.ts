@@ -120,9 +120,16 @@ function streamFailureCode(error: unknown): CoachingStreamFailureCode {
   return 'COACHING_UNAVAILABLE';
 }
 
+function logRequestValidationFailure(issues: ReadonlyArray<{ path: PropertyKey[] }>): void {
+  console.warn('[Taisa diagnostic] COACHING_REQUEST_VALIDATION_FAILED', {
+    fields: [...new Set(issues.map((issue) => issue.path.join('.') || 'request'))],
+  });
+}
+
 router.post('/respond', async (req, res) => {
   const parsed = CoachingRequestSchema.safeParse(req.body);
   if (!parsed.success) {
+    logRequestValidationFailure(parsed.error.issues);
     return res.status(400).json({
       success: false,
       error: { code: 'VALIDATION_ERROR', message: parsed.error.message },
@@ -177,6 +184,7 @@ router.post('/respond/stream', async (req, res) => {
   if (!ownerId) return;
   const parsed = CoachingRequestSchema.safeParse(req.body);
   if (!parsed.success) {
+    logRequestValidationFailure(parsed.error.issues);
     return res.status(400).json({
       success: false,
       error: { code: 'VALIDATION_ERROR', message: parsed.error.message },
