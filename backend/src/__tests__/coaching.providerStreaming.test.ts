@@ -51,6 +51,34 @@ test('OpenAI adapter emits reply deltas before its validated terminal payload', 
   expect(typeof request.response_format.$parseRaw).toBe('function');
 });
 
+test('OpenAI response parser repairs an empty approach without accepting an empty reply', async () => {
+  const client = { beta: { chat: { completions: { parse: jest.fn().mockResolvedValue({
+    choices: [{ message: { parsed: { response: payload } } }],
+    usage: { prompt_tokens: 10, completion_tokens: 5 },
+  }) } } } };
+  const provider = createOpenAIProvider(config, client as any);
+
+  await provider.respond(input);
+  const request = (client.beta.chat.completions.parse.mock.calls as any[][])[0][0];
+  const responseFormat = request.response_format;
+  const withEmptyApproach = JSON.stringify({
+    response: {
+      ...payload,
+      explanation: { ...payload.explanation, approach: '   ' },
+    },
+  });
+
+  expect(responseFormat.$parseRaw(withEmptyApproach)).toMatchObject({
+    response: {
+      reply: payload.reply,
+      explanation: { approach: 'Used the available context to respond.' },
+    },
+  });
+  expect(() => responseFormat.$parseRaw(JSON.stringify({
+    response: { ...payload, reply: '' },
+  }))).toThrow();
+});
+
 test('Anthropic adapter emits tool-input reply deltas before its validated terminal payload', async () => {
   const stream = {
     async *[Symbol.asyncIterator]() {
