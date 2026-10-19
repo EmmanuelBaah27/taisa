@@ -164,10 +164,11 @@ export function createOpenAIProvider(
       };
     },
     async *streamRespond(input: ProviderCoachingInput) {
+      const responseFormat = openAIResponseFormat();
       const stream = client.beta.chat.completions.stream({
         model: config.model,
         messages: [{ role: 'system', content: input.systemPrompt }, { role: 'user', content: input.userPrompt }],
-        response_format: openAIResponseFormat(),
+        response_format: responseFormat,
         max_completion_tokens: config.maxOutputTokens,
       }, { maxRetries: 0 });
       let raw = '';
@@ -182,7 +183,15 @@ export function createOpenAIProvider(
           }
         }
         const completion = await stream.finalChatCompletion();
-        const payload = CoachingResponsePayloadSchema.parse(completion.choices[0]?.message.parsed?.response);
+        const message = completion.choices[0]?.message;
+        const completedContent = message?.content;
+        const contentToParse = typeof completedContent === 'string'
+          && completedContent.trim().length > 0
+          ? completedContent
+          : raw;
+        const parsedEnvelope = message?.parsed
+          ?? responseFormat.$parseRaw(contentToParse);
+        const payload = CoachingResponsePayloadSchema.parse(parsedEnvelope.response);
         const inputTokens = completion.usage?.prompt_tokens ?? 0;
         const outputTokens = completion.usage?.completion_tokens ?? 0;
         yield { kind: 'completed', result: { payload, usage: {
