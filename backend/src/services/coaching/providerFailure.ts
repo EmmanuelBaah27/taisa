@@ -81,6 +81,26 @@ function classifyKnownTypeOrNetworkCode(
 export function classifyOperationalProviderFailure(
   error: unknown,
 ): OperationalFailureClass | null {
+  if (hasDeniedTypeInCauseChain(error, 0)) return null;
+  return classifyOperationalProviderFailureAtDepth(error, 0);
+}
+
+function hasDeniedTypeInCauseChain(error: unknown, depth: number): boolean {
+  const value = asRecord(error);
+  if (!value) return false;
+
+  const type = stringField(value, 'type');
+  if (type && DENIED_TYPES.has(type)) return true;
+
+  return depth < 2 && 'cause' in value
+    ? hasDeniedTypeInCauseChain(value.cause, depth + 1)
+    : false;
+}
+
+function classifyOperationalProviderFailureAtDepth(
+  error: unknown,
+  depth: number,
+): OperationalFailureClass | null {
   const value = asRecord(error);
   if (!value) return null;
 
@@ -93,5 +113,14 @@ export function classifyOperationalProviderFailure(
   if (status === 429) return 'rate_limit';
   if (status !== null && status >= 500 && status <= 599) return 'unavailable';
 
-  return classifyKnownTypeOrNetworkCode(value);
+  const direct = classifyKnownTypeOrNetworkCode(value);
+  if (direct) return direct;
+
+  // Provider SDKs commonly wrap transport failures in Error.cause. Inspect only
+  // this standard chain, with a tight bound, so private message text and arbitrary
+  // nested response bodies never become classification input.
+  if (depth < 2 && 'cause' in value) {
+    return classifyOperationalProviderFailureAtDepth(value.cause, depth + 1);
+  }
+  return null;
 }
