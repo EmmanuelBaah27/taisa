@@ -1467,6 +1467,15 @@ test('does not classify a provider SDK wrapper around a denied cause', () => {
   expect(classifyOperationalProviderFailure(wrapped)).toBeNull();
 });
 
+test('does not classify an operational wrapper around a denied cause', () => {
+  const wrapped = Object.assign(new Error('private outer detail'), {
+    status: 503,
+    cause: { type: 'content_policy_error' },
+  });
+
+  expect(classifyOperationalProviderFailure(wrapped)).toBeNull();
+});
+
 test.each([
   { status: 400, type: 'invalid_request_error' },
   { status: 400, type: 'provider_error' },

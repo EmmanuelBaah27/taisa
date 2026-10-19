@@ -81,7 +81,20 @@ function classifyKnownTypeOrNetworkCode(
 export function classifyOperationalProviderFailure(
   error: unknown,
 ): OperationalFailureClass | null {
+  if (hasDeniedTypeInCauseChain(error, 0)) return null;
   return classifyOperationalProviderFailureAtDepth(error, 0);
+}
+
+function hasDeniedTypeInCauseChain(error: unknown, depth: number): boolean {
+  const value = asRecord(error);
+  if (!value) return false;
+
+  const type = stringField(value, 'type');
+  if (type && DENIED_TYPES.has(type)) return true;
+
+  return depth < 2 && 'cause' in value
+    ? hasDeniedTypeInCauseChain(value.cause, depth + 1)
+    : false;
 }
 
 function classifyOperationalProviderFailureAtDepth(
