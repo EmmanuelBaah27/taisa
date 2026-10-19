@@ -1,5 +1,6 @@
 import Foundation
 import TaisaContracts
+import TaisaNetworking
 import TaisaStorage
 import TaisaVoice
 
@@ -131,6 +132,7 @@ public actor GatewayConversationClient: ConversationClient {
     private let turns: ConversationTurnRepository
     private let responses: AssistantResponseRepository
     private let coaching: any VoiceCoachingRunning
+    private let reconciliation: (any CoachingReconciliationLookingUp)?
     private let deviceID: String
     private let nowMS: @Sendable () -> Int64
 
@@ -138,6 +140,7 @@ public actor GatewayConversationClient: ConversationClient {
         store: TaisaStore,
         deviceID: UUID,
         coaching: any VoiceCoachingRunning,
+        reconciliation: (any CoachingReconciliationLookingUp)? = nil,
         nowMS: @escaping @Sendable () -> Int64 = { Int64(Date().timeIntervalSince1970 * 1_000) }
     ) {
         query = ConversationQuery(store: store)
@@ -145,6 +148,7 @@ public actor GatewayConversationClient: ConversationClient {
         turns = ConversationTurnRepository(store: store)
         responses = AssistantResponseRepository(store: store)
         self.coaching = coaching
+        self.reconciliation = reconciliation
         self.deviceID = deviceID.uuidString.lowercased()
         self.nowMS = nowMS
     }
@@ -327,9 +331,30 @@ public actor GatewayConversationClient: ConversationClient {
             createdAtMS: durableCreatedAt, updatedAtMS: max(durableCreatedAt, nowMS())
         )
         try await turns.checkpoint(turn, messages: [], cleanup: nil, context: context(nowMS()))
-        let stream = try await coaching.stream(for: turn)
+        do {
+            return try await consumeCoaching(for: turn)
+        } catch let error as StreamTransportError where error == .reconciliationRequired {
+            guard let reconciliation,
+                  let requestUUID = UUID(uuidString: requestID) else { throw error }
+            switch try await reconciliation.reconcile(requestID: requestUUID) {
+            case .completed(let response, let receipt):
+                return TerminalCompletion(response: response, idempotencyReceipt: receipt)
+            case .failed(_, let retryable):
+                throw retryable ? ConversationFailure.retryable : ConversationFailure.unavailable
+            case .safeToRetry:
+                partialCoaching = ""
+                return try await consumeCoaching(for: turn)
+            case .ambiguous:
+                try await reconciliation.authorizeRetry(requestID: requestUUID)
+                partialCoaching = ""
+                return try await consumeCoaching(for: turn)
+            }
+        }
+    }
+
+    private func consumeCoaching(for turn: VoiceTurnRecord) async throws -> TerminalCompletion {
         var completion: TerminalCompletion?
-        for try await event in stream {
+        for try await event in try await coaching.stream(for: turn) {
             switch event {
             case .delta(_, _, let delta): partialCoaching += delta
             case .completed(_, _, let response, let receipt):

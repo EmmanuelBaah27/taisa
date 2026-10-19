@@ -1,6 +1,7 @@
 import Foundation
 import Testing
 import TaisaContracts
+import TaisaNetworking
 import TaisaStorage
 import TaisaVoice
 @testable import TaisaConversations
@@ -25,8 +26,57 @@ private actor CompletedCoachingRunner: VoiceCoachingRunning {
     }
 }
 
+private actor ReconciliationRequiredThenCompletedCoachingRunner: VoiceCoachingRunning {
+    private var attempts = 0
+
+    func stream(for turn: VoiceTurnRecord) async throws -> AsyncThrowingStream<CoachingStreamEvent, Error> {
+        attempts += 1
+        if attempts == 1 { throw StreamTransportError.reconciliationRequired }
+        return try await CompletedCoachingRunner().stream(for: turn)
+    }
+
+    func attemptCount() -> Int { attempts }
+}
+
+private actor CoachingRetryAuthorizer: CoachingReconciliationLookingUp {
+    private(set) var authorizedRequestIDs: [UUID] = []
+    private(set) var reconciledRequestIDs: [UUID] = []
+
+    func reconcile(requestID: UUID) async throws -> CoachingReconciliationResult {
+        reconciledRequestIDs.append(requestID)
+        return .ambiguous
+    }
+
+    func authorizeRetry(requestID: UUID) async throws {
+        authorizedRequestIDs.append(requestID)
+    }
+}
+
 @Suite(.serialized)
 struct GatewayConversationClientTests {
+    @Test func restoredTextRetryAuthorizesAmbiguousPaidWorkThenReusesTheSameRequest() async throws {
+        let fixture = try await gatewayFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.directory) }
+        let requestID = "00000000-0000-4000-8000-000000000923"
+        let runner = ReconciliationRequiredThenCompletedCoachingRunner()
+        let authorizer = CoachingRetryAuthorizer()
+        let client = GatewayConversationClient(
+            store: fixture.store, deviceID: fixture.deviceID,
+            coaching: runner, reconciliation: authorizer, nowMS: { 2 }
+        )
+
+        let reply = try await client.sendText(
+            conversationID: fixture.conversationID,
+            requestID: requestID,
+            text: "Help me prepare"
+        )
+
+        #expect(reply.terminalResponse?.requestId.uuidString.lowercased() == requestID)
+        #expect(await runner.attemptCount() == 2)
+        #expect(await authorizer.reconciledRequestIDs.map { $0.uuidString.lowercased() } == [requestID])
+        #expect(await authorizer.authorizedRequestIDs.map { $0.uuidString.lowercased() } == [requestID])
+    }
+
     @Test func validTerminalPersistsAssistantMessageAndCompanionsAtomically() async throws {
         let fixture = try await gatewayFixture()
         defer { try? FileManager.default.removeItem(at: fixture.directory) }
