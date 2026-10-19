@@ -96,7 +96,7 @@ final class PrimaryAppShellTests: XCTestCase {
 
         XCTAssertEqual(model.consumeEntryIntent(), .voice)
         XCTAssertNil(model.consumeEntryIntent())
-        XCTAssertNotNil(model.conversationRoute)
+        XCTAssertEqual(model.conversationRoute?.localTitle, "New chat")
     }
 
     func testDismissRestoresDockWithoutChangingPrimaryDestination() {

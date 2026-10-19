@@ -62,7 +62,7 @@ final class PrimaryAppShellModel {
         guard conversationRoute == nil else { return }
         conversationRoute = ConversationRoute(
             id: makeConversationID(),
-            localTitle: "New conversation"
+            localTitle: "New chat"
         )
         pendingEntryIntent = intent
     }
