@@ -7,16 +7,6 @@ final class PrimaryAppShellTests: XCTestCase {
         XCTAssertEqual(PrimaryDestination.conversations.title, "Chats")
     }
 
-    func testPrimaryDestinationSelectionRecordsHorizontalTravelDirection() {
-        let model = PrimaryAppShellModel(selection: .home)
-
-        model.select(.conversations)
-        XCTAssertEqual(model.navigationDirection, .forward)
-
-        model.select(.home)
-        XCTAssertEqual(model.navigationDirection, .backward)
-    }
-
     func testCareerWorkStaysInsideHomeWithoutLeavingThePrimaryPager() {
         let model = PrimaryAppShellModel(selection: .conversations)
 
@@ -27,24 +17,6 @@ final class PrimaryAppShellTests: XCTestCase {
 
         model.select(.conversations)
         XCTAssertFalse(model.showsCareerWork)
-    }
-
-    func testAdjacentPagingCoversEveryDestinationInBothDirections() {
-        let model = PrimaryAppShellModel(selection: .home)
-
-        model.selectAdjacent(offset: 1)
-        XCTAssertEqual(model.selection, .conversations)
-        model.selectAdjacent(offset: 1)
-        XCTAssertEqual(model.selection, .you)
-        model.selectAdjacent(offset: 1)
-        XCTAssertEqual(model.selection, .you)
-
-        model.selectAdjacent(offset: -1)
-        XCTAssertEqual(model.selection, .conversations)
-        model.selectAdjacent(offset: -1)
-        XCTAssertEqual(model.selection, .home)
-        model.selectAdjacent(offset: -1)
-        XCTAssertEqual(model.selection, .home)
     }
 
     func testPrimaryNavigationMatchesTheThreeDestinationProductArchitecture() {
@@ -74,13 +46,12 @@ final class PrimaryAppShellTests: XCTestCase {
         XCTAssertFalse(model.showsConversationDock)
     }
 
-    func testPagesSupportInteractiveHorizontalPagingAndFastNavigation() throws {
+    func testPrimaryDestinationsRemainMountedBehindTheCustomNavigation() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let source = try String(contentsOf: root.appendingPathComponent("TaisaApp/AppShell/PrimaryAppShell.swift"), encoding: .utf8)
-        XCTAssertTrue(source.contains("TabView(selection:"))
-        XCTAssertTrue(source.contains(".tabViewStyle(.page(indexDisplayMode: .never))"))
-        XCTAssertFalse(source.contains("primaryPageFallbackGesture"))
-        XCTAssertTrue(source.contains("model.select(destination)"))
+        XCTAssertTrue(source.contains("ForEach(PrimaryDestination.allCases"))
+        XCTAssertTrue(source.contains(".allowsHitTesting(model.selection == destination)"))
+        XCTAssertTrue(source.contains(".accessibilityHidden(model.selection != destination)"))
         XCTAssertFalse(source.contains("if model.selection == .careerWork"))
         XCTAssertTrue(source.contains("model.showsCareerWork"))
         XCTAssertTrue(source.contains("PageEdgeFade(.navigation)"))

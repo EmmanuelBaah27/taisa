@@ -70,6 +70,12 @@ public struct PrimaryNavigation<Item: Hashable>: View {
                 .accessibilityAddTraits(selection == item ? .isSelected : [])
             }
         }
+        .animation(
+            PrimaryNavigationMotion.transition(reduceMotion: reduceMotion) == .instant
+                ? nil
+                : .snappy(duration: TaisaMotion.fast),
+            value: selection
+        )
     }
 
     @ViewBuilder private var selectedSurface: some View {
