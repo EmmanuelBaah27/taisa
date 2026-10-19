@@ -77,6 +77,46 @@ done
 require_workflow_pattern docs/workflow.md 'Platform.*Product.*Integration.*exclusive|exclusive.*Platform.*Product.*Integration' \
   'exclusive Platform/Product/Integration ownership'
 
+for ds_authority_file in \
+  AGENTS.md \
+  docs/workflow.md \
+  .agents/skills/taisa-workflow/SKILL.md \
+  .agents/skills/taisa-workflow/templates/bounded-goal.md; do
+  require_workflow_pattern "$ds_authority_file" \
+    'every Product build|all Product builds' \
+    'universal Product design-system-first rule'
+  require_workflow_pattern "$ds_authority_file" \
+    'component.*style.*token.*icon|component.*token.*style.*icon' \
+    'complete Product design-system inventory'
+  require_workflow_pattern "$ds_authority_file" \
+    'Central Icons' \
+    'Central Icons adoption rule'
+  require_workflow_pattern "$ds_authority_file" \
+    'tell Baah|inform Baah|present.*Baah' \
+    'Baah notification for a design-system gap'
+  require_workflow_pattern "$ds_authority_file" \
+    'must not proceed|cannot proceed|stop.*before.*(screen|Product).*code|no.*code.*until' \
+    'fail-closed unresolved design-system gap'
+  require_workflow_pattern "$ds_authority_file" \
+    'approval.*Linear|Linear.*approval' \
+    'Linear evidence for approved design-system gaps'
+  require_workflow_pattern "$ds_authority_file" \
+    'already built|code review|pre-merge' \
+    'retroactive pre-merge Product audit'
+  require_workflow_pattern "$ds_authority_file" \
+    'replace every eligible' \
+    'mandatory replacement of eligible feature-local presentation'
+  require_workflow_pattern "$ds_authority_file" \
+    'available DS|available design-system' \
+    'available design-system replacement target'
+  require_workflow_pattern "$ds_authority_file" \
+    'unavailable.*Baah|Baah.*unavailable' \
+    'Baah disclosure of unavailable design-system items'
+  require_workflow_pattern "$ds_authority_file" \
+    'before.*(Ship|merge) approval|(Ship|merge) approval.*before' \
+    'pre-approval design-system audit gate'
+done
+
 for invariant in \
   'active Goal.*solely.*wait|no active Goal.*wait' \
   'QA_READY' \
@@ -98,6 +138,13 @@ for invariant in \
   'Work slices' \
   'Branch/worktree' \
   'Canonical preview baseline' \
+  'DS inventory and mapping evidence' \
+  'Approved DS gaps' \
+  'Central Icons mapping' \
+  'Approved system-owned exceptions' \
+  'No unresolved DS gap' \
+  'Pre-merge DS audit evidence' \
+  'Remaining unavailable DS items' \
   'Acceptance criteria' \
   'Verification matrix' \
   'Permitted mutations' \
@@ -199,6 +246,24 @@ rg -q 'e95356d8-17f7-4700-bdfe-222782bea546' \
   .agents/skills/taisa-workflow/SKILL.md || fail "Taisa Linear team ID is missing"
 rg -qi 'every actionable task.*Linear issue|Linear issue.*every actionable task' \
   .agents/skills/taisa-workflow/SKILL.md || fail "universal Linear issue intake is missing"
+
+for design_system_authority in \
+  AGENTS.md \
+  docs/workflow.md \
+  .agents/skills/taisa-workflow/SKILL.md \
+  docs/design-system.md; do
+  rg -qi 'every authored visual style.*must use.*existing semantic' \
+    "$design_system_authority" ||
+    fail "$design_system_authority is missing the existing semantic token/component invariant"
+  rg -qi 'token or component|token/component' "$design_system_authority" ||
+    fail "$design_system_authority does not require a design-system token or component"
+  rg -qi 'missing (semantic )?role|no suitable role|required semantic role|DS gap' \
+    "$design_system_authority" ||
+    fail "$design_system_authority does not identify missing visual roles as design-system gaps"
+  rg -qi 'before.*(screen|Product)|DS gap before Product consumption' \
+    "$design_system_authority" ||
+    fail "$design_system_authority is missing the gap-before-Product-consumption rule"
+done
 
 for authority_file in docs/workflow.md .agents/skills/taisa-workflow/SKILL.md; do
   rg -qi 'Captured.*Watching.*Candidate.*Planned.*Shipped.*Dropped' "$authority_file" ||

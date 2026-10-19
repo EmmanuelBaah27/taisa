@@ -140,6 +140,24 @@ approved Visual Companion result. Record layout intent, key states, components/t
 interactions, accessibility, and device-QA evidence in Linear. Material differences return
 to Scope.
 
+Every Product build is design-system-first. Before Product Scope or Plan approval, inventory
+every visible component, interaction style, token, and icon and map each to an existing shared
+component, semantic style/token, and Central Icons asset. If anything required is unavailable,
+stop before screen or Product code, tell Baah which surfaces are affected, show why existing
+contracts do not satisfy them, and recommend exactly one reuse, extension, addition, or narrow
+system-owned exception. The build must not proceed until Baah approves that exact treatment and
+the approval is recorded in Linear. Never silently create a feature-local substitute, parallel
+API, raw style, invented icon mapping, SF Symbol substitution, design-system extension, or broad
+exception.
+
+Apply the same gate to Product work already built before this rule or first identified during
+code review. Before merge or Ship approval, audit the complete changed Product surface and
+replace every eligible feature-local component, style, token, and icon with the available DS
+component/style/token or Central icon. Tell Baah every remaining unavailable item, affected
+surface, and exactly one recommended DS addition or narrow system-owned exception. Do not request
+or infer approval while an available adoption remains undone or an unavailable item has not been
+shown to Baah and recorded in Linear.
+
 ### Plan
 
 Store tasks, tests, interfaces, dependencies, integration, verification, and Product DS
@@ -153,11 +171,23 @@ Platform and independent
 Product foundation may run in parallel; Integration waits for both sides. Use TDD and record
 exact commits/checks at material evidence transitions.
 
+For Product work, the Goal entry evidence must include the approved component/style/token/icon
+inventory, Central Icons mapping, approved design-system gaps, and narrowly approved
+system-owned exceptions, plus an explicit statement that no unresolved design-system gap
+remains. Implement and test approved shared design-system contracts before screen consumers.
+A gap discovered during Build terminates the run as `MATERIAL_REAPPROVAL_REQUIRED`; do not
+continue by implementing the missing presentation in feature code.
+
 ### Review + QA
 
 Use requesting-code-review and verification-before-completion. Resolve blockers, publish the
 exact verified mobile revision to canonical preview, record QA, prepare a PR to `main`, and
 stop at Ship.
+
+For Product work, Review must contain the pre-merge DS audit evidence, every replacement made
+with available DS contracts and Central Icons, and every remaining unavailable item or approved
+exception. Missing evidence or an available-but-unused DS contract is blocking and prevents a
+Ship approval request.
 
 Before initial QA, require mapped acceptance evidence, applicable narrow/full verification,
 resolved blocking review, complete required slices, exact canonical preview, confirmed
@@ -241,6 +271,11 @@ served or installed. Repeat for every QA revision.
   keyboard use, and touch targets.
 - Keep business logic outside presentation and add shared DS only when reuse is proven.
 - Product DS order: shared typed presentation first, screens/data/navigation second.
+- Every authored visual style must use an existing semantic DS token or component. Raw or
+  arbitrary colors, typography, spacing, radii, shadows, materials, motion values, and one-off
+  style variants are prohibited in Product UI. A missing semantic role is a DS gap: extend,
+  document, and verify the DS before a screen consumes it. Platform defaults and runtime values
+  derived from accessibility, safe areas, geometry, or state do not create new authored tokens.
 - Backward-compatible DS variants are autonomous; global behavior and breaking changes need
   Baah confirmation with affected usages.
 - Phone-authoritative personal data; deliberate bounded AI requests; provenance; explicit

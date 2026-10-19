@@ -11,6 +11,13 @@ Fill every field before creating a Goal. Replace angle-bracket guidance with exa
 - Work slices: `<each task owned by Platform | Product | Integration>`
 - Branch/worktree: `<branch and absolute path>`
 - Canonical preview baseline: `<SHA or not-device-facing>`
+- DS inventory and mapping evidence: `<Linear URL covering every Product component, style, token, and icon, or not-Product with reason>`
+- Approved DS gaps: `<Linear approval URLs for each reuse, extension, addition, or none>`
+- Central Icons mapping: `<Linear URL mapping every Product icon, or not-Product with reason>`
+- Approved system-owned exceptions: `<narrow exception plus Linear approval URL, or none>`
+- No unresolved DS gap: `<confirmed with evidence; Product Build cannot start otherwise>`
+- Pre-merge DS audit evidence: `<complete changed Product surface, available DS replacements, and Linear URL, or not-Product with reason>`
+- Remaining unavailable DS items: `<each item, affected surface, recommendation, and Baah approval URL, or none>`
 - Acceptance criteria: `<Linear checklist>`
 - Verification matrix: `<exact commands and checks>`
 - Permitted mutations: `<bounded list>`
@@ -29,6 +36,15 @@ above without asking Baah to say “continue.”
 
 - One primary issue, one conductor, and one active Goal run.
 - Every task belongs exclusively to Platform, Product, or Integration when cross-stack.
+- Every Product build is design-system-first. Its approved component, interaction style, token,
+  and icon inventory must reuse shared contracts and Central Icons. If an item is unavailable,
+  stop before screen or Product code, tell Baah, and do not proceed until the exact treatment is
+  approved and recorded in Linear. Never create a silent feature-local substitute or exception.
+- Apply the same rule to Product work already built before the workflow change or discovered in
+  code review. Before merge or Ship approval, replace every eligible feature-local component,
+  style, token, and icon with the available DS contract or Central icon. Tell Baah every remaining
+  unavailable item and do not request approval until the audit, replacements, and gap evidence are
+  recorded in Linear.
 - Update Linear only for approval, Build start, blocker change, stable candidate, preview/QA,
   defect/replacement, Ship/merge, and Closeout evidence.
 - Every repair attempt must produce new evidence, a changed hypothesis or implementation,

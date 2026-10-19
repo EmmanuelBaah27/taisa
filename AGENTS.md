@@ -67,6 +67,24 @@ product turns it into evidence-grounded coaching, wins, challenges, actions, and
 moments. The shipping direction is a SwiftUI iPhone/iPad product; React Native remains a
 legacy migration source until its required behavior and unique work are accounted for.
 
+Every Product build is design-system-first. Before Product Scope or Plan approval, inventory
+each visible component, interaction style, token, and icon, then map it to an existing shared
+component, semantic style/token, and Central Icons asset. If any required item is unavailable,
+stop before screen or Product code, tell Baah which surfaces are affected and recommend one
+reuse, extension, addition, or narrow system-owned exception. The build must not proceed until
+Baah approves that exact treatment and the approval is recorded in Linear. Never silently build
+a feature-local substitute, parallel component API, raw style, invented icon mapping, SF Symbol
+substitution, or design-system extension. Implement approved design-system contracts and tests
+before their screen consumers.
+
+The same gate applies to Product work already built before this rule or first discovered during
+code review. Before merge or Ship approval, audit the complete changed Product surface and
+replace every eligible feature-local component, style, token, and icon with the available DS
+component/style/token or Central icon. Tell Baah every remaining unavailable item, affected
+surface, and recommended DS addition or narrow system-owned exception. Never request or infer
+approval while an available adoption remains undone or an unavailable item has not been shown
+to Baah.
+
 - Preserve SwiftUI and the iOS/iPadOS 26+ deployment target.
 - Keep readable personal data encrypted and device-authoritative.
 - Preserve the current v1 identity boundary unless an approved Scope changes it: the device
@@ -78,6 +96,10 @@ legacy migration source until its required behavior and unique work are accounte
   root workspaces are `backend` and `shared` only.
 - New or rebuilt legacy UI uses NativeWind and the documented design system; do not add
   `StyleSheet.create()` to new or rebuilt components.
+- Every authored visual style must use an existing semantic design-system token or component.
+  Do not introduce raw or arbitrary colors, typography, spacing, radii, shadows, materials,
+  motion values, or one-off style variants in Product UI. If the required semantic role does
+  not exist, extend, document, and verify the design system before consuming it in a screen.
 - Do not confuse the legacy one-shot journal analyser with the unimplemented four-mode Senior
   Self experience: Mirror, Nudge, Challenge, and Direct.
 
