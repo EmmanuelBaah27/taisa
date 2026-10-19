@@ -140,6 +140,16 @@ approved Visual Companion result. Record layout intent, key states, components/t
 interactions, accessibility, and device-QA evidence in Linear. Material differences return
 to Scope.
 
+Every Product build is design-system-first. Before Product Scope or Plan approval, inventory
+every visible component, interaction style, token, and icon and map each to an existing shared
+component, semantic style/token, and Central Icons asset. If anything required is unavailable,
+stop before screen or Product code, tell Baah which surfaces are affected, show why existing
+contracts do not satisfy them, and recommend exactly one reuse, extension, addition, or narrow
+system-owned exception. The build must not proceed until Baah approves that exact treatment and
+the approval is recorded in Linear. Never silently create a feature-local substitute, parallel
+API, raw style, invented icon mapping, SF Symbol substitution, design-system extension, or broad
+exception.
+
 ### Plan
 
 Store tasks, tests, interfaces, dependencies, integration, verification, and Product DS
@@ -152,6 +162,13 @@ After kickoff or separate Plan approval, set In Progress and execute within one 
 Platform and independent
 Product foundation may run in parallel; Integration waits for both sides. Use TDD and record
 exact commits/checks at material evidence transitions.
+
+For Product work, the Goal entry evidence must include the approved component/style/token/icon
+inventory, Central Icons mapping, approved design-system gaps, and narrowly approved
+system-owned exceptions, plus an explicit statement that no unresolved design-system gap
+remains. Implement and test approved shared design-system contracts before screen consumers.
+A gap discovered during Build terminates the run as `MATERIAL_REAPPROVAL_REQUIRED`; do not
+continue by implementing the missing presentation in feature code.
 
 ### Review + QA
 

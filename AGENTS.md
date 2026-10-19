@@ -67,6 +67,16 @@ product turns it into evidence-grounded coaching, wins, challenges, actions, and
 moments. The shipping direction is a SwiftUI iPhone/iPad product; React Native remains a
 legacy migration source until its required behavior and unique work are accounted for.
 
+Every Product build is design-system-first. Before Product Scope or Plan approval, inventory
+each visible component, interaction style, token, and icon, then map it to an existing shared
+component, semantic style/token, and Central Icons asset. If any required item is unavailable,
+stop before screen or Product code, tell Baah which surfaces are affected and recommend one
+reuse, extension, addition, or narrow system-owned exception. The build must not proceed until
+Baah approves that exact treatment and the approval is recorded in Linear. Never silently build
+a feature-local substitute, parallel component API, raw style, invented icon mapping, SF Symbol
+substitution, or design-system extension. Implement approved design-system contracts and tests
+before their screen consumers.
+
 - Preserve SwiftUI and the iOS/iPadOS 26+ deployment target.
 - Keep readable personal data encrypted and device-authoritative.
 - Preserve the current v1 identity boundary unless an approved Scope changes it: the device

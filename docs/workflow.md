@@ -1,7 +1,7 @@
 # Taisa Build Workflow
 
 **Status:** Active
-**Last updated:** 2026-10-09
+**Last updated:** 2026-10-19
 
 How Taisa work moves from intake to shipped. Linear is the sole live authority.
 Linear project `Taisa`
@@ -201,6 +201,16 @@ Visual Companion result. Record layout intent, key states, token/component mappi
 interaction evidence, accessibility, and device-QA expectations in Linear. Material
 differences return to Scope.
 
+Every Product build is design-system-first. Before Product Scope or Plan approval, inventory
+every visible component, interaction style, token, and icon and map each one to an existing
+shared component, semantic style/token, and Central Icons asset. An unavailable item is a
+blocking design-system gap: stop before screen or Product code and present Baah with the
+affected surfaces, evidence that existing contracts do not satisfy them, and exactly one
+recommended reuse, extension, addition, or narrow system-owned exception. The build must not
+proceed until Baah approves that exact treatment and the approval is recorded in Linear.
+Silently creating a feature-local substitute, parallel API, raw style, invented icon mapping,
+SF Symbol substitution, design-system extension, or broad exception is prohibited.
+
 ### Plan
 
 Plan lives in the Linear issue or attached Linear document. It names tasks, tests,
@@ -219,9 +229,15 @@ practical. Use subagents only when Baah explicitly authorizes them and tasks are
 
 Product DS order is strict:
 
-1. DS layer (`mobile/src/components/ui/` for React Native; native design-system package for
-   SwiftUI), typed and documented, no business logic.
-2. Screen layer imports shared primitives and owns navigation/data/state logic.
+1. Record the approved component/style/token/icon inventory, Central Icons mapping, and any
+   narrowly approved system-owned exceptions in Linear.
+2. DS layer (`mobile/src/components/ui/` for React Native; native design-system package for
+   SwiftUI), typed, documented, tested, and free of business logic.
+3. Screen layer imports shared primitives and owns navigation/data/state logic.
+
+A Product Build Goal cannot start with an unresolved design-system gap or missing mapping
+evidence. A newly discovered gap completes the active Goal as `MATERIAL_REAPPROVAL_REQUIRED`;
+it never authorizes an in-place screen implementation.
 
 For cross-track work, Platform and independent Product foundation may run in parallel.
 Integration begins only when both named sides are ready.

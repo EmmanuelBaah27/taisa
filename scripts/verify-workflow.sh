@@ -77,6 +77,30 @@ done
 require_workflow_pattern docs/workflow.md 'Platform.*Product.*Integration.*exclusive|exclusive.*Platform.*Product.*Integration' \
   'exclusive Platform/Product/Integration ownership'
 
+for ds_authority_file in \
+  AGENTS.md \
+  docs/workflow.md \
+  .agents/skills/taisa-workflow/SKILL.md; do
+  require_workflow_pattern "$ds_authority_file" \
+    'every Product build|all Product builds' \
+    'universal Product design-system-first rule'
+  require_workflow_pattern "$ds_authority_file" \
+    'component.*style.*token.*icon|component.*token.*style.*icon' \
+    'complete Product design-system inventory'
+  require_workflow_pattern "$ds_authority_file" \
+    'Central Icons' \
+    'Central Icons adoption rule'
+  require_workflow_pattern "$ds_authority_file" \
+    'tell Baah|inform Baah|present.*Baah' \
+    'Baah notification for a design-system gap'
+  require_workflow_pattern "$ds_authority_file" \
+    'must not proceed|cannot proceed|stop.*before.*(screen|Product).*code|no.*code.*until' \
+    'fail-closed unresolved design-system gap'
+  require_workflow_pattern "$ds_authority_file" \
+    'approval.*Linear|Linear.*approval' \
+    'Linear evidence for approved design-system gaps'
+done
+
 for invariant in \
   'active Goal.*solely.*wait|no active Goal.*wait' \
   'QA_READY' \
@@ -98,6 +122,11 @@ for invariant in \
   'Work slices' \
   'Branch/worktree' \
   'Canonical preview baseline' \
+  'DS inventory and mapping evidence' \
+  'Approved DS gaps' \
+  'Central Icons mapping' \
+  'Approved system-owned exceptions' \
+  'No unresolved DS gap' \
   'Acceptance criteria' \
   'Verification matrix' \
   'Permitted mutations' \
