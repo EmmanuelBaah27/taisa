@@ -86,6 +86,7 @@ struct ConversationTimeline: View {
     let acceptProposal: (String) -> Void
     let dismissProposal: (String) -> Void
     @State private var isAwayFromLatest = false
+    @State private var hasPositionedInitialMessages = false
     @State private var expandedUserMessages: Set<String> = []
 
     init(
@@ -180,6 +181,9 @@ struct ConversationTimeline: View {
                 }
                 .padding(.top, ConversationTimelineLayout.firstMessageTopSpacing)
                 .padding(.bottom, TaisaSpacing.standard.rawValue)
+                Color.clear
+                    .frame(height: 1)
+                    .id("conversation.timeline-bottom")
             }
             .scrollBounceBehavior(.always, axes: .vertical)
             .defaultScrollAnchor(.bottom, for: .initialOffset)
@@ -216,8 +220,17 @@ struct ConversationTimeline: View {
                     .accessibilityIdentifier("conversation.jump-to-latest")
                 }
             }
-            .onChange(of: messages.last?.id) { _, _ in
+            .task(id: messages.last?.id) {
+                guard messages.last != nil else { return }
+                if !hasPositionedInitialMessages {
+                    await Task.yield()
+                    isAwayFromLatest = false
+                    scrollToLatest(using: proxy, animated: false)
+                    hasPositionedInitialMessages = true
+                    return
+                }
                 guard !isAwayFromLatest else { return }
+                await Task.yield()
                 scrollToLatest(using: proxy, animated: ConversationTimelineMotion.animatesNewMessage(reduceMotion: reduceMotion))
             }
             .onChange(of: streamingResponse) { _, _ in
@@ -233,20 +246,12 @@ struct ConversationTimeline: View {
     }
 
     private func scrollToLatest(using proxy: ScrollViewProxy, animated: Bool) {
-        let anchorID: String? = if !streamingResponse.isEmpty {
-            "conversation.streaming-response"
-        } else if isThinking {
-            "conversation.thinking"
-        } else {
-            messages.last?.id
-        }
-        guard let anchorID else { return }
         if animated {
             withAnimation(.smooth(duration: TaisaMotion.settle)) {
-                proxy.scrollTo(anchorID, anchor: .bottom)
+                proxy.scrollTo("conversation.timeline-bottom", anchor: .bottom)
             }
         } else {
-            proxy.scrollTo(anchorID, anchor: .bottom)
+            proxy.scrollTo("conversation.timeline-bottom", anchor: .bottom)
         }
     }
 
