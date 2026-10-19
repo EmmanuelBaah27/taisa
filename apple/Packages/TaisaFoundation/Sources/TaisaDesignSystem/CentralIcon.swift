@@ -13,7 +13,7 @@ public enum CentralIconName: Sendable, Equatable {
     case play
     case chevronDown
     case exclamationCircle
-    case infoSimple
+    case circleInfo
     case thumbsUp
     case thumbsDown
 }
@@ -59,16 +59,16 @@ public struct CentralIcon: View {
         case .play: play
         case .chevronDown: chevronDown
         case .exclamationCircle: exclamationCircle
-        case .infoSimple: infoSimple
+        case .circleInfo: circleInfo
         case .thumbsUp: thumbsUp
         case .thumbsDown: thumbsDown
         }
     }
 
     private var filledPath: Path? {
-        guard name == .infoSimple else { return nil }
+        guard name == .circleInfo else { return nil }
         var path = Path()
-        path.addEllipse(in: CGRect(x: 10.5, y: 4, width: 3, height: 3))
+        path.addEllipse(in: CGRect(x: 11.375, y: 7.375, width: 1.25, height: 1.25))
         return path
     }
 
@@ -162,16 +162,12 @@ public struct CentralIcon: View {
         var path = Path(); path.addEllipse(in: .init(x: 3, y: 3, width: 18, height: 18)); path.move(to: .init(x: 12, y: 7)); path.addLine(to: .init(x: 12, y: 13)); path.move(to: .init(x: 12, y: 17)); path.addLine(to: .init(x: 12, y: 17.1)); return path
     }
 
-    private var infoSimple: Path {
+    private var circleInfo: Path {
         var path = Path()
-        path.move(to: CGPoint(x: 10, y: 10.5))
-        path.addLine(to: CGPoint(x: 11, y: 10.5))
-        path.addCurve(to: CGPoint(x: 12, y: 11.5), control1: CGPoint(x: 11.55, y: 10.5), control2: CGPoint(x: 12, y: 10.95))
-        path.addLine(to: CGPoint(x: 12, y: 19))
-        path.move(to: CGPoint(x: 12, y: 19))
-        path.addLine(to: CGPoint(x: 10, y: 19))
-        path.move(to: CGPoint(x: 12, y: 19))
-        path.addLine(to: CGPoint(x: 14, y: 19))
+        path.move(to: CGPoint(x: 10.75, y: 11))
+        path.addLine(to: CGPoint(x: 12, y: 11))
+        path.addLine(to: CGPoint(x: 12, y: 16.25))
+        path.addEllipse(in: CGRect(x: 2.75, y: 2.75, width: 18.5, height: 18.5))
         return path
     }
 

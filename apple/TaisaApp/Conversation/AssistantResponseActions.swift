@@ -32,7 +32,7 @@ struct AssistantResponseActions: View {
                 Button {
                     showsExplanation = true
                 } label: {
-                    CentralIcon(.infoSimple)
+                    CentralIcon(.circleInfo)
                         .frame(
                             width: AssistantResponseActionsLayout.iconSize,
                             height: AssistantResponseActionsLayout.iconSize

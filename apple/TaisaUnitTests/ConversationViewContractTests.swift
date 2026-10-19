@@ -134,7 +134,8 @@ final class ConversationViewContractTests: XCTestCase {
             encoding: .utf8
         )
 
-        XCTAssertTrue(source.contains("CentralIcon(.infoSimple)"))
+        XCTAssertTrue(source.contains("CentralIcon(.circleInfo)"))
+        XCTAssertFalse(source.contains("CentralIcon(.infoSimple)"))
         XCTAssertTrue(source.contains("icon: .thumbsUp"))
         XCTAssertTrue(source.contains("icon: .thumbsDown"))
         XCTAssertTrue(source.contains("CentralIcon(icon)"))
