@@ -80,7 +80,8 @@ require_workflow_pattern docs/workflow.md 'Platform.*Product.*Integration.*exclu
 for ds_authority_file in \
   AGENTS.md \
   docs/workflow.md \
-  .agents/skills/taisa-workflow/SKILL.md; do
+  .agents/skills/taisa-workflow/SKILL.md \
+  .agents/skills/taisa-workflow/templates/bounded-goal.md; do
   require_workflow_pattern "$ds_authority_file" \
     'every Product build|all Product builds' \
     'universal Product design-system-first rule'
