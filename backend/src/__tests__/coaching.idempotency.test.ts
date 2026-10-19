@@ -86,3 +86,28 @@ test('reconciliation is owner-bound and explicit retry authorization resets only
   expect(() => store.authorizeRetry(requestId, ownerId)).toThrow('IDEMPOTENCY_STATE_CONFLICT');
   store.close();
 });
+test('explicit retry authorization resets a retryable terminal failure only', () => {
+  const store = createStore();
+  store.begin({ key, requestId, requestHash: 'hash-1', ownerId });
+  store.fail(key, 'COACHING_UNAVAILABLE', true);
+
+  expect(store.authorizeRetry(requestId, ownerId)).toEqual({ status: 'authorized', requestId });
+  expect(store.begin({ key, requestId, requestHash: 'hash-1', ownerId })).toEqual({ status: 'start' });
+
+  store.fail(key, 'INVALID_REQUEST', false);
+  expect(() => store.authorizeRetry(requestId, ownerId)).toThrow('IDEMPOTENCY_STATE_CONFLICT');
+  store.close();
+});
+
+test('explicit retry authorization upgrades one legacy request hash for the same owner and request', () => {
+  const store = createStore();
+  store.begin({ key, requestId, requestHash: 'legacy-full-payload-hash', ownerId });
+  store.markProviderStarted(key);
+
+  expect(store.authorizeRetry(requestId, ownerId)).toEqual({ status: 'authorized', requestId });
+  expect(store.begin({ key, requestId, requestHash: 'stable-submission-hash', ownerId }))
+    .toEqual({ status: 'start' });
+  expect(() => store.begin({ key, requestId, requestHash: 'different-content-hash', ownerId }))
+    .toThrow('IDEMPOTENCY_KEY_REUSED');
+  store.close();
+});
