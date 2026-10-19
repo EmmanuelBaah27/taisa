@@ -221,8 +221,13 @@ public struct AssistantProposalRouter: Sendable {
     }
 
     private func date(_ value: String) throws -> Date {
+        let fractionalFormatter = ISO8601DateFormatter()
+        fractionalFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let result = fractionalFormatter.date(from: value) {
+            return result
+        }
         let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        formatter.formatOptions = [.withInternetDateTime]
         guard let result = formatter.date(from: value) else {
             throw AssistantProposalRoutingError.malformedPayload
         }

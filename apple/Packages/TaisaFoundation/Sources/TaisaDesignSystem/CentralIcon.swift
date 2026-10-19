@@ -16,6 +16,8 @@ public enum CentralIconName: Sendable, Equatable {
     case circleInfo
     case thumbsUp
     case thumbsDown
+    case copy
+    case edit
 }
 
 /// Native rendering of the Central Icons paths used by Taisa's primary navigation.
@@ -62,6 +64,8 @@ public struct CentralIcon: View {
         case .circleInfo: circleInfo
         case .thumbsUp: thumbsUp
         case .thumbsDown: thumbsDown
+        case .copy: copy
+        case .edit: edit
         }
     }
 
@@ -168,6 +172,47 @@ public struct CentralIcon: View {
         path.addLine(to: CGPoint(x: 12, y: 11))
         path.addLine(to: CGPoint(x: 12, y: 16.25))
         path.addEllipse(in: CGRect(x: 2.75, y: 2.75, width: 18.5, height: 18.5))
+        return path
+    }
+
+    private var copy: Path {
+        var path = Path()
+        path.move(to: CGPoint(x: 15.25, y: 8.75))
+        path.addLine(to: CGPoint(x: 15.25, y: 4))
+        path.addCurve(to: CGPoint(x: 14, y: 2.75), control1: CGPoint(x: 15.25, y: 3.31), control2: CGPoint(x: 14.69, y: 2.75))
+        path.addLine(to: CGPoint(x: 4, y: 2.75))
+        path.addCurve(to: CGPoint(x: 2.75, y: 4), control1: CGPoint(x: 3.31, y: 2.75), control2: CGPoint(x: 2.75, y: 3.31))
+        path.addLine(to: CGPoint(x: 2.75, y: 14))
+        path.addCurve(to: CGPoint(x: 4, y: 15.25), control1: CGPoint(x: 2.75, y: 14.69), control2: CGPoint(x: 3.31, y: 15.25))
+        path.addLine(to: CGPoint(x: 8.75, y: 15.25))
+        path.move(to: CGPoint(x: 10, y: 8.75))
+        path.addLine(to: CGPoint(x: 20, y: 8.75))
+        path.addCurve(to: CGPoint(x: 21.25, y: 10), control1: CGPoint(x: 20.69, y: 8.75), control2: CGPoint(x: 21.25, y: 9.31))
+        path.addLine(to: CGPoint(x: 21.25, y: 20))
+        path.addCurve(to: CGPoint(x: 20, y: 21.25), control1: CGPoint(x: 21.25, y: 20.69), control2: CGPoint(x: 20.69, y: 21.25))
+        path.addLine(to: CGPoint(x: 10, y: 21.25))
+        path.addCurve(to: CGPoint(x: 8.75, y: 20), control1: CGPoint(x: 9.31, y: 21.25), control2: CGPoint(x: 8.75, y: 20.69))
+        path.addLine(to: CGPoint(x: 8.75, y: 10))
+        path.addCurve(to: CGPoint(x: 10, y: 8.75), control1: CGPoint(x: 8.75, y: 9.31), control2: CGPoint(x: 9.31, y: 8.75))
+        path.closeSubpath()
+        return path
+    }
+
+    private var edit: Path {
+        var path = Path()
+        path.move(to: CGPoint(x: 18.91, y: 3.41))
+        path.addLine(to: CGPoint(x: 20.59, y: 5.09))
+        path.addCurve(to: CGPoint(x: 20.59, y: 7.91), control1: CGPoint(x: 21.37, y: 5.87), control2: CGPoint(x: 21.37, y: 7.13))
+        path.addLine(to: CGPoint(x: 7.84, y: 20.66))
+        path.addCurve(to: CGPoint(x: 6.42, y: 21.25), control1: CGPoint(x: 7.46, y: 21.04), control2: CGPoint(x: 6.95, y: 21.25))
+        path.addLine(to: CGPoint(x: 2.75, y: 21.25))
+        path.addLine(to: CGPoint(x: 2.75, y: 17.58))
+        path.addCurve(to: CGPoint(x: 3.34, y: 16.16), control1: CGPoint(x: 2.75, y: 17.05), control2: CGPoint(x: 2.96, y: 16.54))
+        path.addLine(to: CGPoint(x: 16.09, y: 3.41))
+        path.addCurve(to: CGPoint(x: 18.91, y: 3.41), control1: CGPoint(x: 16.87, y: 2.63), control2: CGPoint(x: 18.13, y: 2.63))
+        path.closeSubpath()
+        path.move(to: CGPoint(x: 13.25, y: 6.25))
+        path.addLine(to: CGPoint(x: 17.75, y: 10.75))
         return path
     }
 

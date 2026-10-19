@@ -56,6 +56,7 @@ struct ConversationComponentTests {
         #expect(CentralIconName.voiceMid != .chatBubbles)
         #expect(CentralIconName.circleInfo != .thumbsUp)
         #expect(CentralIconName.thumbsUp != .thumbsDown)
+        #expect(CentralIconName.copy != .edit)
     }
 
     @MainActor @Test func figmaEdgeFadesUseMeasuredStops() {

@@ -90,6 +90,24 @@ struct AssistantProposalRouterTests {
             resolvedAtMS: 22
         ) == stale)
     }
+
+    @Test func acceptsRFC3339TimestampWithoutFractionalSeconds() async throws {
+        let fixture = try await proposalFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.directory) }
+        let router = AssistantProposalRouter(store: fixture.store)
+
+        let accepted = try await accept(
+            #"{"kind":"action","title":"Send follow-up","description":null,"priority":"medium","dueAt":"2026-10-15T00:00:00Z","goalId":null}"#,
+            ordinal: 12,
+            fixture: fixture,
+            router: router,
+            deviceID: UUID(uuidString: "00000000-0000-4000-8000-000000000999")!
+        )
+
+        #expect(accepted.state == .accepted)
+        let targetID = try #require(accepted.targetID)
+        #expect(try await ActionRepository(store: fixture.store).get(id: targetID)?.dueAtMS == 1_792_022_400_000)
+    }
 }
 
 private func accept(

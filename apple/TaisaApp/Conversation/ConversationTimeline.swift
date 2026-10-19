@@ -268,9 +268,23 @@ struct ConversationTimeline: View {
     }
 
     @ViewBuilder private func messageActions(for message: MessageRecord) -> some View {
-        Button("Copy", systemImage: "doc.on.doc") { UIPasteboard.general.string = message.body }
+        Button { UIPasteboard.general.string = message.body } label: {
+            Label {
+                Text("Copy")
+            } icon: {
+                CentralIcon(.copy)
+                    .frame(width: 16, height: 16)
+            }
+        }
         if message.role == "user" {
-            Button("Edit", systemImage: "pencil") { correct(message) }
+            Button { correct(message) } label: {
+                Label {
+                    Text("Edit")
+                } icon: {
+                    CentralIcon(.edit)
+                        .frame(width: 16, height: 16)
+                }
+            }
                 .accessibilityIdentifier("conversation.correct-transcript")
         }
     }
