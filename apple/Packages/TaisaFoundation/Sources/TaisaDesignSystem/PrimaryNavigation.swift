@@ -1,13 +1,13 @@
 import SwiftUI
 
 public enum PrimaryNavigationTransition: Sendable, Equatable {
-    case spatial
+    case interactiveSpatial
     case instant
 }
 
 public enum PrimaryNavigationMotion {
     public static func transition(reduceMotion: Bool) -> PrimaryNavigationTransition {
-        reduceMotion ? .instant : .spatial
+        reduceMotion ? .instant : .interactiveSpatial
     }
 }
 
@@ -70,12 +70,6 @@ public struct PrimaryNavigation<Item: Hashable>: View {
                 .accessibilityAddTraits(selection == item ? .isSelected : [])
             }
         }
-        .animation(
-            PrimaryNavigationMotion.transition(reduceMotion: reduceMotion) == .instant
-                ? nil
-                : .snappy(duration: TaisaMotion.fast),
-            value: selection
-        )
     }
 
     @ViewBuilder private var selectedSurface: some View {
@@ -89,6 +83,12 @@ public struct PrimaryNavigation<Item: Hashable>: View {
 
     private func select(_ item: Item) {
         guard selection != item else { return }
-        selection = item
+        if PrimaryNavigationMotion.transition(reduceMotion: reduceMotion) == .instant {
+            selection = item
+        } else {
+            withAnimation(.snappy(duration: TaisaMotion.fast)) {
+                selection = item
+            }
+        }
     }
 }
