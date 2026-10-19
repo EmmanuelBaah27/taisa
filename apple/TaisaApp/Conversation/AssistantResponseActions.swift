@@ -32,8 +32,11 @@ struct AssistantResponseActions: View {
                 Button {
                     showsExplanation = true
                 } label: {
-                    Image(systemName: "info.circle")
-                        .font(.system(size: AssistantResponseActionsLayout.iconSize))
+                    CentralIcon(.infoSimple)
+                        .frame(
+                            width: AssistantResponseActionsLayout.iconSize,
+                            height: AssistantResponseActionsLayout.iconSize
+                        )
                         .frame(width: AssistantResponseActionsLayout.hitWidth)
                         .frame(minHeight: TaisaControlMetric.headerActionHeight)
                 }
@@ -42,8 +45,8 @@ struct AssistantResponseActions: View {
                 .accessibilityLabel("About this response")
                 .accessibilityIdentifier("conversation.response-info")
 
-                feedbackButton(.helpful, systemImage: "hand.thumbsup", label: "Helpful")
-                feedbackButton(.notHelpful, systemImage: "hand.thumbsdown", label: "Not helpful")
+                feedbackButton(.helpful, icon: .thumbsUp, label: "Helpful")
+                feedbackButton(.notHelpful, icon: .thumbsDown, label: "Not helpful")
 
                 Spacer()
             }
@@ -122,14 +125,17 @@ struct AssistantResponseActions: View {
     }
 
     private func feedbackButton(
-        _ value: ResponseFeedbackDirection, systemImage: String, label: String
+        _ value: ResponseFeedbackDirection, icon: CentralIconName, label: String
     ) -> some View {
         Button {
             persist(feedbackEditor.begin(value))
             showsFeedback = true
         } label: {
-            Image(systemName: feedbackEditor.direction == value ? "\(systemImage).fill" : systemImage)
-                .font(.system(size: AssistantResponseActionsLayout.iconSize))
+            CentralIcon(icon)
+                .frame(
+                    width: AssistantResponseActionsLayout.iconSize,
+                    height: AssistantResponseActionsLayout.iconSize
+                )
                 .frame(width: AssistantResponseActionsLayout.hitWidth)
                 .frame(minHeight: TaisaControlMetric.headerActionHeight)
         }

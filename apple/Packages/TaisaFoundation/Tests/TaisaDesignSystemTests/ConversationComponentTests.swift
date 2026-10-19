@@ -54,6 +54,8 @@ struct ConversationComponentTests {
     @Test func centralIconCatalogCoversChatsPageControls() {
         #expect(CentralIconName.magnifyingGlass != .voiceMid)
         #expect(CentralIconName.voiceMid != .chatBubbles)
+        #expect(CentralIconName.infoSimple != .thumbsUp)
+        #expect(CentralIconName.thumbsUp != .thumbsDown)
     }
 
     @MainActor @Test func figmaEdgeFadesUseMeasuredStops() {
