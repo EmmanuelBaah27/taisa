@@ -17,10 +17,10 @@ final class ConversationPreviewTests: XCTestCase {
         notHelpful.tap()
 
         let factors = app.descendants(matching: .any)["conversation.feedback-factors"]
-        let done = app.buttons["conversation.feedback.done"]
+        let close = app.buttons["conversation.feedback.close"]
         XCTAssertTrue(factors.waitForExistence(timeout: 5))
-        XCTAssertTrue(done.waitForExistence(timeout: 5))
-        done.tap()
+        XCTAssertTrue(close.waitForExistence(timeout: 5))
+        close.tap()
 
         XCTAssertFalse(factors.waitForExistence(timeout: 1))
         XCTAssertTrue(notHelpful.exists)
