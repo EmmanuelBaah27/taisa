@@ -15,19 +15,20 @@ struct ConversationView: View {
                 VStack(spacing: 0) {
                     ZStack {
                         ConversationTimeline(
-                        messages: model.messages,
-                        updatingResponseAfter: model.correctionRegenerationMessageID,
-                        assistantResponses: model.assistantResponses,
-                        streamingResponse: model.partialCoaching,
-                        correct: model.requestCorrection,
-                        saveFeedback: { messageID, direction, factors, detail in
-                            Task { await model.saveFeedback(
-                                responseMessageID: messageID, direction: direction,
-                                factors: factors, detail: detail
-                            ) }
-                        },
-                        acceptProposal: { id in Task { await model.acceptProposal(id) } },
-                        dismissProposal: { id in Task { await model.dismissProposal(id) } }
+                            messages: model.messages,
+                            assistantResponses: model.assistantResponses,
+                            updatingResponseAfter: model.correctionRegenerationMessageID,
+                            streamingResponse: model.partialCoaching,
+                            isThinking: model.composer == .coaching && model.partialCoaching.isEmpty,
+                            correct: model.requestCorrection,
+                            saveFeedback: { messageID, direction, factors, detail in
+                                Task { await model.saveFeedback(
+                                    responseMessageID: messageID, direction: direction,
+                                    factors: factors, detail: detail
+                                ) }
+                            },
+                            acceptProposal: { id in Task { await model.acceptProposal(id) } },
+                            dismissProposal: { id in Task { await model.dismissProposal(id) } }
                         )
                         if model.messages.isEmpty { emptyState }
                     }
@@ -63,7 +64,11 @@ struct ConversationView: View {
         }
         .confirmationDialog("Keep this unfinished thought?", isPresented: Binding(
             get: { model.confirmation != nil },
-            set: { if !$0 { model.cancelConfirmation() } }
+            // Each dialog action owns clearing the pending confirmation. SwiftUI
+            // writes `false` while dismissing a tapped action, before an async
+            // action's task necessarily starts; clearing here can erase the
+            // command that action is about to confirm.
+            set: { _ in }
         )) {
             switch model.confirmation {
             case .discardVoiceForKeyboard:
@@ -112,19 +117,13 @@ struct ConversationView: View {
                     .frame(maxWidth: .infinity)
             }
         case .coaching:
-            VStack(alignment: .leading, spacing: 12) {
-                if model.partialCoaching.isEmpty {
-                    ConversationProgressState(label: "Preparing coaching…")
-                }
-                bottomChrome {
-                    TextComposer(
-                        text: $model.text, mode: .processing,
-                        onSend: {}, onVoice: {}
-                    )
-                    .accessibilityIdentifier("conversation.text-composer.processing")
-                }
+            bottomChrome {
+                TextComposer(
+                    text: $model.text, mode: .processing,
+                    onSend: {}, onVoice: {}
+                )
+                .accessibilityIdentifier("conversation.text-composer.processing")
             }
-            .padding(.horizontal)
             .task {
                 while !Task.isCancelled, model.composer == .coaching {
                     await model.refreshPartialCoaching()
@@ -213,7 +212,10 @@ struct ConversationView: View {
     private var voiceReplyButton: some View {
         HStack {
             Spacer()
-            TaisaSecondaryCapsuleButton(action: { Task { try? await model.beginVoice() } }) {
+            TaisaSecondaryCapsuleButton(
+                height: TaisaControlMetric.recordingButtonHeight,
+                action: { Task { try? await model.beginVoice() } }
+            ) {
                 HStack(spacing: TaisaSpacing.compact.rawValue) {
                     CentralIcon(.voiceMid)
                         .frame(width: TaisaControlMetric.standardIcon, height: TaisaControlMetric.standardIcon)

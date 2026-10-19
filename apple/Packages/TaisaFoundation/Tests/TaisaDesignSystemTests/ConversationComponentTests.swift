@@ -56,6 +56,7 @@ struct ConversationComponentTests {
         #expect(CentralIconName.voiceMid != .chatBubbles)
         #expect(CentralIconName.circleInfo != .thumbsUp)
         #expect(CentralIconName.thumbsUp != .thumbsDown)
+        #expect(CentralIconName.copy != .edit)
     }
 
     @MainActor @Test func figmaEdgeFadesUseMeasuredStops() {
@@ -72,6 +73,7 @@ struct ConversationComponentTests {
         #expect(ConversationPageHeader.Contract.dismissPlacement == .leading)
         #expect(ConversationActionBar.Availability.recording.canDiscard)
         #expect(ConversationActionBar.Availability.preparing.canSwitchToKeyboard)
+        #expect(ConversationActionBar.Availability.preparing.showsPause)
         #expect(ConversationActionBar.Availability.recording.canSwitchToKeyboard)
         #expect(ConversationActionBar.Availability.recording.showsSend)
         #expect(ConversationActionBar.Availability.recording.canSend == false)
@@ -89,6 +91,13 @@ struct ConversationComponentTests {
         #expect(TextComposer.Contract.usesLiquidEditorSurface)
         #expect(TextComposer.Contract.minimumHeight == 48)
         #expect(TextComposer.Contract.focusesOnEntry)
+        #expect(TextComposer.Contract.emptyActionHierarchy == .secondary)
+        #expect(TextComposer.Contract.filledActionHierarchy == .primary)
+        #expect(TextComposer.Contract.centersSingleLineTextWithAction)
+        #expect(InlineRecoveryAlert.Contract.alwaysFillsAvailableWidth)
+        #expect(InlineRecoveryAlert.Contract.stackedActionsFillAvailableWidth)
+        #expect(InlineRecoveryAlert.Contract.actionHeight == 48)
+        #expect(InlineRecoveryAlert.Contract.actionSpacing == 12)
     }
 
     @MainActor @Test func conversationActivityAndRecoveryRemainAccessible() {

@@ -10,7 +10,10 @@ import type {
   ProviderCoachingInput,
 } from './provider';
 import { estimateCostUsd, estimateMaximumCoachingUsage } from './provider';
-import { normalizeOpenAISdkFailure } from './providerSdkFailure';
+import {
+  contentFreeProviderDiagnostic,
+  normalizeOpenAISdkFailure,
+} from './providerSdkFailure';
 import { extractReplyPrefix } from './streamingCoaching';
 
 type OpenAIClient = Pick<OpenAI, 'beta'>;
@@ -107,7 +110,12 @@ export function createOpenAIProvider(
           { maxRetries: 0 },
         );
       } catch (error) {
-        throw normalizeOpenAISdkFailure(error);
+        const normalized = normalizeOpenAISdkFailure(error);
+        console.warn(
+          '[Taisa diagnostic] OPENAI_COACHING_PROVIDER_FAILURE',
+          JSON.stringify(contentFreeProviderDiagnostic(normalized)),
+        );
+        throw normalized;
       }
 
       const payload = CoachingResponsePayloadSchema.parse(
@@ -153,7 +161,14 @@ export function createOpenAIProvider(
           provider: 'openai', model: config.model, inputTokens, outputTokens,
           estimatedCostUsd: estimateCostUsd(inputTokens, outputTokens, config),
         } } } as const;
-      } catch (error) { throw normalizeOpenAISdkFailure(error); }
+      } catch (error) {
+        const normalized = normalizeOpenAISdkFailure(error);
+        console.warn(
+          '[Taisa diagnostic] OPENAI_COACHING_PROVIDER_FAILURE',
+          JSON.stringify(contentFreeProviderDiagnostic(normalized)),
+        );
+        throw normalized;
+      }
     },
   };
 }

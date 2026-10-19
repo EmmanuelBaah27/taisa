@@ -111,6 +111,7 @@ final class ConversationViewContractTests: XCTestCase {
         XCTAssertTrue(source.contains("static let ordinaryMessageSpacing"))
         XCTAssertTrue(source.contains("StatusBarBackground"))
         XCTAssertTrue(source.contains("TaisaSecondaryCapsuleButton"))
+        XCTAssertTrue(source.contains("height: TaisaControlMetric.recordingButtonHeight"))
         XCTAssertTrue(source.contains("HStack(spacing: TaisaSpacing.compact.rawValue)"))
         XCTAssertTrue(source.contains("CentralIcon(.voiceMid)"))
         XCTAssertTrue(source.contains("Text(\"Reply\")"))
@@ -125,6 +126,44 @@ final class ConversationViewContractTests: XCTestCase {
         XCTAssertFalse(source.contains("conversation.transcript-preview"))
         XCTAssertFalse(source.contains("containerRelativeFrame(.horizontal"))
         XCTAssertFalse(source.contains("import GRDB"))
+    }
+
+    func testJumpToLatestAppearsOnlyAfterAUsefulDistance() {
+        XCTAssertFalse(ConversationTimelineLayout.shouldShowJumpToLatest(distanceFromBottom: 0))
+        XCTAssertFalse(ConversationTimelineLayout.shouldShowJumpToLatest(distanceFromBottom: 159))
+        XCTAssertTrue(ConversationTimelineLayout.shouldShowJumpToLatest(distanceFromBottom: 160))
+    }
+
+    func testConversationUsesSemanticTurnSpacing() {
+        XCTAssertEqual(ConversationTimelineLayout.ordinaryMessageSpacing, 12)
+        XCTAssertEqual(ConversationTimelineLayout.userToAssistantSpacing, 32)
+        XCTAssertEqual(
+            ConversationTimelineLayout.spacing(afterRole: "user", beforeRole: "assistant"),
+            32
+        )
+        XCTAssertEqual(
+            ConversationTimelineLayout.spacing(afterRole: "assistant", beforeRole: "user"),
+            12
+        )
+    }
+
+    func testUserBubbleWidthIsIntrinsicUntilItReachesTheEightyFivePercentCap() {
+        XCTAssertEqual(
+            ConversationTimelineLayout.userBubbleWidth(
+                intrinsicWidth: 120,
+                containerWidth: 400,
+                trailingInset: 16
+            ),
+            120
+        )
+        XCTAssertEqual(
+            ConversationTimelineLayout.userBubbleWidth(
+                intrinsicWidth: 500,
+                containerWidth: 400,
+                trailingInset: 16
+            ),
+            324
+        )
     }
 
     func testResponseFeedbackUsesAlwaysVisibleThumbsAndSelectableQualityFactors() throws {
@@ -181,43 +220,5 @@ final class ConversationViewContractTests: XCTestCase {
         XCTAssertTrue(source.contains("assistantResponses:"))
         XCTAssertTrue(source.contains("AssistantResponseMetadataRecord"))
         XCTAssertTrue(source.contains("AssistantProposalRecord"))
-    }
-
-    func testJumpToLatestAppearsOnlyAfterAUsefulDistance() {
-        XCTAssertFalse(ConversationTimelineLayout.shouldShowJumpToLatest(distanceFromBottom: 0))
-        XCTAssertFalse(ConversationTimelineLayout.shouldShowJumpToLatest(distanceFromBottom: 159))
-        XCTAssertTrue(ConversationTimelineLayout.shouldShowJumpToLatest(distanceFromBottom: 160))
-    }
-
-    func testConversationUsesSemanticTurnSpacing() {
-        XCTAssertEqual(ConversationTimelineLayout.ordinaryMessageSpacing, 12)
-        XCTAssertEqual(ConversationTimelineLayout.userToAssistantSpacing, 32)
-        XCTAssertEqual(
-            ConversationTimelineLayout.spacing(afterRole: "user", beforeRole: "assistant"),
-            32
-        )
-        XCTAssertEqual(
-            ConversationTimelineLayout.spacing(afterRole: "assistant", beforeRole: "user"),
-            12
-        )
-    }
-
-    func testUserBubbleWidthIsIntrinsicUntilItReachesTheEightyFivePercentCap() {
-        XCTAssertEqual(
-            ConversationTimelineLayout.userBubbleWidth(
-                intrinsicWidth: 120,
-                containerWidth: 400,
-                trailingInset: 16
-            ),
-            120
-        )
-        XCTAssertEqual(
-            ConversationTimelineLayout.userBubbleWidth(
-                intrinsicWidth: 500,
-                containerWidth: 400,
-                trailingInset: 16
-            ),
-            324
-        )
     }
 }

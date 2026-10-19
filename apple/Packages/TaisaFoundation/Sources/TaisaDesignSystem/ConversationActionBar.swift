@@ -5,19 +5,20 @@ public struct ConversationActionBar: View {
     public struct Availability: Sendable, Equatable {
         public let canDiscard: Bool
         public let canSwitchToKeyboard: Bool
+        public let showsPause: Bool
         public let showsSend: Bool
         public let canSend: Bool
         public let canResume: Bool
         public let primaryLabel: String
-        public static let preparing = Self(canDiscard: true, canSwitchToKeyboard: true, showsSend: true, canSend: false, canResume: false, primaryLabel: "Preparing")
-        public static let recording = Self(canDiscard: true, canSwitchToKeyboard: true, showsSend: true, canSend: false, canResume: true, primaryLabel: "Pause")
-        public static let shortCapture = Self(canDiscard: true, canSwitchToKeyboard: true, showsSend: true, canSend: false, canResume: true, primaryLabel: "Pause")
-        public static let sendable = Self(canDiscard: true, canSwitchToKeyboard: true, showsSend: true, canSend: true, canResume: true, primaryLabel: "Pause")
-        public static let pausedEmpty = Self(canDiscard: true, canSwitchToKeyboard: false, showsSend: true, canSend: false, canResume: true, primaryLabel: "Resume")
-        public static let pausedShort = Self(canDiscard: true, canSwitchToKeyboard: false, showsSend: true, canSend: false, canResume: true, primaryLabel: "Resume")
-        public static let paused = Self(canDiscard: true, canSwitchToKeyboard: false, showsSend: true, canSend: true, canResume: true, primaryLabel: "Resume")
-        public static let saved = Self(canDiscard: true, canSwitchToKeyboard: false, showsSend: true, canSend: true, canResume: false, primaryLabel: "Recorded")
-        public static let waitingForReply = Self(canDiscard: false, canSwitchToKeyboard: false, showsSend: false, canSend: false, canResume: false, primaryLabel: "Reply")
+        public static let preparing = Self(canDiscard: true, canSwitchToKeyboard: true, showsPause: true, showsSend: true, canSend: false, canResume: false, primaryLabel: "Preparing")
+        public static let recording = Self(canDiscard: true, canSwitchToKeyboard: true, showsPause: true, showsSend: true, canSend: false, canResume: true, primaryLabel: "Pause")
+        public static let shortCapture = Self(canDiscard: true, canSwitchToKeyboard: true, showsPause: true, showsSend: true, canSend: false, canResume: true, primaryLabel: "Pause")
+        public static let sendable = Self(canDiscard: true, canSwitchToKeyboard: true, showsPause: true, showsSend: true, canSend: true, canResume: true, primaryLabel: "Pause")
+        public static let pausedEmpty = Self(canDiscard: true, canSwitchToKeyboard: false, showsPause: false, showsSend: true, canSend: false, canResume: true, primaryLabel: "Resume")
+        public static let pausedShort = Self(canDiscard: true, canSwitchToKeyboard: false, showsPause: false, showsSend: true, canSend: false, canResume: true, primaryLabel: "Resume")
+        public static let paused = Self(canDiscard: true, canSwitchToKeyboard: false, showsPause: false, showsSend: true, canSend: true, canResume: true, primaryLabel: "Resume")
+        public static let saved = Self(canDiscard: true, canSwitchToKeyboard: false, showsPause: false, showsSend: true, canSend: true, canResume: false, primaryLabel: "Recorded")
+        public static let waitingForReply = Self(canDiscard: false, canSwitchToKeyboard: false, showsPause: false, showsSend: false, canSend: false, canResume: false, primaryLabel: "Reply")
     }
 
     private let phase: Phase
@@ -51,7 +52,7 @@ public struct ConversationActionBar: View {
         Spacer(minLength: 0)
         centerControl
         Spacer(minLength: 0)
-        if isActiveCapture {
+        if availability.showsPause {
             iconButton(.pause, label: "Pause recording", action: onPrimary)
                 .disabled(!availability.canResume)
         }

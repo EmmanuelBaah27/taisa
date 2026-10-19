@@ -210,8 +210,12 @@ private actor ConversationClientSpy: ConversationClient {
         self.blocked = blocked
     }
 
-    func sendText(conversationID: String, requestID: String, text: String) async throws -> ConversationReply {
+    func sendText(
+        conversationID: String, requestID: String, text: String,
+        onMessageAvailable: @escaping @Sendable () async -> Void
+    ) async throws -> ConversationReply {
         requestIDs.append(requestID)
+        await onMessageAvailable()
         if blocked { await withCheckedContinuation { continuations.append($0) } }
         if remainingFailures > 0 {
             remainingFailures -= 1

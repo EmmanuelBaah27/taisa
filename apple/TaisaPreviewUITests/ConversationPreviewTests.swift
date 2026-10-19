@@ -18,12 +18,8 @@ final class ConversationPreviewTests: XCTestCase {
 
         let factors = app.descendants(matching: .any)["conversation.feedback-factors"]
         let close = app.buttons["conversation.feedback.close"]
-        let save = app.buttons["conversation.feedback.save"]
-        let detail = app.descendants(matching: .any)["conversation.feedback.detail"]
         XCTAssertTrue(factors.waitForExistence(timeout: 5))
         XCTAssertTrue(close.waitForExistence(timeout: 5))
-        XCTAssertTrue(save.waitForExistence(timeout: 5))
-        XCTAssertTrue(detail.waitForExistence(timeout: 5))
         close.tap()
 
         XCTAssertFalse(factors.waitForExistence(timeout: 1))

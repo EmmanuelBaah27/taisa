@@ -136,6 +136,7 @@ struct ConversationsView: View {
                                 .buttonStyle(.plain)
                                 .listRowInsets(EdgeInsets())
                                 .listRowBackground(historyRowBackground(index: index, count: group.conversations.count))
+                                .listRowSeparatorTint(TaisaColor.background.color)
                                 .listRowSeparator(.hidden)
                                 .contextMenu {
                                     Button("Rename") { beginRename(conversation) }

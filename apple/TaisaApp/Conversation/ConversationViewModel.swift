@@ -15,7 +15,9 @@ struct ConversationScreenClient: Sendable {
     var retryPauseVoice: @Sendable () async throws -> Void
     var retryResumeVoice: @Sendable () async throws -> Void
     var sendVoice: @Sendable (@escaping @MainActor @Sendable () async -> Void) async throws -> Void
-    var sendText: @Sendable (String) async throws -> Void
+    var sendText: @Sendable (
+        String, @escaping @MainActor @Sendable () async -> Void
+    ) async throws -> Void
     var retry: @Sendable () async throws -> Void
     var saveDraft: @Sendable (ConversationInput) async throws -> Void
     var discardDraft: @Sendable () async throws -> Void
@@ -39,7 +41,9 @@ struct ConversationScreenClient: Sendable {
         retryPauseVoice: @escaping @Sendable () async throws -> Void = {},
         retryResumeVoice: @escaping @Sendable () async throws -> Void = {},
         sendVoice: @escaping @Sendable (@escaping @MainActor @Sendable () async -> Void) async throws -> Void,
-        sendText: @escaping @Sendable (String) async throws -> Void,
+        sendText: @escaping @Sendable (
+            String, @escaping @MainActor @Sendable () async -> Void
+        ) async throws -> Void,
         retry: @escaping @Sendable () async throws -> Void,
         saveDraft: @escaping @Sendable (ConversationInput) async throws -> Void,
         discardDraft: @escaping @Sendable () async throws -> Void,
@@ -144,8 +148,6 @@ final class ConversationViewModel {
     @ObservationIgnored private var actionInFlight = false
     @ObservationIgnored private var voicePreparationExit: VoicePreparationExit?
     @ObservationIgnored private var recoveryObservation: Task<Void, Never>?
-    @ObservationIgnored private var feedbackRevisionMS: Int64 = 0
-    @ObservationIgnored private var feedbackMutationTails: [String: Task<Void, Never>] = [:]
 
     private enum VoicePreparationExit { case discard, keyboard }
 
@@ -154,7 +156,13 @@ final class ConversationViewModel {
         correctionMessageID != nil && correctionText != correctionOriginalText
     }
 
-    deinit { recoveryObservation?.cancel() }
+    @ObservationIgnored private var feedbackRevisionMS: Int64 = 0
+    @ObservationIgnored private var feedbackMutationTails: [String: Task<Void, Never>] = [:]
+
+    deinit {
+        recoveryObservation?.cancel()
+        feedbackMutationTails.values.forEach { $0.cancel() }
+    }
 
     init(
         conversationID: String,
@@ -190,7 +198,8 @@ final class ConversationViewModel {
                 loadMessages: { messages },
                 loadAssistantResponses: { assistantResponses },
                 beginVoice: {}, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
-                sendText: { _ in }, retry: {}, saveDraft: { _ in }, discardDraft: {}
+                sendText: { _, messageAvailable in await messageAvailable() },
+                retry: {}, saveDraft: { _ in }, discardDraft: {}
             ),
             dismiss: dismiss
         )
@@ -225,7 +234,7 @@ final class ConversationViewModel {
                 await reloadMessages()
                 capture = await client.loadCaptureSnapshot()
                 if composer == .failure(.retryable) || composer == .coaching || composer == .transcribing {
-                    composer = .waitingForReply
+                    finishResponseIfPersisted()
                 }
             }
         }
@@ -327,7 +336,7 @@ final class ConversationViewModel {
             }
             await reloadMessages()
             partialCoaching = ""
-            composer = .waitingForReply
+            finishResponseIfPersisted()
         } catch {
             partialCoaching = ""
             failureContext = transcriptBecameAvailable ? .request : .transcription
@@ -342,16 +351,20 @@ final class ConversationViewModel {
         guard !value.isEmpty else { return }
         actionInFlight = true
         partialCoaching = ""
-        composer = .coaching
         do {
-            try await client.sendText(value)
-            text = ""
-            partialCoaching = ""
-            composer = .waitingForReply
+            try await client.sendText(value) { [weak self] in
+                guard let self else { return }
+                await self.reloadMessages()
+                self.text = ""
+                self.composer = .coaching
+            }
             await reloadMessages()
+            partialCoaching = ""
+            finishResponseIfPersisted()
         }
         catch {
             partialCoaching = ""
+            await reloadMessages()
             failureContext = .request
             composer = .failure(.retryable)
         }
@@ -409,7 +422,6 @@ final class ConversationViewModel {
     }
 
     func confirmKeyboardReplacement() async {
-        guard case .discardVoiceForKeyboard = confirmation else { return }
         await discardVoiceAndType()
     }
 
@@ -663,7 +675,7 @@ final class ConversationViewModel {
         do {
             try await operation()
             await reloadMessages()
-            composer = .waitingForReply
+            finishResponseIfPersisted()
         } catch {
             composer = .failure(.retryable)
         }
@@ -674,5 +686,22 @@ final class ConversationViewModel {
         if let loaded = try? await client.loadMessages() { messages = loaded }
         if let loaded = try? await client.loadAssistantResponses() { assistantResponses = loaded }
         if let loadedTitle = try? await client.loadTitle() { title = loadedTitle }
+    }
+
+    private func finishResponseIfPersisted() {
+        let hasAssistantReply: Bool
+        if let latestUserIndex = messages.lastIndex(where: { $0.role == "user" }) {
+            hasAssistantReply = messages[messages.index(after: latestUserIndex)...]
+                .contains(where: { $0.role == "assistant" })
+        } else {
+            hasAssistantReply = messages.contains(where: { $0.role == "assistant" })
+        }
+
+        if hasAssistantReply {
+            composer = .waitingForReply
+        } else {
+            failureContext = .request
+            composer = .failure(.retryable)
+        }
     }
 }

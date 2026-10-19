@@ -8,7 +8,10 @@ import type {
   ProviderCoachingInput,
 } from './provider';
 import { estimateCostUsd, estimateMaximumCoachingUsage } from './provider';
-import { normalizeAnthropicSdkFailure } from './providerSdkFailure';
+import {
+  contentFreeProviderDiagnostic,
+  normalizeAnthropicSdkFailure,
+} from './providerSdkFailure';
 import { extractReplyPrefix } from './streamingCoaching';
 
 type AnthropicClient = Pick<Anthropic, 'messages'>;
@@ -213,7 +216,12 @@ export function createAnthropicProvider(
           { maxRetries: 0 },
         );
       } catch (error) {
-        throw normalizeAnthropicSdkFailure(error);
+        const normalized = normalizeAnthropicSdkFailure(error);
+        console.warn(
+          '[Taisa diagnostic] ANTHROPIC_COACHING_PROVIDER_FAILURE',
+          JSON.stringify(contentFreeProviderDiagnostic(normalized)),
+        );
+        throw normalized;
       }
 
       const toolUse = message.content.find(
@@ -262,7 +270,14 @@ export function createAnthropicProvider(
           provider: 'anthropic', model: config.model, inputTokens, outputTokens,
           estimatedCostUsd: estimateCostUsd(inputTokens, outputTokens, config),
         } } } as const;
-      } catch (error) { throw normalizeAnthropicSdkFailure(error); }
+      } catch (error) {
+        const normalized = normalizeAnthropicSdkFailure(error);
+        console.warn(
+          '[Taisa diagnostic] ANTHROPIC_COACHING_PROVIDER_FAILURE',
+          JSON.stringify(contentFreeProviderDiagnostic(normalized)),
+        );
+        throw normalized;
+      }
     },
   };
 }

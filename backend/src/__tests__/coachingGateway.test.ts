@@ -27,6 +27,7 @@ import {
   requestCoaching,
 } from '../services/coaching/coachingGateway';
 import { classifyOperationalProviderFailure } from '../services/coaching/providerFailure';
+import { contentFreeProviderDiagnostic } from '../services/coaching/providerSdkFailure';
 import { buildSeniorSelfPrompt } from '../prompts/system/seniorSelf';
 import { UsageExceedsReservationError } from '../services/usage/costLedger';
 
@@ -303,6 +304,89 @@ function sdkAdapterRejecting(
 
 const sdkHeaders = {} as any;
 const sdkFailureSecret = 'SDK_FAILURE_SECRET';
+
+test('provider diagnostics retain only allowlisted content-free SDK fields', () => {
+  const failure = new OpenAI.BadRequestError(400, {
+    message: sdkFailureSecret,
+    type: 'invalid_request_error',
+    code: 'invalid_json_schema',
+    param: 'response_format.json_schema.schema',
+  }, sdkFailureSecret, sdkHeaders);
+
+  const diagnostic = contentFreeProviderDiagnostic(failure);
+
+  expect(diagnostic).toEqual({
+    status: 400,
+    type: 'invalid_request_error',
+    code: 'invalid_json_schema',
+    param: 'response_format.json_schema.schema',
+  });
+  expect(JSON.stringify(diagnostic)).not.toContain(sdkFailureSecret);
+  expect(diagnostic).not.toHaveProperty('message');
+  expect(diagnostic).not.toHaveProperty('headers');
+  expect(diagnostic).not.toHaveProperty('request_id');
+});
+
+test('provider diagnostics drop unsafe free-form SDK fields', () => {
+  expect(contentFreeProviderDiagnostic({
+    status: 400,
+    type: 'invalid request with spaces',
+    code: sdkFailureSecret,
+    param: 'prompt.' + sdkFailureSecret,
+    message: sdkFailureSecret,
+  })).toEqual({ status: 400 });
+});
+
+test('provider diagnostics retain allowlisted content-free error classes and causes', () => {
+  const failure = Object.assign(new Error(sdkFailureSecret), {
+    name: 'ZodError',
+    cause: Object.assign(new Error(sdkFailureSecret), {
+      name: 'LengthFinishReasonError',
+    }),
+  });
+
+  expect(contentFreeProviderDiagnostic(failure)).toEqual({
+    name: 'ZodError',
+    cause: { name: 'LengthFinishReasonError' },
+  });
+  expect(JSON.stringify(contentFreeProviderDiagnostic(failure))).not.toContain(sdkFailureSecret);
+});
+
+test('provider diagnostics retain only structural Zod issue paths and codes', () => {
+  const failure = Object.assign(new Error(sdkFailureSecret), {
+    name: 'ZodError',
+    issues: [
+      {
+        code: 'invalid_type',
+        path: ['response', 'titleSuggestion'],
+        message: sdkFailureSecret,
+        expected: sdkFailureSecret,
+        received: sdkFailureSecret,
+      },
+      {
+        code: 'too_big',
+        path: ['response', 'reply'],
+        message: sdkFailureSecret,
+      },
+    ],
+  });
+
+  expect(contentFreeProviderDiagnostic(failure)).toEqual({
+    name: 'ZodError',
+    issues: [
+      { code: 'invalid_type', path: 'response.titleSuggestion' },
+      { code: 'too_big', path: 'response.reply' },
+    ],
+  });
+  expect(JSON.stringify(contentFreeProviderDiagnostic(failure))).not.toContain(sdkFailureSecret);
+});
+
+test('provider diagnostics reject arbitrary error names recursively', () => {
+  expect(contentFreeProviderDiagnostic(Object.assign(new Error(sdkFailureSecret), {
+    name: sdkFailureSecret,
+    cause: { name: sdkFailureSecret, message: sdkFailureSecret },
+  }))).toEqual({});
+});
 
 const sdkOperationalFailureCases = [
   [
@@ -734,6 +818,28 @@ test.each(sdkOperationalFailureCases)(
     expect(providers[other(primaryId)].respond).toHaveBeenCalledTimes(1);
   },
 );
+
+test('Anthropic credit-balance rejection is normalized as billing without retaining its message', async () => {
+  const failure = new Anthropic.BadRequestError(400, {
+    type: 'error',
+    error: {
+      type: 'invalid_request_error',
+      message: 'Your credit balance is too low to access the Anthropic API.',
+    },
+  }, sdkFailureSecret, sdkHeaders);
+  const adapter = sdkAdapterRejecting('anthropic', failure);
+
+  let normalizedFailure: unknown;
+  try {
+    await adapter.respond(providerInput);
+  } catch (error) {
+    normalizedFailure = error;
+  }
+
+  expect(normalizedFailure).toEqual({ type: 'billing_error' });
+  expect(JSON.stringify(normalizedFailure)).not.toContain('credit balance');
+  expect(classifyOperationalProviderFailure(normalizedFailure)).toBe('billing');
+});
 
 test.each(sdkDeniedFailureCases)(
   '%s remains content-free and never invokes fallback',

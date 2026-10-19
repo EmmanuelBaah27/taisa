@@ -28,6 +28,9 @@ import XCTest
         let drafts = app.buttons["chats.drafts"]
         XCTAssertTrue(drafts.waitForExistence(timeout: 10))
         drafts.tap()
+        XCTAssertTrue(
+            app.descendants(matching: .any)["conversations.drafts"].waitForExistence(timeout: 10)
+        )
         let draft = app.buttons.matching(
             NSPredicate(format: "label CONTAINS %@", "Voice draft")
         ).firstMatch

@@ -8,6 +8,9 @@ public struct TextComposer: View {
         public static let usesLiquidEditorSurface = true
         public static let minimumHeight: CGFloat = 48
         public static let focusesOnEntry = true
+        public static let emptyActionHierarchy: TaisaButtonRole = .secondary
+        public static let filledActionHierarchy: TaisaButtonRole = .primary
+        public static let centersSingleLineTextWithAction = true
     }
     public enum Mode: Sendable { case composing, processing
         public var acceptsInput: Bool { self == .composing }
@@ -25,15 +28,20 @@ public struct TextComposer: View {
         HStack(alignment: .bottom, spacing: TaisaSpacing.compact.rawValue) {
             TextField(Contract.empty.placeholder, text: $text, axis: .vertical)
                 .lineLimit(1...6)
+                .frame(minHeight: 40, alignment: .center)
                 .disabled(!mode.acceptsInput)
                 .focused($isFocused)
             Button(action: { isEmpty ? onVoice() : onSend() }) {
                 Image(systemName: isEmpty ? "waveform" : "arrow.up")
                     .frame(width: 20, height: 20)
                     .frame(width: 40, height: 40)
-                    .background(TaisaColor.primaryAction.color, in: Circle())
+                    .background {
+                        if !isEmpty {
+                            TaisaColor.primaryAction.color.clipShape(Circle())
+                        }
+                    }
             }
-            .buttonStyle(.plain)
+            .modifier(ComposerActionStyle(isEmpty: isEmpty))
             .accessibilityLabel(isEmpty ? Contract.empty.voiceLabel : "Send message")
             .disabled(!mode.acceptsInput)
         }
@@ -43,6 +51,26 @@ public struct TextComposer: View {
         .frame(minHeight: Contract.minimumHeight)
         .modifier(LiquidTextInputSurface(cornerRadius: TaisaRadius.composer.rawValue))
         .onAppear { isFocused = mode.acceptsInput }
+    }
+}
+
+private struct ComposerActionStyle: ViewModifier {
+    let isEmpty: Bool
+
+    @ViewBuilder func body(content: Content) -> some View {
+        if isEmpty, #available(iOS 26.0, macOS 26.0, *) {
+            content
+                .buttonStyle(.plain)
+                .glassEffect(.regular.interactive(), in: Circle())
+                .contentShape(Circle())
+        } else if isEmpty {
+            content
+                .buttonStyle(.plain)
+                .background(.regularMaterial, in: Circle())
+                .contentShape(Circle())
+        } else {
+            content.buttonStyle(.plain)
+        }
     }
 }
 

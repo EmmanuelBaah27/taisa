@@ -199,9 +199,11 @@ struct ConversationRuntimeFactory: Sendable {
         } else {
             rawResumable
         }
-        let pendingConversationRequest = resumable.flatMap { turn in
-            ["pending_text", "pending_correction"].contains(turn.failureCode) ? turn : nil
-        }
+        let pendingConversationRequest = Self.pendingConversationRequest(
+            resumable: resumable,
+            drafts: history.drafts,
+            messages: history.visibleMessages
+        )
         let lastUserMessage = history.visibleMessages.last(where: { $0.role == "user" })
         if pendingConversationRequest == nil {
             for draft in history.drafts {
@@ -341,6 +343,24 @@ struct ConversationRuntimeFactory: Sendable {
             : .failure(.retryable)
         let initialText = restoration.text
         let restoredDraftID = restoredDraft?.id
+        let rawState = rawResumable?.state.rawValue ?? "none"
+        let rawStage = rawResumable?.stage.rawValue ?? "none"
+        let draftMode = restoredDraft?.inputMode.rawValue ?? "none"
+        let newerCompleted = latestCompleted.map { completed in
+            rawResumable.map { completed.updatedAtMS > $0.updatedAtMS } ?? false
+        } ?? false
+        print(
+            "TAISA_CONVERSATION_RESTORE "
+                + "rawState=\(rawState) "
+                + "rawStage=\(rawStage) "
+                + "selected=\(resumable != nil) "
+                + "newerCompleted=\(newerCompleted) "
+                + "draftMode=\(draftMode) "
+                + "pending=\(pendingConversationRequest != nil) "
+                + "restoredState=\(restoration.voiceTurn.state.rawValue) "
+                + "restoredStage=\(restoration.voiceTurn.stage.rawValue) "
+                + "entryIntent=\(entryIntent != nil)"
+        )
 
         let client = ConversationScreenClient(
             loadMessages: { try await query.loadConversation(id: route.id).visibleMessages },
@@ -359,7 +379,11 @@ struct ConversationRuntimeFactory: Sendable {
                 let snapshot = try await query.loadConversation(id: route.id)
                 for draft in snapshot.drafts { try await conversations.discardDraft(id: draft.id) }
             },
-            sendText: { try await coordinator.send(.text($0)) },
+            sendText: { text, messageAvailable in
+                try await coordinator.send(
+                    .text(text), onMessageAvailable: messageAvailable
+                )
+            },
             retry: {
                 try await coordinator.retry()
                 if let restoredDraftID {
@@ -486,7 +510,7 @@ struct ConversationRuntimeFactory: Sendable {
             pauseVoice: unavailable,
             resumeVoice: unavailable,
             sendVoice: { _ in try await unavailable() },
-            sendText: { _ in try await unavailable() },
+            sendText: { _, _ in try await unavailable() },
             retry: unavailable,
             saveDraft: { input in
                 guard case .text = input else { try await unavailable(); return }
@@ -583,6 +607,16 @@ struct ConversationRuntimeFactory: Sendable {
         var voiceTurn = linkedVoiceTurn ?? resumableVoiceTurn ?? fallbackVoiceTurn
         guard let draft else {
             if let resumableVoiceTurn,
+               isResponseFailureAwaitingRetry(resumableVoiceTurn),
+               resumableVoiceTurn.acceptedTranscript != nil {
+                return Restoration(
+                    voiceTurn: resumableVoiceTurn,
+                    composer: .failure(.retryable),
+                    text: "",
+                    cleansInterruptedCapture: false
+                )
+            }
+            if let resumableVoiceTurn,
                resumableVoiceTurn.stage == .capture || resumableVoiceTurn.stage == .cleanup {
                 let hasFinalizedAudio = resumableVoiceTurn.state == .paused
                     && resumableVoiceTurn.stage == .capture
@@ -657,6 +691,60 @@ struct ConversationRuntimeFactory: Sendable {
                 cleansInterruptedCapture: false
             )
         }
+    }
+
+    private static func isResponseFailureAwaitingRetry(_ turn: VoiceTurnRecord) -> Bool {
+        switch (turn.state, turn.stage) {
+        case (.coaching, .coaching),
+             (.recoverableFailure, .coaching),
+             (.resumeRequiresConfirmation, .coaching),
+             (.terminalFailure, .finished):
+            true
+        default:
+            false
+        }
+    }
+
+    static func pendingConversationRequest(
+        resumable: VoiceTurnRecord?,
+        drafts: [ConversationDraftRecord],
+        messages: [MessageRecord]
+    ) -> VoiceTurnRecord? {
+        if let resumable,
+           ["pending_text", "pending_correction"].contains(resumable.failureCode) {
+            return resumable
+        }
+
+        guard let draft = drafts.first(where: {
+            $0.inputMode == .text && $0.recoveryKind == .retryableCoaching
+        }),
+        let text = draft.text?.trimmingCharacters(in: .whitespacesAndNewlines),
+        !text.isEmpty,
+        let userIndex = messages.lastIndex(where: {
+            $0.role == "user" && $0.body == text
+        }),
+        !messages[messages.index(after: userIndex)...].contains(where: { $0.role == "assistant" }),
+        let requestID = UUID(uuidString: messages[userIndex].id) else {
+            return nil
+        }
+
+        let request = requestID.uuidString.lowercased()
+        let turnID = derivedUUID(from: request, salt: 1)
+        return VoiceTurnRecord(
+            id: turnID,
+            conversationID: draft.conversationID,
+            transcriptionRequestID: derivedUUID(from: request, salt: 2),
+            transcriptionIdempotencyKey: "text-no-transcription-\(request)",
+            coachingRequestID: request,
+            coachingIdempotencyKey: "text-coaching-\(request)",
+            state: .coaching,
+            stage: .coaching,
+            acceptedTranscript: text,
+            failureCode: "pending_text",
+            userMessageID: request,
+            createdAtMS: draft.createdAtMS,
+            updatedAtMS: draft.updatedAtMS
+        )
     }
 
     private func makeTurn(conversationID: String) -> VoiceTurnRecord {

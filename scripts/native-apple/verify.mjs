@@ -172,6 +172,7 @@ export async function inspectNativeProject(repositoryRoot) {
       testHost: /target:\s*TaisaPersonal\s*$/m.test(targetBlock(project, 'TaisaPersonalTests')),
       scheme: /config:\s*Personal/.test(personalScheme) && personalScheme.includes('- TaisaPersonalTests'),
     },
+    personalGatewayURL: valueFor(personalConfig, 'TAISA_VOICE_GATEWAY_URL'),
     bundleIdentifiers: {
       production: valueFor(releaseConfig, 'PRODUCT_BUNDLE_IDENTIFIER'),
       development: valueFor(debugConfig, 'PRODUCT_BUNDLE_IDENTIFIER'),
@@ -258,6 +259,9 @@ export async function verifyNativeProject(repositoryRoot, productionBundle, pers
       || personal.configuresBackgroundMode || personal.archiveEnabled
       || Object.values(inspected.personalProjectBindings).some((bound) => !bound)) {
     errors.push('Personal app isolation mismatch');
+  }
+  if (inspected.personalGatewayURL !== 'https:/$()/taisa-production.up.railway.app') {
+    errors.push('Personal voice gateway configuration mismatch');
   }
   const isolation = inspected.cloudKitIsolation;
   if (isolation.developmentContainer !== 'iCloud.com.taisa.app.dev'
