@@ -15,7 +15,7 @@ final class TaisaLaunchTests: XCTestCase {
         retainScreenshot(of: app, name: "development-home")
     }
 
-    func testPrimaryPagerSwipesBothDirectionsAndNavigationTargetsAreComfortablyHittable() {
+    func testPrimaryNavigationIsTapOnlyAndTargetsAreComfortablyHittable() {
         let app = XCUIApplication()
         app.launchArguments = ["--taisa-chats-visual-qa"]
         app.launch()
@@ -25,15 +25,16 @@ final class TaisaLaunchTests: XCTestCase {
         XCTAssertTrue(waitForSelection("Chats", in: app))
 
         swipeRight(in: app)
+        XCTAssertTrue(waitForSelection("Chats", in: app))
+
+        app.buttons["Home"].tap()
         XCTAssertTrue(waitForSelection("Home", in: app))
 
         swipeLeft(in: app)
-        XCTAssertTrue(waitForSelection("Chats", in: app))
-        swipeLeft(in: app)
-        XCTAssertTrue(waitForSelection("You", in: app))
+        XCTAssertTrue(waitForSelection("Home", in: app))
 
-        swipeRight(in: app)
-        XCTAssertTrue(waitForSelection("Chats", in: app))
+        app.buttons["You"].tap()
+        XCTAssertTrue(waitForSelection("You", in: app))
 
         for label in ["Home", "Chats", "You"] {
             let destination = app.buttons[label]
@@ -69,14 +70,14 @@ final class TaisaLaunchTests: XCTestCase {
     }
 
     private func swipeLeft(in app: XCUIApplication) {
-        let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.8, dy: 0.45))
-        let end = app.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.45))
+        let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.8, dy: 0.12))
+        let end = app.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.12))
         start.press(forDuration: 0.05, thenDragTo: end)
     }
 
     private func swipeRight(in app: XCUIApplication) {
-        let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.45))
-        let end = app.coordinate(withNormalizedOffset: CGVector(dx: 0.8, dy: 0.45))
+        let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.12))
+        let end = app.coordinate(withNormalizedOffset: CGVector(dx: 0.8, dy: 0.12))
         start.press(forDuration: 0.05, thenDragTo: end)
     }
 
