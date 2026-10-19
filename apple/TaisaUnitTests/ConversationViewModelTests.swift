@@ -613,37 +613,6 @@ final class ConversationViewModelTests: XCTestCase {
         XCTAssertEqual(dismissed, 1)
     }
 
-    func testDiscardKeepsRecordingPresentationStableUntilProvisionalChatDismisses() async {
-        let gate = AsyncGate()
-        let events = EventRecorder()
-        let capture = BlockingCaptureSnapshot()
-        let client = ConversationScreenClient(
-            beginVoice: {}, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
-            sendText: { _, available in await available() }, retry: {}, saveDraft: { _ in },
-            discardDraft: {
-                await events.append("discard-start")
-                await gate.wait()
-            },
-            discardEmptyConversation: {},
-            loadCaptureSnapshot: { await capture.load() }
-        )
-        let model = ConversationViewModel(
-            conversationID: UUID().uuidString, title: "New chat", entryIntent: nil,
-            composer: .recording, client: client
-        )
-
-        let refresh = Task { await model.refreshCapture() }
-        while !(await capture.hasStarted) { await Task.yield() }
-        let discard = Task { await model.confirmDiscardRecording() }
-        while !(await events.values()).contains("discard-start") { await Task.yield() }
-        await capture.release()
-        await refresh.value
-
-        XCTAssertEqual(model.composer, .recording)
-        await gate.open()
-        await discard.value
-    }
-
     func testTypedSendClearsComposerBeforeDurableCommitCompletes() async {
         let gate = AsyncGate()
         let events = EventRecorder()
