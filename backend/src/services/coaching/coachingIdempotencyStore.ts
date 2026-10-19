@@ -75,6 +75,22 @@ export class CoachingIdempotencyStore {
     return this.database.transaction(() => {
       const existing = this.rowForKey(input.key);
       if (existing) {
+        const sameIdentity = existing.request_id === input.requestId
+          && existing.owner_id === input.ownerId;
+        const retryMayUpgradeLegacyHash = sameIdentity
+          && existing.status === 'queued'
+          && existing.failure_code === 'RETRY_AUTHORIZED';
+        if (existing.request_hash !== input.requestHash && retryMayUpgradeLegacyHash) {
+          this.database.prepare(`
+            UPDATE coaching_idempotency_receipts
+            SET request_hash = ?, failure_code = NULL, updated_at = ?
+            WHERE idempotency_key = ? AND request_id = ? AND owner_id = ?
+              AND status = 'queued' AND failure_code = 'RETRY_AUTHORIZED'
+          `).run(
+            input.requestHash, new Date().toISOString(), input.key, input.requestId, input.ownerId,
+          );
+          return { status: 'start' } as const;
+        }
         if (existing.request_id !== input.requestId || existing.request_hash !== input.requestHash
           || existing.owner_id !== input.ownerId) {
           throw new IdempotencyConflictError();
@@ -134,13 +150,18 @@ export class CoachingIdempotencyStore {
   authorizeRetry(requestId: string, ownerId: string): { status: 'authorized'; requestId: string } {
     return this.database.transaction(() => {
       const row = this.database.prepare(
-        'SELECT status FROM coaching_idempotency_receipts WHERE request_id = ? AND owner_id = ?',
-      ).get(requestId, ownerId) as { status: StoredStatus } | undefined;
+        'SELECT status, failure_retryable FROM coaching_idempotency_receipts WHERE request_id = ? AND owner_id = ?',
+      ).get(requestId, ownerId) as { status: StoredStatus; failure_retryable: number | null } | undefined;
       if (!row) throw new CoachingRequestNotFoundError();
-      if (row.status !== 'provider_started') throw new Error('IDEMPOTENCY_STATE_CONFLICT');
+      const mayRetry = row.status === 'provider_started'
+        || (row.status === 'failed' && row.failure_retryable === 1);
+      if (!mayRetry) throw new Error('IDEMPOTENCY_STATE_CONFLICT');
       const result = this.database.prepare(`
-        UPDATE coaching_idempotency_receipts SET status = 'queued', updated_at = ?
-        WHERE request_id = ? AND owner_id = ? AND status = 'provider_started'
+        UPDATE coaching_idempotency_receipts
+        SET status = 'queued', failure_code = 'RETRY_AUTHORIZED',
+          failure_retryable = NULL, updated_at = ?
+        WHERE request_id = ? AND owner_id = ?
+          AND (status = 'provider_started' OR (status = 'failed' AND failure_retryable = 1))
       `).run(new Date().toISOString(), requestId, ownerId);
       if (result.changes !== 1) throw new Error('IDEMPOTENCY_STATE_CONFLICT');
       return { status: 'authorized', requestId } as const;
