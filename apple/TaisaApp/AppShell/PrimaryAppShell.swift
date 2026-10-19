@@ -89,16 +89,16 @@ struct PrimaryAppShell: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            NavigationStack {
-                ZStack {
-                    ForEach(PrimaryDestination.allCases, id: \.self) { destination in
+            ZStack {
+                ForEach(PrimaryDestination.allCases, id: \.self) { destination in
+                    NavigationStack {
                         destinationView(destination)
-                            .opacity(model.selection == destination ? 1 : 0)
-                            .allowsHitTesting(model.selection == destination)
-                            .accessibilityHidden(model.selection != destination)
+                            .safeAreaPadding(.bottom, model.primaryPageBottomReservation)
                     }
+                    .opacity(model.selection == destination ? 1 : 0)
+                    .allowsHitTesting(model.selection == destination)
+                    .accessibilityHidden(model.selection != destination)
                 }
-                .safeAreaPadding(.bottom, model.primaryPageBottomReservation)
             }
 
             if model.showsConversationDock {
