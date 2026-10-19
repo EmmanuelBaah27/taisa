@@ -27,7 +27,7 @@ final class PrimaryAppShellModel {
 
     var showsConversationDock: Bool { conversationRoute == nil }
     var primaryPageBottomReservation: CGFloat {
-        selection == .conversations ? 0 : TaisaControlMetric.primaryNavigationReservedHeight
+        TaisaControlMetric.primaryNavigationReservedHeight
     }
 
     func select(_ destination: PrimaryDestination) {

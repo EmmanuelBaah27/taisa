@@ -14,14 +14,16 @@ public struct TaisaBottomChrome<Content: View>: View {
     }
 
     public var body: some View {
-        content
-            .background(alignment: .bottom) {
-                PageEdgeFade(.navigation)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: TaisaBottomChromeContract.fadeHeight)
-                    .ignoresSafeArea(edges: [.horizontal, .bottom])
-                    .allowsHitTesting(false)
-            }
+        ZStack(alignment: .bottom) {
+            PageEdgeFade(.navigation)
+                .frame(maxWidth: .infinity)
+                .frame(height: TaisaBottomChromeContract.fadeHeight)
+                .ignoresSafeArea(edges: [.horizontal, .bottom])
+                .allowsHitTesting(false)
+
+            content
+        }
+        .frame(maxWidth: .infinity)
     }
 }
 
