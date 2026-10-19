@@ -514,6 +514,19 @@ describe('transcription privacy and spend boundaries', () => {
     await removeLedgerFiles(databasePath);
   });
 
+  test('uses measured duration when an interrupted iOS recording reports zero', async () => {
+    const create = createSuccessfulTranscription();
+    jest.spyOn(console, 'info').mockImplementation(() => undefined);
+
+    const response = await request(createTranscriptionApp({ create }))
+      .post('/api/v1/transcribe')
+      .field('durationSeconds', '0')
+      .attach('audio', fixturePath);
+
+    expect(response.status).toBe(200);
+    expect(create).toHaveBeenCalledTimes(1);
+  });
+
   test('measures uploaded audio and rejects duration above the configured ceiling before OpenAI', async () => {
     const create = jest.fn().mockResolvedValue({ text: 'must not be called' });
     jest.spyOn(console, 'info').mockImplementation(() => undefined);

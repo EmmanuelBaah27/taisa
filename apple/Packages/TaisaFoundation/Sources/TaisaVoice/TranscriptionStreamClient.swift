@@ -79,7 +79,9 @@ public struct TranscriptionStreamClient: Sendable {
     private func multipartBody(_ input: TranscriptionStreamRequest, boundary: String) throws -> Data {
         let audio = try Data(contentsOf: input.audio.url, options: .mappedIfSafe)
         var body = Data()
-        body.append(Data("--\(boundary)\r\nContent-Disposition: form-data; name=\"durationSeconds\"\r\n\r\n\(input.audio.duration)\r\n".utf8))
+        if input.audio.duration.isFinite, input.audio.duration > 0 {
+            body.append(Data("--\(boundary)\r\nContent-Disposition: form-data; name=\"durationSeconds\"\r\n\r\n\(input.audio.duration)\r\n".utf8))
+        }
         body.append(Data("--\(boundary)\r\nContent-Disposition: form-data; name=\"audio\"; filename=\"audio.m4a\"\r\nContent-Type: audio/mp4\r\n\r\n".utf8))
         body.append(audio)
         body.append(Data("\r\n--\(boundary)--\r\n".utf8))
