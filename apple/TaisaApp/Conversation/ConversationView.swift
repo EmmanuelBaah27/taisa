@@ -1,21 +1,48 @@
+import Foundation
 import SwiftUI
 import TaisaConversations
 import TaisaDesignSystem
+import UIKit
 
 struct ConversationView: View {
     @State var model: ConversationViewModel
 
     var body: some View {
         NavigationStack {
-            ConversationTimeline(messages: model.messages, correct: model.requestCorrection)
-                .navigationTitle(model.title)
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button("Close", action: model.requestClose)
-                            .accessibilityIdentifier("conversation.close")
+            ZStack(alignment: .top) {
+                StatusBarBackground()
+                    .zIndex(4)
+                VStack(spacing: 0) {
+                    ZStack {
+                        ConversationTimeline(
+                            messages: model.messages,
+                            assistantResponses: model.assistantResponses,
+                            updatingResponseAfter: model.correctionRegenerationMessageID,
+                            streamingResponse: model.partialCoaching,
+                            isThinking: model.composer == .coaching && model.partialCoaching.isEmpty,
+                            correct: model.requestCorrection,
+                            saveFeedback: { messageID, direction, factors, detail in
+                                Task { await model.saveFeedback(
+                                    responseMessageID: messageID, direction: direction,
+                                    factors: factors, detail: detail
+                                ) }
+                            },
+                            acceptProposal: { id in Task { await model.acceptProposal(id) } },
+                            dismissProposal: { id in Task { await model.dismissProposal(id) } }
+                        )
+                        if model.messages.isEmpty { emptyState }
                     }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                    composer
+                        .frame(minHeight: TaisaControlMetric.conversationComposerDockHeight, alignment: .bottom)
+                        .zIndex(2)
                 }
-                .safeAreaInset(edge: .bottom) { composer }
+                ConversationPageHeader(title: model.title, onDismiss: model.requestClose)
+                    .accessibilityIdentifier("conversation.close")
+                    .zIndex(3)
+            }
+            .toolbar(.hidden, for: .navigationBar)
         }
         .accessibilityIdentifier("conversation.root")
         .interactiveDismissDisabled(true)
@@ -27,23 +54,32 @@ struct ConversationView: View {
             NavigationStack {
                 TranscriptCorrectionView(
                     text: $model.correctionText,
+                    canSubmit: model.canSubmitCorrection,
+                    isDirty: model.isCorrectionDirty,
+                    isSubmitting: model.isCorrectionSubmitting,
+                    cancel: model.cancelCorrection,
                     submit: { Task { await model.submitCorrection() } }
                 )
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button("Cancel", action: model.cancelCorrection)
-                    }
-                }
             }
         }
         .confirmationDialog("Keep this unfinished thought?", isPresented: Binding(
             get: { model.confirmation != nil },
-            set: { if !$0 { model.cancelConfirmation() } }
+            // Each dialog action owns clearing the pending confirmation. SwiftUI
+            // writes `false` while dismissing a tapped action, before an async
+            // action's task necessarily starts; clearing here can erase the
+            // command that action is about to confirm.
+            set: { _ in }
         )) {
             switch model.confirmation {
             case .discardVoiceForKeyboard:
                 Button("Switch to keyboard", role: .destructive) { Task { await model.confirmKeyboardReplacement() } }
                 Button("Cancel", role: .cancel, action: model.cancelConfirmation)
+            case .discardRecording:
+                Button("Continue", role: .destructive) { Task { await model.confirmDiscardRecording() } }
+                Button("Go back", role: .cancel, action: model.cancelConfirmation)
+            case .discardShortOrKeepRecording:
+                Button("Discard recording", role: .destructive) { Task { await model.confirmDiscardRecording() } }
+                Button("Keep recording", role: .cancel, action: model.cancelConfirmation)
             case .saveDiscardOrCancel:
                 Button("Save draft") { Task { await model.saveAndClose() } }.accessibilityIdentifier("conversation.save-draft")
                 Button("Discard", role: .destructive) { Task { await model.discardAndClose() } }.accessibilityIdentifier("conversation.discard")
@@ -56,64 +92,186 @@ struct ConversationView: View {
     @ViewBuilder private var composer: some View {
         switch model.composer {
         case .preparingVoice:
-            ConversationProgressState(label: "Preparing microphone…")
+            recordingBar(.preparing)
         case .recording:
-            VoiceComposerControls(
-                phase: .recording,
-                onPrimary: { Task { await model.pause() } },
-                onSend: { Task { await model.sendVoice() } },
-                onKeyboard: model.requestKeyboard
-            )
-                .accessibilityIdentifier("conversation.voice-composer")
-        case .paused:
-            VoiceComposerControls(
-                phase: .paused,
-                onPrimary: { Task { await model.resume() } },
-                onSend: { Task { await model.sendVoice() } },
-                onKeyboard: model.requestKeyboard
-            )
-                .accessibilityIdentifier("conversation.voice-composer")
-        case .savedVoiceDraft:
-            VoiceComposerControls(
-                phase: .saved,
-                onPrimary: {},
-                onSend: { Task { await model.sendVoice() } },
-                onKeyboard: model.requestKeyboard
-            )
-                .accessibilityIdentifier("conversation.voice-composer")
-        case .typing:
-            TextComposer(text: $model.text, onSend: { Task { await model.sendText() } }, onVoice: { Task { try? await model.beginVoice() } })
-                .accessibilityIdentifier("conversation.text-composer")
-        case .transcribing:
-            ConversationProgressState(label: "Transcribing…")
-        case .coaching:
-            VStack(alignment: .leading, spacing: 12) {
-                if let transcript = model.latestUserTranscript {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("You")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        Text(transcript)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .textSelection(.enabled)
+            recordingBar(actionPhase)
+                .task {
+                    while !Task.isCancelled, model.composer == .recording {
+                        await model.refreshCapture()
+                        try? await Task.sleep(for: .milliseconds(100))
                     }
-                    .accessibilityElement(children: .combine)
-                    .accessibilityIdentifier("conversation.transcript-preview")
                 }
-                ConversationProgressState(label: "Preparing coaching…")
+        case .paused:
+            recordingBar(pausedActionPhase)
+        case .savedVoiceDraft:
+            recordingBar(.saved)
+        case .typing:
+            bottomChrome {
+                TextComposer(text: $model.text, onSend: { Task { await model.sendText() } }, onVoice: { Task { try? await model.beginVoice() } })
+                    .accessibilityIdentifier("conversation.text-composer")
             }
-            .padding(.horizontal)
+        case .transcribing:
+            bottomChrome {
+                ConversationProgressState(label: "Transcribing…")
+                    .frame(height: TaisaControlMetric.recordingButtonHeight)
+                    .frame(maxWidth: .infinity)
+            }
+        case .coaching:
+            bottomChrome {
+                TextComposer(
+                    text: $model.text, mode: .processing,
+                    onSend: {}, onVoice: {}
+                )
+                .accessibilityIdentifier("conversation.text-composer.processing")
+            }
+            .task {
+                while !Task.isCancelled, model.composer == .coaching {
+                    await model.refreshPartialCoaching()
+                    try? await Task.sleep(for: .milliseconds(100))
+                }
+            }
         case .waitingForReply:
-            VoiceComposerControls(phase: .waitingForReply, onPrimary: { Task { try? await model.beginVoice() } }, onSend: {})
-                .accessibilityIdentifier("conversation.voice-composer")
+            bottomChrome { voiceReplyButton }
         case .failure:
-            ConversationFailureActions(
-                message: "Unable to continue.",
-                onRetry: { Task { await model.retry() } },
-                onSave: { Task { await model.saveAndClose() } },
-                onDiscard: { Task { await model.discardAndClose() } }
-            )
-            .accessibilityIdentifier("conversation.retry")
+            bottomChrome {
+                InlineRecoveryAlert(
+                    contract: recoveryContract,
+                    onCancel: performRecoverySecondaryAction,
+                    onRetry: performRecoveryPrimaryAction
+                )
+                .accessibilityIdentifier("conversation.retry")
+            }
         }
+    }
+
+    private var recoveryContract: InlineRecoveryAlert.Contract {
+        switch model.failureContext {
+        case .transcription: .transcription
+        case .request: .request
+        case .beginRecording: .beginRecording
+        case .microphonePermissionDenied: .microphonePermission
+        case .pauseRecording: .pauseRecording
+        case .resumeRecording: .resumeRecording
+        }
+    }
+
+    private var actionPhase: ConversationActionBar.Phase {
+        switch model.capture.disposition {
+        case .empty: .recording
+        case .shortCapture: .shortCapture
+        case .sendable: .sendable
+        case .durableProcessing: .waitingForReply
+        }
+    }
+
+    private var pausedActionPhase: ConversationActionBar.Phase {
+        switch model.capture.disposition {
+        case .empty: .pausedEmpty
+        case .shortCapture: .pausedShort
+        case .sendable: .paused
+        case .durableProcessing: .waitingForReply
+        }
+    }
+
+    private func recordingBar(_ phase: ConversationActionBar.Phase) -> some View {
+        ConversationActionBar(
+            phase: phase, elapsed: elapsed,
+            onDiscard: model.requestDiscardRecording,
+            onKeyboard: model.requestKeyboard,
+            onPrimary: {
+                Task {
+                    switch phase {
+                    case .pausedEmpty, .pausedShort, .paused: await model.resume()
+                    case .recording, .shortCapture, .sendable: await model.pause()
+                    case .preparing, .saved, .waitingForReply: break
+                    }
+                }
+            },
+            onSend: { Task { await model.sendVoice() } }
+        )
+        .accessibilityIdentifier("conversation.voice-composer")
+    }
+
+    private var elapsed: String {
+        let seconds = model.capture.elapsedMilliseconds / 1_000
+        return String(format: "%d:%02d", seconds / 60, seconds % 60)
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: 12) {
+            CentralIcon(.voiceMid).frame(width: 40, height: 40)
+            Text("What’s on your mind?").font(.system(.body, weight: .medium))
+            Text("Talk it through with Taisa.")
+                .font(TaisaTypography.body.font)
+                .foregroundStyle(TaisaColor.mutedForeground.color)
+        }
+        .padding()
+        .accessibilityElement(children: .combine)
+    }
+
+    private var voiceReplyButton: some View {
+        HStack {
+            Spacer()
+            TaisaSecondaryCapsuleButton(
+                height: TaisaControlMetric.recordingButtonHeight,
+                action: { Task { try? await model.beginVoice() } }
+            ) {
+                HStack(spacing: TaisaSpacing.compact.rawValue) {
+                    CentralIcon(.voiceMid)
+                        .frame(width: TaisaControlMetric.standardIcon, height: TaisaControlMetric.standardIcon)
+                    Text("Reply").font(TaisaTypography.navigationLabel.font)
+                }
+                .foregroundStyle(TaisaColor.foreground.color)
+                .padding(.horizontal, TaisaSpacing.page.rawValue)
+                .frame(height: TaisaControlMetric.recordingButtonHeight)
+            }
+            .accessibilityLabel("Reply by voice, starts recording")
+            .accessibilityIdentifier("conversation.voice-reply")
+            Spacer()
+        }
+    }
+
+    private func bottomChrome<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        content()
+            .padding(.horizontal, TaisaSpacing.standard.rawValue)
+            .padding(.top, TaisaSpacing.section.rawValue)
+            .padding(.bottom, TaisaSpacing.section.rawValue)
+            .frame(minHeight: TaisaControlMetric.conversationComposerDockHeight, alignment: .bottom)
+            .background { PageEdgeFade(.navigation).ignoresSafeArea(edges: [.horizontal, .bottom]) }
+    }
+
+    private func performRecoveryPrimaryAction() {
+        if model.failureContext == .microphonePermissionDenied,
+           let settingsURL = URL(string: UIApplication.openSettingsURLString) {
+            UIApplication.shared.open(settingsURL, options: [:])
+        } else {
+            Task { await model.retry() }
+        }
+    }
+
+    private func performRecoverySecondaryAction() {
+        switch model.failureContext {
+        case .transcription:
+            Task { await model.saveAndClose() }
+        case .microphonePermissionDenied:
+            model.continueWithKeyboardAfterPermissionDenial()
+        case .beginRecording:
+            model.continueWithKeyboardAfterRecordingFailure()
+        case .pauseRecording:
+            Task { await model.confirmDiscardRecording() }
+        case .resumeRecording:
+            Task { await model.saveAndClose() }
+        case .request:
+            model.cancelRecoveryAndClose()
+        }
+    }
+}
+
+private struct StatusBarBackground: View {
+    var body: some View {
+        TaisaColor.background.color
+            .frame(height: 1)
+            .frame(maxWidth: .infinity)
+            .ignoresSafeArea(edges: .top)
     }
 }

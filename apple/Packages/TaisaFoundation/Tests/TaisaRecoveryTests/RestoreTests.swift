@@ -43,6 +43,7 @@ private struct RestoreFixture {
     let evidenceID: String
     let proposalReceiptID: String
     let capabilityID: String
+    let responseMessageID: String
     init() async throws {
         directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
@@ -59,6 +60,7 @@ private struct RestoreFixture {
         proposalReceiptID = UUID().uuidString
         capabilityID = "voice.coaching"
         let conversation = ConversationRecord(id: UUID().uuidString, title: "Archived source", createdAtMS: 1, updatedAtMS: 1)
+        responseMessageID = UUID().uuidString
         try await ActionRepository(store: store).create(action, context: .init(id: UUID().uuidString, deviceID: deviceID, timestamp: 1))
         try await WeeklyPlacementRepository(store: store).create(.init(id: placementID, actionID: action.id, weekStartMS: 100, plannedDayMS: nil, createdAtMS: 2, updatedAtMS: 2), context: .init(id: UUID().uuidString, deviceID: deviceID, timestamp: 2))
         try await ConversationRepository(store: store).create(conversation, context: .init(id: UUID().uuidString, deviceID: deviceID, timestamp: 3))
@@ -70,7 +72,14 @@ private struct RestoreFixture {
         let storedEvidenceID = evidenceID
         let storedProposalReceiptID = proposalReceiptID
         let storedCapabilityID = capabilityID
+        let storedResponseMessageID = responseMessageID
         try await store.write { db in
+            try db.execute(sql: "INSERT INTO messages (id, conversation_id, role, body, created_at_ms) VALUES (?, ?, 'assistant', 'Archived response', 10)", arguments: [storedResponseMessageID, conversation.id])
+            try db.execute(sql: "INSERT INTO assistant_response_metadata (response_message_id, request_id, idempotency_receipt, mode, relevance, context_sufficiency, stance, inference, confidence, approach, created_at_ms) VALUES (?, ?, 'archived-receipt', 'coach', 'career-relevant', 'sufficient', 'challenge', 'Archived inference', 'medium', 'Archived approach', 10)", arguments: [storedResponseMessageID, UUID().uuidString])
+            try db.execute(sql: "INSERT INTO assistant_response_sources (id, response_message_id, ordinal, source_id, source_type, excerpt) VALUES (?, ?, 0, ?, 'message', 'Archived excerpt')", arguments: [UUID().uuidString, storedResponseMessageID, conversation.id])
+            try db.execute(sql: "INSERT INTO assistant_proposals (id, response_message_id, kind, canonical_payload, payload_digest, state, created_at_ms, resolved_at_ms) VALUES (?, ?, 'insight', x'7B7D', 'archived-digest', 'unsupported', 10, 11)", arguments: [UUID().uuidString, storedResponseMessageID])
+            try db.execute(sql: "INSERT INTO response_feedback (response_message_id, direction, factors_json, updated_at_ms) VALUES (?, 'not_helpful', x'5B5D', 11)", arguments: [storedResponseMessageID])
+            try db.execute(sql: "INSERT INTO preference_profiles (id, signals_json, enabled, updated_at_ms) VALUES (1, x'5B5D', 1, 11)")
             try db.execute(sql: "INSERT INTO profile (id, display_name, updated_at_ms) VALUES (?, 'ARCHIVED', 1)", arguments: [UUID().uuidString])
             try db.execute(sql: "INSERT INTO career_work_events (id, entity_type, entity_id, transition, to_status, source_type, occurred_at_ms) VALUES (?, 'action', ?, 'created', 'open', 'user', 6)", arguments: [storedCareerEventID, action.id])
             try db.execute(sql: "INSERT INTO career_work_archives (id, entity_type, entity_id, archived_at_ms) VALUES (?, 'action', ?, 7)", arguments: [storedCareerArchiveID, action.id])
@@ -118,6 +127,12 @@ private struct RestoreFixture {
         #expect(try await InsightQuery(store: restored).current().map(\.id) == [f.insightID])
         #expect(try await InsightQuery(store: restored).sources(insightID: f.insightID).count == 1)
         #expect(try await InsightQuery(store: restored).revisions(insightID: f.insightID).map(\.status) == [.accepted])
+        let restoredResponse = try #require(await AssistantResponseRepository(store: restored).response(messageID: f.responseMessageID))
+        #expect(restoredResponse.metadata.stance == "challenge")
+        #expect(restoredResponse.sources.map(\.excerpt) == ["Archived excerpt"])
+        #expect(restoredResponse.proposal?.state == .unsupported)
+        #expect(restoredResponse.feedback?.direction == .notHelpful)
+        #expect(try await restored.read { db in try Int.fetchOne(db, sql: "SELECT count(*) FROM preference_profiles") } == 1)
         let v5 = try await restored.read { db in
             (
                 try String.fetchOne(db, sql: "SELECT id FROM career_work_events WHERE id = ?", arguments: [f.careerEventID]),

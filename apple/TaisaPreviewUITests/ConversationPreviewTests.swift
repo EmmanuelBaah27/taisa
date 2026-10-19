@@ -2,6 +2,41 @@ import XCTest
 
 @MainActor
 final class ConversationPreviewTests: XCTestCase {
+    func testResponseFeedbackFactorsOpenInADismissibleSheet() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-TAISAPreviewScenario", "conversation.senior-self-response"]
+        app.launch()
+
+        XCTAssertTrue(
+            app.descendants(matching: .any)["preview.ready.conversation.senior-self-response"]
+                .waitForExistence(timeout: 5)
+        )
+
+        let notHelpful = app.descendants(matching: .any)["conversation.feedback.not_helpful"]
+        XCTAssertTrue(notHelpful.waitForExistence(timeout: 5))
+        notHelpful.tap()
+
+        let factors = app.descendants(matching: .any)["conversation.feedback-factors"]
+        let done = app.buttons["conversation.feedback.done"]
+        XCTAssertTrue(factors.waitForExistence(timeout: 5))
+        XCTAssertTrue(done.waitForExistence(timeout: 5))
+        done.tap()
+
+        XCTAssertFalse(factors.waitForExistence(timeout: 1))
+        XCTAssertTrue(notHelpful.exists)
+
+        notHelpful.tap()
+        XCTAssertTrue(factors.waitForExistence(timeout: 5))
+
+        let remove = app.buttons["conversation.feedback.remove"]
+        XCTAssertTrue(remove.waitForExistence(timeout: 5))
+        remove.tap()
+        XCTAssertFalse(factors.waitForExistence(timeout: 1))
+
+        notHelpful.tap()
+        XCTAssertTrue(factors.waitForExistence(timeout: 5))
+    }
+
     func testEveryConversationStateOpensDeterministicallyWithoutProductionRuntime() {
         let identifiers = [
             "conversation-list.empty", "conversation-list.multiple-drafts",

@@ -26,7 +26,7 @@ test('replays one authoritative completion for a duplicate idempotency key', () 
     relevance: 'career-relevant',
     contextSufficiency: 'sufficient',
     stance: 'nudge',
-    proposals: [],
+    explanation: { mode: 'nudge', evidence: [], inference: 'A prompt may help.', confidence: 'medium', approach: 'Ask one question.' }, proposal: null,
     usage: { provider: 'anthropic', model: 'fixture', estimatedCostUsd: 0.01 },
   }, 'receipt-1');
 
@@ -65,7 +65,8 @@ test('durable replay never writes coaching text as plaintext', () => {
     requestId,
     reply: 'PRIVATE_COACHING_REPLY_SENTINEL',
     mode: 'coach', relevance: 'career-relevant', contextSufficiency: 'sufficient',
-    stance: 'nudge', proposals: [],
+    stance: 'nudge',
+    explanation: { mode: 'nudge', evidence: [], inference: 'A prompt may help.', confidence: 'medium', approach: 'Ask one question.' }, proposal: null,
     usage: { provider: 'anthropic', model: 'fixture', estimatedCostUsd: 0.01 },
   }, 'receipt-private');
   store.close();

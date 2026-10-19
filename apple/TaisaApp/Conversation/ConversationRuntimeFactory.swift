@@ -26,6 +26,7 @@ struct ConversationRuntimeFactory: Sendable {
         let voiceTurn: VoiceTurnRecord
         let composer: ComposerState
         let text: String
+        let cleansInterruptedCapture: Bool
     }
 
     let store: TaisaStore
@@ -152,6 +153,8 @@ struct ConversationRuntimeFactory: Sendable {
     ) async throws -> ConversationViewModel {
         let conversations = ConversationRepository(store: store)
         let query = ConversationQuery(store: store)
+        let assistantResponses = AssistantResponseRepository(store: store)
+        let proposalRouter = AssistantProposalRouter(store: store)
         let messageHistory: @Sendable (String) async throws -> [MessageRecord] = { conversationID in
             try await query.loadConversation(id: conversationID).visibleMessages
         }
@@ -196,9 +199,11 @@ struct ConversationRuntimeFactory: Sendable {
         } else {
             rawResumable
         }
-        let pendingConversationRequest = resumable.flatMap { turn in
-            ["pending_text", "pending_correction"].contains(turn.failureCode) ? turn : nil
-        }
+        let pendingConversationRequest = Self.pendingConversationRequest(
+            resumable: resumable,
+            drafts: history.drafts,
+            messages: history.visibleMessages
+        )
         let lastUserMessage = history.visibleMessages.last(where: { $0.role == "user" })
         if pendingConversationRequest == nil {
             for draft in history.drafts {
@@ -249,7 +254,6 @@ struct ConversationRuntimeFactory: Sendable {
             fallbackVoiceTurn: fallbackTurn,
             recoveryTranscript: recoveryTranscript ?? lastUserMessage?.body
         )
-        let initial = pendingConversationRequest == nil ? restoration.voiceTurn : fallbackTurn
         let files = try await openStage(.audioFiles) {
             try ProtectedAudioFileStore()
         }
@@ -261,20 +265,52 @@ struct ConversationRuntimeFactory: Sendable {
             lifecycle: SystemAudioSessionLifecycleSource()
         )
         let connectivity = SystemConnectivityMonitor()
-        let voiceCoordinator = VoiceSessionCoordinator(
-            initial: initial,
-            checkpoints: RepositoryVoiceTurnCheckpointer(repository: turns, deviceID: deviceID),
-            transcription: GatewayTranscriptionRunner(configuration: configuration, audio: capture),
-            transcriptionReconciliation: GatewayTranscriptionReconciliation(configuration: configuration),
-            coaching: GatewayCoachingRunner(configuration: configuration, recentMessages: messageHistory),
-            connectivity: connectivity,
-            reconciliation: GatewayCoachingReconciliation(configuration: configuration),
-            capture: capture,
-            audio: capture
+        let preferenceSignals: @Sendable () async throws -> [[String: String]] = {
+            let repository = AssistantResponseRepository(store: store)
+            let feedback = try await repository.recentFeedback()
+            let derived = ResponsePreferenceProfile.derive(from: feedback)
+            try await repository.replacePreferenceProfile(
+                derived.map { .init(factor: $0.factor, direction: $0.direction) },
+                updatedAtMS: feedback.map(\.updatedAtMS).max() ?? 0
+            )
+            return try await repository.preferenceProfile().map {
+                ["factor": $0.factor.rawValue, "direction": $0.direction.rawValue]
+            }
+        }
+        let makeVoiceCoordinator: (VoiceTurnRecord) -> VoiceSessionCoordinator = { initial in
+            VoiceSessionCoordinator(
+                initial: initial,
+                checkpoints: RepositoryVoiceTurnCheckpointer(repository: turns, deviceID: deviceID),
+                transcription: GatewayTranscriptionRunner(configuration: configuration, audio: capture),
+                transcriptionReconciliation: GatewayTranscriptionReconciliation(configuration: configuration),
+                coaching: GatewayCoachingRunner(
+                    configuration: configuration,
+                    recentMessages: messageHistory,
+                    preferenceSignals: preferenceSignals
+                ),
+                connectivity: connectivity,
+                reconciliation: GatewayCoachingReconciliation(configuration: configuration),
+                capture: capture,
+                audio: capture
+            )
+        }
+        if restoration.cleansInterruptedCapture, pendingConversationRequest == nil {
+            let cleanupCoordinator = makeVoiceCoordinator(restoration.voiceTurn)
+            do {
+                try await cleanupCoordinator.recoverIfAuthorized()
+            } catch {
+                print("TAISA_CONVERSATION_OPEN_RECOVERY deferred=true")
+            }
+        }
+        let initial = Self.runtimeInitialTurn(
+            restoration: restoration,
+            fallbackVoiceTurn: fallbackTurn,
+            hasPendingConversationRequest: pendingConversationRequest != nil
         )
+        let voiceCoordinator = makeVoiceCoordinator(initial)
         let gatewayClient = GatewayConversationClient(
             store: store, deviceID: deviceID,
-            coaching: GatewayCoachingRunner(configuration: configuration, recentMessages: messageHistory)
+            coaching: GatewayCoachingRunner(configuration: configuration, recentMessages: messageHistory, preferenceSignals: preferenceSignals)
         )
         let voiceAdapter = VoiceSessionConversationAdapter(voiceCoordinator)
         let coordinator: ConversationCoordinator
@@ -307,19 +343,47 @@ struct ConversationRuntimeFactory: Sendable {
             : .failure(.retryable)
         let initialText = restoration.text
         let restoredDraftID = restoredDraft?.id
+        let rawState = rawResumable?.state.rawValue ?? "none"
+        let rawStage = rawResumable?.stage.rawValue ?? "none"
+        let draftMode = restoredDraft?.inputMode.rawValue ?? "none"
+        let newerCompleted = latestCompleted.map { completed in
+            rawResumable.map { completed.updatedAtMS > $0.updatedAtMS } ?? false
+        } ?? false
+        print(
+            "TAISA_CONVERSATION_RESTORE "
+                + "rawState=\(rawState) "
+                + "rawStage=\(rawStage) "
+                + "selected=\(resumable != nil) "
+                + "newerCompleted=\(newerCompleted) "
+                + "draftMode=\(draftMode) "
+                + "pending=\(pendingConversationRequest != nil) "
+                + "restoredState=\(restoration.voiceTurn.state.rawValue) "
+                + "restoredStage=\(restoration.voiceTurn.stage.rawValue) "
+                + "entryIntent=\(entryIntent != nil)"
+        )
 
         let client = ConversationScreenClient(
             loadMessages: { try await query.loadConversation(id: route.id).visibleMessages },
+            loadAssistantResponses: {
+                let values = try await query.loadConversation(id: route.id).assistantResponses
+                return try await assistantResponses.resolveSources(in: values)
+            },
             loadTitle: { try await query.loadConversation(id: route.id).conversation.title },
             beginVoice: { try await coordinator.beginReply(mode: .voice) },
             pauseVoice: { try await coordinator.pauseVoice() },
             resumeVoice: { try await coordinator.resumeVoice() },
+            retryPauseVoice: { try await voiceCoordinator.retryCapturePause() },
+            retryResumeVoice: { try await voiceCoordinator.retryCaptureResume() },
             sendVoice: { transcriptAvailable in
                 try await coordinator.sendVoice(onTranscriptAvailable: transcriptAvailable)
                 let snapshot = try await query.loadConversation(id: route.id)
                 for draft in snapshot.drafts { try await conversations.discardDraft(id: draft.id) }
             },
-            sendText: { try await coordinator.send(.text($0)) },
+            sendText: { text, messageAvailable in
+                try await coordinator.send(
+                    .text(text), onMessageAvailable: messageAvailable
+                )
+            },
             retry: {
                 try await coordinator.retry()
                 if let restoredDraftID {
@@ -358,6 +422,50 @@ struct ConversationRuntimeFactory: Sendable {
             },
             correctTranscript: { messageID, text in
                 try await coordinator.correctTranscript(messageID: messageID, text: text)
+            },
+            loadCaptureSnapshot: { await voiceCoordinator.snapshot().capture },
+            loadPartialCoaching: {
+                let voicePartial = await voiceCoordinator.snapshot().partialCoaching
+                if !voicePartial.isEmpty { return voicePartial }
+                return await gatewayClient.partialCoachingSnapshot()
+            },
+            recoveryEvents: {
+                AsyncStream { continuation in
+                    let task = Task {
+                        let changes = await connectivity.changes()
+                        for await isAvailable in changes where isAvailable {
+                            let before = await voiceCoordinator.snapshot().durable.state
+                            guard before != .completed else { continue }
+                            try? await voiceCoordinator.connectivityChanged(isAvailable: true)
+                            await voiceCoordinator.waitForIdle()
+                            if await voiceCoordinator.snapshot().durable.state == .completed {
+                                continuation.yield(())
+                            }
+                        }
+                        continuation.finish()
+                    }
+                    continuation.onTermination = { _ in task.cancel() }
+                }
+            },
+            saveFeedback: {
+                try await assistantResponses.upsertFeedback($0)
+                try await Self.materializePreferenceProfile(assistantResponses, revision: $0.updatedAtMS)
+            },
+            removeFeedback: { responseMessageID, revision in
+                try await assistantResponses.removeFeedback(responseMessageID: responseMessageID)
+                try await Self.materializePreferenceProfile(assistantResponses, revision: revision)
+            },
+            acceptProposal: { proposalID in
+                _ = try await proposalRouter.accept(
+                    proposalID: proposalID, deviceID: deviceID,
+                    resolvedAtMS: Int64(Date().timeIntervalSince1970 * 1_000)
+                )
+            },
+            dismissProposal: { proposalID in
+                _ = try await proposalRouter.dismiss(
+                    proposalID: proposalID, deviceID: deviceID,
+                    resolvedAtMS: Int64(Date().timeIntervalSince1970 * 1_000)
+                )
             }
         )
         return await ConversationViewModel(
@@ -387,16 +495,22 @@ struct ConversationRuntimeFactory: Sendable {
         let unavailable: @Sendable () async throws -> Void = {
             throw ConversationFailure.unavailable
         }
+        let assistantResponses = AssistantResponseRepository(store: store)
+        let proposalRouter = AssistantProposalRouter(store: store)
         let textDraft = history.drafts.first(where: { $0.inputMode == .text })?.text ?? ""
         let composer: ComposerState = textDraft.isEmpty ? .waitingForReply : .typing(textDraft)
         let client = ConversationScreenClient(
             loadMessages: { try await query.loadConversation(id: route.id).visibleMessages },
+            loadAssistantResponses: {
+                let values = try await query.loadConversation(id: route.id).assistantResponses
+                return try await assistantResponses.resolveSources(in: values)
+            },
             loadTitle: { try await query.loadConversation(id: route.id).conversation.title },
             beginVoice: unavailable,
             pauseVoice: unavailable,
             resumeVoice: unavailable,
             sendVoice: { _ in try await unavailable() },
-            sendText: { _ in try await unavailable() },
+            sendText: { _, _ in try await unavailable() },
             retry: unavailable,
             saveDraft: { input in
                 guard case .text = input else { try await unavailable(); return }
@@ -428,7 +542,27 @@ struct ConversationRuntimeFactory: Sendable {
                     context: mutation(at: Int64(Date().timeIntervalSince1970 * 1_000))
                 )
             },
-            correctTranscript: { _, _ in try await unavailable() }
+            correctTranscript: { _, _ in try await unavailable() },
+            saveFeedback: {
+                try await assistantResponses.upsertFeedback($0)
+                try await Self.materializePreferenceProfile(assistantResponses, revision: $0.updatedAtMS)
+            },
+            removeFeedback: { responseMessageID, revision in
+                try await assistantResponses.removeFeedback(responseMessageID: responseMessageID)
+                try await Self.materializePreferenceProfile(assistantResponses, revision: revision)
+            },
+            acceptProposal: { proposalID in
+                _ = try await proposalRouter.accept(
+                    proposalID: proposalID, deviceID: deviceID,
+                    resolvedAtMS: Int64(Date().timeIntervalSince1970 * 1_000)
+                )
+            },
+            dismissProposal: { proposalID in
+                _ = try await proposalRouter.dismiss(
+                    proposalID: proposalID, deviceID: deviceID,
+                    resolvedAtMS: Int64(Date().timeIntervalSince1970 * 1_000)
+                )
+            }
         )
         return ConversationViewModel(
             conversationID: route.id,
@@ -452,6 +586,17 @@ struct ConversationRuntimeFactory: Sendable {
         }
     }
 
+    static func runtimeInitialTurn(
+        restoration: Restoration,
+        fallbackVoiceTurn: VoiceTurnRecord,
+        hasPendingConversationRequest: Bool
+    ) -> VoiceTurnRecord {
+        if hasPendingConversationRequest || restoration.cleansInterruptedCapture {
+            return fallbackVoiceTurn
+        }
+        return restoration.voiceTurn
+    }
+
     static func restoration(
         draft: ConversationDraftRecord?,
         linkedVoiceTurn: VoiceTurnRecord?,
@@ -461,12 +606,53 @@ struct ConversationRuntimeFactory: Sendable {
     ) -> Restoration {
         var voiceTurn = linkedVoiceTurn ?? resumableVoiceTurn ?? fallbackVoiceTurn
         guard let draft else {
-            return Restoration(voiceTurn: voiceTurn, composer: .waitingForReply, text: "")
+            if let resumableVoiceTurn,
+               isResponseFailureAwaitingRetry(resumableVoiceTurn),
+               resumableVoiceTurn.acceptedTranscript != nil {
+                return Restoration(
+                    voiceTurn: resumableVoiceTurn,
+                    composer: .failure(.retryable),
+                    text: "",
+                    cleansInterruptedCapture: false
+                )
+            }
+            if let resumableVoiceTurn,
+               resumableVoiceTurn.stage == .capture || resumableVoiceTurn.stage == .cleanup {
+                let hasFinalizedAudio = resumableVoiceTurn.state == .paused
+                    && resumableVoiceTurn.stage == .capture
+                    && resumableVoiceTurn.audioSHA256 != nil
+                    && resumableVoiceTurn.audioDurationMS != nil
+                if hasFinalizedAudio {
+                    return Restoration(
+                        voiceTurn: resumableVoiceTurn,
+                        composer: .savedVoiceDraft,
+                        text: "",
+                        cleansInterruptedCapture: false
+                    )
+                }
+                return Restoration(
+                    voiceTurn: resumableVoiceTurn,
+                    composer: .waitingForReply,
+                    text: "",
+                    cleansInterruptedCapture: true
+                )
+            }
+            return Restoration(
+                voiceTurn: voiceTurn,
+                composer: .waitingForReply,
+                text: "",
+                cleansInterruptedCapture: false
+            )
         }
         switch draft.inputMode {
         case .text:
             let text = draft.text ?? ""
-            return Restoration(voiceTurn: voiceTurn, composer: .typing(text), text: text)
+            return Restoration(
+                voiceTurn: voiceTurn,
+                composer: .typing(text),
+                text: text,
+                cleansInterruptedCapture: false
+            )
         case .voice:
             let composer: ComposerState
             switch linkedVoiceTurn?.state {
@@ -498,8 +684,67 @@ struct ConversationRuntimeFactory: Sendable {
                     composer = .paused
                 }
             }
-            return Restoration(voiceTurn: voiceTurn, composer: composer, text: "")
+            return Restoration(
+                voiceTurn: voiceTurn,
+                composer: composer,
+                text: "",
+                cleansInterruptedCapture: false
+            )
         }
+    }
+
+    private static func isResponseFailureAwaitingRetry(_ turn: VoiceTurnRecord) -> Bool {
+        switch (turn.state, turn.stage) {
+        case (.coaching, .coaching),
+             (.recoverableFailure, .coaching),
+             (.resumeRequiresConfirmation, .coaching),
+             (.terminalFailure, .finished):
+            true
+        default:
+            false
+        }
+    }
+
+    static func pendingConversationRequest(
+        resumable: VoiceTurnRecord?,
+        drafts: [ConversationDraftRecord],
+        messages: [MessageRecord]
+    ) -> VoiceTurnRecord? {
+        if let resumable,
+           ["pending_text", "pending_correction"].contains(resumable.failureCode) {
+            return resumable
+        }
+
+        guard let draft = drafts.first(where: {
+            $0.inputMode == .text && $0.recoveryKind == .retryableCoaching
+        }),
+        let text = draft.text?.trimmingCharacters(in: .whitespacesAndNewlines),
+        !text.isEmpty,
+        let userIndex = messages.lastIndex(where: {
+            $0.role == "user" && $0.body == text
+        }),
+        !messages[messages.index(after: userIndex)...].contains(where: { $0.role == "assistant" }),
+        let requestID = UUID(uuidString: messages[userIndex].id) else {
+            return nil
+        }
+
+        let request = requestID.uuidString.lowercased()
+        let turnID = derivedUUID(from: request, salt: 1)
+        return VoiceTurnRecord(
+            id: turnID,
+            conversationID: draft.conversationID,
+            transcriptionRequestID: derivedUUID(from: request, salt: 2),
+            transcriptionIdempotencyKey: "text-no-transcription-\(request)",
+            coachingRequestID: request,
+            coachingIdempotencyKey: "text-coaching-\(request)",
+            state: .coaching,
+            stage: .coaching,
+            acceptedTranscript: text,
+            failureCode: "pending_text",
+            userMessageID: request,
+            createdAtMS: draft.createdAtMS,
+            updatedAtMS: draft.updatedAtMS
+        )
     }
 
     private func makeTurn(conversationID: String) -> VoiceTurnRecord {
@@ -509,6 +754,18 @@ struct ConversationRuntimeFactory: Sendable {
             transcriptionRequestID: UUID().uuidString, transcriptionIdempotencyKey: UUID().uuidString,
             coachingRequestID: UUID().uuidString, coachingIdempotencyKey: UUID().uuidString,
             state: .draft, stage: .capture, createdAtMS: now, updatedAtMS: now
+        )
+    }
+
+    static func materializePreferenceProfile(
+        _ repository: AssistantResponseRepository,
+        revision: Int64
+    ) async throws {
+        let feedback = try await repository.recentFeedback()
+        let derived = ResponsePreferenceProfile.derive(from: feedback)
+        try await repository.replacePreferenceProfile(
+            derived.map { .init(factor: $0.factor, direction: $0.direction) },
+            updatedAtMS: max(revision, feedback.map(\.updatedAtMS).max() ?? 0)
         )
     }
 
@@ -534,9 +791,9 @@ struct ConversationHostView: View {
             else if failed {
                 VStack {
                     ContentUnavailableView {
-                        Label("Conversation unavailable", systemImage: "exclamationmark.triangle")
+                        Label("Conversation couldn’t open", systemImage: "exclamationmark.triangle")
                     } description: {
-                        Text("Taisa couldn’t open this conversation securely.")
+                        Text("Taisa couldn’t access it securely.")
                     } actions: {
                         Button("Close", action: dismiss)
                             .accessibilityIdentifier("conversation.unavailable.close")

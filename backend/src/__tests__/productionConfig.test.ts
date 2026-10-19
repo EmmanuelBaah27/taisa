@@ -34,7 +34,10 @@ const valid = {
 };
 
 test('production accepts one HTTPS origin and places every mutable database on the volume', () => {
-  expect(readProductionConfig(valid)).toEqual({ publicOrigin: 'https://taisa.example' });
+  expect(readProductionConfig(valid)).toEqual({
+    publicOrigin: 'https://taisa.example',
+    trustProxyHops: 1,
+  });
 });
 
 test.each([

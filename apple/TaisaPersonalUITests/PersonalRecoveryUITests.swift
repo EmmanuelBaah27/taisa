@@ -25,7 +25,12 @@ import XCTest
         chats.tap()
         let list = app.descendants(matching: .any)["conversations.root"]
         XCTAssertTrue(list.waitForExistence(timeout: 10))
-        list.swipeDown()
+        let drafts = app.buttons["chats.drafts"]
+        XCTAssertTrue(drafts.waitForExistence(timeout: 10))
+        drafts.tap()
+        XCTAssertTrue(
+            app.descendants(matching: .any)["conversations.drafts"].waitForExistence(timeout: 10)
+        )
         let draft = app.buttons.matching(
             NSPredicate(format: "label CONTAINS %@", "Voice draft")
         ).firstMatch
@@ -40,7 +45,7 @@ import XCTest
             let diagnostic = app.descendants(matching: .any)["conversation.unavailable.diagnostic"]
             XCTFail("Conversation unavailable: \(diagnostic.exists ? diagnostic.label : "missing diagnostic")")
         }
-        XCTAssertTrue(app.buttons["Send"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["Send recording"].waitForExistence(timeout: 10))
         XCTAssertFalse(app.buttons["Resume"].exists)
     }
 

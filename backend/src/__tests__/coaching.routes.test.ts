@@ -36,7 +36,8 @@ jest.mock('../services/coaching/coachingGateway', () => ({
       contextSufficiency: 'sufficient',
       reply: 'What changed?',
       stance: 'nudge',
-      proposals: [],
+  explanation: { mode: 'nudge', evidence: [], inference: 'Bounded fixture inference.', confidence: 'medium', approach: 'Bounded fixture approach.' },
+  proposal: null,
       usage: {
         provider: 'openai',
         model: 'openai-mock',
@@ -147,7 +148,8 @@ test('accepts supplied context without loading backend user data', async () => {
     relevance: 'career-relevant',
     contextSufficiency: 'sufficient',
     stance: 'nudge',
-    proposals: [],
+  explanation: { mode: 'nudge', evidence: [], inference: 'Bounded fixture inference.', confidence: 'medium', approach: 'Bounded fixture approach.' },
+  proposal: null,
   });
   const gateway = jest.requireMock('../services/coaching/coachingGateway');
   const usageLedger = jest.requireMock('../services/usage/costLedger');
@@ -201,7 +203,8 @@ test('settles failed primary conservatively then commits fallback actual usage',
         contextSufficiency: 'sufficient',
         reply: 'Fallback response',
         stance: 'nudge',
-        proposals: [],
+  explanation: { mode: 'nudge', evidence: [], inference: 'Bounded fixture inference.', confidence: 'medium', approach: 'Bounded fixture approach.' },
+  proposal: null,
         usage: fallbackUsage,
       },
       attempts: [
@@ -264,7 +267,8 @@ test.each([
         contextSufficiency: 'sufficient' as const,
         reply: `${provider} response`,
         stance: 'nudge' as const,
-        proposals: [],
+  explanation: { mode: 'nudge' as const, evidence: [], inference: 'Bounded fixture inference.', confidence: 'medium' as const, approach: 'Bounded fixture approach.' },
+  proposal: null,
       },
       usage: providerUsage(provider),
     });
@@ -412,6 +416,35 @@ test.each([
 
   expect(res.status).toBe(400);
   expect(jest.requireMock('../services/coaching/coachingGateway').requestCoaching).not.toHaveBeenCalled();
+});
+
+test('validation diagnostics identify unexpected context keys without logging message content', async () => {
+  const warning = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+  const privateCanary = 'PRIVATE-CONTEXT-CANARY';
+
+  const res = await request(app)
+    .post('/api/v1/coaching/respond')
+    .set('x-user-id', 'device-1')
+    .send({
+      ...validRequest,
+      context: { ...validRequest.context, legacyContext: privateCanary },
+    });
+
+  expect(res.status).toBe(400);
+  expect(warning).toHaveBeenCalledWith(
+    '[Taisa diagnostic] COACHING_REQUEST_VALIDATION_FAILED',
+    {
+      issues: [{
+        field: 'context',
+        code: 'unrecognized_keys',
+        keys: ['legacyContext'],
+        expected: undefined,
+        received: undefined,
+      }],
+    },
+  );
+  expect(JSON.stringify(warning.mock.calls)).not.toContain(privateCanary);
+  warning.mockRestore();
 });
 
 test.each([

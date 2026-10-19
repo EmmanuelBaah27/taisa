@@ -4,6 +4,57 @@ import Testing
 
 @Suite("Recoverable audio capture")
 struct AudioCaptureServiceTests {
+    @Test("live snapshot is content-free and tracks the capture boundary")
+    func liveSnapshotTracksCaptureBoundary() async throws {
+        let recorder = RecorderSpy(elapsed: 0)
+        let service = AudioCaptureService(session: SessionSpy(), recorder: recorder, files: FileStoreSpy())
+        let turnID = UUID()
+
+        _ = try await service.prepare(turnID: turnID)
+        #expect(try await service.snapshot(turnID: turnID) == .init(
+            activity: .prepared, elapsedMilliseconds: 0,
+            meter: .init(averagePower: -160, peakPower: -160)
+        ))
+
+        await recorder.setElapsed(0.999)
+        _ = try await service.start(turnID: turnID)
+        let recording = try await service.snapshot(turnID: turnID)
+        #expect(recording.activity == .recording)
+        #expect(recording.elapsedMilliseconds == 999)
+        #expect(recording.meter == .init(averagePower: -18, peakPower: -6))
+
+        try await service.pause(turnID: turnID)
+        #expect(try await service.snapshot(turnID: turnID).activity == .paused)
+
+        try await service.resume(turnID: turnID)
+        await recorder.setElapsed(1)
+        #expect(try await service.snapshot(turnID: turnID).elapsedMilliseconds == 1_000)
+    }
+
+    @Test("snapshot remains stable through interruption finalization and repeated reads")
+    func snapshotSurvivesLifecycleTransitions() async throws {
+        let recorder = RecorderSpy(elapsed: 1.25)
+        let service = AudioCaptureService(session: SessionSpy(), recorder: recorder, files: FileStoreSpy())
+        let turnID = UUID()
+        _ = try await service.start(turnID: turnID)
+
+        _ = try await service.handle(.interruptionBegan, turnID: turnID)
+        let interrupted = try await service.snapshot(turnID: turnID)
+        #expect(interrupted.activity == .paused)
+        #expect(interrupted.elapsedMilliseconds == 1_250)
+        #expect(interrupted.meter == .init(averagePower: -160, peakPower: -160))
+
+        try await service.resume(turnID: turnID)
+        _ = try await service.finalize(turnID: turnID)
+        let finalized = try await service.snapshot(turnID: turnID)
+        #expect(finalized.activity == .finalized)
+        #expect(finalized.elapsedMilliseconds == 4_250)
+        #expect(try await service.snapshot(turnID: turnID) == finalized)
+
+        _ = try await service.discard(turnID: turnID)
+        #expect(try await service.snapshot(turnID: turnID).activity == .discarded)
+    }
+
     @Test("pause and resume keep one turn, file, and recording timeline")
     func pauseAndResumeKeepOneTurnAndOneTimeline() async throws {
         let session = SessionSpy()
@@ -173,6 +224,12 @@ private actor RecorderSpy: AudioRecorderAdapting {
     private(set) var pauseCount = 0
     private(set) var resumeCount = 0
 
+    private var elapsed: TimeInterval
+
+    init(elapsed: TimeInterval = 4.25) {
+        self.elapsed = elapsed
+    }
+
     func start(at url: URL) async throws { startCount += 1 }
     func pause() async { pauseCount += 1 }
     func resume() async throws { resumeCount += 1 }
@@ -181,6 +238,9 @@ private actor RecorderSpy: AudioRecorderAdapting {
     }
     func cancel() async {}
     func meter() async -> AudioMeterSample { .init(averagePower: -18, peakPower: -6) }
+    func elapsedTime() async -> TimeInterval { elapsed }
+    func hasRecordedAudio() async -> Bool { elapsed > 0 }
+    func setElapsed(_ elapsed: TimeInterval) { self.elapsed = elapsed }
 }
 
 private actor FileStoreSpy: AudioFileStoring {

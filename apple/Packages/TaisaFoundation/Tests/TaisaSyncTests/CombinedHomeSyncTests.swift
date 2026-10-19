@@ -1,6 +1,7 @@
 import Foundation
 import Testing
 import TaisaSecurity
+import TaisaConversations
 @testable import TaisaStorage
 @testable import TaisaSync
 
@@ -11,6 +12,29 @@ private actor CombinedHomeSyncKeys: DatabaseKeyStore {
 }
 
 @Suite(.serialized) struct CombinedHomeSyncTests {
+    @Test func seniorSelfResponseCompanionsSurviveCrossDeviceSync() async throws {
+        let fixture = try await SyncFixture()
+        defer { fixture.remove() }
+        let deviceID = UUID().uuidString
+        let conversation = ConversationRecord(id: UUID().uuidString, title: "Coaching", createdAtMS: 1, updatedAtMS: 1)
+        try await ConversationRepository(store: fixture.sender).create(conversation, context: fixture.context(deviceID: deviceID, at: 1))
+        let message = MessageRecord(id: UUID().uuidString, conversationID: conversation.id, role: "assistant", body: "Protect the focus block.", createdAtMS: 2)
+        let source = AssistantResponseSourceRecord(id: UUID().uuidString, responseMessageID: message.id, ordinal: 0, sourceID: message.id, sourceType: "message", excerpt: "provider text")
+        let proposal = AssistantProposalRecord(id: UUID().uuidString, responseMessageID: message.id, kind: "action", canonicalPayload: Data("{}".utf8), payloadDigest: "digest", state: .pending, targetType: nil, targetID: nil, targetVersionID: nil, decisionReceipt: nil, createdAtMS: 2, resolvedAtMS: nil)
+        let metadata = AssistantResponseMetadataRecord(responseMessageID: message.id, requestID: UUID().uuidString, idempotencyReceipt: "receipt", mode: .coach, relevance: "career-relevant", contextSufficiency: "sufficient", stance: "nudge", inference: "A protected block helps.", confidence: "high", approach: "Offer one next step.", createdAtMS: 2)
+        let write = AssistantResponseWrite(message: message, metadata: metadata, sources: [source], proposal: proposal)
+        try await AssistantResponseRepository(store: fixture.sender).persist(write, context: fixture.context(deviceID: deviceID, at: 2))
+
+        #expect(await fixture.send().state == .upToDate)
+        #expect(await fixture.receive().state == .upToDate)
+        #expect(try await AssistantResponseRepository(store: fixture.receiver).response(messageID: message.id) == AssistantResponseRecord(metadata: metadata, sources: [source], proposal: proposal, feedback: nil))
+
+        _ = try await AssistantProposalRouter(store: fixture.sender).dismiss(proposalID: proposal.id, deviceID: UUID(uuidString: deviceID)!, resolvedAtMS: 3)
+        #expect(await fixture.send().state == .upToDate)
+        #expect(await fixture.receive().state == .upToDate)
+        #expect(try await AssistantResponseRepository(store: fixture.receiver).proposal(id: proposal.id)?.state == .dismissed)
+    }
+
     @Test func weeklyPlacementAndMovementSurviveCrossDeviceSync() async throws {
         let fixture = try await SyncFixture()
         defer { fixture.remove() }

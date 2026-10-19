@@ -106,6 +106,30 @@ test('personal capability mutations are rejected without changing live entitleme
   assert.deepEqual(after, before);
 });
 
+test('personal builds cannot silently drop the approved voice gateway', async () => {
+  const fixture = await mkdtemp(join(tmpdir(), 'taisa-personal-gateway-'));
+  await cp(resolve(repositoryRoot, 'apple'), join(fixture, 'apple'), {
+    recursive: true,
+    filter: (source) => !source.includes('/Packages/') && !source.includes('/Taisa.xcodeproj/'),
+  });
+  assert.deepEqual(await verifyNativeProject(fixture), []);
+
+  const configPath = join(fixture, 'apple/Config/Personal.xcconfig');
+  const config = await readFile(configPath, 'utf8');
+  await writeFile(
+    configPath,
+    config.replace(
+      'TAISA_VOICE_GATEWAY_URL = https:/$()/taisa-production.up.railway.app',
+      'TAISA_VOICE_GATEWAY_URL =',
+    ),
+  );
+
+  assert.ok(
+    (await verifyNativeProject(fixture))
+      .includes('Personal voice gateway configuration mismatch'),
+  );
+});
+
 test('declares distinct production, development, and preview identities', async () => {
   const result = await inspectNativeProject(repositoryRoot);
 

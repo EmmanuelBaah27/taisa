@@ -4,6 +4,7 @@ import { getConfiguredFallbackProvider } from '../services/coaching/fallbackProv
 import { UsageExceedsReservationError } from '../services/usage/costLedger';
 import { CoachingResponsePayloadSchema } from '../schemas/coaching';
 import { LengthFinishReasonError } from 'openai/error';
+import Anthropic from '@anthropic-ai/sdk';
 
 const config = {
   model: 'fixture-model',
@@ -15,7 +16,9 @@ const config = {
 const input = { systemPrompt: 'system', userPrompt: 'user' };
 const payload = {
   mode: 'coach', relevance: 'career-relevant', contextSufficiency: 'sufficient',
-  reply: 'What changed?', stance: 'nudge', proposals: [],
+  reply: 'What changed?', stance: 'nudge',
+  explanation: { mode: 'nudge', evidence: [], inference: 'Bounded fixture inference.', confidence: 'medium', approach: 'Bounded fixture approach.' },
+  proposal: null,
 };
 
 async function collect<T>(stream: AsyncIterable<T>): Promise<T[]> {
@@ -70,6 +73,31 @@ test('Anthropic adapter emits tool-input reply deltas before its validated termi
   ]);
 });
 
+test('Anthropic stream failures emit only content-free provider diagnostics', async () => {
+  const secret = 'PRIVATE_ANTHROPIC_FAILURE_DETAIL';
+  const failure = new Anthropic.AuthenticationError(401, {
+    type: 'error',
+    error: { type: 'authentication_error', message: secret },
+  }, secret, {} as any);
+  const stream = {
+    async *[Symbol.asyncIterator]() { throw failure; },
+    finalMessage: jest.fn(),
+  };
+  const client = { messages: { stream: jest.fn(() => stream) } };
+  const provider = createAnthropicProvider(config, client as any);
+  const warning = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+  await expect(collect(provider.streamRespond!(input))).rejects.toEqual({
+    type: 'authentication_error',
+  });
+  expect(warning.mock.calls).toEqual([[
+    '[Taisa diagnostic] ANTHROPIC_COACHING_PROVIDER_FAILURE',
+    '{"type":"authentication_error"}',
+  ]]);
+  expect(JSON.stringify(warning.mock.calls)).not.toContain(secret);
+  warning.mockRestore();
+});
+
 test('fallback is allowed only before the primary emits visible text', async () => {
   const failedPrimary = {
     id: 'openai' as const,
@@ -116,6 +144,50 @@ test('invalid primary structured output falls back before visible text', async (
     estimateMaximumUsage: () => ({ provider: 'openai' as const, model: 'fixture', estimatedCostUsd: 0.01 }),
     respond: jest.fn(),
     async *streamRespond() { throw malformed.error; },
+  };
+  const successfulFallback = {
+    id: 'anthropic' as const,
+    estimateMaximumUsage: () => ({ provider: 'anthropic' as const, model: 'fixture', estimatedCostUsd: 0.01 }),
+    respond: jest.fn(),
+    async *streamRespond() {
+      yield { kind: 'completed' as const, result: { payload, usage: { provider: 'anthropic' as const, model: 'fixture', estimatedCostUsd: 0.01 } } };
+    },
+  };
+  const environment = {
+    TAISA_COACHING_PROVIDER: 'openai',
+    TAISA_OPENAI_MODEL: 'fixture', TAISA_OPENAI_INPUT_PRICE_USD_PER_MILLION_TOKENS: '1',
+    TAISA_OPENAI_OUTPUT_PRICE_USD_PER_MILLION_TOKENS: '1', TAISA_OPENAI_MAX_OUTPUT_TOKENS: '10',
+    TAISA_OPENAI_STRUCTURED_OUTPUT_INPUT_TOKEN_OVERHEAD: '1',
+    TAISA_ANTHROPIC_MODEL: 'fixture', TAISA_ANTHROPIC_INPUT_PRICE_USD_PER_MILLION_TOKENS: '1',
+    TAISA_ANTHROPIC_OUTPUT_PRICE_USD_PER_MILLION_TOKENS: '1', TAISA_ANTHROPIC_MAX_OUTPUT_TOKENS: '10',
+    TAISA_ANTHROPIC_STRUCTURED_OUTPUT_INPUT_TOKEN_OVERHEAD: '1',
+  };
+  const provider = getConfiguredFallbackProvider(environment, {
+    openai: failedPrimary, anthropic: successfulFallback,
+  });
+  const observer = { beginAttempt: jest.fn(), settleAttempt: jest.fn() };
+
+  await expect(collect(provider.stream(input, observer))).resolves.toMatchObject([
+    { kind: 'completed', result: { payload } },
+  ]);
+  expect(observer.beginAttempt.mock.calls).toEqual([['primary'], ['fallback']]);
+});
+
+test('SDK-wrapped invalid primary output uses the reserved fallback attempt', async () => {
+  const malformed = CoachingResponsePayloadSchema.safeParse({
+    ...payload,
+    stance: 'not-a-valid-stance',
+  });
+  if (malformed.success) throw new Error('Expected malformed primary fixture');
+  const failedPrimary = {
+    id: 'openai' as const,
+    estimateMaximumUsage: () => ({ provider: 'openai' as const, model: 'fixture', estimatedCostUsd: 0.01 }),
+    respond: jest.fn(),
+    async *streamRespond() {
+      throw Object.assign(new Error('private SDK wrapper detail'), {
+        cause: malformed.error,
+      });
+    },
   };
   const successfulFallback = {
     id: 'anthropic' as const,

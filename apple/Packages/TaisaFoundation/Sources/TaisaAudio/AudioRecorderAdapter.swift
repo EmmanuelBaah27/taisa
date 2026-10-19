@@ -7,6 +7,8 @@ public protocol AudioRecorderAdapting: Sendable {
     func stop() async throws -> AudioRecordingSummary
     func cancel() async
     func meter() async -> AudioMeterSample
+    func elapsedTime() async -> TimeInterval
+    func hasRecordedAudio() async -> Bool
 }
 
 #if canImport(AVFoundation)
@@ -14,6 +16,8 @@ public protocol AudioRecorderAdapting: Sendable {
 
 public actor SystemAudioRecorderAdapter: AudioRecorderAdapting {
     private var recorder: AVAudioRecorder?
+    private var outputURL: URL?
+    private var baselineByteCount: Int64 = 0
 
     public init() {}
 
@@ -33,6 +37,8 @@ public actor SystemAudioRecorderAdapter: AudioRecorderAdapting {
         print("TAISA_CAPTURE recorder.start result=\(started) isRecording=\(recorder.isRecording)")
         guard started else { throw AudioCaptureError.invalidState }
         self.recorder = recorder
+        outputURL = url
+        baselineByteCount = Self.fileSize(at: url)
     }
 
     public func pause() async {
@@ -66,6 +72,16 @@ public actor SystemAudioRecorderAdapter: AudioRecorderAdapting {
         recorder.updateMeters()
         return .init(averagePower: recorder.averagePower(forChannel: 0), peakPower: recorder.peakPower(forChannel: 0))
     }
+
+    public func elapsedTime() async -> TimeInterval { recorder?.currentTime ?? 0 }
+    public func hasRecordedAudio() async -> Bool {
+        guard let outputURL else { return false }
+        return Self.fileSize(at: outputURL) > baselineByteCount
+    }
+
+    private static func fileSize(at url: URL) -> Int64 {
+        ((try? FileManager.default.attributesOfItem(atPath: url.path)[.size]) as? NSNumber)?.int64Value ?? 0
+    }
 }
 #else
 public actor SystemAudioRecorderAdapter: AudioRecorderAdapting {
@@ -76,5 +92,7 @@ public actor SystemAudioRecorderAdapter: AudioRecorderAdapting {
     public func stop() async throws -> AudioRecordingSummary { throw AudioCaptureError.unsupportedPlatform }
     public func cancel() async {}
     public func meter() async -> AudioMeterSample { .init(averagePower: -160, peakPower: -160) }
+    public func elapsedTime() async -> TimeInterval { 0 }
+    public func hasRecordedAudio() async -> Bool { false }
 }
 #endif

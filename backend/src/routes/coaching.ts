@@ -120,9 +120,25 @@ function streamFailureCode(error: unknown): CoachingStreamFailureCode {
   return 'COACHING_UNAVAILABLE';
 }
 
-function logRequestValidationFailure(issues: ReadonlyArray<{ path: PropertyKey[] }>): void {
+type ValidationIssueDiagnostic = {
+  path: PropertyKey[];
+  code?: unknown;
+  keys?: unknown;
+  expected?: unknown;
+  received?: unknown;
+};
+
+function logRequestValidationFailure(issues: ReadonlyArray<ValidationIssueDiagnostic>): void {
   console.warn('[Taisa diagnostic] COACHING_REQUEST_VALIDATION_FAILED', {
-    fields: [...new Set(issues.map((issue) => issue.path.join('.') || 'request'))],
+    issues: issues.map((issue) => ({
+      field: issue.path.join('.') || 'request',
+      code: typeof issue.code === 'string' ? issue.code : 'unknown',
+      keys: Array.isArray(issue.keys)
+        ? issue.keys.filter((key): key is string => typeof key === 'string')
+        : undefined,
+      expected: typeof issue.expected === 'string' ? issue.expected : undefined,
+      received: typeof issue.received === 'string' ? issue.received : undefined,
+    })),
   });
 }
 

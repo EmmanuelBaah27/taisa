@@ -6,6 +6,7 @@ public struct EnvelopeMetadata: Codable, Equatable, Sendable, CustomStringConver
         "profile", "conversation", "message", "goal", "milestone", "action",
         "evidence", "memory", "memory_source", "weekly_placement", "work_event",
         "insight", "insight_source", "insight_revision", "snapshot",
+        "assistant_response_metadata", "assistant_response_source", "assistant_proposal",
     ]
     public var vaultID: UUID
     public var recordID: UUID

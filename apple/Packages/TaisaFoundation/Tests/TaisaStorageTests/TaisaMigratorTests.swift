@@ -51,7 +51,7 @@ import Testing
                 try String.fetchOne(db, sql: "SELECT display_name FROM profile WHERE id = ?", arguments: [profileID])
             )
         }
-        #expect(state.0 == 6)
+#expect(state.0 == 7)
         #expect(state.1 == "Preserved")
     }
 
@@ -133,10 +133,10 @@ import Testing
                 try Int.fetchOne(db, sql: "SELECT count(*) FROM pragma_foreign_key_check")
             )
         }
-        #expect(state.0 == 6)
+        #expect(state.0 == 7)
         #expect(state.1 == "Preserved")
         #expect(state.2 == "paused")
-        #expect(state.3 == ["v1", "v2", "v3", "v4", "v5", "v6"])
+#expect(state.3 == ["v1", "v2", "v3", "v4", "v5", "v6", "v7"])
         #expect(state.4 == 1)
         #expect(state.5 == 1)
         #expect(state.6 == 1)
@@ -159,14 +159,14 @@ import Testing
                 try Int.fetchAll(db, sql: "SELECT version FROM migration_state ORDER BY version")
             )
         }
-        #expect(state.0 == 6)
+        #expect(state.0 == 7)
         #expect(state.1)
         #expect(state.2)
         #expect(state.3)
         #expect(state.4)
         #expect(state.5)
-        #expect(state.6 == ["v1", "v2", "v3", "v4", "v5", "v6"])
-        #expect(state.7 == [1, 2, 3, 4, 5, 6])
+#expect(state.6 == ["v1", "v2", "v3", "v4", "v5", "v6", "v7"])
+#expect(state.7 == [1, 2, 3, 4, 5, 6, 7])
     }
 
     @Test func populatedMainVersionThreeStoreUpgradesLosslesslyToCurrent() async throws {
@@ -204,7 +204,7 @@ import Testing
                 try db.tableExists("capability_states")
             )
         }
-        #expect(state.0 == 6)
+        #expect(state.0 == 7)
         #expect(state.1 == "Preserve")
         #expect(state.2)
     }
@@ -318,9 +318,9 @@ import Testing
         let state = try await reopened.read { db in
             (try Int.fetchOne(db, sql: "PRAGMA user_version"), try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM profile"), try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM grdb_migrations"))
         }
-        #expect(state.0 == 6)
+        #expect(state.0 == 7)
         #expect(state.1 == 1)
-        #expect(state.2 == 6)
+#expect(state.2 == 7)
         #expect(!tables.contains("recordings"))
     }
 
@@ -372,10 +372,10 @@ import Testing
                 try Int.fetchAll(db, sql: "SELECT version FROM migration_state ORDER BY version")
             )
         }
-        #expect(state.0 == 6)
+        #expect(state.0 == 7)
         #expect(state.1 == "preserved-v1")
         #expect(state.2)
-        #expect(state.3 == [1, 2, 3, 4, 5, 6])
+#expect(state.3 == [1, 2, 3, 4, 5, 6, 7])
     }
 
     @Test func existingVersionTwoStoreMigratesWithoutInventingDraftsOrRevisions() async throws {
@@ -405,7 +405,7 @@ import Testing
                 try String.fetchOne(db, sql: "SELECT lifecycle FROM conversations LIMIT 1")
             )
         }
-        #expect(state.0 == 6)
+        #expect(state.0 == 7)
         #expect(state.1 == 0)
         #expect(state.2 == 0)
         #expect(state.3 == nil)
@@ -782,7 +782,7 @@ import Testing
         let restarted = try fixture.restartCopy()
         let store = try await TaisaStore.open(at: restarted, keyStore: fixture.keys)
         #expect(try await store.read { db in try db.tableExists("profile") })
-        #expect(try await store.read { db in try Int.fetchOne(db, sql: "PRAGMA user_version") } == 6)
+#expect(try await store.read { db in try Int.fetchOne(db, sql: "PRAGMA user_version") } == 7)
         #expect(try await fixture.keys.loadKey() == fixture.key)
     }
 

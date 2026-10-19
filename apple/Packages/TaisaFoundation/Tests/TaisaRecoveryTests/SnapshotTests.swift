@@ -32,9 +32,15 @@ private struct Fixture {
     func store(large: Bool = false) async throws -> TaisaStore {
         let store = try await TaisaStore.open(at: directory.appendingPathComponent("live.sqlite"), keyStore: Keys())
         try await store.write { db in
+            let messageID = "00000000-0000-4000-8000-000000000002"
             try db.execute(sql: "INSERT INTO profile (id, display_name, updated_at_ms) VALUES (?, 'PRIVATE-ARCHIVE-CANARY', 1)", arguments: [UUID().uuidString])
             try db.execute(sql: "INSERT INTO conversations (id, title, created_at_ms, updated_at_ms) VALUES (?, 'Conversation', 1, 1)", arguments: ["00000000-0000-0000-0000-000000000001"])
-            try db.execute(sql: "INSERT INTO messages (id, conversation_id, role, body, created_at_ms) VALUES (?, ?, 'user', ?, 1)", arguments: [UUID().uuidString, "00000000-0000-0000-0000-000000000001", large ? String(repeating: "private", count: 400_000) : "Message"])
+            try db.execute(sql: "INSERT INTO messages (id, conversation_id, role, body, created_at_ms) VALUES (?, ?, 'assistant', ?, 1)", arguments: [messageID, "00000000-0000-0000-0000-000000000001", large ? String(repeating: "private", count: 400_000) : "Message"])
+            try db.execute(sql: "INSERT INTO assistant_response_metadata (response_message_id, request_id, idempotency_receipt, mode, relevance, context_sufficiency, stance, inference, confidence, approach, created_at_ms) VALUES (?, '00000000-0000-4000-8000-000000000003', 'receipt', 'coach', 'career-relevant', 'sufficient', 'mirror', 'Inference', 'high', 'Approach', 1)", arguments: [messageID])
+            try db.execute(sql: "INSERT INTO assistant_response_sources (id, response_message_id, ordinal, source_id, source_type, excerpt) VALUES ('00000000-0000-4000-8000-000000000004', ?, 0, 'source', 'message', 'Excerpt')", arguments: [messageID])
+            try db.execute(sql: "INSERT INTO assistant_proposals (id, response_message_id, kind, canonical_payload, payload_digest, state, created_at_ms, resolved_at_ms) VALUES ('00000000-0000-4000-8000-000000000005', ?, 'goal', x'7B7D', 'digest', 'superseded', 1, 2)", arguments: [messageID])
+            try db.execute(sql: "INSERT INTO response_feedback (response_message_id, direction, factors_json, updated_at_ms) VALUES (?, 'helpful', x'5B5D', 2)", arguments: [messageID])
+            try db.execute(sql: "INSERT INTO preference_profiles (id, signals_json, enabled, updated_at_ms) VALUES (1, x'5B5D', 1, 2)")
         }
         return store
     }
@@ -58,7 +64,12 @@ private struct Fixture {
         #expect(metadata.entityCounts["messages"] == 1)
         #expect(metadata.entityCounts["conversations"] == 1)
         #expect(metadata.entityCounts["goals"] == 0)
-        #expect(metadata.entityCounts.count == 34)
+        #expect(metadata.entityCounts["assistant_response_metadata"] == 1)
+        #expect(metadata.entityCounts["assistant_response_sources"] == 1)
+        #expect(metadata.entityCounts["assistant_proposals"] == 1)
+        #expect(metadata.entityCounts["response_feedback"] == 1)
+        #expect(metadata.entityCounts["preference_profiles"] == 1)
+        #expect(metadata.entityCounts.count == 39)
         let bytes = try Data(contentsOf: checkpoint)
         #expect(metadata.plaintextByteCount == bytes.count)
         #expect(metadata.plaintextSHA256 == Data(SHA256.hash(data: bytes)))
@@ -137,6 +148,9 @@ private struct Fixture {
         config.prepareDatabase { try $0.usePassphrase(Data(("x'" + dbKey.map { String(format: "%02x", $0) }.joined() + "'").utf8)) }
         let copy = try DatabaseQueue(path: copyURL.path, configuration: config)
         #expect(try await copy.read { try Int.fetchOne($0, sql: "SELECT count(*) FROM messages") } == 1)
+        #expect(try await copy.read { try String.fetchOne($0, sql: "SELECT state FROM assistant_proposals") } == "superseded")
+        #expect(try await copy.read { try Int.fetchOne($0, sql: "SELECT count(*) FROM response_feedback") } == 1)
+        #expect(try await copy.read { try Int.fetchOne($0, sql: "SELECT count(*) FROM preference_profiles") } == 1)
     }
 
     @Test func pendingAudioRejectsBeforeAnyDestinationArtifact() async throws {
