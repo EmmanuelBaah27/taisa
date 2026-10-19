@@ -150,6 +150,14 @@ the approval is recorded in Linear. Never silently create a feature-local substi
 API, raw style, invented icon mapping, SF Symbol substitution, design-system extension, or broad
 exception.
 
+Apply the same gate to Product work already built before this rule or first identified during
+code review. Before merge or Ship approval, audit the complete changed Product surface and
+replace every eligible feature-local component, style, token, and icon with the available DS
+component/style/token or Central icon. Tell Baah every remaining unavailable item, affected
+surface, and exactly one recommended DS addition or narrow system-owned exception. Do not request
+or infer approval while an available adoption remains undone or an unavailable item has not been
+shown to Baah and recorded in Linear.
+
 ### Plan
 
 Store tasks, tests, interfaces, dependencies, integration, verification, and Product DS
@@ -175,6 +183,11 @@ continue by implementing the missing presentation in feature code.
 Use requesting-code-review and verification-before-completion. Resolve blockers, publish the
 exact verified mobile revision to canonical preview, record QA, prepare a PR to `main`, and
 stop at Ship.
+
+For Product work, Review must contain the pre-merge DS audit evidence, every replacement made
+with available DS contracts and Central Icons, and every remaining unavailable item or approved
+exception. Missing evidence or an available-but-unused DS contract is blocking and prevents a
+Ship approval request.
 
 Before initial QA, require mapped acceptance evidence, applicable narrow/full verification,
 resolved blocking review, complete required slices, exact canonical preview, confirmed

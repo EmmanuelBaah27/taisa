@@ -211,6 +211,14 @@ proceed until Baah approves that exact treatment and the approval is recorded in
 Silently creating a feature-local substitute, parallel API, raw style, invented icon mapping,
 SF Symbol substitution, design-system extension, or broad exception is prohibited.
 
+This gate is retroactive. Product work already built before the rule, or a design-system gap
+first found during code review, must receive a complete pre-merge audit of the changed Product
+surface. Before merge or Ship approval, replace every eligible feature-local component, style,
+token, and icon with the available DS component/style/token or Central icon. Present Baah with
+every remaining unavailable item, its affected surfaces, and exactly one recommended DS addition
+or narrow system-owned exception. Do not request or infer approval while an available adoption
+is undone or an unavailable item has not been shown to Baah and recorded in Linear.
+
 ### Plan
 
 Plan lives in the Linear issue or attached Linear document. It names tasks, tests,
@@ -247,6 +255,11 @@ Integration begins only when both named sides are ready.
 Invoke `requesting-code-review` and `verification-before-completion`. Resolve blocking
 findings. Record exact checks, revisions, PR, preview, device observations, remaining risk,
 and approval state in Linear.
+
+For Product changes, review evidence also includes the pre-merge DS audit, replacements made
+with available DS contracts and Central Icons, and the complete list of remaining unavailable
+items or approved exceptions. Missing evidence or an available-but-unused DS contract blocks
+Ship approval.
 
 ### Verification economy
 

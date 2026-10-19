@@ -77,6 +77,14 @@ a feature-local substitute, parallel component API, raw style, invented icon map
 substitution, or design-system extension. Implement approved design-system contracts and tests
 before their screen consumers.
 
+The same gate applies to Product work already built before this rule or first discovered during
+code review. Before merge or Ship approval, audit the complete changed Product surface and
+replace every eligible feature-local component, style, token, and icon with the available DS
+component/style/token or Central icon. Tell Baah every remaining unavailable item, affected
+surface, and recommended DS addition or narrow system-owned exception. Never request or infer
+approval while an available adoption remains undone or an unavailable item has not been shown
+to Baah.
+
 - Preserve SwiftUI and the iOS/iPadOS 26+ deployment target.
 - Keep readable personal data encrypted and device-authoritative.
 - Preserve the current v1 identity boundary unless an approved Scope changes it: the device

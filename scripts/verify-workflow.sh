@@ -100,6 +100,21 @@ for ds_authority_file in \
   require_workflow_pattern "$ds_authority_file" \
     'approval.*Linear|Linear.*approval' \
     'Linear evidence for approved design-system gaps'
+  require_workflow_pattern "$ds_authority_file" \
+    'already built|code review|pre-merge' \
+    'retroactive pre-merge Product audit'
+  require_workflow_pattern "$ds_authority_file" \
+    'replace every eligible' \
+    'mandatory replacement of eligible feature-local presentation'
+  require_workflow_pattern "$ds_authority_file" \
+    'available DS|available design-system' \
+    'available design-system replacement target'
+  require_workflow_pattern "$ds_authority_file" \
+    'unavailable.*Baah|Baah.*unavailable' \
+    'Baah disclosure of unavailable design-system items'
+  require_workflow_pattern "$ds_authority_file" \
+    'before.*(Ship|merge) approval|(Ship|merge) approval.*before' \
+    'pre-approval design-system audit gate'
 done
 
 for invariant in \
@@ -128,6 +143,8 @@ for invariant in \
   'Central Icons mapping' \
   'Approved system-owned exceptions' \
   'No unresolved DS gap' \
+  'Pre-merge DS audit evidence' \
+  'Remaining unavailable DS items' \
   'Acceptance criteria' \
   'Verification matrix' \
   'Permitted mutations' \
