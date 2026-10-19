@@ -117,13 +117,7 @@ struct ConversationView: View {
                     .frame(maxWidth: .infinity)
             }
         case .coaching:
-            bottomChrome {
-                TextComposer(
-                    text: $model.text, mode: .processing,
-                    onSend: {}, onVoice: {}
-                )
-                .accessibilityIdentifier("conversation.text-composer.processing")
-            }
+            bottomChrome { voiceReplyButton.disabled(true) }
             .task {
                 while !Task.isCancelled, model.composer == .coaching {
                     await model.refreshPartialCoaching()

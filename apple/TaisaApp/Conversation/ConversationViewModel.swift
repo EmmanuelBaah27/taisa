@@ -364,12 +364,15 @@ final class ConversationViewModel {
         guard !value.isEmpty else { return }
         actionInFlight = true
         partialCoaching = ""
+        let messageIDsBeforeSend = Set(messages.map(\.id))
+        // Leave the editable state as soon as Send is accepted. The durable send
+        // path restores this value below if the user message could not be saved.
+        text = ""
+        composer = .coaching
         do {
             try await client.sendText(value) { [weak self] in
                 guard let self else { return }
                 await self.reloadMessages()
-                self.text = ""
-                self.composer = .coaching
             }
             await reloadMessages()
             partialCoaching = ""
@@ -379,7 +382,15 @@ final class ConversationViewModel {
             partialCoaching = ""
             await reloadMessages()
             failureContext = .request
-            composer = .failure(.retryable)
+            if messages.contains(where: {
+                $0.role == "user" && $0.body == value && !messageIDsBeforeSend.contains($0.id)
+            }) {
+                text = ""
+                composer = .failure(.retryable)
+            } else {
+                text = value
+                composer = .typing(value)
+            }
         }
         actionInFlight = false
     }
