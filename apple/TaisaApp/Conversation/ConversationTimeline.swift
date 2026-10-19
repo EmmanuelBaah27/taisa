@@ -81,7 +81,7 @@ struct ConversationTimeline: View {
     let assistantResponses: [String: AssistantResponseRecord]
     let streamingResponse: String
     let correct: (MessageRecord) -> Void
-    let saveFeedback: (String, ResponseFeedbackDirection?, [ResponseQualityFactor]) -> Void
+    let saveFeedback: (String, ResponseFeedbackDirection?, [ResponseQualityFactor], String?) -> Void
     let acceptProposal: (String) -> Void
     let dismissProposal: (String) -> Void
     @State private var isAwayFromLatest = false
@@ -93,7 +93,7 @@ struct ConversationTimeline: View {
         assistantResponses: [String: AssistantResponseRecord] = [:],
         streamingResponse: String = "",
         correct: @escaping (MessageRecord) -> Void,
-        saveFeedback: @escaping (String, ResponseFeedbackDirection?, [ResponseQualityFactor]) -> Void = { _, _, _ in },
+        saveFeedback: @escaping (String, ResponseFeedbackDirection?, [ResponseQualityFactor], String?) -> Void = { _, _, _, _ in },
         acceptProposal: @escaping (String) -> Void = { _ in },
         dismissProposal: @escaping (String) -> Void = { _ in }
     ) {
@@ -132,8 +132,8 @@ struct ConversationTimeline: View {
                                 if let response = assistantResponses[message.id] {
                                     AssistantResponseActions(
                                         response: response,
-                                        saveFeedback: { direction, factors in
-                                            saveFeedback(message.id, direction, factors)
+                                        saveFeedback: { direction, factors, detail in
+                                            saveFeedback(message.id, direction, factors, detail)
                                         },
                                         acceptProposal: acceptProposal,
                                         dismissProposal: dismissProposal

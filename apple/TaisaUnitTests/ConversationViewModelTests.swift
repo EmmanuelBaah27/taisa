@@ -454,7 +454,7 @@ final class ConversationViewModelTests: XCTestCase {
         XCTAssertEqual(saved, .text("Keep this text"))
     }
 
-    func testFeedbackSelectionAutosavesWithoutTypedDetail() async {
+    func testFeedbackSavePersistsOptionalTypedDetail() async {
         let client = ConversationScreenClientSpy()
         let model = ConversationViewModel(
             conversationID: UUID().uuidString, title: "New conversation", entryIntent: nil,
@@ -465,14 +465,15 @@ final class ConversationViewModelTests: XCTestCase {
         await model.saveFeedback(
             responseMessageID: responseID,
             direction: .notHelpful,
-            factors: [.communicationClarity, .intentAlignment]
+            factors: [.communicationClarity, .intentAlignment],
+            detail: "It sounded more formal than this conversation."
         )
 
         let saved = await client.savedFeedback()
         XCTAssertEqual(saved?.responseMessageID, UUID(uuidString: responseID)?.uuidString)
         XCTAssertEqual(saved?.direction, .notHelpful)
         XCTAssertEqual(saved?.factors, [.communicationClarity, .intentAlignment])
-        XCTAssertNil(saved?.detail)
+        XCTAssertEqual(saved?.detail, "It sounded more formal than this conversation.")
     }
 
     func testRemovingSelectedFeedbackDeletesTheLocalRating() async {
@@ -483,7 +484,7 @@ final class ConversationViewModelTests: XCTestCase {
         )
         let responseID = UUID().uuidString
 
-        await model.saveFeedback(responseMessageID: responseID, direction: nil, factors: [])
+        await model.saveFeedback(responseMessageID: responseID, direction: nil, factors: [], detail: nil)
 
         let removedFeedbackID = await client.removedFeedbackID()
         XCTAssertEqual(removedFeedbackID, UUID(uuidString: responseID)?.uuidString)
@@ -507,9 +508,9 @@ final class ConversationViewModelTests: XCTestCase {
             client: client
         )
         let responseID = UUID().uuidString
-        let save = Task { await model.saveFeedback(responseMessageID: responseID, direction: .helpful, factors: [.coverage]) }
+        let save = Task { await model.saveFeedback(responseMessageID: responseID, direction: .helpful, factors: [.coverage], detail: nil) }
         while !(await events.values()).contains("save-start") { await Task.yield() }
-        let remove = Task { await model.saveFeedback(responseMessageID: responseID, direction: nil, factors: []) }
+        let remove = Task { await model.saveFeedback(responseMessageID: responseID, direction: nil, factors: [], detail: nil) }
         await Task.yield()
         let beforeRelease = await events.values()
         XCTAssertEqual(beforeRelease, ["save-start"])
@@ -525,6 +526,81 @@ final class ConversationViewModelTests: XCTestCase {
             id: UUID().uuidString, conversationID: UUID().uuidString,
             role: role, body: body, createdAtMS: 1
         )
+    }
+}
+
+final class ResponseFeedbackEditorStateTests: XCTestCase {
+    func testSelectingNewDirectionPersistsRatingImmediately() {
+        var state = ResponseFeedbackEditorState(feedback: nil)
+
+        let mutation = state.begin(.helpful)
+
+        XCTAssertEqual(mutation, .save(direction: .helpful, factors: [], detail: nil))
+        XCTAssertEqual(state.direction, .helpful)
+        XCTAssertEqual(state.draftFactors, [])
+        XCTAssertEqual(state.draftDetail, "")
+    }
+
+    func testDismissingDraftRestoresLastCommittedReasonsAndDetail() {
+        var state = ResponseFeedbackEditorState(feedback: ResponseFeedbackRecord(
+            responseMessageID: UUID().uuidString,
+            direction: .notHelpful,
+            factors: [.relationalFit],
+            detail: "Too formal",
+            updatedAtMS: 1
+        ))
+
+        XCTAssertNil(state.begin(.notHelpful))
+        state.toggle(.communicationClarity)
+        state.draftDetail = "A different unsaved explanation"
+        state.discardDraft()
+
+        XCTAssertEqual(state.draftFactors, [.relationalFit])
+        XCTAssertEqual(state.draftDetail, "Too formal")
+    }
+
+    func testSavingDraftCommitsReasonsAndNormalizedDetail() {
+        var state = ResponseFeedbackEditorState(feedback: nil)
+        _ = state.begin(.helpful)
+        state.toggle(.coverage)
+        state.draftDetail = "  This covered the decision well.  "
+
+        let mutation = state.commit()
+
+        XCTAssertEqual(
+            mutation,
+            .save(
+                direction: .helpful,
+                factors: [.coverage],
+                detail: "This covered the decision well."
+            )
+        )
+        state.draftDetail = "Unsaved"
+        state.discardDraft()
+        XCTAssertEqual(state.draftDetail, "This covered the decision well.")
+    }
+
+    func testRemovingRatingClearsCommittedAndDraftFeedback() {
+        var state = ResponseFeedbackEditorState(feedback: ResponseFeedbackRecord(
+            responseMessageID: UUID().uuidString,
+            direction: .helpful,
+            factors: [.coverage],
+            detail: "Useful",
+            updatedAtMS: 1
+        ))
+
+        XCTAssertEqual(state.remove(), .remove)
+        XCTAssertNil(state.direction)
+        XCTAssertEqual(state.draftFactors, [])
+        XCTAssertEqual(state.draftDetail, "")
+    }
+
+    func testBlankDetailNormalizesToNil() {
+        var state = ResponseFeedbackEditorState(feedback: nil)
+        _ = state.begin(.helpful)
+        state.draftDetail = "   \n  "
+
+        XCTAssertEqual(state.commit(), .save(direction: .helpful, factors: [], detail: nil))
     }
 }
 

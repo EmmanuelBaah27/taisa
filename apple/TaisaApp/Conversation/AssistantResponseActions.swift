@@ -5,18 +5,17 @@ import TaisaStorage
 
 struct AssistantResponseActions: View {
     let response: AssistantResponseRecord
-    let saveFeedback: (ResponseFeedbackDirection?, [ResponseQualityFactor]) -> Void
+    let saveFeedback: (ResponseFeedbackDirection?, [ResponseQualityFactor], String?) -> Void
     let acceptProposal: (String) -> Void
     let dismissProposal: (String) -> Void
 
     @State private var showsExplanation = false
     @State private var showsFeedback = false
-    @State private var direction: ResponseFeedbackDirection?
-    @State private var factors: Set<ResponseQualityFactor>
+    @State private var feedbackEditor: ResponseFeedbackEditorState
 
     init(
         response: AssistantResponseRecord,
-        saveFeedback: @escaping (ResponseFeedbackDirection?, [ResponseQualityFactor]) -> Void,
+        saveFeedback: @escaping (ResponseFeedbackDirection?, [ResponseQualityFactor], String?) -> Void,
         acceptProposal: @escaping (String) -> Void,
         dismissProposal: @escaping (String) -> Void
     ) {
@@ -24,8 +23,7 @@ struct AssistantResponseActions: View {
         self.saveFeedback = saveFeedback
         self.acceptProposal = acceptProposal
         self.dismissProposal = dismissProposal
-        _direction = State(initialValue: response.feedback?.direction)
-        _factors = State(initialValue: Set(response.feedback?.factors ?? []))
+        _feedbackEditor = State(initialValue: ResponseFeedbackEditorState(feedback: response.feedback))
     }
 
     var body: some View {
@@ -81,26 +79,39 @@ struct AssistantResponseActions: View {
             }
             .presentationDetents([.medium, .large])
         }
-        .sheet(isPresented: $showsFeedback) {
+        .sheet(isPresented: $showsFeedback, onDismiss: { feedbackEditor.discardDraft() }) {
             NavigationStack {
                 ScrollView {
-                    if let direction {
+                    if let direction = feedbackEditor.direction {
                         VStack(alignment: .leading, spacing: TaisaSpacing.section.rawValue) {
                             feedbackFactors(for: direction)
+                            feedbackDetail
                             Button("Remove rating", role: .destructive) {
                                 removeRating()
                             }
                             .buttonStyle(.bordered)
+                            .frame(minHeight: TaisaControlMetric.headerActionHeight)
                             .accessibilityIdentifier("conversation.feedback.remove")
                         }
-                            .padding(TaisaSpacing.standard.rawValue)
+                        .padding(TaisaSpacing.standard.rawValue)
                     }
                 }
+                .scrollDismissesKeyboard(.interactively)
                 .navigationTitle("Response feedback")
                 .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Close") {
+                            feedbackEditor.discardDraft()
+                            showsFeedback = false
+                        }
+                        .accessibilityIdentifier("conversation.feedback.close")
+                    }
                     ToolbarItem(placement: .confirmationAction) {
-                        Button("Done") { showsFeedback = false }
-                            .accessibilityIdentifier("conversation.feedback.done")
+                        Button("Save feedback") {
+                            persist(feedbackEditor.commit())
+                            showsFeedback = false
+                        }
+                        .accessibilityIdentifier("conversation.feedback.save")
                     }
                 }
             }
@@ -112,23 +123,19 @@ struct AssistantResponseActions: View {
         _ value: ResponseFeedbackDirection, systemImage: String, label: String
     ) -> some View {
         Button {
-            if direction != value {
-                direction = value
-                factors = []
-                saveFeedback(value, [])
-            }
+            persist(feedbackEditor.begin(value))
             showsFeedback = true
         } label: {
-            Image(systemName: direction == value ? "\(systemImage).fill" : systemImage)
+            Image(systemName: feedbackEditor.direction == value ? "\(systemImage).fill" : systemImage)
                 .frame(
                     minWidth: TaisaControlMetric.headerActionHeight,
                     minHeight: TaisaControlMetric.headerActionHeight
                 )
         }
         .buttonStyle(.plain)
-        .foregroundStyle(direction == value ? TaisaColor.foreground.color : TaisaColor.mutedForeground.color)
+        .foregroundStyle(feedbackEditor.direction == value ? TaisaColor.foreground.color : TaisaColor.mutedForeground.color)
         .accessibilityLabel(label)
-        .accessibilityAddTraits(direction == value ? .isSelected : [])
+        .accessibilityAddTraits(feedbackEditor.direction == value ? .isSelected : [])
         .accessibilityIdentifier(feedbackIdentifier(for: value))
     }
 
@@ -146,26 +153,49 @@ struct AssistantResponseActions: View {
                 .foregroundStyle(TaisaColor.mutedForeground.color)
             FlowLayout(spacing: TaisaSpacing.compact.rawValue) {
                 ForEach(ResponseFeedbackCopy.options(for: direction), id: \.factor) { option in
-                    Button(option.label) { toggle(option.factor, direction: direction) }
+                    Button(option.label) { feedbackEditor.toggle(option.factor) }
                         .buttonStyle(.bordered)
-                        .tint(factors.contains(option.factor) ? TaisaColor.foreground.color : TaisaColor.mutedForeground.color)
-                        .accessibilityAddTraits(factors.contains(option.factor) ? .isSelected : [])
+                        .tint(feedbackEditor.draftFactors.contains(option.factor) ? TaisaColor.foreground.color : TaisaColor.mutedForeground.color)
+                        .accessibilityAddTraits(feedbackEditor.draftFactors.contains(option.factor) ? .isSelected : [])
                 }
             }
         }
         .accessibilityIdentifier("conversation.feedback-factors")
     }
 
-    private func toggle(_ factor: ResponseQualityFactor, direction: ResponseFeedbackDirection) {
-        if factors.contains(factor) { factors.remove(factor) } else { factors.insert(factor) }
-        saveFeedback(direction, factors.sorted())
+    private var feedbackDetail: some View {
+        VStack(alignment: .leading, spacing: TaisaSpacing.compact.rawValue) {
+            Text("Add more detail (optional)")
+                .font(.caption)
+                .foregroundStyle(TaisaColor.mutedForeground.color)
+            TextEditor(text: Binding(
+                get: { feedbackEditor.draftDetail },
+                set: { feedbackEditor.draftDetail = String($0.prefix(ResponseFeedbackEditorState.detailLimit)) }
+            ))
+            .frame(minHeight: 112)
+            .padding(TaisaSpacing.compact.rawValue)
+            .background(
+                TaisaColor.raisedSurface.color,
+                in: RoundedRectangle(cornerRadius: TaisaRadius.control.rawValue)
+            )
+            .accessibilityLabel("Add more detail (optional)")
+            .accessibilityIdentifier("conversation.feedback.detail")
+        }
     }
 
     private func removeRating() {
-        direction = nil
-        factors = []
-        saveFeedback(nil, [])
+        persist(feedbackEditor.remove())
         showsFeedback = false
+    }
+
+    private func persist(_ mutation: ResponseFeedbackMutation?) {
+        guard let mutation else { return }
+        switch mutation {
+        case let .save(direction, factors, detail):
+            saveFeedback(direction, factors, detail)
+        case .remove:
+            saveFeedback(nil, [], nil)
+        }
     }
 
     @ViewBuilder private func proposalReview(_ proposal: AssistantProposalRecord) -> some View {
@@ -219,6 +249,79 @@ struct AssistantResponseActions: View {
         case .stale: "No longer available"
         case .unsupported: "Unavailable"
         }
+    }
+}
+
+enum ResponseFeedbackMutation: Equatable {
+    case save(
+        direction: ResponseFeedbackDirection,
+        factors: [ResponseQualityFactor],
+        detail: String?
+    )
+    case remove
+}
+
+struct ResponseFeedbackEditorState {
+    static let detailLimit = 4_000
+
+    private(set) var direction: ResponseFeedbackDirection?
+    private var committedFactors: Set<ResponseQualityFactor>
+    private var committedDetail: String
+    var draftFactors: Set<ResponseQualityFactor>
+    var draftDetail: String
+
+    init(feedback: ResponseFeedbackRecord?) {
+        direction = feedback?.direction
+        committedFactors = Set(feedback?.factors ?? [])
+        committedDetail = feedback?.detail ?? ""
+        draftFactors = committedFactors
+        draftDetail = committedDetail
+    }
+
+    mutating func begin(_ selectedDirection: ResponseFeedbackDirection) -> ResponseFeedbackMutation? {
+        guard direction != selectedDirection else {
+            discardDraft()
+            return nil
+        }
+        direction = selectedDirection
+        committedFactors = []
+        committedDetail = ""
+        discardDraft()
+        return .save(direction: selectedDirection, factors: [], detail: nil)
+    }
+
+    mutating func toggle(_ factor: ResponseQualityFactor) {
+        if draftFactors.contains(factor) {
+            draftFactors.remove(factor)
+        } else {
+            draftFactors.insert(factor)
+        }
+    }
+
+    mutating func commit() -> ResponseFeedbackMutation? {
+        guard let direction else { return nil }
+        committedFactors = draftFactors
+        committedDetail = String(draftDetail.prefix(Self.detailLimit))
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        draftDetail = committedDetail
+        return .save(
+            direction: direction,
+            factors: committedFactors.sorted(),
+            detail: committedDetail.isEmpty ? nil : committedDetail
+        )
+    }
+
+    mutating func discardDraft() {
+        draftFactors = committedFactors
+        draftDetail = committedDetail
+    }
+
+    mutating func remove() -> ResponseFeedbackMutation {
+        direction = nil
+        committedFactors = []
+        committedDetail = ""
+        discardDraft()
+        return .remove
     }
 }
 
