@@ -217,6 +217,29 @@ struct ConversationQueryTests {
         #expect(state.2 == ids.audioFile)
     }
 
+    @Test func discardingAnAlreadyCompletedDraftIsIdempotent() async throws {
+        let fixture = try await makeFixture()
+        defer { fixture.remove() }
+        let ids = IDs()
+        try await fixture.store.write { db in
+            try insertConversation(
+                db, id: ids.newestDraftConversation,
+                title: "Draft", lifecycle: "draft", updatedAtMS: 10
+            )
+            try insertDraft(
+                db, id: ids.newestDraft,
+                conversationID: ids.newestDraftConversation,
+                text: "Saved message", updatedAtMS: 11
+            )
+        }
+        let repository = ConversationRepository(store: fixture.store)
+
+        try await repository.discardDraft(id: ids.newestDraft)
+        try await repository.discardDraft(id: ids.newestDraft)
+
+        #expect(try await repository.draft(id: ids.newestDraft) == nil)
+    }
+
     @Test func renameClaimsUserAuthorityAndDeleteHidesConversation() async throws {
         let fixture = try await makeFixture()
         defer { fixture.remove() }

@@ -83,7 +83,7 @@ public struct ConversationRepository: DomainRepository, MessageRepositoryContrac
                     db,
                     sql: "SELECT voice_turn_id FROM conversation_drafts WHERE id = ? COLLATE NOCASE",
                     arguments: [id]
-                ) else { throw RepositoryError.notFound }
+                ) else { return }
                 let voiceTurnID: String? = row["voice_turn_id"]
                 if let voiceTurnID {
                     try Self.queueAudioCleanup(for: voiceTurnID, in: db)
