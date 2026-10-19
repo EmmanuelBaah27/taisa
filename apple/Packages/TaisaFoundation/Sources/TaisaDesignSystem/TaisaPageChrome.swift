@@ -1,5 +1,45 @@
 import SwiftUI
 
+@MainActor
+public enum TaisaBottomChromeContract {
+    public static let height = TaisaControlMetric.primaryNavigationReservedHeight
+    public static let opaqueEdgeHeight = height * CGFloat(1 - PageEdgeFade.navigationOpaqueStop)
+    public static let coversBottomSafeArea = true
+}
+
+/// Shared bottom chrome for primary destinations.
+///
+/// The fade owns the full page width and continues its opaque edge through the
+/// device safe area so scrolling content never becomes visible behind the home
+/// indicator. Callers supply only the controls and their actions.
+public struct TaisaBottomChrome<Content: View>: View {
+    private let content: Content
+
+    public init(@ViewBuilder content: () -> Content) {
+        self.content = content()
+    }
+
+    public var body: some View {
+        ZStack(alignment: .bottom) {
+            PageEdgeFade(.navigation)
+                .frame(maxWidth: .infinity)
+                .frame(height: TaisaBottomChromeContract.height)
+                .ignoresSafeArea(edges: [.horizontal, .bottom])
+                .allowsHitTesting(false)
+
+            content
+        }
+        .frame(maxWidth: .infinity)
+        .background(alignment: .bottom) {
+            TaisaColor.background.color
+                .frame(maxWidth: .infinity)
+                .frame(height: TaisaBottomChromeContract.opaqueEdgeHeight)
+                .ignoresSafeArea(edges: [.horizontal, .bottom])
+                .allowsHitTesting(false)
+        }
+    }
+}
+
 /// Shared top chrome for the primary Home, Chats, and You destinations.
 public struct TaisaPageHeader<Actions: View>: View {
     private let title: String

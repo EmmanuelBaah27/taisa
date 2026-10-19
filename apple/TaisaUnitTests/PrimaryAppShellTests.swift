@@ -1,4 +1,5 @@
 import XCTest
+import TaisaDesignSystem
 @testable import Taisa
 
 @MainActor
@@ -40,6 +41,10 @@ final class PrimaryAppShellTests: XCTestCase {
         for destination in PrimaryDestination.allCases {
             model.select(destination)
             XCTAssertTrue(model.showsConversationDock)
+            XCTAssertEqual(
+                model.primaryPageBottomReservation,
+                TaisaControlMetric.primaryNavigationReservedHeight
+            )
         }
 
         model.presentNewConversation(.voice)
@@ -55,11 +60,10 @@ final class PrimaryAppShellTests: XCTestCase {
         XCTAssertTrue(source.contains(".accessibilityHidden(model.selection != destination)"))
         XCTAssertFalse(source.contains("if model.selection == .careerWork"))
         XCTAssertTrue(source.contains("model.showsCareerWork"))
-        XCTAssertTrue(source.contains("PageEdgeFade(.navigation)"))
-        XCTAssertTrue(source.contains(".frame(height: 104)"))
+        XCTAssertTrue(source.contains("TaisaBottomChrome"))
         XCTAssertTrue(source.contains("model.primaryPageBottomReservation"))
-        XCTAssertTrue(source.contains("selection == .conversations ? 0"))
-        XCTAssertFalse(source.contains(".background {\n                    PageEdgeFade(.navigation)"))
+        XCTAssertFalse(source.contains("selection == .conversations ? 0"))
+        XCTAssertFalse(source.contains("PageEdgeFade(.navigation)"))
     }
 
     func testVoiceEntryIntentIsConsumedOnlyOnce() {
