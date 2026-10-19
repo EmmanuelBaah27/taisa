@@ -96,6 +96,25 @@ function normalizeOpenAIResponseEnvelope(value: unknown): unknown {
   };
 }
 
+function parseCompletedOpenAIResponse(
+  parsed: unknown,
+  content: string,
+): { response: ReturnType<typeof CoachingResponsePayloadSchema.parse> } {
+  const envelope = OpenAICoachingResponseEnvelopeSchema.safeParse(parsed);
+  if (envelope.success) return { response: envelope.data.response! };
+
+  // The streaming SDK can return the schema nested in `message.parsed` or
+  // unwrap the single `response` property. Keep both shapes behind the same
+  // strict runtime contract rather than treating a valid payload as missing.
+  const unwrapped = CoachingResponsePayloadSchema.safeParse(parsed);
+  if (unwrapped.success) return { response: unwrapped.data };
+
+  const reparsed = OpenAICoachingResponseEnvelopeSchema.parse(
+    normalizeOpenAIResponseEnvelope(JSON.parse(content)),
+  );
+  return { response: reparsed.response! };
+}
+
 function openAIResponseFormat() {
   const format = zodResponseFormat(
     OpenAICoachingResponseEnvelopeSchema,
@@ -189,9 +208,11 @@ export function createOpenAIProvider(
           && completedContent.trim().length > 0
           ? completedContent
           : raw;
-        const parsedEnvelope = message?.parsed
-          ?? responseFormat.$parseRaw(contentToParse);
-        const payload = CoachingResponsePayloadSchema.parse(parsedEnvelope.response);
+        const parsedEnvelope = parseCompletedOpenAIResponse(
+          message?.parsed,
+          contentToParse,
+        );
+        const payload = parsedEnvelope.response;
         const inputTokens = completion.usage?.prompt_tokens ?? 0;
         const outputTokens = completion.usage?.completion_tokens ?? 0;
         yield { kind: 'completed', result: { payload, usage: {

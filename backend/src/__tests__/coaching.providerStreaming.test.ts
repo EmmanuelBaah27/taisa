@@ -73,6 +73,27 @@ test('OpenAI stream parses accumulated JSON when the SDK leaves parsed null and 
   });
 });
 
+test('OpenAI stream accepts the validated payload when the SDK unwraps the response envelope', async () => {
+  const stream = {
+    async *[Symbol.asyncIterator]() {
+      yield { choices: [{ delta: { content: JSON.stringify({ response: payload }) } }] };
+    },
+    finalChatCompletion: jest.fn().mockResolvedValue({
+      choices: [{ message: { content: null, parsed: payload } }],
+      usage: { prompt_tokens: 10, completion_tokens: 5 },
+    }),
+  };
+  const client = { beta: { chat: { completions: { stream: jest.fn(() => stream) } } } };
+  const provider = createOpenAIProvider(config, client as any);
+
+  const items = await collect(provider.streamRespond!(input));
+
+  expect(items.at(-1)).toEqual({
+    kind: 'completed',
+    result: expect.objectContaining({ payload }),
+  });
+});
+
 test('OpenAI response parser repairs an empty approach without accepting an empty reply', async () => {
   const client = { beta: { chat: { completions: { parse: jest.fn().mockResolvedValue({
     choices: [{ message: { parsed: { response: payload } } }],
