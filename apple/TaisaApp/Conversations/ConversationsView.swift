@@ -51,7 +51,7 @@ struct ConversationsView: View {
             }
         }
         .animation(toastAnimation, value: model.notices.first?.id)
-        .background(TaisaColor.background.color)
+        .background(TaisaColor.background.color.ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("conversations.root")
