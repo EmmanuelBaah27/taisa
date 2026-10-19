@@ -49,7 +49,7 @@ let package = Package(
         ]),
         .target(name: "TaisaCloudKit", dependencies: ["TaisaSync", "TaisaStorage", "TaisaSecurity"]),
         .target(name: "TaisaVoice", dependencies: ["TaisaStorage", "TaisaContracts", "TaisaAudio", "TaisaNetworking"]),
-        .target(name: "TaisaConversations", dependencies: ["TaisaStorage", "TaisaContracts", "TaisaVoice"]),
+        .target(name: "TaisaConversations", dependencies: ["TaisaStorage", "TaisaContracts", "TaisaVoice", "TaisaNetworking"]),
         .target(name: "TaisaAudio"),
         .target(name: "TaisaNetworking", dependencies: ["TaisaContracts"]),
         .testTarget(name: "TaisaCoreTests", dependencies: ["TaisaCore"]),

@@ -310,7 +310,8 @@ struct ConversationRuntimeFactory: Sendable {
         let voiceCoordinator = makeVoiceCoordinator(initial)
         let gatewayClient = GatewayConversationClient(
             store: store, deviceID: deviceID,
-            coaching: GatewayCoachingRunner(configuration: configuration, recentMessages: messageHistory, preferenceSignals: preferenceSignals)
+            coaching: GatewayCoachingRunner(configuration: configuration, recentMessages: messageHistory, preferenceSignals: preferenceSignals),
+            reconciliation: GatewayCoachingReconciliation(configuration: configuration)
         )
         let voiceAdapter = VoiceSessionConversationAdapter(voiceCoordinator)
         let coordinator: ConversationCoordinator
