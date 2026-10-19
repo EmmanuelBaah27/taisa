@@ -121,6 +121,11 @@ function parseDurationSeconds(value: unknown): number | null {
   if (value === undefined) return null;
   if (typeof value !== 'string' || value.trim() === '') return Number.NaN;
   const duration = Number(value);
+  // AVAudioRecorder can reset `currentTime` to zero when a phone call
+  // interrupts capture even though the finalized file remains valid. Duration
+  // is optional metadata; let the server-measured file duration remain the
+  // authority for that legacy value.
+  if (duration === 0) return null;
   return Number.isFinite(duration) && duration > 0 ? duration : Number.NaN;
 }
 
