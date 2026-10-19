@@ -104,7 +104,7 @@ struct PrimaryAppShell: View {
             if model.showsConversationDock {
                 PageEdgeFade(.navigation)
                     .frame(maxWidth: .infinity)
-                    .frame(height: 104)
+                    .frame(height: TaisaControlMetric.primaryNavigationReservedHeight)
                     .ignoresSafeArea(edges: [.horizontal, .bottom])
                     .allowsHitTesting(false)
 

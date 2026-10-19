@@ -67,6 +67,7 @@ final class ConversationsViewContractTests: XCTestCase {
         XCTAssertTrue(pageChrome.contains("TaisaControlMetric.standardIcon"))
         XCTAssertTrue(pageChrome.contains(".glassEffect(.regular.interactive()"))
         XCTAssertTrue(pageChrome.contains("PageEdgeFade(.header)"))
+        XCTAssertTrue(pageChrome.contains(".ignoresSafeArea(edges: [.top, .horizontal])"))
         XCTAssertTrue(pageChrome.contains("TaisaControlMetric.appBarHeight"))
         XCTAssertTrue(pageChrome.contains("TaisaControlMetric.headerActionHeight"))
         XCTAssertFalse(source.contains("Image(systemName: \"magnifyingglass\")"))
