@@ -1,5 +1,30 @@
 import SwiftUI
 
+public enum TaisaBottomChromeContract {
+    public static let fadeHeight = TaisaControlMetric.primaryNavigationReservedHeight
+    public static let coversBottomSafeArea = true
+}
+
+/// Owns the continuous fade and system-safe-area background behind bottom controls.
+public struct TaisaBottomChrome<Content: View>: View {
+    private let content: Content
+
+    public init(@ViewBuilder content: () -> Content) {
+        self.content = content()
+    }
+
+    public var body: some View {
+        content
+            .background(alignment: .bottom) {
+                PageEdgeFade(.navigation)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: TaisaBottomChromeContract.fadeHeight)
+                    .ignoresSafeArea(edges: [.horizontal, .bottom])
+                    .allowsHitTesting(false)
+            }
+    }
+}
+
 /// Shared top chrome for the primary Home, Chats, and You destinations.
 public struct TaisaPageHeader<Actions: View>: View {
     private let title: String

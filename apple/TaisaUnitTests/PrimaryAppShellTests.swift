@@ -55,12 +55,11 @@ final class PrimaryAppShellTests: XCTestCase {
         XCTAssertTrue(source.contains(".accessibilityHidden(model.selection != destination)"))
         XCTAssertFalse(source.contains("if model.selection == .careerWork"))
         XCTAssertTrue(source.contains("model.showsCareerWork"))
-        XCTAssertTrue(source.contains("PageEdgeFade(.navigation)"))
-        XCTAssertTrue(source.contains(".frame(height: TaisaControlMetric.primaryNavigationReservedHeight)"))
+        XCTAssertTrue(source.contains("TaisaBottomChrome"))
+        XCTAssertFalse(source.contains("PageEdgeFade(.navigation)"))
         XCTAssertFalse(source.contains(".frame(height: 104)"))
         XCTAssertTrue(source.contains("model.primaryPageBottomReservation"))
         XCTAssertTrue(source.contains("selection == .conversations ? 0"))
-        XCTAssertFalse(source.contains(".background {\n                    PageEdgeFade(.navigation)"))
     }
 
     func testVoiceEntryIntentIsConsumedOnlyOnce() {
