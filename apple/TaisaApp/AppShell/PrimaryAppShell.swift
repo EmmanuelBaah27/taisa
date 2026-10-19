@@ -102,32 +102,28 @@ struct PrimaryAppShell: View {
             }
 
             if model.showsConversationDock {
-                PageEdgeFade(.navigation)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: TaisaControlMetric.primaryNavigationReservedHeight)
-                    .ignoresSafeArea(edges: [.horizontal, .bottom])
-                    .allowsHitTesting(false)
-
-                VStack(spacing: TaisaSpacing.compact.rawValue) {
-                    ConversationEntryDock(
-                        onVoice: { model.presentNewConversation(.voice) },
-                        onKeyboard: { model.presentNewConversation(.text) }
-                    )
-                    .zIndex(1)
-                    .accessibilityIdentifier("app-shell.conversation-dock")
-
-                    PrimaryNavigation(
-                        items: PrimaryDestination.allCases.map { ($0, $0.title, $0.icon) },
-                        selection: Binding(
-                            get: { model.selection },
-                            set: { model.select($0) }
+                TaisaBottomChrome {
+                    VStack(spacing: TaisaSpacing.compact.rawValue) {
+                        ConversationEntryDock(
+                            onVoice: { model.presentNewConversation(.voice) },
+                            onKeyboard: { model.presentNewConversation(.text) }
                         )
-                    )
-                    .accessibilityIdentifier("app-shell.primary-navigation")
+                        .zIndex(1)
+                        .accessibilityIdentifier("app-shell.conversation-dock")
+
+                        PrimaryNavigation(
+                            items: PrimaryDestination.allCases.map { ($0, $0.title, $0.icon) },
+                            selection: Binding(
+                                get: { model.selection },
+                                set: { model.select($0) }
+                            )
+                        )
+                        .accessibilityIdentifier("app-shell.primary-navigation")
+                    }
+                    .padding(.horizontal, TaisaSpacing.standard.rawValue)
+                    .padding(.top, TaisaSpacing.section.rawValue)
+                    .padding(.bottom, TaisaSpacing.compact.rawValue)
                 }
-                .padding(.horizontal, TaisaSpacing.standard.rawValue)
-                .padding(.top, TaisaSpacing.section.rawValue)
-                .padding(.bottom, TaisaSpacing.compact.rawValue)
             }
         }
         .fullScreenCover(item: Binding(
