@@ -254,7 +254,7 @@ struct AssistantResponseActions: View {
 }
 
 private enum AssistantResponseActionsLayout {
-    static let iconSize: CGFloat = 20
+    static let iconSize: CGFloat = 16
     static let hitWidth = TaisaSpacing.section.rawValue
 }
 
