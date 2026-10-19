@@ -219,7 +219,20 @@ final class ConversationViewModel {
                 createdAtMS: Int64(index)
             )
         }
-        return preview(composer: .waitingForReply, messages: messages)
+        return ConversationViewModel(
+            conversationID: conversationID,
+            title: "Overflow conversation",
+            entryIntent: nil,
+            client: ConversationScreenClient(
+                loadMessages: {
+                    try? await Task.sleep(for: .milliseconds(100))
+                    return messages
+                },
+                beginVoice: {}, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
+                sendText: { _, messageAvailable in await messageAvailable() },
+                retry: {}, saveDraft: { _ in }, discardDraft: {}
+            )
+        )
     }
 
     func start() async {
