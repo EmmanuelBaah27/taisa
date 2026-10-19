@@ -72,19 +72,47 @@ function stripUnsupportedStringLengthKeywords<T>(value: T): T {
   return normalized as T;
 }
 
+function normalizeOpenAIResponseEnvelope(value: unknown): unknown {
+  if (!value || typeof value !== 'object') return value;
+  const envelope = value as Record<string, unknown>;
+  const response = envelope.response;
+  if (!response || typeof response !== 'object') return value;
+  const responseRecord = response as Record<string, unknown>;
+  const explanation = responseRecord.explanation;
+  if (!explanation || typeof explanation !== 'object') return value;
+  const explanationRecord = explanation as Record<string, unknown>;
+  const approach = explanationRecord.approach;
+  if (typeof approach !== 'string' || approach.trim().length > 0) return value;
+
+  return {
+    ...envelope,
+    response: {
+      ...responseRecord,
+      explanation: {
+        ...explanationRecord,
+        approach: 'Used the available context to respond.',
+      },
+    },
+  };
+}
+
 function openAIResponseFormat() {
   const format = zodResponseFormat(
     OpenAICoachingResponseEnvelopeSchema,
     'coaching_response',
   );
-  return Object.assign(format, {
+  return {
+    ...format,
+    $parseRaw: (content: string) => OpenAICoachingResponseEnvelopeSchema.parse(
+      normalizeOpenAIResponseEnvelope(JSON.parse(content)),
+    ),
     json_schema: {
       ...format.json_schema,
       schema: stripUnsupportedStringLengthKeywords(
         pruneUnreachableDefinitions(format.json_schema.schema as Record<string, any>),
       ),
     },
-  });
+  };
 }
 
 export function createOpenAIProvider(
