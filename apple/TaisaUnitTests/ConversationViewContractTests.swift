@@ -156,7 +156,12 @@ final class ConversationViewContractTests: XCTestCase {
         XCTAssertFalse(source.contains("direction == value ? nil : value"))
         XCTAssertFalse(source.contains("if let direction {\n                feedbackFactors(for: direction)\n            }"))
         XCTAssertTrue(source.contains("ResponseFeedbackCopy.options"))
-        XCTAssertTrue(source.contains("minWidth: TaisaControlMetric.headerActionHeight"))
+        XCTAssertTrue(source.contains("HStack(spacing: TaisaSpacing.compact.rawValue)"))
+        XCTAssertTrue(source.contains("static let iconSize: CGFloat = 20"))
+        XCTAssertTrue(source.contains("static let hitWidth = TaisaSpacing.section.rawValue"))
+        XCTAssertTrue(source.contains(".font(.system(size: AssistantResponseActionsLayout.iconSize))"))
+        XCTAssertTrue(source.contains("width: AssistantResponseActionsLayout.hitWidth"))
+        XCTAssertFalse(source.contains("minWidth: TaisaControlMetric.headerActionHeight"))
         XCTAssertFalse(source.contains("TextField"))
     }
 

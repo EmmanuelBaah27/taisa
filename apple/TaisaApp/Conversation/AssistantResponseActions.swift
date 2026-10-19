@@ -33,6 +33,8 @@ struct AssistantResponseActions: View {
                     showsExplanation = true
                 } label: {
                     Image(systemName: "info.circle")
+                        .font(.system(size: AssistantResponseActionsLayout.iconSize))
+                        .frame(width: AssistantResponseActionsLayout.hitWidth)
                         .frame(minHeight: TaisaControlMetric.headerActionHeight)
                 }
                 .buttonStyle(.plain)
@@ -127,10 +129,9 @@ struct AssistantResponseActions: View {
             showsFeedback = true
         } label: {
             Image(systemName: feedbackEditor.direction == value ? "\(systemImage).fill" : systemImage)
-                .frame(
-                    minWidth: TaisaControlMetric.headerActionHeight,
-                    minHeight: TaisaControlMetric.headerActionHeight
-                )
+                .font(.system(size: AssistantResponseActionsLayout.iconSize))
+                .frame(width: AssistantResponseActionsLayout.hitWidth)
+                .frame(minHeight: TaisaControlMetric.headerActionHeight)
         }
         .buttonStyle(.plain)
         .foregroundStyle(feedbackEditor.direction == value ? TaisaColor.foreground.color : TaisaColor.mutedForeground.color)
@@ -250,6 +251,11 @@ struct AssistantResponseActions: View {
         case .unsupported: "Unavailable"
         }
     }
+}
+
+private enum AssistantResponseActionsLayout {
+    static let iconSize: CGFloat = 20
+    static let hitWidth = TaisaSpacing.section.rawValue
 }
 
 enum ResponseFeedbackMutation: Equatable {
