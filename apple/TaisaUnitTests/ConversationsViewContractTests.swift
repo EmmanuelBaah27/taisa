@@ -14,6 +14,12 @@ final class ConversationsViewContractTests: XCTestCase {
         XCTAssertFalse(source.contains(".navigationTitle(\"Conversations\")"))
     }
 
+    func testChatsBackgroundCoversTheSystemSafeAreaRegions() throws {
+        let source = try conversationsSource()
+
+        XCTAssertTrue(source.contains(".background(TaisaColor.background.color.ignoresSafeArea())"))
+    }
+
     func testChatsVisualRepairUsesDefaultTypographyAndWhiteSeparators() throws {
         let source = try conversationsSource()
 
