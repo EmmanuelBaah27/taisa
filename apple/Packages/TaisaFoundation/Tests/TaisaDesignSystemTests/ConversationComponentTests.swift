@@ -46,8 +46,8 @@ struct ConversationComponentTests {
         #expect(InlineRecoveryAlert.Contract.microphonePermission.cancelLabel == "Use keyboard")
     }
 
-    @Test func primaryNavigationMotionFallsBackToAnInstantAccessibleTransition() {
-        #expect(PrimaryNavigationMotion.transition(reduceMotion: false) == .spatial)
+    @Test func primaryNavigationMotionBeginsWithTheSelectionInteraction() {
+        #expect(PrimaryNavigationMotion.transition(reduceMotion: false) == .interactiveSpatial)
         #expect(PrimaryNavigationMotion.transition(reduceMotion: true) == .instant)
     }
 
