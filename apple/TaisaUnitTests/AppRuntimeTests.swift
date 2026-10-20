@@ -349,6 +349,23 @@ final class AppRuntimeTests: XCTestCase {
         ))
     }
 
+    func testRetryableTextDraftDoesNotBindToOlderIdenticalMessage() {
+        let conversationID = UUID().uuidString
+        let oldMessage = MessageRecord(
+            id: UUID().uuidString, conversationID: conversationID, role: "user",
+            body: "Repeated message", createdAtMS: 5
+        )
+        let draft = ConversationDraftRecord(
+            id: UUID().uuidString, conversationID: conversationID,
+            inputMode: .text, text: oldMessage.body, voiceTurnID: nil,
+            recoveryKind: .retryableCoaching, createdAtMS: 10, updatedAtMS: 11
+        )
+
+        XCTAssertNil(ConversationRuntimeFactory.pendingConversationRequest(
+            resumable: nil, drafts: [draft], messages: [oldMessage]
+        ))
+    }
+
     func testSavedVoiceDraftWithUnreadableTurnRestoresRetryFromPersistedTranscript() {
         let conversationID = UUID().uuidString
         let fallbackTurn = voiceTurn(

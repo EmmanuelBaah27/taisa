@@ -33,6 +33,24 @@ public struct ConversationRepository: DomainRepository, MessageRepositoryContrac
     }
     public func createMessage(_ record: MessageRecord, context: MutationContext) async throws { try await messageCore.create(record, context: context) }
     public func message(id: String) async throws -> MessageRecord? { try await messageCore.get(id: id) }
+    public func visibleMessage(id: String) async throws -> MessageRecord? {
+        guard let id = UUIDIdentity.canonical(id) else { throw RepositoryError.invalidIdentifier }
+        return try await core.store.read { db in
+            try Row.fetchOne(db, sql: """
+                SELECT m.* FROM messages m
+                WHERE m.id = ? COLLATE NOCASE
+                  AND NOT EXISTS (
+                    SELECT 1 FROM tombstones t
+                    WHERE t.entity_type = 'message' AND t.entity_id = m.id COLLATE NOCASE
+                  )
+                """, arguments: [id]).map {
+                    MessageRecord(
+                        id: $0["id"], conversationID: $0["conversation_id"],
+                        role: $0["role"], body: $0["body"], createdAtMS: $0["created_at_ms"]
+                    )
+                }
+        }
+    }
     public func deleteMessage(id: String, context: MutationContext) async throws { try await messageCore.delete(id: id, context: context) }
 
     public func draft(id: String) async throws -> ConversationDraftRecord? {

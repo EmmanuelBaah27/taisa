@@ -41,6 +41,16 @@ struct ConversationView: View {
                 ConversationPageHeader(title: model.title, onDismiss: model.requestClose)
                     .accessibilityIdentifier("conversation.close")
                     .zIndex(3)
+                if let responseActionFailure = model.responseActionFailure {
+                    TaisaToast(
+                        message: responseActionFailure.message,
+                        actionLabel: "Try again",
+                        action: { Task { await model.retryFailedResponseAction() } },
+                        dismiss: model.clearResponseActionFailure
+                    )
+                    .padding(.top, TaisaControlMetric.appBarHeight + TaisaSpacing.compact.rawValue)
+                    .zIndex(5)
+                }
             }
             .toolbar(.hidden, for: .navigationBar)
         }
@@ -192,14 +202,14 @@ struct ConversationView: View {
     }
 
     private var emptyState: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: TaisaSpacing.control.rawValue) {
             CentralIcon(.voiceMid).frame(width: 40, height: 40)
-            Text("What’s on your mind?").font(.system(.body, weight: .medium))
+            Text("What’s on your mind?").font(TaisaTypography.navigationLabel.font)
             Text("Talk it through with Taisa.")
-                .font(TaisaTypography.body.font)
+                .font(TaisaTypography.supporting.font)
                 .foregroundStyle(TaisaColor.mutedForeground.color)
         }
-        .padding()
+        .padding(TaisaSpacing.standard.rawValue)
         .accessibilityElement(children: .combine)
     }
 

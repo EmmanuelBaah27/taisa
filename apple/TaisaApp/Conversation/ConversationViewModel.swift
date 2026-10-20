@@ -87,6 +87,11 @@ struct ConversationScreenClient: Sendable {
 @MainActor
 @Observable
 final class ConversationViewModel {
+    struct ResponseActionFailure: Identifiable {
+        let id: String
+        let message: String
+        let retry: @MainActor () async -> Void
+    }
     enum FailureContext: Equatable {
         case transcription, request, beginRecording, microphonePermissionDenied, pauseRecording, resumeRecording
     }
@@ -113,6 +118,9 @@ final class ConversationViewModel {
     private(set) var correctionRegenerationMessageID: String?
     private(set) var partialCoaching = ""
     private(set) var failureContext: FailureContext = .request
+    private(set) var responseActionFailures: [ResponseActionFailure] = []
+    var responseActionFailure: ResponseActionFailure? { responseActionFailures.first }
+    private var processingMessageIsDurable = true
     private var correctionOriginalText = ""
     private var submittedCorrectionText: String?
     var correctionText = ""
@@ -368,11 +376,13 @@ final class ConversationViewModel {
         // Leave the editable state as soon as Send is accepted. The durable send
         // path restores this value below if the user message could not be saved.
         text = ""
+        processingMessageIsDurable = false
         composer = .coaching
         do {
             try await client.sendText(value) { [weak self] in
                 guard let self else { return }
                 await self.reloadMessages()
+                self.processingMessageIsDurable = true
             }
             await reloadMessages()
             partialCoaching = ""
@@ -385,9 +395,11 @@ final class ConversationViewModel {
             if messages.contains(where: {
                 $0.role == "user" && $0.body == value && !messageIDsBeforeSend.contains($0.id)
             }) {
+                processingMessageIsDurable = true
                 text = ""
                 composer = .failure(.retryable)
             } else {
+                processingMessageIsDurable = true
                 text = value
                 composer = .typing(value)
             }
@@ -481,8 +493,10 @@ final class ConversationViewModel {
             }
         }
         switch composer {
-        case .transcribing, .coaching:
+        case .transcribing:
             dismiss()
+        case .coaching:
+            if processingMessageIsDurable { dismiss() }
         case .failure:
             cancelRecoveryAndClose()
         case .preparingVoice, .recording, .paused, .savedVoiceDraft:
@@ -656,21 +670,61 @@ final class ConversationViewModel {
                 } else {
                     try await client.removeFeedback(responseMessageID, revision)
                 }
+                removeResponseActionFailure(id: "feedback:\(responseMessageID)")
                 await reloadMessages()
-            } catch { composer = .failure(.retryable) }
+            } catch {
+                await reloadMessages()
+                enqueueResponseActionFailure(
+                    id: "feedback:\(responseMessageID)",
+                    message: "Couldn’t save feedback. Try again."
+                ) { [weak self] in
+                    await self?.saveFeedback(
+                        responseMessageID: responseMessageID, direction: direction,
+                        factors: factors, detail: detail
+                    )
+                }
+            }
         }
         feedbackMutationTails[responseMessageID] = task
         await task.value
     }
 
     func acceptProposal(_ id: String) async {
-        do { try await client.acceptProposal(id); await reloadMessages() }
-        catch { composer = .failure(.retryable) }
+        do { try await client.acceptProposal(id); removeResponseActionFailure(id: "accept:\(id)"); await reloadMessages() }
+        catch {
+            await reloadMessages()
+            enqueueResponseActionFailure(id: "accept:\(id)", message: "Couldn’t add this suggestion. Try again.") { [weak self] in
+                await self?.acceptProposal(id)
+            }
+        }
     }
 
     func dismissProposal(_ id: String) async {
-        do { try await client.dismissProposal(id); await reloadMessages() }
-        catch { composer = .failure(.retryable) }
+        do { try await client.dismissProposal(id); removeResponseActionFailure(id: "dismiss:\(id)"); await reloadMessages() }
+        catch {
+            await reloadMessages()
+            enqueueResponseActionFailure(id: "dismiss:\(id)", message: "Couldn’t dismiss this suggestion. Try again.") { [weak self] in
+                await self?.dismissProposal(id)
+            }
+        }
+    }
+
+    func retryFailedResponseAction() async { await responseActionFailure?.retry() }
+
+    func clearResponseActionFailure() {
+        guard !responseActionFailures.isEmpty else { return }
+        responseActionFailures.removeFirst()
+    }
+
+    private func enqueueResponseActionFailure(
+        id: String, message: String, retry: @escaping @MainActor () async -> Void
+    ) {
+        responseActionFailures.removeAll { $0.id == id }
+        responseActionFailures.append(.init(id: id, message: message, retry: retry))
+    }
+
+    private func removeResponseActionFailure(id: String) {
+        responseActionFailures.removeAll { $0.id == id }
     }
 
     private var hasUnsentInput: Bool {

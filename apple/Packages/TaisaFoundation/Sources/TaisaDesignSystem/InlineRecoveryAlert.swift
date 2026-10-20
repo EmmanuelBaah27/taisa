@@ -49,8 +49,8 @@ public struct InlineRecoveryAlert: View {
             CentralIcon(.exclamationCircle)
                 .foregroundStyle(TaisaColor.destructive.color)
                 .frame(width: 24, height: 24)
-            Text(contract.title).font(.system(.body, weight: .medium))
-            Text(contract.message).font(.system(.subheadline)).foregroundStyle(TaisaColor.mutedForeground.color)
+            Text(contract.title).font(TaisaTypography.navigationLabel.font)
+            Text(contract.message).font(TaisaTypography.supporting.font).foregroundStyle(TaisaColor.mutedForeground.color)
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: Contract.actionSpacing) { actions }
                 VStack(spacing: Contract.actionSpacing) { actions }

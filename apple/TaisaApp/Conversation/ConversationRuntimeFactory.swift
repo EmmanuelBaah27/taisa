@@ -722,7 +722,7 @@ struct ConversationRuntimeFactory: Sendable {
         let text = draft.text?.trimmingCharacters(in: .whitespacesAndNewlines),
         !text.isEmpty,
         let userIndex = messages.lastIndex(where: {
-            $0.role == "user" && $0.body == text
+            $0.role == "user" && $0.body == text && $0.createdAtMS == draft.createdAtMS
         }),
         !messages[messages.index(after: userIndex)...].contains(where: { $0.role == "assistant" }),
         let requestID = UUID(uuidString: messages[userIndex].id) else {

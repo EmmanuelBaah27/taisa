@@ -1,5 +1,6 @@
 import CryptoKit
 import Foundation
+import GRDB
 import Testing
 import TaisaContracts
 import TaisaStorage
@@ -107,6 +108,89 @@ struct AssistantProposalRouterTests {
         #expect(accepted.state == .accepted)
         let targetID = try #require(accepted.targetID)
         #expect(try await ActionRepository(store: fixture.store).get(id: targetID)?.dueAtMS == 1_792_022_400_000)
+    }
+
+    @Test func acceptedMemoryPersistsEveryValidatedMessageSourceAtomically() async throws {
+        let fixture = try await proposalFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.directory) }
+        let sourceID = "30000000-0000-4000-8000-000000000010"
+        let secondSourceID = "30000000-0000-4000-8000-000000000011"
+        try await ConversationRepository(store: fixture.store).createMessage(
+            .init(id: sourceID, conversationID: fixture.conversationID, role: "user", body: "A source", createdAtMS: 2),
+            context: .init(id: UUID().uuidString, deviceID: UUID().uuidString, timestamp: 2)
+        )
+        try await ConversationRepository(store: fixture.store).createMessage(
+            .init(id: secondSourceID, conversationID: fixture.conversationID, role: "user", body: "Another source", createdAtMS: 3),
+            context: .init(id: UUID().uuidString, deviceID: UUID().uuidString, timestamp: 3)
+        )
+        let router = AssistantProposalRouter(store: fixture.store)
+        let accepted = try await accept(
+            #"{"kind":"memory","memory":{"operation":"propose","candidate":{"type":"preference","statement":"Prefers concise options","provenance":"user-stated","lifecycle":"proposed","confidence":"tentative","sourceMessageIds":["30000000-0000-4000-8000-000000000010","30000000-0000-4000-8000-000000000011"],"supersedesId":null},"reason":"Stated directly","requiresConfirmation":true}}"#,
+            ordinal: 13, fixture: fixture, router: router,
+            deviceID: UUID(uuidString: "00000000-0000-4000-8000-000000000999")!
+        )
+
+        let sourceIDs = try await fixture.store.read { db in
+            try String.fetchAll(
+                db, sql: "SELECT source_id FROM memory_sources WHERE memory_item_id = ?",
+                arguments: [accepted.targetID!]
+            )
+        }
+        #expect(Set(sourceIDs) == Set([sourceID, secondSourceID]))
+    }
+
+    @Test func missingMemoryMessageSourceMarksProposalStaleWithoutWritingMemory() async throws {
+        let fixture = try await proposalFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.directory) }
+        let router = AssistantProposalRouter(store: fixture.store)
+        let id = try await store(
+            #"{"kind":"memory","memory":{"operation":"propose","candidate":{"type":"preference","statement":"Unverified","provenance":"user-stated","lifecycle":"proposed","confidence":"tentative","sourceMessageIds":["30000000-0000-4000-8000-000000000099"],"supersedesId":null},"reason":"Unverified","requiresConfirmation":true}}"#,
+            ordinal: 14, fixture: fixture
+        )
+
+        let result = try await router.accept(
+            proposalID: id,
+            deviceID: UUID(uuidString: "00000000-0000-4000-8000-000000000999")!,
+            resolvedAtMS: 114
+        )
+
+        #expect(result.state == .stale)
+        #expect(try await MemoryRepository(store: fixture.store).get(id: result.targetID ?? UUID().uuidString) == nil)
+    }
+
+    @Test func tombstonedOrCrossConversationSourcesMarkProposalStale() async throws {
+        let fixture = try await proposalFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.directory) }
+        let repository = ConversationRepository(store: fixture.store)
+        let otherConversationID = "30000000-0000-4000-8000-000000000002"
+        try await repository.create(.init(
+            id: otherConversationID, title: "Other", lifecycle: .active,
+            titleAuthority: .localFallback, createdAtMS: 1, updatedAtMS: 1
+        ), context: .init(id: UUID().uuidString, deviceID: UUID().uuidString, timestamp: 1))
+        let crossID = "30000000-0000-4000-8000-000000000020"
+        try await repository.createMessage(
+            .init(id: crossID, conversationID: otherConversationID, role: "user", body: "Other chat", createdAtMS: 2),
+            context: .init(id: UUID().uuidString, deviceID: UUID().uuidString, timestamp: 2)
+        )
+        let tombstonedID = "30000000-0000-4000-8000-000000000021"
+        try await repository.createMessage(
+            .init(id: tombstonedID, conversationID: fixture.conversationID, role: "user", body: "Removed", createdAtMS: 3),
+            context: .init(id: UUID().uuidString, deviceID: UUID().uuidString, timestamp: 3)
+        )
+        try await repository.deleteMessage(
+            id: tombstonedID,
+            context: .init(id: UUID().uuidString, deviceID: UUID().uuidString, timestamp: 4)
+        )
+        let router = AssistantProposalRouter(store: fixture.store)
+
+        for (ordinal, sourceID) in [(15, crossID), (16, tombstonedID)] {
+            let id = try await store(
+                #"{"kind":"memory","memory":{"operation":"propose","candidate":{"type":"preference","statement":"Unverified","provenance":"user-stated","lifecycle":"proposed","confidence":"tentative","sourceMessageIds":["\#(sourceID)"],"supersedesId":null},"reason":"Unverified","requiresConfirmation":true}}"#,
+                ordinal: ordinal, fixture: fixture
+            )
+            let result = try await router.accept(proposalID: id, deviceID: UUID(), resolvedAtMS: Int64(100 + ordinal))
+            #expect(result.state == .stale)
+        }
     }
 }
 

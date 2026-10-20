@@ -271,6 +271,24 @@ describe('private local capture and deliberate submission', () => {
     expect(staged?.proposal_json).not.toContain('provider-supplied-source');
   });
 
+  test('adapts the singular native memory proposal without widening the shared response contract', async () => {
+    coach.mockImplementationOnce(async (request) => ({
+      ...coachingResponse(request),
+      proposals: undefined,
+      proposal: { kind: 'memory', memory: proposal },
+    } as unknown as CoachingResponse));
+
+    const result = await service.submitText({
+      conversationId: 'singular-proposal',
+      content: 'Remember that I prefer concise options.',
+    });
+
+    expect(result.pendingProposals).toHaveLength(1);
+    expect(result.pendingProposals[0]).toEqual(expect.objectContaining({
+      operation: 'propose',
+    }));
+  });
+
   test.each([
     ['clarify', {
       mode: 'clarify' as const,

@@ -33,6 +33,7 @@ enum ConversationTimelineLayout {
 
 private struct TrailingMaximumWidthLayout: Layout {
     let trailingInset: CGFloat
+    let layoutDirection: LayoutDirection
 
     func sizeThatFits(
         proposal: ProposedViewSize,
@@ -65,8 +66,11 @@ private struct TrailingMaximumWidthLayout: Layout {
             trailingInset: trailingInset
         )
         let bubbleSize = subview.sizeThatFits(ProposedViewSize(width: bubbleWidth, height: proposal.height))
+        let originX = layoutDirection == .rightToLeft
+            ? bounds.minX + trailingInset
+            : bounds.maxX - trailingInset - bubbleSize.width
         subview.place(
-            at: CGPoint(x: bounds.maxX - trailingInset - bubbleSize.width, y: bounds.minY),
+            at: CGPoint(x: originX, y: bounds.minY),
             proposal: ProposedViewSize(bubbleSize)
         )
     }
@@ -75,6 +79,7 @@ private struct TrailingMaximumWidthLayout: Layout {
 struct ConversationTimeline: View {
     static let userPreviewLineLimit = 6
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.layoutDirection) private var layoutDirection
 
     let messages: [MessageRecord]
     let assistantResponses: [String: AssistantResponseRecord]
@@ -119,7 +124,8 @@ struct ConversationTimeline: View {
                         VStack(alignment: message.role == "user" ? .trailing : .leading, spacing: TaisaSpacing.tight.rawValue) {
                             if message.role == "user" {
                                 TrailingMaximumWidthLayout(
-                                    trailingInset: TaisaSpacing.standard.rawValue
+                                    trailingInset: TaisaSpacing.standard.rawValue,
+                                    layoutDirection: layoutDirection
                                 ) {
                                     ExpandableUserMessage(
                                         message: message,

@@ -54,7 +54,7 @@ private actor CoachingRetryAuthorizer: CoachingReconciliationLookingUp {
 
 @Suite(.serialized)
 struct GatewayConversationClientTests {
-    @Test func restoredTextRetryAuthorizesAmbiguousPaidWorkThenReusesTheSameRequest() async throws {
+    @Test func ambiguousPaidWorkWaitsForExplicitRetryBeforeAuthorization() async throws {
         let fixture = try await gatewayFixture()
         defer { try? FileManager.default.removeItem(at: fixture.directory) }
         let requestID = "00000000-0000-4000-8000-000000000923"
@@ -65,15 +65,24 @@ struct GatewayConversationClientTests {
             coaching: runner, reconciliation: authorizer, nowMS: { 2 }
         )
 
+        await #expect(throws: ConversationFailure.retryable) {
+            try await client.sendText(
+                conversationID: fixture.conversationID, requestID: requestID,
+                text: "Help me prepare"
+            )
+        }
+        #expect(await runner.attemptCount() == 1)
+        #expect(await authorizer.authorizedRequestIDs.isEmpty)
+
+        try await client.prepareExplicitRetry(requestID: requestID)
         let reply = try await client.sendText(
-            conversationID: fixture.conversationID,
-            requestID: requestID,
+            conversationID: fixture.conversationID, requestID: requestID,
             text: "Help me prepare"
         )
 
         #expect(reply.terminalResponse?.requestId.uuidString.lowercased() == requestID)
         #expect(await runner.attemptCount() == 2)
-        #expect(await authorizer.reconciledRequestIDs.map { $0.uuidString.lowercased() } == [requestID])
+        #expect(await authorizer.reconciledRequestIDs.map { $0.uuidString.lowercased() } == [requestID, requestID])
         #expect(await authorizer.authorizedRequestIDs.map { $0.uuidString.lowercased() } == [requestID])
     }
 

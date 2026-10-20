@@ -28,7 +28,19 @@ public struct AssistantResponseRepository: Sendable {
         try Self.validate(write)
         do {
             try await store.write { db in
-                try Self.messageCore(store).create(write.message, context: Self.childContext(context, entity: "message", id: write.message.id), db: db)
+                if let row = try Row.fetchOne(
+                    db, sql: "SELECT conversation_id, role, body, created_at_ms FROM messages WHERE id = ? COLLATE NOCASE",
+                    arguments: [write.message.id]
+                ) {
+                    guard (row["conversation_id"] as String).caseInsensitiveCompare(write.message.conversationID) == .orderedSame,
+                          (row["role"] as String) == write.message.role,
+                          (row["body"] as String) == write.message.body,
+                          (row["created_at_ms"] as Int64) == write.message.createdAtMS else {
+                        throw RepositoryError.mutationCollision
+                    }
+                } else {
+                    try Self.messageCore(store).create(write.message, context: Self.childContext(context, entity: "message", id: write.message.id), db: db)
+                }
                 try failIfNeeded(.message)
                 try Self.insertCompanions(write, context: context, store: store, db: db, after: failIfNeeded)
             }

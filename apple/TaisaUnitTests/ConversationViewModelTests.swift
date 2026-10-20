@@ -639,6 +639,90 @@ final class ConversationViewModelTests: XCTestCase {
         await send.value
     }
 
+    func testCloseWaitsUntilTypedMessageIsDurable() async {
+        let durableGate = AsyncGate()
+        let durableCallback = AsyncGate()
+        let finishGate = AsyncGate()
+        var dismissed = 0
+        let client = ConversationScreenClient(
+            beginVoice: {}, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
+            sendText: { _, available in
+                await durableGate.wait()
+                await available()
+                await durableCallback.open()
+                await finishGate.wait()
+            }, retry: {}, saveDraft: { _ in }, discardDraft: {}
+        )
+        let model = ConversationViewModel(
+            conversationID: UUID().uuidString, title: "Chat", entryIntent: nil,
+            composer: .typing("Durable first"), text: "Durable first", client: client,
+            dismiss: { dismissed += 1 }
+        )
+
+        let send = Task { await model.sendText() }
+        await Task.yield()
+        model.requestClose()
+        XCTAssertEqual(dismissed, 0)
+
+        await durableGate.open()
+        await durableCallback.wait()
+        model.requestClose()
+        XCTAssertEqual(dismissed, 1)
+        await finishGate.open()
+        await send.value
+    }
+
+    func testFeedbackFailureDoesNotReplaceComposerWithCoachingFailure() async {
+        let client = ConversationScreenClient(
+            beginVoice: {}, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
+            sendText: { _, available in await available() }, retry: {},
+            saveDraft: { _ in }, discardDraft: {},
+            saveFeedback: { _ in throw ConversationFailure.retryable }
+        )
+        let model = ConversationViewModel(
+            conversationID: UUID().uuidString, title: "Chat", entryIntent: nil,
+            composer: .waitingForReply, client: client
+        )
+
+        await model.saveFeedback(
+            responseMessageID: UUID().uuidString, direction: .helpful,
+            factors: [.coverage], detail: nil
+        )
+
+        XCTAssertEqual(model.composer, .waitingForReply)
+        XCTAssertEqual(model.responseActionFailure?.message, "Couldn’t save feedback. Try again.")
+    }
+
+    func testResponseActionFailuresQueueAndRetryTheirExactActions() async {
+        let calls = ResponseActionCallSpy()
+        let firstID = UUID().uuidString
+        let secondID = UUID().uuidString
+        let client = ConversationScreenClient(
+            beginVoice: {}, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
+            sendText: { _, available in await available() }, retry: {},
+            saveDraft: { _ in }, discardDraft: {},
+            acceptProposal: { id in
+                if await calls.record(id) == 1 { throw ConversationFailure.retryable }
+            },
+            dismissProposal: { id in
+                if await calls.record(id) == 1 { throw ConversationFailure.retryable }
+            }
+        )
+        let model = ConversationViewModel(
+            conversationID: UUID().uuidString, title: "Chat", entryIntent: nil,
+            composer: .waitingForReply, client: client
+        )
+
+        await model.acceptProposal(firstID)
+        await model.dismissProposal(secondID)
+
+        XCTAssertEqual(model.responseActionFailures.map(\.id), ["accept:\(firstID)", "dismiss:\(secondID)"])
+        await model.retryFailedResponseAction()
+        XCTAssertEqual(model.responseActionFailures.map(\.id), ["dismiss:\(secondID)"])
+        let firstCallCount = await calls.count(firstID)
+        XCTAssertEqual(firstCallCount, 2)
+    }
+
     func testFailedRepeatedTextDoesNotTreatHistoricalMessageAsCurrentSend() async {
         let existing = MessageRecord(
             id: UUID().uuidString, conversationID: UUID().uuidString,
@@ -860,6 +944,15 @@ private actor EventRecorder {
     private var events: [String] = []
     func append(_ event: String) { events.append(event) }
     func values() -> [String] { events }
+}
+
+private actor ResponseActionCallSpy {
+    private var counts: [String: Int] = [:]
+    func record(_ id: String) -> Int {
+        counts[id, default: 0] += 1
+        return counts[id, default: 0]
+    }
+    func count(_ id: String) -> Int { counts[id, default: 0] }
 }
 
 private actor MessageSequence {

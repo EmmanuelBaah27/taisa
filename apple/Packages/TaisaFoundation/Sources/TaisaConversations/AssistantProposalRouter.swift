@@ -19,6 +19,7 @@ public struct AssistantProposalRouter: Sendable {
     private let weeklyWork: WeeklyWorkRepository
     private let memory: MemoryRepository
     private let insights: InsightRepository
+    private let conversations: ConversationRepository
 
     public init(store: TaisaStore) {
         proposals = AssistantResponseRepository(store: store)
@@ -29,6 +30,7 @@ public struct AssistantProposalRouter: Sendable {
         weeklyWork = WeeklyWorkRepository(store: store)
         memory = MemoryRepository(store: store)
         insights = InsightRepository(store: store)
+        conversations = ConversationRepository(store: store)
     }
 
     public func accept(
@@ -47,12 +49,15 @@ public struct AssistantProposalRouter: Sendable {
         guard kind(decoded) == stored.kind else {
             return try await mark(stored, state: .unsupported, deviceID: deviceID, at: resolvedAtMS)
         }
+        guard let responseMessage = try await conversations.visibleMessage(id: stored.responseMessageID) else {
+            return try await mark(stored, state: .stale, deviceID: deviceID, at: resolvedAtMS)
+        }
 
         let prepared: PreparedDestination
         do {
             prepared = try await prepare(
                 decoded, proposalID: stored.id, deviceID: deviceID,
-                timestamp: stored.createdAtMS
+                timestamp: stored.createdAtMS, conversationID: responseMessage.conversationID
             )
         } catch AssistantProposalRoutingError.staleTarget {
             return try await mark(stored, state: .stale, deviceID: deviceID, at: resolvedAtMS)
@@ -102,7 +107,8 @@ public struct AssistantProposalRouter: Sendable {
     }
 
     private func prepare(
-        _ proposal: CoachingProposal, proposalID: String, deviceID: UUID, timestamp: Int64
+        _ proposal: CoachingProposal, proposalID: String, deviceID: UUID, timestamp: Int64,
+        conversationID: String
     ) async throws -> PreparedDestination {
         let targetID = derivedUUID(from: proposalID, salt: 1)
         let versionID = derivedUUID(from: proposalID, salt: 2)
@@ -159,7 +165,8 @@ public struct AssistantProposalRouter: Sendable {
             return .init(destination: .evidence(record), context: context, target: .init(type: "evidence", id: targetID, versionID: versionID))
         case .memory(let delta):
             return try await prepareMemory(
-                delta, targetID: targetID, versionID: versionID, context: context
+                delta, targetID: targetID, versionID: versionID, context: context,
+                conversationID: conversationID
             )
         case .insight(let value):
             let record = InsightRecord(
@@ -173,16 +180,30 @@ public struct AssistantProposalRouter: Sendable {
     }
 
     private func prepareMemory(
-        _ delta: MemoryDelta, targetID: String, versionID: String, context: MutationContext
+        _ delta: MemoryDelta, targetID: String, versionID: String, context: MutationContext,
+        conversationID: String
     ) async throws -> PreparedDestination {
         switch delta {
         case .propose(let candidate, _, _):
+            for sourceMessageID in candidate.sourceMessageIds {
+                guard let source = try? await conversations.visibleMessage(id: sourceMessageID),
+                      source.conversationID.caseInsensitiveCompare(conversationID) == .orderedSame else {
+                    throw AssistantProposalRoutingError.staleTarget
+                }
+            }
             let record = MemoryRecord(
                 id: targetID, kind: candidate.type.rawValue, content: candidate.statement,
                 status: storageStatus(candidate.lifecycle), createdAtMS: context.timestamp,
                 updatedAtMS: context.timestamp
             )
-            return .init(destination: .memoryCreate(record), context: context, target: .init(type: "memory", id: targetID, versionID: versionID))
+            let sources = candidate.sourceMessageIds.enumerated().map { index, messageID in
+                MemorySourceRecord(
+                    id: derivedUUID(from: targetID, salt: UInt8(10 + index)),
+                    memoryItemID: targetID, sourceType: "message", sourceID: messageID,
+                    createdAtMS: context.timestamp
+                )
+            }
+            return .init(destination: .memoryCreate(record, sources), context: context, target: .init(type: "memory", id: targetID, versionID: versionID))
         case .transition(let id, let lifecycle, _, _):
             guard let current = try await memory.get(id: id) else {
                 throw AssistantProposalRoutingError.staleTarget
@@ -195,6 +216,10 @@ public struct AssistantProposalRouter: Sendable {
             return .init(destination: .memoryUpdate(record), context: context, target: .init(type: "memory", id: current.id, versionID: versionID))
         case .support(let id, let sourceMessageID, _):
             guard try await memory.get(id: id) != nil else {
+                throw AssistantProposalRoutingError.staleTarget
+            }
+            guard let source = try? await conversations.visibleMessage(id: sourceMessageID),
+                  source.conversationID.caseInsensitiveCompare(conversationID) == .orderedSame else {
                 throw AssistantProposalRoutingError.staleTarget
             }
             let sourceID = derivedUUID(from: targetID, salt: 3)

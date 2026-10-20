@@ -55,6 +55,40 @@ struct AssistantResponseRepositoryTests {
         #expect(snapshot.assistantResponses[fixture.messageID]?.proposal?.state == .pending)
     }
 
+    @Test func schemaSixPartialMessageIsReconciledWithoutDuplicate() async throws {
+        let fixture = try await Fixture()
+        defer { fixture.remove() }
+        try await fixture.seedConversation()
+        try await fixture.store.write { db in
+            try db.execute(
+                sql: "INSERT INTO messages (id, conversation_id, role, body, created_at_ms) VALUES (?, ?, 'assistant', ?, ?)",
+                arguments: [fixture.messageID, fixture.conversationID, fixture.write.message.body, fixture.write.message.createdAtMS]
+            )
+        }
+
+        try await AssistantResponseRepository(store: fixture.store).persist(fixture.write)
+
+        #expect(try await fixture.companionCounts() == [1, 1, 2, 1])
+        #expect(try await AssistantResponseRepository(store: fixture.store).response(messageID: fixture.messageID) != nil)
+    }
+
+    @Test func existingConflictingMessageRejectsCompanionReconciliation() async throws {
+        let fixture = try await Fixture()
+        defer { fixture.remove() }
+        try await fixture.seedConversation()
+        try await fixture.store.write { db in
+            try db.execute(
+                sql: "INSERT INTO messages (id, conversation_id, role, body, created_at_ms) VALUES (?, ?, 'assistant', 'Different response', ?)",
+                arguments: [fixture.messageID, fixture.conversationID, fixture.write.message.createdAtMS]
+            )
+        }
+
+        await #expect(throws: RepositoryError.mutationCollision) {
+            try await AssistantResponseRepository(store: fixture.store).persist(fixture.write)
+        }
+        #expect(try await fixture.companionCounts() == [1, 0, 0, 0])
+    }
+
     @Test func feedbackUpsertCanonicalizesFactorsAndEnforcesOneRowPerResponse() async throws {
         let fixture = try await Fixture()
         defer { fixture.remove() }

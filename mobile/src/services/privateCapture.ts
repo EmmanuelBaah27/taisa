@@ -594,8 +594,16 @@ export function createPrivateCaptureService(
     effectiveAt: string,
   ): Promise<PendingProposal[]> {
     const pendingProposals: PendingProposal[] = [];
-    for (let index = 0; index < response.proposals.length; index += 1) {
-      const providerProposal = response.proposals[index];
+    // The native coaching contract now carries one optional proposal. Keep the
+    // legacy array reader only as an import-boundary adapter for older gateway
+    // fixtures and already-built clients; do not leak it back into the shared API.
+    const legacy = (response as unknown as {
+      proposals?: Array<GovernedMemoryDelta | OutcomeDelta>;
+    }).proposals;
+    const providerProposals: Array<GovernedMemoryDelta | OutcomeDelta> = legacy
+      ?? (response.proposal?.kind === 'memory' ? [response.proposal.memory] : []);
+    for (let index = 0; index < providerProposals.length; index += 1) {
+      const providerProposal = providerProposals[index];
       const proposalId = request.attemptCount === 1
         ? `${request.id}:proposal:${index}`
         : `${request.id}:attempt:${request.attemptCount}:proposal:${index}`;
