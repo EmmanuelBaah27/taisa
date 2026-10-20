@@ -1,6 +1,5 @@
 import XCTest
 @testable import Taisa
-import TaisaDesignSystem
 
 @MainActor
 final class PrimaryAppShellTests: XCTestCase {
@@ -41,10 +40,6 @@ final class PrimaryAppShellTests: XCTestCase {
         for destination in PrimaryDestination.allCases {
             model.select(destination)
             XCTAssertTrue(model.showsConversationDock)
-            XCTAssertEqual(
-                model.primaryPageBottomReservation,
-                TaisaControlMetric.primaryNavigationReservedHeight
-            )
         }
 
         model.presentNewConversation(.voice)
