@@ -6,15 +6,21 @@
 
 **Branch:** `fix/apf61-review-blockers`
 
-**Terminal outcome:** A clean, fully verified APF-61 pull-request candidate ready for an exact canonical-preview/device check. No merge is authorized by this plan.
+**Terminal outcome:** A clean APF-61 repair candidate that has passed the one named physical
+interaction, the full verification matrix on that unchanged revision, and final review, ready
+for Baah's Ship decision. No merge or canonical-preview publication is authorized by this plan.
 
 ## Repair contract
 
+- This plan specializes but cannot supersede `AGENTS.md`, `docs/workflow.md`, or the Taisa
+  workflow orchestrator. Any contradiction stops execution before another command or
+  verification spend and must be shown to Baah and reconciled first.
 - Preserve the accepted chat visuals and interaction decisions; repair only reviewed defects and required shared-system adoption.
 - Make every persistence change backward-compatible with schema-v6 partial state and current schema-v7 data. Do not introduce schema v8.
 - Use tests that reproduce each failure before changing production code.
 - Keep composer/network failures separate from feedback and proposal-action failures.
-- Do not publish or overwrite `preview/taisa` until the unchanged candidate passes the full verification matrix.
+- Keep the repair candidate non-canonical. Do not publish or overwrite `preview/taisa` before
+  Ship; after approval and merge, synchronize the shipped `main` revision one way into preview.
 
 ## Design-system inventory and exact gap treatment
 
@@ -75,14 +81,18 @@ All chat icons remain Central Icons. No SF Symbol or feature-local icon is permi
 ### 7. Reconcile durable documentation and verify the candidate
 
 - Update `docs/data-model.md` to schema v7 and document `assistant_response_metadata`, `assistant_response_sources`, `assistant_proposals`, `response_feedback`, and `preference_profiles`.
-- Run focused red/green suites after each task, then the full native Apple gate, shared/backend/legacy checks affected by the compatibility change, branch-topology verification, and a fresh code review.
-- Only after all checks pass: commit the exact candidate, publish that unchanged SHA to canonical preview, run agent-owned smoke checks, and request one focused Baah device verification. Ship remains a separate approval.
+- During repair, run focused red/green suites after each task and one fast native gate after a cohesive batch, plus affected shared/backend/legacy checks and branch-topology verification.
+- Commit the exact repair candidate, sign and over-install that same revision without replacing device data, prove the launched revision, and request only the named broken interaction: a typed or recorded reply becomes durable and reaches either a coaching response or its durable retry state across close/reopen.
+- If that interaction fails, return to diagnosis and repeat focused checks, the fast native gate, and exact over-install. Do not run the full native matrix merely to make another attempt.
+- Only after the named interaction passes: freeze that exact candidate, run `npm run verify:native-apple:all` once, run the remaining affected cross-stack checks and fresh code review, and stop for Baah's Ship decision. After Ship and merge, synchronize the shipped `main` revision one way into canonical preview and run the agent-owned smoke checks.
 
 ## Verification matrix
 
 - Focused Swift unit/storage/view-contract tests for each repaired failure.
 - `npm` shared build/typecheck and affected legacy mobile tests/typecheck.
-- `npm run verify:native-apple:all`.
+- `npm run verify:native-apple:fast` before the repair-candidate over-install.
+- One named physical interaction on the exact installed repair candidate.
+- `npm run verify:native-apple:all` once, only after physical proof and on the unchanged candidate.
 - `scripts/verify-branch-topology.sh build --main-ref origin/main --preview-ref origin/preview/taisa`.
 - Fresh Standard + Product code review with zero Critical/Important findings.
 - Exact-SHA simulator/accessibility smoke check before any device retest.

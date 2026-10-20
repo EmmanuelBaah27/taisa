@@ -77,6 +77,25 @@ done
 require_workflow_pattern docs/workflow.md 'Platform.*Product.*Integration.*exclusive|exclusive.*Platform.*Product.*Integration' \
   'exclusive Platform/Product/Integration ownership'
 
+for execution_authority_file in \
+  docs/workflow.md \
+  .agents/skills/taisa-workflow/SKILL.md; do
+  require_workflow_pattern "$execution_authority_file" \
+    'must not override, supersede, or relax' \
+    'non-supersession boundary between approved work and the execution workflow'
+  require_workflow_pattern "$execution_authority_file" \
+    'stop before the next command' \
+    'pre-execution contradiction stop'
+done
+
+if rg -n 'After a fix, repeat full verification' docs/workflow.md; then
+  fail "generic QA guidance overrides the bounded repair-candidate verification sequence"
+fi
+
+require_workflow_pattern docs/workflow.md \
+  'reuse fresh exact-revision evidence' \
+  'reuse of unchanged exact-revision evidence at Ship'
+
 for ds_authority_file in \
   AGENTS.md \
   docs/workflow.md \

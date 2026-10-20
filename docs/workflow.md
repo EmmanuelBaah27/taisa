@@ -65,9 +65,16 @@ Linear before the next stage or gate.
   discussion, and gate evidence.
 - Git owns code, branch/commit identity, versioned architecture/public contracts, durable
   decisions, migrations, and code-coupled verification evidence.
+- `AGENTS.md` supplies repository operating and safety constraints. This workflow and the
+  Taisa orchestrator govern how Linear-authorized work executes. A Scope, Plan, or
+  implementation plan must not override, supersede, or relax those execution constraints;
+  it may only specialize them within the approved task.
 - A Linear status cannot override missing approval evidence or a Draft technical artifact.
-- When the systems disagree, stop advancement, identify the stale side, repair it within
-  existing authority, and re-read both. Never invent missing approval.
+- When any authority or artifact contradicts another, stop before the next command,
+  verification spend, or mutation. Tell Baah the exact conflicting clauses and practical
+  consequence, identify the stale or lower-authority side, repair it within existing
+  authority, and re-read both. Never silently choose a convenient instruction or invent
+  missing approval.
 
 ## Feature tiers
 
@@ -465,8 +472,11 @@ evidence, but it never approves Scope, Plan, priority changes, lifecycle promoti
 
 For each QA failure, create or update one non-duplicate Linear issue with observed preview
 revision, reproduction, severity, acceptance criteria, ownership, and relation to the feature.
-Release-blocking failure returns the feature to Build. After a fix, repeat full verification
-and preview publication before renewed device QA.
+Release-blocking failure returns the feature to Build. Outside the bounded physical repair-
+candidate lane, repeat the applicable verification and preview publication before renewed
+device QA. Inside `REPAIR_QUARANTINE`, follow the narrower authoritative sequence above:
+focused regression plus fast verification, exact over-install, and one named interaction;
+run the full matrix only after that interaction passes on the unchanged candidate.
 
 Parking sets the issue Canceled with reason and preserves branches, worktrees, artifacts, and
 history. Do not delete or rewrite parked work.
@@ -563,7 +573,10 @@ After Ship approval:
 1. Confirm clean branch/worktree and correct PR base, then run the conflict-free Ship gate:
    `bash scripts/verify-branch-topology.sh ship --pr-base main --main-ref origin/main --preview-ref origin/preview/taisa`.
 2. Fetch and reconcile with `origin/main` safely.
-3. Run the complete verification matrix and final review.
+3. Confirm the complete verification matrix and final review for the exact revision. At Ship,
+   reuse fresh exact-revision evidence from the final repair-release or high-risk gate when
+   code, dependencies, toolchain, signing, and configuration are unchanged; otherwise run
+   the invalidated checks before merge.
 4. Confirm required device QA and exact preview evidence.
 5. Push branch and create/update the PR.
 6. Squash-merge to `main`.
