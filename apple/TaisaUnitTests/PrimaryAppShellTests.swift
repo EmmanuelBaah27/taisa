@@ -62,16 +62,19 @@ final class PrimaryAppShellTests: XCTestCase {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let source = try String(contentsOf: root.appendingPathComponent("TaisaApp/AppShell/PrimaryAppShell.swift"), encoding: .utf8)
         XCTAssertTrue(source.contains("ForEach(PrimaryDestination.allCases"))
-        XCTAssertTrue(source.contains("NavigationStack {\n                        destinationView(destination)"))
+        XCTAssertTrue(source.contains("NavigationStack {\n                    destinationView(destination)"))
         XCTAssertTrue(source.contains(".allowsHitTesting(model.selection == destination)"))
         XCTAssertTrue(source.contains(".accessibilityHidden(model.selection != destination)"))
         XCTAssertFalse(source.contains("if model.selection == .careerWork"))
         XCTAssertTrue(source.contains("model.showsCareerWork"))
+        XCTAssertTrue(source.contains(".safeAreaInset(edge: .bottom, spacing: 0)"))
         XCTAssertTrue(source.contains("TaisaBottomChrome"))
         XCTAssertFalse(source.contains("PageEdgeFade(.navigation)"))
         XCTAssertFalse(source.contains(".frame(height: 104)"))
-        XCTAssertTrue(source.contains("model.primaryPageBottomReservation"))
+        XCTAssertFalse(source.contains("primaryPageBottomReservation"))
         XCTAssertFalse(source.contains("selection == .conversations ? 0"))
+        XCTAssertFalse(source.contains(".safeAreaPadding(.bottom"))
+        XCTAssertFalse(source.contains(".background {\n                    PageEdgeFade(.navigation)"))
     }
 
     func testVoiceEntryIntentIsConsumedOnlyOnce() {

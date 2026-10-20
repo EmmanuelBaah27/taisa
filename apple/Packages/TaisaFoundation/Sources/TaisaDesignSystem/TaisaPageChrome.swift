@@ -5,7 +5,10 @@ public enum TaisaBottomChromeContract {
     public static let coversBottomSafeArea = true
 }
 
-/// Owns the continuous fade and system-safe-area background behind bottom controls.
+/// Shared bottom chrome for primary destinations.
+///
+/// Place this component in a root `safeAreaInset(edge: .bottom)` so its fade
+/// owns the home-indicator region and its height reserves scrolling content.
 public struct TaisaBottomChrome<Content: View>: View {
     private let content: Content
 
@@ -14,16 +17,14 @@ public struct TaisaBottomChrome<Content: View>: View {
     }
 
     public var body: some View {
-        ZStack(alignment: .bottom) {
-            PageEdgeFade(.navigation)
-                .frame(maxWidth: .infinity)
-                .frame(height: TaisaBottomChromeContract.fadeHeight)
-                .ignoresSafeArea(edges: [.horizontal, .bottom])
-                .allowsHitTesting(false)
-
-            content
-        }
-        .frame(maxWidth: .infinity)
+        content
+            .frame(maxWidth: .infinity)
+            .frame(height: TaisaBottomChromeContract.fadeHeight, alignment: .bottom)
+            .background {
+                PageEdgeFade(.navigation)
+                    .ignoresSafeArea(edges: [.horizontal, .bottom])
+                    .allowsHitTesting(false)
+            }
     }
 }
 

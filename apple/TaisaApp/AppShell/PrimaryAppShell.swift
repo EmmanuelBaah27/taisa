@@ -26,9 +26,6 @@ final class PrimaryAppShellModel {
     }
 
     var showsConversationDock: Bool { conversationRoute == nil }
-    var primaryPageBottomReservation: CGFloat {
-        TaisaControlMetric.primaryNavigationReservedHeight
-    }
 
     func select(_ destination: PrimaryDestination) {
         if destination == .careerWork {
@@ -88,19 +85,17 @@ struct PrimaryAppShell: View {
     var openInsights: () -> Void = {}
 
     var body: some View {
-        ZStack(alignment: .bottom) {
-            ZStack {
-                ForEach(PrimaryDestination.allCases, id: \.self) { destination in
-                    NavigationStack {
-                        destinationView(destination)
-                            .safeAreaPadding(.bottom, model.primaryPageBottomReservation)
-                    }
-                    .opacity(model.selection == destination ? 1 : 0)
-                    .allowsHitTesting(model.selection == destination)
-                    .accessibilityHidden(model.selection != destination)
+        ZStack {
+            ForEach(PrimaryDestination.allCases, id: \.self) { destination in
+                NavigationStack {
+                    destinationView(destination)
                 }
+                .opacity(model.selection == destination ? 1 : 0)
+                .allowsHitTesting(model.selection == destination)
+                .accessibilityHidden(model.selection != destination)
             }
-
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
             if model.showsConversationDock {
                 TaisaBottomChrome {
                     VStack(spacing: TaisaSpacing.compact.rawValue) {
