@@ -1,5 +1,33 @@
 import SwiftUI
 
+public enum TaisaBottomChromeContract {
+    public static let height = TaisaControlMetric.primaryNavigationReservedHeight
+    public static let coversBottomSafeArea = true
+}
+
+/// Shared bottom chrome for primary destinations.
+///
+/// Place this component in a root `safeAreaInset(edge: .bottom)` so its fade
+/// owns the home-indicator region and its height reserves scrolling content.
+public struct TaisaBottomChrome<Content: View>: View {
+    private let content: Content
+
+    public init(@ViewBuilder content: () -> Content) {
+        self.content = content()
+    }
+
+    public var body: some View {
+        content
+            .frame(maxWidth: .infinity)
+            .frame(height: TaisaBottomChromeContract.height, alignment: .bottom)
+            .background {
+                PageEdgeFade(.navigation)
+                    .ignoresSafeArea(edges: [.horizontal, .bottom])
+                    .allowsHitTesting(false)
+            }
+    }
+}
+
 /// Shared top chrome for the primary Home, Chats, and You destinations.
 public struct TaisaPageHeader<Actions: View>: View {
     private let title: String
@@ -26,7 +54,7 @@ public struct TaisaPageHeader<Actions: View>: View {
         .frame(height: TaisaControlMetric.appBarHeight)
         .background {
             PageEdgeFade(.header)
-                .ignoresSafeArea(edges: .horizontal)
+                .ignoresSafeArea(edges: [.top, .horizontal])
         }
     }
 }

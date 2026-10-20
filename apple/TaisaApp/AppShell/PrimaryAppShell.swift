@@ -88,46 +88,40 @@ struct PrimaryAppShell: View {
     var openInsights: () -> Void = {}
 
     var body: some View {
-        ZStack(alignment: .bottom) {
-            ZStack {
-                ForEach(PrimaryDestination.allCases, id: \.self) { destination in
-                    NavigationStack {
-                        destinationView(destination)
-                            .safeAreaPadding(.bottom, model.primaryPageBottomReservation)
-                    }
-                    .opacity(model.selection == destination ? 1 : 0)
-                    .allowsHitTesting(model.selection == destination)
-                    .accessibilityHidden(model.selection != destination)
+        ZStack {
+            ForEach(PrimaryDestination.allCases, id: \.self) { destination in
+                NavigationStack {
+                    destinationView(destination)
                 }
+                .opacity(model.selection == destination ? 1 : 0)
+                .allowsHitTesting(model.selection == destination)
+                .accessibilityHidden(model.selection != destination)
             }
-
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
             if model.showsConversationDock {
-                PageEdgeFade(.navigation)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 104)
-                    .ignoresSafeArea(edges: [.horizontal, .bottom])
-                    .allowsHitTesting(false)
-
-                VStack(spacing: TaisaSpacing.compact.rawValue) {
-                    ConversationEntryDock(
-                        onVoice: { model.presentNewConversation(.voice) },
-                        onKeyboard: { model.presentNewConversation(.text) }
-                    )
-                    .zIndex(1)
-                    .accessibilityIdentifier("app-shell.conversation-dock")
-
-                    PrimaryNavigation(
-                        items: PrimaryDestination.allCases.map { ($0, $0.title, $0.icon) },
-                        selection: Binding(
-                            get: { model.selection },
-                            set: { model.select($0) }
+                TaisaBottomChrome {
+                    VStack(spacing: TaisaSpacing.compact.rawValue) {
+                        ConversationEntryDock(
+                            onVoice: { model.presentNewConversation(.voice) },
+                            onKeyboard: { model.presentNewConversation(.text) }
                         )
-                    )
-                    .accessibilityIdentifier("app-shell.primary-navigation")
+                        .zIndex(1)
+                        .accessibilityIdentifier("app-shell.conversation-dock")
+
+                        PrimaryNavigation(
+                            items: PrimaryDestination.allCases.map { ($0, $0.title, $0.icon) },
+                            selection: Binding(
+                                get: { model.selection },
+                                set: { model.select($0) }
+                            )
+                        )
+                        .accessibilityIdentifier("app-shell.primary-navigation")
+                    }
+                    .padding(.horizontal, TaisaSpacing.standard.rawValue)
+                    .padding(.top, TaisaSpacing.section.rawValue)
+                    .padding(.bottom, TaisaSpacing.compact.rawValue)
                 }
-                .padding(.horizontal, TaisaSpacing.standard.rawValue)
-                .padding(.top, TaisaSpacing.section.rawValue)
-                .padding(.bottom, TaisaSpacing.compact.rawValue)
             }
         }
         .fullScreenCover(item: Binding(

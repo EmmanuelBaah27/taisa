@@ -40,7 +40,9 @@ struct ConversationsView: View {
     var body: some View {
         ZStack(alignment: .top) {
             content
-            header
+                .safeAreaInset(edge: .top, spacing: 0) {
+                    header
+                }
             if let notice = model.notices.first {
                 toast(notice)
                     .id(notice.id)
@@ -103,7 +105,6 @@ struct ConversationsView: View {
                 draftsButton
             }
         }
-        .zIndex(1)
     }
 
     @ViewBuilder private var content: some View {
@@ -151,11 +152,6 @@ struct ConversationsView: View {
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
             .scrollIndicators(.hidden)
-            .contentMargins(
-                .top,
-                TaisaControlMetric.appBarHeight + TaisaSpacing.standard.rawValue,
-                for: .scrollContent
-            )
             .contentMargins(
                 .bottom,
                 TaisaControlMetric.primaryNavigationReservedHeight,
