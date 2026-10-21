@@ -182,6 +182,7 @@ test('preview support is linked only by the preview target', async () => {
     'TaisaPreviewSupport',
     'TaisaStorage',
     'TaisaVoice',
+    'TaisaAudio',
     'TaisaConversations',
   ]);
 });
@@ -370,7 +371,12 @@ test('tiered native CI keeps fast feedback separate from exact-head full verific
   assert.match(fastWorkflow, /cancel-in-progress: true/);
 
   assert.match(fullWorkflow, /name: Native Apple Full Verification/);
-  assert.match(fullWorkflow, /types: \[opened, reopened, synchronize, ready_for_review, labeled, unlabeled\]/);
+  assert.match(fullWorkflow, /types: \[opened, reopened, synchronize, labeled, unlabeled\]/);
+  assert.doesNotMatch(fullWorkflow, /ready_for_review/);
+  assert.match(
+    fullWorkflow,
+    /if: github\.event_name != 'pull_request' \|\| \(needs\.classify-native-impact\.outputs\.native_required == 'true' && contains\(github\.event\.pull_request\.labels\.\*\.name, 'merge-ready'\) && \(github\.event\.action == 'synchronize' \|\| \(github\.event\.action == 'labeled' && github\.event\.label\.name == 'merge-ready'\)\)\)/,
+  );
   assert.match(fullWorkflow, /schedule:/);
   assert.match(fullWorkflow, /workflow_dispatch:/);
   assert.match(fullWorkflow, /tags: \['v\*'\]/);
@@ -385,6 +391,15 @@ test('tiered native CI keeps fast feedback separate from exact-head full verific
   assert.match(fullWorkflow, /scripts\/native-apple\/__tests__\/\*\).*;;/s);
   assert.match(fullWorkflow, /needs\.verify-native-apple\.result/);
   assert.match(fullWorkflow, /github\.event\.pull_request\.head\.sha/);
+  assert.match(fullWorkflow, /checks: read/);
+  assert.match(fullWorkflow, /actions\/github-script@v7/);
+  assert.match(fullWorkflow, /const checkName = 'Native Apple Full Verification'/);
+  assert.match(fullWorkflow, /check_name: checkName/);
+  assert.match(fullWorkflow, /filter: 'all'/);
+  assert.match(fullWorkflow, /check\.head_sha === headSha/);
+  assert.match(fullWorkflow, /check\.conclusion === 'success'/);
+  assert.match(fullWorkflow, /needs\.verify-native-apple\.result == 'skipped'/);
+  assert.match(fullWorkflow, /steps\.find-prior-full\.outputs\.exact_head_success/);
   assert.equal(
     fullWorkflow.match(/^concurrency:/gm)?.length,
     1,

@@ -68,7 +68,22 @@ private struct PreviewScenarioView: View {
     let scenario: PreviewScenario
 
     var body: some View {
-        ScrollView {
+        Group {
+            if scenario.identifier == "recording-glow.tuner" {
+                VStack(spacing: 0) { scenario.makeRootView() }
+                    .accessibilityElement(children: .contain)
+                    .accessibilityIdentifier("preview.ready.\(scenario.identifier)")
+            } else {
+                ScrollView { scenarioContent }
+                    .accessibilityIdentifier("preview.ready.\(scenario.identifier)")
+            }
+        }
+        .navigationTitle(scenario.title)
+        .navigationBarTitleDisplayMode(.inline)
+        .environment(\.dynamicTypeSize, dynamicTypeSize)
+    }
+
+    private var scenarioContent: some View {
             VStack(alignment: .leading, spacing: TaisaSpacing.section.rawValue) {
                 VStack(alignment: .leading, spacing: TaisaSpacing.compact.rawValue) {
                     TaisaText(
@@ -84,11 +99,6 @@ private struct PreviewScenarioView: View {
                 }
                 scenario.makeRootView()
             }
-        }
-        .navigationTitle(scenario.title)
-        .navigationBarTitleDisplayMode(.inline)
-        .environment(\.dynamicTypeSize, dynamicTypeSize)
-        .accessibilityIdentifier("preview.ready.\(scenario.identifier)")
     }
 
     private var dynamicTypeSize: DynamicTypeSize {
