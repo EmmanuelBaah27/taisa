@@ -518,7 +518,11 @@ final class ConversationViewModel {
         case .coaching:
             if processingMessageIsDurable { dismiss() }
         case .failure:
-            cancelRecoveryAndClose()
+            if hasRecoverableFailurePayload {
+                confirmation = .saveDiscardOrCancel
+            } else {
+                cancelRecoveryAndClose()
+            }
         case .preparingVoice, .recording, .paused, .savedVoiceDraft:
             confirmation = .saveDiscardOrCancel
         case .typing where hasUnsentInput:
@@ -753,6 +757,12 @@ final class ConversationViewModel {
         case .preparingVoice, .recording, .paused, .savedVoiceDraft, .transcribing, .coaching, .failure: true
         case .waitingForReply: false
         }
+    }
+
+    private var hasRecoverableFailurePayload: Bool {
+        !messages.isEmpty
+            || capture.disposition != .empty
+            || !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     private func perform(

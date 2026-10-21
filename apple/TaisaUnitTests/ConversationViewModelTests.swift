@@ -826,6 +826,27 @@ final class ConversationViewModelTests: XCTestCase {
         XCTAssertEqual(dismissed, 1)
     }
 
+    func testChevronOnRetryableFailureWithDurableMessageOffersSaveDiscardOrStay() async {
+        let user = message(role: "user", body: "Already saved")
+        var dismissed = 0
+        let client = ConversationScreenClient(
+            loadMessages: { [user] },
+            beginVoice: {}, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
+            sendText: { _, available in await available() }, retry: {},
+            saveDraft: { _ in }, discardDraft: {}
+        )
+        let model = ConversationViewModel(
+            conversationID: user.conversationID, title: "Chat", entryIntent: nil,
+            composer: .failure(.retryable), client: client, dismiss: { dismissed += 1 }
+        )
+        await model.start()
+
+        model.requestClose()
+
+        XCTAssertEqual(model.confirmation, .saveDiscardOrCancel)
+        XCTAssertEqual(dismissed, 0)
+    }
+
     func testFailedTextSendSavesAsTextDraft() async {
         let client = ConversationScreenClientSpy()
         let model = ConversationViewModel(
