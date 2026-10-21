@@ -72,6 +72,11 @@ struct ConversationComponentTests {
         #expect(ConversationJumpToLatestButton.Contract.accessibilityLabel == "Jump to latest response")
     }
 
+    @Test func restoredVoiceDraftUsesStaticRecordedStatus() {
+        #expect(RecordedVoiceDraftBadge.Contract.label == "Recorded")
+        #expect(RecordedVoiceDraftBadge.Contract.iconSize == 20)
+    }
+
     @Test func composerContractsDescribeActionsWithoutColorAlone() {
         #expect(VoiceComposerControls.Contract.recording.pauseLabel == "Pause recording")
         #expect(VoiceComposerControls.Contract.paused.resumeLabel == "Resume recording")

@@ -8,6 +8,7 @@ struct ConversationView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State var model: ConversationViewModel
     @Namespace private var sentMessageTransition
+    @State private var showsPreparingVoiceStatus = false
 
     var body: some View {
         NavigationStack {
@@ -118,7 +119,32 @@ struct ConversationView: View {
     @ViewBuilder private var composer: some View {
         switch model.composer {
         case .preparingVoice:
-            recordingBar(.preparing)
+            bottomChrome {
+                if showsPreparingVoiceStatus {
+                    HStack(spacing: TaisaSpacing.control.rawValue) {
+                        TaisaSecondaryIconButton(
+                            icon: .cross,
+                            accessibilityLabel: "Cancel microphone preparation",
+                            action: model.requestDiscardRecording
+                        )
+                        .frame(
+                            width: TaisaControlMetric.conversationRecordingControl,
+                            height: TaisaControlMetric.conversationRecordingControl
+                        )
+                        ConversationProgressState(label: "Preparing microphone…")
+                            .foregroundStyle(TaisaColor.mutedForeground.color)
+                            .frame(maxWidth: .infinity)
+                    }
+                } else {
+                    voiceReplyButton.disabled(true)
+                }
+            }
+            .task {
+                showsPreparingVoiceStatus = false
+                try? await Task.sleep(for: .milliseconds(200))
+                guard !Task.isCancelled, model.composer == .preparingVoice else { return }
+                showsPreparingVoiceStatus = true
+            }
         case .recording:
             recordingBar(actionPhase)
                 .task {

@@ -121,6 +121,7 @@ final class ConversationViewContractTests: XCTestCase {
         XCTAssertTrue(source.contains("Edit message"))
         XCTAssertTrue(source.contains("UIApplication.openSettingsURLString"))
         XCTAssertTrue(source.contains("UIApplication.shared.open(settingsURL"))
+        XCTAssertTrue(source.contains("Task.sleep(for: .milliseconds(200))"))
         XCTAssertTrue(source.contains("TAISA_CAPTURE begin.failure type="))
         XCTAssertFalse(source.contains("Correct transcript"))
         XCTAssertFalse(source.contains("Text(message.role == \"assistant\" ? \"Taisa\" : \"You\")"))
