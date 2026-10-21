@@ -166,6 +166,9 @@ final class ConversationViewModel {
 
     var isCorrectionSubmitting: Bool { actionInFlight && correctionMessageID != nil }
     var isSendingText: Bool { pendingSentText != nil }
+    var closeActionDisabled: Bool {
+        actionInFlight && !(composer == .coaching && processingMessageIsDurable)
+    }
     var isCorrectionDirty: Bool {
         correctionMessageID != nil && correctionText != correctionOriginalText
     }
@@ -323,7 +326,7 @@ final class ConversationViewModel {
             showsMicrophoneUnavailable = false
         } catch {
             capture = await client.loadCaptureSnapshot()
-            if capture.activity == .blocked {
+            if capture.interruption == .microphoneUnavailable {
                 composer = .paused
                 showsMicrophoneUnavailable = true
             } else {
@@ -335,11 +338,11 @@ final class ConversationViewModel {
         await refreshCapture()
     }
     func refreshCapture() async {
-        let wasBlocked = capture.activity == .blocked
+        let wasUnavailable = capture.interruption == .microphoneUnavailable
         capture = await client.loadCaptureSnapshot()
-        if capture.activity == .blocked, !wasBlocked {
+        if capture.interruption == .microphoneUnavailable, !wasUnavailable {
             showsMicrophoneUnavailable = true
-        } else if capture.activity != .blocked {
+        } else if capture.interruption == nil {
             showsMicrophoneUnavailable = false
         }
         switch capture.activity {
@@ -526,10 +529,7 @@ final class ConversationViewModel {
     }
 
     func requestClose() {
-        if composer == .preparingVoice, actionInFlight {
-            voicePreparationExit = .discard
-            return
-        }
+        guard !closeActionDisabled else { return }
         if capture.disposition == .empty {
             switch composer {
             case .preparingVoice, .recording, .paused:
@@ -607,6 +607,7 @@ final class ConversationViewModel {
     }
 
     func cancelConfirmation() {
+        guard !actionInFlight else { return }
         if case .discardVoiceForKeyboard(let prior) = confirmation { composer = prior }
         confirmation = nil
     }

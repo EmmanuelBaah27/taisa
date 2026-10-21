@@ -46,6 +46,7 @@ struct ConversationView: View {
                 }
                 ConversationPageHeader(title: model.title, onDismiss: model.requestClose)
                     .accessibilityIdentifier("conversation.close")
+                    .disabled(model.closeActionDisabled)
                     .zIndex(3)
                 if let responseActionFailure = model.responseActionFailure {
                     TaisaToast(
@@ -107,6 +108,7 @@ struct ConversationView: View {
             case nil: EmptyView()
             }
         }
+        .disabled(model.actionInFlight)
     }
 
     @ViewBuilder private var composer: some View {
@@ -150,7 +152,7 @@ struct ConversationView: View {
             VStack(spacing: TaisaSpacing.control.rawValue) {
                 if model.showsMicrophoneUnavailable {
                     TaisaToast(
-                        message: "Microphone unavailable",
+                        message: "Microphone unavailable. Resume when the call ends.",
                         dismiss: model.dismissMicrophoneUnavailable
                     )
                 }

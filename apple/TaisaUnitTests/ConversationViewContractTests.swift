@@ -135,7 +135,7 @@ final class ConversationViewContractTests: XCTestCase {
         XCTAssertTrue(source.contains("UIApplication.openSettingsURLString"))
         XCTAssertTrue(source.contains("UIApplication.shared.open(settingsURL"))
         XCTAssertTrue(source.contains("Task.sleep(for: .milliseconds(200))"))
-        XCTAssertTrue(source.contains("Microphone unavailable"))
+        XCTAssertTrue(source.contains("Microphone unavailable. Resume when the call ends."))
         XCTAssertTrue(source.contains(".disabled(model.actionInFlight)"))
         XCTAssertTrue(source.contains("TaisaControlMetric.conversationEmptyVoiceIcon"))
         XCTAssertTrue(source.contains("TaisaTypography.metadata.font"))

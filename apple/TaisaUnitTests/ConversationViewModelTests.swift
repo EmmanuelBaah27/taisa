@@ -731,7 +731,8 @@ final class ConversationViewModelTests: XCTestCase {
             loadCaptureSnapshot: {
                 .init(
                     activity: .blocked, elapsedMilliseconds: 1_500,
-                    meter: .init(averagePower: -160, peakPower: -160), disposition: .sendable
+                    meter: .init(averagePower: -160, peakPower: -160), disposition: .sendable,
+                    interruption: .microphoneUnavailable
                 )
             }
         )
@@ -749,8 +750,9 @@ final class ConversationViewModelTests: XCTestCase {
     func testRouteRestorationClearsMicrophoneUnavailableNotice() async {
         let captures = CaptureSequence([
             .init(
-                activity: .blocked, elapsedMilliseconds: 1_500,
-                meter: .init(averagePower: -160, peakPower: -160), disposition: .sendable
+                activity: .paused, elapsedMilliseconds: 1_500,
+                meter: .init(averagePower: -160, peakPower: -160), disposition: .sendable,
+                interruption: .microphoneUnavailable
             ),
             .init(
                 activity: .paused, elapsedMilliseconds: 1_500,
@@ -802,6 +804,34 @@ final class ConversationViewModelTests: XCTestCase {
         await finishPause.open()
         await pause.value
         XCTAssertFalse(model.actionInFlight)
+    }
+
+    func testCloseIsIgnoredWhileRecordingActionIsCommitting() async {
+        let pauseStarted = AsyncGate()
+        let finishPause = AsyncGate()
+        var dismissed = 0
+        let client = ConversationScreenClient(
+            beginVoice: {}, pauseVoice: {
+                await pauseStarted.open()
+                await finishPause.wait()
+            }, resumeVoice: {}, sendVoice: { _ in },
+            sendText: { _, available in await available() }, retry: {},
+            saveDraft: { _ in }, discardDraft: {}
+        )
+        let model = ConversationViewModel(
+            conversationID: UUID().uuidString, title: "Chat", entryIntent: nil,
+            composer: .recording, client: client, dismiss: { dismissed += 1 }
+        )
+
+        let pause = Task { await model.pause() }
+        await pauseStarted.wait()
+        model.requestClose()
+
+        XCTAssertNil(model.confirmation)
+        XCTAssertEqual(dismissed, 0)
+
+        await finishPause.open()
+        await pause.value
     }
 
     func testEmptyRecordingDiscardCleansUpProvisionalChatAndDismisses() async {

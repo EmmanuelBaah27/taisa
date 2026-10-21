@@ -385,7 +385,9 @@ struct VoiceSessionReviewRegressionTests {
             await Task.yield()
         }
 
-        #expect(await coordinator.snapshot().durable.state == .paused)
+        let snapshot = await coordinator.snapshot()
+        #expect(snapshot.durable.state == .paused)
+        #expect(snapshot.capture.interruption == .microphoneUnavailable)
     }
 
     @Test("connectivity updates do not treat an active recording as relaunch recovery")

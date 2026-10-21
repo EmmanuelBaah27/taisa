@@ -88,6 +88,10 @@ public enum VoiceCaptureDisposition: Sendable, Equatable {
     case durableProcessing
 }
 
+public enum VoiceCaptureInterruption: Sendable, Equatable {
+    case microphoneUnavailable
+}
+
 public struct VoiceCaptureSnapshot: Sendable, Equatable {
     public static let minimumSendableDurationMilliseconds: Int64 = 1_000
 
@@ -95,17 +99,20 @@ public struct VoiceCaptureSnapshot: Sendable, Equatable {
     public let elapsedMilliseconds: Int64
     public let meter: AudioMeterSample
     public let disposition: VoiceCaptureDisposition
+    public let interruption: VoiceCaptureInterruption?
 
     public init(
         activity: AudioCaptureActivity,
         elapsedMilliseconds: Int64,
         meter: AudioMeterSample,
-        disposition: VoiceCaptureDisposition
+        disposition: VoiceCaptureDisposition,
+        interruption: VoiceCaptureInterruption? = nil
     ) {
         self.activity = activity
         self.elapsedMilliseconds = elapsedMilliseconds
         self.meter = meter
         self.disposition = disposition
+        self.interruption = interruption
     }
 }
 
@@ -168,6 +175,7 @@ public actor VoiceSessionCoordinator {
     private let retryScheduler: VoiceRetryScheduler
     private let retrySleeper: any VoiceRetrySleeping
     private let makeMessageID: @Sendable () -> UUID
+    private var captureInterruption: VoiceCaptureInterruption?
     private let nowMS: @Sendable () -> Int64
 
     private var durable: VoiceTurnRecord
@@ -234,7 +242,8 @@ public actor VoiceSessionCoordinator {
                 activity: captureSnapshot?.activity ?? .prepared,
                 elapsedMilliseconds: elapsed,
                 meter: captureSnapshot?.meter ?? .init(averagePower: -160, peakPower: -160),
-                disposition: disposition
+                disposition: disposition,
+                interruption: captureInterruption
             )
         )
     }
@@ -757,10 +766,17 @@ public actor VoiceSessionCoordinator {
         guard durable.state == .recording else { return }
         switch event {
         case .blocked(_, .mediaServicesReset):
+            captureInterruption = nil
             try? await capture.discard(turnID: eventTurnID)
             try? await send(.captureFailed(code: "MEDIA_SERVICES_RESET"))
-        case .paused, .blocked:
+        case .paused(_, .interruption), .blocked(_, .routeUnavailable):
+            captureInterruption = .microphoneUnavailable
             try? await send(.capturePaused)
+        case .paused, .blocked:
+            captureInterruption = nil
+            try? await send(.capturePaused)
+        case .resumed:
+            captureInterruption = nil
         default:
             break
         }
