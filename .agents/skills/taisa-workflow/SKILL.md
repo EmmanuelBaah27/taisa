@@ -209,9 +209,12 @@ shippable, or merge-ready. It authorizes only one named broken interaction; expl
 is prohibited.
 
 If that interaction fails, remain in quarantine and loop with new diagnostic evidence without
-running the full matrix. After the named interaction passes, run the full native matrix on that exact frozen revision.
-Only then resolve review, request Ship,
-merge to `main`, synchronize canonical preview, confirm the installed revision, and smoke-test.
+running the full matrix. After the named interaction passes, freeze that exact revision and run
+a fresh whole-candidate code review. Resolve every blocking finding with focused checks; if code,
+dependencies, toolchain, signing, or configuration changes, return to the candidate loop and
+review the resulting candidate again. Once review is clean and the physical proof still applies
+to that exact unchanged revision, run the full native matrix once. Only then request Ship, merge
+to `main`, synchronize canonical preview, confirm the installed revision, and smoke-test.
 Otherwise report `Unfixed; blocking; unshippable` with one smallest Baah-controlled need;
 never claim QA-ready, Ship-ready, closure, or successor work.
 Record every repair-release gate item as passed or explicitly inapplicable with evidence.
@@ -292,10 +295,11 @@ served or installed. Repeat for every QA revision.
 Start with the smallest applicable verification that can disprove the change. Reuse fresh evidence
 only when revision, code, toolchain, configuration, and coverage are unchanged. Run
 independent checks concurrently when they do not share mutable state, and reserve the full
-matrix for its named merge, release, final repair-release after physical proof, or high-risk
-gate. A repair plan must preserve the sequence `focused + fast → exact over-install → one
-named interaction → full matrix once on the proven unchanged candidate`; it cannot move the
-full matrix earlier or repeat it after unchanged evidence. At Ship, reuse valid exact-revision
+matrix for its named merge, release, final repair-release after physical proof and clean review,
+or high-risk gate. A repair plan must preserve the sequence `focused + fast → exact over-install
+→ one named interaction → fresh whole-candidate review → resolve blockers and re-prove if changed
+→ full matrix once on the reviewed, proven, unchanged candidate`; it cannot move the full matrix
+earlier or repeat it after unchanged evidence. At Ship, reuse valid exact-revision
 evidence and rerun only checks invalidated by a code, dependency, toolchain, signing, or
 configuration change. Never weaken a named gate or claim that a narrower check proves a
 broader surface.
