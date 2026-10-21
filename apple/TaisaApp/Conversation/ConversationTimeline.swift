@@ -96,6 +96,7 @@ struct ConversationTimeline: View {
     @State private var isAwayFromLatest = false
     @State private var hasPositionedInitialMessages = false
     @State private var expandedUserMessages: Set<String> = []
+    @State private var copiedConfirmationVisible = false
 
     init(
         messages: [MessageRecord],
@@ -224,17 +225,22 @@ struct ConversationTimeline: View {
                 )
             } action: { _, away in isAwayFromLatest = away }
             .overlay(alignment: .bottom) {
-                if isAwayFromLatest, !presentedMessages.isEmpty {
-                    ConversationJumpToLatestButton(
-                        isLoading: isThinking || !streamingResponse.isEmpty,
-                        action: {
-                        isAwayFromLatest = false
-                        scrollToLatest(using: proxy, animated: !reduceMotion)
-                        }
-                    )
-                    .padding(.bottom, TaisaSpacing.standard.rawValue)
-                    .accessibilityIdentifier("conversation.jump-to-latest")
+                VStack(spacing: TaisaSpacing.control.rawValue) {
+                    if copiedConfirmationVisible {
+                        TaisaToast(message: "Copied", dismiss: { copiedConfirmationVisible = false })
+                    }
+                    if isAwayFromLatest, !presentedMessages.isEmpty {
+                        ConversationJumpToLatestButton(
+                            isLoading: isThinking || !streamingResponse.isEmpty,
+                            action: {
+                                isAwayFromLatest = false
+                                scrollToLatest(using: proxy, animated: !reduceMotion)
+                            }
+                        )
+                        .accessibilityIdentifier("conversation.jump-to-latest")
+                    }
                 }
+                .padding(.bottom, TaisaSpacing.standard.rawValue)
             }
             .task(id: messages.last?.id) {
                 guard messages.last != nil else { return }
@@ -289,7 +295,10 @@ struct ConversationTimeline: View {
     }
 
     @ViewBuilder private func messageActions(for message: MessageRecord) -> some View {
-        Button { UIPasteboard.general.string = message.body } label: {
+        Button {
+            UIPasteboard.general.string = message.body
+            copiedConfirmationVisible = true
+        } label: {
             Label {
                 Text("Copy")
             } icon: {

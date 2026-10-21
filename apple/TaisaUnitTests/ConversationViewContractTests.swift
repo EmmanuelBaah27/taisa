@@ -94,6 +94,7 @@ final class ConversationViewContractTests: XCTestCase {
         XCTAssertTrue(source.contains("latestUserTranscript"))
         XCTAssertTrue(source.contains("contextMenu"))
         XCTAssertTrue(source.contains("Copy"))
+        XCTAssertTrue(source.contains("TaisaToast(message: \"Copied\""))
         XCTAssertTrue(source.contains("Edit"))
         XCTAssertTrue(source.contains("userPreviewLineLimit = 6"))
         XCTAssertTrue(source.contains("Updating response…"))
