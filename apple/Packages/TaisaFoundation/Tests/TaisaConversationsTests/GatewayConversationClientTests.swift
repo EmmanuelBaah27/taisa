@@ -152,14 +152,6 @@ struct GatewayConversationClientTests {
         #expect(title == "Discussing")
     }
 
-    @Test func fallbackTitlesAreCompleteReportedPhrases() {
-        #expect(ConversationTitleDeriver.derive(from: "If I type now, will it show") == "Checking whether typed messages appear")
-        #expect(ConversationTitleDeriver.derive(from: "I'm going to start another one in drafts") == "Starting another conversation draft")
-        #expect(ConversationTitleDeriver.derive(from: "I'm recording one last time. I don't know why you") == "Retrying a recording one last time")
-        #expect(ConversationTitleDeriver.derive(from: "Why is it that when I try to record, like for some") == "Troubleshooting a recording problem")
-        #expect(ConversationTitleDeriver.derive(from: "I'm trying a new one. I don't know why if I tap") == "Testing a new recording attempt")
-    }
-
     @Test func ordinaryTopicsContainingFixtureKeywordsKeepTheirActualSubject() {
         #expect(
             ConversationTitleDeriver.derive(from: "Review my draft promotion packet")
@@ -269,7 +261,7 @@ struct GatewayConversationClientTests {
                 conversationID: record.0,
                 role: "user",
                 body: offset == 0
-                    ? "Why is it that when I try to record, like for some reason it keeps failing"
+                    ? "Plan the customer rollout with clear owners"
                     : "This message would derive a different fallback title",
                 createdAtMS: Int64(offset + 10)
             ), context: .init(id: UUID().uuidString, deviceID: deviceID, timestamp: Int64(offset + 10)))
@@ -278,7 +270,7 @@ struct GatewayConversationClientTests {
         let index = try await ConversationsClient.local(store: store, deviceID: deviceID).load()
         let titles = Dictionary(uniqueKeysWithValues: index.conversations.map { ($0.id, ($0.title, $0.titleAuthority)) })
 
-        #expect(titles[records[0].0]?.0 == "Troubleshooting a recording problem")
+        #expect(titles[records[0].0]?.0 == "Planning the customer rollout with clear owners")
         #expect(titles[records[0].0]?.1 == .localFallback)
         #expect(titles[records[1].0]?.0 == records[1].1)
         #expect(titles[records[1].0]?.1 == .user)

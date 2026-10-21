@@ -30,10 +30,6 @@ enum ConversationTitleDeriver {
             .trimmingCharacters(in: .punctuationCharacters.union(.whitespacesAndNewlines))
         guard !collapsed.isEmpty else { return nil }
 
-        if let reported = reportedPhrase(for: collapsed.lowercased()) {
-            return reported
-        }
-
         var topic = collapsed
         let lowercase = collapsed.lowercased()
         if let prefix = leadingPhrases.first(where: { lowercase.hasPrefix($0) }) {
@@ -109,19 +105,6 @@ enum ConversationTitleDeriver {
         default: return word
         }
         return replacement + punctuation
-    }
-
-    /// Stable titles for recurring capture intents. Prefix matching lets a
-    /// complete transcript retain the same concise subject as its preview.
-    private static func reportedPhrase(for source: String) -> String? {
-        let phrases = [
-            ("if i type now, will it show", "Checking whether typed messages appear"),
-            ("i'm going to start another one in drafts", "Starting another conversation draft"),
-            ("i'm recording one last time. i don't know why you", "Retrying a recording one last time"),
-            ("why is it that when i try to record, like for some", "Troubleshooting a recording problem"),
-            ("i'm trying a new one. i don't know why if i tap", "Testing a new recording attempt"),
-        ]
-        return phrases.first(where: { source.hasPrefix($0.0) })?.1
     }
 }
 
