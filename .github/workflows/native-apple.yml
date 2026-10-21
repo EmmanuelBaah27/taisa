@@ -2,7 +2,7 @@ name: Native Apple Full Verification
 
 on:
   pull_request:
-    types: [opened, reopened, synchronize, ready_for_review, labeled, unlabeled]
+    types: [opened, reopened, synchronize, labeled, unlabeled]
   push:
     tags: ['v*']
   schedule:

@@ -370,7 +370,8 @@ test('tiered native CI keeps fast feedback separate from exact-head full verific
   assert.match(fastWorkflow, /cancel-in-progress: true/);
 
   assert.match(fullWorkflow, /name: Native Apple Full Verification/);
-  assert.match(fullWorkflow, /types: \[opened, reopened, synchronize, ready_for_review, labeled, unlabeled\]/);
+  assert.match(fullWorkflow, /types: \[opened, reopened, synchronize, labeled, unlabeled\]/);
+  assert.doesNotMatch(fullWorkflow, /ready_for_review/);
   assert.match(fullWorkflow, /schedule:/);
   assert.match(fullWorkflow, /workflow_dispatch:/);
   assert.match(fullWorkflow, /tags: \['v\*'\]/);
