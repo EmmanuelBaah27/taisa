@@ -117,6 +117,9 @@ final class ConversationViewModel {
     private(set) var correctionMessageID: String?
     private(set) var correctionRegenerationMessageID: String?
     private(set) var partialCoaching = ""
+    private(set) var streamingFinalMessageID: String?
+    private(set) var transitioningUserMessageID: String?
+    private(set) var pendingSentText: String?
     private(set) var failureContext: FailureContext = .request
     private(set) var responseActionFailures: [ResponseActionFailure] = []
     var responseActionFailure: ResponseActionFailure? { responseActionFailures.first }
@@ -160,6 +163,7 @@ final class ConversationViewModel {
     private enum VoicePreparationExit { case discard, keyboard }
 
     var isCorrectionSubmitting: Bool { actionInFlight && correctionMessageID != nil }
+    var isSendingText: Bool { pendingSentText != nil }
     var isCorrectionDirty: Bool {
         correctionMessageID != nil && correctionText != correctionOriginalText
     }
@@ -355,11 +359,10 @@ final class ConversationViewModel {
                 await self.reloadMessages()
                 self.composer = .coaching
             }
-            await reloadMessages()
-            partialCoaching = ""
-            finishResponseIfPersisted()
+            await prepareCompletedStreamPresentation()
         } catch {
             partialCoaching = ""
+            streamingFinalMessageID = nil
             failureContext = transcriptBecameAvailable ? .request : .transcription
             composer = .failure(.retryable)
         }
@@ -372,10 +375,8 @@ final class ConversationViewModel {
         guard !value.isEmpty else { return }
         actionInFlight = true
         partialCoaching = ""
+        pendingSentText = value
         let messageIDsBeforeSend = Set(messages.map(\.id))
-        // Leave the editable state as soon as Send is accepted. The durable send
-        // path restores this value below if the user message could not be saved.
-        text = ""
         processingMessageIsDurable = false
         composer = .coaching
         do {
@@ -383,13 +384,20 @@ final class ConversationViewModel {
                 guard let self else { return }
                 await self.reloadMessages()
                 self.processingMessageIsDurable = true
+                if let insertedMessage = self.messages.last(where: {
+                    $0.role == "user" && $0.body == value && !messageIDsBeforeSend.contains($0.id)
+                }) {
+                    self.transitioningUserMessageID = insertedMessage.id
+                    self.text = ""
+                }
             }
-            await reloadMessages()
-            partialCoaching = ""
-            finishResponseIfPersisted()
+            await prepareCompletedStreamPresentation()
         }
         catch {
             partialCoaching = ""
+            streamingFinalMessageID = nil
+            transitioningUserMessageID = nil
+            pendingSentText = nil
             await reloadMessages()
             failureContext = .request
             if messages.contains(where: {
@@ -405,6 +413,18 @@ final class ConversationViewModel {
             }
         }
         actionInFlight = false
+    }
+
+    func completeStreamingPresentation() {
+        guard streamingFinalMessageID != nil else { return }
+        streamingFinalMessageID = nil
+        partialCoaching = ""
+        finishResponseIfPersisted()
+    }
+
+    func completeSentMessageTransition() {
+        transitioningUserMessageID = nil
+        pendingSentText = nil
     }
 
     func retry() async {
@@ -764,6 +784,35 @@ final class ConversationViewModel {
         if let loaded = try? await client.loadMessages() { messages = loaded }
         if let loaded = try? await client.loadAssistantResponses() { assistantResponses = loaded }
         if let loadedTitle = try? await client.loadTitle() { title = loadedTitle }
+    }
+
+    private func prepareCompletedStreamPresentation() async {
+        let finalPartial = await client.loadPartialCoaching()
+        await reloadMessages()
+        if transitioningUserMessageID == nil,
+           let pendingSentText,
+           let insertedMessage = messages.last(where: {
+               $0.role == "user" && $0.body == pendingSentText
+           }) {
+            transitioningUserMessageID = insertedMessage.id
+            text = ""
+        }
+        let finalAssistant: MessageRecord? = {
+            guard let latestUserIndex = messages.lastIndex(where: { $0.role == "user" }) else {
+                return messages.last(where: { $0.role == "assistant" })
+            }
+            return messages[messages.index(after: latestUserIndex)...]
+                .last(where: { $0.role == "assistant" })
+        }()
+        guard let finalAssistant else {
+            partialCoaching = ""
+            streamingFinalMessageID = nil
+            finishResponseIfPersisted()
+            return
+        }
+        partialCoaching = finalPartial.isEmpty ? finalAssistant.body : finalPartial
+        streamingFinalMessageID = finalAssistant.id
+        composer = .coaching
     }
 
     private func finishResponseIfPersisted() {

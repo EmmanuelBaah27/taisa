@@ -226,8 +226,10 @@ final class ConversationViewModelTests: XCTestCase {
 
         await model.sendVoice()
 
-        XCTAssertEqual(model.composer, .waitingForReply)
+        XCTAssertEqual(model.composer, .coaching)
         XCTAssertEqual(model.messages.map(\.body), ["Ready"])
+        model.completeStreamingPresentation()
+        XCTAssertEqual(model.composer, .waitingForReply)
     }
 
     func testVoiceFailureBeforeTranscriptUsesTranscriptionRecovery() async {
@@ -379,8 +381,71 @@ final class ConversationViewModelTests: XCTestCase {
 
         await finishCoaching.open()
         await send.value
-        XCTAssertEqual(model.composer, .waitingForReply)
+        XCTAssertEqual(model.composer, .coaching)
         XCTAssertEqual(model.messages.map(\.body), ["Typed follow-up", "Coaching reply"])
+        model.completeStreamingPresentation()
+        XCTAssertEqual(model.composer, .waitingForReply)
+    }
+
+    func testTypedSendRetainsComposerContentUntilDurableMessageIsAvailable() async {
+        let allowMessage = AsyncGate()
+        let messageShown = AsyncGate()
+        let user = message(role: "user", body: "Move into the bubble")
+        let client = ConversationScreenClient(
+            loadMessages: { [user] },
+            beginVoice: {}, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
+            sendText: { _, messageAvailable in
+                await allowMessage.wait()
+                await messageAvailable()
+                await messageShown.open()
+            },
+            retry: {}, saveDraft: { _ in }, discardDraft: {}
+        )
+        let model = ConversationViewModel(
+            conversationID: user.conversationID, title: "Chat", entryIntent: nil,
+            composer: .typing("Move into the bubble"), text: "Move into the bubble", client: client
+        )
+
+        let send = Task { await model.sendText() }
+        for _ in 0..<100 where !model.isSendingText { await Task.yield() }
+        XCTAssertTrue(model.isSendingText)
+        XCTAssertEqual(model.text, "Move into the bubble")
+        XCTAssertNil(model.transitioningUserMessageID)
+
+        await allowMessage.open()
+        await messageShown.wait()
+        XCTAssertEqual(model.text, "")
+        XCTAssertEqual(model.transitioningUserMessageID, user.id)
+        await send.value
+    }
+
+    func testShortCompletedResponseRemainsStreamingUntilRevealFinishes() async {
+        let user = message(role: "user", body: "Short question")
+        let assistant = message(role: "assistant", body: "Short answer")
+        let messages = MessageSequence([[user], [user, assistant]])
+        let client = ConversationScreenClient(
+            loadMessages: { await messages.next() },
+            beginVoice: {}, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
+            sendText: { _, messageAvailable in await messageAvailable() },
+            retry: {}, saveDraft: { _ in }, discardDraft: {},
+            loadPartialCoaching: { "Short answer" }
+        )
+        let model = ConversationViewModel(
+            conversationID: user.conversationID, title: "Chat", entryIntent: nil,
+            composer: .typing("Short question"), text: "Short question", client: client
+        )
+
+        await model.sendText()
+
+        XCTAssertEqual(model.composer, .coaching)
+        XCTAssertEqual(model.partialCoaching, "Short answer")
+        XCTAssertEqual(model.streamingFinalMessageID, assistant.id)
+
+        model.completeStreamingPresentation()
+
+        XCTAssertEqual(model.composer, .waitingForReply)
+        XCTAssertEqual(model.partialCoaching, "")
+        XCTAssertNil(model.streamingFinalMessageID)
     }
 
     func testVoiceTranscriptAppearsBeforeCoachingCompletes() async {
@@ -420,8 +485,10 @@ final class ConversationViewModelTests: XCTestCase {
 
         await finishCoaching.open()
         await send.value
-        XCTAssertEqual(model.composer, .waitingForReply)
+        XCTAssertEqual(model.composer, .coaching)
         XCTAssertEqual(model.messages.map(\.body), ["Recorded words", "Coaching reply"])
+        model.completeStreamingPresentation()
+        XCTAssertEqual(model.composer, .waitingForReply)
     }
 
     func testRetryCompletionReloadsMessagesAndWaitsForReply() async {
@@ -613,7 +680,7 @@ final class ConversationViewModelTests: XCTestCase {
         XCTAssertEqual(dismissed, 1)
     }
 
-    func testTypedSendClearsComposerBeforeDurableCommitCompletes() async {
+    func testTypedSendRetainsComposerBeforeDurableCommitCompletes() async {
         let gate = AsyncGate()
         let events = EventRecorder()
         let client = ConversationScreenClient(
@@ -633,7 +700,7 @@ final class ConversationViewModelTests: XCTestCase {
         let send = Task { await model.sendText() }
         while !(await events.values()).contains("send-start") { await Task.yield() }
 
-        XCTAssertEqual(model.text, "")
+        XCTAssertEqual(model.text, "Send once")
         XCTAssertEqual(model.composer, .coaching)
         await gate.open()
         await send.value

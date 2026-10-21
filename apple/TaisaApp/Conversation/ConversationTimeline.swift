@@ -85,7 +85,11 @@ struct ConversationTimeline: View {
     let assistantResponses: [String: AssistantResponseRecord]
     let updatingResponseAfter: String?
     let streamingResponse: String
+    let streamingFinalMessageID: String?
+    let sentMessageTransitionID: String?
+    let sentMessageTransition: Namespace.ID
     let isThinking: Bool
+    let streamingDidFinish: @MainActor @Sendable () -> Void
     let correct: (MessageRecord) -> Void
     let saveFeedback: (String, ResponseFeedbackDirection?, [ResponseQualityFactor], String?) -> Void
     let acceptProposal: (String) -> Void
@@ -99,7 +103,11 @@ struct ConversationTimeline: View {
         assistantResponses: [String: AssistantResponseRecord] = [:],
         updatingResponseAfter: String? = nil,
         streamingResponse: String = "",
+        streamingFinalMessageID: String? = nil,
+        sentMessageTransitionID: String? = nil,
+        sentMessageTransition: Namespace.ID,
         isThinking: Bool = false,
+        streamingDidFinish: @escaping @MainActor @Sendable () -> Void = {},
         correct: @escaping (MessageRecord) -> Void,
         saveFeedback: @escaping (String, ResponseFeedbackDirection?, [ResponseQualityFactor], String?) -> Void = { _, _, _, _ in },
         acceptProposal: @escaping (String) -> Void = { _ in },
@@ -109,7 +117,11 @@ struct ConversationTimeline: View {
         self.assistantResponses = assistantResponses
         self.updatingResponseAfter = updatingResponseAfter
         self.streamingResponse = streamingResponse
+        self.streamingFinalMessageID = streamingFinalMessageID
+        self.sentMessageTransitionID = sentMessageTransitionID
+        self.sentMessageTransition = sentMessageTransition
         self.isThinking = isThinking
+        self.streamingDidFinish = streamingDidFinish
         self.correct = correct
         self.saveFeedback = saveFeedback
         self.acceptProposal = acceptProposal
@@ -117,10 +129,11 @@ struct ConversationTimeline: View {
     }
 
     var body: some View {
+        let presentedMessages = messages.filter { $0.id != streamingFinalMessageID }
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
-                    ForEach(Array(messages.enumerated()), id: \.element.id) { index, message in
+                    ForEach(Array(presentedMessages.enumerated()), id: \.element.id) { index, message in
                         VStack(alignment: message.role == "user" ? .trailing : .leading, spacing: TaisaSpacing.tight.rawValue) {
                             if message.role == "user" {
                                 TrailingMaximumWidthLayout(
@@ -131,6 +144,11 @@ struct ConversationTimeline: View {
                                         message: message,
                                         isExpanded: expandedUserMessages.contains(message.id),
                                         toggleExpansion: { toggleExpansion(for: message.id) }
+                                    )
+                                    .taisaMessageSendTransition(
+                                        isActive: message.id == sentMessageTransitionID,
+                                        namespace: sentMessageTransition,
+                                        role: .message
                                     )
                                     .contextMenu { messageActions(for: message) }
                                 }
@@ -166,8 +184,8 @@ struct ConversationTimeline: View {
                             .bottom,
                             ConversationTimelineLayout.spacing(
                                 afterRole: message.role,
-                                beforeRole: messages.indices.contains(index + 1)
-                                    ? messages[index + 1].role
+                                beforeRole: presentedMessages.indices.contains(index + 1)
+                                    ? presentedMessages[index + 1].role
                                     : (isThinking || !streamingResponse.isEmpty ? "assistant" : nil)
                             )
                         )
@@ -178,11 +196,11 @@ struct ConversationTimeline: View {
                             .accessibilityIdentifier("conversation.thinking")
                             .id("conversation.thinking")
                     } else if !streamingResponse.isEmpty {
-                        Text((try? AttributedString(markdown: streamingResponse)) ?? AttributedString(streamingResponse))
+                        TaisaStreamingText(streamingResponse, onRevealComplete: streamingDidFinish)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.horizontal, TaisaSpacing.standard.rawValue)
                             .accessibilityIdentifier("conversation.streaming-response")
-                            .id("conversation.streaming-response")
+                            .id(streamingFinalMessageID ?? "conversation.streaming-response.live")
                     }
                 }
                 .padding(.top, ConversationTimelineLayout.firstMessageTopSpacing)
@@ -207,7 +225,7 @@ struct ConversationTimeline: View {
                 )
             } action: { _, away in isAwayFromLatest = away }
             .overlay(alignment: .bottom) {
-                if isAwayFromLatest, !messages.isEmpty {
+                if isAwayFromLatest, !presentedMessages.isEmpty {
                     TaisaSecondaryCapsuleButton(action: {
                         isAwayFromLatest = false
                         scrollToLatest(using: proxy, animated: !reduceMotion)

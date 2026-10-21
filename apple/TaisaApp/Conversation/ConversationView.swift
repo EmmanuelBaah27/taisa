@@ -5,7 +5,9 @@ import TaisaDesignSystem
 import UIKit
 
 struct ConversationView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State var model: ConversationViewModel
+    @Namespace private var sentMessageTransition
 
     var body: some View {
         NavigationStack {
@@ -19,7 +21,11 @@ struct ConversationView: View {
                             assistantResponses: model.assistantResponses,
                             updatingResponseAfter: model.correctionRegenerationMessageID,
                             streamingResponse: model.partialCoaching,
+                            streamingFinalMessageID: model.streamingFinalMessageID,
+                            sentMessageTransitionID: model.transitioningUserMessageID,
+                            sentMessageTransition: sentMessageTransition,
                             isThinking: model.composer == .coaching && model.partialCoaching.isEmpty,
+                            streamingDidFinish: model.completeStreamingPresentation,
                             correct: model.requestCorrection,
                             saveFeedback: { messageID, direction, factors, detail in
                                 Task { await model.saveFeedback(
@@ -56,7 +62,17 @@ struct ConversationView: View {
         }
         .accessibilityIdentifier("conversation.root")
         .interactiveDismissDisabled(true)
+        .animation(
+            reduceMotion ? .easeOut(duration: TaisaMotion.fast) : .smooth(duration: TaisaMotion.settle),
+            value: model.transitioningUserMessageID
+        )
         .task { await model.start() }
+        .task(id: model.transitioningUserMessageID) {
+            guard model.transitioningUserMessageID != nil else { return }
+            if !reduceMotion { try? await Task.sleep(for: .seconds(TaisaMotion.settle)) }
+            guard !Task.isCancelled else { return }
+            model.completeSentMessageTransition()
+        }
         .sheet(isPresented: Binding(
             get: { model.correctionMessageID != nil },
             set: { if !$0 { model.cancelCorrection() } }
@@ -127,7 +143,19 @@ struct ConversationView: View {
                     .frame(maxWidth: .infinity)
             }
         case .coaching:
-            bottomChrome { voiceReplyButton.disabled(true) }
+            bottomChrome {
+                if model.isSendingText, model.transitioningUserMessageID == nil {
+                    TextComposer(text: $model.text, mode: .processing, onSend: {}, onVoice: {})
+                        .taisaMessageSendTransition(
+                            isActive: true,
+                            namespace: sentMessageTransition,
+                            role: .composer
+                        )
+                        .accessibilityIdentifier("conversation.text-composer.processing")
+                } else {
+                    voiceReplyButton.disabled(true)
+                }
+            }
             .task {
                 while !Task.isCancelled, model.composer == .coaching {
                     await model.refreshPartialCoaching()

@@ -19,6 +19,10 @@ struct ConversationComponentTests {
         #expect(TaisaSpacing.control.rawValue == 12)
         #expect(TaisaMotion.fast == 0.18)
         #expect(TaisaMotion.settle == 0.50)
+        #expect(TaisaMotion.streamingWordGap == 0.06)
+        #expect(TaisaMotion.streamingWordFade == 0.35)
+        #expect(TaisaMotion.streamingWordRevealCurve.value(at: 0) == 0)
+        #expect(TaisaMotion.streamingWordRevealCurve.value(at: 1) == 1)
         #expect(TaisaControlMetric.primaryNavigationItemWidth == 56)
         #expect(TaisaControlMetric.primaryNavigationItemHeight == 48)
         #expect(TaisaControlMetric.standardIcon == 24)
@@ -48,6 +52,18 @@ struct ConversationComponentTests {
         #expect(TaisaControlMetric.headerActionHeight == 44)
         #expect(TaisaControlMetric.toastMinimumHeight == 44)
         #expect(TaisaRadius.historyGroup.rawValue == 20)
+    }
+
+    @Test func streamingTextPreservesWhitespaceAndUsesPerWordResolution() {
+        #expect(TaisaStreamingText.chunks(in: "One  two\nthree") == ["One  ", "two\n", "three"])
+        #expect(TaisaStreamingText.revealDuration(wordCount: 0) == 0)
+        #expect(TaisaStreamingText.revealDuration(wordCount: 3) == 0.47)
+        #expect(TaisaStreamingText.Motion.reduced == .instant)
+        #expect(TaisaStreamingText.Motion.standard == .softWordResolution)
+    }
+
+    @Test func sentMessageTransitionDefinesComposerAndMessageRoles() {
+        #expect(TaisaMessageSendTransition.Role.composer != .message)
     }
 
     @Test func composerContractsDescribeActionsWithoutColorAlone() {
