@@ -86,8 +86,6 @@ struct ConversationTimeline: View {
     let failedResponseUpdateAfter: String?
     let streamingResponse: String
     let streamingFinalMessageID: String?
-    let sentMessageTransitionID: String?
-    let sentMessageTransition: Namespace.ID
     let isThinking: Bool
     let streamingDidFinish: @MainActor @Sendable () -> Void
     let retryResponseUpdate: @MainActor @Sendable () -> Void
@@ -108,8 +106,6 @@ struct ConversationTimeline: View {
         failedResponseUpdateAfter: String? = nil,
         streamingResponse: String = "",
         streamingFinalMessageID: String? = nil,
-        sentMessageTransitionID: String? = nil,
-        sentMessageTransition: Namespace.ID,
         isThinking: Bool = false,
         streamingDidFinish: @escaping @MainActor @Sendable () -> Void = {},
         retryResponseUpdate: @escaping @MainActor @Sendable () -> Void = {},
@@ -125,8 +121,6 @@ struct ConversationTimeline: View {
         self.failedResponseUpdateAfter = failedResponseUpdateAfter
         self.streamingResponse = streamingResponse
         self.streamingFinalMessageID = streamingFinalMessageID
-        self.sentMessageTransitionID = sentMessageTransitionID
-        self.sentMessageTransition = sentMessageTransition
         self.isThinking = isThinking
         self.streamingDidFinish = streamingDidFinish
         self.retryResponseUpdate = retryResponseUpdate
@@ -153,11 +147,6 @@ struct ConversationTimeline: View {
                                         message: message,
                                         isExpanded: expandedUserMessages.contains(message.id),
                                         toggleExpansion: { toggleExpansion(for: message.id) }
-                                    )
-                                    .taisaMessageSendTransition(
-                                        isActive: message.id == sentMessageTransitionID,
-                                        namespace: sentMessageTransition,
-                                        role: .message
                                     )
                                     .contextMenu { messageActions(for: message) }
                                 }

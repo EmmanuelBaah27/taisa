@@ -331,7 +331,14 @@ final class ConversationViewModel {
     func refreshPartialCoaching() async {
         let latestPartial = await client.loadPartialCoaching()
         guard !Task.isCancelled, composer == .coaching else { return }
-        partialCoaching = latestPartial
+        await reloadMessages()
+        guard !Task.isCancelled, composer == .coaching else { return }
+        if let finalAssistant = latestAssistantAfterLatestUser() {
+            partialCoaching = latestPartial.isEmpty ? finalAssistant.body : latestPartial
+            streamingFinalMessageID = finalAssistant.id
+        } else {
+            partialCoaching = latestPartial
+        }
     }
 
     func requestDiscardRecording() {
@@ -850,13 +857,7 @@ final class ConversationViewModel {
             transitioningUserMessageID = insertedMessage.id
             text = ""
         }
-        let finalAssistant: MessageRecord? = {
-            guard let latestUserIndex = messages.lastIndex(where: { $0.role == "user" }) else {
-                return messages.last(where: { $0.role == "assistant" })
-            }
-            return messages[messages.index(after: latestUserIndex)...]
-                .last(where: { $0.role == "assistant" })
-        }()
+        let finalAssistant = latestAssistantAfterLatestUser()
         guard let finalAssistant else {
             partialCoaching = ""
             streamingFinalMessageID = nil
@@ -866,6 +867,14 @@ final class ConversationViewModel {
         partialCoaching = finalPartial.isEmpty ? finalAssistant.body : finalPartial
         streamingFinalMessageID = finalAssistant.id
         composer = .coaching
+    }
+
+    private func latestAssistantAfterLatestUser() -> MessageRecord? {
+        guard let latestUserIndex = messages.lastIndex(where: { $0.role == "user" }) else {
+            return messages.last(where: { $0.role == "assistant" })
+        }
+        return messages[messages.index(after: latestUserIndex)...]
+            .last(where: { $0.role == "assistant" })
     }
 
     private func finishResponseIfPersisted() {

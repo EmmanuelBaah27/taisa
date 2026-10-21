@@ -448,6 +448,32 @@ final class ConversationViewModelTests: XCTestCase {
         XCTAssertNil(model.streamingFinalMessageID)
     }
 
+    func testPartialRefreshReconcilesAssistantReplyPersistedWhileRequestIsStillWaiting() async {
+        let user = message(role: "user", body: "A delayed question")
+        let assistant = message(role: "assistant", body: "The durable answer")
+        let messages = MessageSequence([[user], [user, assistant]])
+        let client = ConversationScreenClient(
+            loadMessages: { await messages.next() },
+            beginVoice: {}, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
+            sendText: { _, messageAvailable in await messageAvailable() },
+            retry: {}, saveDraft: { _ in }, discardDraft: {},
+            loadPartialCoaching: { "" }
+        )
+        let model = ConversationViewModel(
+            conversationID: user.conversationID, title: "Chat", entryIntent: nil,
+            composer: .coaching, client: client
+        )
+
+        await model.start()
+        XCTAssertEqual(model.messages.map(\.body), ["A delayed question"])
+
+        await model.refreshPartialCoaching()
+
+        XCTAssertEqual(model.messages.map(\.body), ["A delayed question", "The durable answer"])
+        XCTAssertEqual(model.partialCoaching, "The durable answer")
+        XCTAssertEqual(model.streamingFinalMessageID, assistant.id)
+    }
+
     func testVoiceTranscriptAppearsBeforeCoachingCompletes() async {
         let transcriptShown = AsyncGate()
         let finishCoaching = AsyncGate()

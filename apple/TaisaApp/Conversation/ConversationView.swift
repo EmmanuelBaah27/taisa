@@ -5,9 +5,7 @@ import TaisaDesignSystem
 import UIKit
 
 struct ConversationView: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State var model: ConversationViewModel
-    @Namespace private var sentMessageTransition
     @State private var showsPreparingVoiceStatus = false
 
     var body: some View {
@@ -24,8 +22,6 @@ struct ConversationView: View {
                             failedResponseUpdateAfter: model.correctionRegenerationFailureMessageID,
                             streamingResponse: model.partialCoaching,
                             streamingFinalMessageID: model.streamingFinalMessageID,
-                            sentMessageTransitionID: model.transitioningUserMessageID,
-                            sentMessageTransition: sentMessageTransition,
                             isThinking: model.composer == .coaching && model.partialCoaching.isEmpty,
                             streamingDidFinish: model.completeStreamingPresentation,
                             retryResponseUpdate: { Task { await model.retryCorrectionRegeneration() } },
@@ -66,19 +62,9 @@ struct ConversationView: View {
         }
         .accessibilityIdentifier("conversation.root")
         .interactiveDismissDisabled(true)
-        .animation(
-            reduceMotion
-                ? .easeOut(duration: TaisaMessageSendTransition.Contract.duration)
-                : .smooth(duration: TaisaMessageSendTransition.Contract.duration),
-            value: model.transitioningUserMessageID
-        )
         .task { await model.start() }
         .task(id: model.transitioningUserMessageID) {
             guard model.transitioningUserMessageID != nil else { return }
-            if !reduceMotion {
-                try? await Task.sleep(for: .seconds(TaisaMessageSendTransition.Contract.duration))
-            }
-            guard !Task.isCancelled else { return }
             model.completeSentMessageTransition()
         }
         .sheet(isPresented: Binding(
@@ -179,11 +165,6 @@ struct ConversationView: View {
             bottomChrome {
                 if model.isSendingText, model.transitioningUserMessageID == nil {
                     TextComposer(text: $model.text, mode: .processing, onSend: {}, onVoice: {})
-                        .taisaMessageSendTransition(
-                            isActive: true,
-                            namespace: sentMessageTransition,
-                            role: .composer
-                        )
                         .accessibilityIdentifier("conversation.text-composer.processing")
                 } else {
                     voiceReplyButton.disabled(true)
