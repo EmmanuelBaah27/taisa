@@ -21,6 +21,16 @@ test('native Product baseline is iOS 26 and functionality-first', async () => {
   assert.doesNotMatch(scope, /baseline freeze.*prerequisite/i);
 });
 
+test('preview declares microphone usage before offering live recording controls', async () => {
+  const project = await readFile('apple/project.yml', 'utf8');
+  const preview = project.slice(project.indexOf('  TaisaPreview:'), project.indexOf('  TaisaPersonal:'));
+
+  assert.match(
+    preview,
+    /NSMicrophoneUsageDescription: "Taisa uses the microphone only when you choose to test live audio\."/,
+  );
+});
+
 test('Home owns one stable sheet route for planning and prior-week review', async () => {
   const home = await readFile('apple/TaisaApp/Home/HomeView.swift', 'utf8');
   const section = await readFile('apple/TaisaApp/Home/ThisWeekSection.swift', 'utf8');
