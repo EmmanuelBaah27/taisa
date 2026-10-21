@@ -56,13 +56,14 @@ static float softUnion(float totalWeight) {
     float2 safeSize = max(size, float2(1.0));
     float2 point = position / safeSize;
     float originY = edgeGeometry.w;
-    float centerHeight = mix(centerGeometry.x, centerGeometry.y, spatialLoudness);
-    float centerWidth = centerGeometry.z * mix(0.82, 1.22, spatialLoudness);
+    float globalScale = mix(0.78, 1.22, loudness);
+    float centerHeight = mix(centerGeometry.x, centerGeometry.y, spatialLoudness) * globalScale;
+    float centerWidth = centerGeometry.z * mix(0.82, 1.22, spatialLoudness) * mix(0.9, 1.08, loudness);
     float centerSoftness = clamp(centerGeometry.w + spatialLoudness * 0.18, 0.0, 1.0);
     float edgeWidth = mix(0.12, 0.22, edgeGeometry.x);
     float edgeSoftness = edgeGeometry.y;
 
-    float4 edgeHeight = mix(float4(0.09), float4(0.2), edgeLoudness);
+    float4 edgeHeight = mix(float4(0.09), float4(0.25), edgeLoudness) * globalScale;
     float4 edgeWidthResponse = mix(float4(0.9), float4(1.12), edgeLoudness);
     float outerLeft = glowLobe(point, -0.02, edgeWidth * edgeWidthResponse.x, edgeHeight.x, originY, edgeSoftness);
     float innerLeft = glowLobe(point, 0.25, edgeWidth * 1.18 * edgeWidthResponse.y, edgeHeight.y * 1.18, originY, edgeSoftness);
@@ -70,10 +71,12 @@ static float softUnion(float totalWeight) {
     float innerRight = glowLobe(point, 0.75, edgeWidth * 1.18 * edgeWidthResponse.z, edgeHeight.z * 1.18, originY, edgeSoftness);
     float outerRight = glowLobe(point, 1.02, edgeWidth * edgeWidthResponse.w, edgeHeight.w, originY, edgeSoftness);
 
-    float4 edgeResponse = mix(float4(0.78), float4(1.12), edgeLoudness);
+    float4 edgeResponse = edgeLoudness * 1.18 * mix(0.82, 1.16, loudness);
     float leftOuterWeight = outerLeft * leftOuterContribution * edgeResponse.x;
     float leftInnerWeight = innerLeft * leftInnerContribution * edgeResponse.y;
-    float centerWeight = middle * centerContribution * mix(0.68, 1.2, loudness);
+    float centerWeight = middle * centerContribution
+        * spatialLoudness * 1.18
+        * mix(0.82, 1.16, loudness);
     float rightInnerWeight = innerRight * rightInnerContribution * edgeResponse.z;
     float rightOuterWeight = outerRight * rightOuterContribution * edgeResponse.w;
     float weightSum = leftOuterWeight + leftInnerWeight + centerWeight
@@ -95,7 +98,9 @@ static float softUnion(float totalWeight) {
         1.0
     );
 
-    float alpha = clamp(softUnion(weightSum) * globalOpacity * 1.35, 0.0, 1.0);
+    // Keep the approved 15% inactive energy legible against the white canvas;
+    // active bands still gain their shape and dominance from their own weights.
+    float alpha = clamp(softUnion(weightSum) * globalOpacity * 1.9, 0.0, 1.0);
     float3 compositedColor = mix(float3(1.0), glowColor, alpha);
     return half4(half3(compositedColor), half(1.0));
 }

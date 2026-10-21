@@ -10,6 +10,43 @@ struct RecordingReactiveGlowContractTests {
         #expect(RecordingGlowUniforms(loudness: 4, state: .recording).loudness == 1)
     }
 
+    @Test("frequency order maps bass through highs from left to right")
+    func frequencyBandsMapLeftToRight() {
+        let levels = RecordingGlowFrequencyLevels(
+            bass: 1,
+            lowMids: 0.75,
+            mids: 0.5,
+            upperMids: 0.25,
+            highs: 0
+        ).visualPresence()
+
+        #expect(levels.leftOuter == 1)
+        #expect(levels.leftInner == 0.7875)
+        #expect(levels.center == 0.575)
+        #expect(levels.rightInner == 0.3625)
+        #expect(levels.rightOuter == 0.15)
+    }
+
+    @Test("inactive frequencies retain fifteen percent supporting presence")
+    func inactiveBandsRetainSupportingPresence() {
+        let levels = RecordingGlowFrequencyLevels.zero.visualPresence()
+
+        #expect(levels == .uniform(0.15))
+    }
+
+    @Test("frequency input is finite and clamped before shader construction")
+    func frequencyInputIsClamped() {
+        let levels = RecordingGlowFrequencyLevels(
+            bass: .nan,
+            lowMids: -.infinity,
+            mids: 4,
+            upperMids: -2,
+            highs: .infinity
+        )
+
+        #expect(levels == .init(bass: 0, lowMids: 0, mids: 1, upperMids: 0, highs: 0))
+    }
+
     @Test("paused, unavailable, and Reduce Motion preserve static geometry")
     func pausedUnavailableAndReducedMotionUseStaticGeometry() {
         for state in [RecordingGlowState.paused, .reduceMotion, .unavailable] {
