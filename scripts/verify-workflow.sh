@@ -66,6 +66,16 @@ require_workflow_pattern() {
   rg -qi "$pattern" "$file" || fail "$file is missing $description"
 }
 
+require_workflow_order() {
+  local file="$1" first_pattern="$2" second_pattern="$3" description="$4"
+  local first_line second_line
+  first_line="$(rg -ni -m1 "$first_pattern" "$file" | cut -d: -f1 || true)"
+  second_line="$(rg -ni -m1 "$second_pattern" "$file" | cut -d: -f1 || true)"
+  test -n "$first_line" || fail "$file is missing the first step for $description"
+  test -n "$second_line" || fail "$file is missing the second step for $description"
+  test "$first_line" -lt "$second_line" || fail "$file has the wrong order for $description"
+}
+
 for invariant in \
   'bounded Goal run' \
   'kickoff bundle' \
@@ -76,6 +86,25 @@ for invariant in \
 done
 require_workflow_pattern docs/workflow.md 'Platform.*Product.*Integration.*exclusive|exclusive.*Platform.*Product.*Integration' \
   'exclusive Platform/Product/Integration ownership'
+
+for execution_authority_file in \
+  docs/workflow.md \
+  .agents/skills/taisa-workflow/SKILL.md; do
+  require_workflow_pattern "$execution_authority_file" \
+    'must not override, supersede, or relax' \
+    'non-supersession boundary between approved work and the execution workflow'
+  require_workflow_pattern "$execution_authority_file" \
+    'stop before the next command' \
+    'pre-execution contradiction stop'
+done
+
+if rg -n 'After a fix, repeat full verification' docs/workflow.md; then
+  fail "generic QA guidance overrides the bounded repair-candidate verification sequence"
+fi
+
+require_workflow_pattern docs/workflow.md \
+  'reuse fresh exact-revision evidence' \
+  'reuse of unchanged exact-revision evidence at Ship'
 
 for ds_authority_file in \
   AGENTS.md \
@@ -192,10 +221,18 @@ for repair_candidate_file in \
     'not.*(canonical|QA_READY|Ship-ready|shippable|merge-ready)' \
     'noncanonical repair-candidate status'
   require_workflow_pattern "$repair_candidate_file" \
-    'full (native |release )?matrix.*after.*(proven|passes)|after.*(proven|passes).*full (native |release )?matrix' \
+    'full (native |release )?matrix.*after.*(physical proof|proven|passes|review)|after.*(physical proof|proven|passes|review).*full (native |release )?matrix' \
     'full matrix only after physical repair proof'
 done
 
+require_workflow_order docs/workflow.md \
+  'fresh whole-candidate|resolve blocking review' \
+  'run the full native matrix once|run the final full native matrix' \
+  'repair review before the final full matrix'
+require_workflow_order .agents/skills/taisa-workflow/SKILL.md \
+  'fresh whole-candidate|resolve blocking review' \
+  'run the full native matrix once|run the final full native matrix' \
+  'repair review before the final full matrix'
 for forbidden in \
   'continue until the complete product ships' \
   'select the next highest-priority issue and continue' \
