@@ -145,7 +145,10 @@ final class ConversationViewContractTests: XCTestCase {
         XCTAssertTrue(source.contains(".smooth(duration: TaisaMotion.settle)"))
         XCTAssertTrue(source.contains("Edit message"))
         XCTAssertTrue(source.contains("isProcessing: isSubmitting"))
-        XCTAssertFalse(source.contains("taisaMessageSendTransition"))
+        XCTAssertTrue(source.contains("taisaMessageSendTransition"))
+        XCTAssertTrue(source.contains("@Namespace private var sentMessageTransition"))
+        XCTAssertTrue(source.contains("sentMessageTransitionID: model.transitioningUserMessageID"))
+        XCTAssertTrue(source.contains(".seconds(TaisaMessageSendTransition.Contract.duration)"))
         XCTAssertTrue(source.contains("UIApplication.openSettingsURLString"))
         XCTAssertTrue(source.contains("UIApplication.shared.open(settingsURL"))
         XCTAssertTrue(source.contains("Task.sleep(for: .milliseconds(200))"))
@@ -166,6 +169,61 @@ final class ConversationViewContractTests: XCTestCase {
         XCTAssertFalse(ConversationTimelineLayout.shouldShowJumpToLatest(distanceFromBottom: 0))
         XCTAssertFalse(ConversationTimelineLayout.shouldShowJumpToLatest(distanceFromBottom: 159))
         XCTAssertTrue(ConversationTimelineLayout.shouldShowJumpToLatest(distanceFromBottom: 160))
+    }
+
+    func testResponseFollowingStopsWhenMeaningfulContentLeavesTheReadableViewport() {
+        XCTAssertTrue(ConversationTimelineLayout.shouldFollowResponse(
+            responseTop: 96,
+            responseBottom: 700,
+            readableTop: 64,
+            readableBottom: 720,
+            isAwayFromLatest: false
+        ))
+        XCTAssertFalse(ConversationTimelineLayout.shouldFollowResponse(
+            responseTop: 48,
+            responseBottom: 700,
+            readableTop: 64,
+            readableBottom: 720,
+            isAwayFromLatest: false
+        ))
+        XCTAssertFalse(ConversationTimelineLayout.shouldFollowResponse(
+            responseTop: 96,
+            responseBottom: 700,
+            readableTop: 64,
+            readableBottom: 720,
+            isAwayFromLatest: true
+        ))
+    }
+
+    func testNewSentTurnUsesHeaderAnchorInsteadOfAbsoluteBottom() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let source = try String(
+            contentsOf: root.appendingPathComponent("TaisaApp/Conversation/ConversationTimeline.swift"),
+            encoding: .utf8
+        )
+
+        XCTAssertTrue(source.contains("proxy.scrollTo(message.id, anchor: .top)"))
+        XCTAssertTrue(source.contains("allowsAutomaticResponseFollow = true"))
+        XCTAssertTrue(source.contains(".onScrollPhaseChange"))
+        XCTAssertFalse(source.contains(".onChange(of: streamingResponse)"))
+        XCTAssertFalse(source.contains(".onChange(of: isThinking)"))
+    }
+
+    func testActiveResponseProvidesEnoughRunwayForHeaderAnchoring() {
+        XCTAssertEqual(
+            ConversationTimelineLayout.responseRunwayHeight(
+                viewportHeight: 800,
+                isResponseActive: true
+            ),
+            704
+        )
+        XCTAssertEqual(
+            ConversationTimelineLayout.responseRunwayHeight(
+                viewportHeight: 800,
+                isResponseActive: false
+            ),
+            0
+        )
     }
 
     func testConversationUsesSemanticTurnSpacing() {

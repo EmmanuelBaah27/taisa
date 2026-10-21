@@ -5,6 +5,9 @@ public struct TaisaMessageSendTransition: ViewModifier {
         /// The frequent composer-to-bubble morph should acknowledge the send
         /// without making the user watch content cross the whole viewport.
         public static let duration = TaisaMotion.fast
+        /// Position-only interpolation keeps the handoff stable while the
+        /// keyboard, composer chrome, and timeline are relaying out together.
+        public static let stabilizesConcurrentLayoutChanges = true
     }
 
     public enum Role: Sendable, Equatable {
@@ -28,12 +31,13 @@ public struct TaisaMessageSendTransition: ViewModifier {
             content.matchedGeometryEffect(
                 id: "taisa.message-send",
                 in: namespace,
-                properties: .frame,
+                properties: .position,
                 anchor: .center,
                 isSource: role == .composer
             )
+            .opacity(role == .message ? 0 : 1)
         } else if isActive {
-            content.transition(.opacity)
+            content.opacity(role == .message ? 0 : 1)
         } else {
             content
         }

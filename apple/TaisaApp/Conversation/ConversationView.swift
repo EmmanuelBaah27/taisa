@@ -5,7 +5,9 @@ import TaisaDesignSystem
 import UIKit
 
 struct ConversationView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State var model: ConversationViewModel
+    @Namespace private var sentMessageTransition
     @State private var showsPreparingVoiceStatus = false
 
     var body: some View {
@@ -22,6 +24,8 @@ struct ConversationView: View {
                             failedResponseUpdateAfter: model.correctionRegenerationFailureMessageID,
                             streamingResponse: model.partialCoaching,
                             streamingFinalMessageID: model.streamingFinalMessageID,
+                            sentMessageTransitionID: model.transitioningUserMessageID,
+                            sentMessageTransition: sentMessageTransition,
                             isThinking: model.composer == .coaching && model.partialCoaching.isEmpty,
                             streamingDidFinish: model.completeStreamingPresentation,
                             retryResponseUpdate: { Task { await model.retryCorrectionRegeneration() } },
@@ -63,9 +67,17 @@ struct ConversationView: View {
         }
         .accessibilityIdentifier("conversation.root")
         .interactiveDismissDisabled(true)
+        .animation(
+            reduceMotion
+                ? .easeOut(duration: TaisaMessageSendTransition.Contract.duration)
+                : .smooth(duration: TaisaMessageSendTransition.Contract.duration),
+            value: model.transitioningUserMessageID
+        )
         .task { await model.start() }
         .task(id: model.transitioningUserMessageID) {
             guard model.transitioningUserMessageID != nil else { return }
+            try? await Task.sleep(for: .seconds(TaisaMessageSendTransition.Contract.duration))
+            guard !Task.isCancelled else { return }
             model.completeSentMessageTransition()
         }
         .sheet(isPresented: Binding(
@@ -94,7 +106,7 @@ struct ConversationView: View {
             Group {
                 switch model.confirmation {
                 case .discardVoiceForKeyboard:
-                    Button("Switch to keyboard", role: .destructive) { Task { await model.confirmKeyboardReplacement() } }
+                    Button("Switch to keyboard", role: .destructive, action: model.confirmKeyboardReplacement)
                     Button("Cancel", role: .cancel, action: model.cancelConfirmation)
                 case .discardRecording:
                     Button("Continue", role: .destructive) { Task { await model.confirmDiscardRecording() } }
@@ -178,8 +190,18 @@ struct ConversationView: View {
                     .frame(maxWidth: .infinity)
             case .coaching:
                 Group {
-                    if model.isSendingText, model.transitioningUserMessageID == nil {
-                        TextComposer(text: $model.text, mode: .processing, onSend: {}, onVoice: {})
+                    if model.isSendingText {
+                        TextComposer(
+                            text: .constant(model.transitioningSentText ?? model.text),
+                            mode: .processing,
+                            onSend: {},
+                            onVoice: {}
+                        )
+                            .taisaMessageSendTransition(
+                                isActive: model.transitioningUserMessageID != nil,
+                                namespace: sentMessageTransition,
+                                role: .composer
+                            )
                             .accessibilityIdentifier("conversation.text-composer.processing")
                     } else {
                         voiceReplyButton.disabled(true)

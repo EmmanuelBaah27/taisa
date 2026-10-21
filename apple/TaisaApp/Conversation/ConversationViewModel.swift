@@ -166,6 +166,7 @@ final class ConversationViewModel {
 
     var isCorrectionSubmitting: Bool { actionInFlight && correctionMessageID != nil }
     var isSendingText: Bool { pendingSentText != nil }
+    var transitioningSentText: String? { transitioningUserMessageID == nil ? nil : pendingSentText }
     var closeActionDisabled: Bool {
         if composer == .preparingVoice { return false }
         return actionInFlight && !(composer == .coaching && processingMessageIsDurable)
@@ -312,7 +313,7 @@ final class ConversationViewModel {
         voicePreparationExit = nil
         switch exit {
         case .discard: await discardRecordingAndRemainOrDismiss()
-        case .keyboard: await discardVoiceAndType()
+        case .keyboard: confirmKeyboardReplacement()
         }
         return true
     }
@@ -504,7 +505,7 @@ final class ConversationViewModel {
         switch composer {
         case .recording, .paused, .preparingVoice:
             if capture.disposition == .empty {
-                Task { @MainActor in await discardVoiceAndType() }
+                confirmKeyboardReplacement()
             } else {
                 confirmation = .discardVoiceForKeyboard(returnTo: composer)
             }
@@ -517,16 +518,18 @@ final class ConversationViewModel {
         }
     }
 
-    func confirmKeyboardReplacement() async {
-        await discardVoiceAndType()
-    }
-
-    private func discardVoiceAndType() async {
+    func confirmKeyboardReplacement() {
         guard !actionInFlight else { return }
         actionInFlight = true
-        defer { actionInFlight = false }
-        do { try await client.discardDraft(); text = ""; composer = .typing(""); confirmation = nil }
-        catch { composer = .failure(.unavailable); confirmation = nil }
+        text = ""
+        composer = .typing("")
+        confirmation = nil
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            do { try await client.discardDraft() }
+            catch { composer = .failure(.unavailable) }
+            actionInFlight = false
+        }
     }
 
     func requestClose() {
