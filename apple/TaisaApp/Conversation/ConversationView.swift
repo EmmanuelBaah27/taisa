@@ -39,10 +39,6 @@ struct ConversationView: View {
                         if model.messages.isEmpty { emptyState }
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-                    composer
-                        .frame(minHeight: TaisaControlMetric.conversationComposerDockHeight, alignment: .bottom)
-                        .zIndex(2)
                 }
                 ConversationPageHeader(title: model.title, onDismiss: model.requestClose)
                     .accessibilityIdentifier("conversation.close")
@@ -58,6 +54,10 @@ struct ConversationView: View {
                     .padding(.top, TaisaControlMetric.appBarHeight + TaisaSpacing.compact.rawValue)
                     .zIndex(5)
                 }
+            }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                composer
+                    .zIndex(2)
             }
             .toolbar(.hidden, for: .navigationBar)
         }

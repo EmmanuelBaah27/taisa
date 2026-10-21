@@ -12,6 +12,7 @@ final class ConversationViewContractTests: XCTestCase {
 
         XCTAssertTrue(source.contains("ConversationPageHeader("))
         XCTAssertTrue(source.contains("ConversationComposerChrome"))
+        XCTAssertTrue(source.contains(".safeAreaInset(edge: .bottom, spacing: 0)"))
         XCTAssertFalse(source.contains("private func bottomChrome"))
         XCTAssertFalse(source.contains("PageEdgeFade(.navigation)"))
     }
