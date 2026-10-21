@@ -21,12 +21,15 @@ struct ConversationView: View {
                             messages: model.messages,
                             assistantResponses: model.assistantResponses,
                             updatingResponseAfter: model.correctionRegenerationMessageID,
+                            failedResponseUpdateAfter: model.correctionRegenerationFailureMessageID,
                             streamingResponse: model.partialCoaching,
                             streamingFinalMessageID: model.streamingFinalMessageID,
                             sentMessageTransitionID: model.transitioningUserMessageID,
                             sentMessageTransition: sentMessageTransition,
                             isThinking: model.composer == .coaching && model.partialCoaching.isEmpty,
                             streamingDidFinish: model.completeStreamingPresentation,
+                            retryResponseUpdate: { Task { await model.retryCorrectionRegeneration() } },
+                            keepEditedMessage: model.keepEditedMessage,
                             correct: model.requestCorrection,
                             saveFeedback: { messageID, direction, factors, detail in
                                 Task { await model.saveFeedback(

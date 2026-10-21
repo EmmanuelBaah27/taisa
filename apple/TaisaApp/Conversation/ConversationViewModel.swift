@@ -116,6 +116,7 @@ final class ConversationViewModel {
     )
     private(set) var correctionMessageID: String?
     private(set) var correctionRegenerationMessageID: String?
+    private(set) var correctionRegenerationFailureMessageID: String?
     private(set) var partialCoaching = ""
     private(set) var streamingFinalMessageID: String?
     private(set) var transitioningUserMessageID: String?
@@ -664,13 +665,55 @@ final class ConversationViewModel {
             await reloadMessages()
             partialCoaching = ""
             correctionRegenerationMessageID = nil
+            correctionRegenerationFailureMessageID = nil
             submittedCorrectionText = nil
             cancelCorrection()
             composer = .waitingForReply
         } catch {
             partialCoaching = ""
-            composer = .failure(.retryable)
+            await reloadMessages()
+            if messages.contains(where: { $0.id == messageID && $0.body == correctedText }) {
+                correctionMessageID = nil
+                correctionText = ""
+                correctionOriginalText = ""
+                correctionRegenerationFailureMessageID = messageID
+                composer = .waitingForReply
+            } else {
+                if let reloadedIndex = messages.firstIndex(where: { $0.id == messageID }) {
+                    let original = messages[reloadedIndex]
+                    messages[reloadedIndex] = MessageRecord(
+                        id: original.id, conversationID: original.conversationID,
+                        role: original.role, body: correctedText, createdAtMS: original.createdAtMS
+                    )
+                }
+                composer = .failure(.retryable)
+            }
         }
+    }
+
+    func retryCorrectionRegeneration() async {
+        guard !actionInFlight, let messageID = correctionRegenerationFailureMessageID else { return }
+        actionInFlight = true
+        correctionRegenerationFailureMessageID = nil
+        composer = .coaching
+        defer { actionInFlight = false }
+        do {
+            try await client.retry()
+            await reloadMessages()
+            correctionRegenerationMessageID = nil
+            submittedCorrectionText = nil
+            composer = .waitingForReply
+        } catch {
+            correctionRegenerationFailureMessageID = messageID
+            composer = .waitingForReply
+        }
+    }
+
+    func keepEditedMessage() {
+        correctionRegenerationFailureMessageID = nil
+        correctionRegenerationMessageID = nil
+        submittedCorrectionText = nil
+        composer = .waitingForReply
     }
 
     func saveFeedback(

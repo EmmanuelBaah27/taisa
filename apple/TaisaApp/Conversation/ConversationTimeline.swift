@@ -83,12 +83,15 @@ struct ConversationTimeline: View {
     let messages: [MessageRecord]
     let assistantResponses: [String: AssistantResponseRecord]
     let updatingResponseAfter: String?
+    let failedResponseUpdateAfter: String?
     let streamingResponse: String
     let streamingFinalMessageID: String?
     let sentMessageTransitionID: String?
     let sentMessageTransition: Namespace.ID
     let isThinking: Bool
     let streamingDidFinish: @MainActor @Sendable () -> Void
+    let retryResponseUpdate: @MainActor @Sendable () -> Void
+    let keepEditedMessage: @MainActor @Sendable () -> Void
     let correct: (MessageRecord) -> Void
     let saveFeedback: (String, ResponseFeedbackDirection?, [ResponseQualityFactor], String?) -> Void
     let acceptProposal: (String) -> Void
@@ -102,12 +105,15 @@ struct ConversationTimeline: View {
         messages: [MessageRecord],
         assistantResponses: [String: AssistantResponseRecord] = [:],
         updatingResponseAfter: String? = nil,
+        failedResponseUpdateAfter: String? = nil,
         streamingResponse: String = "",
         streamingFinalMessageID: String? = nil,
         sentMessageTransitionID: String? = nil,
         sentMessageTransition: Namespace.ID,
         isThinking: Bool = false,
         streamingDidFinish: @escaping @MainActor @Sendable () -> Void = {},
+        retryResponseUpdate: @escaping @MainActor @Sendable () -> Void = {},
+        keepEditedMessage: @escaping @MainActor @Sendable () -> Void = {},
         correct: @escaping (MessageRecord) -> Void,
         saveFeedback: @escaping (String, ResponseFeedbackDirection?, [ResponseQualityFactor], String?) -> Void = { _, _, _, _ in },
         acceptProposal: @escaping (String) -> Void = { _ in },
@@ -116,12 +122,15 @@ struct ConversationTimeline: View {
         self.messages = messages
         self.assistantResponses = assistantResponses
         self.updatingResponseAfter = updatingResponseAfter
+        self.failedResponseUpdateAfter = failedResponseUpdateAfter
         self.streamingResponse = streamingResponse
         self.streamingFinalMessageID = streamingFinalMessageID
         self.sentMessageTransitionID = sentMessageTransitionID
         self.sentMessageTransition = sentMessageTransition
         self.isThinking = isThinking
         self.streamingDidFinish = streamingDidFinish
+        self.retryResponseUpdate = retryResponseUpdate
+        self.keepEditedMessage = keepEditedMessage
         self.correct = correct
         self.saveFeedback = saveFeedback
         self.acceptProposal = acceptProposal
@@ -170,10 +179,19 @@ struct ConversationTimeline: View {
                                 }
                             }
                             if updatingResponseAfter == message.id {
-                                Text("Updating response…")
-                                    .font(TaisaTypography.metadata.font)
-                                    .foregroundStyle(TaisaColor.mutedForeground.color)
+                                if failedResponseUpdateAfter == message.id {
+                                    InlineRecoveryAlert(
+                                        contract: .responseUpdate,
+                                        onCancel: keepEditedMessage,
+                                        onRetry: retryResponseUpdate
+                                    )
                                     .padding(.horizontal, TaisaSpacing.standard.rawValue)
+                                    .accessibilityIdentifier("conversation.response-update-recovery")
+                                } else {
+                                    ConversationProgressState(label: "Updating response…")
+                                        .foregroundStyle(TaisaColor.mutedForeground.color)
+                                        .padding(.horizontal, TaisaSpacing.standard.rawValue)
+                                }
                             }
                         }
                         .frame(maxWidth: .infinity, alignment: message.role == "user" ? .trailing : .leading)

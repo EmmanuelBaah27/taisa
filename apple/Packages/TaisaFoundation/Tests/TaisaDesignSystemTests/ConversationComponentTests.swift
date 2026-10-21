@@ -89,6 +89,8 @@ struct ConversationComponentTests {
         #expect(ConversationFailureActions.Contract.retryable.retryLabel == "Retry request")
         #expect(TextComposer.Contract.empty.voiceLabel == "Reply by voice, starts recording")
         #expect(InlineRecoveryAlert.Contract.microphonePermission.cancelLabel == "Use keyboard")
+        #expect(InlineRecoveryAlert.Contract.responseUpdate.retryLabel == "Try again")
+        #expect(InlineRecoveryAlert.Contract.responseUpdate.cancelLabel == "Keep edited message")
         #expect(TaisaButton.Contract.supportsInPlaceProgress)
     }
 

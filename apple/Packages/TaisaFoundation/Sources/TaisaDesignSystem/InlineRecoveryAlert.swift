@@ -37,6 +37,11 @@ public struct InlineRecoveryAlert: View {
             message: "Your recording is still paused. Try again or save it for later.",
             cancelLabel: "Save draft", retryLabel: "Try again"
         )
+        public static let responseUpdate = Contract(
+            title: "Couldn’t update the response",
+            message: "Your edited message was saved, but Taisa couldn’t generate a new response.",
+            cancelLabel: "Keep edited message", retryLabel: "Try again"
+        )
     }
     private let contract: Contract
     private let onCancel: @MainActor () -> Void

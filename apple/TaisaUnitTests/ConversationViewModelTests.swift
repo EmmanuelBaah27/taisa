@@ -575,6 +575,37 @@ final class ConversationViewModelTests: XCTestCase {
         XCTAssertEqual(model.messages.first?.body, "Corrected")
     }
 
+    func testDurableCorrectionFailureMovesRecoveryIntoTimeline() async {
+        struct ResponseFailure: Error {}
+        let original = message(role: "user", body: "Original")
+        let corrected = MessageRecord(
+            id: original.id, conversationID: original.conversationID,
+            role: original.role, body: "Corrected", createdAtMS: original.createdAtMS
+        )
+        let messages = MessageSequence([[original], [corrected]])
+        let client = ConversationScreenClient(
+            loadMessages: { await messages.next() },
+            beginVoice: {}, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
+            sendText: { _, available in await available() }, retry: {},
+            saveDraft: { _ in }, discardDraft: {},
+            correctTranscript: { _, _ in throw ResponseFailure() }
+        )
+        let model = ConversationViewModel(
+            conversationID: original.conversationID, title: "Chat", entryIntent: nil,
+            client: client
+        )
+        await model.start()
+        model.requestCorrection(original)
+        model.correctionText = "Corrected"
+
+        await model.submitCorrection()
+
+        XCTAssertNil(model.correctionMessageID)
+        XCTAssertEqual(model.correctionRegenerationFailureMessageID, original.id)
+        XCTAssertEqual(model.composer, .waitingForReply)
+        XCTAssertEqual(model.messages.first?.body, "Corrected")
+    }
+
     func testCorrectionRetryReusesPendingRequestInsteadOfCreatingAnotherCorrection() async {
         let client = ConversationScreenClientSpy(correctionFails: true)
         let original = message(role: "user", body: "Original")
