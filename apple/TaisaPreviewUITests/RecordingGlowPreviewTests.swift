@@ -61,7 +61,7 @@ final class RecordingGlowPreviewTests: XCTestCase {
         XCTAssertTrue(
             app.descendants(matching: .any)["Dominant center purple color"].exists
         )
-        XCTAssertTrue(app.sliders["Grain amount"].exists)
+        XCTAssertTrue(app.sliders["Grain intensity"].exists)
         XCTAssertTrue(app.sliders["Center peak height"].exists)
         XCTAssertTrue(app.staticTexts["#CBAEFF"].exists)
     }
