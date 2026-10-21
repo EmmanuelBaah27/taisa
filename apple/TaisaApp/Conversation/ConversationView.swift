@@ -67,13 +67,17 @@ struct ConversationView: View {
         .accessibilityIdentifier("conversation.root")
         .interactiveDismissDisabled(true)
         .animation(
-            reduceMotion ? .easeOut(duration: TaisaMotion.fast) : .smooth(duration: TaisaMotion.settle),
+            reduceMotion
+                ? .easeOut(duration: TaisaMessageSendTransition.Contract.duration)
+                : .smooth(duration: TaisaMessageSendTransition.Contract.duration),
             value: model.transitioningUserMessageID
         )
         .task { await model.start() }
         .task(id: model.transitioningUserMessageID) {
             guard model.transitioningUserMessageID != nil else { return }
-            if !reduceMotion { try? await Task.sleep(for: .seconds(TaisaMotion.settle)) }
+            if !reduceMotion {
+                try? await Task.sleep(for: .seconds(TaisaMessageSendTransition.Contract.duration))
+            }
             guard !Task.isCancelled else { return }
             model.completeSentMessageTransition()
         }

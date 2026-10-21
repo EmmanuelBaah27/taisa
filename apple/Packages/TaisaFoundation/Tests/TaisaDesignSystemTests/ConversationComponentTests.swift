@@ -64,6 +64,7 @@ struct ConversationComponentTests {
 
     @Test func sentMessageTransitionDefinesComposerAndMessageRoles() {
         #expect(TaisaMessageSendTransition.Role.composer != .message)
+        #expect(TaisaMessageSendTransition.Contract.duration == TaisaMotion.fast)
     }
 
     @Test func jumpToLatestIsIconOnlyAndKeepsStableGeometryWhileLoading() {

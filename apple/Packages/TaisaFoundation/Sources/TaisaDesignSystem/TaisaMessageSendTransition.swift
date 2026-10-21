@@ -1,6 +1,12 @@
 import SwiftUI
 
 public struct TaisaMessageSendTransition: ViewModifier {
+    public enum Contract {
+        /// The frequent composer-to-bubble morph should acknowledge the send
+        /// without making the user watch content cross the whole viewport.
+        public static let duration = TaisaMotion.fast
+    }
+
     public enum Role: Sendable, Equatable {
         case composer
         case message
