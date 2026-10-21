@@ -183,6 +183,16 @@ struct ConversationComponentTests {
         #expect(CentralIconName.play != .chevronDown)
     }
 
+    @Test func responseActionsUseSharedSemanticControls() {
+        #expect(ResponseActionIconButton.Contract.iconSize == 16)
+        #expect(ResponseActionIconButton.Contract.visualWidth == 24)
+        #expect(ResponseActionIconButton.Contract.minimumHitHeight == 44)
+        #expect(SelectableChip.Contract.minimumHeight == 44)
+        #expect(FeedbackTextEditor.Contract.minimumHeight == 112)
+        #expect(ActionPanelContract.usesRaisedSurface)
+        #expect(TaisaButtonRole.destructive != .secondary)
+    }
+
     @Test func toastContractIsTopPlacedAndAccessible() {
         #expect(TaisaToast.Contract.default.placement == .top)
         #expect(TaisaToast.Contract.default.dismissAfter == 4)

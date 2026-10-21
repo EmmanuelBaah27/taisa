@@ -29,20 +29,12 @@ struct AssistantResponseActions: View {
     var body: some View {
         VStack(alignment: .leading, spacing: TaisaSpacing.compact.rawValue) {
             HStack(spacing: TaisaSpacing.compact.rawValue) {
-                Button {
+                ResponseActionIconButton(
+                    icon: .circleInfo,
+                    accessibilityLabel: "About this response"
+                ) {
                     showsExplanation = true
-                } label: {
-                    CentralIcon(.circleInfo)
-                        .frame(
-                            width: AssistantResponseActionsLayout.iconSize,
-                            height: AssistantResponseActionsLayout.iconSize
-                        )
-                        .frame(width: AssistantResponseActionsLayout.hitWidth)
-                        .frame(minHeight: TaisaControlMetric.headerActionHeight)
                 }
-                .buttonStyle(.plain)
-                .foregroundStyle(TaisaColor.mutedForeground.color)
-                .accessibilityLabel("About this response")
                 .accessibilityIdentifier("conversation.response-info")
 
                 feedbackButton(.helpful, icon: .thumbsUp, label: "Helpful")
@@ -68,7 +60,9 @@ struct AssistantResponseActions: View {
                         Section("Information used") {
                             ForEach(response.sources, id: \.id) { source in
                                 VStack(alignment: .leading, spacing: TaisaSpacing.tight.rawValue) {
-                                    Text(source.sourceType.capitalized).font(.caption).foregroundStyle(.secondary)
+                                    Text(source.sourceType.capitalized)
+                                        .font(TaisaTypography.metadata.font)
+                                        .foregroundStyle(TaisaColor.mutedForeground.color)
                                     Text(source.excerpt ?? "Source unavailable")
                                 }
                             }
@@ -91,11 +85,9 @@ struct AssistantResponseActions: View {
                         VStack(alignment: .leading, spacing: TaisaSpacing.section.rawValue) {
                             feedbackFactors(for: direction)
                             feedbackDetail
-                            Button("Remove rating", role: .destructive) {
+                            TaisaButton(role: .destructive, label: "Remove rating") {
                                 removeRating()
                             }
-                            .buttonStyle(.bordered)
-                            .frame(minHeight: TaisaControlMetric.headerActionHeight)
                             .accessibilityIdentifier("conversation.feedback.remove")
                         }
                         .padding(TaisaSpacing.standard.rawValue)
@@ -127,22 +119,14 @@ struct AssistantResponseActions: View {
     private func feedbackButton(
         _ value: ResponseFeedbackDirection, icon: CentralIconName, label: String
     ) -> some View {
-        Button {
+        ResponseActionIconButton(
+            icon: icon,
+            accessibilityLabel: label,
+            isSelected: feedbackEditor.direction == value
+        ) {
             persist(feedbackEditor.begin(value))
             showsFeedback = true
-        } label: {
-            CentralIcon(icon)
-                .frame(
-                    width: AssistantResponseActionsLayout.iconSize,
-                    height: AssistantResponseActionsLayout.iconSize
-                )
-                .frame(width: AssistantResponseActionsLayout.hitWidth)
-                .frame(minHeight: TaisaControlMetric.headerActionHeight)
         }
-        .buttonStyle(.plain)
-        .foregroundStyle(feedbackEditor.direction == value ? TaisaColor.foreground.color : TaisaColor.mutedForeground.color)
-        .accessibilityLabel(label)
-        .accessibilityAddTraits(feedbackEditor.direction == value ? .isSelected : [])
         .accessibilityIdentifier(feedbackIdentifier(for: value))
     }
 
@@ -156,14 +140,16 @@ struct AssistantResponseActions: View {
     private func feedbackFactors(for direction: ResponseFeedbackDirection) -> some View {
         VStack(alignment: .leading, spacing: TaisaSpacing.compact.rawValue) {
             Text(direction == .helpful ? "What worked well?" : "What could be better?")
-                .font(.caption)
+                .font(TaisaTypography.metadata.font)
                 .foregroundStyle(TaisaColor.mutedForeground.color)
             FlowLayout(spacing: TaisaSpacing.compact.rawValue) {
                 ForEach(ResponseFeedbackCopy.options(for: direction), id: \.factor) { option in
-                    Button(option.label) { feedbackEditor.toggle(option.factor) }
-                        .buttonStyle(.bordered)
-                        .tint(feedbackEditor.draftFactors.contains(option.factor) ? TaisaColor.foreground.color : TaisaColor.mutedForeground.color)
-                        .accessibilityAddTraits(feedbackEditor.draftFactors.contains(option.factor) ? .isSelected : [])
+                    SelectableChip(
+                        label: option.label,
+                        isSelected: feedbackEditor.draftFactors.contains(option.factor)
+                    ) {
+                        feedbackEditor.toggle(option.factor)
+                    }
                 }
             }
         }
@@ -173,19 +159,12 @@ struct AssistantResponseActions: View {
     private var feedbackDetail: some View {
         VStack(alignment: .leading, spacing: TaisaSpacing.compact.rawValue) {
             Text("Add more detail (optional)")
-                .font(.caption)
+                .font(TaisaTypography.metadata.font)
                 .foregroundStyle(TaisaColor.mutedForeground.color)
-            TextEditor(text: Binding(
+            FeedbackTextEditor(text: Binding(
                 get: { feedbackEditor.draftDetail },
                 set: { feedbackEditor.draftDetail = String($0.prefix(ResponseFeedbackEditorState.detailLimit)) }
-            ))
-            .frame(minHeight: 112)
-            .padding(TaisaSpacing.compact.rawValue)
-            .background(
-                TaisaColor.raisedSurface.color,
-                in: RoundedRectangle(cornerRadius: TaisaRadius.control.rawValue)
-            )
-            .accessibilityLabel("Add more detail (optional)")
+            ), accessibilityLabel: "Add more detail (optional)")
             .accessibilityIdentifier("conversation.feedback.detail")
         }
     }
@@ -206,30 +185,22 @@ struct AssistantResponseActions: View {
     }
 
     @ViewBuilder private func proposalReview(_ proposal: AssistantProposalRecord) -> some View {
-        VStack(alignment: .leading, spacing: TaisaSpacing.compact.rawValue) {
-            Text(proposal.state == .pending ? "Suggested action" : proposalStateLabel(proposal.state))
-                .font(.caption)
-                .foregroundStyle(TaisaColor.mutedForeground.color)
-            Text(proposalSummary(proposal)).font(.body)
-            if proposal.state == .pending {
-                HStack {
-                    Button("Add") { acceptProposal(proposal.id) }
-                        .buttonStyle(.borderedProminent)
-                        .tint(TaisaColor.primaryAction.color)
-                        .foregroundStyle(TaisaColor.foreground.color)
-                        .accessibilityIdentifier("conversation.proposal.accept")
-                    Button("Not now") { dismissProposal(proposal.id) }
-                        .buttonStyle(.bordered)
-                        .accessibilityIdentifier("conversation.proposal.dismiss")
+        ActionPanel {
+            VStack(alignment: .leading, spacing: TaisaSpacing.compact.rawValue) {
+                Text(proposal.state == .pending ? "Suggested action" : proposalStateLabel(proposal.state))
+                    .font(TaisaTypography.metadata.font)
+                    .foregroundStyle(TaisaColor.mutedForeground.color)
+                Text(proposalSummary(proposal)).font(TaisaTypography.body.font)
+                if proposal.state == .pending {
+                    HStack(spacing: TaisaSpacing.control.rawValue) {
+                        TaisaButton(role: .primary, label: "Add") { acceptProposal(proposal.id) }
+                            .accessibilityIdentifier("conversation.proposal.accept")
+                        TaisaButton(role: .secondary, label: "Not now") { dismissProposal(proposal.id) }
+                            .accessibilityIdentifier("conversation.proposal.dismiss")
+                    }
                 }
-                .controlSize(.large)
             }
         }
-        .padding(TaisaSpacing.control.rawValue)
-        .background(
-            TaisaColor.raisedSurface.color,
-            in: RoundedRectangle(cornerRadius: TaisaRadius.control.rawValue)
-        )
         .accessibilityIdentifier("conversation.proposal-review")
     }
 
@@ -257,11 +228,6 @@ struct AssistantResponseActions: View {
         case .unsupported: "Unavailable"
         }
     }
-}
-
-private enum AssistantResponseActionsLayout {
-    static let iconSize: CGFloat = 16
-    static let hitWidth = TaisaSpacing.section.rawValue
 }
 
 enum ResponseFeedbackMutation: Equatable {

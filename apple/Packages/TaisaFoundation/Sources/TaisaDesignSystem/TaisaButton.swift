@@ -1,8 +1,9 @@
 import SwiftUI
 
-public enum TaisaButtonRole: Sendable {
+public enum TaisaButtonRole: Sendable, Equatable {
     case primary
     case secondary
+    case destructive
 }
 
 public enum TaisaButtonShape: Sendable, Equatable {
@@ -41,7 +42,7 @@ public struct TaisaButton: View {
     public var body: some View {
         Button(action: action) {
             ZStack {
-                TaisaText(role: .label, color: .foreground, content: label)
+                TaisaText(role: .label, color: labelColor, content: label)
                     .opacity(isProcessing ? 0 : 1)
                 if isProcessing {
                     ProgressView()
@@ -51,7 +52,7 @@ public struct TaisaButton: View {
                 .frame(maxWidth: .infinity, minHeight: 44)
                 .padding(.horizontal, TaisaSpacing.standard.rawValue)
                 .background(background, in: buttonShape)
-                .overlay { buttonShape.stroke(TaisaColor.border.color, lineWidth: role == .secondary ? 1 : 0) }
+                .overlay { buttonShape.stroke(borderColor) }
                 .clipShape(buttonShape)
                 .contentShape(Rectangle())
         }
@@ -71,8 +72,20 @@ public struct TaisaButton: View {
         switch role {
         case .primary:
             TaisaColor.primaryAction.color
-        case .secondary:
+        case .secondary, .destructive:
             TaisaColor.background.color
+        }
+    }
+
+    private var labelColor: TaisaColor {
+        role == .destructive ? .destructive : .foreground
+    }
+
+    private var borderColor: Color {
+        switch role {
+        case .primary: .clear
+        case .secondary: TaisaColor.border.color
+        case .destructive: TaisaColor.destructive.color
         }
     }
 }
