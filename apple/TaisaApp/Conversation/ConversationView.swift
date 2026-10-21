@@ -117,23 +117,25 @@ struct ConversationView: View {
         ConversationComposerChrome {
             switch model.composer {
             case .preparingVoice:
-                if showsPreparingVoiceStatus {
-                    HStack(spacing: TaisaSpacing.control.rawValue) {
-                        TaisaSecondaryIconButton(
-                            icon: .cross,
-                            accessibilityLabel: "Cancel microphone preparation",
-                            action: model.requestDiscardRecording
-                        )
-                        .frame(
-                            width: TaisaControlMetric.conversationRecordingControl,
-                            height: TaisaControlMetric.conversationRecordingControl
-                        )
-                        ConversationProgressState(label: "Preparing microphone…")
-                            .foregroundStyle(TaisaColor.mutedForeground.color)
-                            .frame(maxWidth: .infinity)
+                Group {
+                    if showsPreparingVoiceStatus {
+                        HStack(spacing: TaisaSpacing.control.rawValue) {
+                            TaisaSecondaryIconButton(
+                                icon: .cross,
+                                accessibilityLabel: "Cancel microphone preparation",
+                                action: model.requestDiscardRecording
+                            )
+                            .frame(
+                                width: TaisaControlMetric.conversationRecordingControl,
+                                height: TaisaControlMetric.conversationRecordingControl
+                            )
+                            ConversationProgressState(label: "Preparing microphone…")
+                                .foregroundStyle(TaisaColor.mutedForeground.color)
+                                .frame(maxWidth: .infinity)
+                        }
+                    } else {
+                        voiceReplyButton.disabled(true)
                     }
-                } else {
-                    voiceReplyButton.disabled(true)
                 }
                 .task {
                     showsPreparingVoiceStatus = false
@@ -175,11 +177,13 @@ struct ConversationView: View {
                     .frame(height: TaisaControlMetric.recordingButtonHeight)
                     .frame(maxWidth: .infinity)
             case .coaching:
-                if model.isSendingText, model.transitioningUserMessageID == nil {
-                    TextComposer(text: $model.text, mode: .processing, onSend: {}, onVoice: {})
-                        .accessibilityIdentifier("conversation.text-composer.processing")
-                } else {
-                    voiceReplyButton.disabled(true)
+                Group {
+                    if model.isSendingText, model.transitioningUserMessageID == nil {
+                        TextComposer(text: $model.text, mode: .processing, onSend: {}, onVoice: {})
+                            .accessibilityIdentifier("conversation.text-composer.processing")
+                    } else {
+                        voiceReplyButton.disabled(true)
+                    }
                 }
                 .task {
                     while !Task.isCancelled, model.composer == .coaching {
