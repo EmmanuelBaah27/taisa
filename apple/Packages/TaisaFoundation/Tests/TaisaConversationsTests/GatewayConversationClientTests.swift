@@ -39,12 +39,17 @@ private actor ReconciliationRequiredThenCompletedCoachingRunner: VoiceCoachingRu
 }
 
 private actor CoachingRetryAuthorizer: CoachingReconciliationLookingUp {
+    let result: CoachingReconciliationResult
     private(set) var authorizedRequestIDs: [UUID] = []
     private(set) var reconciledRequestIDs: [UUID] = []
 
+    init(result: CoachingReconciliationResult = .ambiguous) {
+        self.result = result
+    }
+
     func reconcile(requestID: UUID) async throws -> CoachingReconciliationResult {
         reconciledRequestIDs.append(requestID)
-        return .ambiguous
+        return result
     }
 
     func authorizeRetry(requestID: UUID) async throws {
@@ -54,6 +59,21 @@ private actor CoachingRetryAuthorizer: CoachingReconciliationLookingUp {
 
 @Suite(.serialized)
 struct GatewayConversationClientTests {
+    @Test func retryableTerminalFailureIsAuthorizedForExplicitRetry() async throws {
+        let fixture = try await gatewayFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.directory) }
+        let requestID = "00000000-0000-4000-8000-000000000924"
+        let authorizer = CoachingRetryAuthorizer(result: .failed(code: "COACHING_UNAVAILABLE", retryable: true))
+        let client = GatewayConversationClient(
+            store: fixture.store, deviceID: fixture.deviceID,
+            coaching: UnusedCoachingRunner(), reconciliation: authorizer, nowMS: { 2 }
+        )
+
+        try await client.prepareExplicitRetry(requestID: requestID)
+
+        #expect(await authorizer.authorizedRequestIDs.map { $0.uuidString.lowercased() } == [requestID])
+    }
+
     @Test func ambiguousPaidWorkWaitsForExplicitRetryBeforeAuthorization() async throws {
         let fixture = try await gatewayFixture()
         defer { try? FileManager.default.removeItem(at: fixture.directory) }

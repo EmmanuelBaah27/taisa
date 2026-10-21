@@ -377,7 +377,8 @@ public actor GatewayConversationClient: ConversationClient {
         case .ambiguous:
             try await reconciliation.authorizeRetry(requestID: requestUUID)
         case .failed(_, let retryable):
-            throw retryable ? ConversationFailure.retryable : ConversationFailure.unavailable
+            guard retryable else { throw ConversationFailure.unavailable }
+            try await reconciliation.authorizeRetry(requestID: requestUUID)
         case .safeToRetry, .completed:
             return
         }
