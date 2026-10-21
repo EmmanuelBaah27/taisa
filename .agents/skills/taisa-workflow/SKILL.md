@@ -50,8 +50,12 @@ blocker, or claim approval. Reconcile Linear before the next stage or gate.
 
 Linear controls live delivery truth and approvals; Git controls versioned technical truth.
 A status never substitutes for approval. A Draft technical artifact cannot enter Build
-because an issue says In Progress. Stop advancement, identify and repair the stale side,
-then re-read both.
+because an issue says In Progress. `AGENTS.md` supplies repository operating and safety
+constraints; `docs/workflow.md` and this orchestrator govern execution. A Scope, Plan, or
+implementation plan must not override, supersede, or relax those execution constraints.
+When a contradiction appears, stop before the next command, verification spend, or mutation;
+tell Baah the exact conflict and consequence, repair the stale or lower-authority side, then
+re-read both.
 
 ## 2. Universal issue intake
 
@@ -205,9 +209,12 @@ shippable, or merge-ready. It authorizes only one named broken interaction; expl
 is prohibited.
 
 If that interaction fails, remain in quarantine and loop with new diagnostic evidence without
-running the full matrix. After the named interaction passes, run the full native matrix on that exact frozen revision.
-Only then resolve review, request Ship,
-merge to `main`, synchronize canonical preview, confirm the installed revision, and smoke-test.
+running the full matrix. After the named interaction passes, freeze that exact revision and run
+a fresh whole-candidate code review. Resolve every blocking finding with focused checks; if code,
+dependencies, toolchain, signing, or configuration changes, return to the candidate loop and
+review the resulting candidate again. Once review is clean and the physical proof still applies
+to that exact unchanged revision, run the full native matrix once. Only then request Ship, merge
+to `main`, synchronize canonical preview, confirm the installed revision, and smoke-test.
 Otherwise report `Unfixed; blocking; unshippable` with one smallest Baah-controlled need;
 never claim QA-ready, Ship-ready, closure, or successor work.
 Record every repair-release gate item as passed or explicitly inapplicable with evidence.
@@ -288,8 +295,14 @@ served or installed. Repeat for every QA revision.
 Start with the smallest applicable verification that can disprove the change. Reuse fresh evidence
 only when revision, code, toolchain, configuration, and coverage are unchanged. Run
 independent checks concurrently when they do not share mutable state, and reserve the full
-matrix for its named merge, release, final repair-release after physical proof, or high-risk
-gate. Never weaken a named gate or claim that a narrower check proves a broader surface.
+matrix for its named merge, release, final repair-release after physical proof and clean review,
+or high-risk gate. A repair plan must preserve the sequence `focused + fast → exact over-install
+→ one named interaction → fresh whole-candidate review → resolve blockers and re-prove if changed
+→ full matrix once on the reviewed, proven, unchanged candidate`; it cannot move the full matrix
+earlier or repeat it after unchanged evidence. At Ship, reuse valid exact-revision
+evidence and rerun only checks invalidated by a code, dependency, toolchain, signing, or
+configuration change. Never weaken a named gate or claim that a narrower check proves a
+broader surface.
 
 Do not rerun an unchanged failed approach or narrate unchanged waits. After three materially distinct unsuccessful approaches
 without new diagnostic evidence, terminate the bounded Goal as `UNRESOLVED_ESCALATION` with

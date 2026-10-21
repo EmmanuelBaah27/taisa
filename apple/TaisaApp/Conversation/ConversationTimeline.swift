@@ -5,7 +5,6 @@ import UIKit
 
 enum ConversationTimelineLayout {
     static let userBubbleWidthFraction: CGFloat = 0.85
-    static let jumpIconSize: CGFloat = 20
     static let jumpVisibilityThreshold: CGFloat = 160
     static let ordinaryMessageSpacing: CGFloat = 12
     static let userToAssistantSpacing: CGFloat = 32
@@ -33,6 +32,7 @@ enum ConversationTimelineLayout {
 
 private struct TrailingMaximumWidthLayout: Layout {
     let trailingInset: CGFloat
+    let layoutDirection: LayoutDirection
 
     func sizeThatFits(
         proposal: ProposedViewSize,
@@ -65,8 +65,11 @@ private struct TrailingMaximumWidthLayout: Layout {
             trailingInset: trailingInset
         )
         let bubbleSize = subview.sizeThatFits(ProposedViewSize(width: bubbleWidth, height: proposal.height))
+        let originX = layoutDirection == .rightToLeft
+            ? bounds.minX + trailingInset
+            : bounds.maxX - trailingInset - bubbleSize.width
         subview.place(
-            at: CGPoint(x: bounds.maxX - trailingInset - bubbleSize.width, y: bounds.minY),
+            at: CGPoint(x: originX, y: bounds.minY),
             proposal: ProposedViewSize(bubbleSize)
         )
     }
@@ -75,12 +78,18 @@ private struct TrailingMaximumWidthLayout: Layout {
 struct ConversationTimeline: View {
     static let userPreviewLineLimit = 6
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.layoutDirection) private var layoutDirection
 
     let messages: [MessageRecord]
     let assistantResponses: [String: AssistantResponseRecord]
     let updatingResponseAfter: String?
+    let failedResponseUpdateAfter: String?
     let streamingResponse: String
+    let streamingFinalMessageID: String?
     let isThinking: Bool
+    let streamingDidFinish: @MainActor @Sendable () -> Void
+    let retryResponseUpdate: @MainActor @Sendable () -> Void
+    let keepEditedMessage: @MainActor @Sendable () -> Void
     let correct: (MessageRecord) -> Void
     let saveFeedback: (String, ResponseFeedbackDirection?, [ResponseQualityFactor], String?) -> Void
     let acceptProposal: (String) -> Void
@@ -88,13 +97,19 @@ struct ConversationTimeline: View {
     @State private var isAwayFromLatest = false
     @State private var hasPositionedInitialMessages = false
     @State private var expandedUserMessages: Set<String> = []
+    @State private var copiedConfirmationVisible = false
 
     init(
         messages: [MessageRecord],
         assistantResponses: [String: AssistantResponseRecord] = [:],
         updatingResponseAfter: String? = nil,
+        failedResponseUpdateAfter: String? = nil,
         streamingResponse: String = "",
+        streamingFinalMessageID: String? = nil,
         isThinking: Bool = false,
+        streamingDidFinish: @escaping @MainActor @Sendable () -> Void = {},
+        retryResponseUpdate: @escaping @MainActor @Sendable () -> Void = {},
+        keepEditedMessage: @escaping @MainActor @Sendable () -> Void = {},
         correct: @escaping (MessageRecord) -> Void,
         saveFeedback: @escaping (String, ResponseFeedbackDirection?, [ResponseQualityFactor], String?) -> Void = { _, _, _, _ in },
         acceptProposal: @escaping (String) -> Void = { _ in },
@@ -103,8 +118,13 @@ struct ConversationTimeline: View {
         self.messages = messages
         self.assistantResponses = assistantResponses
         self.updatingResponseAfter = updatingResponseAfter
+        self.failedResponseUpdateAfter = failedResponseUpdateAfter
         self.streamingResponse = streamingResponse
+        self.streamingFinalMessageID = streamingFinalMessageID
         self.isThinking = isThinking
+        self.streamingDidFinish = streamingDidFinish
+        self.retryResponseUpdate = retryResponseUpdate
+        self.keepEditedMessage = keepEditedMessage
         self.correct = correct
         self.saveFeedback = saveFeedback
         self.acceptProposal = acceptProposal
@@ -112,14 +132,16 @@ struct ConversationTimeline: View {
     }
 
     var body: some View {
+        let presentedMessages = messages.filter { $0.id != streamingFinalMessageID }
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
-                    ForEach(Array(messages.enumerated()), id: \.element.id) { index, message in
+                    ForEach(Array(presentedMessages.enumerated()), id: \.element.id) { index, message in
                         VStack(alignment: message.role == "user" ? .trailing : .leading, spacing: TaisaSpacing.tight.rawValue) {
                             if message.role == "user" {
                                 TrailingMaximumWidthLayout(
-                                    trailingInset: TaisaSpacing.standard.rawValue
+                                    trailingInset: TaisaSpacing.standard.rawValue,
+                                    layoutDirection: layoutDirection
                                 ) {
                                     ExpandableUserMessage(
                                         message: message,
@@ -146,10 +168,19 @@ struct ConversationTimeline: View {
                                 }
                             }
                             if updatingResponseAfter == message.id {
-                                Text("Updating response…")
-                                    .font(TaisaTypography.metadata.font)
-                                    .foregroundStyle(TaisaColor.mutedForeground.color)
+                                if failedResponseUpdateAfter == message.id {
+                                    InlineRecoveryAlert(
+                                        contract: .responseUpdate,
+                                        onCancel: keepEditedMessage,
+                                        onRetry: retryResponseUpdate
+                                    )
                                     .padding(.horizontal, TaisaSpacing.standard.rawValue)
+                                    .accessibilityIdentifier("conversation.response-update-recovery")
+                                } else {
+                                    ConversationProgressState(label: "Updating response…")
+                                        .foregroundStyle(TaisaColor.mutedForeground.color)
+                                        .padding(.horizontal, TaisaSpacing.standard.rawValue)
+                                }
                             }
                         }
                         .frame(maxWidth: .infinity, alignment: message.role == "user" ? .trailing : .leading)
@@ -160,8 +191,8 @@ struct ConversationTimeline: View {
                             .bottom,
                             ConversationTimelineLayout.spacing(
                                 afterRole: message.role,
-                                beforeRole: messages.indices.contains(index + 1)
-                                    ? messages[index + 1].role
+                                beforeRole: presentedMessages.indices.contains(index + 1)
+                                    ? presentedMessages[index + 1].role
                                     : (isThinking || !streamingResponse.isEmpty ? "assistant" : nil)
                             )
                         )
@@ -172,11 +203,11 @@ struct ConversationTimeline: View {
                             .accessibilityIdentifier("conversation.thinking")
                             .id("conversation.thinking")
                     } else if !streamingResponse.isEmpty {
-                        Text((try? AttributedString(markdown: streamingResponse)) ?? AttributedString(streamingResponse))
+                        TaisaStreamingText(streamingResponse, onRevealComplete: streamingDidFinish)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.horizontal, TaisaSpacing.standard.rawValue)
                             .accessibilityIdentifier("conversation.streaming-response")
-                            .id("conversation.streaming-response")
+                            .id(streamingFinalMessageID ?? "conversation.streaming-response.live")
                     }
                 }
                 .padding(.top, ConversationTimelineLayout.firstMessageTopSpacing)
@@ -201,24 +232,22 @@ struct ConversationTimeline: View {
                 )
             } action: { _, away in isAwayFromLatest = away }
             .overlay(alignment: .bottom) {
-                if isAwayFromLatest, !messages.isEmpty {
-                    TaisaSecondaryCapsuleButton(action: {
-                        isAwayFromLatest = false
-                        scrollToLatest(using: proxy, animated: !reduceMotion)
-                    }) {
-                        HStack(spacing: TaisaSpacing.compact.rawValue) {
-                            Text("Jump to latest").font(TaisaTypography.navigationLabel.font)
-                            CentralIcon(.chevronDown)
-                                .frame(
-                                    width: ConversationTimelineLayout.jumpIconSize,
-                                    height: ConversationTimelineLayout.jumpIconSize
-                                )
-                        }
-                        .padding(.horizontal, TaisaSpacing.standard.rawValue)
+                VStack(spacing: TaisaSpacing.control.rawValue) {
+                    if copiedConfirmationVisible {
+                        TaisaToast(message: "Copied", dismiss: { copiedConfirmationVisible = false })
                     }
-                    .padding(.bottom, TaisaSpacing.standard.rawValue)
-                    .accessibilityIdentifier("conversation.jump-to-latest")
+                    if isAwayFromLatest, !presentedMessages.isEmpty {
+                        ConversationJumpToLatestButton(
+                            isLoading: isThinking || !streamingResponse.isEmpty,
+                            action: {
+                                isAwayFromLatest = false
+                                scrollToLatest(using: proxy, animated: !reduceMotion)
+                            }
+                        )
+                        .accessibilityIdentifier("conversation.jump-to-latest")
+                    }
                 }
+                .padding(.bottom, TaisaSpacing.standard.rawValue)
             }
             .task(id: messages.last?.id) {
                 guard messages.last != nil else { return }
@@ -273,12 +302,18 @@ struct ConversationTimeline: View {
     }
 
     @ViewBuilder private func messageActions(for message: MessageRecord) -> some View {
-        Button { UIPasteboard.general.string = message.body } label: {
+        Button {
+            UIPasteboard.general.string = message.body
+            copiedConfirmationVisible = true
+        } label: {
             Label {
                 Text("Copy")
             } icon: {
                 CentralIcon(.copy)
-                    .frame(width: 16, height: 16)
+                    .frame(
+                        width: TaisaControlMetric.contextMenuIcon,
+                        height: TaisaControlMetric.contextMenuIcon
+                    )
             }
         }
         if message.role == "user" {
@@ -287,7 +322,10 @@ struct ConversationTimeline: View {
                     Text("Edit")
                 } icon: {
                     CentralIcon(.edit)
-                        .frame(width: 16, height: 16)
+                        .frame(
+                            width: TaisaControlMetric.contextMenuIcon,
+                            height: TaisaControlMetric.contextMenuIcon
+                        )
                 }
             }
                 .accessibilityIdentifier("conversation.correct-transcript")

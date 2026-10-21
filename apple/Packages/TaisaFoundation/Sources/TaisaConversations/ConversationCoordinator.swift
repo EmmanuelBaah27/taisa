@@ -164,8 +164,10 @@ public actor ConversationCoordinator {
 
     public func retry() async throws {
         if let pendingCorrection {
+            try await client.prepareExplicitRetry(requestID: pendingCorrection.requestID)
             try await perform(pendingCorrection)
         } else if let pendingText {
+            try await client.prepareExplicitRetry(requestID: pendingText.requestID)
             try await perform(pendingText)
         } else {
             try await voice.retry()

@@ -75,22 +75,6 @@ export class CoachingIdempotencyStore {
     return this.database.transaction(() => {
       const existing = this.rowForKey(input.key);
       if (existing) {
-        const sameIdentity = existing.request_id === input.requestId
-          && existing.owner_id === input.ownerId;
-        const retryMayUpgradeLegacyHash = sameIdentity
-          && existing.status === 'queued'
-          && existing.failure_code === 'RETRY_AUTHORIZED';
-        if (existing.request_hash !== input.requestHash && retryMayUpgradeLegacyHash) {
-          this.database.prepare(`
-            UPDATE coaching_idempotency_receipts
-            SET request_hash = ?, failure_code = NULL, updated_at = ?
-            WHERE idempotency_key = ? AND request_id = ? AND owner_id = ?
-              AND status = 'queued' AND failure_code = 'RETRY_AUTHORIZED'
-          `).run(
-            input.requestHash, new Date().toISOString(), input.key, input.requestId, input.ownerId,
-          );
-          return { status: 'start' } as const;
-        }
         if (existing.request_id !== input.requestId || existing.request_hash !== input.requestHash
           || existing.owner_id !== input.ownerId) {
           throw new IdempotencyConflictError();

@@ -6,6 +6,7 @@ import UIKit
 
 struct ConversationView: View {
     @State var model: ConversationViewModel
+    @State private var showsPreparingVoiceStatus = false
 
     var body: some View {
         NavigationStack {
@@ -18,8 +19,13 @@ struct ConversationView: View {
                             messages: model.messages,
                             assistantResponses: model.assistantResponses,
                             updatingResponseAfter: model.correctionRegenerationMessageID,
+                            failedResponseUpdateAfter: model.correctionRegenerationFailureMessageID,
                             streamingResponse: model.partialCoaching,
+                            streamingFinalMessageID: model.streamingFinalMessageID,
                             isThinking: model.composer == .coaching && model.partialCoaching.isEmpty,
+                            streamingDidFinish: model.completeStreamingPresentation,
+                            retryResponseUpdate: { Task { await model.retryCorrectionRegeneration() } },
+                            keepEditedMessage: model.keepEditedMessage,
                             correct: model.requestCorrection,
                             saveFeedback: { messageID, direction, factors, detail in
                                 Task { await model.saveFeedback(
@@ -40,13 +46,28 @@ struct ConversationView: View {
                 }
                 ConversationPageHeader(title: model.title, onDismiss: model.requestClose)
                     .accessibilityIdentifier("conversation.close")
+                    .disabled(model.closeActionDisabled)
                     .zIndex(3)
+                if let responseActionFailure = model.responseActionFailure {
+                    TaisaToast(
+                        message: responseActionFailure.message,
+                        actionLabel: "Try again",
+                        action: { Task { await model.retryFailedResponseAction() } },
+                        dismiss: model.clearResponseActionFailure
+                    )
+                    .padding(.top, TaisaControlMetric.appBarHeight + TaisaSpacing.compact.rawValue)
+                    .zIndex(5)
+                }
             }
             .toolbar(.hidden, for: .navigationBar)
         }
         .accessibilityIdentifier("conversation.root")
         .interactiveDismissDisabled(true)
         .task { await model.start() }
+        .task(id: model.transitioningUserMessageID) {
+            guard model.transitioningUserMessageID != nil else { return }
+            model.completeSentMessageTransition()
+        }
         .sheet(isPresented: Binding(
             get: { model.correctionMessageID != nil },
             set: { if !$0 { model.cancelCorrection() } }
@@ -70,29 +91,57 @@ struct ConversationView: View {
             // command that action is about to confirm.
             set: { _ in }
         )) {
-            switch model.confirmation {
-            case .discardVoiceForKeyboard:
-                Button("Switch to keyboard", role: .destructive) { Task { await model.confirmKeyboardReplacement() } }
-                Button("Cancel", role: .cancel, action: model.cancelConfirmation)
-            case .discardRecording:
-                Button("Continue", role: .destructive) { Task { await model.confirmDiscardRecording() } }
-                Button("Go back", role: .cancel, action: model.cancelConfirmation)
-            case .discardShortOrKeepRecording:
-                Button("Discard recording", role: .destructive) { Task { await model.confirmDiscardRecording() } }
-                Button("Keep recording", role: .cancel, action: model.cancelConfirmation)
-            case .saveDiscardOrCancel:
-                Button("Save draft") { Task { await model.saveAndClose() } }.accessibilityIdentifier("conversation.save-draft")
-                Button("Discard", role: .destructive) { Task { await model.discardAndClose() } }.accessibilityIdentifier("conversation.discard")
-                Button("Cancel", role: .cancel, action: model.cancelConfirmation)
-            case nil: EmptyView()
+            Group {
+                switch model.confirmation {
+                case .discardVoiceForKeyboard:
+                    Button("Switch to keyboard", role: .destructive) { Task { await model.confirmKeyboardReplacement() } }
+                    Button("Cancel", role: .cancel, action: model.cancelConfirmation)
+                case .discardRecording:
+                    Button("Continue", role: .destructive) { Task { await model.confirmDiscardRecording() } }
+                    Button("Go back", role: .cancel, action: model.cancelConfirmation)
+                case .discardShortOrKeepRecording:
+                    Button("Discard recording", role: .destructive) { Task { await model.confirmDiscardRecording() } }
+                    Button("Keep recording", role: .cancel, action: model.cancelConfirmation)
+                case .saveDiscardOrCancel:
+                    Button("Save draft") { Task { await model.saveAndClose() } }.accessibilityIdentifier("conversation.save-draft")
+                    Button("Discard", role: .destructive) { Task { await model.discardAndClose() } }.accessibilityIdentifier("conversation.discard")
+                    Button("Cancel", role: .cancel, action: model.cancelConfirmation)
+                case nil: EmptyView()
+                }
             }
+            .disabled(model.actionInFlight)
         }
     }
 
     @ViewBuilder private var composer: some View {
         switch model.composer {
         case .preparingVoice:
-            recordingBar(.preparing)
+            bottomChrome {
+                if showsPreparingVoiceStatus {
+                    HStack(spacing: TaisaSpacing.control.rawValue) {
+                        TaisaSecondaryIconButton(
+                            icon: .cross,
+                            accessibilityLabel: "Cancel microphone preparation",
+                            action: model.requestDiscardRecording
+                        )
+                        .frame(
+                            width: TaisaControlMetric.conversationRecordingControl,
+                            height: TaisaControlMetric.conversationRecordingControl
+                        )
+                        ConversationProgressState(label: "Preparing microphone…")
+                            .foregroundStyle(TaisaColor.mutedForeground.color)
+                            .frame(maxWidth: .infinity)
+                    }
+                } else {
+                    voiceReplyButton.disabled(true)
+                }
+            }
+            .task {
+                showsPreparingVoiceStatus = false
+                try? await Task.sleep(for: .milliseconds(200))
+                guard !Task.isCancelled, model.composer == .preparingVoice else { return }
+                showsPreparingVoiceStatus = true
+            }
         case .recording:
             recordingBar(actionPhase)
                 .task {
@@ -102,7 +151,21 @@ struct ConversationView: View {
                     }
                 }
         case .paused:
-            recordingBar(pausedActionPhase)
+            VStack(spacing: TaisaSpacing.control.rawValue) {
+                if model.showsMicrophoneUnavailable {
+                    TaisaToast(
+                        message: "Microphone unavailable. Resume when the call ends.",
+                        dismiss: model.dismissMicrophoneUnavailable
+                    )
+                }
+                recordingBar(pausedActionPhase)
+            }
+            .task {
+                while !Task.isCancelled, model.composer == .paused {
+                    await model.refreshCapture()
+                    try? await Task.sleep(for: .milliseconds(250))
+                }
+            }
         case .savedVoiceDraft:
             recordingBar(.saved)
         case .typing:
@@ -117,7 +180,14 @@ struct ConversationView: View {
                     .frame(maxWidth: .infinity)
             }
         case .coaching:
-            bottomChrome { voiceReplyButton.disabled(true) }
+            bottomChrome {
+                if model.isSendingText, model.transitioningUserMessageID == nil {
+                    TextComposer(text: $model.text, mode: .processing, onSend: {}, onVoice: {})
+                        .accessibilityIdentifier("conversation.text-composer.processing")
+                } else {
+                    voiceReplyButton.disabled(true)
+                }
+            }
             .task {
                 while !Task.isCancelled, model.composer == .coaching {
                     await model.refreshPartialCoaching()
@@ -183,6 +253,8 @@ struct ConversationView: View {
             },
             onSend: { Task { await model.sendVoice() } }
         )
+        .disabled(model.actionInFlight)
+        .opacity(model.actionInFlight ? TaisaControlMetric.disabledControlOpacity : 1)
         .accessibilityIdentifier("conversation.voice-composer")
     }
 
@@ -192,14 +264,19 @@ struct ConversationView: View {
     }
 
     private var emptyState: some View {
-        VStack(spacing: 12) {
-            CentralIcon(.voiceMid).frame(width: 40, height: 40)
-            Text("What’s on your mind?").font(.system(.body, weight: .medium))
+        VStack(spacing: TaisaSpacing.control.rawValue) {
+            CentralIcon(.voiceMid)
+                .frame(
+                    width: TaisaControlMetric.conversationEmptyVoiceIcon,
+                    height: TaisaControlMetric.conversationEmptyVoiceIcon
+                )
+                .foregroundStyle(TaisaColor.mutedForeground.color)
+            Text("What’s on your mind?").font(TaisaTypography.navigationLabel.font)
             Text("Talk it through with Taisa.")
-                .font(TaisaTypography.body.font)
+                .font(TaisaTypography.metadata.font)
                 .foregroundStyle(TaisaColor.mutedForeground.color)
         }
-        .padding()
+        .padding(TaisaSpacing.standard.rawValue)
         .accessibilityElement(children: .combine)
     }
 

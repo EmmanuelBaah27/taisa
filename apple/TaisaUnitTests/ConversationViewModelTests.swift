@@ -226,8 +226,10 @@ final class ConversationViewModelTests: XCTestCase {
 
         await model.sendVoice()
 
-        XCTAssertEqual(model.composer, .waitingForReply)
+        XCTAssertEqual(model.composer, .coaching)
         XCTAssertEqual(model.messages.map(\.body), ["Ready"])
+        model.completeStreamingPresentation()
+        XCTAssertEqual(model.composer, .waitingForReply)
     }
 
     func testVoiceFailureBeforeTranscriptUsesTranscriptionRecovery() async {
@@ -379,8 +381,97 @@ final class ConversationViewModelTests: XCTestCase {
 
         await finishCoaching.open()
         await send.value
-        XCTAssertEqual(model.composer, .waitingForReply)
+        XCTAssertEqual(model.composer, .coaching)
         XCTAssertEqual(model.messages.map(\.body), ["Typed follow-up", "Coaching reply"])
+        model.completeStreamingPresentation()
+        XCTAssertEqual(model.composer, .waitingForReply)
+    }
+
+    func testTypedSendRetainsComposerContentUntilDurableMessageIsAvailable() async {
+        let allowMessage = AsyncGate()
+        let messageShown = AsyncGate()
+        let user = message(role: "user", body: "Move into the bubble")
+        let client = ConversationScreenClient(
+            loadMessages: { [user] },
+            beginVoice: {}, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
+            sendText: { _, messageAvailable in
+                await allowMessage.wait()
+                await messageAvailable()
+                await messageShown.open()
+            },
+            retry: {}, saveDraft: { _ in }, discardDraft: {}
+        )
+        let model = ConversationViewModel(
+            conversationID: user.conversationID, title: "Chat", entryIntent: nil,
+            composer: .typing("Move into the bubble"), text: "Move into the bubble", client: client
+        )
+
+        let send = Task { await model.sendText() }
+        for _ in 0..<100 where !model.isSendingText { await Task.yield() }
+        XCTAssertTrue(model.isSendingText)
+        XCTAssertEqual(model.text, "Move into the bubble")
+        XCTAssertNil(model.transitioningUserMessageID)
+
+        await allowMessage.open()
+        await messageShown.wait()
+        XCTAssertEqual(model.text, "")
+        XCTAssertEqual(model.transitioningUserMessageID, user.id)
+        await send.value
+    }
+
+    func testShortCompletedResponseRemainsStreamingUntilRevealFinishes() async {
+        let user = message(role: "user", body: "Short question")
+        let assistant = message(role: "assistant", body: "Short answer")
+        let messages = MessageSequence([[user], [user, assistant]])
+        let client = ConversationScreenClient(
+            loadMessages: { await messages.next() },
+            beginVoice: {}, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
+            sendText: { _, messageAvailable in await messageAvailable() },
+            retry: {}, saveDraft: { _ in }, discardDraft: {},
+            loadPartialCoaching: { "Short answer" }
+        )
+        let model = ConversationViewModel(
+            conversationID: user.conversationID, title: "Chat", entryIntent: nil,
+            composer: .typing("Short question"), text: "Short question", client: client
+        )
+
+        await model.sendText()
+
+        XCTAssertEqual(model.composer, .coaching)
+        XCTAssertEqual(model.partialCoaching, "Short answer")
+        XCTAssertEqual(model.streamingFinalMessageID, assistant.id)
+
+        model.completeStreamingPresentation()
+
+        XCTAssertEqual(model.composer, .waitingForReply)
+        XCTAssertEqual(model.partialCoaching, "")
+        XCTAssertNil(model.streamingFinalMessageID)
+    }
+
+    func testPartialRefreshReconcilesAssistantReplyPersistedWhileRequestIsStillWaiting() async {
+        let user = message(role: "user", body: "A delayed question")
+        let assistant = message(role: "assistant", body: "The durable answer")
+        let messages = MessageSequence([[user], [user, assistant]])
+        let client = ConversationScreenClient(
+            loadMessages: { await messages.next() },
+            beginVoice: {}, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
+            sendText: { _, messageAvailable in await messageAvailable() },
+            retry: {}, saveDraft: { _ in }, discardDraft: {},
+            loadPartialCoaching: { "" }
+        )
+        let model = ConversationViewModel(
+            conversationID: user.conversationID, title: "Chat", entryIntent: nil,
+            composer: .coaching, client: client
+        )
+
+        await model.start()
+        XCTAssertEqual(model.messages.map(\.body), ["A delayed question"])
+
+        await model.refreshPartialCoaching()
+
+        XCTAssertEqual(model.messages.map(\.body), ["A delayed question", "The durable answer"])
+        XCTAssertEqual(model.partialCoaching, "The durable answer")
+        XCTAssertEqual(model.streamingFinalMessageID, assistant.id)
     }
 
     func testVoiceTranscriptAppearsBeforeCoachingCompletes() async {
@@ -420,8 +511,10 @@ final class ConversationViewModelTests: XCTestCase {
 
         await finishCoaching.open()
         await send.value
-        XCTAssertEqual(model.composer, .waitingForReply)
+        XCTAssertEqual(model.composer, .coaching)
         XCTAssertEqual(model.messages.map(\.body), ["Recorded words", "Coaching reply"])
+        model.completeStreamingPresentation()
+        XCTAssertEqual(model.composer, .waitingForReply)
     }
 
     func testRetryCompletionReloadsMessagesAndWaitsForReply() async {
@@ -505,6 +598,37 @@ final class ConversationViewModelTests: XCTestCase {
         XCTAssertEqual(model.composer, .failure(.retryable))
         XCTAssertEqual(model.correctionMessageID, original.id)
         XCTAssertEqual(model.correctionText, "Corrected")
+        XCTAssertEqual(model.messages.first?.body, "Corrected")
+    }
+
+    func testDurableCorrectionFailureMovesRecoveryIntoTimeline() async {
+        struct ResponseFailure: Error {}
+        let original = message(role: "user", body: "Original")
+        let corrected = MessageRecord(
+            id: original.id, conversationID: original.conversationID,
+            role: original.role, body: "Corrected", createdAtMS: original.createdAtMS
+        )
+        let messages = MessageSequence([[original], [corrected]])
+        let client = ConversationScreenClient(
+            loadMessages: { await messages.next() },
+            beginVoice: {}, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
+            sendText: { _, available in await available() }, retry: {},
+            saveDraft: { _ in }, discardDraft: {},
+            correctTranscript: { _, _ in throw ResponseFailure() }
+        )
+        let model = ConversationViewModel(
+            conversationID: original.conversationID, title: "Chat", entryIntent: nil,
+            client: client
+        )
+        await model.start()
+        model.requestCorrection(original)
+        model.correctionText = "Corrected"
+
+        await model.submitCorrection()
+
+        XCTAssertNil(model.correctionMessageID)
+        XCTAssertEqual(model.correctionRegenerationFailureMessageID, original.id)
+        XCTAssertEqual(model.composer, .waitingForReply)
         XCTAssertEqual(model.messages.first?.body, "Corrected")
     }
 
@@ -599,6 +723,153 @@ final class ConversationViewModelTests: XCTestCase {
         XCTAssertEqual(ConversationViewModel.preview(composer: .transcribing).pagePhase, .durableProcessing)
     }
 
+    func testBlockedCapturePublishesMicrophoneUnavailableNotice() async {
+        let client = ConversationScreenClient(
+            beginVoice: {}, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
+            sendText: { _, available in await available() }, retry: {},
+            saveDraft: { _ in }, discardDraft: {},
+            loadCaptureSnapshot: {
+                .init(
+                    activity: .blocked, elapsedMilliseconds: 1_500,
+                    meter: .init(averagePower: -160, peakPower: -160), disposition: .sendable,
+                    interruption: .microphoneUnavailable
+                )
+            }
+        )
+        let model = ConversationViewModel(
+            conversationID: UUID().uuidString, title: "Chat", entryIntent: nil,
+            composer: .recording, client: client
+        )
+
+        await model.refreshCapture()
+
+        XCTAssertEqual(model.composer, .paused)
+        XCTAssertTrue(model.showsMicrophoneUnavailable)
+    }
+
+    func testRouteRestorationClearsMicrophoneUnavailableNotice() async {
+        let captures = CaptureSequence([
+            .init(
+                activity: .paused, elapsedMilliseconds: 1_500,
+                meter: .init(averagePower: -160, peakPower: -160), disposition: .sendable,
+                interruption: .microphoneUnavailable
+            ),
+            .init(
+                activity: .paused, elapsedMilliseconds: 1_500,
+                meter: .init(averagePower: -160, peakPower: -160), disposition: .sendable
+            ),
+        ])
+        let client = ConversationScreenClient(
+            beginVoice: {}, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
+            sendText: { _, available in await available() }, retry: {},
+            saveDraft: { _ in }, discardDraft: {},
+            loadCaptureSnapshot: { await captures.next() }
+        )
+        let model = ConversationViewModel(
+            conversationID: UUID().uuidString, title: "Chat", entryIntent: nil,
+            composer: .recording, client: client
+        )
+
+        await model.refreshCapture()
+        XCTAssertTrue(model.showsMicrophoneUnavailable)
+
+        await model.refreshCapture()
+        XCTAssertEqual(model.composer, .paused)
+        XCTAssertFalse(model.showsMicrophoneUnavailable)
+    }
+
+    func testRecordingControlsPublishCommitAvailabilityWhilePauseIsPending() async {
+        let pauseStarted = AsyncGate()
+        let finishPause = AsyncGate()
+        let client = ConversationScreenClient(
+            beginVoice: {},
+            pauseVoice: {
+                await pauseStarted.open()
+                await finishPause.wait()
+            },
+            resumeVoice: {}, sendVoice: { _ in },
+            sendText: { _, available in await available() }, retry: {},
+            saveDraft: { _ in }, discardDraft: {}
+        )
+        let model = ConversationViewModel(
+            conversationID: UUID().uuidString, title: "Chat", entryIntent: nil,
+            composer: .recording, client: client
+        )
+
+        let pause = Task { await model.pause() }
+        await pauseStarted.wait()
+
+        XCTAssertTrue(model.actionInFlight)
+
+        await finishPause.open()
+        await pause.value
+        XCTAssertFalse(model.actionInFlight)
+    }
+
+    func testCloseIsIgnoredWhileRecordingActionIsCommitting() async {
+        let pauseStarted = AsyncGate()
+        let finishPause = AsyncGate()
+        var dismissed = 0
+        let client = ConversationScreenClient(
+            beginVoice: {}, pauseVoice: {
+                await pauseStarted.open()
+                await finishPause.wait()
+            }, resumeVoice: {}, sendVoice: { _ in },
+            sendText: { _, available in await available() }, retry: {},
+            saveDraft: { _ in }, discardDraft: {}
+        )
+        let model = ConversationViewModel(
+            conversationID: UUID().uuidString, title: "Chat", entryIntent: nil,
+            composer: .recording, client: client, dismiss: { dismissed += 1 }
+        )
+
+        let pause = Task { await model.pause() }
+        await pauseStarted.wait()
+        model.requestClose()
+
+        XCTAssertNil(model.confirmation)
+        XCTAssertEqual(dismissed, 0)
+
+        await finishPause.open()
+        await pause.value
+    }
+
+    func testCloseDuringVoicePreparationQueuesDiscardAndDismissal() async {
+        let preparationStarted = AsyncGate()
+        let finishPreparation = AsyncGate()
+        let events = EventRecorder()
+        var dismissed = 0
+        let client = ConversationScreenClient(
+            beginVoice: {
+                await preparationStarted.open()
+                await finishPreparation.wait()
+            }, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
+            sendText: { _, available in await available() }, retry: {},
+            saveDraft: { _ in },
+            discardDraft: { await events.append("discard-draft") },
+            discardEmptyConversation: { await events.append("discard-conversation") }
+        )
+        let model = ConversationViewModel(
+            conversationID: UUID().uuidString, title: "New chat", entryIntent: nil,
+            composer: .waitingForReply, client: client, dismiss: { dismissed += 1 }
+        )
+
+        let preparation = Task { try await model.beginVoice() }
+        await preparationStarted.wait()
+
+        XCTAssertEqual(model.composer, .preparingVoice)
+        XCTAssertFalse(model.closeActionDisabled)
+        model.requestClose()
+        XCTAssertEqual(dismissed, 0)
+
+        await finishPreparation.open()
+        try? await preparation.value
+
+        let recordedEvents = await events.values()
+        XCTAssertEqual(recordedEvents, ["discard-draft", "discard-conversation"])
+        XCTAssertEqual(dismissed, 1)
+    }
+
     func testEmptyRecordingDiscardCleansUpProvisionalChatAndDismisses() async {
         let client = ConversationScreenClientSpy(captureDisposition: .empty)
         var dismissed = 0
@@ -613,7 +884,7 @@ final class ConversationViewModelTests: XCTestCase {
         XCTAssertEqual(dismissed, 1)
     }
 
-    func testTypedSendClearsComposerBeforeDurableCommitCompletes() async {
+    func testTypedSendRetainsComposerBeforeDurableCommitCompletes() async {
         let gate = AsyncGate()
         let events = EventRecorder()
         let client = ConversationScreenClient(
@@ -633,10 +904,96 @@ final class ConversationViewModelTests: XCTestCase {
         let send = Task { await model.sendText() }
         while !(await events.values()).contains("send-start") { await Task.yield() }
 
-        XCTAssertEqual(model.text, "")
+        XCTAssertEqual(model.text, "Send once")
         XCTAssertEqual(model.composer, .coaching)
         await gate.open()
         await send.value
+    }
+
+    func testCloseWaitsUntilTypedMessageIsDurable() async {
+        let durableGate = AsyncGate()
+        let durableCallback = AsyncGate()
+        let finishGate = AsyncGate()
+        var dismissed = 0
+        let client = ConversationScreenClient(
+            beginVoice: {}, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
+            sendText: { _, available in
+                await durableGate.wait()
+                await available()
+                await durableCallback.open()
+                await finishGate.wait()
+            }, retry: {}, saveDraft: { _ in }, discardDraft: {}
+        )
+        let model = ConversationViewModel(
+            conversationID: UUID().uuidString, title: "Chat", entryIntent: nil,
+            composer: .typing("Durable first"), text: "Durable first", client: client,
+            dismiss: { dismissed += 1 }
+        )
+
+        let send = Task { await model.sendText() }
+        await Task.yield()
+        model.requestClose()
+        XCTAssertEqual(dismissed, 0)
+        XCTAssertTrue(model.closeActionDisabled)
+
+        await durableGate.open()
+        await durableCallback.wait()
+        XCTAssertFalse(model.closeActionDisabled)
+        model.requestClose()
+        XCTAssertEqual(dismissed, 1)
+        await finishGate.open()
+        await send.value
+    }
+
+    func testFeedbackFailureDoesNotReplaceComposerWithCoachingFailure() async {
+        let client = ConversationScreenClient(
+            beginVoice: {}, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
+            sendText: { _, available in await available() }, retry: {},
+            saveDraft: { _ in }, discardDraft: {},
+            saveFeedback: { _ in throw ConversationFailure.retryable }
+        )
+        let model = ConversationViewModel(
+            conversationID: UUID().uuidString, title: "Chat", entryIntent: nil,
+            composer: .waitingForReply, client: client
+        )
+
+        await model.saveFeedback(
+            responseMessageID: UUID().uuidString, direction: .helpful,
+            factors: [.coverage], detail: nil
+        )
+
+        XCTAssertEqual(model.composer, .waitingForReply)
+        XCTAssertEqual(model.responseActionFailure?.message, "Couldn’t save feedback. Try again.")
+    }
+
+    func testResponseActionFailuresQueueAndRetryTheirExactActions() async {
+        let calls = ResponseActionCallSpy()
+        let firstID = UUID().uuidString
+        let secondID = UUID().uuidString
+        let client = ConversationScreenClient(
+            beginVoice: {}, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
+            sendText: { _, available in await available() }, retry: {},
+            saveDraft: { _ in }, discardDraft: {},
+            acceptProposal: { id in
+                if await calls.record(id) == 1 { throw ConversationFailure.retryable }
+            },
+            dismissProposal: { id in
+                if await calls.record(id) == 1 { throw ConversationFailure.retryable }
+            }
+        )
+        let model = ConversationViewModel(
+            conversationID: UUID().uuidString, title: "Chat", entryIntent: nil,
+            composer: .waitingForReply, client: client
+        )
+
+        await model.acceptProposal(firstID)
+        await model.dismissProposal(secondID)
+
+        XCTAssertEqual(model.responseActionFailures.map(\.id), ["accept:\(firstID)", "dismiss:\(secondID)"])
+        await model.retryFailedResponseAction()
+        XCTAssertEqual(model.responseActionFailures.map(\.id), ["dismiss:\(secondID)"])
+        let firstCallCount = await calls.count(firstID)
+        XCTAssertEqual(firstCallCount, 2)
     }
 
     func testFailedRepeatedTextDoesNotTreatHistoricalMessageAsCurrentSend() async {
@@ -673,6 +1030,27 @@ final class ConversationViewModelTests: XCTestCase {
         let counts = await client.discardCounts()
         XCTAssertEqual(counts, [0, 0])
         XCTAssertEqual(dismissed, 1)
+    }
+
+    func testChevronOnRetryableFailureWithDurableMessageOffersSaveDiscardOrStay() async {
+        let user = message(role: "user", body: "Already saved")
+        var dismissed = 0
+        let client = ConversationScreenClient(
+            loadMessages: { [user] },
+            beginVoice: {}, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
+            sendText: { _, available in await available() }, retry: {},
+            saveDraft: { _ in }, discardDraft: {}
+        )
+        let model = ConversationViewModel(
+            conversationID: user.conversationID, title: "Chat", entryIntent: nil,
+            composer: .failure(.retryable), client: client, dismiss: { dismissed += 1 }
+        )
+        await model.start()
+
+        model.requestClose()
+
+        XCTAssertEqual(model.confirmation, .saveDiscardOrCancel)
+        XCTAssertEqual(dismissed, 0)
     }
 
     func testFailedTextSendSavesAsTextDraft() async {
@@ -862,6 +1240,15 @@ private actor EventRecorder {
     func values() -> [String] { events }
 }
 
+private actor ResponseActionCallSpy {
+    private var counts: [String: Int] = [:]
+    func record(_ id: String) -> Int {
+        counts[id, default: 0] += 1
+        return counts[id, default: 0]
+    }
+    func count(_ id: String) -> Int { counts[id, default: 0] }
+}
+
 private actor MessageSequence {
     private let snapshots: [[MessageRecord]]
     private var index = 0
@@ -869,6 +1256,19 @@ private actor MessageSequence {
     init(_ snapshots: [[MessageRecord]]) { self.snapshots = snapshots }
 
     func next() -> [MessageRecord] {
+        let value = snapshots[min(index, snapshots.count - 1)]
+        index += 1
+        return value
+    }
+}
+
+private actor CaptureSequence {
+    private let snapshots: [VoiceCaptureSnapshot]
+    private var index = 0
+
+    init(_ snapshots: [VoiceCaptureSnapshot]) { self.snapshots = snapshots }
+
+    func next() -> VoiceCaptureSnapshot {
         let value = snapshots[min(index, snapshots.count - 1)]
         index += 1
         return value

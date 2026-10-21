@@ -2,6 +2,7 @@ import Foundation
 import SwiftUI
 import TaisaAudio
 import TaisaConversations
+import TaisaDesignSystem
 import TaisaNetworking
 import TaisaStorage
 import TaisaVoice
@@ -722,7 +723,7 @@ struct ConversationRuntimeFactory: Sendable {
         let text = draft.text?.trimmingCharacters(in: .whitespacesAndNewlines),
         !text.isEmpty,
         let userIndex = messages.lastIndex(where: {
-            $0.role == "user" && $0.body == text
+            $0.role == "user" && $0.body == text && $0.createdAtMS == draft.createdAtMS
         }),
         !messages[messages.index(after: userIndex)...].contains(where: { $0.role == "assistant" }),
         let requestID = UUID(uuidString: messages[userIndex].id) else {
@@ -806,7 +807,9 @@ struct ConversationHostView: View {
                         .accessibilityIdentifier("conversation.unavailable.diagnostic")
 #endif
                 }
-            } else { ProgressView("Opening conversation…") }
+            } else {
+                ConversationOpeningPlaceholder(title: route.localTitle, onDismiss: dismiss)
+            }
         }
         .accessibilityIdentifier("conversation.root")
         .task {

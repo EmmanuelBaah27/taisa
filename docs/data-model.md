@@ -3,7 +3,7 @@
 > Open this when touching anything data-related. The local schema below is authoritative for the
 > new coaching path. The backend schema remains mounted only during the gated BUILD transition.
 
-## Authoritative on-device database (schema version 6)
+## Authoritative on-device database (schema version 7)
 
 `apple/Packages/TaisaFoundation/Sources/TaisaStorage/TaisaSchema.swift` is the native executable
 source. The file is encrypted by SQLCipher with a
@@ -30,6 +30,11 @@ triggers are enforced locally.
 | `audio_cleanup_queue` | Content-free, recoverable local audio deletion work |
 | `voice_turns` | Native stable turn/request identities, durable stage/state, terminal receipts, retry and cleanup checkpoints; no ephemeral deltas or audio bytes |
 | `usage_receipts` | Provider/model/token/audio/cost metadata without readable content |
+| `assistant_response_metadata` | Strict, append-only coaching mode, reasoning summary, confidence, approach, request, and idempotency metadata keyed by assistant message |
+| `assistant_response_sources` | Ordered local source references for an assistant response; display text is resolved from local truth rather than provider excerpts |
+| `assistant_proposals` | Canonical assistant proposal payloads and their pending/accepted/dismissed/stale/unsupported decision state |
+| `response_feedback` | One local helpful/not-helpful rating, quality-factor selection, and optional detail per assistant response |
+| `preference_profiles` | Local materialized coaching-preference signals derived from recent response feedback |
 | `mutation_receipts` | Idempotency fingerprint for local mutations |
 | `migration_state` | Reserved schema-v1 authority metadata; no legacy import is shipped or required |
 | `message_search`, `evidence_search` | External-content FTS5 indexes maintained by triggers |
@@ -70,7 +75,7 @@ The archive is database-only. It preserves completed transcripts but does not bu
 files. Export therefore fails closed when either the filesystem guard or the encrypted
 `voice_turns.audio_file_id` / `audio_cleanup_queue` state reports an audio reference. Cleanup clears
 the turn reference and queue atomically before portable backup can proceed. Version-1 archives are
-authenticated and validated at their declared schema, migrated privately to version 6, and only
+authenticated and validated at their declared schema, migrated privately to version 7, and only
 then promoted.
 
 This is manual recovery, not sync. Losing the phone before moving an export outside the app,

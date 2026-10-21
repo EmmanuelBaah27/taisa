@@ -5,7 +5,7 @@ public enum AssistantProposalDestination: Sendable {
     case goal(GoalRecord)
     case action(ActionRecord)
     case evidence(EvidenceRecord)
-    case memoryCreate(MemoryRecord)
+    case memoryCreate(MemoryRecord, [MemorySourceRecord])
     case memoryUpdate(MemoryRecord)
     case memorySource(MemorySourceRecord)
     case insight(InsightRecord)
@@ -89,8 +89,14 @@ public struct AssistantProposalAcceptanceRepository: Sendable {
             try core(ActionRecord.self, table: "actions", entity: "action", fields: [("id", "id"), ("goalID", "goal_id"), ("title", "title"), ("detail", "detail"), ("status", "status"), ("dueAtMS", "due_at_ms"), ("createdAtMS", "created_at_ms"), ("updatedAtMS", "updated_at_ms")], immutable: ["createdAtMS"]).create(record, context: context, db: db)
         case .evidence(let record):
             try core(EvidenceRecord.self, table: "evidence", entity: "evidence", fields: [("id", "id"), ("goalID", "goal_id"), ("actionID", "action_id"), ("title", "title"), ("detail", "detail"), ("occurredAtMS", "occurred_at_ms"), ("createdAtMS", "created_at_ms")], immutable: ["createdAtMS"]).create(record, context: context, db: db)
-        case .memoryCreate(let record):
+        case .memoryCreate(let record, let sources):
             try memoryCore().create(record, context: context, db: db)
+            for source in sources {
+                let sourceContext = AssistantResponseRepository.childContext(
+                    context, entity: "memory_source", id: source.id
+                )
+                try core(MemorySourceRecord.self, table: "memory_sources", entity: "memory_source", fields: [("id", "id"), ("memoryItemID", "memory_item_id"), ("sourceType", "source_type"), ("sourceID", "source_id"), ("createdAtMS", "created_at_ms")], immutable: ["createdAtMS"]).create(source, context: sourceContext, db: db)
+            }
         case .memoryUpdate(let record):
             try memoryCore().update(record, context: context, db: db)
         case .memorySource(let record):

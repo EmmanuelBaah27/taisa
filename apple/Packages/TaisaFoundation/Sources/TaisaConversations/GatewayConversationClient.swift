@@ -30,10 +30,6 @@ enum ConversationTitleDeriver {
             .trimmingCharacters(in: .punctuationCharacters.union(.whitespacesAndNewlines))
         guard !collapsed.isEmpty else { return nil }
 
-        if let reported = reportedPhrase(for: collapsed.lowercased()) {
-            return reported
-        }
-
         var topic = collapsed
         let lowercase = collapsed.lowercased()
         if let prefix = leadingPhrases.first(where: { lowercase.hasPrefix($0) }) {
@@ -110,19 +106,6 @@ enum ConversationTitleDeriver {
         }
         return replacement + punctuation
     }
-
-    /// Stable titles for recurring capture intents. Prefix matching lets a
-    /// complete transcript retain the same concise subject as its preview.
-    private static func reportedPhrase(for source: String) -> String? {
-        let phrases = [
-            ("if i type now, will it show", "Checking whether typed messages appear"),
-            ("i'm going to start another one in drafts", "Starting another conversation draft"),
-            ("i'm recording one last time. i don't know why you", "Retrying a recording one last time"),
-            ("why is it that when i try to record, like for some", "Troubleshooting a recording problem"),
-            ("i'm trying a new one. i don't know why if i tap", "Testing a new recording attempt"),
-        ]
-        return phrases.first(where: { source.hasPrefix($0.0) })?.1
-    }
 }
 
 public actor GatewayConversationClient: ConversationClient {
@@ -163,16 +146,37 @@ public actor GatewayConversationClient: ConversationClient {
         let normalized = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !normalized.isEmpty else { throw ConversationFailure.invalidInput }
 
-        let createdAt = nowMS()
+        let turnID = derivedUUID(from: requestID, salt: 1)
+        let existingTurn = try await turns.turn(id: turnID)
+        let createdAt = existingTurn?.createdAtMS ?? nowMS()
+        let userMessageID = requestUUID.uuidString.lowercased()
+        let turn = VoiceTurnRecord(
+            id: turnID, conversationID: conversationID,
+            transcriptionRequestID: derivedUUID(from: requestID, salt: 2),
+            transcriptionIdempotencyKey: "text-no-transcription-\(requestID.lowercased())",
+            coachingRequestID: requestID,
+            coachingIdempotencyKey: "text-coaching-\(requestID.lowercased())",
+            state: .coaching, stage: .coaching, acceptedTranscript: normalized,
+            failureCode: "pending_text", userMessageID: userMessageID,
+            createdAtMS: createdAt, updatedAtMS: createdAt
+        )
+        let userMessage = MessageRecord(
+            id: userMessageID, conversationID: conversationID,
+            role: "user", body: normalized, createdAtMS: createdAt
+        )
+        if existingTurn == nil {
+            try await turns.checkpoint(
+                turn, messages: [userMessage], cleanup: nil, context: context(createdAt)
+            )
+        } else {
+            guard try await repository.message(id: userMessage.id) == userMessage else {
+                throw ConversationFailure.unavailable
+            }
+        }
         try await repository.saveDraft(.init(
             id: derivedUUID(from: conversationID, salt: 4), conversationID: conversationID,
             inputMode: .text, text: normalized, voiceTurnID: nil,
             recoveryKind: .retryableCoaching, createdAtMS: createdAt, updatedAtMS: createdAt
-        ))
-        let userMessageID = requestUUID.uuidString.lowercased()
-        try await createMessageIfNeeded(.init(
-            id: userMessageID, conversationID: conversationID,
-            role: "user", body: normalized, createdAtMS: createdAt
         ))
         await onMessageAvailable()
 
@@ -345,10 +349,21 @@ public actor GatewayConversationClient: ConversationClient {
                 partialCoaching = ""
                 return try await consumeCoaching(for: turn)
             case .ambiguous:
-                try await reconciliation.authorizeRetry(requestID: requestUUID)
-                partialCoaching = ""
-                return try await consumeCoaching(for: turn)
+                throw ConversationFailure.retryable
             }
+        }
+    }
+
+    public func prepareExplicitRetry(requestID: String) async throws {
+        guard let reconciliation, let requestUUID = UUID(uuidString: requestID) else { return }
+        switch try await reconciliation.reconcile(requestID: requestUUID) {
+        case .ambiguous:
+            try await reconciliation.authorizeRetry(requestID: requestUUID)
+        case .failed(_, let retryable):
+            guard retryable else { throw ConversationFailure.unavailable }
+            try await reconciliation.authorizeRetry(requestID: requestUUID)
+        case .safeToRetry, .completed:
+            return
         }
     }
 

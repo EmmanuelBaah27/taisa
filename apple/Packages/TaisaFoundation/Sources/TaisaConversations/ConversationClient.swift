@@ -11,6 +11,7 @@ public protocol ConversationClient: Sendable {
     func discardDraft(conversationID: String) async throws
     func completeVoiceConversation(conversationID: String) async throws
     func correctTranscript(conversationID: String, requestID: String, messageID: String, text: String) async throws -> ConversationReply
+    func prepareExplicitRetry(requestID: String) async throws
 }
 
 public extension ConversationClient {
@@ -25,6 +26,7 @@ public extension ConversationClient {
     func correctTranscript(conversationID: String, requestID: String, messageID: String, text: String) async throws -> ConversationReply {
         throw ConversationFailure.unavailable
     }
+    func prepareExplicitRetry(requestID: String) async throws {}
 }
 
 public protocol ConversationVoiceControlling: Sendable {

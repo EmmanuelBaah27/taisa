@@ -24,6 +24,8 @@ struct TranscriptCorrectionView: View {
                         role: .primary,
                         shape: .capsule,
                         label: "Update and regenerate",
+                        isProcessing: isSubmitting,
+                        processingAccessibilityLabel: "Saving message",
                         action: submit
                     )
                         .disabled(!canSubmit || isSubmitting)
@@ -64,7 +66,7 @@ struct TranscriptCorrectionView: View {
             .disabled(isSubmitting)
             .scrollContentBackground(.hidden)
             .padding(TaisaSpacing.control.rawValue)
-            .frame(minHeight: 120)
+            .frame(minHeight: TaisaControlMetric.messageEditorMinimumHeight)
 
         editor.modifier(LiquidTextInputSurface(cornerRadius: TaisaRadius.panel.rawValue))
     }

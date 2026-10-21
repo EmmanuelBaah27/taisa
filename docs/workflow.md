@@ -65,9 +65,16 @@ Linear before the next stage or gate.
   discussion, and gate evidence.
 - Git owns code, branch/commit identity, versioned architecture/public contracts, durable
   decisions, migrations, and code-coupled verification evidence.
+- `AGENTS.md` supplies repository operating and safety constraints. This workflow and the
+  Taisa orchestrator govern how Linear-authorized work executes. A Scope, Plan, or
+  implementation plan must not override, supersede, or relax those execution constraints;
+  it may only specialize them within the approved task.
 - A Linear status cannot override missing approval evidence or a Draft technical artifact.
-- When the systems disagree, stop advancement, identify the stale side, repair it within
-  existing authority, and re-read both. Never invent missing approval.
+- When any authority or artifact contradicts another, stop before the next command,
+  verification spend, or mutation. Tell Baah the exact conflicting clauses and practical
+  consequence, identify the stale or lower-authority side, repair it within existing
+  authority, and re-read both. Never silently choose a convenient instruction or invent
+  missing approval.
 
 ## Feature tiers
 
@@ -332,17 +339,19 @@ Exploratory or general QA is prohibited. If that interaction fails, record the n
 remain in `REPAIR_QUARANTINE`, and repeat diagnose → fix → focused regression →
 fast native → exact over-install; do not run the full native matrix merely to attempt again.
 
-After the named interaction passes, run the full native matrix on that exact frozen candidate.
-Then resolve blocking review, obtain Ship approval, merge to `main`, synchronize
-one-way into canonical preview, confirm the served/installed revision, and perform the agent
-smoke check. Any code, dependency, toolchain, signing, or configuration change after physical
-proof invalidates the proof and returns to the candidate loop. Every final repair-release item
-must be recorded as passed or explicitly inapplicable with evidence; silently skipping an item
-keeps the issue in `REPAIR_QUARANTINE`.
+After the named interaction passes, freeze that exact candidate and run a fresh whole-candidate
+code review before the expensive final matrix. Resolve every blocking finding with the smallest
+applicable checks. Any code, dependency, toolchain, signing, or configuration change after
+physical proof invalidates the proof and returns to the candidate loop; review must run again on
+the resulting candidate. Once review is clean and the physical proof still applies to that exact
+unchanged revision, run the full native matrix once. Then obtain Ship approval, merge to `main`,
+synchronize one-way into canonical preview, confirm the served/installed revision, and perform
+the agent smoke check. Every final repair-release item must be recorded as passed or explicitly
+inapplicable with evidence; silently skipping an item keeps the issue in `REPAIR_QUARANTINE`.
 
 The authoritative sequence is:
 
-`Baah observation → REPAIR_QUARANTINE → repair Goal → diagnose/fix → focused + fast verification → exact repair candidate over-install → one named broken interaction → full matrix on the proven unchanged candidate → review/Ship → merge → canonical preview`.
+`Baah observation → REPAIR_QUARANTINE → repair Goal → diagnose/fix → focused + fast verification → exact repair candidate over-install → one named broken interaction → fresh whole-candidate review → resolve blockers and re-prove if changed → full matrix once on the reviewed, proven, unchanged candidate → Ship → merge → canonical preview`.
 
 If the repair cannot be proven, the issue remains **Unfixed; blocking; unshippable**. It is
 not QA-ready, Ship-ready, complete, deferred, or eligible for successor work. Baah receives
@@ -465,8 +474,12 @@ evidence, but it never approves Scope, Plan, priority changes, lifecycle promoti
 
 For each QA failure, create or update one non-duplicate Linear issue with observed preview
 revision, reproduction, severity, acceptance criteria, ownership, and relation to the feature.
-Release-blocking failure returns the feature to Build. After a fix, repeat full verification
-and preview publication before renewed device QA.
+Release-blocking failure returns the feature to Build. Outside the bounded physical repair-
+candidate lane, repeat the applicable verification and preview publication before renewed
+device QA. Inside `REPAIR_QUARANTINE`, follow the narrower authoritative sequence above:
+focused regression plus fast verification, exact over-install, one named interaction, and fresh
+whole-candidate review; run the full matrix only after review is clean and that physical proof
+still applies to the unchanged candidate.
 
 Parking sets the issue Canceled with reason and preserves branches, worktrees, artifacts, and
 history. Do not delete or rewrite parked work.
@@ -563,7 +576,10 @@ After Ship approval:
 1. Confirm clean branch/worktree and correct PR base, then run the conflict-free Ship gate:
    `bash scripts/verify-branch-topology.sh ship --pr-base main --main-ref origin/main --preview-ref origin/preview/taisa`.
 2. Fetch and reconcile with `origin/main` safely.
-3. Run the complete verification matrix and final review.
+3. Confirm the complete verification matrix and final review for the exact revision. At Ship,
+   reuse fresh exact-revision evidence from the final repair-release or high-risk gate when
+   code, dependencies, toolchain, signing, and configuration are unchanged; otherwise run
+   the invalidated checks before merge.
 4. Confirm required device QA and exact preview evidence.
 5. Push branch and create/update the PR.
 6. Squash-merge to `main`.

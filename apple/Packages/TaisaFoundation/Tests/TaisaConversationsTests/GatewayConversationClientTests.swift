@@ -39,12 +39,17 @@ private actor ReconciliationRequiredThenCompletedCoachingRunner: VoiceCoachingRu
 }
 
 private actor CoachingRetryAuthorizer: CoachingReconciliationLookingUp {
+    let result: CoachingReconciliationResult
     private(set) var authorizedRequestIDs: [UUID] = []
     private(set) var reconciledRequestIDs: [UUID] = []
 
+    init(result: CoachingReconciliationResult = .ambiguous) {
+        self.result = result
+    }
+
     func reconcile(requestID: UUID) async throws -> CoachingReconciliationResult {
         reconciledRequestIDs.append(requestID)
-        return .ambiguous
+        return result
     }
 
     func authorizeRetry(requestID: UUID) async throws {
@@ -54,7 +59,22 @@ private actor CoachingRetryAuthorizer: CoachingReconciliationLookingUp {
 
 @Suite(.serialized)
 struct GatewayConversationClientTests {
-    @Test func restoredTextRetryAuthorizesAmbiguousPaidWorkThenReusesTheSameRequest() async throws {
+    @Test func retryableTerminalFailureIsAuthorizedForExplicitRetry() async throws {
+        let fixture = try await gatewayFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.directory) }
+        let requestID = "00000000-0000-4000-8000-000000000924"
+        let authorizer = CoachingRetryAuthorizer(result: .failed(code: "COACHING_UNAVAILABLE", retryable: true))
+        let client = GatewayConversationClient(
+            store: fixture.store, deviceID: fixture.deviceID,
+            coaching: UnusedCoachingRunner(), reconciliation: authorizer, nowMS: { 2 }
+        )
+
+        try await client.prepareExplicitRetry(requestID: requestID)
+
+        #expect(await authorizer.authorizedRequestIDs.map { $0.uuidString.lowercased() } == [requestID])
+    }
+
+    @Test func ambiguousPaidWorkWaitsForExplicitRetryBeforeAuthorization() async throws {
         let fixture = try await gatewayFixture()
         defer { try? FileManager.default.removeItem(at: fixture.directory) }
         let requestID = "00000000-0000-4000-8000-000000000923"
@@ -65,15 +85,24 @@ struct GatewayConversationClientTests {
             coaching: runner, reconciliation: authorizer, nowMS: { 2 }
         )
 
+        await #expect(throws: ConversationFailure.retryable) {
+            try await client.sendText(
+                conversationID: fixture.conversationID, requestID: requestID,
+                text: "Help me prepare"
+            )
+        }
+        #expect(await runner.attemptCount() == 1)
+        #expect(await authorizer.authorizedRequestIDs.isEmpty)
+
+        try await client.prepareExplicitRetry(requestID: requestID)
         let reply = try await client.sendText(
-            conversationID: fixture.conversationID,
-            requestID: requestID,
+            conversationID: fixture.conversationID, requestID: requestID,
             text: "Help me prepare"
         )
 
         #expect(reply.terminalResponse?.requestId.uuidString.lowercased() == requestID)
         #expect(await runner.attemptCount() == 2)
-        #expect(await authorizer.reconciledRequestIDs.map { $0.uuidString.lowercased() } == [requestID])
+        #expect(await authorizer.reconciledRequestIDs.map { $0.uuidString.lowercased() } == [requestID, requestID])
         #expect(await authorizer.authorizedRequestIDs.map { $0.uuidString.lowercased() } == [requestID])
     }
 
@@ -121,14 +150,6 @@ struct GatewayConversationClientTests {
         let title = try #require(ConversationTitleDeriver.derive(from: String(repeating: "a", count: 80)))
         #expect(title.split(separator: " ").count < 8)
         #expect(title == "Discussing")
-    }
-
-    @Test func fallbackTitlesAreCompleteReportedPhrases() {
-        #expect(ConversationTitleDeriver.derive(from: "If I type now, will it show") == "Checking whether typed messages appear")
-        #expect(ConversationTitleDeriver.derive(from: "I'm going to start another one in drafts") == "Starting another conversation draft")
-        #expect(ConversationTitleDeriver.derive(from: "I'm recording one last time. I don't know why you") == "Retrying a recording one last time")
-        #expect(ConversationTitleDeriver.derive(from: "Why is it that when I try to record, like for some") == "Troubleshooting a recording problem")
-        #expect(ConversationTitleDeriver.derive(from: "I'm trying a new one. I don't know why if I tap") == "Testing a new recording attempt")
     }
 
     @Test func ordinaryTopicsContainingFixtureKeywordsKeepTheirActualSubject() {
@@ -240,7 +261,7 @@ struct GatewayConversationClientTests {
                 conversationID: record.0,
                 role: "user",
                 body: offset == 0
-                    ? "Why is it that when I try to record, like for some reason it keeps failing"
+                    ? "Plan the customer rollout with clear owners"
                     : "This message would derive a different fallback title",
                 createdAtMS: Int64(offset + 10)
             ), context: .init(id: UUID().uuidString, deviceID: deviceID, timestamp: Int64(offset + 10)))
@@ -249,7 +270,7 @@ struct GatewayConversationClientTests {
         let index = try await ConversationsClient.local(store: store, deviceID: deviceID).load()
         let titles = Dictionary(uniqueKeysWithValues: index.conversations.map { ($0.id, ($0.title, $0.titleAuthority)) })
 
-        #expect(titles[records[0].0]?.0 == "Troubleshooting a recording problem")
+        #expect(titles[records[0].0]?.0 == "Planning the customer rollout with clear owners")
         #expect(titles[records[0].0]?.1 == .localFallback)
         #expect(titles[records[1].0]?.0 == records[1].1)
         #expect(titles[records[1].0]?.1 == .user)

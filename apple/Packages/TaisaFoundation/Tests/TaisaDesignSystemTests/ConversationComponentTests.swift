@@ -19,6 +19,10 @@ struct ConversationComponentTests {
         #expect(TaisaSpacing.control.rawValue == 12)
         #expect(TaisaMotion.fast == 0.18)
         #expect(TaisaMotion.settle == 0.50)
+        #expect(TaisaMotion.streamingWordGap == 0.06)
+        #expect(TaisaMotion.streamingWordFade == 0.35)
+        #expect(TaisaMotion.streamingWordRevealCurve.value(at: 0) == 0)
+        #expect(TaisaMotion.streamingWordRevealCurve.value(at: 1) == 1)
         #expect(TaisaControlMetric.primaryNavigationItemWidth == 56)
         #expect(TaisaControlMetric.primaryNavigationItemHeight == 48)
         #expect(TaisaControlMetric.standardIcon == 24)
@@ -28,6 +32,18 @@ struct ConversationComponentTests {
         #expect(TaisaControlMetric.chatPreviewLineHeight == 20)
         #expect(TaisaTypography.navigationLabel.pointSize == 16)
         #expect(TaisaTypography.navigationLabel.lineHeight == 24)
+        #expect(TaisaTypography.supporting.pointSize == 14)
+        #expect(TaisaTypography.supporting.lineHeight == 20)
+        #expect(TaisaMotion.activityCycle == 2)
+        #expect(TaisaMotion.activityStagger == 0.18)
+        #expect(TaisaActivityIndicatorMetric.width == 44)
+        #expect(TaisaActivityIndicatorMetric.height == 24)
+        #expect(TaisaActivityIndicatorMetric.barWidth == 12)
+        #expect(TaisaActivityIndicatorMetric.activeBarHeight == 22)
+        #expect(TaisaActivityIndicatorMetric.restingBarHeight == 10)
+        #expect(TaisaActivityIndicatorMetric.barSpacing == 2)
+        #expect(TaisaActivityIndicatorMetric.barRadius == 3)
+        #expect(TaisaColor.activityWarmAccent != TaisaColor.activityCoolAccent)
         #expect(TaisaEffect.recordingGlowBlurRadius == 10)
         #expect(TaisaEffect.recordingGlowSpread == 4)
         #expect(TaisaEffect.recordingGlowOpacity == 0.35)
@@ -38,15 +54,48 @@ struct ConversationComponentTests {
         #expect(TaisaRadius.historyGroup.rawValue == 20)
     }
 
+    @Test func streamingTextPreservesWhitespaceAndUsesPerWordResolution() {
+        #expect(TaisaStreamingText.chunks(in: "One  two\nthree") == ["One  ", "two\n", "three"])
+        #expect(TaisaStreamingText.revealDuration(wordCount: 0) == 0)
+        #expect(TaisaStreamingText.revealDuration(wordCount: 3) == 0.47)
+        #expect(TaisaStreamingText.Motion.reduced == .instant)
+        #expect(TaisaStreamingText.Motion.standard == .softWordResolution)
+    }
+
+    @Test func sentMessageTransitionDefinesComposerAndMessageRoles() {
+        #expect(TaisaMessageSendTransition.Role.composer != .message)
+        #expect(TaisaMessageSendTransition.Contract.duration == TaisaMotion.fast)
+    }
+
+    @Test func jumpToLatestIsIconOnlyAndKeepsStableGeometryWhileLoading() {
+        #expect(ConversationJumpToLatestButton.Contract.size == 48)
+        #expect(ConversationJumpToLatestButton.Contract.iconSize == 24)
+        #expect(ConversationJumpToLatestButton.Contract.accessibilityLabel == "Jump to latest response")
+    }
+
+    @Test func restoredVoiceDraftUsesStaticRecordedStatus() {
+        #expect(RecordedVoiceDraftBadge.Contract.label == "Recorded")
+        #expect(RecordedVoiceDraftBadge.Contract.iconSize == 20)
+    }
+
+    @Test func conversationOpeningPlaceholderMatchesFinalPageStructure() {
+        #expect(ConversationOpeningPlaceholder.Contract.messageCount == 3)
+        #expect(ConversationOpeningPlaceholder.Contract.usesSharedFades)
+        #expect(ConversationOpeningPlaceholder.Contract.reduceMotionIsStatic)
+    }
+
     @Test func composerContractsDescribeActionsWithoutColorAlone() {
         #expect(VoiceComposerControls.Contract.recording.pauseLabel == "Pause recording")
         #expect(VoiceComposerControls.Contract.paused.resumeLabel == "Resume recording")
         #expect(ConversationFailureActions.Contract.retryable.retryLabel == "Retry request")
         #expect(TextComposer.Contract.empty.voiceLabel == "Reply by voice, starts recording")
         #expect(InlineRecoveryAlert.Contract.microphonePermission.cancelLabel == "Use keyboard")
+        #expect(InlineRecoveryAlert.Contract.responseUpdate.retryLabel == "Try again")
+        #expect(InlineRecoveryAlert.Contract.responseUpdate.cancelLabel == "Keep edited message")
+        #expect(TaisaButton.Contract.supportsInPlaceProgress)
     }
 
-    @Test func primaryNavigationMotionBeginsWithTheSelectionInteraction() {
+    @Test func primaryNavigationMotionFallsBackToAnInstantAccessibleTransition() {
         #expect(PrimaryNavigationMotion.transition(reduceMotion: false) == .interactiveSpatial)
         #expect(PrimaryNavigationMotion.transition(reduceMotion: true) == .instant)
     }
@@ -63,8 +112,6 @@ struct ConversationComponentTests {
         #expect(PageEdgeFade.fadeStart == 0.40)
         #expect(PageEdgeFade.headerOpaqueStop == 0.40)
         #expect(PageEdgeFade.navigationOpaqueStop == 0.60)
-        #expect(TaisaBottomChromeContract.fadeHeight == TaisaControlMetric.primaryNavigationReservedHeight)
-        #expect(TaisaBottomChromeContract.coversBottomSafeArea)
     }
 
     @Test func conversationHeaderAndActionBarMatchFigmaContracts() {
@@ -102,6 +149,14 @@ struct ConversationComponentTests {
         #expect(InlineRecoveryAlert.Contract.actionSpacing == 12)
     }
 
+    @Test func conversationMetricsNameEveryReviewedProductRole() {
+        #expect(TaisaControlMetric.contextMenuIcon == 16)
+        #expect(TaisaControlMetric.conversationEmptyVoiceIcon == 24)
+        #expect(TaisaControlMetric.messageEditorMinimumHeight == 120)
+        #expect(TaisaControlMetric.disabledControlOpacity > 0)
+        #expect(TaisaControlMetric.disabledControlOpacity < 1)
+    }
+
     @MainActor @Test func conversationActivityAndRecoveryRemainAccessible() {
         #expect(ConversationActivityIndicator.animationDuration == 2)
         #expect(ConversationActivityIndicator.Motion.reduced == .staticFrame)
@@ -135,6 +190,16 @@ struct ConversationComponentTests {
         #expect(CentralIconName.cross != .keyboard)
         #expect(CentralIconName.arrowUp != .pause)
         #expect(CentralIconName.play != .chevronDown)
+    }
+
+    @Test func responseActionsUseSharedSemanticControls() {
+        #expect(ResponseActionIconButton.Contract.iconSize == 16)
+        #expect(ResponseActionIconButton.Contract.visualWidth == 24)
+        #expect(ResponseActionIconButton.Contract.minimumHitHeight == 44)
+        #expect(SelectableChip.Contract.minimumHeight == 44)
+        #expect(FeedbackTextEditor.Contract.minimumHeight == 112)
+        #expect(ActionPanelContract.usesRaisedSurface)
+        #expect(TaisaButtonRole.destructive != .secondary)
     }
 
     @Test func toastContractIsTopPlacedAndAccessible() {

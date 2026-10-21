@@ -87,14 +87,12 @@ public struct ConversationActionBar: View {
             .frame(minWidth: 56, minHeight: TaisaControlMetric.conversationRecordingControl)
             .accessibilityElement(children: .combine)
             .accessibilityLabel(phase == .preparing ? "Preparing microphone" : "Recording, \(elapsed)")
+        } else if phase == .saved {
+            RecordedVoiceDraftBadge(elapsed: elapsed)
         } else {
             TaisaSecondaryCapsuleButton(action: onPrimary) {
                 HStack(spacing: TaisaSpacing.compact.rawValue) {
-                    if phase == .saved {
-                        CentralIcon(.voiceMid).frame(width: 20, height: 20)
-                    } else {
-                        CentralIcon(.play).frame(width: 20, height: 20)
-                    }
+                    CentralIcon(.play).frame(width: 20, height: 20)
                     Text(availability.primaryLabel)
                         .font(TaisaTypography.navigationLabel.font)
                     if !elapsed.isEmpty {

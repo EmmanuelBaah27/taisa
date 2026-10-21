@@ -99,13 +99,15 @@ test('explicit retry authorization resets a retryable terminal failure only', ()
   store.close();
 });
 
-test('explicit retry authorization upgrades one legacy request hash for the same owner and request', () => {
+test('explicit retry authorization never replaces the original request hash', () => {
   const store = createStore();
   store.begin({ key, requestId, requestHash: 'legacy-full-payload-hash', ownerId });
   store.markProviderStarted(key);
 
   expect(store.authorizeRetry(requestId, ownerId)).toEqual({ status: 'authorized', requestId });
-  expect(store.begin({ key, requestId, requestHash: 'stable-submission-hash', ownerId }))
+  expect(() => store.begin({ key, requestId, requestHash: 'stable-submission-hash', ownerId }))
+    .toThrow('IDEMPOTENCY_KEY_REUSED');
+  expect(store.begin({ key, requestId, requestHash: 'legacy-full-payload-hash', ownerId }))
     .toEqual({ status: 'start' });
   expect(() => store.begin({ key, requestId, requestHash: 'different-content-hash', ownerId }))
     .toThrow('IDEMPOTENCY_KEY_REUSED');

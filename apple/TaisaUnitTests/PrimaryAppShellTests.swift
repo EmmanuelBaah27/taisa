@@ -1,11 +1,20 @@
 import XCTest
 @testable import Taisa
-import TaisaDesignSystem
 
 @MainActor
 final class PrimaryAppShellTests: XCTestCase {
     func testConversationDestinationUsesChatsAsItsUserFacingName() {
         XCTAssertEqual(PrimaryDestination.conversations.title, "Chats")
+    }
+
+    func testPrimaryDestinationSelectionRecordsHorizontalTravelDirection() {
+        let model = PrimaryAppShellModel(selection: .home)
+
+        model.select(.conversations)
+        XCTAssertEqual(model.navigationDirection, .forward)
+
+        model.select(.home)
+        XCTAssertEqual(model.navigationDirection, .backward)
     }
 
     func testCareerWorkStaysInsideHomeWithoutLeavingThePrimaryPager() {
@@ -18,6 +27,24 @@ final class PrimaryAppShellTests: XCTestCase {
 
         model.select(.conversations)
         XCTAssertFalse(model.showsCareerWork)
+    }
+
+    func testAdjacentPagingCoversEveryDestinationInBothDirections() {
+        let model = PrimaryAppShellModel(selection: .home)
+
+        model.selectAdjacent(offset: 1)
+        XCTAssertEqual(model.selection, .conversations)
+        model.selectAdjacent(offset: 1)
+        XCTAssertEqual(model.selection, .you)
+        model.selectAdjacent(offset: 1)
+        XCTAssertEqual(model.selection, .you)
+
+        model.selectAdjacent(offset: -1)
+        XCTAssertEqual(model.selection, .conversations)
+        model.selectAdjacent(offset: -1)
+        XCTAssertEqual(model.selection, .home)
+        model.selectAdjacent(offset: -1)
+        XCTAssertEqual(model.selection, .home)
     }
 
     func testPrimaryNavigationMatchesTheThreeDestinationProductArchitecture() {
@@ -41,30 +68,26 @@ final class PrimaryAppShellTests: XCTestCase {
         for destination in PrimaryDestination.allCases {
             model.select(destination)
             XCTAssertTrue(model.showsConversationDock)
-            XCTAssertEqual(
-                model.primaryPageBottomReservation,
-                TaisaControlMetric.primaryNavigationReservedHeight
-            )
         }
 
         model.presentNewConversation(.voice)
         XCTAssertFalse(model.showsConversationDock)
     }
 
-    func testPrimaryDestinationsRemainMountedBehindTheCustomNavigation() throws {
+    func testPagesSupportInteractiveHorizontalPagingAndFastNavigation() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let source = try String(contentsOf: root.appendingPathComponent("TaisaApp/AppShell/PrimaryAppShell.swift"), encoding: .utf8)
-        XCTAssertTrue(source.contains("ForEach(PrimaryDestination.allCases"))
-        XCTAssertTrue(source.contains("NavigationStack {\n                        destinationView(destination)"))
-        XCTAssertTrue(source.contains(".allowsHitTesting(model.selection == destination)"))
-        XCTAssertTrue(source.contains(".accessibilityHidden(model.selection != destination)"))
+        XCTAssertTrue(source.contains("TabView(selection:"))
+        XCTAssertTrue(source.contains(".tabViewStyle(.page(indexDisplayMode: .never))"))
+        XCTAssertFalse(source.contains("primaryPageFallbackGesture"))
+        XCTAssertTrue(source.contains("model.select(destination)"))
         XCTAssertFalse(source.contains("if model.selection == .careerWork"))
         XCTAssertTrue(source.contains("model.showsCareerWork"))
-        XCTAssertTrue(source.contains("TaisaBottomChrome"))
-        XCTAssertFalse(source.contains("PageEdgeFade(.navigation)"))
-        XCTAssertFalse(source.contains(".frame(height: 104)"))
+        XCTAssertTrue(source.contains("PageEdgeFade(.navigation)"))
+        XCTAssertTrue(source.contains(".frame(height: 104)"))
         XCTAssertTrue(source.contains("model.primaryPageBottomReservation"))
-        XCTAssertFalse(source.contains("selection == .conversations ? 0"))
+        XCTAssertTrue(source.contains("selection == .conversations ? 0"))
+        XCTAssertFalse(source.contains(".background {\n                    PageEdgeFade(.navigation)"))
     }
 
     func testVoiceEntryIntentIsConsumedOnlyOnce() {

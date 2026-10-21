@@ -18,6 +18,9 @@ public enum TaisaColor: String, CaseIterable, Sendable {
     public var color: Color {
         Color(taisaHex: rawValue)
     }
+
+    public static var activityWarmAccent: Color { Color.orange.opacity(0.65) }
+    public static var activityCoolAccent: Color { Color.purple.opacity(0.55) }
 }
 
 private extension Color {

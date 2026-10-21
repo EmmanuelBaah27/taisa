@@ -37,6 +37,11 @@ public struct InlineRecoveryAlert: View {
             message: "Your recording is still paused. Try again or save it for later.",
             cancelLabel: "Save draft", retryLabel: "Try again"
         )
+        public static let responseUpdate = Contract(
+            title: "Couldn’t update the response",
+            message: "Your edited message was saved, but Taisa couldn’t generate a new response.",
+            cancelLabel: "Keep edited message", retryLabel: "Try again"
+        )
     }
     private let contract: Contract
     private let onCancel: @MainActor () -> Void
@@ -49,8 +54,8 @@ public struct InlineRecoveryAlert: View {
             CentralIcon(.exclamationCircle)
                 .foregroundStyle(TaisaColor.destructive.color)
                 .frame(width: 24, height: 24)
-            Text(contract.title).font(.system(.body, weight: .medium))
-            Text(contract.message).font(.system(.subheadline)).foregroundStyle(TaisaColor.mutedForeground.color)
+            Text(contract.title).font(TaisaTypography.navigationLabel.font)
+            Text(contract.message).font(TaisaTypography.supporting.font).foregroundStyle(TaisaColor.mutedForeground.color)
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: Contract.actionSpacing) { actions }
                 VStack(spacing: Contract.actionSpacing) { actions }

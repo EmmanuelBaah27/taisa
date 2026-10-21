@@ -1,7 +1,7 @@
 import SwiftUI
 
 public struct ConversationActivityIndicator: View {
-    public static let animationDuration: Double = 2
+    public static let animationDuration: Double = TaisaMotion.activityCycle
     public enum Motion: Sendable, Equatable { case animated, staticFrame
         public static let reduced: Self = .staticFrame
     }
@@ -12,12 +12,12 @@ public struct ConversationActivityIndicator: View {
     public init(active: Bool) { self.active = active }
 
     public var body: some View {
-        HStack(spacing: 2) {
+        HStack(spacing: TaisaActivityIndicatorMetric.barSpacing) {
             bar(TaisaColor.primaryAction.color, delay: 0)
-            bar(Color.orange.opacity(0.65), delay: 0.18)
-            bar(Color.purple.opacity(0.55), delay: 0.36)
+            bar(TaisaColor.activityWarmAccent, delay: TaisaMotion.activityStagger)
+            bar(TaisaColor.activityCoolAccent, delay: TaisaMotion.activityStagger * 2)
         }
-        .frame(width: 44, height: 24)
+        .frame(width: TaisaActivityIndicatorMetric.width, height: TaisaActivityIndicatorMetric.height)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(active ? "Recording in progress" : "Recording paused")
         .onAppear { updateMotion() }
@@ -26,10 +26,13 @@ public struct ConversationActivityIndicator: View {
     }
 
     private func bar(_ color: Color, delay: Double) -> some View {
-        RoundedRectangle(cornerRadius: 3)
+        RoundedRectangle(cornerRadius: TaisaActivityIndicatorMetric.barRadius)
             .fill(color)
-            .frame(width: 12, height: animate ? 22 : 10)
-            .animation(.easeInOut(duration: Self.animationDuration / 2).repeatForever(autoreverses: true).delay(delay), value: animate)
+            .frame(
+                width: TaisaActivityIndicatorMetric.barWidth,
+                height: animate ? TaisaActivityIndicatorMetric.activeBarHeight : TaisaActivityIndicatorMetric.restingBarHeight
+            )
+            .animation(TaisaMotion.activityAnimation.delay(delay), value: animate)
     }
 
     private func updateMotion() { animate = active && !reduceMotion }
