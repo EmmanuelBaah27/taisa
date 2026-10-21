@@ -3,6 +3,18 @@ import XCTest
 
 @MainActor
 final class PrimaryAppShellTests: XCTestCase {
+    func testYouChildDestinationsUseTheSharedAdaptiveHeaderFade() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let source = try String(
+            contentsOf: root.appendingPathComponent("TaisaApp/You/YouView.swift"),
+            encoding: .utf8
+        )
+
+        XCTAssertTrue(source.contains("TaisaChildPageHeader(destination.title"))
+        XCTAssertTrue(source.contains("horizontalSizeClass == .regular ? .detail : .back"))
+        XCTAssertTrue(source.contains(".safeAreaInset(edge: .top, spacing: 0)"))
+    }
+
     func testConversationDestinationUsesChatsAsItsUserFacingName() {
         XCTAssertEqual(PrimaryDestination.conversations.title, "Chats")
     }

@@ -114,9 +114,9 @@ struct ConversationView: View {
     }
 
     @ViewBuilder private var composer: some View {
-        switch model.composer {
-        case .preparingVoice:
-            bottomChrome {
+        ConversationComposerChrome {
+            switch model.composer {
+            case .preparingVoice:
                 if showsPreparingVoiceStatus {
                     HStack(spacing: TaisaSpacing.control.rawValue) {
                         TaisaSecondaryIconButton(
@@ -135,69 +135,61 @@ struct ConversationView: View {
                 } else {
                     voiceReplyButton.disabled(true)
                 }
-            }
-            .task {
-                showsPreparingVoiceStatus = false
-                try? await Task.sleep(for: .milliseconds(200))
-                guard !Task.isCancelled, model.composer == .preparingVoice else { return }
-                showsPreparingVoiceStatus = true
-            }
-        case .recording:
-            recordingBar(actionPhase)
                 .task {
-                    while !Task.isCancelled, model.composer == .recording {
+                    showsPreparingVoiceStatus = false
+                    try? await Task.sleep(for: .milliseconds(200))
+                    guard !Task.isCancelled, model.composer == .preparingVoice else { return }
+                    showsPreparingVoiceStatus = true
+                }
+            case .recording:
+                recordingBar(actionPhase)
+                    .task {
+                        while !Task.isCancelled, model.composer == .recording {
+                            await model.refreshCapture()
+                            try? await Task.sleep(for: .milliseconds(100))
+                        }
+                    }
+            case .paused:
+                VStack(spacing: TaisaSpacing.control.rawValue) {
+                    if model.showsMicrophoneUnavailable {
+                        TaisaToast(
+                            message: "Microphone unavailable. Resume when the call ends.",
+                            dismiss: model.dismissMicrophoneUnavailable
+                        )
+                    }
+                    recordingBar(pausedActionPhase)
+                }
+                .task {
+                    while !Task.isCancelled, model.composer == .paused {
                         await model.refreshCapture()
-                        try? await Task.sleep(for: .milliseconds(100))
+                        try? await Task.sleep(for: .milliseconds(250))
                     }
                 }
-        case .paused:
-            VStack(spacing: TaisaSpacing.control.rawValue) {
-                if model.showsMicrophoneUnavailable {
-                    TaisaToast(
-                        message: "Microphone unavailable. Resume when the call ends.",
-                        dismiss: model.dismissMicrophoneUnavailable
-                    )
-                }
-                recordingBar(pausedActionPhase)
-            }
-            .task {
-                while !Task.isCancelled, model.composer == .paused {
-                    await model.refreshCapture()
-                    try? await Task.sleep(for: .milliseconds(250))
-                }
-            }
-        case .savedVoiceDraft:
-            recordingBar(.saved)
-        case .typing:
-            bottomChrome {
+            case .savedVoiceDraft:
+                recordingBar(.saved)
+            case .typing:
                 TextComposer(text: $model.text, onSend: { Task { await model.sendText() } }, onVoice: { Task { try? await model.beginVoice() } })
                     .accessibilityIdentifier("conversation.text-composer")
-            }
-        case .transcribing:
-            bottomChrome {
+            case .transcribing:
                 ConversationProgressState(label: "Transcribing…")
                     .frame(height: TaisaControlMetric.recordingButtonHeight)
                     .frame(maxWidth: .infinity)
-            }
-        case .coaching:
-            bottomChrome {
+            case .coaching:
                 if model.isSendingText, model.transitioningUserMessageID == nil {
                     TextComposer(text: $model.text, mode: .processing, onSend: {}, onVoice: {})
                         .accessibilityIdentifier("conversation.text-composer.processing")
                 } else {
                     voiceReplyButton.disabled(true)
                 }
-            }
-            .task {
-                while !Task.isCancelled, model.composer == .coaching {
-                    await model.refreshPartialCoaching()
-                    try? await Task.sleep(for: .milliseconds(100))
+                .task {
+                    while !Task.isCancelled, model.composer == .coaching {
+                        await model.refreshPartialCoaching()
+                        try? await Task.sleep(for: .milliseconds(100))
+                    }
                 }
-            }
-        case .waitingForReply:
-            bottomChrome { voiceReplyButton }
-        case .failure:
-            bottomChrome {
+            case .waitingForReply:
+                voiceReplyButton
+            case .failure:
                 InlineRecoveryAlert(
                     contract: recoveryContract,
                     onCancel: performRecoverySecondaryAction,
@@ -300,15 +292,6 @@ struct ConversationView: View {
             .accessibilityIdentifier("conversation.voice-reply")
             Spacer()
         }
-    }
-
-    private func bottomChrome<Content: View>(@ViewBuilder content: () -> Content) -> some View {
-        content()
-            .padding(.horizontal, TaisaSpacing.standard.rawValue)
-            .padding(.top, TaisaSpacing.section.rawValue)
-            .padding(.bottom, TaisaSpacing.section.rawValue)
-            .frame(minHeight: TaisaControlMetric.conversationComposerDockHeight, alignment: .bottom)
-            .background { PageEdgeFade(.navigation).ignoresSafeArea(edges: [.horizontal, .bottom]) }
     }
 
     private func performRecoveryPrimaryAction() {

@@ -147,6 +147,23 @@ struct ConversationComponentTests {
         #expect(source.contains("icon: .chevronLeft"))
         #expect(source.contains("PageEdgeFade(.header)"))
         #expect(source.contains("TaisaControlMetric.childNavigationControlHeight"))
+        #expect(source.contains("case back"))
+        #expect(source.contains("case detail"))
+    }
+
+    @Test func conversationComposerChromeOwnsTheBottomSafeAreaFade() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let source = try String(
+            contentsOf: root.appendingPathComponent("Sources/TaisaDesignSystem/TaisaPageChrome.swift"),
+            encoding: .utf8
+        )
+
+        #expect(source.contains("public struct ConversationComposerChrome"))
+        #expect(source.contains("TaisaControlMetric.conversationComposerDockHeight"))
+        #expect(source.contains(".ignoresSafeArea(edges: [.horizontal, .bottom])"))
     }
 
     @Test func conversationHeaderAndActionBarMatchFigmaContracts() {

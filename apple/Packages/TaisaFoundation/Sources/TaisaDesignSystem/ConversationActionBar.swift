@@ -41,9 +41,6 @@ public struct ConversationActionBar: View {
 
     public var body: some View {
         HStack(spacing: TaisaControlMetric.conversationActionSpacing) { controls }
-        .padding(.horizontal, TaisaSpacing.standard.rawValue)
-        .padding(.vertical, TaisaSpacing.section.rawValue)
-        .background { PageEdgeFade(.navigation).ignoresSafeArea(edges: .horizontal) }
     }
 
     @ViewBuilder private var controls: some View {

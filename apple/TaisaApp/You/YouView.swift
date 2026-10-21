@@ -1,4 +1,5 @@
 import SwiftUI
+import TaisaDesignSystem
 import TaisaStorage
 import TaisaYou
 
@@ -71,14 +72,39 @@ struct YouView: View {
     }
 
     @ViewBuilder private func destinationView(_ destination: YouDestination, snapshot: YouSnapshot) -> some View {
-        switch destination {
-        case .careerProfile: CareerProfileView(model: model, profile: snapshot.profile, issue: model.state.issue)
-        case .privacyPermissions: PrivacyPermissionsView(facts: snapshot.diagnostics)
-        case .backupRecovery:
-            List { Button("Open backup and recovery", action: openRecovery) }
-                .navigationTitle(destination.title)
-        case .diagnostics: DiagnosticsSummaryView(facts: snapshot.diagnostics)
+        YouDestinationPage(destination: destination) {
+            switch destination {
+            case .careerProfile: CareerProfileView(model: model, profile: snapshot.profile, issue: model.state.issue)
+            case .privacyPermissions: PrivacyPermissionsView(facts: snapshot.diagnostics)
+            case .backupRecovery:
+                List { Button("Open backup and recovery", action: openRecovery) }
+            case .diagnostics: DiagnosticsSummaryView(facts: snapshot.diagnostics)
+            }
         }
+    }
+}
+
+private struct YouDestinationPage<Content: View>: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    let destination: YouDestination
+    private let content: Content
+
+    init(destination: YouDestination, @ViewBuilder content: () -> Content) {
+        self.destination = destination
+        self.content = content()
+    }
+
+    var body: some View {
+        content
+            .safeAreaInset(edge: .top, spacing: 0) {
+                TaisaChildPageHeader(destination.title,
+                    mode: horizontalSizeClass == .regular ? .detail : .back,
+                    back: { dismiss() }
+                )
+            }
+            .toolbar(.hidden, for: .navigationBar)
+            .background(TaisaColor.background.color.ignoresSafeArea())
     }
 }
 
@@ -107,7 +133,6 @@ private struct CareerProfileView: View {
                 Button("Edit career profile") { model.beginProfileEdit(); editing = true }
             }
         }
-        .navigationTitle("Career profile")
     }
 
     private func binding(_ keyPath: WritableKeyPath<ProfileDraft, String>) -> Binding<String> {
@@ -141,7 +166,6 @@ private struct PrivacyPermissionsView: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .navigationTitle("Privacy & permissions")
     }
 }
 
@@ -151,7 +175,6 @@ private struct DiagnosticsSummaryView: View {
         List(YouDiagnostics.rows(for: facts)) { row in
             LabeledContent(row.label, value: row.value)
         }
-        .navigationTitle("Diagnostics")
     }
 }
 

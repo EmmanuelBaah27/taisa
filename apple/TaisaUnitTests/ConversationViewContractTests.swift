@@ -3,6 +3,19 @@ import XCTest
 @testable import Taisa
 
 final class ConversationViewContractTests: XCTestCase {
+    func testConversationUsesSharedTopAndBottomFadeChrome() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let source = try String(
+            contentsOf: root.appendingPathComponent("TaisaApp/Conversation/ConversationView.swift"),
+            encoding: .utf8
+        )
+
+        XCTAssertTrue(source.contains("ConversationPageHeader("))
+        XCTAssertTrue(source.contains("ConversationComposerChrome"))
+        XCTAssertFalse(source.contains("private func bottomChrome"))
+        XCTAssertFalse(source.contains("PageEdgeFade(.navigation)"))
+    }
+
     func testConversationOpenFailureReportsAContentFreeStage() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let source = try String(

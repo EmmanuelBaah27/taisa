@@ -1,5 +1,6 @@
 import SwiftUI
 import TaisaCareerWork
+import TaisaDesignSystem
 import TaisaStorage
 
 struct CareerWorkView: View {
@@ -111,6 +112,22 @@ struct CareerWorkView: View {
     }
 
     @ViewBuilder private var detail: some View {
+        if let detailTitle {
+            detailContent
+                .safeAreaInset(edge: .top, spacing: 0) {
+                    TaisaChildPageHeader(detailTitle,
+                        mode: horizontalSizeClass == .regular ? .detail : .back,
+                        back: { selectedRoute = nil }
+                    )
+                }
+                .toolbar(.hidden, for: .navigationBar)
+                .background(TaisaColor.background.color.ignoresSafeArea())
+        } else {
+            ContentUnavailableView("Select career work", systemImage: "target", description: Text("Choose a goal, action, or evidence item to inspect it."))
+        }
+    }
+
+    @ViewBuilder private var detailContent: some View {
         if let goal = model.state.snapshot?.selectedGoal {
             CareerGoalDetail(
                 snapshot: goal,
@@ -123,9 +140,14 @@ struct CareerWorkView: View {
             CareerActionDetail(action: action)
         } else if let evidence = model.state.snapshot?.selectedEvidence {
             CareerEvidenceDetail(evidence: evidence)
-        } else {
-            ContentUnavailableView("Select career work", systemImage: "target", description: Text("Choose a goal, action, or evidence item to inspect it."))
         }
+    }
+
+    private var detailTitle: String? {
+        if let goal = model.state.snapshot?.selectedGoal { return goal.goal.title }
+        if let action = model.state.snapshot?.selectedAction { return action.title }
+        if let evidence = model.state.snapshot?.selectedEvidence { return evidence.title }
+        return nil
     }
 
     private func issueRow(_ issue: CareerWorkIssue) -> some View {
@@ -211,7 +233,6 @@ private struct CareerGoalDetail: View {
                 }
             }
         }
-        .navigationTitle(snapshot.goal.title)
         .accessibilityIdentifier("career-work.goal.detail")
     }
 
@@ -320,7 +341,6 @@ private struct CareerActionDetail: View {
             if !action.detail.isEmpty { Section("Details") { Text(action.detail) } }
             if let due = action.dueAtMS { LabeledContent("Due", value: Date(timeIntervalSince1970: Double(due) / 1_000).formatted(date: .abbreviated, time: .omitted)) }
         }
-        .navigationTitle(action.title)
         .accessibilityIdentifier("career-work.action.detail")
     }
 }
@@ -332,7 +352,6 @@ private struct CareerEvidenceDetail: View {
             LabeledContent("Occurred", value: Date(timeIntervalSince1970: Double(evidence.occurredAtMS) / 1_000).formatted(date: .abbreviated, time: .omitted))
             if !evidence.detail.isEmpty { Section("Details") { Text(evidence.detail) } }
         }
-        .navigationTitle(evidence.title)
         .accessibilityIdentifier("career-work.evidence.detail")
     }
 }
