@@ -310,7 +310,10 @@ struct ConversationTimeline: View {
                 Text("Copy")
             } icon: {
                 CentralIcon(.copy)
-                    .frame(width: 16, height: 16)
+                    .frame(
+                        width: TaisaControlMetric.contextMenuIcon,
+                        height: TaisaControlMetric.contextMenuIcon
+                    )
             }
         }
         if message.role == "user" {
@@ -319,7 +322,10 @@ struct ConversationTimeline: View {
                     Text("Edit")
                 } icon: {
                     CentralIcon(.edit)
-                        .frame(width: 16, height: 16)
+                        .frame(
+                            width: TaisaControlMetric.contextMenuIcon,
+                            height: TaisaControlMetric.contextMenuIcon
+                        )
                 }
             }
                 .accessibilityIdentifier("conversation.correct-transcript")

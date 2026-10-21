@@ -149,6 +149,14 @@ struct ConversationComponentTests {
         #expect(InlineRecoveryAlert.Contract.actionSpacing == 12)
     }
 
+    @Test func conversationMetricsNameEveryReviewedProductRole() {
+        #expect(TaisaControlMetric.contextMenuIcon == 16)
+        #expect(TaisaControlMetric.conversationEmptyVoiceIcon == 24)
+        #expect(TaisaControlMetric.messageEditorMinimumHeight == 120)
+        #expect(TaisaControlMetric.disabledControlOpacity > 0)
+        #expect(TaisaControlMetric.disabledControlOpacity < 1)
+    }
+
     @MainActor @Test func conversationActivityAndRecoveryRemainAccessible() {
         #expect(ConversationActivityIndicator.animationDuration == 2)
         #expect(ConversationActivityIndicator.Motion.reduced == .staticFrame)

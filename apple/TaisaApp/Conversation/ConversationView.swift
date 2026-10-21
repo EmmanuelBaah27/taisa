@@ -147,7 +147,21 @@ struct ConversationView: View {
                     }
                 }
         case .paused:
-            recordingBar(pausedActionPhase)
+            VStack(spacing: TaisaSpacing.control.rawValue) {
+                if model.showsMicrophoneUnavailable {
+                    TaisaToast(
+                        message: "Microphone unavailable",
+                        dismiss: model.dismissMicrophoneUnavailable
+                    )
+                }
+                recordingBar(pausedActionPhase)
+            }
+            .task {
+                while !Task.isCancelled, model.composer == .paused {
+                    await model.refreshCapture()
+                    try? await Task.sleep(for: .milliseconds(250))
+                }
+            }
         case .savedVoiceDraft:
             recordingBar(.saved)
         case .typing:
@@ -235,6 +249,8 @@ struct ConversationView: View {
             },
             onSend: { Task { await model.sendVoice() } }
         )
+        .disabled(model.actionInFlight)
+        .opacity(model.actionInFlight ? TaisaControlMetric.disabledControlOpacity : 1)
         .accessibilityIdentifier("conversation.voice-composer")
     }
 
@@ -245,10 +261,15 @@ struct ConversationView: View {
 
     private var emptyState: some View {
         VStack(spacing: TaisaSpacing.control.rawValue) {
-            CentralIcon(.voiceMid).frame(width: 40, height: 40)
+            CentralIcon(.voiceMid)
+                .frame(
+                    width: TaisaControlMetric.conversationEmptyVoiceIcon,
+                    height: TaisaControlMetric.conversationEmptyVoiceIcon
+                )
+                .foregroundStyle(TaisaColor.mutedForeground.color)
             Text("What’s on your mind?").font(TaisaTypography.navigationLabel.font)
             Text("Talk it through with Taisa.")
-                .font(TaisaTypography.supporting.font)
+                .font(TaisaTypography.metadata.font)
                 .foregroundStyle(TaisaColor.mutedForeground.color)
         }
         .padding(TaisaSpacing.standard.rawValue)

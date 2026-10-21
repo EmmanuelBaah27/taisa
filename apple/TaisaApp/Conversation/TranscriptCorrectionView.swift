@@ -66,7 +66,7 @@ struct TranscriptCorrectionView: View {
             .disabled(isSubmitting)
             .scrollContentBackground(.hidden)
             .padding(TaisaSpacing.control.rawValue)
-            .frame(minHeight: 120)
+            .frame(minHeight: TaisaControlMetric.messageEditorMinimumHeight)
 
         editor.modifier(LiquidTextInputSurface(cornerRadius: TaisaRadius.panel.rawValue))
     }

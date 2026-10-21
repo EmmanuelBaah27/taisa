@@ -723,6 +723,87 @@ final class ConversationViewModelTests: XCTestCase {
         XCTAssertEqual(ConversationViewModel.preview(composer: .transcribing).pagePhase, .durableProcessing)
     }
 
+    func testBlockedCapturePublishesMicrophoneUnavailableNotice() async {
+        let client = ConversationScreenClient(
+            beginVoice: {}, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
+            sendText: { _, available in await available() }, retry: {},
+            saveDraft: { _ in }, discardDraft: {},
+            loadCaptureSnapshot: {
+                .init(
+                    activity: .blocked, elapsedMilliseconds: 1_500,
+                    meter: .init(averagePower: -160, peakPower: -160), disposition: .sendable
+                )
+            }
+        )
+        let model = ConversationViewModel(
+            conversationID: UUID().uuidString, title: "Chat", entryIntent: nil,
+            composer: .recording, client: client
+        )
+
+        await model.refreshCapture()
+
+        XCTAssertEqual(model.composer, .paused)
+        XCTAssertTrue(model.showsMicrophoneUnavailable)
+    }
+
+    func testRouteRestorationClearsMicrophoneUnavailableNotice() async {
+        let captures = CaptureSequence([
+            .init(
+                activity: .blocked, elapsedMilliseconds: 1_500,
+                meter: .init(averagePower: -160, peakPower: -160), disposition: .sendable
+            ),
+            .init(
+                activity: .paused, elapsedMilliseconds: 1_500,
+                meter: .init(averagePower: -160, peakPower: -160), disposition: .sendable
+            ),
+        ])
+        let client = ConversationScreenClient(
+            beginVoice: {}, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
+            sendText: { _, available in await available() }, retry: {},
+            saveDraft: { _ in }, discardDraft: {},
+            loadCaptureSnapshot: { await captures.next() }
+        )
+        let model = ConversationViewModel(
+            conversationID: UUID().uuidString, title: "Chat", entryIntent: nil,
+            composer: .recording, client: client
+        )
+
+        await model.refreshCapture()
+        XCTAssertTrue(model.showsMicrophoneUnavailable)
+
+        await model.refreshCapture()
+        XCTAssertEqual(model.composer, .paused)
+        XCTAssertFalse(model.showsMicrophoneUnavailable)
+    }
+
+    func testRecordingControlsPublishCommitAvailabilityWhilePauseIsPending() async {
+        let pauseStarted = AsyncGate()
+        let finishPause = AsyncGate()
+        let client = ConversationScreenClient(
+            beginVoice: {},
+            pauseVoice: {
+                await pauseStarted.open()
+                await finishPause.wait()
+            },
+            resumeVoice: {}, sendVoice: { _ in },
+            sendText: { _, available in await available() }, retry: {},
+            saveDraft: { _ in }, discardDraft: {}
+        )
+        let model = ConversationViewModel(
+            conversationID: UUID().uuidString, title: "Chat", entryIntent: nil,
+            composer: .recording, client: client
+        )
+
+        let pause = Task { await model.pause() }
+        await pauseStarted.wait()
+
+        XCTAssertTrue(model.actionInFlight)
+
+        await finishPause.open()
+        await pause.value
+        XCTAssertFalse(model.actionInFlight)
+    }
+
     func testEmptyRecordingDiscardCleansUpProvisionalChatAndDismisses() async {
         let client = ConversationScreenClientSpy(captureDisposition: .empty)
         var dismissed = 0
@@ -1107,6 +1188,19 @@ private actor MessageSequence {
     init(_ snapshots: [[MessageRecord]]) { self.snapshots = snapshots }
 
     func next() -> [MessageRecord] {
+        let value = snapshots[min(index, snapshots.count - 1)]
+        index += 1
+        return value
+    }
+}
+
+private actor CaptureSequence {
+    private let snapshots: [VoiceCaptureSnapshot]
+    private var index = 0
+
+    init(_ snapshots: [VoiceCaptureSnapshot]) { self.snapshots = snapshots }
+
+    func next() -> VoiceCaptureSnapshot {
         let value = snapshots[min(index, snapshots.count - 1)]
         index += 1
         return value

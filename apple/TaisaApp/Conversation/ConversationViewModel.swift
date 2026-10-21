@@ -123,6 +123,7 @@ final class ConversationViewModel {
     private(set) var pendingSentText: String?
     private(set) var failureContext: FailureContext = .request
     private(set) var responseActionFailures: [ResponseActionFailure] = []
+    private(set) var showsMicrophoneUnavailable = false
     var responseActionFailure: ResponseActionFailure? { responseActionFailures.first }
     private var processingMessageIsDurable = true
     private var correctionOriginalText = ""
@@ -157,7 +158,7 @@ final class ConversationViewModel {
     @ObservationIgnored private let client: ConversationScreenClient
     @ObservationIgnored private let dismiss: @MainActor () -> Void
     @ObservationIgnored private var started = false
-    @ObservationIgnored private var actionInFlight = false
+    private(set) var actionInFlight = false
     @ObservationIgnored private var voicePreparationExit: VoicePreparationExit?
     @ObservationIgnored private var recoveryObservation: Task<Void, Never>?
 
@@ -313,9 +314,34 @@ final class ConversationViewModel {
     }
 
     func pause() async { await perform(next: .paused, recovery: .pauseRecording) { try await client.pauseVoice() }; await refreshCapture() }
-    func resume() async { await perform(next: .recording, recovery: .resumeRecording) { try await client.resumeVoice() }; await refreshCapture() }
+    func resume() async {
+        guard !actionInFlight else { return }
+        actionInFlight = true
+        do {
+            try await client.resumeVoice()
+            composer = .recording
+            showsMicrophoneUnavailable = false
+        } catch {
+            capture = await client.loadCaptureSnapshot()
+            if capture.activity == .blocked {
+                composer = .paused
+                showsMicrophoneUnavailable = true
+            } else {
+                failureContext = .resumeRecording
+                composer = .failure(.retryable)
+            }
+        }
+        actionInFlight = false
+        await refreshCapture()
+    }
     func refreshCapture() async {
+        let wasBlocked = capture.activity == .blocked
         capture = await client.loadCaptureSnapshot()
+        if capture.activity == .blocked, !wasBlocked {
+            showsMicrophoneUnavailable = true
+        } else if capture.activity != .blocked {
+            showsMicrophoneUnavailable = false
+        }
         switch capture.activity {
         case .recording:
             if composer == .preparingVoice || composer == .paused { composer = .recording }
@@ -327,6 +353,8 @@ final class ConversationViewModel {
             break
         }
     }
+
+    func dismissMicrophoneUnavailable() { showsMicrophoneUnavailable = false }
 
     func refreshPartialCoaching() async {
         let latestPartial = await client.loadPartialCoaching()

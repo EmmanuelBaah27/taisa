@@ -49,7 +49,7 @@ public struct TaisaButton: View {
                         .tint(TaisaColor.foreground.color)
                 }
             }
-                .frame(maxWidth: .infinity, minHeight: 44)
+                .frame(maxWidth: .infinity, minHeight: TaisaControlMetric.headerActionHeight)
                 .padding(.horizontal, TaisaSpacing.standard.rawValue)
                 .background(background, in: buttonShape)
                 .overlay { buttonShape.stroke(borderColor) }
@@ -63,7 +63,7 @@ public struct TaisaButton: View {
 
     private var buttonShape: AnyShape {
         switch shape {
-        case .roundedRectangle: AnyShape(RoundedRectangle(cornerRadius: 12))
+        case .roundedRectangle: AnyShape(RoundedRectangle(cornerRadius: TaisaRadius.control.rawValue))
         case .capsule: AnyShape(Capsule())
         }
     }
