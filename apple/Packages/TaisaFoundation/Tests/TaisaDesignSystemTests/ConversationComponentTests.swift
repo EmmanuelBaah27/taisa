@@ -100,6 +100,21 @@ struct ConversationComponentTests {
         #expect(PrimaryNavigationMotion.transition(reduceMotion: true) == .instant)
     }
 
+    @Test func primaryNavigationIsolatesPillMotionFromPageSelectionWork() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let source = try String(
+            contentsOf: root.appendingPathComponent("Sources/TaisaDesignSystem/PrimaryNavigation.swift"),
+            encoding: .utf8
+        )
+
+        #expect(source.contains("visualSelection"))
+        #expect(source.contains("await Task.yield()"))
+        #expect(source.contains("transaction.disablesAnimations = true"))
+    }
+
     @Test func centralIconCatalogCoversChatsPageControls() {
         #expect(CentralIconName.magnifyingGlass != .voiceMid)
         #expect(CentralIconName.voiceMid != .chatBubbles)
