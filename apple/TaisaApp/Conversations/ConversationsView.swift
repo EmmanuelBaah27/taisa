@@ -342,28 +342,22 @@ private struct DraftsView: View {
     let discard: (ConversationDraftRecord) -> Void
 
     var body: some View {
-        ZStack(alignment: .top) {
-            List(drafts) { draft in
-                Button { resume(draft) } label: { DraftRow(draft: draft) }
-                    .buttonStyle(.plain)
-                    .contextMenu {
-                        Button("Discard", role: .destructive) { discard(draft) }
-                    }
-            }
-            .listStyle(.plain)
-            .scrollContentBackground(.hidden)
-            .contentMargins(.top, TaisaControlMetric.appBarHeight + TaisaSpacing.compact.rawValue, for: .scrollContent)
-            .padding(.horizontal, TaisaSpacing.standard.rawValue)
-
-            TaisaPageHeader("Drafts") {
-                TaisaSecondaryIconButton(
-                    icon: .chevronDown,
-                    accessibilityLabel: "Close drafts",
-                    action: { dismiss() }
-                )
+        List(drafts) { draft in
+            Button { resume(draft) } label: { DraftRow(draft: draft) }
+                .buttonStyle(.plain)
+                .contextMenu {
+                    Button("Discard", role: .destructive) { discard(draft) }
+                }
+        }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .padding(.horizontal, TaisaSpacing.standard.rawValue)
+        .safeAreaInset(edge: .top, spacing: 0) {
+            TaisaChildPageHeader("Drafts") {
+                dismiss()
             }
         }
-        .background(TaisaColor.background.color)
+        .background(TaisaColor.background.color.ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
         .accessibilityIdentifier("conversations.drafts")
     }

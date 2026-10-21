@@ -58,22 +58,61 @@ public struct TaisaPageHeader<Actions: View>: View {
     }
 }
 
+/// Shared top chrome for pages pushed within a primary destination.
+public struct TaisaChildPageHeader: View {
+    private let title: String
+    private let back: @MainActor () -> Void
+
+    public init(_ title: String, back: @escaping @MainActor () -> Void) {
+        self.title = title
+        self.back = back
+    }
+
+    public var body: some View {
+        ZStack {
+            Text(title)
+                .font(.system(.headline, weight: .semibold))
+                .foregroundStyle(TaisaColor.foreground.color)
+                .lineLimit(1)
+
+            HStack {
+                TaisaSecondaryIconButton(
+                    icon: .chevronLeft,
+                    accessibilityLabel: "Back",
+                    size: TaisaControlMetric.childNavigationControlHeight,
+                    action: back
+                )
+                Spacer()
+            }
+        }
+        .padding(.horizontal, TaisaSpacing.standard.rawValue)
+        .frame(height: TaisaControlMetric.appBarHeight)
+        .background {
+            PageEdgeFade(.header)
+                .ignoresSafeArea(edges: [.top, .horizontal])
+        }
+    }
+}
+
 /// The shared circular secondary action used in primary page headers.
 public struct TaisaSecondaryIconButton: View {
     private let icon: CentralIconName
     private let accessibilityLabel: String
     private let accessibilityHint: String?
+    private let size: CGFloat
     private let action: @MainActor () -> Void
 
     public init(
         icon: CentralIconName,
         accessibilityLabel: String,
         accessibilityHint: String? = nil,
+        size: CGFloat = TaisaControlMetric.headerActionHeight,
         action: @escaping @MainActor () -> Void
     ) {
         self.icon = icon
         self.accessibilityLabel = accessibilityLabel
         self.accessibilityHint = accessibilityHint
+        self.size = size
         self.action = action
     }
 
@@ -91,8 +130,8 @@ public struct TaisaSecondaryIconButton: View {
                     height: TaisaControlMetric.standardIcon
                 )
                 .frame(
-                    width: TaisaControlMetric.headerActionHeight,
-                    height: TaisaControlMetric.headerActionHeight
+                    width: size,
+                    height: size
                 )
         }
 

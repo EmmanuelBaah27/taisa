@@ -117,6 +117,7 @@ struct ConversationComponentTests {
 
     @Test func centralIconCatalogCoversChatsPageControls() {
         #expect(CentralIconName.magnifyingGlass != .voiceMid)
+        #expect(CentralIconName.chevronLeft != .chevronDown)
         #expect(CentralIconName.voiceMid != .chatBubbles)
         #expect(CentralIconName.circleInfo != .thumbsUp)
         #expect(CentralIconName.thumbsUp != .thumbsDown)
@@ -129,6 +130,23 @@ struct ConversationComponentTests {
         #expect(PageEdgeFade.navigationOpaqueStop == 0.60)
         #expect(TaisaBottomChromeContract.fadeHeight == TaisaControlMetric.primaryNavigationReservedHeight)
         #expect(TaisaBottomChromeContract.coversBottomSafeArea)
+        #expect(TaisaControlMetric.childNavigationControlHeight == 48)
+    }
+
+    @Test func childPageHeaderUsesTheSharedFadeAndCentralBackControl() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let source = try String(
+            contentsOf: root.appendingPathComponent("Sources/TaisaDesignSystem/TaisaPageChrome.swift"),
+            encoding: .utf8
+        )
+
+        #expect(source.contains("public struct TaisaChildPageHeader"))
+        #expect(source.contains("icon: .chevronLeft"))
+        #expect(source.contains("PageEdgeFade(.header)"))
+        #expect(source.contains("TaisaControlMetric.childNavigationControlHeight"))
     }
 
     @Test func conversationHeaderAndActionBarMatchFigmaContracts() {

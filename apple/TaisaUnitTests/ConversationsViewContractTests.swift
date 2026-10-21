@@ -94,6 +94,24 @@ final class ConversationsViewContractTests: XCTestCase {
         XCTAssertFalse(source.contains("} header: {"))
     }
 
+    func testDraftsUsesTheSharedChildHeaderAndLeadingBackControl() throws {
+        let source = try conversationsSource()
+        let drafts = source.components(separatedBy: "private struct DraftsView").last ?? ""
+
+        XCTAssertTrue(drafts.contains(".safeAreaInset(edge: .top, spacing: 0)"))
+        XCTAssertTrue(drafts.contains("TaisaChildPageHeader(\"Drafts\"") )
+        XCTAssertFalse(drafts.contains("icon: .chevronDown"))
+        XCTAssertFalse(drafts.contains(".contentMargins(.top"))
+    }
+
+    func testChatsHeaderOwnsTheTopSafeAreaInsteadOfOverlayingScrollContent() throws {
+        let source = try conversationsSource()
+
+        XCTAssertTrue(source.contains(".safeAreaInset(edge: .top, spacing: 0)"))
+        XCTAssertFalse(source.contains("ZStack(alignment: .top) {\n            content\n            header"))
+        XCTAssertFalse(source.contains(".contentMargins(\n                .top"))
+    }
+
     func testApplicationIsLockedToLightAppearance() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let source = try String(
