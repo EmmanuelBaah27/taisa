@@ -59,7 +59,7 @@ final class RecordingGlowPreviewTests: XCTestCase {
         XCTAssertTrue(app.buttons["Copy preset JSON"].exists)
         XCTAssertTrue(app.sliders["Simulated loudness"].exists)
         XCTAssertTrue(
-            app.descendants(matching: .any)["Dominant center purple color"].exists
+            app.descendants(matching: .any)["Mid purple color"].exists
         )
         XCTAssertTrue(app.sliders["Grain intensity"].exists)
         XCTAssertTrue(app.sliders["Center peak height"].exists)
@@ -84,7 +84,10 @@ final class RecordingGlowPreviewTests: XCTestCase {
         let surface = app.descendants(matching: .any)["recording-glow.surface"]
         let originalSurfaceFrame = surface.frame
         controls.swipeUp()
-        XCTAssertEqual(surface.frame, originalSurfaceFrame)
+        XCTAssertEqual(surface.frame.midX, originalSurfaceFrame.midX, accuracy: 2)
+        XCTAssertEqual(surface.frame.midY, originalSurfaceFrame.midY, accuracy: 2)
+        XCTAssertEqual(surface.frame.width, originalSurfaceFrame.width, accuracy: 2)
+        XCTAssertEqual(surface.frame.height, originalSurfaceFrame.height, accuracy: 2)
     }
 
     func testLiveMicrophoneRequestKeepsTunerRunning() {

@@ -9,7 +9,7 @@ struct RecordingGlowPresetTests {
         let preset = RecordingGlowPreset.figmaDefault
 
         #expect(preset.regions.map(\.color.hex) == [
-            "#FDE68A", "#91C9FD", "#CBAEFF", "#F6B8B7", "#ADEBB5",
+            "#F6B8B7", "#FDE68A", "#CBAEFF", "#91C9FD", "#ADEBB5",
         ])
         #expect(preset.center.strength > preset.leftOuter.strength)
         #expect(preset.center.strength > preset.leftInner.strength)

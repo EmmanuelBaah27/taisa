@@ -172,10 +172,10 @@ public struct RecordingGlowPreset: Codable, Sendable, Equatable {
     }
 
     public static let figmaDefault = RecordingGlowPreset(
-        leftOuter: .init(color: .init(hex: "#FDE68A"), saturation: 0.84, brightness: 0.95, opacity: 0.72, strength: 0.36),
-        leftInner: .init(color: .init(hex: "#91C9FD"), saturation: 0.86, brightness: 0.98, opacity: 0.78, strength: 0.48),
+        leftOuter: .init(color: .init(hex: "#F6B8B7"), saturation: 0.82, brightness: 0.96, opacity: 0.76, strength: 0.36),
+        leftInner: .init(color: .init(hex: "#FDE68A"), saturation: 0.84, brightness: 0.95, opacity: 0.72, strength: 0.48),
         center: .init(color: .init(hex: "#CBAEFF"), saturation: 0.94, brightness: 1, opacity: 0.96, strength: 1),
-        rightInner: .init(color: .init(hex: "#F6B8B7"), saturation: 0.82, brightness: 0.96, opacity: 0.76, strength: 0.46),
+        rightInner: .init(color: .init(hex: "#91C9FD"), saturation: 0.86, brightness: 0.98, opacity: 0.78, strength: 0.46),
         rightOuter: .init(color: .init(hex: "#ADEBB5"), saturation: 0.78, brightness: 0.94, opacity: 0.68, strength: 0.34),
         centerBaselineHeight: 0.12,
         centerPeakHeight: 0.72,

@@ -1,0 +1,92 @@
+{
+  "preset": {
+    "center": {
+      "brightness": 1,
+      "color": {
+        "blue": 1,
+        "green": 0.6823529411764706,
+        "opacity": 1,
+        "red": 0.796078431372549
+      },
+      "opacity": 0.96,
+      "saturation": 0.94,
+      "strength": 1
+    },
+    "centerBaselineHeight": 0.12,
+    "centerBloom": 0.58,
+    "centerPeakHeight": 0.72,
+    "centerWidth": 0.29,
+    "edgeBalance": 0.5,
+    "edgeGain": 0.42,
+    "edgeSoftness": 0.62,
+    "edgeSpread": 0.74,
+    "globalOpacity": 0.92,
+    "grain": {
+      "amount": 0.11830374598503113,
+      "contrast": 0.42,
+      "loudnessInfluence": 0.08284023404121399,
+      "scale": 0.020710058510303497,
+      "seed": 1413564755,
+      "softness": 0.2534122169017792
+    },
+    "leftInner": {
+      "brightness": 0.98,
+      "color": {
+        "blue": 0.9921568627450981,
+        "green": 0.788235294117647,
+        "opacity": 1,
+        "red": 0.5686274509803921
+      },
+      "opacity": 0.72,
+      "saturation": 0.86,
+      "strength": 0.48
+    },
+    "leftOuter": {
+      "brightness": 0.95,
+      "color": {
+        "blue": 0.5411764705882353,
+        "green": 0.9019607843137255,
+        "opacity": 1,
+        "red": 0.9921568627450981
+      },
+      "opacity": 0.72,
+      "saturation": 0.84,
+      "strength": 0.36
+    },
+    "rightInner": {
+      "brightness": 0.96,
+      "color": {
+        "blue": 0.7176470588235294,
+        "green": 0.7215686274509804,
+        "opacity": 1,
+        "red": 0.9647058823529412
+      },
+      "opacity": 0.76,
+      "saturation": 0.82,
+      "strength": 0.46
+    },
+    "rightOuter": {
+      "brightness": 0.94,
+      "color": {
+        "blue": 0.7098039215686275,
+        "green": 0.9215686274509803,
+        "opacity": 1,
+        "red": 0.6784313725490196
+      },
+      "opacity": 0.68,
+      "saturation": 0.78,
+      "strength": 0.34
+    },
+    "verticalOrigin": 0.94
+  },
+  "response": {
+    "attackSeconds": 0.07457593783736229,
+    "ceilingDecibels": -6,
+    "inputGain": 0.9980276226997375,
+    "maximumRisePerSecond": 7,
+    "noiseFloorDecibels": -55,
+    "peakContribution": 0.2,
+    "releaseSeconds": 0.7093885719776153,
+    "responseExponent": 1.4319526553153992
+  }
+}
