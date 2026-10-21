@@ -10,6 +10,34 @@ final class ConversationViewModelTests: XCTestCase {
         XCTAssertTrue(ConversationTimelineMotion.animatesNewMessage(reduceMotion: false))
     }
 
+    func testPreviewKeepsSeededAssistantResponsesAfterStart() async {
+        let messageID = UUID().uuidString
+        let response = AssistantResponseRecord(
+            metadata: AssistantResponseMetadataRecord(
+                responseMessageID: messageID,
+                requestID: UUID().uuidString,
+                idempotencyReceipt: "preview-receipt",
+                mode: .coach,
+                relevance: "career-relevant",
+                contextSufficiency: "sufficient",
+                stance: "nudge",
+                inference: "A useful inference.",
+                confidence: "high",
+                approach: "Offer one grounded next step.",
+                createdAtMS: 1
+            ),
+            sources: [], proposal: nil, feedback: nil
+        )
+        let model = ConversationViewModel.preview(
+            composer: .waitingForReply,
+            assistantResponses: [messageID: response]
+        )
+
+        await model.start()
+
+        XCTAssertNotNil(model.assistantResponses[messageID])
+    }
+
     func testKeyboardReplacementRequiresDiscardAndCancelRestoresPause() {
         let model = ConversationViewModel.preview(composer: .paused)
 
@@ -159,11 +187,153 @@ final class ConversationViewModelTests: XCTestCase {
         XCTAssertEqual(saved, .text("Keep this text"))
     }
 
+    func testFeedbackSavePersistsOptionalTypedDetail() async {
+        let client = ConversationScreenClientSpy()
+        let model = ConversationViewModel(
+            conversationID: UUID().uuidString, title: "New conversation", entryIntent: nil,
+            client: await client.makeClient()
+        )
+        let responseID = UUID().uuidString
+
+        await model.saveFeedback(
+            responseMessageID: responseID,
+            direction: .notHelpful,
+            factors: [.communicationClarity, .intentAlignment],
+            detail: "It sounded more formal than this conversation."
+        )
+
+        let saved = await client.savedFeedback()
+        XCTAssertEqual(saved?.responseMessageID, UUID(uuidString: responseID)?.uuidString)
+        XCTAssertEqual(saved?.direction, .notHelpful)
+        XCTAssertEqual(saved?.factors, [.communicationClarity, .intentAlignment])
+        XCTAssertEqual(saved?.detail, "It sounded more formal than this conversation.")
+    }
+
+    func testRemovingSelectedFeedbackDeletesTheLocalRating() async {
+        let client = ConversationScreenClientSpy()
+        let model = ConversationViewModel(
+            conversationID: UUID().uuidString, title: "New conversation", entryIntent: nil,
+            client: await client.makeClient()
+        )
+        let responseID = UUID().uuidString
+
+        await model.saveFeedback(responseMessageID: responseID, direction: nil, factors: [], detail: nil)
+
+        let removedFeedbackID = await client.removedFeedbackID()
+        XCTAssertEqual(removedFeedbackID, UUID(uuidString: responseID)?.uuidString)
+    }
+
+    func testFeedbackSaveAndRemovalAreSerializedInTapOrder() async {
+        let gate = AsyncGate()
+        let events = EventRecorder()
+        let client = ConversationScreenClient(
+            beginVoice: {}, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
+            sendText: { _ in }, retry: {}, saveDraft: { _ in }, discardDraft: {},
+            saveFeedback: { _ in
+                await events.append("save-start")
+                await gate.wait()
+                await events.append("save-end")
+            },
+            removeFeedback: { _, _ in await events.append("remove") }
+        )
+        let model = ConversationViewModel(
+            conversationID: UUID().uuidString, title: "New conversation", entryIntent: nil,
+            client: client
+        )
+        let responseID = UUID().uuidString
+        let save = Task { await model.saveFeedback(responseMessageID: responseID, direction: .helpful, factors: [.coverage], detail: nil) }
+        while !(await events.values()).contains("save-start") { await Task.yield() }
+        let remove = Task { await model.saveFeedback(responseMessageID: responseID, direction: nil, factors: [], detail: nil) }
+        await Task.yield()
+        let beforeRelease = await events.values()
+        XCTAssertEqual(beforeRelease, ["save-start"])
+        await gate.open()
+        await save.value
+        await remove.value
+        let finalEvents = await events.values()
+        XCTAssertEqual(finalEvents, ["save-start", "save-end", "remove"])
+    }
+
     private func message(role: String, body: String) -> MessageRecord {
         MessageRecord(
             id: UUID().uuidString, conversationID: UUID().uuidString,
             role: role, body: body, createdAtMS: 1
         )
+    }
+}
+
+final class ResponseFeedbackEditorStateTests: XCTestCase {
+    func testSelectingNewDirectionPersistsRatingImmediately() {
+        var state = ResponseFeedbackEditorState(feedback: nil)
+
+        let mutation = state.begin(.helpful)
+
+        XCTAssertEqual(mutation, .save(direction: .helpful, factors: [], detail: nil))
+        XCTAssertEqual(state.direction, .helpful)
+        XCTAssertEqual(state.draftFactors, [])
+        XCTAssertEqual(state.draftDetail, "")
+    }
+
+    func testDismissingDraftRestoresLastCommittedReasonsAndDetail() {
+        var state = ResponseFeedbackEditorState(feedback: ResponseFeedbackRecord(
+            responseMessageID: UUID().uuidString,
+            direction: .notHelpful,
+            factors: [.relationalFit],
+            detail: "Too formal",
+            updatedAtMS: 1
+        ))
+
+        XCTAssertNil(state.begin(.notHelpful))
+        state.toggle(.communicationClarity)
+        state.draftDetail = "A different unsaved explanation"
+        state.discardDraft()
+
+        XCTAssertEqual(state.draftFactors, [.relationalFit])
+        XCTAssertEqual(state.draftDetail, "Too formal")
+    }
+
+    func testSavingDraftCommitsReasonsAndNormalizedDetail() {
+        var state = ResponseFeedbackEditorState(feedback: nil)
+        _ = state.begin(.helpful)
+        state.toggle(.coverage)
+        state.draftDetail = "  This covered the decision well.  "
+
+        let mutation = state.commit()
+
+        XCTAssertEqual(
+            mutation,
+            .save(
+                direction: .helpful,
+                factors: [.coverage],
+                detail: "This covered the decision well."
+            )
+        )
+        state.draftDetail = "Unsaved"
+        state.discardDraft()
+        XCTAssertEqual(state.draftDetail, "This covered the decision well.")
+    }
+
+    func testRemovingRatingClearsCommittedAndDraftFeedback() {
+        var state = ResponseFeedbackEditorState(feedback: ResponseFeedbackRecord(
+            responseMessageID: UUID().uuidString,
+            direction: .helpful,
+            factors: [.coverage],
+            detail: "Useful",
+            updatedAtMS: 1
+        ))
+
+        XCTAssertEqual(state.remove(), .remove)
+        XCTAssertNil(state.direction)
+        XCTAssertEqual(state.draftFactors, [])
+        XCTAssertEqual(state.draftDetail, "")
+    }
+
+    func testBlankDetailNormalizesToNil() {
+        var state = ResponseFeedbackEditorState(feedback: nil)
+        _ = state.begin(.helpful)
+        state.draftDetail = "   \n  "
+
+        XCTAssertEqual(state.commit(), .save(direction: .helpful, factors: [], detail: nil))
     }
 }
 
@@ -184,6 +354,12 @@ private actor AsyncGate {
     }
 }
 
+private actor EventRecorder {
+    private var events: [String] = []
+    func append(_ event: String) { events.append(event) }
+    func values() -> [String] { events }
+}
+
 private actor MessageSequence {
     private let snapshots: [[MessageRecord]]
     private var index = 0
@@ -202,6 +378,8 @@ private actor ConversationScreenClientSpy {
     let correctionFails: Bool
     private(set) var beginVoiceCount = 0
     private var saved: ConversationInput?
+    private var feedback: ResponseFeedbackRecord?
+    private var removedFeedback: String?
 
     init(messages: [MessageRecord] = [], correctionFails: Bool = false) {
         self.messages = messages
@@ -217,11 +395,17 @@ private actor ConversationScreenClientSpy {
             sendText: { _ in }, retry: {}, saveDraft: { [self] input in await save(input) }, discardDraft: {},
             correctTranscript: { [correctionFails] _, _ in
                 if correctionFails { throw ConversationFailure.retryable }
-            }
+            },
+            saveFeedback: { [self] value in await save(value) },
+            removeFeedback: { [self] id, _ in await removeFeedback(id) }
         )
     }
     private func recordBegin() { beginVoiceCount += 1 }
     private func save(_ input: ConversationInput) { saved = input }
+    private func save(_ value: ResponseFeedbackRecord) { feedback = value }
+    private func removeFeedback(_ id: String) { removedFeedback = UUID(uuidString: id)?.uuidString ?? id }
     func count() -> Int { beginVoiceCount }
     func savedInput() -> ConversationInput? { saved }
+    func savedFeedback() -> ResponseFeedbackRecord? { feedback }
+    func removedFeedbackID() -> String? { removedFeedback }
 }

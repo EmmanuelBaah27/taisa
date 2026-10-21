@@ -120,15 +120,18 @@ public actor GatewayCoachingRunner: VoiceCoachingRunning {
     private let configuration: VoiceGatewayConfiguration
     private let client: CoachingStreamClient
     private let recentMessages: @Sendable (String) async throws -> [MessageRecord]
+    private let preferenceSignals: @Sendable () async throws -> [[String: String]]
 
     public init(
         configuration: VoiceGatewayConfiguration,
         transport: any NDJSONStreamTransporting = URLSessionNDJSONStreamTransport(),
-        recentMessages: @escaping @Sendable (String) async throws -> [MessageRecord] = { _ in [] }
+        recentMessages: @escaping @Sendable (String) async throws -> [MessageRecord] = { _ in [] },
+        preferenceSignals: @escaping @Sendable () async throws -> [[String: String]] = { [] }
     ) {
         self.configuration = configuration
         client = .init(transport: transport)
         self.recentMessages = recentMessages
+        self.preferenceSignals = preferenceSignals
     }
 
     public func stream(
@@ -142,13 +145,16 @@ public actor GatewayCoachingRunner: VoiceCoachingRunning {
             .filter { $0.role == "user" || $0.role == "assistant" }
             .suffix(20)
             .map { ["role": $0.role, "content": $0.body] }
+        let preferences = try await preferenceSignals()
+        var context: [String: Any] = ["profile": NSNull(), "recentMessages": history, "memory": [], "evidence": []]
+        if !preferences.isEmpty { context["preferenceProfile"] = ["signals": preferences] }
         let body = try JSONSerialization.data(withJSONObject: [
             "requestId": requestID.uuidString.lowercased(),
             "submittedAt": Date(
                 timeIntervalSince1970: TimeInterval(turn.createdAtMS) / 1_000
             ).formatted(.iso8601),
             "input": transcript,
-            "context": ["profile": NSNull(), "recentMessages": history, "memory": [], "evidence": []],
+            "context": context,
         ], options: [.sortedKeys])
         return client.stream(.init(
             endpoint: configuration.endpoint("api/v1/coaching/respond/stream"),

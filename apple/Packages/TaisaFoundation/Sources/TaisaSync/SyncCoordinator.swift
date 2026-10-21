@@ -371,6 +371,7 @@ public actor SyncCoordinator {
             let order = [
                 "profile", "conversation", "goal", "memory", "message", "milestone", "action", "evidence", "memory_source",
                 "weekly_placement", "work_event", "insight", "insight_source", "insight_revision",
+                "assistant_response_metadata", "assistant_response_source", "assistant_proposal",
             ]
             for key in affected.sorted(by: { left, right in
                 let a = left.split(separator: "|", maxSplits: 1).first.map(String.init) ?? ""
@@ -379,7 +380,7 @@ public actor SyncCoordinator {
             }) {
                 let events = sources.filter { $0.mutation.entityType + "|" + $0.mutation.entityID == key }.map(\.mutation)
                 guard let first = events.first else { continue }
-                if ["memory_source", "work_event", "insight_source"].contains(first.entityType) &&
+                if ["memory_source", "work_event", "insight_source", "assistant_response_metadata", "assistant_response_source"].contains(first.entityType) &&
                     events.contains(where: { $0.kind == .update || $0.kind == .resolve }) &&
                     !events.contains(where: { $0.kind == .create }) {
                     throw SyncProjectionError.dependencyPending

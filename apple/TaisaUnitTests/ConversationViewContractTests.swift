@@ -74,7 +74,12 @@ final class ConversationViewContractTests: XCTestCase {
             "conversation.voice-composer", "conversation.text-composer",
             "conversation.save-draft", "conversation.discard", "conversation.retry",
             "conversation.correct-transcript", "conversation.transcript-preview",
-            "conversation.unavailable.close"
+            "conversation.unavailable.close", "conversation.response-info",
+            "conversation.feedback.helpful", "conversation.feedback.not_helpful",
+            "conversation.feedback-factors", "conversation.feedback.close",
+            "conversation.feedback.save", "conversation.feedback.detail",
+            "conversation.feedback.remove", "conversation.proposal-review",
+            "conversation.proposal.accept", "conversation.proposal.dismiss"
         ] {
             XCTAssertTrue(source.contains(identifier), "Missing \(identifier)")
         }
@@ -84,5 +89,51 @@ final class ConversationViewContractTests: XCTestCase {
         XCTAssertTrue(source.contains("onChange(of: messages.last?.id"))
         XCTAssertTrue(source.contains("latestUserTranscript"))
         XCTAssertFalse(source.contains("import GRDB"))
+    }
+
+    func testResponseFeedbackUsesAlwaysVisibleThumbsAndSelectableQualityFactors() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let source = try String(
+            contentsOf: root.appendingPathComponent("TaisaApp/Conversation/AssistantResponseActions.swift"),
+            encoding: .utf8
+        )
+
+        XCTAssertTrue(source.contains("hand.thumbsup"))
+        XCTAssertTrue(source.contains("hand.thumbsdown"))
+        XCTAssertTrue(source.contains("Image(systemName: \"info.circle\")"))
+        XCTAssertTrue(source.contains(".accessibilityLabel(\"About this response\")"))
+        XCTAssertFalse(source.contains("Label(\"About this response\", systemImage:"))
+        XCTAssertTrue(source.contains("What worked well?"))
+        XCTAssertTrue(source.contains("What could be better?"))
+        XCTAssertTrue(source.contains("Source unavailable"))
+        XCTAssertTrue(source.contains(".sheet(isPresented: $showsFeedback, onDismiss:"))
+        XCTAssertTrue(source.contains("Button(\"Close\")"))
+        XCTAssertTrue(source.contains("Button(\"Save feedback\")"))
+        XCTAssertTrue(source.contains(".accessibilityIdentifier(\"conversation.feedback.close\")"))
+        XCTAssertTrue(source.contains(".accessibilityIdentifier(\"conversation.feedback.save\")"))
+        XCTAssertTrue(source.contains("TextEditor"))
+        XCTAssertTrue(source.contains("Add more detail (optional)"))
+        XCTAssertTrue(source.contains(".accessibilityIdentifier(\"conversation.feedback.detail\")"))
+        XCTAssertTrue(source.contains("Button(\"Remove rating\", role: .destructive)"))
+        XCTAssertTrue(source.contains("saveFeedback(nil, [], nil)"))
+        XCTAssertTrue(source.contains(".accessibilityIdentifier(\"conversation.feedback.remove\")"))
+        XCTAssertFalse(source.contains("direction == value ? nil : value"))
+        XCTAssertFalse(source.contains("if let direction {\n                feedbackFactors(for: direction)\n            }"))
+        XCTAssertTrue(source.contains("ResponseFeedbackCopy.options"))
+        XCTAssertTrue(source.contains("minWidth: TaisaControlMetric.headerActionHeight"))
+        XCTAssertFalse(source.contains("TextField"))
+    }
+
+    func testSeniorSelfResponseHasDeterministicPreviewScenario() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let source = try String(
+            contentsOf: root.appendingPathComponent("TaisaPreview/ConversationScenarios.swift"),
+            encoding: .utf8
+        )
+
+        XCTAssertTrue(source.contains("conversation.senior-self-response"))
+        XCTAssertTrue(source.contains("assistantResponses:"))
+        XCTAssertTrue(source.contains("AssistantResponseMetadataRecord"))
+        XCTAssertTrue(source.contains("AssistantProposalRecord"))
     }
 }

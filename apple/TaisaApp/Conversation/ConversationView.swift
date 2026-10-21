@@ -7,7 +7,19 @@ struct ConversationView: View {
 
     var body: some View {
         NavigationStack {
-            ConversationTimeline(messages: model.messages, correct: model.requestCorrection)
+            ConversationTimeline(
+                messages: model.messages,
+                assistantResponses: model.assistantResponses,
+                correct: model.requestCorrection,
+                saveFeedback: { messageID, direction, factors, detail in
+                    Task { await model.saveFeedback(
+                        responseMessageID: messageID, direction: direction,
+                        factors: factors, detail: detail
+                    ) }
+                },
+                acceptProposal: { id in Task { await model.acceptProposal(id) } },
+                dismissProposal: { id in Task { await model.dismissProposal(id) } }
+            )
                 .navigationTitle(model.title)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {

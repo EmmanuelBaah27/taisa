@@ -60,8 +60,10 @@ struct CoachingStreamEventTests {
     }
 
     @Test func completionDecodesOptionalTitleSuggestion() throws {
-        let requestID = "00000000-0000-4000-8000-000000000109"
-        let data = Data(#"{"type":"coaching.completed","requestId":"\#(requestID)","sequence":0,"response":{"requestId":"\#(requestID)","reply":"Reply","mode":"coach","relevance":"career-relevant","contextSufficiency":"sufficient","stance":"nudge","proposals":[],"usage":{"provider":"anthropic","model":"fixture","estimatedCostUsd":0},"titleSuggestion":"Design review preparation"},"idempotencyReceipt":"receipt"}"#.utf8)
+        let data = completedEvent(
+            proposal: "null",
+            titleSuggestion: #""Design review preparation""#
+        )
 
         let event = try JSONDecoder().decode(CoachingStreamEvent.self, from: data)
         guard case let .completed(_, _, response, _) = event else {
@@ -69,5 +71,41 @@ struct CoachingStreamEventTests {
             return
         }
         #expect(response.titleSuggestion == "Design review preparation")
+    }
+
+    @Test(arguments: [
+        #"{"kind":"goal","title":"Lead a launch","description":null,"priority":"high","targetDate":"2026-11-01T00:00:00Z"}"#,
+        #"{"kind":"action","title":"Draft the brief","description":"One page","priority":"medium","dueAt":null,"goalId":"goal-1"}"#,
+        #"{"kind":"weekly_work","actionId":"action-1","weekStart":"2026-10-19T00:00:00Z","plannedDay":null}"#,
+        #"{"kind":"evidence","statement":"Led the review","occurredAt":"2026-10-16T00:00:00Z","goalId":"goal-1","actionId":null}"#,
+        #"{"kind":"memory","memory":{"operation":"support","targetId":"memory-1","sourceMessageId":"message-1","reason":"New supporting evidence","requiresConfirmation":false}}"#,
+        #"{"kind":"insight","body":"Protect preparation time","isTimeSensitive":true,"homeEligibleUntil":null}"#,
+    ])
+    func decodesEveryTypedProposalKind(_ proposal: String) throws {
+        let event = try JSONDecoder().decode(CoachingStreamEvent.self, from: completedEvent(proposal: proposal))
+        guard case let .completed(_, _, response, _) = event else {
+            Issue.record("Expected a completed coaching response")
+            return
+        }
+        #expect(response.proposal != nil)
+        #expect(response.explanation.confidence == .medium)
+    }
+
+    @Test(arguments: [
+        #"{"kind":"unknown"}"#,
+        #"{"kind":"goal","title":"Lead","description":null,"priority":null,"targetDate":null,"extra":true}"#,
+        #"{"kind":"goal","title":"   ","description":null,"priority":null,"targetDate":null}"#,
+        #"{"kind":"memory","memory":{"operation":"support","targetId":"memory-1","sourceMessageId":"message-1","reason":"Support","requiresConfirmation":true}}"#,
+        #"[{"kind":"goal","title":"Lead","description":null,"priority":null,"targetDate":null}]"#,
+    ])
+    func rejectsUnknownMalformedOrMultipleProposals(_ proposal: String) {
+        #expect(throws: DecodingError.self) {
+            _ = try JSONDecoder().decode(CoachingStreamEvent.self, from: completedEvent(proposal: proposal))
+        }
+    }
+
+    private func completedEvent(proposal: String, titleSuggestion: String = "null") -> Data {
+        let requestID = "00000000-0000-4000-8000-000000000109"
+        return Data(#"{"type":"coaching.completed","requestId":"\#(requestID)","sequence":0,"response":{"requestId":"\#(requestID)","reply":"Reply","mode":"coach","relevance":"career-relevant","contextSufficiency":"sufficient","stance":"nudge","explanation":{"mode":"nudge","evidence":[],"inference":"A bounded inference","confidence":"medium","approach":"Offer one useful next step"},"proposal":\#(proposal),"usage":{"provider":"anthropic","model":"fixture","estimatedCostUsd":0},"titleSuggestion":\#(titleSuggestion)},"idempotencyReceipt":"receipt"}"#.utf8)
     }
 }

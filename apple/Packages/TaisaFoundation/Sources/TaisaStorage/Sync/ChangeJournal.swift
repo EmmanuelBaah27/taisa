@@ -294,10 +294,10 @@ public struct ChangeJournal: Sendable {
         let entityType: String = row["entity_type"]
         guard let kind = DomainEntity(rawValue: entityType) else { throw RepositoryError.persistenceFailed }
         let entityID = try requiredID(row["entity_id"] as String)
-        let matches = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM \(kind.table) WHERE id = ? COLLATE NOCASE", arguments: [entityID]) ?? 0
+        let matches = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM \(kind.table) WHERE \(kind.identityColumn) = ? COLLATE NOCASE", arguments: [entityID]) ?? 0
         guard matches <= 1 else { throw RepositoryError.persistenceFailed }
         guard !kind.references.isEmpty else { return }
-        let storedRecord = try Row.fetchOne(db, sql: "SELECT * FROM \(kind.table) WHERE id = ? COLLATE NOCASE", arguments: [entityID])
+        let storedRecord = try Row.fetchOne(db, sql: "SELECT * FROM \(kind.table) WHERE \(kind.identityColumn) = ? COLLATE NOCASE", arguments: [entityID])
         let payload: Data = row["payload"]
         guard let object = try JSONSerialization.jsonObject(with: payload) as? [String: Any] else { throw RepositoryError.persistenceFailed }
         let record = object["record"] as? [String: Any]
@@ -306,7 +306,8 @@ public struct ChangeJournal: Sendable {
             if let parent = record?[property] as? String { try parentsToCheck.insert(requiredID(parent)) }
             if let storedRecord, let storedParent: String = storedRecord[column] { try parentsToCheck.insert(requiredID(storedParent)) }
             for parentID in parentsToCheck {
-                let parents = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM \(table) WHERE id = ? COLLATE NOCASE", arguments: [parentID]) ?? 0
+                let identity = table == "assistant_response_metadata" ? "response_message_id" : "id"
+                let parents = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM \(table) WHERE \(identity) = ? COLLATE NOCASE", arguments: [parentID]) ?? 0
                 guard parents <= 1 else { throw RepositoryError.persistenceFailed }
             }
         }

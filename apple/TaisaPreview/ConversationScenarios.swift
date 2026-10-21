@@ -1,3 +1,4 @@
+import Foundation
 import SwiftUI
 import TaisaConversations
 import TaisaPreviewSupport
@@ -16,6 +17,7 @@ enum ConversationScenarios {
         composer("conversation.transcribing", "Conversation transcribing", .transcribing),
         composer("conversation.coaching", "Conversation coaching", .coaching),
         composer("conversation.waiting", "Conversation waiting for Reply", .waitingForReply, messages: messages),
+        seniorSelfResponse,
         composer("conversation.permission-denied", "Conversation microphone denied", .failure(.unavailable)),
         composer("conversation.retry-transcription", "Conversation retry transcription", .failure(.retryable)),
         composer("conversation.retry-coaching", "Conversation retry coaching", .failure(.retryable)),
@@ -33,14 +35,67 @@ enum ConversationScenarios {
         _ state: ComposerState,
         family: PreviewDeviceFamily = .adaptive,
         accessibility: PreviewAccessibilitySettings = .default,
-        messages: [MessageRecord] = []
+        messages: [MessageRecord] = [],
+        assistantResponses: [String: AssistantResponseRecord] = [:]
     ) -> PreviewScenario {
         PreviewScenario(
             identifier: identifier, title: title, deviceFamily: family,
             accessibility: accessibility, readiness: .ready
         ) {
-            AnyView(ConversationView(model: .preview(composer: state, messages: messages)))
+            AnyView(ConversationView(model: .preview(
+                composer: state, messages: messages, assistantResponses: assistantResponses
+            )))
         }
+    }
+
+    private static var seniorSelfResponse: PreviewScenario {
+        let responseMessageID = messages[1].id
+        let metadata = AssistantResponseMetadataRecord(
+            responseMessageID: responseMessageID,
+            requestID: "50000000-0000-4000-8000-000000000001",
+            idempotencyReceipt: "preview-senior-self-response",
+            mode: .coach,
+            relevance: "career-relevant",
+            contextSufficiency: "sufficient",
+            stance: "nudge",
+            inference: "You have evidence of impact, but the review story needs one concrete next step.",
+            confidence: "high",
+            approach: "Connect the evidence to a practical action without overstating certainty.",
+            createdAtMS: 2
+        )
+        let source = AssistantResponseSourceRecord(
+            id: "60000000-0000-4000-8000-000000000001",
+            responseMessageID: responseMessageID,
+            ordinal: 0,
+            sourceID: messages[0].id,
+            sourceType: "message",
+            excerpt: "Help me prepare for my review."
+        )
+        let proposal = AssistantProposalRecord(
+            id: "70000000-0000-4000-8000-000000000001",
+            responseMessageID: responseMessageID,
+            kind: "action",
+            canonicalPayload: Data(
+                #"{"kind":"action","title":"Draft three evidence-backed review points","description":null,"priority":"medium","dueAt":null,"goalId":null}"#.utf8
+            ),
+            payloadDigest: "preview-action-digest",
+            state: .pending,
+            targetType: nil,
+            targetID: nil,
+            targetVersionID: nil,
+            decisionReceipt: nil,
+            createdAtMS: 2,
+            resolvedAtMS: nil
+        )
+        return composer(
+            "conversation.senior-self-response",
+            "Senior Self response",
+            .waitingForReply,
+            messages: messages,
+            assistantResponses: [responseMessageID: AssistantResponseRecord(
+                metadata: metadata, sources: [source], proposal: proposal, feedback: nil
+            )]
+        )
     }
 
     private static func list(
