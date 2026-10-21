@@ -167,7 +167,8 @@ final class ConversationViewModel {
     var isCorrectionSubmitting: Bool { actionInFlight && correctionMessageID != nil }
     var isSendingText: Bool { pendingSentText != nil }
     var closeActionDisabled: Bool {
-        actionInFlight && !(composer == .coaching && processingMessageIsDurable)
+        if composer == .preparingVoice { return false }
+        return actionInFlight && !(composer == .coaching && processingMessageIsDurable)
     }
     var isCorrectionDirty: Bool {
         correctionMessageID != nil && correctionText != correctionOriginalText
@@ -529,6 +530,10 @@ final class ConversationViewModel {
     }
 
     func requestClose() {
+        if composer == .preparingVoice, actionInFlight {
+            voicePreparationExit = .discard
+            return
+        }
         guard !closeActionDisabled else { return }
         if capture.disposition == .empty {
             switch composer {

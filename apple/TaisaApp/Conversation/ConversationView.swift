@@ -91,24 +91,26 @@ struct ConversationView: View {
             // command that action is about to confirm.
             set: { _ in }
         )) {
-            switch model.confirmation {
-            case .discardVoiceForKeyboard:
-                Button("Switch to keyboard", role: .destructive) { Task { await model.confirmKeyboardReplacement() } }
-                Button("Cancel", role: .cancel, action: model.cancelConfirmation)
-            case .discardRecording:
-                Button("Continue", role: .destructive) { Task { await model.confirmDiscardRecording() } }
-                Button("Go back", role: .cancel, action: model.cancelConfirmation)
-            case .discardShortOrKeepRecording:
-                Button("Discard recording", role: .destructive) { Task { await model.confirmDiscardRecording() } }
-                Button("Keep recording", role: .cancel, action: model.cancelConfirmation)
-            case .saveDiscardOrCancel:
-                Button("Save draft") { Task { await model.saveAndClose() } }.accessibilityIdentifier("conversation.save-draft")
-                Button("Discard", role: .destructive) { Task { await model.discardAndClose() } }.accessibilityIdentifier("conversation.discard")
-                Button("Cancel", role: .cancel, action: model.cancelConfirmation)
-            case nil: EmptyView()
+            Group {
+                switch model.confirmation {
+                case .discardVoiceForKeyboard:
+                    Button("Switch to keyboard", role: .destructive) { Task { await model.confirmKeyboardReplacement() } }
+                    Button("Cancel", role: .cancel, action: model.cancelConfirmation)
+                case .discardRecording:
+                    Button("Continue", role: .destructive) { Task { await model.confirmDiscardRecording() } }
+                    Button("Go back", role: .cancel, action: model.cancelConfirmation)
+                case .discardShortOrKeepRecording:
+                    Button("Discard recording", role: .destructive) { Task { await model.confirmDiscardRecording() } }
+                    Button("Keep recording", role: .cancel, action: model.cancelConfirmation)
+                case .saveDiscardOrCancel:
+                    Button("Save draft") { Task { await model.saveAndClose() } }.accessibilityIdentifier("conversation.save-draft")
+                    Button("Discard", role: .destructive) { Task { await model.discardAndClose() } }.accessibilityIdentifier("conversation.discard")
+                    Button("Cancel", role: .cancel, action: model.cancelConfirmation)
+                case nil: EmptyView()
+                }
             }
+            .disabled(model.actionInFlight)
         }
-        .disabled(model.actionInFlight)
     }
 
     @ViewBuilder private var composer: some View {

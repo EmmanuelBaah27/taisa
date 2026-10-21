@@ -834,6 +834,42 @@ final class ConversationViewModelTests: XCTestCase {
         await pause.value
     }
 
+    func testCloseDuringVoicePreparationQueuesDiscardAndDismissal() async {
+        let preparationStarted = AsyncGate()
+        let finishPreparation = AsyncGate()
+        let events = EventRecorder()
+        var dismissed = 0
+        let client = ConversationScreenClient(
+            beginVoice: {
+                await preparationStarted.open()
+                await finishPreparation.wait()
+            }, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
+            sendText: { _, available in await available() }, retry: {},
+            saveDraft: { _ in },
+            discardDraft: { await events.append("discard-draft") },
+            discardEmptyConversation: { await events.append("discard-conversation") }
+        )
+        let model = ConversationViewModel(
+            conversationID: UUID().uuidString, title: "New chat", entryIntent: nil,
+            composer: .waitingForReply, client: client, dismiss: { dismissed += 1 }
+        )
+
+        let preparation = Task { try await model.beginVoice() }
+        await preparationStarted.wait()
+
+        XCTAssertEqual(model.composer, .preparingVoice)
+        XCTAssertFalse(model.closeActionDisabled)
+        model.requestClose()
+        XCTAssertEqual(dismissed, 0)
+
+        await finishPreparation.open()
+        try? await preparation.value
+
+        let recordedEvents = await events.values()
+        XCTAssertEqual(recordedEvents, ["discard-draft", "discard-conversation"])
+        XCTAssertEqual(dismissed, 1)
+    }
+
     func testEmptyRecordingDiscardCleansUpProvisionalChatAndDismisses() async {
         let client = ConversationScreenClientSpy(captureDisposition: .empty)
         var dismissed = 0
@@ -898,9 +934,11 @@ final class ConversationViewModelTests: XCTestCase {
         await Task.yield()
         model.requestClose()
         XCTAssertEqual(dismissed, 0)
+        XCTAssertTrue(model.closeActionDisabled)
 
         await durableGate.open()
         await durableCallback.wait()
+        XCTAssertFalse(model.closeActionDisabled)
         model.requestClose()
         XCTAssertEqual(dismissed, 1)
         await finishGate.open()
