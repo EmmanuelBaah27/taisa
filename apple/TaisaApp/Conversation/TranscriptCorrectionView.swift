@@ -24,6 +24,8 @@ struct TranscriptCorrectionView: View {
                         role: .primary,
                         shape: .capsule,
                         label: "Update and regenerate",
+                        isProcessing: isSubmitting,
+                        processingAccessibilityLabel: "Saving message",
                         action: submit
                     )
                         .disabled(!canSubmit || isSubmitting)

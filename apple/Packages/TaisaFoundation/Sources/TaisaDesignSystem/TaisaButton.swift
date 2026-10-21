@@ -11,26 +11,43 @@ public enum TaisaButtonShape: Sendable, Equatable {
 }
 
 public struct TaisaButton: View {
+    public enum Contract {
+        public static let supportsInPlaceProgress = true
+    }
+
     private let role: TaisaButtonRole
     private let shape: TaisaButtonShape
     private let label: String
+    private let isProcessing: Bool
+    private let processingAccessibilityLabel: String
     private let action: @MainActor () -> Void
 
     public init(
         role: TaisaButtonRole,
         shape: TaisaButtonShape = .roundedRectangle,
         label: String,
+        isProcessing: Bool = false,
+        processingAccessibilityLabel: String = "Working",
         action: @escaping @MainActor () -> Void
     ) {
         self.role = role
         self.shape = shape
         self.label = label
+        self.isProcessing = isProcessing
+        self.processingAccessibilityLabel = processingAccessibilityLabel
         self.action = action
     }
 
     public var body: some View {
         Button(action: action) {
-            TaisaText(role: .label, color: .foreground, content: label)
+            ZStack {
+                TaisaText(role: .label, color: .foreground, content: label)
+                    .opacity(isProcessing ? 0 : 1)
+                if isProcessing {
+                    ProgressView()
+                        .tint(TaisaColor.foreground.color)
+                }
+            }
                 .frame(maxWidth: .infinity, minHeight: 44)
                 .padding(.horizontal, TaisaSpacing.standard.rawValue)
                 .background(background, in: buttonShape)
@@ -39,7 +56,8 @@ public struct TaisaButton: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(label)
+        .disabled(isProcessing)
+        .accessibilityLabel(isProcessing ? processingAccessibilityLabel : label)
     }
 
     private var buttonShape: AnyShape {

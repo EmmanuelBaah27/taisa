@@ -130,6 +130,7 @@ final class ConversationViewContractTests: XCTestCase {
         XCTAssertTrue(source.contains("Text(\"Reply\")"))
         XCTAssertTrue(source.contains(".smooth(duration: TaisaMotion.settle)"))
         XCTAssertTrue(source.contains("Edit message"))
+        XCTAssertTrue(source.contains("isProcessing: isSubmitting"))
         XCTAssertTrue(source.contains("UIApplication.openSettingsURLString"))
         XCTAssertTrue(source.contains("UIApplication.shared.open(settingsURL"))
         XCTAssertTrue(source.contains("Task.sleep(for: .milliseconds(200))"))
