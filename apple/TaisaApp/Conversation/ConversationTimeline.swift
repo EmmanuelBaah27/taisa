@@ -5,7 +5,6 @@ import UIKit
 
 enum ConversationTimelineLayout {
     static let userBubbleWidthFraction: CGFloat = 0.85
-    static let jumpIconSize: CGFloat = 20
     static let jumpVisibilityThreshold: CGFloat = 160
     static let ordinaryMessageSpacing: CGFloat = 12
     static let userToAssistantSpacing: CGFloat = 32
@@ -226,20 +225,13 @@ struct ConversationTimeline: View {
             } action: { _, away in isAwayFromLatest = away }
             .overlay(alignment: .bottom) {
                 if isAwayFromLatest, !presentedMessages.isEmpty {
-                    TaisaSecondaryCapsuleButton(action: {
+                    ConversationJumpToLatestButton(
+                        isLoading: isThinking || !streamingResponse.isEmpty,
+                        action: {
                         isAwayFromLatest = false
                         scrollToLatest(using: proxy, animated: !reduceMotion)
-                    }) {
-                        HStack(spacing: TaisaSpacing.compact.rawValue) {
-                            Text("Jump to latest").font(TaisaTypography.navigationLabel.font)
-                            CentralIcon(.chevronDown)
-                                .frame(
-                                    width: ConversationTimelineLayout.jumpIconSize,
-                                    height: ConversationTimelineLayout.jumpIconSize
-                                )
                         }
-                        .padding(.horizontal, TaisaSpacing.standard.rawValue)
-                    }
+                    )
                     .padding(.bottom, TaisaSpacing.standard.rawValue)
                     .accessibilityIdentifier("conversation.jump-to-latest")
                 }

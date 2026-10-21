@@ -66,6 +66,12 @@ struct ConversationComponentTests {
         #expect(TaisaMessageSendTransition.Role.composer != .message)
     }
 
+    @Test func jumpToLatestIsIconOnlyAndKeepsStableGeometryWhileLoading() {
+        #expect(ConversationJumpToLatestButton.Contract.size == 48)
+        #expect(ConversationJumpToLatestButton.Contract.iconSize == 24)
+        #expect(ConversationJumpToLatestButton.Contract.accessibilityLabel == "Jump to latest response")
+    }
+
     @Test func composerContractsDescribeActionsWithoutColorAlone() {
         #expect(VoiceComposerControls.Contract.recording.pauseLabel == "Pause recording")
         #expect(VoiceComposerControls.Contract.paused.resumeLabel == "Resume recording")
