@@ -145,7 +145,10 @@ public actor ConversationCoordinator {
         }
     }
 
-    public func send(_ input: ConversationInput) async throws {
+    public func send(
+        _ input: ConversationInput,
+        onMessageAvailable: @escaping @Sendable () async -> Void = {}
+    ) async throws {
         switch input {
         case .voice:
             try await beginReply(mode: .voice)
@@ -155,14 +158,16 @@ public actor ConversationCoordinator {
             guard !text.isEmpty else { throw ConversationFailure.invalidInput }
             let pending = PendingText(requestID: UUID().uuidString, text: text)
             pendingText = pending
-            try await perform(pending)
+            try await perform(pending, onMessageAvailable: onMessageAvailable)
         }
     }
 
     public func retry() async throws {
         if let pendingCorrection {
+            try await client.prepareExplicitRetry(requestID: pendingCorrection.requestID)
             try await perform(pendingCorrection)
         } else if let pendingText {
+            try await client.prepareExplicitRetry(requestID: pendingText.requestID)
             try await perform(pendingText)
         } else {
             try await voice.retry()
@@ -209,14 +214,18 @@ public actor ConversationCoordinator {
         }
     }
 
-    private func perform(_ pending: PendingText) async throws {
+    private func perform(
+        _ pending: PendingText,
+        onMessageAvailable: @escaping @Sendable () async -> Void = {}
+    ) async throws {
         guard !requestInFlight else { throw ConversationFailure.busy }
         requestInFlight = true
         defer { requestInFlight = false }
         composer = .coaching
         do {
             let reply = try await client.sendText(
-                conversationID: conversationID, requestID: pending.requestID, text: pending.text
+                conversationID: conversationID, requestID: pending.requestID, text: pending.text,
+                onMessageAvailable: onMessageAvailable
             )
             pendingText = nil
             accept(reply)

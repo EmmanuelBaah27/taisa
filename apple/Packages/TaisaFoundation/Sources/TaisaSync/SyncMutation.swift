@@ -166,6 +166,7 @@ public struct SyncMutation: Codable, Sendable, Equatable {
     private static let entities: Set<String> = [
         "profile", "conversation", "message", "goal", "milestone", "action", "evidence", "memory", "memory_source",
         "voice_turn", "weekly_placement", "work_event", "insight", "insight_source", "insight_revision",
+        "assistant_response_metadata", "assistant_response_source", "assistant_proposal",
     ]
 
     func canonicalized() -> SyncMutation {

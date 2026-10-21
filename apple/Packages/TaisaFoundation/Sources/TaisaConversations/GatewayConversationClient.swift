@@ -1,5 +1,6 @@
 import Foundation
 import TaisaContracts
+import TaisaNetworking
 import TaisaStorage
 import TaisaVoice
 
@@ -28,10 +29,6 @@ enum ConversationTitleDeriver {
             .joined(separator: " ")
             .trimmingCharacters(in: .punctuationCharacters.union(.whitespacesAndNewlines))
         guard !collapsed.isEmpty else { return nil }
-
-        if let reported = reportedPhrase(for: collapsed.lowercased()) {
-            return reported
-        }
 
         var topic = collapsed
         let lowercase = collapsed.lowercased()
@@ -109,32 +106,16 @@ enum ConversationTitleDeriver {
         }
         return replacement + punctuation
     }
-
-    /// Stable fallbacks for common capture intents. Server suggestions remain the
-    /// preferred title; these phrases keep offline/legacy history grammatical.
-    private static func reportedPhrase(for source: String) -> String? {
-        switch source {
-        case "if i type now, will it show":
-            "Checking whether typed messages appear"
-        case "i'm going to start another one in drafts":
-            "Starting another conversation draft"
-        case "i'm recording one last time. i don't know why you":
-            "Retrying a recording one last time"
-        case "why is it that when i try to record, like for some":
-            "Troubleshooting a recording problem"
-        case "i'm trying a new one. i don't know why if i tap":
-            "Testing a new recording attempt"
-        default:
-            nil
-        }
-    }
 }
 
 public actor GatewayConversationClient: ConversationClient {
+    private var partialCoaching = ""
     private let query: ConversationQuery
     private let repository: ConversationRepository
     private let turns: ConversationTurnRepository
+    private let responses: AssistantResponseRepository
     private let coaching: any VoiceCoachingRunning
+    private let reconciliation: (any CoachingReconciliationLookingUp)?
     private let deviceID: String
     private let nowMS: @Sendable () -> Int64
 
@@ -142,46 +123,82 @@ public actor GatewayConversationClient: ConversationClient {
         store: TaisaStore,
         deviceID: UUID,
         coaching: any VoiceCoachingRunning,
+        reconciliation: (any CoachingReconciliationLookingUp)? = nil,
         nowMS: @escaping @Sendable () -> Int64 = { Int64(Date().timeIntervalSince1970 * 1_000) }
     ) {
         query = ConversationQuery(store: store)
         repository = ConversationRepository(store: store)
         turns = ConversationTurnRepository(store: store)
+        responses = AssistantResponseRepository(store: store)
         self.coaching = coaching
+        self.reconciliation = reconciliation
         self.deviceID = deviceID.uuidString.lowercased()
         self.nowMS = nowMS
     }
 
-    public func sendText(conversationID: String, requestID: String, text: String) async throws -> ConversationReply {
+    public func sendText(
+        conversationID: String, requestID: String, text: String,
+        onMessageAvailable: @escaping @Sendable () async -> Void
+    ) async throws -> ConversationReply {
         guard UUID(uuidString: conversationID) != nil, let requestUUID = UUID(uuidString: requestID) else {
             throw ConversationFailure.invalidInput
         }
         let normalized = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !normalized.isEmpty else { throw ConversationFailure.invalidInput }
 
-        let createdAt = nowMS()
+        let turnID = derivedUUID(from: requestID, salt: 1)
+        let existingTurn = try await turns.turn(id: turnID)
+        let createdAt = existingTurn?.createdAtMS ?? nowMS()
+        let userMessageID = requestUUID.uuidString.lowercased()
+        let turn = VoiceTurnRecord(
+            id: turnID, conversationID: conversationID,
+            transcriptionRequestID: derivedUUID(from: requestID, salt: 2),
+            transcriptionIdempotencyKey: "text-no-transcription-\(requestID.lowercased())",
+            coachingRequestID: requestID,
+            coachingIdempotencyKey: "text-coaching-\(requestID.lowercased())",
+            state: .coaching, stage: .coaching, acceptedTranscript: normalized,
+            failureCode: "pending_text", userMessageID: userMessageID,
+            createdAtMS: createdAt, updatedAtMS: createdAt
+        )
+        let userMessage = MessageRecord(
+            id: userMessageID, conversationID: conversationID,
+            role: "user", body: normalized, createdAtMS: createdAt
+        )
+        if existingTurn == nil {
+            try await turns.checkpoint(
+                turn, messages: [userMessage], cleanup: nil, context: context(createdAt)
+            )
+        } else {
+            guard try await repository.message(id: userMessage.id) == userMessage else {
+                throw ConversationFailure.unavailable
+            }
+        }
         try await repository.saveDraft(.init(
             id: derivedUUID(from: conversationID, salt: 4), conversationID: conversationID,
             inputMode: .text, text: normalized, voiceTurnID: nil,
             recoveryKind: .retryableCoaching, createdAtMS: createdAt, updatedAtMS: createdAt
         ))
-        let userMessageID = requestUUID.uuidString.lowercased()
-        try await createMessageIfNeeded(.init(
-            id: userMessageID, conversationID: conversationID,
-            role: "user", body: normalized, createdAtMS: createdAt
-        ))
+        await onMessageAvailable()
 
-        let response = try await requestCoaching(
+        let completion = try await requestCoaching(
             conversationID: conversationID, requestID: requestID,
             text: normalized, createdAtMS: createdAt,
             userMessageID: userMessageID, assistantMessageID: nil, failureCode: "pending_text"
         )
 
         let assistantMessageID = derivedUUID(from: requestID, salt: 3)
-        try await createMessageIfNeeded(.init(
+        let response = completion.response
+        let assistantMessage = MessageRecord(
             id: assistantMessageID, conversationID: conversationID,
             role: "assistant", body: response.reply, createdAtMS: max(createdAt, nowMS())
-        ))
+        )
+        if try await responses.response(messageID: assistantMessageID) == nil {
+            try await responses.persist(try VoiceAssistantResponseWrite.make(
+                message: assistantMessage,
+                response: completion.response,
+                receipt: completion.idempotencyReceipt
+            ), context: context(assistantMessage.createdAtMS))
+        }
         try await finishTurn(
             conversationID: conversationID, requestID: requestID, text: normalized,
             createdAtMS: createdAt, userMessageID: userMessageID,
@@ -193,7 +210,7 @@ public actor GatewayConversationClient: ConversationClient {
             updatedAtMS: max(createdAt, nowMS())
         )
         try await discardDrafts(conversationID: conversationID)
-        return ConversationReply(text: response.reply, titleSuggestion: response.titleSuggestion)
+        return ConversationReply(terminalResponse: response)
     }
 
     public func saveDraft(conversationID: String, input: ConversationInput) async throws {
@@ -241,13 +258,14 @@ public actor GatewayConversationClient: ConversationClient {
         let now = nowMS()
         let normalized = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !normalized.isEmpty else { throw ConversationFailure.invalidInput }
-        let response = try await requestCoaching(
+        let completion = try await requestCoaching(
             conversationID: conversationID, requestID: requestID,
             text: normalized, createdAtMS: now,
             userMessageID: messageID,
             assistantMessageID: snapshot.visibleMessages[originalIndex + 1].id,
             failureCode: "pending_correction"
         )
+        let response = completion.response
         let corrected = MessageRecord(
             id: requestID, conversationID: conversationID,
             role: "user", body: normalized, createdAtMS: now
@@ -256,14 +274,23 @@ public actor GatewayConversationClient: ConversationClient {
             id: regeneratedID, conversationID: conversationID,
             role: "assistant", body: response.reply, createdAtMS: max(now, nowMS())
         )
-        try await repository.applyCorrection(.init(
+        let correction = ConversationCorrection(
             revisionID: UUID().uuidString,
             originalUserMessageID: messageID,
             originalAssistantMessageID: snapshot.visibleMessages[originalIndex + 1].id,
             correctedUserMessage: corrected,
             regeneratedAssistantMessage: regenerated,
             createdAtMS: now
-        ), context: context(now))
+        )
+        try await repository.applyCorrection(
+            correction,
+            replacementResponse: try VoiceAssistantResponseWrite.make(
+                message: regenerated,
+                response: completion.response,
+                receipt: completion.idempotencyReceipt
+            ),
+            context: context(now)
+        )
         try await finishTurn(
             conversationID: conversationID, requestID: requestID, text: normalized,
             createdAtMS: now, userMessageID: corrected.id,
@@ -274,7 +301,12 @@ public actor GatewayConversationClient: ConversationClient {
             titleSuggestion: nil,
             updatedAtMS: max(now, nowMS())
         )
-        return ConversationReply(text: response.reply, titleSuggestion: nil)
+        return ConversationReply(terminalResponse: response)
+    }
+
+    private struct TerminalCompletion {
+        let response: CoachingResponse
+        let idempotencyReceipt: String
     }
 
     private func requestCoaching(
@@ -285,7 +317,9 @@ public actor GatewayConversationClient: ConversationClient {
         userMessageID: String?,
         assistantMessageID: String?,
         failureCode: String?
-    ) async throws -> CoachingResponse {
+    ) async throws -> TerminalCompletion {
+        partialCoaching = ""
+        defer { partialCoaching = "" }
         let turnID = derivedUUID(from: requestID, salt: 1)
         let persisted = try await turns.turn(id: turnID)
         let durableCreatedAt = persisted?.createdAtMS ?? createdAtMS
@@ -301,12 +335,45 @@ public actor GatewayConversationClient: ConversationClient {
             createdAtMS: durableCreatedAt, updatedAtMS: max(durableCreatedAt, nowMS())
         )
         try await turns.checkpoint(turn, messages: [], cleanup: nil, context: context(nowMS()))
-        let stream = try await coaching.stream(for: turn)
-        var completion: CoachingResponse?
-        for try await event in stream {
+        do {
+            return try await consumeCoaching(for: turn)
+        } catch let error as StreamTransportError where error == .reconciliationRequired {
+            guard let reconciliation,
+                  let requestUUID = UUID(uuidString: requestID) else { throw error }
+            switch try await reconciliation.reconcile(requestID: requestUUID) {
+            case .completed(let response, let receipt):
+                return TerminalCompletion(response: response, idempotencyReceipt: receipt)
+            case .failed(_, let retryable):
+                throw retryable ? ConversationFailure.retryable : ConversationFailure.unavailable
+            case .safeToRetry:
+                partialCoaching = ""
+                return try await consumeCoaching(for: turn)
+            case .ambiguous:
+                throw ConversationFailure.retryable
+            }
+        }
+    }
+
+    public func prepareExplicitRetry(requestID: String) async throws {
+        guard let reconciliation, let requestUUID = UUID(uuidString: requestID) else { return }
+        switch try await reconciliation.reconcile(requestID: requestUUID) {
+        case .ambiguous:
+            try await reconciliation.authorizeRetry(requestID: requestUUID)
+        case .failed(_, let retryable):
+            guard retryable else { throw ConversationFailure.unavailable }
+            try await reconciliation.authorizeRetry(requestID: requestUUID)
+        case .safeToRetry, .completed:
+            return
+        }
+    }
+
+    private func consumeCoaching(for turn: VoiceTurnRecord) async throws -> TerminalCompletion {
+        var completion: TerminalCompletion?
+        for try await event in try await coaching.stream(for: turn) {
             switch event {
-            case .delta: continue
-            case .completed(_, _, let response, _): completion = response
+            case .delta(_, _, let delta): partialCoaching += delta
+            case .completed(_, _, let response, let receipt):
+                completion = TerminalCompletion(response: response, idempotencyReceipt: receipt)
             case .failed(_, _, _, let retryable):
                 throw retryable ? ConversationFailure.retryable : ConversationFailure.unavailable
             }
@@ -314,6 +381,8 @@ public actor GatewayConversationClient: ConversationClient {
         guard let completion else { throw ConversationFailure.retryable }
         return completion
     }
+
+    public func partialCoachingSnapshot() -> String { partialCoaching }
 
     private func finishTurn(
         conversationID: String, requestID: String, text: String, createdAtMS: Int64,

@@ -33,6 +33,24 @@ public struct ConversationRepository: DomainRepository, MessageRepositoryContrac
     }
     public func createMessage(_ record: MessageRecord, context: MutationContext) async throws { try await messageCore.create(record, context: context) }
     public func message(id: String) async throws -> MessageRecord? { try await messageCore.get(id: id) }
+    public func visibleMessage(id: String) async throws -> MessageRecord? {
+        guard let id = UUIDIdentity.canonical(id) else { throw RepositoryError.invalidIdentifier }
+        return try await core.store.read { db in
+            try Row.fetchOne(db, sql: """
+                SELECT m.* FROM messages m
+                WHERE m.id = ? COLLATE NOCASE
+                  AND NOT EXISTS (
+                    SELECT 1 FROM tombstones t
+                    WHERE t.entity_type = 'message' AND t.entity_id = m.id COLLATE NOCASE
+                  )
+                """, arguments: [id]).map {
+                    MessageRecord(
+                        id: $0["id"], conversationID: $0["conversation_id"],
+                        role: $0["role"], body: $0["body"], createdAtMS: $0["created_at_ms"]
+                    )
+                }
+        }
+    }
     public func deleteMessage(id: String, context: MutationContext) async throws { try await messageCore.delete(id: id, context: context) }
 
     public func draft(id: String) async throws -> ConversationDraftRecord? {
@@ -83,7 +101,7 @@ public struct ConversationRepository: DomainRepository, MessageRepositoryContrac
                     db,
                     sql: "SELECT voice_turn_id FROM conversation_drafts WHERE id = ? COLLATE NOCASE",
                     arguments: [id]
-                ) else { throw RepositoryError.notFound }
+                ) else { return }
                 let voiceTurnID: String? = row["voice_turn_id"]
                 if let voiceTurnID {
                     try Self.queueAudioCleanup(for: voiceTurnID, in: db)
@@ -111,7 +129,11 @@ public struct ConversationRepository: DomainRepository, MessageRepositoryContrac
         )
     }
 
-    public func applyCorrection(_ source: ConversationCorrection, context: MutationContext) async throws {
+    public func applyCorrection(
+        _ source: ConversationCorrection,
+        replacementResponse: AssistantResponseWrite? = nil,
+        context: MutationContext
+    ) async throws {
         let correction = try Self.validated(source)
         guard UUIDIdentity.canonical(context.id) != nil,
               UUIDIdentity.canonical(context.deviceID) != nil else { throw RepositoryError.invalidIdentifier }
@@ -137,6 +159,12 @@ public struct ConversationRepository: DomainRepository, MessageRepositoryContrac
                 }
                 try Self.insert(correction.correctedUserMessage, in: db)
                 try Self.insert(correction.regeneratedAssistantMessage, in: db)
+                if let replacementResponse {
+                    guard replacementResponse.message == correction.regeneratedAssistantMessage else {
+                        throw RepositoryError.persistenceFailed
+                    }
+                    try AssistantResponseRepository.insertCompanions(replacementResponse, context: context, store: core.store, db: db)
+                }
                 try db.execute(
                     sql: "INSERT INTO message_revisions (id, message_id, original_body, replacement_message_id, created_at_ms) VALUES (?, ?, ?, ?, ?)",
                     arguments: [correction.revisionID, correction.originalUserMessageID, userRow["body"] as String, correction.correctedUserMessage.id, correction.createdAtMS]
@@ -145,6 +173,27 @@ public struct ConversationRepository: DomainRepository, MessageRepositoryContrac
                     try db.execute(
                         sql: "INSERT INTO tombstones (id, entity_type, entity_id, deletion_version_id, deleted_at_ms) VALUES (?, 'message', ?, ?, ?)",
                         arguments: [UUID().uuidString, messageID, UUID().uuidString, context.timestamp]
+                    )
+                }
+                if let row = try Row.fetchOne(
+                    db,
+                    sql: "SELECT * FROM assistant_proposals WHERE response_message_id = ? COLLATE NOCASE AND state = 'pending'",
+                    arguments: [correction.originalAssistantMessageID]
+                ) {
+                    let proposal = AssistantResponseRepository.decodeProposal(row)
+                    let superseded = AssistantProposalRecord(
+                        id: proposal.id, responseMessageID: proposal.responseMessageID,
+                        kind: proposal.kind, canonicalPayload: proposal.canonicalPayload,
+                        payloadDigest: proposal.payloadDigest, state: .superseded,
+                        targetType: proposal.targetType, targetID: proposal.targetID,
+                        targetVersionID: proposal.targetVersionID,
+                        decisionReceipt: proposal.decisionReceipt,
+                        createdAtMS: proposal.createdAtMS, resolvedAtMS: context.timestamp
+                    )
+                    try AssistantResponseRepository.proposalCore(core.store).update(
+                        superseded,
+                        context: AssistantResponseRepository.childContext(context, entity: "assistant_proposal", id: proposal.id),
+                        db: db
                     )
                 }
                 try db.execute(

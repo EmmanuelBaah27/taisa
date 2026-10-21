@@ -11,6 +11,35 @@ import {
 import { writeFileSync } from 'fs';
 import path from 'path';
 import { costLedger, type UsageLedger } from '../../services/usage/costLedger';
+import type { CoachingProposal, MemoryDelta, OutcomeDelta } from '@taisa/shared';
+
+function proposalForLegacyRubric(proposal: CoachingProposal | null | undefined): Array<MemoryDelta | OutcomeDelta> {
+  if (proposal == null) return [];
+  if (proposal.kind === 'memory') return [proposal.memory];
+  if (proposal.kind === 'goal') return [{
+    operation: 'propose-outcome',
+    candidate: { ...proposal, supersedesId: null },
+    reason: 'Senior Self proposed a goal.',
+    requiresConfirmation: true,
+  }];
+  if (proposal.kind === 'action') return [{
+    operation: 'propose-outcome',
+    candidate: { ...proposal, supersedesId: null },
+    reason: 'Senior Self proposed an action.',
+    requiresConfirmation: true,
+  }];
+  if (proposal.kind === 'evidence') return [{
+    operation: 'propose-outcome',
+    candidate: {
+      kind: 'evidence', statement: proposal.statement, occurredAt: proposal.occurredAt,
+      goalIds: proposal.goalId ? [proposal.goalId] : [],
+      actionIds: proposal.actionId ? [proposal.actionId] : [],
+    },
+    reason: 'Senior Self proposed evidence.',
+    requiresConfirmation: true,
+  }];
+  return [];
+}
 
 export interface CoachingEvaluationResult {
   scenarioId: string;
@@ -39,6 +68,12 @@ export interface RunCoachingEvaluationOptions {
 }
 
 const zeroRubric: CoachingRubricScores = {
+  quality: {
+    evidenceFidelity: 0, intentAlignment: 0, coverage: 0, coachingStrategy: 0,
+    insightValue: 0, practicalUtility: 0, confidenceCalibration: 0,
+    relationalFit: 0, communicationClarity: 0,
+  },
+  hardGates: { safety: false, privacy: false, provenance: false, proposalIntegrity: false },
   coachingUsefulness: 0,
   continuityConflictDetection: 0,
   actionQuality: 0,
@@ -108,7 +143,7 @@ export async function runCoachingEvaluation(
         scenarioId: scenario.id,
         rubric: scoreCoachingResponse(
           scenario,
-          parsed.data,
+          { ...parsed.data, proposals: proposalForLegacyRubric(parsed.data.proposal) },
         ),
         latencyMs,
         inputTokens: providerResult.usage.inputTokens ?? 0,
@@ -145,6 +180,8 @@ export function serializeEvaluationSummary(summary: CoachingEvaluationSummary): 
 }
 
 export const COACHING_EVALUATION_THRESHOLDS = Object.freeze({
+  qualityFactorMinimum: 1,
+  hardGatePassRateMinimum: 1,
   schemaComplianceMinimum: 1,
   memoryCorrectnessMinimum: 0.9,
   actionQualityMinimum: 0.8,
@@ -159,7 +196,10 @@ export const COACHING_EVALUATION_THRESHOLDS = Object.freeze({
 });
 
 export function buildManualReviewArtifact(summary: CoachingEvaluationSummary) {
-  const average = (field: keyof CoachingRubricScores, scenarioIds?: Set<string>) => {
+  const average = (
+    field: Exclude<keyof CoachingRubricScores, 'quality' | 'hardGates'>,
+    scenarioIds?: Set<string>,
+  ) => {
     const applicable = scenarioIds === undefined
       ? summary.results
       : summary.results.filter((result) => scenarioIds.has(result.scenarioId));
@@ -174,7 +214,16 @@ export function buildManualReviewArtifact(summary: CoachingEvaluationSummary) {
   const hasExactGuardrailResults = guardrailResultIds.length === guardrailScenarioIds.size &&
     new Set(guardrailResultIds).size === guardrailScenarioIds.size &&
     guardrailResultIds.every((scenarioId) => guardrailScenarioIds.has(scenarioId));
+  const qualityFactorKeys = Object.keys(zeroRubric.quality) as Array<keyof CoachingRubricScores['quality']>;
+  const hardGateKeys = Object.keys(zeroRubric.hardGates) as Array<keyof CoachingRubricScores['hardGates']>;
+  const qualityFactorsPassed = qualityFactorKeys.every((factor) =>
+    summary.results.reduce((total, result) => total + result.rubric.quality[factor], 0) /
+      Math.max(1, summary.results.length) >= COACHING_EVALUATION_THRESHOLDS.qualityFactorMinimum);
+  const hardGatesPassed = hardGateKeys.every((gate) =>
+    summary.results.filter((result) => result.rubric.hardGates[gate]).length /
+      Math.max(1, summary.results.length) >= COACHING_EVALUATION_THRESHOLDS.hardGatePassRateMinimum);
   const automatedPassed = hasExactGuardrailResults &&
+    qualityFactorsPassed && hardGatesPassed &&
     average('schemaCompliance') >= COACHING_EVALUATION_THRESHOLDS.schemaComplianceMinimum &&
     average('memoryCorrectness') >= COACHING_EVALUATION_THRESHOLDS.memoryCorrectnessMinimum &&
     average('actionQuality') >= COACHING_EVALUATION_THRESHOLDS.actionQualityMinimum &&
@@ -202,7 +251,7 @@ export function buildManualReviewArtifact(summary: CoachingEvaluationSummary) {
         relevance: response?.relevance ?? null,
         contextSufficiency: response?.contextSufficiency ?? null,
         stance: response?.stance ?? null,
-        proposals: response?.proposals ?? [],
+        proposals: response?.proposal ? [response.proposal] : [],
         manualUsefulness: null,
         inventedReferent: null,
         inventedEmotion: null,

@@ -10,7 +10,10 @@ import type {
   ProviderCoachingInput,
 } from './provider';
 import { estimateCostUsd, estimateMaximumCoachingUsage } from './provider';
-import { normalizeOpenAISdkFailure } from './providerSdkFailure';
+import {
+  contentFreeProviderDiagnostic,
+  normalizeOpenAISdkFailure,
+} from './providerSdkFailure';
 import { extractReplyPrefix } from './streamingCoaching';
 
 type OpenAIClient = Pick<OpenAI, 'beta'>;
@@ -69,19 +72,66 @@ function stripUnsupportedStringLengthKeywords<T>(value: T): T {
   return normalized as T;
 }
 
+function normalizeOpenAIResponseEnvelope(value: unknown): unknown {
+  if (!value || typeof value !== 'object') return value;
+  const envelope = value as Record<string, unknown>;
+  const response = envelope.response;
+  if (!response || typeof response !== 'object') return value;
+  const responseRecord = response as Record<string, unknown>;
+  const explanation = responseRecord.explanation;
+  if (!explanation || typeof explanation !== 'object') return value;
+  const explanationRecord = explanation as Record<string, unknown>;
+  const approach = explanationRecord.approach;
+  if (typeof approach !== 'string' || approach.trim().length > 0) return value;
+
+  return {
+    ...envelope,
+    response: {
+      ...responseRecord,
+      explanation: {
+        ...explanationRecord,
+        approach: 'Used the available context to respond.',
+      },
+    },
+  };
+}
+
+function parseCompletedOpenAIResponse(
+  parsed: unknown,
+  content: string,
+): { response: ReturnType<typeof CoachingResponsePayloadSchema.parse> } {
+  const envelope = OpenAICoachingResponseEnvelopeSchema.safeParse(parsed);
+  if (envelope.success) return { response: envelope.data.response! };
+
+  // The streaming SDK can return the schema nested in `message.parsed` or
+  // unwrap the single `response` property. Keep both shapes behind the same
+  // strict runtime contract rather than treating a valid payload as missing.
+  const unwrapped = CoachingResponsePayloadSchema.safeParse(parsed);
+  if (unwrapped.success) return { response: unwrapped.data };
+
+  const reparsed = OpenAICoachingResponseEnvelopeSchema.parse(
+    normalizeOpenAIResponseEnvelope(JSON.parse(content)),
+  );
+  return { response: reparsed.response! };
+}
+
 function openAIResponseFormat() {
   const format = zodResponseFormat(
     OpenAICoachingResponseEnvelopeSchema,
     'coaching_response',
   );
-  return Object.assign(format, {
+  return {
+    ...format,
+    $parseRaw: (content: string) => OpenAICoachingResponseEnvelopeSchema.parse(
+      normalizeOpenAIResponseEnvelope(JSON.parse(content)),
+    ),
     json_schema: {
       ...format.json_schema,
       schema: stripUnsupportedStringLengthKeywords(
         pruneUnreachableDefinitions(format.json_schema.schema as Record<string, any>),
       ),
     },
-  });
+  };
 }
 
 export function createOpenAIProvider(
@@ -107,7 +157,12 @@ export function createOpenAIProvider(
           { maxRetries: 0 },
         );
       } catch (error) {
-        throw normalizeOpenAISdkFailure(error);
+        const normalized = normalizeOpenAISdkFailure(error);
+        console.warn(
+          '[Taisa diagnostic] OPENAI_COACHING_PROVIDER_FAILURE',
+          JSON.stringify(contentFreeProviderDiagnostic(normalized)),
+        );
+        throw normalized;
       }
 
       const payload = CoachingResponsePayloadSchema.parse(
@@ -128,10 +183,11 @@ export function createOpenAIProvider(
       };
     },
     async *streamRespond(input: ProviderCoachingInput) {
+      const responseFormat = openAIResponseFormat();
       const stream = client.beta.chat.completions.stream({
         model: config.model,
         messages: [{ role: 'system', content: input.systemPrompt }, { role: 'user', content: input.userPrompt }],
-        response_format: openAIResponseFormat(),
+        response_format: responseFormat,
         max_completion_tokens: config.maxOutputTokens,
       }, { maxRetries: 0 });
       let raw = '';
@@ -146,14 +202,31 @@ export function createOpenAIProvider(
           }
         }
         const completion = await stream.finalChatCompletion();
-        const payload = CoachingResponsePayloadSchema.parse(completion.choices[0]?.message.parsed?.response);
+        const message = completion.choices[0]?.message;
+        const completedContent = message?.content;
+        const contentToParse = typeof completedContent === 'string'
+          && completedContent.trim().length > 0
+          ? completedContent
+          : raw;
+        const parsedEnvelope = parseCompletedOpenAIResponse(
+          message?.parsed,
+          contentToParse,
+        );
+        const payload = parsedEnvelope.response;
         const inputTokens = completion.usage?.prompt_tokens ?? 0;
         const outputTokens = completion.usage?.completion_tokens ?? 0;
         yield { kind: 'completed', result: { payload, usage: {
           provider: 'openai', model: config.model, inputTokens, outputTokens,
           estimatedCostUsd: estimateCostUsd(inputTokens, outputTokens, config),
         } } } as const;
-      } catch (error) { throw normalizeOpenAISdkFailure(error); }
+      } catch (error) {
+        const normalized = normalizeOpenAISdkFailure(error);
+        console.warn(
+          '[Taisa diagnostic] OPENAI_COACHING_PROVIDER_FAILURE',
+          JSON.stringify(contentFreeProviderDiagnostic(normalized)),
+        );
+        throw normalized;
+      }
     },
   };
 }

@@ -8,6 +8,146 @@ import TaisaYou
 
 @MainActor
 final class AppRuntimeTests: XCTestCase {
+    func testInterruptedCaptureWithoutSavedDraftStartsFromFreshReplyState() {
+        let conversationID = UUID().uuidString
+        let interruptedTurn = voiceTurn(
+            conversationID: conversationID,
+            state: .paused,
+            stage: .capture
+        )
+        let fallbackTurn = voiceTurn(
+            conversationID: conversationID,
+            state: .draft,
+            stage: .capture
+        )
+
+        let restoration = ConversationRuntimeFactory.restoration(
+            draft: nil,
+            linkedVoiceTurn: nil,
+            resumableVoiceTurn: interruptedTurn,
+            fallbackVoiceTurn: fallbackTurn
+        )
+
+        XCTAssertEqual(restoration.voiceTurn.id, interruptedTurn.id)
+        XCTAssertEqual(restoration.composer, .waitingForReply)
+        XCTAssertTrue(restoration.cleansInterruptedCapture)
+    }
+
+    func testRecordingCaptureWithoutSavedDraftStartsFromFreshReplyState() {
+        let conversationID = UUID().uuidString
+        let interruptedTurn = voiceTurn(
+            conversationID: conversationID,
+            state: .recording,
+            stage: .capture
+        )
+        let fallbackTurn = voiceTurn(
+            conversationID: conversationID,
+            state: .draft,
+            stage: .capture
+        )
+
+        let restoration = ConversationRuntimeFactory.restoration(
+            draft: nil,
+            linkedVoiceTurn: nil,
+            resumableVoiceTurn: interruptedTurn,
+            fallbackVoiceTurn: fallbackTurn
+        )
+
+        XCTAssertEqual(restoration.voiceTurn.id, interruptedTurn.id)
+        XCTAssertEqual(restoration.composer, .waitingForReply)
+        XCTAssertTrue(restoration.cleansInterruptedCapture)
+    }
+
+    func testFinalizedCaptureWithoutDraftRemainsAvailableToSend() {
+        let conversationID = UUID().uuidString
+        let finalizedTurn = VoiceTurnRecord(
+            id: UUID().uuidString, conversationID: conversationID,
+            transcriptionRequestID: UUID().uuidString,
+            transcriptionIdempotencyKey: UUID().uuidString,
+            coachingRequestID: UUID().uuidString,
+            coachingIdempotencyKey: UUID().uuidString,
+            state: .paused, stage: .capture,
+            audioFileID: UUID().uuidString, audioSHA256: "saved-audio",
+            audioDurationMS: 2_000, cleanupState: .pending,
+            createdAtMS: 1, updatedAtMS: 2
+        )
+        let fallbackTurn = voiceTurn(
+            conversationID: conversationID,
+            state: .draft,
+            stage: .capture
+        )
+
+        let restoration = ConversationRuntimeFactory.restoration(
+            draft: nil,
+            linkedVoiceTurn: nil,
+            resumableVoiceTurn: finalizedTurn,
+            fallbackVoiceTurn: fallbackTurn
+        )
+
+        XCTAssertEqual(restoration.voiceTurn.id, finalizedTurn.id)
+        XCTAssertEqual(restoration.composer, .savedVoiceDraft)
+        XCTAssertFalse(restoration.cleansInterruptedCapture)
+    }
+
+    func testInterruptedCaptureCleanupRetriesBeforeFreshReplyState() {
+        let conversationID = UUID().uuidString
+        let cleanupTurn = VoiceTurnRecord(
+            id: UUID().uuidString, conversationID: conversationID,
+            transcriptionRequestID: UUID().uuidString,
+            transcriptionIdempotencyKey: UUID().uuidString,
+            coachingRequestID: UUID().uuidString,
+            coachingIdempotencyKey: UUID().uuidString,
+            state: .terminalFailure, stage: .cleanup,
+            audioFileID: UUID().uuidString, failureCode: "CAPTURE_INTERRUPTED",
+            cleanupState: .pending, createdAtMS: 1, updatedAtMS: 2
+        )
+        let fallbackTurn = voiceTurn(
+            conversationID: conversationID,
+            state: .draft,
+            stage: .capture
+        )
+
+        let restoration = ConversationRuntimeFactory.restoration(
+            draft: nil,
+            linkedVoiceTurn: nil,
+            resumableVoiceTurn: cleanupTurn,
+            fallbackVoiceTurn: fallbackTurn
+        )
+
+        XCTAssertEqual(restoration.voiceTurn.id, cleanupTurn.id)
+        XCTAssertEqual(restoration.composer, .waitingForReply)
+        XCTAssertTrue(restoration.cleansInterruptedCapture)
+    }
+
+    func testInterruptedCaptureCleanupCannotOwnTheReadableChatRuntime() {
+        let conversationID = UUID().uuidString
+        let interruptedTurn = voiceTurn(
+            conversationID: conversationID,
+            state: .terminalFailure,
+            stage: .cleanup
+        )
+        let fallbackTurn = voiceTurn(
+            conversationID: conversationID,
+            state: .draft,
+            stage: .capture
+        )
+        let restoration = ConversationRuntimeFactory.restoration(
+            draft: nil,
+            linkedVoiceTurn: nil,
+            resumableVoiceTurn: interruptedTurn,
+            fallbackVoiceTurn: fallbackTurn
+        )
+
+        XCTAssertEqual(
+            ConversationRuntimeFactory.runtimeInitialTurn(
+                restoration: restoration,
+                fallbackVoiceTurn: fallbackTurn,
+                hasPendingConversationRequest: false
+            ).id,
+            fallbackTurn.id
+        )
+    }
+
     func testSavedTerminalVoiceFailureRestoresTheLinkedTurnForRetry() {
         let conversationID = UUID().uuidString
         let linkedTurn = voiceTurn(
@@ -45,6 +185,185 @@ final class AppRuntimeTests: XCTestCase {
 
         XCTAssertEqual(restoration.voiceTurn.id, linkedTurn.id)
         XCTAssertEqual(restoration.composer, .failure(.retryable))
+    }
+
+    func testRecoverableCoachingFailureReopensWithRetryInsteadOfReply() {
+        let conversationID = UUID().uuidString
+        let failedTurn = voiceTurn(
+            conversationID: conversationID,
+            state: .recoverableFailure,
+            stage: .coaching
+        )
+        let fallbackTurn = voiceTurn(
+            conversationID: conversationID,
+            state: .draft,
+            stage: .capture
+        )
+
+        let restoration = ConversationRuntimeFactory.restoration(
+            draft: nil,
+            linkedVoiceTurn: nil,
+            resumableVoiceTurn: failedTurn,
+            fallbackVoiceTurn: fallbackTurn,
+            recoveryTranscript: "Saved voice message"
+        )
+
+        XCTAssertEqual(restoration.voiceTurn.id, failedTurn.id)
+        XCTAssertEqual(restoration.composer, .failure(.retryable))
+        XCTAssertFalse(restoration.cleansInterruptedCapture)
+    }
+
+    func testAmbiguousCoachingFailureReopensWithRetryInsteadOfReply() {
+        let conversationID = UUID().uuidString
+        let failedTurn = voiceTurn(
+            conversationID: conversationID,
+            state: .resumeRequiresConfirmation,
+            stage: .coaching
+        )
+        let fallbackTurn = voiceTurn(
+            conversationID: conversationID,
+            state: .draft,
+            stage: .capture
+        )
+
+        let restoration = ConversationRuntimeFactory.restoration(
+            draft: nil,
+            linkedVoiceTurn: nil,
+            resumableVoiceTurn: failedTurn,
+            fallbackVoiceTurn: fallbackTurn,
+            recoveryTranscript: "Saved voice message"
+        )
+
+        XCTAssertEqual(restoration.voiceTurn.id, failedTurn.id)
+        XCTAssertEqual(restoration.composer, .failure(.retryable))
+        XCTAssertFalse(restoration.cleansInterruptedCapture)
+    }
+
+    func testStrandedCoachingRequestReopensWithRetryInsteadOfReply() {
+        let conversationID = UUID().uuidString
+        let strandedTurn = voiceTurn(
+            conversationID: conversationID,
+            state: .coaching,
+            stage: .coaching
+        )
+        let fallbackTurn = voiceTurn(
+            conversationID: conversationID,
+            state: .draft,
+            stage: .capture
+        )
+
+        let restoration = ConversationRuntimeFactory.restoration(
+            draft: nil,
+            linkedVoiceTurn: nil,
+            resumableVoiceTurn: strandedTurn,
+            fallbackVoiceTurn: fallbackTurn,
+            recoveryTranscript: "Saved voice message"
+        )
+
+        XCTAssertEqual(restoration.voiceTurn.id, strandedTurn.id)
+        XCTAssertEqual(restoration.composer, .failure(.retryable))
+        XCTAssertFalse(restoration.cleansInterruptedCapture)
+    }
+
+    func testUnsavedFinishedVoiceResponseFailureRestoresRetryAlert() {
+        let conversationID = UUID().uuidString
+        let failedTurn = voiceTurn(
+            conversationID: conversationID,
+            state: .terminalFailure,
+            stage: .finished
+        )
+        let fallbackTurn = voiceTurn(
+            conversationID: conversationID,
+            state: .draft,
+            stage: .capture
+        )
+
+        let restoration = ConversationRuntimeFactory.restoration(
+            draft: nil,
+            linkedVoiceTurn: nil,
+            resumableVoiceTurn: failedTurn,
+            fallbackVoiceTurn: fallbackTurn
+        )
+
+        XCTAssertEqual(restoration.voiceTurn.id, failedTurn.id)
+        XCTAssertEqual(restoration.composer, .failure(.retryable))
+        XCTAssertFalse(restoration.cleansInterruptedCapture)
+    }
+
+    func testRetryableTextDraftWithoutAssistantRebuildsPendingRequest() throws {
+        let conversationID = UUID().uuidString
+        let requestID = UUID().uuidString
+        let userMessage = MessageRecord(
+            id: requestID,
+            conversationID: conversationID,
+            role: "user",
+            body: "Keep this message available for retry",
+            createdAtMS: 10
+        )
+        let draft = ConversationDraftRecord(
+            id: UUID().uuidString,
+            conversationID: conversationID,
+            inputMode: .text,
+            text: userMessage.body,
+            voiceTurnID: nil,
+            recoveryKind: .retryableCoaching,
+            createdAtMS: 10,
+            updatedAtMS: 11
+        )
+
+        let pending = try XCTUnwrap(ConversationRuntimeFactory.pendingConversationRequest(
+            resumable: nil,
+            drafts: [draft],
+            messages: [userMessage]
+        ))
+
+        XCTAssertEqual(pending.coachingRequestID, requestID)
+        XCTAssertEqual(pending.acceptedTranscript, userMessage.body)
+        XCTAssertEqual(pending.failureCode, "pending_text")
+        XCTAssertEqual(pending.userMessageID, requestID)
+        XCTAssertEqual(pending.state, .coaching)
+        XCTAssertEqual(pending.stage, .coaching)
+    }
+
+    func testRetryableTextDraftWithAssistantIsNotRebuilt() {
+        let conversationID = UUID().uuidString
+        let requestID = UUID().uuidString
+        let userMessage = MessageRecord(
+            id: requestID, conversationID: conversationID, role: "user",
+            body: "Already answered", createdAtMS: 10
+        )
+        let assistantMessage = MessageRecord(
+            id: UUID().uuidString, conversationID: conversationID, role: "assistant",
+            body: "Existing response", createdAtMS: 12
+        )
+        let draft = ConversationDraftRecord(
+            id: UUID().uuidString, conversationID: conversationID,
+            inputMode: .text, text: userMessage.body, voiceTurnID: nil,
+            recoveryKind: .retryableCoaching, createdAtMS: 10, updatedAtMS: 11
+        )
+
+        XCTAssertNil(ConversationRuntimeFactory.pendingConversationRequest(
+            resumable: nil,
+            drafts: [draft],
+            messages: [userMessage, assistantMessage]
+        ))
+    }
+
+    func testRetryableTextDraftDoesNotBindToOlderIdenticalMessage() {
+        let conversationID = UUID().uuidString
+        let oldMessage = MessageRecord(
+            id: UUID().uuidString, conversationID: conversationID, role: "user",
+            body: "Repeated message", createdAtMS: 5
+        )
+        let draft = ConversationDraftRecord(
+            id: UUID().uuidString, conversationID: conversationID,
+            inputMode: .text, text: oldMessage.body, voiceTurnID: nil,
+            recoveryKind: .retryableCoaching, createdAtMS: 10, updatedAtMS: 11
+        )
+
+        XCTAssertNil(ConversationRuntimeFactory.pendingConversationRequest(
+            resumable: nil, drafts: [draft], messages: [oldMessage]
+        ))
     }
 
     func testSavedVoiceDraftWithUnreadableTurnRestoresRetryFromPersistedTranscript() {
@@ -141,7 +460,7 @@ final class AppRuntimeTests: XCTestCase {
         XCTAssertEqual(restoration.composer, .savedVoiceDraft)
     }
 
-    func testVoiceConfigurationUsesEnrolledOriginBoundCredential() async throws {
+    func testVoiceConfigurationUsesEnrolledCredentialAndDeviceIdentity() async throws {
         let store = InMemoryVoiceGatewayCredentialStore()
         let credential = try VoiceGatewayCredential(
             origin: XCTUnwrap(URL(string: "https://voice.example.com/path?ignored=true")),
@@ -152,21 +471,34 @@ final class AppRuntimeTests: XCTestCase {
 
         let configuration = try await AppRuntime.voiceConfiguration(
             gatewayURLString: "https://voice.example.com/another-path",
-            credentialStore: store
+            credentialStore: store,
+            ownerID: "device-uuid-1"
         )
 
         XCTAssertEqual(configuration?.baseURL, URL(string: "https://voice.example.com"))
         XCTAssertEqual(configuration?.bearerToken, "secret-token")
-        XCTAssertEqual(configuration?.ownerID, "credential-1")
+        XCTAssertEqual(configuration?.ownerID, "device-uuid-1")
     }
 
     func testVoiceConfigurationIsUnavailableWithoutEnrollment() async throws {
         let configuration = try await AppRuntime.voiceConfiguration(
             gatewayURLString: "https://voice.example.com",
-            credentialStore: InMemoryVoiceGatewayCredentialStore()
+            credentialStore: InMemoryVoiceGatewayCredentialStore(),
+            ownerID: "device-uuid-1"
         )
 
         XCTAssertNil(configuration)
+    }
+
+    func testPersonalBuildCanOpenVoiceEnrollmentDirectlyForDeviceRecovery() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let source = try String(
+            contentsOf: root.appendingPathComponent("TaisaApp/App/AppRootView.swift"),
+            encoding: .utf8
+        )
+
+        XCTAssertTrue(source.contains("--taisa-voice-enrollment"))
+        XCTAssertTrue(source.contains("PersonalVoiceSessionView()"))
     }
 
     func testOperationalFactsRemainHonestWithoutLiveHealthProof() {
@@ -233,6 +565,25 @@ final class AppRuntimeTests: XCTestCase {
 
         XCTAssertEqual(model.messages.map(\.body), ["This message must remain readable offline."])
         XCTAssertEqual(model.title, "A stored conversation")
+    }
+
+    func testFeedbackRemovalRevisionCanClearANewerMaterializedPreference() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = try await TaisaStore.open(
+            at: directory.appendingPathComponent("store.sqlite"),
+            keyStore: AppRuntimeTestKeys()
+        )
+        let repository = AssistantResponseRepository(store: store)
+        try await repository.replacePreferenceProfile(
+            [.init(factor: .coverage, direction: .helpful)], updatedAtMS: 40
+        )
+
+        try await ConversationRuntimeFactory.materializePreferenceProfile(repository, revision: 50)
+
+        let profile = try await repository.preferenceProfile()
+        XCTAssertEqual(profile, [])
     }
 
     func testLiveRuntimeUsesMutationCapableLocalHomeClient() throws {

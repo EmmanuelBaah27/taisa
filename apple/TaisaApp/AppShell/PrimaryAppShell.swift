@@ -16,6 +16,7 @@ final class PrimaryAppShellModel {
     private(set) var showsCareerWork = false
     private(set) var navigationDirection: NavigationDirection = .forward
     private(set) var conversationRoute: ConversationRoute?
+    private(set) var conversationReturnGeneration = 0
     @ObservationIgnored private var pendingEntryIntent: ConversationEntryIntent?
     @ObservationIgnored private let makeConversationID: () -> String
 
@@ -28,6 +29,9 @@ final class PrimaryAppShellModel {
     }
 
     var showsConversationDock: Bool { conversationRoute == nil }
+    var primaryPageBottomReservation: CGFloat {
+        selection == .conversations ? 0 : TaisaControlMetric.primaryNavigationReservedHeight
+    }
 
     func select(_ destination: PrimaryDestination) {
         if destination == .careerWork {
@@ -58,7 +62,7 @@ final class PrimaryAppShellModel {
         guard conversationRoute == nil else { return }
         conversationRoute = ConversationRoute(
             id: makeConversationID(),
-            localTitle: "New conversation"
+            localTitle: "New chat"
         )
         pendingEntryIntent = intent
     }
@@ -71,6 +75,7 @@ final class PrimaryAppShellModel {
     func dismissConversation() {
         pendingEntryIntent = nil
         conversationRoute = nil
+        conversationReturnGeneration += 1
     }
 
     func dismissConversationAndRefresh(_ refresh: @MainActor () async -> Void) async {
@@ -110,8 +115,8 @@ struct PrimaryAppShell: View {
                     }
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
-                .simultaneousGesture(primaryPageFallbackGesture)
-                .safeAreaPadding(.bottom, TaisaControlMetric.primaryNavigationReservedHeight)
+                .simultaneousGesture(primaryPageCompletionGesture)
+                .safeAreaPadding(.bottom, model.primaryPageBottomReservation)
             }
 
             if model.showsConversationDock {
@@ -119,6 +124,7 @@ struct PrimaryAppShell: View {
                     .frame(maxWidth: .infinity)
                     .frame(height: 104)
                     .ignoresSafeArea(edges: [.horizontal, .bottom])
+                    .allowsHitTesting(false)
 
                 VStack(spacing: TaisaSpacing.compact.rawValue) {
                     ConversationEntryDock(
@@ -155,12 +161,12 @@ struct PrimaryAppShell: View {
         }
     }
 
-    private var primaryPageFallbackGesture: some Gesture {
+    /// Lets the native pager own the interactive motion, then only completes a
+    /// clearly horizontal page gesture when nested scroll content consumed it.
+    private var primaryPageCompletionGesture: some Gesture {
         DragGesture(minimumDistance: 24)
             .onChanged { _ in
-                if swipeStartSelection == nil {
-                    swipeStartSelection = model.selection
-                }
+                if swipeStartSelection == nil { swipeStartSelection = model.selection }
             }
             .onEnded { value in
                 let startSelection = swipeStartSelection
@@ -205,6 +211,7 @@ struct PrimaryAppShell: View {
         case .conversations:
             ConversationsView(
                 model: conversationsModel,
+                resetID: model.conversationReturnGeneration,
                 resume: { model.openConversation(id: $0.conversationID, title: "Draft") },
                 open: { model.openConversation(id: $0.id, title: $0.title) },
                 openRecovery: openRecovery

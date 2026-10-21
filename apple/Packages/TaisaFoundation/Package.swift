@@ -49,7 +49,7 @@ let package = Package(
         ]),
         .target(name: "TaisaCloudKit", dependencies: ["TaisaSync", "TaisaStorage", "TaisaSecurity"]),
         .target(name: "TaisaVoice", dependencies: ["TaisaStorage", "TaisaContracts", "TaisaAudio", "TaisaNetworking"]),
-        .target(name: "TaisaConversations", dependencies: ["TaisaStorage", "TaisaContracts", "TaisaVoice"]),
+        .target(name: "TaisaConversations", dependencies: ["TaisaStorage", "TaisaContracts", "TaisaVoice", "TaisaNetworking"]),
         .target(name: "TaisaAudio"),
         .target(name: "TaisaNetworking", dependencies: ["TaisaContracts"]),
         .testTarget(name: "TaisaCoreTests", dependencies: ["TaisaCore"]),
@@ -70,7 +70,9 @@ let package = Package(
             .product(name: "GRDB", package: "GRDB.swift"),
         ]),
         .testTarget(name: "TaisaRecoveryTests", dependencies: ["TaisaRecovery", "TaisaStorage", "TaisaSecurity", .product(name: "GRDB", package: "GRDB.swift")]),
-        .testTarget(name: "TaisaSyncTests", dependencies: ["TaisaSync", "TaisaStorage", "TaisaSecurity"]),
+        .testTarget(name: "TaisaSyncTests", dependencies: [
+            "TaisaSync", "TaisaStorage", "TaisaSecurity", "TaisaConversations",
+        ]),
         .testTarget(name: "TaisaCloudKitTests", dependencies: ["TaisaCloudKit", "TaisaSync", "TaisaSecurity", "TaisaStorage", .product(name: "GRDB", package: "GRDB.swift")]),
         .testTarget(name: "TaisaVoiceTests", dependencies: [
             "TaisaVoice", "TaisaConversations", "TaisaStorage", "TaisaAudio", "TaisaNetworking",

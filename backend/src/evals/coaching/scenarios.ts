@@ -9,12 +9,14 @@ import type {
   MemoryItem,
 } from '@taisa/shared';
 
-export const COACHING_EVALUATION_PACK_VERSION = '2026-08-25.v4';
+export const COACHING_EVALUATION_PACK_VERSION = '2026-10-16.v5';
 
 export type CoachingEvaluationCoverage =
   | 'work-conflict' | 'career-goal' | 'forgotten-goal' | 'conflicting-goal'
   | 'historical-context' | 'evidence' | 'sensitive-inference' | 'action-evolution' | 'no-memory'
-  | 'missing-referent' | 'outside-scope' | 'adjacent-context' | 'partial-context';
+  | 'missing-referent' | 'outside-scope' | 'adjacent-context' | 'partial-context'
+  | 'weak-evidence' | 'conflicting-evidence' | 'vague-intent' | 'emotional-sensitivity'
+  | 'overconfidence' | 'action-worthy' | 'no-proposal';
 
 export const GUARDRAIL_SCENARIO_IDS = [
   'guardrail-missing-video',
@@ -70,6 +72,10 @@ const syntheticRequestNumbers: Readonly<Record<string, number>> = {
   'guardrail-missing-video': 21, 'guardrail-missing-meeting': 22,
   'guardrail-workplace-conflict': 23, 'guardrail-unrelated-factual': 24,
   'guardrail-adjacent-fatigue': 25, 'guardrail-partial-work': 26,
+  'quality-weak-evidence': 27, 'quality-conflicting-evidence': 28,
+  'quality-vague-intent': 29, 'quality-emotional-sensitivity': 30,
+  'quality-overconfidence': 31, 'quality-action-worthy': 32,
+  'quality-no-proposal': 33,
 };
 
 function syntheticRequestId(id: string): string {
@@ -298,5 +304,54 @@ export const coachingEvaluationScenarios: CoachingEvaluationScenario[] = [
       mode: 'coach', allowedRelevance: ['career-relevant'], allowedContextSufficiency: ['partial'],
       allowedProposalOperations: ['propose-outcome'],
     },
+  ),
+  scenario(
+    'quality-weak-evidence',
+    ['weak-evidence', 'evidence'],
+    'One colleague casually said I might be ready to lead. What can I safely conclude?',
+    [staffGoal],
+    { requireNoProposals: true },
+  ),
+  scenario(
+    'quality-conflicting-evidence',
+    ['conflicting-evidence', 'evidence'],
+    'One review praised my leadership while another said I need more consistency. How should I read that?',
+    [staffGoal],
+    { requiredStance: 'challenge', requireNoProposals: true },
+  ),
+  scenario(
+    'quality-vague-intent',
+    ['vague-intent'],
+    'I want things at work to be better.',
+    [staffGoal],
+    { mode: 'clarify', allowedContextSufficiency: ['insufficient'], requireNoProposals: true },
+  ),
+  scenario(
+    'quality-emotional-sensitivity',
+    ['emotional-sensitivity', 'sensitive-inference'],
+    'I feel embarrassed after my presentation and I am questioning whether I belong here.',
+    [staffGoal],
+    { requiredStance: 'mirror', requireNoProposals: true },
+  ),
+  scenario(
+    'quality-overconfidence',
+    ['overconfidence', 'weak-evidence'],
+    'My manager nodded once, so this promotion is definitely secured, right?',
+    [staffGoal],
+    { requiredStance: 'challenge', requireNoProposals: true },
+  ),
+  scenario(
+    'quality-action-worthy',
+    ['action-worthy', 'career-goal'],
+    'I have decided to ask for a stretch assignment tomorrow. Help me make that concrete.',
+    [staffGoal],
+    { requiredProposalOperations: ['propose-outcome'] },
+  ),
+  scenario(
+    'quality-no-proposal',
+    ['no-proposal', 'historical-context'],
+    'Reflect back the pattern in what I shared, but do not turn it into a task or saved item.',
+    [staffGoal],
+    { requiredStance: 'mirror', requireNoProposals: true },
   ),
 ];

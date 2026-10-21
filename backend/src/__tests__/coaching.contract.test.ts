@@ -20,7 +20,8 @@ test('contracts represent a bounded coaching turn and proposed memory change', (
   const response: CoachingResponse = {
     requestId: request.requestId, reply: 'Earlier you preferred the Staff path. Has that changed?',
     mode: 'coach', relevance: 'career-relevant', contextSufficiency: 'sufficient',
-    stance: 'challenge', proposals: [],
+    stance: 'challenge',
+    explanation: { mode: 'challenge', evidence: [], inference: 'The stated paths conflict.', confidence: 'high', approach: 'Name the conflict.' }, proposal: null,
     usage: { provider: 'anthropic', model: 'test', inputTokens: 10, outputTokens: 8, estimatedCostUsd: 0 },
   };
   expect(response.requestId).toBe(request.requestId);

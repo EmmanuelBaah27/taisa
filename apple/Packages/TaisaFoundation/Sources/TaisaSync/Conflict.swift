@@ -35,7 +35,7 @@ public struct SyncConflict: Codable, Sendable, Equatable {
     /// Explicit resolution is a new outgoing mutation with both parents.
     public func resolve(value: Data, mutationID: String, deviceID: String, counter: Int64, timestampMS: Int64) throws -> SyncMutation {
         let conflict = try validated()
-        guard !["message", "memory_source", "work_event", "insight_source"].contains(conflict.entityType) else { throw SyncMergeError.malformedMutation }
+        guard !["message", "memory_source", "work_event", "insight_source", "assistant_response_metadata", "assistant_response_source"].contains(conflict.entityType) else { throw SyncMergeError.malformedMutation }
         let parents = conflict.ancestry
         let mutation = SyncMutation(id: mutationID, entityType: conflict.entityType, entityID: conflict.entityID, entityVersion: 1, deviceID: deviceID, counter: counter, timestampMS: timestampMS, kind: .resolve, fields: [SyncField(name: conflict.fieldName, value: value, versionID: mutationID, ancestorVersionIDs: parents, deviceCounter: counter)], recordParentVersionID: conflict.first.versionID, resolvedParentVersionIDs: parents)
         try mutation.validate()
@@ -103,6 +103,9 @@ public struct SyncConflict: Codable, Sendable, Equatable {
         "insight": ["body", "status", "isTimeSensitive", "homeEligibleUntilMS", "createdAtMS", "updatedAtMS"],
         "insight_source": ["insightID", "sourceType", "sourceID", "excerpt", "createdAtMS"],
         "insight_revision": ["insightID", "proposedBody", "status", "sourceType", "sourceID", "createdAtMS", "resolvedAtMS"],
+        "assistant_response_metadata": ["responseMessageID", "requestID", "idempotencyReceipt", "mode", "relevance", "contextSufficiency", "stance", "inference", "confidence", "approach", "createdAtMS"],
+        "assistant_response_source": ["responseMessageID", "ordinal", "sourceID", "sourceType", "excerpt"],
+        "assistant_proposal": ["responseMessageID", "kind", "canonicalPayload", "payloadDigest", "state", "targetType", "targetID", "targetVersionID", "decisionReceipt", "createdAtMS", "resolvedAtMS"],
     ]
 }
 

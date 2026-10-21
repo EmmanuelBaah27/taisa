@@ -18,6 +18,35 @@ public struct AudioRecordingSummary: Sendable, Equatable {
     }
 }
 
+public enum AudioCaptureActivity: Sendable, Equatable {
+    case prepared
+    case recording
+    case paused
+    case blocked
+    case finalized
+    case cancelled
+    case discarded
+}
+
+public struct AudioCaptureSnapshot: Sendable, Equatable {
+    public let activity: AudioCaptureActivity
+    public let elapsedMilliseconds: Int64
+    public let meter: AudioMeterSample
+    public let hasAudioPayload: Bool
+
+    public init(
+        activity: AudioCaptureActivity,
+        elapsedMilliseconds: Int64,
+        meter: AudioMeterSample,
+        hasAudioPayload: Bool? = nil
+    ) {
+        self.activity = activity
+        self.elapsedMilliseconds = elapsedMilliseconds
+        self.meter = meter
+        self.hasAudioPayload = hasAudioPayload ?? (activity != .prepared && elapsedMilliseconds > 0)
+    }
+}
+
 public enum AudioCaptureLifecycleEvent: Sendable, Equatable {
     case interruptionBegan
     case interruptionEnded
@@ -208,6 +237,37 @@ public actor AudioCaptureService {
         try requireOwned(turnID)
         guard case .recording = state else { throw AudioCaptureError.invalidState }
         return await recorder.meter()
+    }
+
+    public func snapshot(turnID: UUID) async throws -> AudioCaptureSnapshot {
+        try requireOwned(turnID)
+        let activity: AudioCaptureActivity
+        switch state {
+        case .idle:
+            throw AudioCaptureError.noActiveCapture
+        case .prepared: activity = .prepared
+        case .recording: activity = .recording
+        case .paused: activity = .paused
+        case .blocked: activity = .blocked
+        case .finalized: activity = .finalized
+        case .cancelled: activity = .cancelled
+        case .discarded: activity = .discarded
+        }
+        let elapsed: TimeInterval
+        if case .finalized(_, let audio) = state {
+            elapsed = max(0, audio.duration)
+        } else {
+            elapsed = max(0, await recorder.elapsedTime())
+        }
+        let meter = activity == .recording
+            ? await recorder.meter()
+            : AudioMeterSample(averagePower: -160, peakPower: -160)
+        return .init(
+            activity: activity,
+            elapsedMilliseconds: Int64(elapsed * 1_000),
+            meter: meter,
+            hasAudioPayload: await recorder.hasRecordedAudio()
+        )
     }
 
     public func audioReadyForUpload(turnID: UUID) throws -> FinalizedAudio {

@@ -8,6 +8,31 @@ import TaisaStorage
 
 @Suite("Voice session coordinator")
 struct VoiceSessionCoordinatorTests {
+    @Test("snapshot distinguishes empty short sendable and durable processing capture")
+    func snapshotDistinguishesCaptureDisposition() async throws {
+        let capture = SnapshotCapture(elapsedMilliseconds: 0)
+        let coordinator = VoiceSessionCoordinator(
+            initial: turn(state: .recording, stage: .capture),
+            checkpoints: CheckpointSpy(), transcription: TranscriptionSpy(events: []),
+            coaching: CoachingSpy(), connectivity: ConnectivitySpy(available: true),
+            reconciliation: ReconciliationSpy(.safeToRetry), capture: capture, audio: NoopAudio()
+        )
+
+        #expect(await coordinator.snapshot().capture.disposition == .empty)
+        await capture.setElapsedMilliseconds(999)
+        #expect(await coordinator.snapshot().capture.disposition == .shortCapture)
+        await capture.setElapsedMilliseconds(1_000)
+        #expect(await coordinator.snapshot().capture.disposition == .sendable)
+
+        let processing = VoiceSessionCoordinator(
+            initial: turn(state: .queued, stage: .transcription),
+            checkpoints: CheckpointSpy(), transcription: TranscriptionSpy(events: []),
+            coaching: CoachingSpy(), connectivity: ConnectivitySpy(available: false),
+            reconciliation: ReconciliationSpy(.safeToRetry), capture: capture, audio: NoopAudio()
+        )
+        #expect(await processing.snapshot().capture.disposition == .durableProcessing)
+    }
+
     @Test("explicit retry restarts terminal coaching without retranscribing")
     func explicitRetryRestartsTerminalCoachingWithoutRetranscribing() async throws {
         let transcription = TranscriptionSpy(events: [])
@@ -46,6 +71,48 @@ struct VoiceSessionCoordinatorTests {
         await coordinator.waitForIdle()
 
         #expect(await transcription.calls == 0)
+        #expect(await coaching.calls == 1)
+        #expect(await coordinator.snapshot().durable.state == .completed)
+    }
+
+    @Test("definitively failed server request restarts ambiguous coaching with a fresh identity")
+    func failedServerRequestRestartsAmbiguousCoaching() async throws {
+        let transcription = TranscriptionSpy(events: [])
+        let coaching = SuccessfulCoachingSpy()
+        let ambiguous = turn(
+            state: .resumeRequiresConfirmation, stage: .coaching, transcript: "accepted"
+        )
+        let coordinator = VoiceSessionCoordinator(
+            initial: ambiguous,
+            checkpoints: CheckpointSpy(), transcription: transcription, coaching: coaching,
+            connectivity: ConnectivitySpy(available: true),
+            reconciliation: ReconciliationSpy(.failed(code: "PROVIDER_FAILURE", retryable: false)),
+            capture: NoopCapture(), audio: NoopAudio()
+        )
+
+        try await coordinator.restartCoachingIfServerSafe(with: replacementTurn(from: ambiguous))
+        await coordinator.waitForIdle()
+
+        #expect(await transcription.calls == 0)
+        #expect(await coaching.calls == 1)
+        #expect(await coordinator.snapshot().durable.state == .completed)
+    }
+
+    @Test("definitively failed server request restarts a stranded coaching checkpoint")
+    func failedServerRequestRestartsStrandedCoaching() async throws {
+        let coaching = SuccessfulCoachingSpy()
+        let stranded = turn(state: .coaching, stage: .coaching, transcript: "accepted")
+        let coordinator = VoiceSessionCoordinator(
+            initial: stranded,
+            checkpoints: CheckpointSpy(), transcription: TranscriptionSpy(events: []),
+            coaching: coaching, connectivity: ConnectivitySpy(available: true),
+            reconciliation: ReconciliationSpy(.failed(code: "PROVIDER_FAILURE", retryable: false)),
+            capture: NoopCapture(), audio: NoopAudio()
+        )
+
+        try await coordinator.restartCoachingIfServerSafe(with: replacementTurn(from: stranded))
+        await coordinator.waitForIdle()
+
         #expect(await coaching.calls == 1)
         #expect(await coordinator.snapshot().durable.state == .completed)
     }
@@ -261,6 +328,7 @@ private actor CheckpointSpy: VoiceTurnCheckpointing {
     func checkpoint(
         _ record: VoiceTurnRecord,
         messages: [MessageRecord],
+        assistantResponse: AssistantResponseWrite?,
         cleanup: VoiceTurnCleanup?
     ) async throws { states.append(record.state) }
 }
@@ -301,7 +369,7 @@ private actor SuccessfulCoachingSpy: VoiceCoachingRunning {
     func stream(for turn: VoiceTurnRecord) async throws -> AsyncThrowingStream<CoachingStreamEvent, Error> {
         calls += 1
         let response = try JSONDecoder().decode(CoachingResponse.self, from: Data("""
-            {"requestId":"\(turn.coachingRequestID)","reply":"Recovered coaching","mode":"coach","relevance":"career-relevant","contextSufficiency":"sufficient","stance":"nudge","proposals":[],"usage":{"provider":"openai","model":"test","inputTokens":1,"outputTokens":1,"estimatedCostUsd":0},"titleSuggestion":null}
+            {"requestId":"\(turn.coachingRequestID)","reply":"Recovered coaching","mode":"coach","relevance":"career-relevant","contextSufficiency":"sufficient","stance":"nudge","explanation":{"mode":"nudge","evidence":[],"inference":"Recovery can continue.","confidence":"medium","approach":"Resume the bounded response."},"proposal":null,"usage":{"provider":"openai","model":"test","inputTokens":1,"outputTokens":1,"estimatedCostUsd":0},"titleSuggestion":null}
             """.utf8))
         return AsyncThrowingStream<CoachingStreamEvent, Error> { continuation in
             continuation.yield(.completed(
@@ -330,6 +398,30 @@ private actor NoopCapture: VoiceCaptureControlling {
     func resume(turnID: UUID) async throws {}
     func finalize(turnID: UUID) async throws -> FinalizedVoiceAudio {
         .init(fileID: "audio-1", sha256: "abc", durationMS: 1_000)
+    }
+    func cancel(turnID: UUID) async throws {}
+    func discard(turnID: UUID) async throws {}
+    func release(turnID: UUID) async throws {}
+}
+
+private actor SnapshotCapture: VoiceCaptureControlling {
+    private var elapsedMilliseconds: Int64
+    init(elapsedMilliseconds: Int64) { self.elapsedMilliseconds = elapsedMilliseconds }
+    func setElapsedMilliseconds(_ value: Int64) { elapsedMilliseconds = value }
+    func snapshot(turnID: UUID) async throws -> AudioCaptureSnapshot {
+        .init(
+            activity: .recording,
+            elapsedMilliseconds: elapsedMilliseconds,
+            meter: .init(averagePower: -18, peakPower: -6)
+        )
+    }
+    func events() -> AsyncStream<AudioCaptureEvent> { AsyncStream { $0.finish() } }
+    func prepare(turnID: UUID) async throws -> String { "audio-1" }
+    func start(turnID: UUID) async throws {}
+    func pause(turnID: UUID) async throws {}
+    func resume(turnID: UUID) async throws {}
+    func finalize(turnID: UUID) async throws -> FinalizedVoiceAudio {
+        .init(fileID: "audio-1", sha256: "abc", durationMS: elapsedMilliseconds)
     }
     func cancel(turnID: UUID) async throws {}
     func discard(turnID: UUID) async throws {}

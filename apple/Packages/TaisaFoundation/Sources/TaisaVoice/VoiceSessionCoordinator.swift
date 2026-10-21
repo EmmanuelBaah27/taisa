@@ -8,6 +8,7 @@ public protocol VoiceTurnCheckpointing: Sendable {
     func checkpoint(
         _ record: VoiceTurnRecord,
         messages: [MessageRecord],
+        assistantResponse: AssistantResponseWrite?,
         cleanup: VoiceTurnCleanup?
     ) async throws
 }
@@ -43,6 +44,7 @@ public protocol VoiceCoachingRunning: Sendable {
 
 public protocol VoiceCaptureControlling: Sendable {
     func events() async -> AsyncStream<AudioCaptureEvent>
+    func snapshot(turnID: UUID) async throws -> AudioCaptureSnapshot
     func prepare(turnID: UUID) async throws -> String
     func start(turnID: UUID) async throws
     func pause(turnID: UUID) async throws
@@ -51,6 +53,16 @@ public protocol VoiceCaptureControlling: Sendable {
     func cancel(turnID: UUID) async throws
     func discard(turnID: UUID) async throws
     func release(turnID: UUID) async throws
+}
+
+public extension VoiceCaptureControlling {
+    func snapshot(turnID: UUID) async throws -> AudioCaptureSnapshot {
+        .init(
+            activity: .prepared,
+            elapsedMilliseconds: 0,
+            meter: .init(averagePower: -160, peakPower: -160)
+        )
+    }
 }
 
 public protocol VoiceAudioDeleting: Sendable {
@@ -69,19 +81,62 @@ public protocol CoachingReconciliationLookingUp: Sendable {
     func authorizeRetry(requestID: UUID) async throws
 }
 
+public enum VoiceCaptureDisposition: Sendable, Equatable {
+    case empty
+    case shortCapture
+    case sendable
+    case durableProcessing
+}
+
+public enum VoiceCaptureInterruption: Sendable, Equatable {
+    case microphoneUnavailable
+}
+
+public struct VoiceCaptureSnapshot: Sendable, Equatable {
+    public static let minimumSendableDurationMilliseconds: Int64 = 1_000
+
+    public let activity: AudioCaptureActivity
+    public let elapsedMilliseconds: Int64
+    public let meter: AudioMeterSample
+    public let disposition: VoiceCaptureDisposition
+    public let interruption: VoiceCaptureInterruption?
+
+    public init(
+        activity: AudioCaptureActivity,
+        elapsedMilliseconds: Int64,
+        meter: AudioMeterSample,
+        disposition: VoiceCaptureDisposition,
+        interruption: VoiceCaptureInterruption? = nil
+    ) {
+        self.activity = activity
+        self.elapsedMilliseconds = elapsedMilliseconds
+        self.meter = meter
+        self.disposition = disposition
+        self.interruption = interruption
+    }
+}
+
 public struct VoiceSessionSnapshot: Sendable, Equatable, CustomStringConvertible, CustomReflectable {
     public let durable: VoiceTurnRecord
     public let partialTranscript: String
     public let partialCoaching: String
+    public let capture: VoiceCaptureSnapshot
 
     public init(
         durable: VoiceTurnRecord,
         partialTranscript: String,
-        partialCoaching: String
+        partialCoaching: String,
+        capture: VoiceCaptureSnapshot = .init(
+            activity: .prepared,
+            elapsedMilliseconds: 0,
+            meter: .init(averagePower: -160, peakPower: -160),
+            disposition: .empty
+        )
     ) {
         self.durable = durable
         self.partialTranscript = partialTranscript
         self.partialCoaching = partialCoaching
+        self.capture = capture
     }
 
     public var requiresResumeConfirmation: Bool {
@@ -120,12 +175,13 @@ public actor VoiceSessionCoordinator {
     private let retryScheduler: VoiceRetryScheduler
     private let retrySleeper: any VoiceRetrySleeping
     private let makeMessageID: @Sendable () -> UUID
+    private var captureInterruption: VoiceCaptureInterruption?
     private let nowMS: @Sendable () -> Int64
 
     private var durable: VoiceTurnRecord
     private var partialTranscript = ""
     private var partialCoaching = ""
-    private var pendingAssistantReply: String?
+    private var pendingAssistantCompletion: (response: CoachingResponse, receipt: String)?
     private var activeStage: VoiceTurnStage?
     private var activeTask: Task<Void, Never>?
     private var captureEventsTask: Task<Void, Never>?
@@ -165,11 +221,30 @@ public actor VoiceSessionCoordinator {
         self.nowMS = nowMS
     }
 
-    public func snapshot() -> VoiceSessionSnapshot {
-        VoiceSessionSnapshot(
+    public func snapshot() async -> VoiceSessionSnapshot {
+        let captureSnapshot = try? await capture.snapshot(turnID: currentTurnID())
+        let elapsed = captureSnapshot?.elapsedMilliseconds ?? durable.audioDurationMS ?? 0
+        let disposition: VoiceCaptureDisposition
+        if durable.stage != .capture {
+            disposition = .durableProcessing
+        } else if captureSnapshot?.hasAudioPayload != true {
+            disposition = .empty
+        } else if elapsed < VoiceCaptureSnapshot.minimumSendableDurationMilliseconds {
+            disposition = .shortCapture
+        } else {
+            disposition = .sendable
+        }
+        return VoiceSessionSnapshot(
             durable: durable,
             partialTranscript: partialTranscript,
-            partialCoaching: partialCoaching
+            partialCoaching: partialCoaching,
+            capture: .init(
+                activity: captureSnapshot?.activity ?? .prepared,
+                elapsedMilliseconds: elapsed,
+                meter: captureSnapshot?.meter ?? .init(averagePower: -160, peakPower: -160),
+                disposition: disposition,
+                interruption: captureInterruption
+            )
         )
     }
 
@@ -197,6 +272,16 @@ public actor VoiceSessionCoordinator {
         try await send(.preserveDraft(finalized))
     }
 
+    public func retryCapturePause() async throws {
+        guard durable.stage == .capture, durable.state == .paused else { throw AudioCaptureError.invalidState }
+        try await capture.pause(turnID: currentTurnID())
+    }
+
+    public func retryCaptureResume() async throws {
+        guard durable.stage == .capture, durable.state == .recording else { throw AudioCaptureError.invalidState }
+        try await capture.resume(turnID: currentTurnID())
+    }
+
     public func restartFailedCoaching(with replacement: VoiceTurnRecord) async throws {
         try await send(.restartFailedCoaching(replacement))
     }
@@ -204,8 +289,13 @@ public actor VoiceSessionCoordinator {
     public func restartCoachingIfServerSafe(with replacement: VoiceTurnRecord) async throws {
         guard durable.state == .resumeRequiresConfirmation || durable.state == .coaching,
               durable.stage == .coaching,
-              let requestID = UUID(uuidString: durable.coachingRequestID),
-              case .safeToRetry = try await reconciliation.reconcile(requestID: requestID) else {
+              let requestID = UUID(uuidString: durable.coachingRequestID) else {
+            throw StreamTransportError.reconciliationRequired
+        }
+        switch try await reconciliation.reconcile(requestID: requestID) {
+        case .safeToRetry, .failed:
+            break
+        case .ambiguous, .completed:
             throw StreamTransportError.reconciliationRequired
         }
         try await send(.restartSafeCoaching(replacement))
@@ -372,11 +462,17 @@ public actor VoiceSessionCoordinator {
             ))
         }
         if record.assistantMessageID != durable.assistantMessageID,
-           let id = record.assistantMessageID, let body = pendingAssistantReply {
+           let id = record.assistantMessageID, let completion = pendingAssistantCompletion {
             messages.append(.init(
                 id: id, conversationID: record.conversationID,
-                role: "assistant", body: body, createdAtMS: timestamp
+                role: "assistant", body: completion.response.reply, createdAtMS: timestamp
             ))
+        }
+        let assistantResponse = try messages.first(where: { $0.role == "assistant" }).map {
+            try VoiceAssistantResponseWrite.make(
+                message: $0, response: pendingAssistantCompletion!.response,
+                receipt: pendingAssistantCompletion!.receipt
+            )
         }
         let cleanup: VoiceTurnCleanup?
         if record.cleanupState == .completed, let fileID = durable.audioFileID {
@@ -388,10 +484,12 @@ public actor VoiceSessionCoordinator {
         } else {
             cleanup = nil
         }
-        try await checkpoints.checkpoint(record, messages: messages, cleanup: cleanup)
+        try await checkpoints.checkpoint(
+            record, messages: messages, assistantResponse: assistantResponse, cleanup: cleanup
+        )
         durable = record
         print("TAISA_VOICE persist.end state=\(record.state.rawValue) stage=\(record.stage.rawValue)")
-        if messages.contains(where: { $0.role == "assistant" }) { pendingAssistantReply = nil }
+        if assistantResponse != nil { pendingAssistantCompletion = nil }
     }
 
     private func launchTranscription() {
@@ -504,7 +602,7 @@ public actor VoiceSessionCoordinator {
                 case .completed(_, _, let response, let receipt):
                     print("TAISA_VOICE coaching.completed")
                     partialCoaching = ""
-                    pendingAssistantReply = response.reply
+                    pendingAssistantCompletion = (response, receipt)
                     try await send(.coachingCompleted(
                         receipt: receipt, assistantMessageID: makeMessageID().uuidString
                     ))
@@ -562,7 +660,7 @@ public actor VoiceSessionCoordinator {
                 ))
                 return
             }
-            pendingAssistantReply = response.reply
+            pendingAssistantCompletion = (response, receipt)
             try await send(.coachingCompleted(
                 receipt: receipt, assistantMessageID: makeMessageID().uuidString
             ))
@@ -668,10 +766,17 @@ public actor VoiceSessionCoordinator {
         guard durable.state == .recording else { return }
         switch event {
         case .blocked(_, .mediaServicesReset):
+            captureInterruption = nil
             try? await capture.discard(turnID: eventTurnID)
             try? await send(.captureFailed(code: "MEDIA_SERVICES_RESET"))
-        case .paused, .blocked:
+        case .paused(_, .interruption), .blocked(_, .routeUnavailable):
+            captureInterruption = .microphoneUnavailable
             try? await send(.capturePaused)
+        case .paused, .blocked:
+            captureInterruption = nil
+            try? await send(.capturePaused)
+        case .resumed:
+            captureInterruption = nil
         default:
             break
         }

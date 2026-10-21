@@ -1,6 +1,7 @@
 import Foundation
 import Testing
 import TaisaContracts
+import TaisaNetworking
 import TaisaStorage
 import TaisaVoice
 @testable import TaisaConversations
@@ -17,8 +18,117 @@ private actor UnusedCoachingRunner: VoiceCoachingRunning {
     }
 }
 
+private actor CompletedCoachingRunner: VoiceCoachingRunning {
+    func stream(for turn: VoiceTurnRecord) async throws -> AsyncThrowingStream<CoachingStreamEvent, Error> {
+        let data = Data(#"{"type":"coaching.completed","requestId":"\#(turn.coachingRequestID)","sequence":0,"response":{"requestId":"\#(turn.coachingRequestID)","reply":"Grounded reply","mode":"coach","relevance":"career-relevant","contextSufficiency":"sufficient","stance":"nudge","explanation":{"mode":"nudge","evidence":[],"inference":"A bounded inference","confidence":"medium","approach":"Offer one step"},"proposal":null,"usage":{"provider":"anthropic","model":"fixture","estimatedCostUsd":0},"titleSuggestion":null},"idempotencyReceipt":"receipt-1"}"#.utf8)
+        let event = try JSONDecoder().decode(CoachingStreamEvent.self, from: data)
+        return AsyncThrowingStream { continuation in continuation.yield(event); continuation.finish() }
+    }
+}
+
+private actor ReconciliationRequiredThenCompletedCoachingRunner: VoiceCoachingRunning {
+    private var attempts = 0
+
+    func stream(for turn: VoiceTurnRecord) async throws -> AsyncThrowingStream<CoachingStreamEvent, Error> {
+        attempts += 1
+        if attempts == 1 { throw StreamTransportError.reconciliationRequired }
+        return try await CompletedCoachingRunner().stream(for: turn)
+    }
+
+    func attemptCount() -> Int { attempts }
+}
+
+private actor CoachingRetryAuthorizer: CoachingReconciliationLookingUp {
+    let result: CoachingReconciliationResult
+    private(set) var authorizedRequestIDs: [UUID] = []
+    private(set) var reconciledRequestIDs: [UUID] = []
+
+    init(result: CoachingReconciliationResult = .ambiguous) {
+        self.result = result
+    }
+
+    func reconcile(requestID: UUID) async throws -> CoachingReconciliationResult {
+        reconciledRequestIDs.append(requestID)
+        return result
+    }
+
+    func authorizeRetry(requestID: UUID) async throws {
+        authorizedRequestIDs.append(requestID)
+    }
+}
+
 @Suite(.serialized)
 struct GatewayConversationClientTests {
+    @Test func retryableTerminalFailureIsAuthorizedForExplicitRetry() async throws {
+        let fixture = try await gatewayFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.directory) }
+        let requestID = "00000000-0000-4000-8000-000000000924"
+        let authorizer = CoachingRetryAuthorizer(result: .failed(code: "COACHING_UNAVAILABLE", retryable: true))
+        let client = GatewayConversationClient(
+            store: fixture.store, deviceID: fixture.deviceID,
+            coaching: UnusedCoachingRunner(), reconciliation: authorizer, nowMS: { 2 }
+        )
+
+        try await client.prepareExplicitRetry(requestID: requestID)
+
+        #expect(await authorizer.authorizedRequestIDs.map { $0.uuidString.lowercased() } == [requestID])
+    }
+
+    @Test func ambiguousPaidWorkWaitsForExplicitRetryBeforeAuthorization() async throws {
+        let fixture = try await gatewayFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.directory) }
+        let requestID = "00000000-0000-4000-8000-000000000923"
+        let runner = ReconciliationRequiredThenCompletedCoachingRunner()
+        let authorizer = CoachingRetryAuthorizer()
+        let client = GatewayConversationClient(
+            store: fixture.store, deviceID: fixture.deviceID,
+            coaching: runner, reconciliation: authorizer, nowMS: { 2 }
+        )
+
+        await #expect(throws: ConversationFailure.retryable) {
+            try await client.sendText(
+                conversationID: fixture.conversationID, requestID: requestID,
+                text: "Help me prepare"
+            )
+        }
+        #expect(await runner.attemptCount() == 1)
+        #expect(await authorizer.authorizedRequestIDs.isEmpty)
+
+        try await client.prepareExplicitRetry(requestID: requestID)
+        let reply = try await client.sendText(
+            conversationID: fixture.conversationID, requestID: requestID,
+            text: "Help me prepare"
+        )
+
+        #expect(reply.terminalResponse?.requestId.uuidString.lowercased() == requestID)
+        #expect(await runner.attemptCount() == 2)
+        #expect(await authorizer.reconciledRequestIDs.map { $0.uuidString.lowercased() } == [requestID, requestID])
+        #expect(await authorizer.authorizedRequestIDs.map { $0.uuidString.lowercased() } == [requestID])
+    }
+
+    @Test func validTerminalPersistsAssistantMessageAndCompanionsAtomically() async throws {
+        let fixture = try await gatewayFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.directory) }
+        let requestID = "00000000-0000-4000-8000-000000000921"
+        let reply = try await GatewayConversationClient(store: fixture.store, deviceID: fixture.deviceID, coaching: CompletedCoachingRunner(), nowMS: { 2 })
+            .sendText(conversationID: fixture.conversationID, requestID: requestID, text: "Help me prepare")
+        let snapshot = try await ConversationQuery(store: fixture.store).loadConversation(id: fixture.conversationID)
+        #expect(reply.terminalResponse?.requestId.uuidString.lowercased() == requestID)
+        #expect(snapshot.visibleMessages.filter { $0.role == "assistant" }.count == 1)
+        #expect(snapshot.assistantResponses.count == 1)
+    }
+
+    @Test func missingTerminalPersistsNoAssistantMessageOrCompanions() async throws {
+        let fixture = try await gatewayFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.directory) }
+        await #expect(throws: ConversationFailure.retryable) {
+            try await GatewayConversationClient(store: fixture.store, deviceID: fixture.deviceID, coaching: UnusedCoachingRunner(), nowMS: { 2 })
+                .sendText(conversationID: fixture.conversationID, requestID: "00000000-0000-4000-8000-000000000922", text: "Help me prepare")
+        }
+        let snapshot = try await ConversationQuery(store: fixture.store).loadConversation(id: fixture.conversationID)
+        #expect(snapshot.visibleMessages.filter { $0.role == "assistant" }.isEmpty)
+        #expect(snapshot.assistantResponses.isEmpty)
+    }
     @Test func fallbackTitleIsDerivedFromTheFirstUserMessage() {
         #expect(
             ConversationTitleDeriver.derive(from: "  Help me prepare for my quarterly performance review next week.  ")
@@ -40,14 +150,6 @@ struct GatewayConversationClientTests {
         let title = try #require(ConversationTitleDeriver.derive(from: String(repeating: "a", count: 80)))
         #expect(title.split(separator: " ").count < 8)
         #expect(title == "Discussing")
-    }
-
-    @Test func fallbackTitlesAreCompleteReportedPhrases() {
-        #expect(ConversationTitleDeriver.derive(from: "If I type now, will it show") == "Checking whether typed messages appear")
-        #expect(ConversationTitleDeriver.derive(from: "I'm going to start another one in drafts") == "Starting another conversation draft")
-        #expect(ConversationTitleDeriver.derive(from: "I'm recording one last time. I don't know why you") == "Retrying a recording one last time")
-        #expect(ConversationTitleDeriver.derive(from: "Why is it that when I try to record, like for some") == "Troubleshooting a recording problem")
-        #expect(ConversationTitleDeriver.derive(from: "I'm trying a new one. I don't know why if I tap") == "Testing a new recording attempt")
     }
 
     @Test func ordinaryTopicsContainingFixtureKeywordsKeepTheirActualSubject() {
@@ -130,7 +232,7 @@ struct GatewayConversationClientTests {
         #expect(index.conversations.first?.updatedAtMS == 1)
     }
 
-    @Test func loadingHistoryPreservesAuthoredAndAssistantSuggestedTitles() async throws {
+    @Test func loadingHistoryRepairsGeneratedTitlesButPreservesUserTitles() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -158,7 +260,9 @@ struct GatewayConversationClientTests {
                 id: "00000000-0000-4000-8000-00000000081\(offset)",
                 conversationID: record.0,
                 role: "user",
-                body: "This message would derive a different fallback title",
+                body: offset == 0
+                    ? "Plan the customer rollout with clear owners"
+                    : "This message would derive a different fallback title",
                 createdAtMS: Int64(offset + 10)
             ), context: .init(id: UUID().uuidString, deviceID: deviceID, timestamp: Int64(offset + 10)))
         }
@@ -166,9 +270,22 @@ struct GatewayConversationClientTests {
         let index = try await ConversationsClient.local(store: store, deviceID: deviceID).load()
         let titles = Dictionary(uniqueKeysWithValues: index.conversations.map { ($0.id, ($0.title, $0.titleAuthority)) })
 
-        #expect(titles[records[0].0]?.0 == records[0].1)
-        #expect(titles[records[0].0]?.1 == .assistantSuggested)
+        #expect(titles[records[0].0]?.0 == "Planning the customer rollout with clear owners")
+        #expect(titles[records[0].0]?.1 == .localFallback)
         #expect(titles[records[1].0]?.0 == records[1].1)
         #expect(titles[records[1].0]?.1 == .user)
     }
+}
+
+private func gatewayFixture() async throws -> (directory: URL, store: TaisaStore, conversationID: String, deviceID: UUID) {
+    let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    let store = try await TaisaStore.open(at: directory.appendingPathComponent("store.sqlite"), keyStore: GatewayConversationTestKeys())
+    let conversationID = "00000000-0000-4000-8000-000000000920"
+    let deviceID = UUID(uuidString: "00000000-0000-4000-8000-000000000999")!
+    try await ConversationRepository(store: store).create(
+        .init(id: conversationID, title: "New conversation", lifecycle: .draft, titleAuthority: .localFallback, createdAtMS: 1, updatedAtMS: 1),
+        context: .init(id: UUID().uuidString, deviceID: deviceID.uuidString, timestamp: 1)
+    )
+    return (directory, store, conversationID, deviceID)
 }

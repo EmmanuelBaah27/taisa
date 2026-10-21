@@ -3,24 +3,92 @@ import SwiftUI
 public struct TextComposer: View {
     public struct Contract: Sendable, Equatable {
         public let voiceLabel: String
-        public static let empty = Contract(voiceLabel: "Reply by voice, starts recording")
+        public let placeholder: String
+        public static let empty = Contract(voiceLabel: "Reply by voice, starts recording", placeholder: "Reply")
+        public static let usesLiquidEditorSurface = true
+        public static let minimumHeight: CGFloat = 48
+        public static let focusesOnEntry = true
+        public static let emptyActionHierarchy: TaisaButtonRole = .secondary
+        public static let filledActionHierarchy: TaisaButtonRole = .primary
+        public static let centersSingleLineTextWithAction = true
+    }
+    public enum Mode: Sendable { case composing, processing
+        public var acceptsInput: Bool { self == .composing }
     }
     @Binding var text: String
     let onSend: @MainActor () -> Void
     let onVoice: @MainActor () -> Void
-    public init(text: Binding<String>, onSend: @escaping @MainActor () -> Void, onVoice: @escaping @MainActor () -> Void) {
-        _text = text; self.onSend = onSend; self.onVoice = onVoice
+    let mode: Mode
+    @FocusState private var isFocused: Bool
+    public init(text: Binding<String>, mode: Mode = .composing, onSend: @escaping @MainActor () -> Void, onVoice: @escaping @MainActor () -> Void) {
+        _text = text; self.mode = mode; self.onSend = onSend; self.onVoice = onVoice
     }
     public var body: some View {
         let isEmpty = text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        HStack(alignment: .bottom) {
-            TextField("Message Taisa", text: $text, axis: .vertical).lineLimit(1...6)
+        HStack(alignment: .bottom, spacing: TaisaSpacing.compact.rawValue) {
+            TextField(Contract.empty.placeholder, text: $text, axis: .vertical)
+                .lineLimit(1...6)
+                .frame(minHeight: 40, alignment: .center)
+                .disabled(!mode.acceptsInput)
+                .focused($isFocused)
             Button(action: { isEmpty ? onVoice() : onSend() }) {
                 Image(systemName: isEmpty ? "waveform" : "arrow.up")
+                    .frame(width: 20, height: 20)
+                    .frame(width: 40, height: 40)
+                    .background {
+                        if !isEmpty {
+                            TaisaColor.primaryAction.color.clipShape(Circle())
+                        }
+                    }
             }
+            .modifier(ComposerActionStyle(isEmpty: isEmpty))
             .accessibilityLabel(isEmpty ? Contract.empty.voiceLabel : "Send message")
+            .disabled(!mode.acceptsInput)
         }
-        .padding(TaisaSpacing.standard.rawValue)
-        .background(TaisaColor.raisedSurface.color, in: RoundedRectangle(cornerRadius: TaisaRadius.composer.rawValue))
+        .padding(.leading, TaisaSpacing.standard.rawValue)
+        .padding(.trailing, TaisaSpacing.tight.rawValue)
+        .padding(.vertical, TaisaSpacing.tight.rawValue)
+        .frame(minHeight: Contract.minimumHeight)
+        .modifier(LiquidTextInputSurface(cornerRadius: TaisaRadius.composer.rawValue))
+        .onAppear { isFocused = mode.acceptsInput }
+    }
+}
+
+private struct ComposerActionStyle: ViewModifier {
+    let isEmpty: Bool
+
+    @ViewBuilder func body(content: Content) -> some View {
+        if isEmpty, #available(iOS 26.0, macOS 26.0, *) {
+            content
+                .buttonStyle(.plain)
+                .glassEffect(.regular.interactive(), in: Circle())
+                .contentShape(Circle())
+        } else if isEmpty {
+            content
+                .buttonStyle(.plain)
+                .background(.regularMaterial, in: Circle())
+                .contentShape(Circle())
+        } else {
+            content.buttonStyle(.plain)
+        }
+    }
+}
+
+public struct LiquidTextInputSurface: ViewModifier {
+    private let cornerRadius: CGFloat
+
+    public init(cornerRadius: CGFloat) { self.cornerRadius = cornerRadius }
+
+    @ViewBuilder public func body(content: Content) -> some View {
+        if #available(iOS 26.0, macOS 26.0, *) {
+            content.glassEffect(.regular, in: RoundedRectangle(cornerRadius: cornerRadius))
+        } else {
+            content
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: cornerRadius))
+                .overlay {
+                    RoundedRectangle(cornerRadius: cornerRadius)
+                        .stroke(TaisaColor.border.color)
+                }
+        }
     }
 }

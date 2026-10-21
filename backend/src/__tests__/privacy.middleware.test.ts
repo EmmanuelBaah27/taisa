@@ -51,7 +51,8 @@ jest.mock('../services/coaching/coachingGateway', () => ({
         requestId: '11111111-1111-4111-8111-111111111111',
         reply: 'What changed?',
         stance: 'nudge',
-        proposals: [],
+  explanation: { mode: 'nudge', evidence: [], inference: 'Bounded fixture inference.', confidence: 'medium', approach: 'Bounded fixture approach.' },
+  proposal: null,
         usage,
       },
       attempts: [{
@@ -511,6 +512,19 @@ describe('transcription privacy and spend boundaries', () => {
     expect(JSON.stringify(ledger.listUsage())).not.toContain('private transcript');
     ledger.close();
     await removeLedgerFiles(databasePath);
+  });
+
+  test('uses measured duration when an interrupted iOS recording reports zero', async () => {
+    const create = createSuccessfulTranscription();
+    jest.spyOn(console, 'info').mockImplementation(() => undefined);
+
+    const response = await request(createTranscriptionApp({ create }))
+      .post('/api/v1/transcribe')
+      .field('durationSeconds', '0')
+      .attach('audio', fixturePath);
+
+    expect(response.status).toBe(200);
+    expect(create).toHaveBeenCalledTimes(1);
   });
 
   test('measures uploaded audio and rejects duration above the configured ceiling before OpenAI', async () => {

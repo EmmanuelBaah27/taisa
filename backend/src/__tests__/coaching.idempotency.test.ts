@@ -26,7 +26,7 @@ test('replays one authoritative completion for a duplicate idempotency key', () 
     relevance: 'career-relevant',
     contextSufficiency: 'sufficient',
     stance: 'nudge',
-    proposals: [],
+    explanation: { mode: 'nudge', evidence: [], inference: 'A prompt may help.', confidence: 'medium', approach: 'Ask one question.' }, proposal: null,
     usage: { provider: 'anthropic', model: 'fixture', estimatedCostUsd: 0.01 },
   }, 'receipt-1');
 
@@ -65,7 +65,8 @@ test('durable replay never writes coaching text as plaintext', () => {
     requestId,
     reply: 'PRIVATE_COACHING_REPLY_SENTINEL',
     mode: 'coach', relevance: 'career-relevant', contextSufficiency: 'sufficient',
-    stance: 'nudge', proposals: [],
+    stance: 'nudge',
+    explanation: { mode: 'nudge', evidence: [], inference: 'A prompt may help.', confidence: 'medium', approach: 'Ask one question.' }, proposal: null,
     usage: { provider: 'anthropic', model: 'fixture', estimatedCostUsd: 0.01 },
   }, 'receipt-private');
   store.close();
@@ -83,5 +84,32 @@ test('reconciliation is owner-bound and explicit retry authorization resets only
   expect(store.authorizeRetry(requestId, ownerId)).toEqual({ status: 'authorized', requestId });
   expect(store.begin({ key, requestId, requestHash: 'hash-1', ownerId })).toEqual({ status: 'start' });
   expect(() => store.authorizeRetry(requestId, ownerId)).toThrow('IDEMPOTENCY_STATE_CONFLICT');
+  store.close();
+});
+test('explicit retry authorization resets a retryable terminal failure only', () => {
+  const store = createStore();
+  store.begin({ key, requestId, requestHash: 'hash-1', ownerId });
+  store.fail(key, 'COACHING_UNAVAILABLE', true);
+
+  expect(store.authorizeRetry(requestId, ownerId)).toEqual({ status: 'authorized', requestId });
+  expect(store.begin({ key, requestId, requestHash: 'hash-1', ownerId })).toEqual({ status: 'start' });
+
+  store.fail(key, 'INVALID_REQUEST', false);
+  expect(() => store.authorizeRetry(requestId, ownerId)).toThrow('IDEMPOTENCY_STATE_CONFLICT');
+  store.close();
+});
+
+test('explicit retry authorization never replaces the original request hash', () => {
+  const store = createStore();
+  store.begin({ key, requestId, requestHash: 'legacy-full-payload-hash', ownerId });
+  store.markProviderStarted(key);
+
+  expect(store.authorizeRetry(requestId, ownerId)).toEqual({ status: 'authorized', requestId });
+  expect(() => store.begin({ key, requestId, requestHash: 'stable-submission-hash', ownerId }))
+    .toThrow('IDEMPOTENCY_KEY_REUSED');
+  expect(store.begin({ key, requestId, requestHash: 'legacy-full-payload-hash', ownerId }))
+    .toEqual({ status: 'start' });
+  expect(() => store.begin({ key, requestId, requestHash: 'different-content-hash', ownerId }))
+    .toThrow('IDEMPOTENCY_KEY_REUSED');
   store.close();
 });
