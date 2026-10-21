@@ -77,6 +77,12 @@ struct ConversationComponentTests {
         #expect(RecordedVoiceDraftBadge.Contract.iconSize == 20)
     }
 
+    @Test func conversationOpeningPlaceholderMatchesFinalPageStructure() {
+        #expect(ConversationOpeningPlaceholder.Contract.messageCount == 3)
+        #expect(ConversationOpeningPlaceholder.Contract.usesSharedFades)
+        #expect(ConversationOpeningPlaceholder.Contract.reduceMotionIsStatic)
+    }
+
     @Test func composerContractsDescribeActionsWithoutColorAlone() {
         #expect(VoiceComposerControls.Contract.recording.pauseLabel == "Pause recording")
         #expect(VoiceComposerControls.Contract.paused.resumeLabel == "Resume recording")

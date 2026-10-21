@@ -2,6 +2,7 @@ import Foundation
 import SwiftUI
 import TaisaAudio
 import TaisaConversations
+import TaisaDesignSystem
 import TaisaNetworking
 import TaisaStorage
 import TaisaVoice
@@ -806,7 +807,9 @@ struct ConversationHostView: View {
                         .accessibilityIdentifier("conversation.unavailable.diagnostic")
 #endif
                 }
-            } else { ProgressView("Opening conversation…") }
+            } else {
+                ConversationOpeningPlaceholder(title: route.localTitle, onDismiss: dismiss)
+            }
         }
         .accessibilityIdentifier("conversation.root")
         .task {

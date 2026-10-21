@@ -17,6 +17,16 @@ final class ConversationViewContractTests: XCTestCase {
         XCTAssertFalse(source.contains("error.localizedDescription"))
     }
 
+    func testConversationOpeningUsesLayoutMatchingPlaceholder() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let runtimeSource = try String(
+            contentsOf: root.appendingPathComponent("TaisaApp/Conversation/ConversationRuntimeFactory.swift"),
+            encoding: .utf8
+        )
+        XCTAssertTrue(runtimeSource.contains("ConversationOpeningPlaceholder"))
+        XCTAssertFalse(runtimeSource.contains("ProgressView(\"Opening conversation…\")"))
+    }
+
     func testLatestDraftDiagnosticReportsOnlyContentFreeFields() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let factory = try String(

@@ -50,6 +50,10 @@ public enum TaisaEffect {
     public static let recordingGlowSpread: CGFloat = 4
     public static let recordingGlowOpacity: Double = 0.35
     public static let streamingWordBlurRadius: CGFloat = 1
+    public static let placeholderHighlightOpacity: Double = 0.72
+    public static let placeholderHighlightWidthFraction: CGFloat = 0.55
+    public static let placeholderTravelStart: CGFloat = -1
+    public static let placeholderTravelEnd: CGFloat = 1.5
 }
 
 public enum TaisaRadius: CGFloat, CaseIterable, Sendable {
