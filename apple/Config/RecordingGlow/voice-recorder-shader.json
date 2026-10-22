@@ -8,40 +8,28 @@
         "opacity": 1,
         "red": 0.796078431372549
       },
-      "opacity": 0.96,
-      "saturation": 0.94,
-      "strength": 1
+      "opacity": 0.9575936794281006,
+      "saturation": 0.42307692766189575,
+      "strength": 0.5197238922119141
     },
     "centerBaselineHeight": 0.12,
-    "centerBloom": 0.58,
+    "centerBloom": 0.6253648996353149,
     "centerPeakHeight": 0.72,
-    "centerWidth": 0.29,
+    "centerWidth": 0.2258974313735962,
     "edgeBalance": 0.5,
     "edgeGain": 0.42,
     "edgeSoftness": 0.62,
     "edgeSpread": 0.74,
     "globalOpacity": 0.92,
     "grain": {
-      "amount": 0.11830374598503113,
+      "amount": 0.22777120769023895,
       "contrast": 0.42,
-      "loudnessInfluence": 0.08284023404121399,
-      "scale": 0.020710058510303497,
+      "loudnessInfluence": 0.22,
+      "scale": 0.043116360902786255,
       "seed": 1413564755,
-      "softness": 0.2534122169017792
+      "softness": 0.7248126268386841
     },
     "leftInner": {
-      "brightness": 0.98,
-      "color": {
-        "blue": 0.9921568627450981,
-        "green": 0.788235294117647,
-        "opacity": 1,
-        "red": 0.5686274509803921
-      },
-      "opacity": 0.72,
-      "saturation": 0.86,
-      "strength": 0.48
-    },
-    "leftOuter": {
       "brightness": 0.95,
       "color": {
         "blue": 0.5411764705882353,
@@ -51,9 +39,9 @@
       },
       "opacity": 0.72,
       "saturation": 0.84,
-      "strength": 0.36
+      "strength": 0.48
     },
-    "rightInner": {
+    "leftOuter": {
       "brightness": 0.96,
       "color": {
         "blue": 0.7176470588235294,
@@ -63,6 +51,18 @@
       },
       "opacity": 0.76,
       "saturation": 0.82,
+      "strength": 0.36
+    },
+    "rightInner": {
+      "brightness": 0.98,
+      "color": {
+        "blue": 0.9921568627450981,
+        "green": 0.788235294117647,
+        "opacity": 1,
+        "red": 0.5686274509803921
+      },
+      "opacity": 0.78,
+      "saturation": 0.86,
       "strength": 0.46
     },
     "rightOuter": {
@@ -80,13 +80,13 @@
     "verticalOrigin": 0.94
   },
   "response": {
-    "attackSeconds": 0.07457593783736229,
+    "attackSeconds": 0.07,
     "ceilingDecibels": -6,
-    "inputGain": 0.9980276226997375,
+    "inputGain": 1,
     "maximumRisePerSecond": 7,
     "noiseFloorDecibels": -55,
     "peakContribution": 0.2,
-    "releaseSeconds": 0.7093885719776153,
-    "responseExponent": 1.4319526553153992
+    "releaseSeconds": 0.6044575989246368,
+    "responseExponent": 1.5044378519058228
   }
 }

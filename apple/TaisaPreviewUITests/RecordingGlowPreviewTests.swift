@@ -64,6 +64,8 @@ final class RecordingGlowPreviewTests: XCTestCase {
         XCTAssertTrue(app.sliders["Grain intensity"].exists)
         XCTAssertTrue(app.sliders["Center peak height"].exists)
         XCTAssertTrue(app.staticTexts["#CBAEFF"].exists)
+        XCTAssertTrue(app.staticTexts["0.60"].exists)
+        XCTAssertTrue(app.staticTexts["1.50"].exists)
     }
 
     func testTunerUsesFullLabelStateChoicesAndOffersLiveMicrophoneInput() {
