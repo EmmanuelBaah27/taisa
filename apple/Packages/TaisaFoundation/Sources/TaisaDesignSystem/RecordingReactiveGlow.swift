@@ -147,6 +147,12 @@ struct RecordingGlowUniforms: Sendable, Equatable {
     var rightOuterContribution: Double { preset.rightOuter.strength * preset.edgeGain }
 }
 
+private enum RecordingGlowBoundaryMask {
+    static let center = UnitPoint(x: 0.5, y: 1.24)
+    static let opaqueStop = 0.72
+    static let endRadiusFraction = 1.24
+}
+
 public struct RecordingReactiveGlow: View {
     private let loudness: Double
     private let state: RecordingGlowState
@@ -193,13 +199,15 @@ public struct RecordingReactiveGlow: View {
     }
 
     private var recordingFieldMask: some View {
-        LinearGradient(
+        EllipticalGradient(
             stops: [
-                .init(color: .clear, location: 0),
-                .init(color: .white, location: PageEdgeFade.navigationOpaqueStop),
+                .init(color: .white, location: 0),
+                .init(color: .white, location: RecordingGlowBoundaryMask.opaqueStop),
+                .init(color: .clear, location: 1),
             ],
-            startPoint: .top,
-            endPoint: .bottom
+            center: RecordingGlowBoundaryMask.center,
+            startRadiusFraction: 0,
+            endRadiusFraction: RecordingGlowBoundaryMask.endRadiusFraction
         )
     }
 

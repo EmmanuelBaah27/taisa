@@ -105,8 +105,8 @@ struct RecordingReactiveGlowContractTests {
         #expect(motion.releaseDuration == 0.16)
     }
 
-    @Test("the field fades into the page before its upper canvas boundary")
-    func upperCanvasBoundaryUsesTheSemanticNavigationFade() throws {
+    @Test("the field follows a curved fade before its upper canvas boundary")
+    func upperCanvasBoundaryUsesACurvedFade() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .deletingLastPathComponent()
@@ -117,6 +117,9 @@ struct RecordingReactiveGlowContractTests {
         )
 
         #expect(source.contains(".mask(recordingFieldMask)"))
-        #expect(source.contains("PageEdgeFade.navigationOpaqueStop"))
+        #expect(source.contains("EllipticalGradient("))
+        #expect(source.contains("RecordingGlowBoundaryMask.center"))
+        #expect(source.contains("RecordingGlowBoundaryMask.opaqueStop"))
+        #expect(!source.contains("private var recordingFieldMask: some View {\n        LinearGradient("))
     }
 }
