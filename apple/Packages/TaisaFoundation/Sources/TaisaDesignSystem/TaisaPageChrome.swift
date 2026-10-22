@@ -108,11 +108,21 @@ public struct TaisaChildPageHeader: View {
     }
 }
 
-/// Shared bottom fade and safe-area treatment for the open-chat composer.
-public struct ConversationComposerChrome<Content: View>: View {
+/// Shared bottom backdrop and safe-area treatment for the open-chat composer.
+public struct ConversationComposerChrome<Content: View, Backdrop: View>: View {
     private let content: Content
+    private let backdrop: Backdrop
 
-    public init(@ViewBuilder content: () -> Content) {
+    public init(@ViewBuilder content: () -> Content) where Backdrop == PageEdgeFade {
+        self.content = content()
+        backdrop = PageEdgeFade(.navigation)
+    }
+
+    public init(
+        @ViewBuilder backdrop: () -> Backdrop,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.backdrop = backdrop()
         self.content = content()
     }
 
@@ -121,8 +131,8 @@ public struct ConversationComposerChrome<Content: View>: View {
             .padding(.horizontal, TaisaSpacing.standard.rawValue)
             .padding(.vertical, TaisaSpacing.section.rawValue)
             .frame(minHeight: TaisaControlMetric.conversationComposerDockHeight, alignment: .bottom)
-            .background {
-                PageEdgeFade(.navigation)
+            .background(alignment: .bottom) {
+                backdrop
                     .ignoresSafeArea(edges: [.horizontal, .bottom])
                     .allowsHitTesting(false)
             }

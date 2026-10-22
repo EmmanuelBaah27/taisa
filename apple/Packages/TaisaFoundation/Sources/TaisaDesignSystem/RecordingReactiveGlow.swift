@@ -184,11 +184,23 @@ public struct RecordingReactiveGlow: View {
                 shaderSurface
             }
         }
+        .mask(recordingFieldMask)
         .allowsHitTesting(false)
         .accessibilityHidden(true)
         .onChange(of: loudness) { _, _ in animateWave() }
         .onChange(of: frequencyLevels) { _, _ in animateWave() }
         .onChange(of: state) { _, _ in animateWave() }
+    }
+
+    private var recordingFieldMask: some View {
+        LinearGradient(
+            stops: [
+                .init(color: .clear, location: 0),
+                .init(color: .white, location: PageEdgeFade.navigationOpaqueStop),
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
     }
 
     private var shaderSurface: some View {

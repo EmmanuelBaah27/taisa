@@ -15,10 +15,6 @@ struct ConversationView: View {
             ZStack(alignment: .top) {
                 StatusBarBackground()
                     .zIndex(4)
-                if showsRecordingGlow {
-                    recordingGlowBackground
-                        .ignoresSafeArea(edges: [.horizontal, .bottom])
-                }
                 VStack(spacing: 0) {
                     ZStack {
                         ConversationTimeline(
@@ -127,8 +123,19 @@ struct ConversationView: View {
     }
 
     @ViewBuilder private var composer: some View {
-        ConversationComposerChrome {
-            switch model.composer {
+        if showsRecordingGlow {
+            ConversationComposerChrome(backdrop: { recordingGlowBackground }) {
+                composerContent
+            }
+        } else {
+            ConversationComposerChrome {
+                composerContent
+            }
+        }
+    }
+
+    @ViewBuilder private var composerContent: some View {
+        switch model.composer {
             case .preparingVoice:
                 recordingBar(.preparing)
             case .recording:
@@ -186,7 +193,6 @@ struct ConversationView: View {
                     onRetry: performRecoveryPrimaryAction
                 )
                 .accessibilityIdentifier("conversation.retry")
-            }
         }
     }
 
@@ -268,7 +274,6 @@ struct ConversationView: View {
         )
         .frame(maxWidth: .infinity)
         .frame(height: CGFloat(configuration.surfaceHeight))
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
     }
 
     private var recordingGlowState: RecordingGlowState {

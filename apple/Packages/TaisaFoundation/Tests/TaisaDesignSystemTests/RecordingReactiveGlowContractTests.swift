@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import TaisaDesignSystem
 
@@ -102,5 +103,20 @@ struct RecordingReactiveGlowContractTests {
         #expect(motion.attackBounce == 0.45)
         #expect(motion.attackDuration == 0.16)
         #expect(motion.releaseDuration == 0.16)
+    }
+
+    @Test("the field fades into the page before its upper canvas boundary")
+    func upperCanvasBoundaryUsesTheSemanticNavigationFade() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let source = try String(
+            contentsOf: root.appendingPathComponent("Sources/TaisaDesignSystem/RecordingReactiveGlow.swift"),
+            encoding: .utf8
+        )
+
+        #expect(source.contains(".mask(recordingFieldMask)"))
+        #expect(source.contains("PageEdgeFade.navigationOpaqueStop"))
     }
 }

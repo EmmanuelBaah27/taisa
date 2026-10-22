@@ -181,6 +181,9 @@ struct ConversationComponentTests {
 
         #expect(source.contains("public struct ConversationComposerChrome"))
         #expect(source.contains("TaisaControlMetric.conversationComposerDockHeight"))
+        #expect(source.contains("private let backdrop: Backdrop"))
+        #expect(source.contains(".background(alignment: .bottom)"))
+        #expect(source.contains("PageEdgeFade(.navigation)"))
         #expect(source.contains(".ignoresSafeArea(edges: [.horizontal, .bottom])"))
     }
 
