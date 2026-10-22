@@ -17,6 +17,7 @@ struct ConversationView: View {
                     .zIndex(4)
                 if showsRecordingGlow {
                     recordingGlowBackground
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
                         .ignoresSafeArea(edges: [.horizontal, .bottom])
                 }
                 VStack(spacing: 0) {

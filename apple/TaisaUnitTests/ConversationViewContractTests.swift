@@ -51,7 +51,9 @@ final class ConversationViewContractTests: XCTestCase {
 
         XCTAssertTrue(source.contains("let configuration = RecordingGlowConfiguration.approved"))
         XCTAssertTrue(source.contains(".frame(height: CGFloat(configuration.surfaceHeight))"))
-        XCTAssertTrue(source.contains("recordingGlowBackground\n                        .ignoresSafeArea(edges: [.horizontal, .bottom])"))
+        XCTAssertTrue(source.contains("recordingGlowBackground"))
+        XCTAssertTrue(source.contains(".ignoresSafeArea(edges: [.horizontal, .bottom])"))
+        XCTAssertTrue(source.contains(".frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)"))
         XCTAssertTrue(source.contains("ConversationComposerChrome(backdrop: { Color.clear })"))
         XCTAssertTrue(source.contains("if showsRecordingGlow"))
     }
