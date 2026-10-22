@@ -162,6 +162,8 @@ targets:
     sources:
       - path: TaisaApp
       - path: Generated
+      - path: Config/RecordingGlow/voice-recorder-shader.json
+        buildPhase: resources
     settings:
       base:
         PRODUCT_NAME: TaisaPersonal
