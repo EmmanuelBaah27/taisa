@@ -138,10 +138,10 @@ Never use raw `text-sm font-semibold` combinations — use the composite utiliti
 | `text-lg-regular` | 18px / 26px lh | 400 | Body |
 | `text-lg-medium` | 18px / 26px lh | 500 | Body emphasis |
 | `text-lg-semibold` | 18px / 26px lh | 600 | Body strong |
-| `text-base-regular` | 16px / 22px lh | 400 | **Base UI — default text size** |
-| `text-base-medium` | 16px / 22px lh | 500 | UI emphasis |
-| `text-base-semibold` | 16px / 22px lh | 600 | UI strong |
-| `text-base-bold` | 16px / 22px lh | 700 | Strong compact emphasis where semibold is insufficient |
+| `text-base-regular` | 16px / 24px lh | 400 | **Base UI — default text size** |
+| `text-base-medium` | 16px / 24px lh | 500 | UI emphasis |
+| `text-base-semibold` | 16px / 24px lh | 600 | UI strong |
+| `text-base-bold` | 16px / 24px lh | 700 | Strong compact emphasis where semibold is insufficient |
 | `text-small-regular` | 14px / 20px lh | 400 | Small labels, metadata |
 | `text-small-medium` | 14px / 20px lh | 500 | Small emphasis |
 | `text-small-semibold` | 14px / 20px lh | 600 | Small strong |

@@ -95,9 +95,10 @@ Never combine raw Tailwind size + weight utilities. Always use the DS type scale
 | `text-lg-regular` | 16px | 400 | Default body |
 | `text-lg-medium` | 16px | 500 | Body emphasis |
 | `text-lg-semibold` | 16px | 600 | Body strong |
-| `text-base-regular` | 14px | 400 | UI labels |
-| `text-base-medium` | 14px | 500 | UI emphasis |
-| `text-base-semibold` | 14px | 600 | UI strong |
+| `text-base-regular` | 16px / 24px lh | 400 | UI labels |
+| `text-base-medium` | 16px / 24px lh | 500 | UI emphasis |
+| `text-base-semibold` | 16px / 24px lh | 600 | UI strong |
+| `text-base-bold` | 16px / 24px lh | 700 | Strong compact emphasis |
 | `text-small-regular` | 12px | 400 | Captions, meta |
 | `text-small-medium` | 12px | 500 | Caption emphasis |
 | `text-small-semibold` | 12px | 600 | Caption strong |

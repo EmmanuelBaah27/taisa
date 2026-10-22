@@ -27,6 +27,23 @@ if (undocumentedModules.length > 0) {
   process.exit(1);
 }
 
+const globalCSS = await readFile(join(mobileRoot, 'global.css'), 'utf8');
+const foundations = await readFile(join(mobileRoot, '../foundations.md'), 'utf8');
+for (const role of ['regular', 'medium', 'semibold', 'bold']) {
+  const classContract = new RegExp(
+    `\\.text-base-${role}\\s*\\{[^}]*font-size:\\s*16px;[^}]*line-height:\\s*24px;`,
+  );
+  if (!classContract.test(globalCSS)) {
+    console.error(`text-base-${role} must use the shared 16px / 24px Base UI contract.`);
+    process.exit(1);
+  }
+  const documentedContract = `| \`text-base-${role}\` | 16px / 24px lh |`;
+  if (!designSystemDocs.includes(documentedContract) || !foundations.includes(documentedContract)) {
+    console.error(`text-base-${role} must be documented as 16px / 24px in both DS authorities.`);
+    process.exit(1);
+  }
+}
+
 const packageJson = JSON.parse(await readFile(join(mobileRoot, 'package.json'), 'utf8'));
 if (packageJson.scripts?.['storybook:web'] !== 'EXPO_PUBLIC_STORYBOOK=true expo start --web') {
   console.error('storybook:web must start the on-demand browser catalog.');
