@@ -223,20 +223,27 @@ struct ConversationComponentTests {
         #expect(InlineRecoveryAlert.Contract.actionSpacing == 12)
     }
 
-    @Test func recordingSendUsesTheHomeRecordButtonsProminentGlassTreatment() throws {
+    @Test func recordingControlsUseClearGlassWithATintedCircularSendControl() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .deletingLastPathComponent()
             .deletingLastPathComponent()
-        let source = try String(
+        let actionBar = try String(
             contentsOf: root.appendingPathComponent("Sources/TaisaDesignSystem/ConversationActionBar.swift"),
             encoding: .utf8
         )
+        let chrome = try String(
+            contentsOf: root.appendingPathComponent("Sources/TaisaDesignSystem/TaisaPageChrome.swift"),
+            encoding: .utf8
+        )
 
-        #expect(source.contains(".buttonStyle(.glassProminent)"))
-        #expect(source.contains(".buttonBorderShape(.circle)"))
-        #expect(source.contains(".tint(TaisaColor.primaryAction.color)"))
-        #expect(source.contains(".background(TaisaColor.primaryAction.color, in: Circle())"))
+        #expect(chrome.contains("public enum TaisaGlassStyle"))
+        #expect(chrome.contains("case regular"))
+        #expect(chrome.contains("case clear"))
+        #expect(chrome.contains(".glassEffect(.clear.interactive(), in: Circle())"))
+        #expect(actionBar.contains("glassStyle: .clear"))
+        #expect(actionBar.contains(".glassEffect(.clear.tint(TaisaColor.primaryAction.color).interactive(), in: Circle())"))
+        #expect(!actionBar.contains(".buttonStyle(.glassProminent)"))
     }
 
     @Test func conversationMetricsNameEveryReviewedProductRole() {

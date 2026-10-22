@@ -1,5 +1,10 @@
 import SwiftUI
 
+public enum TaisaGlassStyle: Sendable, Equatable {
+    case regular
+    case clear
+}
+
 public enum TaisaBottomChromeContract {
     public static let fadeHeight = TaisaControlMetric.primaryNavigationReservedHeight
     public static let coversBottomSafeArea = true
@@ -145,6 +150,7 @@ public struct TaisaSecondaryIconButton: View {
     private let accessibilityLabel: String
     private let accessibilityHint: String?
     private let size: CGFloat
+    private let glassStyle: TaisaGlassStyle
     private let action: @MainActor () -> Void
 
     public init(
@@ -152,12 +158,14 @@ public struct TaisaSecondaryIconButton: View {
         accessibilityLabel: String,
         accessibilityHint: String? = nil,
         size: CGFloat = TaisaControlMetric.headerActionHeight,
+        glassStyle: TaisaGlassStyle = .regular,
         action: @escaping @MainActor () -> Void
     ) {
         self.icon = icon
         self.accessibilityLabel = accessibilityLabel
         self.accessibilityHint = accessibilityHint
         self.size = size
+        self.glassStyle = glassStyle
         self.action = action
     }
 
@@ -181,15 +189,30 @@ public struct TaisaSecondaryIconButton: View {
         }
 
         if #available(iOS 26.0, macOS 26.0, *) {
-            button
-                .buttonStyle(.plain)
-                .glassEffect(.regular.interactive(), in: Circle())
-                .contentShape(Circle())
+            switch glassStyle {
+            case .regular:
+                button
+                    .buttonStyle(.plain)
+                    .glassEffect(.regular.interactive(), in: Circle())
+                    .contentShape(Circle())
+            case .clear:
+                button
+                    .buttonStyle(.plain)
+                    .glassEffect(.clear.interactive(), in: Circle())
+                    .contentShape(Circle())
+            }
         } else {
-            button
-                .buttonStyle(.plain)
-                .background(.regularMaterial, in: Circle())
-                .contentShape(Circle())
+            switch glassStyle {
+            case .regular:
+                button
+                    .buttonStyle(.plain)
+                    .background(.regularMaterial, in: Circle())
+                    .contentShape(Circle())
+            case .clear:
+                button
+                    .buttonStyle(.plain)
+                    .contentShape(Circle())
+            }
         }
     }
 }
@@ -199,13 +222,16 @@ public struct TaisaSecondaryCapsuleButton<Label: View>: View {
     private let action: @MainActor () -> Void
     private let label: Label
     private let height: CGFloat
+    private let glassStyle: TaisaGlassStyle
 
     public init(
         height: CGFloat = TaisaControlMetric.headerActionHeight,
+        glassStyle: TaisaGlassStyle = .regular,
         action: @escaping @MainActor () -> Void,
         @ViewBuilder label: () -> Label
     ) {
         self.height = height
+        self.glassStyle = glassStyle
         self.action = action
         self.label = label()
     }
@@ -221,15 +247,30 @@ public struct TaisaSecondaryCapsuleButton<Label: View>: View {
         }
 
         if #available(iOS 26.0, macOS 26.0, *) {
-            button
-                .buttonStyle(.plain)
-                .glassEffect(.regular.interactive(), in: Capsule())
-                .contentShape(Capsule())
+            switch glassStyle {
+            case .regular:
+                button
+                    .buttonStyle(.plain)
+                    .glassEffect(.regular.interactive(), in: Capsule())
+                    .contentShape(Capsule())
+            case .clear:
+                button
+                    .buttonStyle(.plain)
+                    .glassEffect(.clear.interactive(), in: Capsule())
+                    .contentShape(Capsule())
+            }
         } else {
-            button
-                .buttonStyle(.plain)
-                .background(.regularMaterial, in: Capsule())
-                .contentShape(Capsule())
+            switch glassStyle {
+            case .regular:
+                button
+                    .buttonStyle(.plain)
+                    .background(.regularMaterial, in: Capsule())
+                    .contentShape(Capsule())
+            case .clear:
+                button
+                    .buttonStyle(.plain)
+                    .contentShape(Capsule())
+            }
         }
     }
 }

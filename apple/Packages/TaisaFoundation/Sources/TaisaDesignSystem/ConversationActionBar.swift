@@ -64,9 +64,9 @@ public struct ConversationActionBar: View {
     @ViewBuilder private var sendControl: some View {
         if #available(iOS 26.0, macOS 26.0, *) {
             sendButton
-                .buttonStyle(.glassProminent)
-                .buttonBorderShape(.circle)
-                .tint(TaisaColor.primaryAction.color)
+                .buttonStyle(.plain)
+                .glassEffect(.clear.tint(TaisaColor.primaryAction.color).interactive(), in: Circle())
+                .contentShape(Circle())
         } else {
             sendButton
                 .buttonStyle(.plain)
@@ -97,7 +97,7 @@ public struct ConversationActionBar: View {
         } else if phase == .saved {
             RecordedVoiceDraftBadge(elapsed: elapsed)
         } else {
-            TaisaSecondaryCapsuleButton(action: onPrimary) {
+            TaisaSecondaryCapsuleButton(glassStyle: .clear, action: onPrimary) {
                 HStack(spacing: TaisaSpacing.compact.rawValue) {
                     CentralIcon(.play).frame(width: 20, height: 20)
                     Text(availability.primaryLabel)
@@ -139,7 +139,7 @@ public struct ConversationActionBar: View {
     }
 
     private func iconButton(_ icon: CentralIconName, label: String, action: @escaping @MainActor () -> Void) -> some View {
-        TaisaSecondaryIconButton(icon: icon, accessibilityLabel: label, action: action)
+        TaisaSecondaryIconButton(icon: icon, accessibilityLabel: label, glassStyle: .clear, action: action)
             .frame(width: TaisaControlMetric.conversationRecordingControl, height: TaisaControlMetric.conversationRecordingControl)
     }
 }
