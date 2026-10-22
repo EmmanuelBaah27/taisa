@@ -371,6 +371,10 @@ private final class PreviewLiveLoudnessMonitor: ObservableObject {
 
     func start(configuration: LoudnessEnvelopeConfiguration) async {
         stop()
+#if targetEnvironment(simulator)
+        status = "Live microphone requires a physical device"
+        return
+#else
         status = "Requesting microphone access…"
         guard await AVAudioApplication.requestRecordPermission() else {
             status = "Microphone access denied"
@@ -412,6 +416,7 @@ private final class PreviewLiveLoudnessMonitor: ObservableObject {
             stop()
             status = "Couldn’t start microphone"
         }
+#endif
     }
 
     func update(configuration: LoudnessEnvelopeConfiguration) {
