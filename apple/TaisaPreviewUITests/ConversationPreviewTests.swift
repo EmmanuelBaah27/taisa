@@ -39,7 +39,18 @@ final class ConversationPreviewTests: XCTestCase {
 
         let sentMessage = app.descendants(matching: .any)["conversation.message.sent-turn-anchor"]
         XCTAssertTrue(sentMessage.waitForExistence(timeout: 5))
-        XCTAssertLessThan(sentMessage.frame.minY, app.frame.height * 0.35)
+        let closeButton = app.buttons["Close conversation"]
+        XCTAssertTrue(closeButton.exists)
+        let maximumAnchoredY = closeButton.frame.maxY + 32
+        let deadline = Date().addingTimeInterval(3)
+        while sentMessage.frame.minY > maximumAnchoredY, Date() < deadline {
+            RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+        }
+        XCTAssertLessThanOrEqual(sentMessage.frame.minY, maximumAnchoredY)
+
+        let settledY = sentMessage.frame.minY
+        RunLoop.current.run(until: Date().addingTimeInterval(1))
+        XCTAssertEqual(sentMessage.frame.minY, settledY, accuracy: 2)
     }
 
     func testResponseFeedbackFactorsOpenInADismissibleSheet() {

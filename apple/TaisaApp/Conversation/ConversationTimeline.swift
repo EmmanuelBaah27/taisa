@@ -185,7 +185,8 @@ struct ConversationTimeline: View {
 
     var body: some View {
         let presentedMessages = messages.filter { $0.id != streamingFinalMessageID }
-        ScrollView {
+        ScrollViewReader { proxy in
+            ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
                     ForEach(Array(presentedMessages.enumerated()), id: \.element.id) { index, message in
                         VStack(alignment: message.role == "user" ? .trailing : .leading, spacing: TaisaSpacing.tight.rawValue) {
@@ -357,20 +358,18 @@ struct ConversationTimeline: View {
                     isAwayFromLatest = false
                     scrollToLatest(animated: false)
                 case .anchorUserMessage:
+                    await Task.yield()
                     isAwayFromLatest = false
                     anchoredUserMessageID = message.id
                     shouldReleaseAnchorWhenScrollSettles = false
-                    // Let SwiftUI lay out the response runway before resolving the top
-                    // anchor. Without this handoff, ScrollPosition clamps the request to
-                    // the old content bottom and the sent turn remains below the fold.
-                    await Task.yield()
                     withAnimation(reduceMotion ? nil : .smooth(duration: TaisaMotion.settle)) {
-                        scrollPosition.scrollTo(id: message.id, anchor: .top)
+                        proxy.scrollTo(message.id, anchor: .top)
                     }
                 case .preserveViewport:
                     break
                 }
             }
+        }
     }
 
     private func scrollToLatest(animated: Bool) {
