@@ -46,12 +46,13 @@ enum ConversationTimelineLayout {
         return messageRole == "user" ? .anchorUserMessage : .preserveViewport
     }
 
-    static func responseRunwayHeight(viewportHeight: CGFloat, preservesAnchoredTurn: Bool) -> CGFloat {
+    static func responseRunwayHeight(
+        viewportHeight: CGFloat,
+        occupiedHeight: CGFloat,
+        preservesAnchoredTurn: Bool
+    ) -> CGFloat {
         guard preservesAnchoredTurn else { return 0 }
-        return max(
-            0,
-            viewportHeight - TaisaControlMetric.appBarHeight - userToAssistantSpacing
-        )
+        return max(0, viewportHeight - occupiedHeight)
     }
 
     static func jumpAnchorAction(
@@ -157,6 +158,7 @@ struct ConversationTimeline: View {
     @State private var readableViewportHeight: CGFloat = 0
     @State private var readableViewportFrame: CGRect = .zero
     @State private var actualContentFrame: CGRect = .zero
+    @State private var messageFrames: [String: CGRect] = [:]
     @State private var anchoredUserMessageID: String?
     @State private var headerProtectedMessageID: String?
     @State private var shouldReleaseAnchorAfterJump = false
@@ -251,6 +253,11 @@ struct ConversationTimeline: View {
                         .accessibilityElement(children: .contain)
                         .accessibilityIdentifier("conversation.message.\(message.id)")
                         .id(message.id)
+                        .onGeometryChange(for: CGRect.self) { geometry in
+                            geometry.frame(in: .global)
+                        } action: { _, frame in
+                            messageFrames[message.id] = frame
+                        }
                         .padding(
                             .top,
                             headerProtectedMessageID == message.id
@@ -295,8 +302,13 @@ struct ConversationTimeline: View {
                             refreshJumpVisibility()
                         }
 
+                    let anchoredTurnHeight = anchoredUserMessageID
+                        .flatMap { messageFrames[$0] }
+                        .map { max(0, actualContentFrame.maxY - $0.minY) }
+                        ?? 0
                     let responseRunwayHeight = ConversationTimelineLayout.responseRunwayHeight(
                         viewportHeight: readableViewportHeight,
+                        occupiedHeight: anchoredTurnHeight,
                         preservesAnchoredTurn: anchoredUserMessageID != nil
                     )
                     if responseRunwayHeight > 0 {
@@ -344,6 +356,7 @@ struct ConversationTimeline: View {
             }
             .task(id: conversationID) {
                 anchoredUserMessageID = nil
+                messageFrames = [:]
                 headerProtectedMessageID = nil
                 shouldReleaseAnchorAfterJump = false
                 hasPositionedInitialMessages = false

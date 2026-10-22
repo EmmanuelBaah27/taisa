@@ -267,8 +267,20 @@ final class ConversationViewContractTests: XCTestCase {
         XCTAssertEqual(ConversationTimelineLayout.ordinaryMessageSpacing, 12)
         XCTAssertEqual(ConversationTimelineLayout.userToAssistantSpacing, 32)
         XCTAssertEqual(
+            ConversationTimelineLayout.spacing(afterRole: "user", beforeRole: "assistant"),
+            32
+        )
+        XCTAssertEqual(
+            ConversationTimelineLayout.spacing(afterRole: "assistant", beforeRole: "user"),
+            12
+        )
+    }
+
+    func testResponseGrowthConsumesTheRunwayBeforeOverflowing() {
+        XCTAssertEqual(
             ConversationTimelineLayout.responseRunwayHeight(
                 viewportHeight: 800,
+                occupiedHeight: 96,
                 preservesAnchoredTurn: true
             ),
             704
@@ -276,17 +288,26 @@ final class ConversationViewContractTests: XCTestCase {
         XCTAssertEqual(
             ConversationTimelineLayout.responseRunwayHeight(
                 viewportHeight: 800,
-                preservesAnchoredTurn: false
+                occupiedHeight: 140,
+                preservesAnchoredTurn: true
+            ),
+            660
+        )
+        XCTAssertEqual(
+            ConversationTimelineLayout.responseRunwayHeight(
+                viewportHeight: 800,
+                occupiedHeight: 900,
+                preservesAnchoredTurn: true
             ),
             0
         )
         XCTAssertEqual(
-            ConversationTimelineLayout.spacing(afterRole: "user", beforeRole: "assistant"),
-            32
-        )
-        XCTAssertEqual(
-            ConversationTimelineLayout.spacing(afterRole: "assistant", beforeRole: "user"),
-            12
+            ConversationTimelineLayout.responseRunwayHeight(
+                viewportHeight: 800,
+                occupiedHeight: 96,
+                preservesAnchoredTurn: false
+            ),
+            0
         )
     }
 
