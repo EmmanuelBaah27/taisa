@@ -118,6 +118,7 @@ struct ConversationTimeline: View {
     let isSendingText: Bool
     let isThinking: Bool
     let isStreamingResponse: Bool
+    let isInitialLoadComplete: Bool
     let streamingDidFinish: @MainActor @Sendable () -> Void
     let retryResponseUpdate: @MainActor @Sendable () -> Void
     let keepEditedMessage: @MainActor @Sendable () -> Void
@@ -134,8 +135,7 @@ struct ConversationTimeline: View {
     @State private var actualContentFrame: CGRect = .zero
     @State private var anchoredUserMessageID: String?
     @State private var shouldReleaseAnchorWhenScrollSettles = false
-    @State private var needsInitialLatestPosition = true
-    @State private var releasesAnchorAfterJump = false
+    @State private var scrollPosition = ScrollPosition(idType: String.self)
 
     init(
         messages: [MessageRecord],
@@ -148,6 +148,7 @@ struct ConversationTimeline: View {
         isSendingText: Bool = false,
         isThinking: Bool = false,
         isStreamingResponse: Bool = false,
+        isInitialLoadComplete: Bool = true,
         streamingDidFinish: @escaping @MainActor @Sendable () -> Void = {},
         retryResponseUpdate: @escaping @MainActor @Sendable () -> Void = {},
         keepEditedMessage: @escaping @MainActor @Sendable () -> Void = {},
@@ -166,6 +167,7 @@ struct ConversationTimeline: View {
         self.isSendingText = isSendingText
         self.isThinking = isThinking
         self.isStreamingResponse = isStreamingResponse
+        self.isInitialLoadComplete = isInitialLoadComplete
         self.streamingDidFinish = streamingDidFinish
         self.retryResponseUpdate = retryResponseUpdate
         self.keepEditedMessage = keepEditedMessage
@@ -177,9 +179,8 @@ struct ConversationTimeline: View {
 
     var body: some View {
         let presentedMessages = messages.filter { $0.id != streamingFinalMessageID }
-        ScrollViewReader { proxy in
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 0) {
+        ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
                     ForEach(Array(presentedMessages.enumerated()), id: \.element.id) { index, message in
                         VStack(alignment: message.role == "user" ? .trailing : .leading, spacing: TaisaSpacing.tight.rawValue) {
                             if message.role == "user" {
@@ -253,47 +254,41 @@ struct ConversationTimeline: View {
                             .accessibilityIdentifier("conversation.streaming-response")
                             .id(streamingFinalMessageID ?? "conversation.streaming-response.live")
                     }
-                }
-                .padding(.top, ConversationTimelineLayout.firstMessageTopSpacing)
-                .padding(.bottom, TaisaSpacing.standard.rawValue)
 
-                Color.clear
-                    .frame(height: 1)
-                    .id("conversation.actual-content-bottom")
-                    .accessibilityHidden(true)
-                    .onGeometryChange(for: CGRect.self) { geometry in
-                        geometry.frame(in: .global)
-                    } action: { _, frame in
-                        actualContentFrame = frame
-                        refreshJumpVisibility()
-                        if needsInitialLatestPosition, !presentedMessages.isEmpty {
-                            needsInitialLatestPosition = false
-                            Task { @MainActor in
-                                await Task.yield()
-                                isAwayFromLatest = false
-                                scrollToLatest(using: proxy, animated: false)
-                            }
-                        } else if releasesAnchorAfterJump, !isAwayFromLatest {
-                            anchoredUserMessageID = nil
-                            releasesAnchorAfterJump = false
+                    Color.clear
+                        .frame(height: TaisaSpacing.standard.rawValue)
+                        .accessibilityHidden(true)
+
+                    Color.clear
+                        .frame(height: 1)
+                        .id("conversation.actual-content-bottom")
+                        .accessibilityHidden(true)
+                        .onGeometryChange(for: CGRect.self) { geometry in
+                            geometry.frame(in: .global)
+                        } action: { _, frame in
+                            actualContentFrame = frame
+                            refreshJumpVisibility()
                         }
+
+                    let responseRunwayHeight = ConversationTimelineLayout.responseRunwayHeight(
+                        viewportHeight: readableViewportHeight,
+                        preservesAnchoredTurn: anchoredUserMessageID != nil
+                    )
+                    if responseRunwayHeight > 0 {
+                        Spacer(minLength: 0)
+                            .frame(height: responseRunwayHeight)
+                            .accessibilityHidden(true)
                     }
 
-                let responseRunwayHeight = ConversationTimelineLayout.responseRunwayHeight(
-                    viewportHeight: readableViewportHeight,
-                    preservesAnchoredTurn: anchoredUserMessageID != nil
-                )
-                if responseRunwayHeight > 0 {
-                    Spacer(minLength: 0)
-                        .frame(height: responseRunwayHeight)
-                        .accessibilityHidden(true)
+                    Color.clear
+                        .frame(height: 1)
+                        .id("conversation.timeline-bottom")
                 }
-
-                Color.clear
-                    .frame(height: 1)
-                    .id("conversation.timeline-bottom")
-            }
+                .padding(.top, ConversationTimelineLayout.firstMessageTopSpacing)
+                .scrollTargetLayout()
+        }
             .accessibilityIdentifier("conversation.timeline")
+            .scrollPosition($scrollPosition)
             .scrollBounceBehavior(.always, axes: .vertical)
             .defaultScrollAnchor(.bottom, for: .initialOffset)
             .onScrollGeometryChange(for: CGFloat.self) { geometry in
@@ -322,8 +317,7 @@ struct ConversationTimeline: View {
                         ConversationJumpToLatestButton(
                             isLoading: isStreamingResponse && isAwayFromLatest,
                             action: {
-                                releasesAnchorAfterJump = true
-                                scrollToLatest(using: proxy, animated: !reduceMotion)
+                                scrollToLatest(animated: !reduceMotion)
                             }
                         )
                         .accessibilityIdentifier("conversation.jump-to-latest")
@@ -334,12 +328,18 @@ struct ConversationTimeline: View {
             .task(id: conversationID) {
                 anchoredUserMessageID = nil
                 shouldReleaseAnchorWhenScrollSettles = false
-                releasesAnchorAfterJump = false
                 hasPositionedInitialMessages = false
-                needsInitialLatestPosition = true
+                scrollPosition = ScrollPosition(idType: String.self)
+            }
+            .task(id: isInitialLoadComplete) {
+                guard isInitialLoadComplete, !messages.isEmpty else { return }
+                hasPositionedInitialMessages = true
+                isAwayFromLatest = false
+                scrollToLatest(animated: false)
             }
             .task(id: messages.last?.id) {
                 guard let message = messages.last else { return }
+                guard isInitialLoadComplete else { return }
                 let action = ConversationTimelineLayout.newMessageScrollAction(
                     hasPositionedInitialMessages: hasPositionedInitialMessages,
                     isSendingText: isSendingText,
@@ -348,32 +348,29 @@ struct ConversationTimeline: View {
                 hasPositionedInitialMessages = true
                 switch action {
                 case .initialLatest:
-                    needsInitialLatestPosition = false
-                    await Task.yield()
                     isAwayFromLatest = false
-                    scrollToLatest(using: proxy, animated: false)
+                    scrollToLatest(animated: false)
                 case .anchorUserMessage:
-                    await Task.yield()
                     isAwayFromLatest = false
                     anchoredUserMessageID = message.id
                     shouldReleaseAnchorWhenScrollSettles = false
                     withAnimation(reduceMotion ? nil : .smooth(duration: TaisaMotion.settle)) {
-                        proxy.scrollTo(message.id, anchor: .top)
+                        scrollPosition.scrollTo(id: message.id, anchor: .top)
                     }
                 case .preserveViewport:
                     break
                 }
             }
-        }
     }
 
-    private func scrollToLatest(using proxy: ScrollViewProxy, animated: Bool) {
+    private func scrollToLatest(animated: Bool) {
+        anchoredUserMessageID = nil
         if animated {
             withAnimation(.smooth(duration: TaisaMotion.settle)) {
-                proxy.scrollTo("conversation.actual-content-bottom", anchor: .bottom)
+                scrollPosition.scrollTo(edge: .bottom)
             }
         } else {
-            proxy.scrollTo("conversation.actual-content-bottom", anchor: .bottom)
+            scrollPosition.scrollTo(edge: .bottom)
         }
     }
 

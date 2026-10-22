@@ -111,9 +111,11 @@ final class ConversationViewContractTests: XCTestCase {
         }
         XCTAssertTrue(source.contains("interactiveDismissDisabled"))
         XCTAssertTrue(source.contains("confirmationDialog"))
-        XCTAssertTrue(source.contains("ScrollViewReader"))
+        XCTAssertFalse(source.contains("ScrollViewReader"))
+        XCTAssertTrue(source.contains("ScrollPosition(idType: String.self)"))
+        XCTAssertTrue(source.contains(".scrollPosition($scrollPosition)"))
+        XCTAssertTrue(source.contains("scrollPosition.scrollTo(edge: .bottom)"))
         XCTAssertTrue(source.contains(".task(id: messages.last?.id)"))
-        XCTAssertTrue(source.contains("await Task.yield()"))
         XCTAssertTrue(source.contains("conversation.timeline-bottom"))
         XCTAssertTrue(source.contains("hasPositionedInitialMessages"))
         XCTAssertTrue(source.contains("latestUserTranscript"))
@@ -126,15 +128,8 @@ final class ConversationViewContractTests: XCTestCase {
         XCTAssertTrue(source.contains("ConversationJumpToLatestButton"))
         XCTAssertTrue(source.contains("isLoading: isStreamingResponse && isAwayFromLatest"))
         XCTAssertFalse(source.contains("isLoading: isThinking || !streamingResponse.isEmpty"))
-        XCTAssertTrue(source.contains("needsInitialLatestPosition"))
-        XCTAssertTrue(source.contains("releasesAnchorAfterJump"))
-        let lazyStackRange = source.range(of: "LazyVStack(alignment: .leading, spacing: 0)")!
-        let actualBottomRange = source.range(of: ".id(\"conversation.actual-content-bottom\")")!
-        let lazyStackBottomPaddingRange = source.range(
-            of: ".padding(.bottom, TaisaSpacing.standard.rawValue)",
-            range: lazyStackRange.upperBound..<source.endIndex
-        )!
-        XCTAssertLessThan(lazyStackBottomPaddingRange.lowerBound, actualBottomRange.lowerBound)
+        XCTAssertFalse(source.contains("needsInitialLatestPosition"))
+        XCTAssertFalse(source.contains("releasesAnchorAfterJump"))
         XCTAssertEqual(ConversationTimelineLayout.userBubbleWidthFraction, 0.85)
         XCTAssertTrue(source.contains("withAnimation"))
         XCTAssertTrue(source.contains("scrollBounceBehavior(.always, axes: .vertical)"))
@@ -142,7 +137,8 @@ final class ConversationViewContractTests: XCTestCase {
         XCTAssertFalse(source.contains("defaultScrollAnchor(.bottom)\n"))
         XCTAssertTrue(source.contains("latestVisibilityTolerance"))
         XCTAssertTrue(source.contains("isAwayFromLatest = false"))
-        XCTAssertTrue(source.contains("LazyVStack(alignment: .leading, spacing: 0)"))
+        XCTAssertTrue(source.contains("VStack(alignment: .leading, spacing: 0)"))
+        XCTAssertFalse(source.contains("LazyVStack(alignment: .leading, spacing: 0)"))
         XCTAssertTrue(source.contains("VStack(alignment: .leading, spacing: TaisaSpacing.compact.rawValue)"))
         XCTAssertFalse(source.contains("safeAreaInset(edge: .bottom)"))
         XCTAssertTrue(source.contains("VStack(spacing: 0)"))
@@ -222,7 +218,7 @@ final class ConversationViewContractTests: XCTestCase {
             encoding: .utf8
         )
 
-        XCTAssertTrue(source.contains("proxy.scrollTo(message.id, anchor: .top)"))
+        XCTAssertTrue(source.contains("scrollPosition.scrollTo(id: message.id, anchor: .top)"))
         XCTAssertFalse(source.contains(".contentMargins(\n                .top,\n                TaisaControlMetric.appBarHeight"))
         XCTAssertFalse(source.contains("sentMessageTopClearance"))
         XCTAssertTrue(source.contains("if !hasPositionedInitialMessages, !isSendingText"))

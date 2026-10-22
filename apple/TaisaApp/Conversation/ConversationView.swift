@@ -25,6 +25,7 @@ struct ConversationView: View {
                             isSendingText: model.isSendingText,
                             isThinking: model.composer == .coaching && model.partialCoaching.isEmpty,
                             isStreamingResponse: model.isResponseStreaming,
+                            isInitialLoadComplete: model.isInitialLoadComplete,
                             streamingDidFinish: model.completeStreamingPresentation,
                             retryResponseUpdate: { Task { await model.retryCorrectionRegeneration() } },
                             keepEditedMessage: model.keepEditedMessage,
