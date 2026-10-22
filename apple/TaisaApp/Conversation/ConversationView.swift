@@ -16,6 +16,7 @@ struct ConversationView: View {
                     ZStack {
                         ConversationTimeline(
                             messages: model.messages,
+                            conversationID: model.conversationID,
                             assistantResponses: model.assistantResponses,
                             updatingResponseAfter: model.correctionRegenerationMessageID,
                             failedResponseUpdateAfter: model.correctionRegenerationFailureMessageID,

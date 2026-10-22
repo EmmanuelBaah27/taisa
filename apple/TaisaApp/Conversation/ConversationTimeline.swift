@@ -11,7 +11,7 @@ enum ConversationTimelineLayout {
     }
 
     static let userBubbleWidthFraction: CGFloat = 0.85
-    static let jumpVisibilityThreshold: CGFloat = 160
+    static let latestVisibilityTolerance: CGFloat = 1
     static let ordinaryMessageSpacing: CGFloat = 12
     static let userToAssistantSpacing: CGFloat = 32
     static let firstMessageTopSpacing: CGFloat = 8
@@ -27,7 +27,7 @@ enum ConversationTimelineLayout {
         readableViewport: CGRect
     ) -> Bool {
         guard actualContentFrame != .zero, readableViewport != .zero else { return false }
-        return actualContentFrame.maxY - readableViewport.maxY >= jumpVisibilityThreshold
+        return actualContentFrame.maxY - readableViewport.maxY > latestVisibilityTolerance
     }
 
     static func newMessageScrollAction(
@@ -109,6 +109,7 @@ struct ConversationTimeline: View {
     @Environment(\.layoutDirection) private var layoutDirection
 
     let messages: [MessageRecord]
+    let conversationID: String
     let assistantResponses: [String: AssistantResponseRecord]
     let updatingResponseAfter: String?
     let failedResponseUpdateAfter: String?
@@ -135,6 +136,7 @@ struct ConversationTimeline: View {
 
     init(
         messages: [MessageRecord],
+        conversationID: String = "conversation",
         assistantResponses: [String: AssistantResponseRecord] = [:],
         updatingResponseAfter: String? = nil,
         failedResponseUpdateAfter: String? = nil,
@@ -151,6 +153,7 @@ struct ConversationTimeline: View {
         dismissProposal: @escaping (String) -> Void = { _ in }
     ) {
         self.messages = messages
+        self.conversationID = conversationID
         self.assistantResponses = assistantResponses
         self.updatingResponseAfter = updatingResponseAfter
         self.failedResponseUpdateAfter = failedResponseUpdateAfter
@@ -300,7 +303,7 @@ struct ConversationTimeline: View {
                     }
                     if isAwayFromLatest, !presentedMessages.isEmpty {
                         ConversationJumpToLatestButton(
-                            isLoading: isThinking || !streamingResponse.isEmpty,
+                            isLoading: !streamingResponse.isEmpty && isAwayFromLatest,
                             action: {
                                 isAwayFromLatest = false
                                 anchoredUserMessageID = nil
@@ -314,6 +317,16 @@ struct ConversationTimeline: View {
                     }
                 }
                 .padding(.bottom, TaisaSpacing.standard.rawValue)
+            }
+            .task(id: conversationID) {
+                anchoredUserMessageID = nil
+                shouldReleaseAnchorWhenScrollSettles = false
+                hasPositionedInitialMessages = false
+                await Task.yield()
+                guard !messages.isEmpty else { return }
+                hasPositionedInitialMessages = true
+                isAwayFromLatest = false
+                scrollToLatest(using: proxy, animated: false)
             }
             .task(id: messages.last?.id) {
                 guard let message = messages.last else { return }

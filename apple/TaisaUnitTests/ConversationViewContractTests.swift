@@ -124,12 +124,14 @@ final class ConversationViewContractTests: XCTestCase {
         XCTAssertTrue(source.contains("userPreviewLineLimit = 6"))
         XCTAssertTrue(source.contains("Updating response…"))
         XCTAssertTrue(source.contains("ConversationJumpToLatestButton"))
+        XCTAssertTrue(source.contains("isLoading: !streamingResponse.isEmpty && isAwayFromLatest"))
+        XCTAssertFalse(source.contains("isLoading: isThinking || !streamingResponse.isEmpty"))
         XCTAssertEqual(ConversationTimelineLayout.userBubbleWidthFraction, 0.85)
         XCTAssertTrue(source.contains("withAnimation"))
         XCTAssertTrue(source.contains("scrollBounceBehavior(.always, axes: .vertical)"))
         XCTAssertTrue(source.contains("defaultScrollAnchor(.bottom, for: .initialOffset)"))
         XCTAssertFalse(source.contains("defaultScrollAnchor(.bottom)\n"))
-        XCTAssertTrue(source.contains("jumpVisibilityThreshold"))
+        XCTAssertTrue(source.contains("latestVisibilityTolerance"))
         XCTAssertTrue(source.contains("isAwayFromLatest = false"))
         XCTAssertTrue(source.contains("LazyVStack(alignment: .leading, spacing: 0)"))
         XCTAssertTrue(source.contains("VStack(alignment: .leading, spacing: TaisaSpacing.compact.rawValue)"))
@@ -176,11 +178,11 @@ final class ConversationViewContractTests: XCTestCase {
             readableViewport: CGRect(x: 0, y: 80, width: 390, height: 700)
         ))
         XCTAssertFalse(ConversationTimelineLayout.shouldShowJumpToLatest(
-            actualContentFrame: CGRect(x: 0, y: 100, width: 390, height: 839),
+            actualContentFrame: CGRect(x: 0, y: 100, width: 390, height: 680),
             readableViewport: CGRect(x: 0, y: 80, width: 390, height: 700)
         ))
         XCTAssertTrue(ConversationTimelineLayout.shouldShowJumpToLatest(
-            actualContentFrame: CGRect(x: 0, y: 100, width: 390, height: 840),
+            actualContentFrame: CGRect(x: 0, y: 100, width: 390, height: 681.5),
             readableViewport: CGRect(x: 0, y: 80, width: 390, height: 700)
         ))
     }
@@ -217,6 +219,7 @@ final class ConversationViewContractTests: XCTestCase {
         XCTAssertTrue(source.contains("if !hasPositionedInitialMessages, !isSendingText"))
         XCTAssertTrue(source.contains(".onScrollPhaseChange"))
         XCTAssertTrue(source.contains("conversation.actual-content-bottom"))
+        XCTAssertTrue(source.contains(".task(id: conversationID)"))
         XCTAssertFalse(source.contains(".onChange(of: streamingResponse)"))
         XCTAssertFalse(source.contains(".onChange(of: isThinking)"))
         XCTAssertFalse(source.contains("followResponseIfReadable"))
