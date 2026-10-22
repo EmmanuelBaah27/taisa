@@ -173,12 +173,12 @@ enum ConversationScenarios {
         .init(id: "10000000-0000-4000-8000-000000000002", conversationID: "20000000-0000-4000-8000-000000000001", role: "assistant", body: "Start with the impact you can support with evidence.", createdAtMS: 2),
     ]
 
-    private static let longHistoryMessages: [MessageRecord] = (0..<14).map { index in
+    private static let longHistoryMessages: [MessageRecord] = (0..<30).map { index in
         MessageRecord(
             id: String(format: "90000000-0000-4000-8000-%012d", index),
             conversationID: "20000000-0000-4000-8000-000000000009",
             role: index.isMultiple(of: 2) ? "user" : "assistant",
-            body: index == 13 ? "Latest rendered conversation message" : "Existing conversation message \(index + 1) with enough text to require scrolling.",
+            body: index == 29 ? "Latest rendered conversation message" : "Existing conversation message \(index + 1) with enough text to require scrolling.",
             createdAtMS: Int64(index + 1)
         )
     }
@@ -233,8 +233,9 @@ private actor ConversationScrollQAStore {
     func partialResponse() -> String { partial }
 
     func beginStreamingResponse() {
-        partial = Array(repeating: "This streamed response extends below the visible fold without moving the sent turn.", count: 16)
-            .joined(separator: " ")
+        partial = String(repeating: "response-overflow-", count: 500)
+            + " "
+            + Array(repeating: "continuing", count: 100).joined(separator: " ")
     }
 
     func finishResponse() {
