@@ -15,6 +15,10 @@ struct ConversationView: View {
             ZStack(alignment: .top) {
                 StatusBarBackground()
                     .zIndex(4)
+                if showsRecordingGlow {
+                    recordingGlowBackground
+                        .ignoresSafeArea(edges: [.horizontal, .bottom])
+                }
                 VStack(spacing: 0) {
                     ZStack {
                         ConversationTimeline(
@@ -124,7 +128,7 @@ struct ConversationView: View {
 
     @ViewBuilder private var composer: some View {
         if showsRecordingGlow {
-            ConversationComposerChrome(backdrop: { recordingGlowBackground }) {
+            ConversationComposerChrome(backdrop: { Color.clear }) {
                 composerContent
             }
         } else {
