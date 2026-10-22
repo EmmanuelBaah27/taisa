@@ -58,6 +58,21 @@ enum ConversationTimelineLayout {
     }
 }
 
+struct ConversationTimelinePresentation: Equatable {
+    enum ResponsePhase: Equatable {
+        case idle
+        case thinking
+        case streaming
+    }
+
+    let isInitialLoadComplete: Bool
+    let isSendingText: Bool
+    let responsePhase: ResponsePhase
+
+    var isThinking: Bool { responsePhase == .thinking }
+    var showsStreamingRing: Bool { responsePhase == .streaming }
+}
+
 private struct TrailingMaximumWidthLayout: Layout {
     let trailingInset: CGFloat
     let layoutDirection: LayoutDirection
@@ -115,10 +130,7 @@ struct ConversationTimeline: View {
     let failedResponseUpdateAfter: String?
     let streamingResponse: String
     let streamingFinalMessageID: String?
-    let isSendingText: Bool
-    let isThinking: Bool
-    let isStreamingResponse: Bool
-    let isInitialLoadComplete: Bool
+    let presentation: ConversationTimelinePresentation
     let streamingDidFinish: @MainActor @Sendable () -> Void
     let retryResponseUpdate: @MainActor @Sendable () -> Void
     let keepEditedMessage: @MainActor @Sendable () -> Void
@@ -145,10 +157,7 @@ struct ConversationTimeline: View {
         failedResponseUpdateAfter: String? = nil,
         streamingResponse: String = "",
         streamingFinalMessageID: String? = nil,
-        isSendingText: Bool = false,
-        isThinking: Bool = false,
-        isStreamingResponse: Bool = false,
-        isInitialLoadComplete: Bool = true,
+        presentation: ConversationTimelinePresentation,
         streamingDidFinish: @escaping @MainActor @Sendable () -> Void = {},
         retryResponseUpdate: @escaping @MainActor @Sendable () -> Void = {},
         keepEditedMessage: @escaping @MainActor @Sendable () -> Void = {},
@@ -164,10 +173,7 @@ struct ConversationTimeline: View {
         self.failedResponseUpdateAfter = failedResponseUpdateAfter
         self.streamingResponse = streamingResponse
         self.streamingFinalMessageID = streamingFinalMessageID
-        self.isSendingText = isSendingText
-        self.isThinking = isThinking
-        self.isStreamingResponse = isStreamingResponse
-        self.isInitialLoadComplete = isInitialLoadComplete
+        self.presentation = presentation
         self.streamingDidFinish = streamingDidFinish
         self.retryResponseUpdate = retryResponseUpdate
         self.keepEditedMessage = keepEditedMessage
@@ -180,7 +186,7 @@ struct ConversationTimeline: View {
     var body: some View {
         let presentedMessages = messages.filter { $0.id != streamingFinalMessageID }
         ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
+                LazyVStack(alignment: .leading, spacing: 0) {
                     ForEach(Array(presentedMessages.enumerated()), id: \.element.id) { index, message in
                         VStack(alignment: message.role == "user" ? .trailing : .leading, spacing: TaisaSpacing.tight.rawValue) {
                             if message.role == "user" {
@@ -238,11 +244,11 @@ struct ConversationTimeline: View {
                                 afterRole: message.role,
                                 beforeRole: presentedMessages.indices.contains(index + 1)
                                     ? presentedMessages[index + 1].role
-                                    : (isThinking || !streamingResponse.isEmpty ? "assistant" : nil)
+                                    : (presentation.isThinking || !streamingResponse.isEmpty ? "assistant" : nil)
                             )
                         )
                     }
-                    if isThinking, streamingResponse.isEmpty {
+                    if presentation.isThinking, streamingResponse.isEmpty {
                         ThinkingIndicator()
                             .padding(.horizontal, TaisaSpacing.standard.rawValue)
                             .accessibilityIdentifier("conversation.thinking")
@@ -315,7 +321,7 @@ struct ConversationTimeline: View {
                     }
                     if isAwayFromLatest, !presentedMessages.isEmpty {
                         ConversationJumpToLatestButton(
-                            isLoading: isStreamingResponse && isAwayFromLatest,
+                            isLoading: presentation.showsStreamingRing && isAwayFromLatest,
                             action: {
                                 scrollToLatest(animated: !reduceMotion)
                             }
@@ -331,18 +337,18 @@ struct ConversationTimeline: View {
                 hasPositionedInitialMessages = false
                 scrollPosition = ScrollPosition(idType: String.self)
             }
-            .task(id: isInitialLoadComplete) {
-                guard isInitialLoadComplete, !messages.isEmpty else { return }
+            .task(id: presentation.isInitialLoadComplete) {
+                guard presentation.isInitialLoadComplete, !messages.isEmpty else { return }
                 hasPositionedInitialMessages = true
                 isAwayFromLatest = false
                 scrollToLatest(animated: false)
             }
             .task(id: messages.last?.id) {
                 guard let message = messages.last else { return }
-                guard isInitialLoadComplete else { return }
+                guard presentation.isInitialLoadComplete else { return }
                 let action = ConversationTimelineLayout.newMessageScrollAction(
                     hasPositionedInitialMessages: hasPositionedInitialMessages,
-                    isSendingText: isSendingText,
+                    isSendingText: presentation.isSendingText,
                     messageRole: message.role
                 )
                 hasPositionedInitialMessages = true
@@ -367,10 +373,10 @@ struct ConversationTimeline: View {
         anchoredUserMessageID = nil
         if animated {
             withAnimation(.smooth(duration: TaisaMotion.settle)) {
-                scrollPosition.scrollTo(edge: .bottom)
+                scrollPosition.scrollTo(id: "conversation.timeline-bottom", anchor: .bottom)
             }
         } else {
-            scrollPosition.scrollTo(edge: .bottom)
+            scrollPosition.scrollTo(id: "conversation.timeline-bottom", anchor: .bottom)
         }
     }
 

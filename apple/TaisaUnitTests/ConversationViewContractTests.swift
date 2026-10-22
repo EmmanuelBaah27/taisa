@@ -114,7 +114,8 @@ final class ConversationViewContractTests: XCTestCase {
         XCTAssertFalse(source.contains("ScrollViewReader"))
         XCTAssertTrue(source.contains("ScrollPosition(idType: String.self)"))
         XCTAssertTrue(source.contains(".scrollPosition($scrollPosition)"))
-        XCTAssertTrue(source.contains("scrollPosition.scrollTo(edge: .bottom)"))
+        XCTAssertFalse(source.contains("scrollPosition.scrollTo(edge: .bottom)"))
+        XCTAssertTrue(source.contains("scrollPosition.scrollTo(id: \"conversation.timeline-bottom\", anchor: .bottom)"))
         XCTAssertTrue(source.contains(".task(id: messages.last?.id)"))
         XCTAssertTrue(source.contains("conversation.timeline-bottom"))
         XCTAssertTrue(source.contains("hasPositionedInitialMessages"))
@@ -126,7 +127,7 @@ final class ConversationViewContractTests: XCTestCase {
         XCTAssertTrue(source.contains("userPreviewLineLimit = 6"))
         XCTAssertTrue(source.contains("Updating response…"))
         XCTAssertTrue(source.contains("ConversationJumpToLatestButton"))
-        XCTAssertTrue(source.contains("isLoading: isStreamingResponse && isAwayFromLatest"))
+        XCTAssertTrue(source.contains("isLoading: presentation.showsStreamingRing && isAwayFromLatest"))
         XCTAssertFalse(source.contains("isLoading: isThinking || !streamingResponse.isEmpty"))
         XCTAssertFalse(source.contains("needsInitialLatestPosition"))
         XCTAssertFalse(source.contains("releasesAnchorAfterJump"))
@@ -137,8 +138,8 @@ final class ConversationViewContractTests: XCTestCase {
         XCTAssertFalse(source.contains("defaultScrollAnchor(.bottom)\n"))
         XCTAssertTrue(source.contains("latestVisibilityTolerance"))
         XCTAssertTrue(source.contains("isAwayFromLatest = false"))
-        XCTAssertTrue(source.contains("VStack(alignment: .leading, spacing: 0)"))
-        XCTAssertFalse(source.contains("LazyVStack(alignment: .leading, spacing: 0)"))
+        XCTAssertTrue(source.contains("LazyVStack(alignment: .leading, spacing: 0)"))
+        XCTAssertTrue(source.contains("scrollPosition.scrollTo(id: \"conversation.timeline-bottom\", anchor: .bottom)"))
         XCTAssertTrue(source.contains("VStack(alignment: .leading, spacing: TaisaSpacing.compact.rawValue)"))
         XCTAssertFalse(source.contains("safeAreaInset(edge: .bottom)"))
         XCTAssertTrue(source.contains("VStack(spacing: 0)"))
@@ -190,6 +191,22 @@ final class ConversationViewContractTests: XCTestCase {
             actualContentFrame: CGRect(x: 0, y: 100, width: 390, height: 681.5),
             readableViewport: CGRect(x: 0, y: 80, width: 390, height: 700)
         ))
+    }
+
+    func testTimelinePresentationShowsLoadingRingOnlyForVisibleStreamingText() {
+        let thinking = ConversationTimelinePresentation(
+            isInitialLoadComplete: true,
+            isSendingText: true,
+            responsePhase: .thinking
+        )
+        let streaming = ConversationTimelinePresentation(
+            isInitialLoadComplete: true,
+            isSendingText: false,
+            responsePhase: .streaming
+        )
+
+        XCTAssertFalse(thinking.showsStreamingRing)
+        XCTAssertTrue(streaming.showsStreamingRing)
     }
 
     func testOnlyANewUserMessageTakesScrollOwnershipAfterInitialPositioning() {

@@ -303,9 +303,14 @@ final class ConversationViewModel {
             for await _ in events {
                 guard !Task.isCancelled else { return }
                 guard let self else { return }
-                await reloadMessages()
                 capture = await client.loadCaptureSnapshot()
-                if composer == .failure(.retryable) || composer == .coaching || composer == .transcribing {
+                if composer == .coaching {
+                    await refreshPartialCoaching()
+                    if streamingFinalMessageID == nil, partialCoaching.isEmpty {
+                        finishResponseIfPersisted()
+                    }
+                } else if composer == .failure(.retryable) || composer == .transcribing {
+                    await reloadMessages()
                     finishResponseIfPersisted()
                 }
             }
@@ -981,15 +986,7 @@ final class ConversationViewModel {
     }
 
     private func finishResponseIfPersisted() {
-        let hasAssistantReply: Bool
-        if let latestUserIndex = messages.lastIndex(where: { $0.role == "user" }) {
-            hasAssistantReply = messages[messages.index(after: latestUserIndex)...]
-                .contains(where: { $0.role == "assistant" })
-        } else {
-            hasAssistantReply = messages.contains(where: { $0.role == "assistant" })
-        }
-
-        if hasAssistantReply {
+        if latestAssistantAfterLatestUser() != nil {
             composer = .waitingForReply
         } else {
             failureContext = .request

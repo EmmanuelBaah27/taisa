@@ -22,10 +22,13 @@ struct ConversationView: View {
                             failedResponseUpdateAfter: model.correctionRegenerationFailureMessageID,
                             streamingResponse: model.partialCoaching,
                             streamingFinalMessageID: model.streamingFinalMessageID,
-                            isSendingText: model.isSendingText,
-                            isThinking: model.composer == .coaching && model.partialCoaching.isEmpty,
-                            isStreamingResponse: model.isResponseStreaming,
-                            isInitialLoadComplete: model.isInitialLoadComplete,
+                            presentation: ConversationTimelinePresentation(
+                                isInitialLoadComplete: model.isInitialLoadComplete,
+                                isSendingText: model.isSendingText,
+                                responsePhase: model.composer == .coaching
+                                    ? (model.partialCoaching.isEmpty ? .thinking : .streaming)
+                                    : .idle
+                            ),
                             streamingDidFinish: model.completeStreamingPresentation,
                             retryResponseUpdate: { Task { await model.retryCorrectionRegeneration() } },
                             keepEditedMessage: model.keepEditedMessage,

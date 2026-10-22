@@ -677,6 +677,46 @@ final class ConversationViewModelTests: XCTestCase {
         continuation.finish()
     }
 
+    func testRecoveryEventDoesNotPublishDurableAssistantBeforeStreamingMaskIsReady() async {
+        let user = message(role: "user", body: "Question")
+        let assistant = message(role: "assistant", body: "Recovered response")
+        let messages = MessageSequence([[user], [user, assistant]])
+        let responseLoads = DelayedSecondResponseLoad()
+        let (events, continuation) = AsyncStream<Void>.makeStream()
+        let client = ConversationScreenClient(
+            loadMessages: { await messages.next() },
+            loadAssistantResponses: { await responseLoads.next() },
+            beginVoice: {}, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
+            sendText: { _, available in await available() },
+            retry: {}, saveDraft: { _ in }, discardDraft: {},
+            loadPartialCoaching: { "Recovered response" },
+            recoveryEvents: { events }
+        )
+        let model = ConversationViewModel(
+            conversationID: user.conversationID,
+            title: "Chat",
+            entryIntent: nil,
+            composer: .coaching,
+            client: client
+        )
+        await model.start()
+
+        continuation.yield(())
+        while await responseLoads.callCount() < 2 { await Task.yield() }
+
+        XCTAssertEqual(model.messages, [user])
+        XCTAssertEqual(model.composer, .coaching)
+
+        await responseLoads.releaseSecondLoad()
+        for _ in 0..<100 where model.streamingFinalMessageID == nil { await Task.yield() }
+
+        XCTAssertEqual(model.messages, [user, assistant])
+        XCTAssertEqual(model.streamingFinalMessageID, assistant.id)
+        XCTAssertEqual(model.partialCoaching, assistant.body)
+        XCTAssertEqual(model.composer, .coaching)
+        continuation.finish()
+    }
+
     func testFailedCorrectionRemainsAvailableForRetry() async {
         let client = ConversationScreenClientSpy(correctionFails: true)
         let original = message(role: "user", body: "Original")
