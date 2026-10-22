@@ -182,6 +182,7 @@ test('preview support is linked only by the preview target', async () => {
     'TaisaPreviewSupport',
     'TaisaStorage',
     'TaisaVoice',
+    'TaisaAudio',
     'TaisaConversations',
   ]);
 });
