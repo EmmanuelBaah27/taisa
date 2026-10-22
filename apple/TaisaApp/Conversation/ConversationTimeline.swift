@@ -159,7 +159,6 @@ struct ConversationTimeline: View {
     @State private var actualContentFrame: CGRect = .zero
     @State private var anchoredUserMessageID: String?
     @State private var headerProtectedMessageID: String?
-    @State private var shouldReleaseAnchorWhenScrollSettles = false
     @State private var shouldReleaseAnchorAfterJump = false
 
     init(
@@ -319,15 +318,6 @@ struct ConversationTimeline: View {
             .onScrollGeometryChange(for: CGFloat.self) { geometry in
                 geometry.containerSize.height
             } action: { _, height in readableViewportHeight = height }
-            .onScrollPhaseChange { _, newPhase in
-                if newPhase == .interacting, anchoredUserMessageID != nil {
-                    shouldReleaseAnchorWhenScrollSettles = true
-                } else if newPhase == .idle, shouldReleaseAnchorWhenScrollSettles {
-                    anchoredUserMessageID = nil
-                    shouldReleaseAnchorWhenScrollSettles = false
-                    shouldReleaseAnchorAfterJump = false
-                }
-            }
             .onGeometryChange(for: CGRect.self) { geometry in
                 geometry.frame(in: .global)
             } action: { _, frame in
@@ -355,7 +345,6 @@ struct ConversationTimeline: View {
             .task(id: conversationID) {
                 anchoredUserMessageID = nil
                 headerProtectedMessageID = nil
-                shouldReleaseAnchorWhenScrollSettles = false
                 shouldReleaseAnchorAfterJump = false
                 hasPositionedInitialMessages = false
             }
@@ -385,7 +374,6 @@ struct ConversationTimeline: View {
                     isAwayFromLatest = false
                     anchoredUserMessageID = message.id
                     headerProtectedMessageID = message.id
-                    shouldReleaseAnchorWhenScrollSettles = false
                     withAnimation(reduceMotion ? nil : .smooth(duration: TaisaMotion.settle)) {
                         proxy.scrollTo(message.id, anchor: .top)
                     }
