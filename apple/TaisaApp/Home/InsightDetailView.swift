@@ -1,15 +1,20 @@
 import SwiftUI
+import TaisaDesignSystem
 import TaisaHome
 import TaisaStorage
 
 struct InsightDetailView: View {
+    @Environment(\.dismiss) private var dismiss
     let model: InsightsModel
     let insight: InsightRecord
 
     var body: some View {
         content
-            .navigationTitle("Insight")
-            .navigationBarTitleDisplayMode(.inline)
+            .safeAreaInset(edge: .top, spacing: 0) {
+                TaisaChildPageHeader("Insight") { dismiss() }
+            }
+            .toolbar(.hidden, for: .navigationBar)
+            .background(TaisaColor.background.color.ignoresSafeArea())
             .task(id: insight.id) { await model.loadDetail(insight: insight) }
     }
 

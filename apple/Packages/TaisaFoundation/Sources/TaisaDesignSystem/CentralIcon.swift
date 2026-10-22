@@ -11,6 +11,7 @@ public enum CentralIconName: Sendable, Equatable {
     case arrowUp
     case pause
     case play
+    case chevronLeft
     case chevronDown
     case exclamationCircle
     case circleInfo
@@ -59,6 +60,7 @@ public struct CentralIcon: View {
         case .arrowUp: arrowUp
         case .pause: pause
         case .play: play
+        case .chevronLeft: chevronLeft
         case .chevronDown: chevronDown
         case .exclamationCircle: exclamationCircle
         case .circleInfo: circleInfo
@@ -160,6 +162,10 @@ public struct CentralIcon: View {
 
     private var chevronDown: Path {
         var path = Path(); path.move(to: .init(x: 5, y: 9)); path.addLine(to: .init(x: 12, y: 16)); path.addLine(to: .init(x: 19, y: 9)); return path
+    }
+
+    private var chevronLeft: Path {
+        var path = Path(); path.move(to: .init(x: 15, y: 5)); path.addLine(to: .init(x: 8, y: 12)); path.addLine(to: .init(x: 15, y: 19)); return path
     }
 
     private var exclamationCircle: Path {

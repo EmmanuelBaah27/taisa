@@ -10,7 +10,7 @@ public struct ConversationActionBar: View {
         public let canSend: Bool
         public let canResume: Bool
         public let primaryLabel: String
-        public static let preparing = Self(canDiscard: true, canSwitchToKeyboard: true, showsPause: true, showsSend: true, canSend: false, canResume: false, primaryLabel: "Preparing")
+        public static let preparing = Self(canDiscard: true, canSwitchToKeyboard: true, showsPause: true, showsSend: true, canSend: false, canResume: false, primaryLabel: "Pause")
         public static let recording = Self(canDiscard: true, canSwitchToKeyboard: true, showsPause: true, showsSend: true, canSend: false, canResume: true, primaryLabel: "Pause")
         public static let shortCapture = Self(canDiscard: true, canSwitchToKeyboard: true, showsPause: true, showsSend: true, canSend: false, canResume: true, primaryLabel: "Pause")
         public static let sendable = Self(canDiscard: true, canSwitchToKeyboard: true, showsPause: true, showsSend: true, canSend: true, canResume: true, primaryLabel: "Pause")
@@ -41,9 +41,6 @@ public struct ConversationActionBar: View {
 
     public var body: some View {
         HStack(spacing: TaisaControlMetric.conversationActionSpacing) { controls }
-        .padding(.horizontal, TaisaSpacing.standard.rawValue)
-        .padding(.vertical, TaisaSpacing.section.rawValue)
-        .background { PageEdgeFade(.navigation).ignoresSafeArea(edges: .horizontal) }
     }
 
     @ViewBuilder private var controls: some View {
@@ -74,7 +71,7 @@ public struct ConversationActionBar: View {
     }
 
     @ViewBuilder private var centerControl: some View {
-        if isActiveCapture || phase == .preparing {
+        if isActiveCapture {
             ZStack {
                 ConversationActivityIndicator(active: isActiveCapture)
                     .blur(radius: TaisaEffect.recordingGlowBlurRadius)
@@ -86,7 +83,7 @@ public struct ConversationActionBar: View {
             }
             .frame(minWidth: 56, minHeight: TaisaControlMetric.conversationRecordingControl)
             .accessibilityElement(children: .combine)
-            .accessibilityLabel(phase == .preparing ? "Preparing microphone" : "Recording, \(elapsed)")
+            .accessibilityLabel("Recording, \(elapsed)")
         } else if phase == .saved {
             RecordedVoiceDraftBadge(elapsed: elapsed)
         } else {
@@ -128,7 +125,7 @@ public struct ConversationActionBar: View {
     }
 
     private var isActiveCapture: Bool {
-        phase == .recording || phase == .shortCapture || phase == .sendable
+        phase == .preparing || phase == .recording || phase == .shortCapture || phase == .sendable
     }
 
     private func iconButton(_ icon: CentralIconName, label: String, action: @escaping @MainActor () -> Void) -> some View {

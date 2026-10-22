@@ -87,10 +87,76 @@ final class ConversationViewModelTests: XCTestCase {
         // SwiftUI dismisses a confirmation dialog before the Task created by
         // its selected button is guaranteed to start.
         model.cancelConfirmation()
-        await model.confirmKeyboardReplacement()
+        model.confirmKeyboardReplacement()
 
         XCTAssertEqual(model.composer, .typing(""))
         XCTAssertNil(model.confirmation)
+    }
+
+    func testKeyboardReplacementShowsTypingBeforeRecordingCleanupCompletes() async {
+        let cleanupGate = AsyncGate()
+        let client = ConversationScreenClient(
+            beginVoice: {}, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
+            sendText: { _, available in await available() }, retry: {}, saveDraft: { _ in },
+            discardDraft: { await cleanupGate.wait() },
+            loadCaptureSnapshot: {
+                .init(
+                    activity: .recording,
+                    elapsedMilliseconds: 2_000,
+                    meter: .init(averagePower: -20, peakPower: -10),
+                    disposition: .sendable
+                )
+            }
+        )
+        let model = ConversationViewModel(
+            conversationID: UUID().uuidString, title: "Chat", entryIntent: nil,
+            composer: .recording, client: client
+        )
+        await model.start()
+        model.requestKeyboard()
+
+        model.confirmKeyboardReplacement()
+
+        XCTAssertEqual(model.composer, .typing(""))
+        XCTAssertNil(model.confirmation)
+        XCTAssertTrue(model.actionInFlight)
+        await cleanupGate.open()
+        for _ in 0..<100 where model.actionInFlight { await Task.yield() }
+        XCTAssertFalse(model.actionInFlight)
+    }
+
+    func testKeyboardReplacementCleanupFailureIsRecoverableAfterImmediateSwitch() async {
+        let cleanupGate = AsyncGate()
+        let client = ConversationScreenClient(
+            beginVoice: {}, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
+            sendText: { _, available in await available() }, retry: {}, saveDraft: { _ in },
+            discardDraft: {
+                await cleanupGate.wait()
+                throw ConversationFailure.retryable
+            },
+            loadCaptureSnapshot: {
+                .init(
+                    activity: .recording,
+                    elapsedMilliseconds: 2_000,
+                    meter: .init(averagePower: -20, peakPower: -10),
+                    disposition: .sendable
+                )
+            }
+        )
+        let model = ConversationViewModel(
+            conversationID: UUID().uuidString, title: "Chat", entryIntent: nil,
+            composer: .recording, client: client
+        )
+        await model.start()
+        model.requestKeyboard()
+
+        model.confirmKeyboardReplacement()
+        XCTAssertEqual(model.composer, .typing(""))
+
+        await cleanupGate.open()
+        for _ in 0..<100 where model.composer == .typing("") { await Task.yield() }
+        XCTAssertEqual(model.composer, .failure(.unavailable))
+        XCTAssertFalse(model.actionInFlight)
     }
 
     func testCloseWithInputOffersSaveDiscardCancel() {
@@ -410,13 +476,12 @@ final class ConversationViewModelTests: XCTestCase {
         for _ in 0..<100 where !model.isSendingText { await Task.yield() }
         XCTAssertTrue(model.isSendingText)
         XCTAssertEqual(model.text, "Move into the bubble")
-        XCTAssertNil(model.transitioningUserMessageID)
 
         await allowMessage.open()
         await messageShown.wait()
         XCTAssertEqual(model.text, "")
-        XCTAssertEqual(model.transitioningUserMessageID, user.id)
         await send.value
+        XCTAssertFalse(model.isSendingText)
     }
 
     func testShortCompletedResponseRemainsStreamingUntilRevealFinishes() async {
@@ -871,17 +936,72 @@ final class ConversationViewModelTests: XCTestCase {
     }
 
     func testEmptyRecordingDiscardCleansUpProvisionalChatAndDismisses() async {
-        let client = ConversationScreenClientSpy(captureDisposition: .empty)
+        let cleanupStarted = AsyncGate()
+        let finishCleanup = AsyncGate()
         var dismissed = 0
+        let client = ConversationScreenClient(
+            beginVoice: {}, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
+            sendText: { _, available in await available() }, retry: {}, saveDraft: { _ in },
+            discardDraft: {
+                await cleanupStarted.open()
+                await finishCleanup.wait()
+            },
+            discardEmptyConversation: {}
+        )
         let model = ConversationViewModel(
             conversationID: UUID().uuidString, title: "New chat", entryIntent: nil,
-            composer: .recording, client: await client.makeClient(), dismiss: { dismissed += 1 }
+            composer: .recording, client: client, dismiss: { dismissed += 1 }
+        )
+
+        let discard = Task { await model.confirmDiscardRecording() }
+        await cleanupStarted.wait()
+
+        XCTAssertTrue(model.isClosing)
+        XCTAssertEqual(model.composer, .recording)
+        XCTAssertEqual(dismissed, 0)
+
+        await finishCleanup.open()
+        await discard.value
+        XCTAssertEqual(dismissed, 1)
+    }
+
+    func testRecordingDiscardDoesNotFlashReplyWhileCleanupIsPending() async {
+        let cleanupStarted = AsyncGate()
+        let finishCleanup = AsyncGate()
+        let existing = message(role: "user", body: "Existing thought")
+        let client = ConversationScreenClient(
+            loadMessages: { [existing] },
+            beginVoice: {}, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
+            sendText: { _, available in await available() }, retry: {}, saveDraft: { _ in },
+            discardDraft: {
+                await cleanupStarted.open()
+                await finishCleanup.wait()
+            },
+            loadCaptureSnapshot: {
+                .init(
+                    activity: .recording,
+                    elapsedMilliseconds: 2_000,
+                    meter: .init(averagePower: -20, peakPower: -10),
+                    disposition: .sendable
+                )
+            }
+        )
+        let model = ConversationViewModel(
+            conversationID: existing.conversationID, title: "Chat", entryIntent: nil,
+            composer: .recording, client: client
         )
         await model.start()
-        await model.confirmDiscardRecording()
-        let counts = await client.discardCounts()
-        XCTAssertEqual(counts, [1, 1])
-        XCTAssertEqual(dismissed, 1)
+        model.requestDiscardRecording()
+        XCTAssertEqual(model.confirmation, .discardRecording)
+
+        let discard = Task { await model.confirmDiscardRecording() }
+        await cleanupStarted.wait()
+
+        XCTAssertNil(model.confirmation)
+        XCTAssertEqual(model.composer, .recording)
+        await finishCleanup.open()
+        await discard.value
+        XCTAssertEqual(model.composer, .waitingForReply)
     }
 
     func testTypedSendRetainsComposerBeforeDurableCommitCompletes() async {

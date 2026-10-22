@@ -5,7 +5,10 @@ public enum TaisaBottomChromeContract {
     public static let coversBottomSafeArea = true
 }
 
-/// Owns the continuous fade and system-safe-area background behind bottom controls.
+/// Shared bottom chrome for primary destinations.
+///
+/// Place this component in a root `safeAreaInset(edge: .bottom)` so its fade
+/// owns the home-indicator region and its height reserves scrolling content.
 public struct TaisaBottomChrome<Content: View>: View {
     private let content: Content
 
@@ -14,16 +17,14 @@ public struct TaisaBottomChrome<Content: View>: View {
     }
 
     public var body: some View {
-        ZStack(alignment: .bottom) {
-            PageEdgeFade(.navigation)
-                .frame(maxWidth: .infinity)
-                .frame(height: TaisaBottomChromeContract.fadeHeight)
-                .ignoresSafeArea(edges: [.horizontal, .bottom])
-                .allowsHitTesting(false)
-
-            content
-        }
-        .frame(maxWidth: .infinity)
+        content
+            .frame(maxWidth: .infinity)
+            .frame(height: TaisaBottomChromeContract.fadeHeight, alignment: .bottom)
+            .background {
+                PageEdgeFade(.navigation)
+                    .ignoresSafeArea(edges: [.horizontal, .bottom])
+                    .allowsHitTesting(false)
+            }
     }
 }
 
@@ -58,22 +59,95 @@ public struct TaisaPageHeader<Actions: View>: View {
     }
 }
 
+/// Shared top chrome for pages pushed within a primary destination.
+public struct TaisaChildPageHeader: View {
+    public enum Mode: Sendable {
+        case back
+        case detail
+    }
+
+    private let title: String
+    private let mode: Mode
+    private let back: @MainActor () -> Void
+
+    public init(
+        _ title: String,
+        mode: Mode = .back,
+        back: @escaping @MainActor () -> Void
+    ) {
+        self.title = title
+        self.mode = mode
+        self.back = back
+    }
+
+    public var body: some View {
+        ZStack {
+            Text(title)
+                .font(.system(.headline, weight: .semibold))
+                .foregroundStyle(TaisaColor.foreground.color)
+                .lineLimit(1)
+
+            HStack {
+                if mode == .back {
+                    TaisaSecondaryIconButton(
+                        icon: .chevronLeft,
+                        accessibilityLabel: "Back",
+                        size: TaisaControlMetric.childNavigationControlHeight,
+                        action: back
+                    )
+                }
+                Spacer()
+            }
+        }
+        .padding(.horizontal, TaisaSpacing.standard.rawValue)
+        .frame(height: TaisaControlMetric.appBarHeight)
+        .background {
+            PageEdgeFade(.header)
+                .ignoresSafeArea(edges: [.top, .horizontal])
+        }
+    }
+}
+
+/// Shared bottom fade and safe-area treatment for the open-chat composer.
+public struct ConversationComposerChrome<Content: View>: View {
+    private let content: Content
+
+    public init(@ViewBuilder content: () -> Content) {
+        self.content = content()
+    }
+
+    public var body: some View {
+        content
+            .padding(.horizontal, TaisaSpacing.standard.rawValue)
+            .padding(.vertical, TaisaSpacing.section.rawValue)
+            .frame(minHeight: TaisaControlMetric.conversationComposerDockHeight, alignment: .bottom)
+            .background {
+                PageEdgeFade(.navigation)
+                    .ignoresSafeArea(edges: [.horizontal, .bottom])
+                    .allowsHitTesting(false)
+            }
+    }
+}
+
 /// The shared circular secondary action used in primary page headers.
 public struct TaisaSecondaryIconButton: View {
     private let icon: CentralIconName
     private let accessibilityLabel: String
     private let accessibilityHint: String?
+    private let size: CGFloat
     private let action: @MainActor () -> Void
 
     public init(
         icon: CentralIconName,
         accessibilityLabel: String,
         accessibilityHint: String? = nil,
+        size: CGFloat = TaisaControlMetric.headerActionHeight,
         action: @escaping @MainActor () -> Void
     ) {
         self.icon = icon
         self.accessibilityLabel = accessibilityLabel
         self.accessibilityHint = accessibilityHint
+        self.size = size
         self.action = action
     }
 
@@ -91,8 +165,8 @@ public struct TaisaSecondaryIconButton: View {
                     height: TaisaControlMetric.standardIcon
                 )
                 .frame(
-                    width: TaisaControlMetric.headerActionHeight,
-                    height: TaisaControlMetric.headerActionHeight
+                    width: size,
+                    height: size
                 )
         }
 

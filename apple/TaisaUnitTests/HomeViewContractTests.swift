@@ -70,6 +70,8 @@ final class HomeViewContractTests: XCTestCase {
         XCTAssertFalse(view.contains("Section(\"Sources\")"), "Grounding belongs in nested detail")
         XCTAssertTrue(detail.contains("insight.detail.sources"))
         XCTAssertTrue(detail.contains("insight.detail.revisions"))
+        XCTAssertTrue(detail.contains("TaisaChildPageHeader(\"Insight\""))
+        XCTAssertTrue(detail.contains(".safeAreaInset(edge: .top, spacing: 0)"))
         XCTAssertTrue(rootView.contains("openInsights:"))
         XCTAssertTrue(rootView.contains("InsightsView(model:"))
     }
