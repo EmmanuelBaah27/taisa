@@ -360,6 +360,10 @@ struct ConversationTimeline: View {
                     isAwayFromLatest = false
                     anchoredUserMessageID = message.id
                     shouldReleaseAnchorWhenScrollSettles = false
+                    // Let SwiftUI lay out the response runway before resolving the top
+                    // anchor. Without this handoff, ScrollPosition clamps the request to
+                    // the old content bottom and the sent turn remains below the fold.
+                    await Task.yield()
                     withAnimation(reduceMotion ? nil : .smooth(duration: TaisaMotion.settle)) {
                         scrollPosition.scrollTo(id: message.id, anchor: .top)
                     }

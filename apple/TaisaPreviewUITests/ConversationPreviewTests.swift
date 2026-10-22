@@ -23,6 +23,25 @@ final class ConversationPreviewTests: XCTestCase {
         XCTAssertFalse(jump.waitForExistence(timeout: 1))
     }
 
+    func testSentMessageAnchorsNearTopBeforeResponseArrives() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-TAISAPreviewScenario", "conversation.sent-turn-anchor"]
+        app.launch()
+
+        XCTAssertTrue(
+            app.descendants(matching: .any)["preview.ready.conversation.sent-turn-anchor"]
+                .waitForExistence(timeout: 5)
+        )
+
+        let send = app.buttons["Send message"]
+        XCTAssertTrue(send.waitForExistence(timeout: 5))
+        send.tap()
+
+        let sentMessage = app.descendants(matching: .any)["conversation.message.sent-turn-anchor"]
+        XCTAssertTrue(sentMessage.waitForExistence(timeout: 5))
+        XCTAssertLessThan(sentMessage.frame.minY, app.frame.height * 0.35)
+    }
+
     func testResponseFeedbackFactorsOpenInADismissibleSheet() {
         let app = XCUIApplication()
         app.launchArguments = ["-TAISAPreviewScenario", "conversation.senior-self-response"]

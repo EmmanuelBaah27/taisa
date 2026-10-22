@@ -18,6 +18,7 @@ enum ConversationScenarios {
         composer("conversation.coaching", "Conversation coaching", .coaching),
         composer("conversation.waiting", "Conversation waiting for Reply", .waitingForReply, messages: messages),
         composer("conversation.existing-history", "Existing conversation history", .waitingForReply, messages: longHistoryMessages),
+        sentTurnAnchor,
         seniorSelfResponse,
         composer("conversation.permission-denied", "Conversation microphone denied", .failure(.unavailable)),
         composer("conversation.retry-transcription", "Conversation retry transcription", .failure(.retryable)),
@@ -99,6 +100,36 @@ enum ConversationScenarios {
         )
     }
 
+    private static var sentTurnAnchor: PreviewScenario {
+        PreviewScenario(
+            identifier: "conversation.sent-turn-anchor",
+            title: "Sent turn anchor",
+            deviceFamily: .adaptive,
+            accessibility: .default,
+            readiness: .ready
+        ) {
+            let store = ConversationScrollQAStore(messages: longHistoryMessages)
+            let model = ConversationViewModel(
+                conversationID: "20000000-0000-4000-8000-000000000010",
+                title: "Scroll anchor",
+                entryIntent: nil,
+                composer: .typing("Anchor this message"),
+                text: "Anchor this message",
+                client: ConversationScreenClient(
+                    loadMessages: { await store.loadMessages() },
+                    beginVoice: {}, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
+                    sendText: { text, messageAvailable in
+                        await store.appendUserMessage(text)
+                        await messageAvailable()
+                        try? await Task.sleep(for: .seconds(5))
+                    },
+                    retry: {}, saveDraft: { _ in }, discardDraft: {}
+                )
+            )
+            return AnyView(ConversationView(model: model))
+        }
+    }
+
     private static func list(
         _ identifier: String,
         _ title: String,
@@ -169,5 +200,27 @@ enum ConversationScenarios {
 
     private static func conversation(_ id: String, _ title: String, _ updated: Int64) -> ConversationRecord {
         .init(id: id, title: title, createdAtMS: 1, updatedAtMS: updated)
+    }
+}
+
+private actor ConversationScrollQAStore {
+    private var messages: [MessageRecord]
+
+    init(messages: [MessageRecord]) {
+        self.messages = messages
+    }
+
+    func loadMessages() -> [MessageRecord] {
+        messages
+    }
+
+    func appendUserMessage(_ body: String) {
+        messages.append(MessageRecord(
+            id: "sent-turn-anchor",
+            conversationID: "20000000-0000-4000-8000-000000000010",
+            role: "user",
+            body: body,
+            createdAtMS: 100
+        ))
     }
 }
