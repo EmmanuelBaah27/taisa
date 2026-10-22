@@ -96,7 +96,7 @@ struct RecordingReactiveGlowContractTests {
 
     @Test("voice energy feels light and fluid rather than viscous")
     func waveMotionStaysLightAndFluid() {
-        let motion = RecordingGlowWaveMotion.default
+        let motion = RecordingGlowMotionConfiguration.approved
 
         #expect(motion.attackBounce > 0)
         #expect(motion.attackBounce == 0.45)

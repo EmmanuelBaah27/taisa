@@ -94,6 +94,7 @@ targets:
       - path: TaisaApp/Conversation/ConversationTimeline.swift
       - path: TaisaApp/Conversation/ConversationView.swift
       - path: TaisaApp/Conversation/ConversationViewModel.swift
+      - path: TaisaApp/Conversation/RecordingGlowConfiguration.swift
       - path: TaisaApp/Conversation/TranscriptCorrectionView.swift
       - path: TaisaApp/Conversations
       - path: Generated

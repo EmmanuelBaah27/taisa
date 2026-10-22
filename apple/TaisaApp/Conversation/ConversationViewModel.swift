@@ -164,7 +164,7 @@ final class ConversationViewModel {
     @ObservationIgnored private var voicePreparationExit: VoicePreparationExit?
     @ObservationIgnored private var recoveryObservation: Task<Void, Never>?
     @ObservationIgnored private var recordingGlowEnvelope = LoudnessEnvelope(
-        configuration: .recordingGlowApproved
+        configuration: RecordingGlowConfiguration.approved.response
     )
 
     private enum VoicePreparationExit { case discard, keyboard }

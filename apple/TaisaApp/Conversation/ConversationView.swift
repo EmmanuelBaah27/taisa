@@ -252,9 +252,12 @@ struct ConversationView: View {
     }
 
     private var recordingGlowBackground: some View {
-        RecordingReactiveGlow(
+        let configuration = RecordingGlowConfiguration.approved
+        return RecordingReactiveGlow(
             loudness: model.recordingGlowLoudness,
             state: recordingGlowState,
+            preset: configuration.preset,
+            motion: configuration.motion,
             frequencyLevels: .init(
                 bass: model.capture.frequencyBands.bass,
                 lowMids: model.capture.frequencyBands.lowMids,
@@ -263,7 +266,9 @@ struct ConversationView: View {
                 highs: model.capture.frequencyBands.highs
             )
         )
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(maxWidth: .infinity)
+        .frame(height: CGFloat(configuration.surfaceHeight))
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
     }
 
     private var recordingGlowState: RecordingGlowState {

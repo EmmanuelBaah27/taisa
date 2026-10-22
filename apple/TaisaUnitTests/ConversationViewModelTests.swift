@@ -7,6 +7,23 @@ import TaisaVoice
 
 @MainActor
 final class ConversationViewModelTests: XCTestCase {
+    func testApprovedRecordingGlowConfigurationRoundTripsEveryLabDimension() throws {
+        let approved = RecordingGlowConfiguration.approved
+        let data = try JSONEncoder().encode(approved)
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let motion = try XCTUnwrap(json["motion"] as? [String: Any])
+
+        XCTAssertEqual(json["schemaVersion"] as? Int, 1)
+        XCTAssertEqual(json["surfaceHeight"] as? Double, 240)
+        XCTAssertEqual(motion["waveStaggerSeconds"] as? Double, 0.035)
+        XCTAssertEqual(motion["attackDuration"] as? Double, 0.16)
+        XCTAssertEqual(motion["attackBounce"] as? Double, 0.45)
+        XCTAssertEqual(motion["releaseDuration"] as? Double, 0.16)
+        XCTAssertNotNil(json["preset"])
+        XCTAssertNotNil(json["response"])
+        XCTAssertEqual(try JSONDecoder().decode(RecordingGlowConfiguration.self, from: data), approved)
+    }
+
     func testStartRefreshesPersistedConversationTitle() async {
         let client = ConversationScreenClient(
             loadTitle: { "Persisted conversation title" },

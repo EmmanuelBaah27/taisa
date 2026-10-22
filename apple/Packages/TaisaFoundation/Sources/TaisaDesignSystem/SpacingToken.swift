@@ -29,6 +29,8 @@ public enum TaisaMotion {
 }
 
 public enum TaisaControlMetric {
+    /// The canonical canvas height used by both the recording glow lab and product surface.
+    public static let recordingGlowSurfaceHeight: CGFloat = 240
     public static let conversationComposerDockHeight: CGFloat = 96
     public static let standardIcon: CGFloat = 24
     public static let appBarHeight: CGFloat = 64
