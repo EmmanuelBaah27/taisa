@@ -215,7 +215,8 @@ final class ConversationViewContractTests: XCTestCase {
         XCTAssertFalse(source.contains(".contentMargins(\n                .top,\n                TaisaControlMetric.appBarHeight"))
         XCTAssertFalse(source.contains("sentMessageTopClearance"))
         XCTAssertTrue(source.contains("if !hasPositionedInitialMessages, !isSendingText"))
-        XCTAssertFalse(source.contains(".onScrollPhaseChange"))
+        XCTAssertTrue(source.contains(".onScrollPhaseChange"))
+        XCTAssertTrue(source.contains("conversation.actual-content-bottom"))
         XCTAssertFalse(source.contains(".onChange(of: streamingResponse)"))
         XCTAssertFalse(source.contains(".onChange(of: isThinking)"))
         XCTAssertFalse(source.contains("followResponseIfReadable"))
@@ -229,14 +230,14 @@ final class ConversationViewContractTests: XCTestCase {
         XCTAssertEqual(
             ConversationTimelineLayout.responseRunwayHeight(
                 viewportHeight: 800,
-                isResponseActive: true
+                preservesAnchoredTurn: true
             ),
             704
         )
         XCTAssertEqual(
             ConversationTimelineLayout.responseRunwayHeight(
                 viewportHeight: 800,
-                isResponseActive: false
+                preservesAnchoredTurn: false
             ),
             0
         )
