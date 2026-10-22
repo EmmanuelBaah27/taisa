@@ -41,8 +41,8 @@ enum ConversationTimelineLayout {
         return messageRole == "user" ? .anchorUserMessage : .preserveViewport
     }
 
-    static func responseRunwayHeight(viewportHeight: CGFloat, isResponseActive: Bool) -> CGFloat {
-        guard isResponseActive else { return 0 }
+    static func responseRunwayHeight(viewportHeight: CGFloat, preservesAnchoredTurn: Bool) -> CGFloat {
+        guard preservesAnchoredTurn else { return 0 }
         return max(
             0,
             viewportHeight - TaisaControlMetric.appBarHeight - userToAssistantSpacing
@@ -130,6 +130,8 @@ struct ConversationTimeline: View {
     @State private var readableViewportHeight: CGFloat = 0
     @State private var readableViewportFrame: CGRect = .zero
     @State private var actualContentFrame: CGRect = .zero
+    @State private var anchoredUserMessageID: String?
+    @State private var shouldReleaseAnchorWhenScrollSettles = false
 
     init(
         messages: [MessageRecord],
@@ -246,6 +248,7 @@ struct ConversationTimeline: View {
 
                     Color.clear
                         .frame(height: 1)
+                        .id("conversation.actual-content-bottom")
                         .accessibilityHidden(true)
                         .onGeometryChange(for: CGRect.self) { geometry in
                             geometry.frame(in: .global)
@@ -256,7 +259,7 @@ struct ConversationTimeline: View {
 
                     let responseRunwayHeight = ConversationTimelineLayout.responseRunwayHeight(
                         viewportHeight: readableViewportHeight,
-                        isResponseActive: isThinking || !streamingResponse.isEmpty
+                        preservesAnchoredTurn: anchoredUserMessageID != nil
                     )
                     if responseRunwayHeight > 0 {
                         Spacer(minLength: 0)
@@ -276,6 +279,14 @@ struct ConversationTimeline: View {
             .onScrollGeometryChange(for: CGFloat.self) { geometry in
                 geometry.containerSize.height
             } action: { _, height in readableViewportHeight = height }
+            .onScrollPhaseChange { _, newPhase in
+                if newPhase == .interacting, anchoredUserMessageID != nil {
+                    shouldReleaseAnchorWhenScrollSettles = true
+                } else if newPhase == .idle, shouldReleaseAnchorWhenScrollSettles {
+                    anchoredUserMessageID = nil
+                    shouldReleaseAnchorWhenScrollSettles = false
+                }
+            }
             .onGeometryChange(for: CGRect.self) { geometry in
                 geometry.frame(in: .global)
             } action: { _, frame in
@@ -292,7 +303,11 @@ struct ConversationTimeline: View {
                             isLoading: isThinking || !streamingResponse.isEmpty,
                             action: {
                                 isAwayFromLatest = false
-                                scrollToLatest(using: proxy, animated: !reduceMotion)
+                                anchoredUserMessageID = nil
+                                Task { @MainActor in
+                                    await Task.yield()
+                                    scrollToLatest(using: proxy, animated: !reduceMotion)
+                                }
                             }
                         )
                         .accessibilityIdentifier("conversation.jump-to-latest")
@@ -316,6 +331,8 @@ struct ConversationTimeline: View {
                 case .anchorUserMessage:
                     await Task.yield()
                     isAwayFromLatest = false
+                    anchoredUserMessageID = message.id
+                    shouldReleaseAnchorWhenScrollSettles = false
                     withAnimation(reduceMotion ? nil : .smooth(duration: TaisaMotion.settle)) {
                         proxy.scrollTo(message.id, anchor: .top)
                     }
@@ -330,10 +347,10 @@ struct ConversationTimeline: View {
     private func scrollToLatest(using proxy: ScrollViewProxy, animated: Bool) {
         if animated {
             withAnimation(.smooth(duration: TaisaMotion.settle)) {
-                proxy.scrollTo("conversation.timeline-bottom", anchor: .bottom)
+                proxy.scrollTo("conversation.actual-content-bottom", anchor: .bottom)
             }
         } else {
-            proxy.scrollTo("conversation.timeline-bottom", anchor: .bottom)
+            proxy.scrollTo("conversation.actual-content-bottom", anchor: .bottom)
         }
     }
 
