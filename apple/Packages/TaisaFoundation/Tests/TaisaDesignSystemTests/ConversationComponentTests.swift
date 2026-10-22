@@ -223,6 +223,22 @@ struct ConversationComponentTests {
         #expect(InlineRecoveryAlert.Contract.actionSpacing == 12)
     }
 
+    @Test func recordingSendUsesTheHomeRecordButtonsProminentGlassTreatment() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let source = try String(
+            contentsOf: root.appendingPathComponent("Sources/TaisaDesignSystem/ConversationActionBar.swift"),
+            encoding: .utf8
+        )
+
+        #expect(source.contains(".buttonStyle(.glassProminent)"))
+        #expect(source.contains(".buttonBorderShape(.circle)"))
+        #expect(source.contains(".tint(TaisaColor.primaryAction.color)"))
+        #expect(source.contains(".background(TaisaColor.primaryAction.color, in: Circle())"))
+    }
+
     @Test func conversationMetricsNameEveryReviewedProductRole() {
         #expect(TaisaControlMetric.contextMenuIcon == 16)
         #expect(TaisaControlMetric.conversationEmptyVoiceIcon == 24)

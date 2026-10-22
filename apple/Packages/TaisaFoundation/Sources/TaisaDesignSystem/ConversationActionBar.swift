@@ -54,19 +54,34 @@ public struct ConversationActionBar: View {
                 .disabled(!availability.canResume)
         }
         if availability.showsSend {
-            Button(action: onSend) {
-                CentralIcon(.arrowUp)
-                    .frame(width: 24, height: 24)
-                    .frame(
-                        width: TaisaControlMetric.conversationRecordingControl,
-                        height: TaisaControlMetric.conversationRecordingControl
-                    )
-            }
-                .buttonStyle(.plain)
-                .background(TaisaColor.primaryAction.color, in: Circle())
+            sendControl
                 .disabled(!availability.canSend)
                 .opacity(availability.canSend ? 1 : 0.38)
                 .accessibilityLabel(availability.canSend ? "Send recording" : "Send recording, unavailable until enough audio is captured")
+        }
+    }
+
+    @ViewBuilder private var sendControl: some View {
+        if #available(iOS 26.0, macOS 26.0, *) {
+            sendButton
+                .buttonStyle(.glassProminent)
+                .buttonBorderShape(.circle)
+                .tint(TaisaColor.primaryAction.color)
+        } else {
+            sendButton
+                .buttonStyle(.plain)
+                .background(TaisaColor.primaryAction.color, in: Circle())
+        }
+    }
+
+    private var sendButton: some View {
+        Button(action: onSend) {
+            CentralIcon(.arrowUp)
+                .frame(width: 24, height: 24)
+                .frame(
+                    width: TaisaControlMetric.conversationRecordingControl,
+                    height: TaisaControlMetric.conversationRecordingControl
+                )
         }
     }
 
