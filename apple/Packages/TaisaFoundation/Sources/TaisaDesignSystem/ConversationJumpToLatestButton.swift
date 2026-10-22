@@ -4,6 +4,7 @@ public struct ConversationJumpToLatestButton: View {
     public enum Contract {
         public static let size: CGFloat = 48
         public static let iconSize: CGFloat = 24
+        public static let icon = CentralIconName.arrowDown
         public static let loadingRingLineWidth: CGFloat = 2
         public static let loadingRingTracksOuterStroke = true
         public static let accessibilityLabel = "Jump to latest response"
@@ -19,7 +20,7 @@ public struct ConversationJumpToLatestButton: View {
 
     public var body: some View {
         TaisaSecondaryCapsuleButton(height: Contract.size, action: action) {
-            CentralIcon(.chevronDown)
+            CentralIcon(Contract.icon)
                 .frame(width: Contract.iconSize, height: Contract.iconSize)
                 .foregroundStyle(TaisaColor.foreground.color)
                 .frame(width: Contract.size, height: Contract.size)

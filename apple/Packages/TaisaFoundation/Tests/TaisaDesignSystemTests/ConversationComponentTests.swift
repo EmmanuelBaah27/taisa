@@ -80,6 +80,7 @@ struct ConversationComponentTests {
     @Test func jumpToLatestIsIconOnlyAndKeepsStableGeometryWhileLoading() {
         #expect(ConversationJumpToLatestButton.Contract.size == 48)
         #expect(ConversationJumpToLatestButton.Contract.iconSize == 24)
+        #expect(ConversationJumpToLatestButton.Contract.icon == .arrowDown)
         #expect(ConversationJumpToLatestButton.Contract.accessibilityLabel == "Jump to latest response")
         #expect(ConversationJumpToLatestButton.Contract.loadingRingLineWidth == 2)
         #expect(ConversationJumpToLatestButton.Contract.loadingRingTracksOuterStroke)

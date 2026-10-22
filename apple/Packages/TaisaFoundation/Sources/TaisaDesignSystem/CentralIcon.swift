@@ -9,6 +9,7 @@ public enum CentralIconName: Sendable, Equatable {
     case cross
     case keyboard
     case arrowUp
+    case arrowDown
     case pause
     case play
     case chevronLeft
@@ -58,6 +59,7 @@ public struct CentralIcon: View {
         case .cross: cross
         case .keyboard: keyboard
         case .arrowUp: arrowUp
+        case .arrowDown: arrowDown
         case .pause: pause
         case .play: play
         case .chevronLeft: chevronLeft
@@ -150,6 +152,10 @@ public struct CentralIcon: View {
 
     private var arrowUp: Path {
         var path = Path(); path.move(to: .init(x: 12, y: 20)); path.addLine(to: .init(x: 12, y: 5)); path.move(to: .init(x: 6, y: 11)); path.addLine(to: .init(x: 12, y: 5)); path.addLine(to: .init(x: 18, y: 11)); return path
+    }
+
+    private var arrowDown: Path {
+        var path = Path(); path.move(to: .init(x: 18, y: 14)); path.addLine(to: .init(x: 12, y: 20)); path.addLine(to: .init(x: 6, y: 14)); path.move(to: .init(x: 12, y: 19)); path.addLine(to: .init(x: 12, y: 4)); return path
     }
 
     private var pause: Path {
