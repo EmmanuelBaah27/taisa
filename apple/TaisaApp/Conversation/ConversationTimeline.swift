@@ -20,6 +20,7 @@ enum ConversationTimelineLayout {
     static let ordinaryMessageSpacing: CGFloat = 12
     static let userToAssistantSpacing: CGFloat = 32
     static let firstMessageTopSpacing: CGFloat = 8
+    static let contentCoordinateSpace = "conversation.timeline.content"
     static func spacing(afterRole: String, beforeRole: String?) -> CGFloat {
         guard beforeRole != nil else { return 0 }
         return afterRole == "user" && beforeRole == "assistant"
@@ -158,7 +159,8 @@ struct ConversationTimeline: View {
     @State private var readableViewportHeight: CGFloat = 0
     @State private var readableViewportFrame: CGRect = .zero
     @State private var actualContentFrame: CGRect = .zero
-    @State private var messageFrames: [String: CGRect] = [:]
+    @State private var actualContentBottomY: CGFloat = 0
+    @State private var anchoredUserMessageMinY: CGFloat?
     @State private var anchoredUserMessageID: String?
     @State private var headerProtectedMessageID: String?
     @State private var shouldReleaseAnchorAfterJump = false
@@ -253,10 +255,17 @@ struct ConversationTimeline: View {
                         .accessibilityElement(children: .contain)
                         .accessibilityIdentifier("conversation.message.\(message.id)")
                         .id(message.id)
-                        .onGeometryChange(for: CGRect.self) { geometry in
-                            geometry.frame(in: .global)
-                        } action: { _, frame in
-                            messageFrames[message.id] = frame
+                        .background {
+                            if anchoredUserMessageID == message.id {
+                                Color.clear
+                                    .onGeometryChange(for: CGFloat.self) { geometry in
+                                        geometry.frame(
+                                            in: .named(ConversationTimelineLayout.contentCoordinateSpace)
+                                        ).minY
+                                    } action: { _, minY in
+                                        anchoredUserMessageMinY = minY
+                                    }
+                            }
                         }
                         .padding(
                             .top,
@@ -301,10 +310,16 @@ struct ConversationTimeline: View {
                             actualContentFrame = frame
                             refreshJumpVisibility()
                         }
+                        .onGeometryChange(for: CGFloat.self) { geometry in
+                            geometry.frame(
+                                in: .named(ConversationTimelineLayout.contentCoordinateSpace)
+                            ).maxY
+                        } action: { _, maxY in
+                            actualContentBottomY = maxY
+                        }
 
-                    let anchoredTurnHeight = anchoredUserMessageID
-                        .flatMap { messageFrames[$0] }
-                        .map { max(0, actualContentFrame.maxY - $0.minY) }
+                    let anchoredTurnHeight = anchoredUserMessageMinY
+                        .map { max(0, actualContentBottomY - $0) }
                         ?? 0
                     let responseRunwayHeight = ConversationTimelineLayout.responseRunwayHeight(
                         viewportHeight: readableViewportHeight,
@@ -323,6 +338,7 @@ struct ConversationTimeline: View {
                 }
                 .padding(.top, ConversationTimelineLayout.firstMessageTopSpacing)
                 .scrollTargetLayout()
+                .coordinateSpace(name: ConversationTimelineLayout.contentCoordinateSpace)
         }
             .accessibilityIdentifier("conversation.timeline")
             .scrollBounceBehavior(.always, axes: .vertical)
@@ -356,7 +372,8 @@ struct ConversationTimeline: View {
             }
             .task(id: conversationID) {
                 anchoredUserMessageID = nil
-                messageFrames = [:]
+                anchoredUserMessageMinY = nil
+                actualContentBottomY = 0
                 headerProtectedMessageID = nil
                 shouldReleaseAnchorAfterJump = false
                 hasPositionedInitialMessages = false
@@ -385,6 +402,7 @@ struct ConversationTimeline: View {
                 case .anchorUserMessage:
                     await Task.yield()
                     isAwayFromLatest = false
+                    anchoredUserMessageMinY = nil
                     anchoredUserMessageID = message.id
                     headerProtectedMessageID = message.id
                     withAnimation(reduceMotion ? nil : .smooth(duration: TaisaMotion.settle)) {

@@ -263,6 +263,28 @@ final class ConversationViewContractTests: XCTestCase {
         XCTAssertFalse(source.contains(".easeOut(duration: TaisaMotion.fast)"))
     }
 
+    func testRunwayGeometryObservesOnlyTheAnchoredMessage() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let source = try String(
+            contentsOf: root.appendingPathComponent("TaisaApp/Conversation/ConversationTimeline.swift"),
+            encoding: .utf8
+        )
+
+        XCTAssertFalse(source.contains("messageFrames"))
+        XCTAssertTrue(source.contains("anchoredUserMessageMinY"))
+        XCTAssertTrue(source.contains("if anchoredUserMessageID == message.id"))
+    }
+
+    func testViewModelHasSingleStreamingPresentationSource() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let source = try String(
+            contentsOf: root.appendingPathComponent("TaisaApp/Conversation/ConversationViewModel.swift"),
+            encoding: .utf8
+        )
+
+        XCTAssertFalse(source.contains("isResponseStreaming"))
+    }
+
     func testConversationUsesSemanticTurnSpacing() {
         XCTAssertEqual(ConversationTimelineLayout.ordinaryMessageSpacing, 12)
         XCTAssertEqual(ConversationTimelineLayout.userToAssistantSpacing, 32)
