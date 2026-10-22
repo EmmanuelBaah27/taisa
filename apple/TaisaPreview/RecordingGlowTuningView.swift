@@ -4,19 +4,6 @@ import TaisaAudio
 import TaisaDesignSystem
 import UIKit
 
-private extension LoudnessEnvelopeConfiguration {
-    static let recordingGlowApproved = Self(
-        noiseFloorDecibels: -55,
-        ceilingDecibels: -6,
-        inputGain: 1,
-        responseExponent: 1.5044378519058228,
-        peakContribution: 0.2,
-        attackSeconds: 0.07,
-        releaseSeconds: 0.6044575989246368,
-        maximumRisePerSecond: 7
-    )
-}
-
 struct RecordingGlowTuningView: View {
     @StateObject private var liveMeter = PreviewLiveLoudnessMonitor()
     @State private var preset = RecordingGlowPreset.figmaDefault

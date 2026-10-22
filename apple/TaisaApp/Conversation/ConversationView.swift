@@ -1,17 +1,24 @@
 import Foundation
 import SwiftUI
+import TaisaAudio
 import TaisaConversations
 import TaisaDesignSystem
 import UIKit
 
 struct ConversationView: View {
     @State var model: ConversationViewModel
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     var body: some View {
         NavigationStack {
             ZStack(alignment: .top) {
                 StatusBarBackground()
                     .zIndex(4)
+                if showsRecordingGlow {
+                    recordingGlowBackground
+                        .ignoresSafeArea(edges: [.horizontal, .bottom])
+                }
                 VStack(spacing: 0) {
                     ZStack {
                         ConversationTimeline(
@@ -235,6 +242,34 @@ struct ConversationView: View {
                 : 1
         )
         .accessibilityIdentifier("conversation.voice-composer")
+    }
+
+    private var showsRecordingGlow: Bool {
+        switch model.composer {
+        case .recording, .paused, .savedVoiceDraft: true
+        case .preparingVoice, .typing, .transcribing, .coaching, .waitingForReply, .failure: false
+        }
+    }
+
+    private var recordingGlowBackground: some View {
+        RecordingReactiveGlow(
+            loudness: model.recordingGlowLoudness,
+            state: recordingGlowState,
+            frequencyLevels: .init(
+                bass: model.capture.frequencyBands.bass,
+                lowMids: model.capture.frequencyBands.lowMids,
+                mids: model.capture.frequencyBands.mids,
+                upperMids: model.capture.frequencyBands.upperMids,
+                highs: model.capture.frequencyBands.highs
+            )
+        )
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var recordingGlowState: RecordingGlowState {
+        if reduceTransparency { return .reducedTransparency }
+        if reduceMotion { return .reduceMotion }
+        return model.composer == .recording ? .recording : .paused
     }
 
     private var elapsed: String {

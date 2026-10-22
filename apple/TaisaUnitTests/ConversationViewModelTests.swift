@@ -880,6 +880,33 @@ final class ConversationViewModelTests: XCTestCase {
         XCTAssertTrue(model.showsMicrophoneUnavailable)
     }
 
+    func testActiveCapturePublishesSmoothedGlowLoudnessAndFrequencyBands() async {
+        let bands = VoiceFrequencyBands(
+            bass: 0.8, lowMids: 0.6, mids: 0.9, upperMids: 0.4, highs: 0.2
+        )
+        let client = ConversationScreenClient(
+            beginVoice: {}, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
+            sendText: { _, available in await available() }, retry: {},
+            saveDraft: { _ in }, discardDraft: {},
+            loadCaptureSnapshot: {
+                .init(
+                    activity: .recording, elapsedMilliseconds: 1_500,
+                    meter: .init(averagePower: -18, peakPower: -6),
+                    frequencyBands: bands, disposition: .sendable
+                )
+            }
+        )
+        let model = ConversationViewModel(
+            conversationID: UUID().uuidString, title: "Chat", entryIntent: nil,
+            composer: .recording, client: client
+        )
+
+        await model.refreshCapture()
+
+        XCTAssertGreaterThan(model.recordingGlowLoudness, 0)
+        XCTAssertEqual(model.capture.frequencyBands, bands)
+    }
+
     func testRouteRestorationClearsMicrophoneUnavailableNotice() async {
         let captures = CaptureSequence([
             .init(

@@ -71,19 +71,14 @@ public struct ConversationActionBar: View {
     }
 
     @ViewBuilder private var centerControl: some View {
-        if isActiveCapture {
-            ZStack {
-                ConversationActivityIndicator(active: isActiveCapture)
-                    .blur(radius: TaisaEffect.recordingGlowBlurRadius)
-                    .opacity(TaisaEffect.recordingGlowOpacity)
-                Text(elapsed)
-                    .font(TaisaTypography.metadata.font)
-                    .foregroundStyle(TaisaColor.foreground.color)
-                    .monospacedDigit()
-            }
+        if isActiveCapture || phase == .preparing {
+            Text(elapsed)
+                .font(TaisaTypography.metadata.font)
+                .foregroundStyle(TaisaColor.foreground.color)
+                .monospacedDigit()
             .frame(minWidth: 56, minHeight: TaisaControlMetric.conversationRecordingControl)
             .accessibilityElement(children: .combine)
-            .accessibilityLabel("Recording, \(elapsed)")
+            .accessibilityLabel(phase == .preparing ? "Preparing microphone" : "Recording, \(elapsed)")
         } else if phase == .saved {
             RecordedVoiceDraftBadge(elapsed: elapsed)
         } else {

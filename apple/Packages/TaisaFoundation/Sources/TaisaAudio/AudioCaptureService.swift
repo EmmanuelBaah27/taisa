@@ -32,17 +32,20 @@ public struct AudioCaptureSnapshot: Sendable, Equatable {
     public let activity: AudioCaptureActivity
     public let elapsedMilliseconds: Int64
     public let meter: AudioMeterSample
+    public let frequencyBands: VoiceFrequencyBands
     public let hasAudioPayload: Bool
 
     public init(
         activity: AudioCaptureActivity,
         elapsedMilliseconds: Int64,
         meter: AudioMeterSample,
+        frequencyBands: VoiceFrequencyBands = .zero,
         hasAudioPayload: Bool? = nil
     ) {
         self.activity = activity
         self.elapsedMilliseconds = elapsedMilliseconds
         self.meter = meter
+        self.frequencyBands = frequencyBands
         self.hasAudioPayload = hasAudioPayload ?? (activity != .prepared && elapsedMilliseconds > 0)
     }
 }
@@ -239,6 +242,12 @@ public actor AudioCaptureService {
         return await recorder.meter()
     }
 
+    public func frequencyBands(turnID: UUID) async throws -> VoiceFrequencyBands {
+        try requireOwned(turnID)
+        guard case .recording = state else { return .zero }
+        return await recorder.frequencyBands()
+    }
+
     public func snapshot(turnID: UUID) async throws -> AudioCaptureSnapshot {
         try requireOwned(turnID)
         let activity: AudioCaptureActivity
@@ -262,10 +271,14 @@ public actor AudioCaptureService {
         let meter = activity == .recording
             ? await recorder.meter()
             : AudioMeterSample(averagePower: -160, peakPower: -160)
+        let frequencyBands = activity == .recording
+            ? await recorder.frequencyBands()
+            : VoiceFrequencyBands.zero
         return .init(
             activity: activity,
             elapsedMilliseconds: Int64(elapsed * 1_000),
             meter: meter,
+            frequencyBands: frequencyBands,
             hasAudioPayload: await recorder.hasRecordedAudio()
         )
     }

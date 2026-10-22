@@ -1,6 +1,17 @@
 import Foundation
 
 public struct LoudnessEnvelopeConfiguration: Codable, Sendable, Equatable {
+    public static let recordingGlowApproved = Self(
+        noiseFloorDecibels: -55,
+        ceilingDecibels: -6,
+        inputGain: 1,
+        responseExponent: 1.5044378519058228,
+        peakContribution: 0.2,
+        attackSeconds: 0.07,
+        releaseSeconds: 0.6044575989246368,
+        maximumRisePerSecond: 7
+    )
+
     public var noiseFloorDecibels: Double
     public var ceilingDecibels: Double
     public var inputGain: Double

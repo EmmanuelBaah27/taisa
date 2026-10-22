@@ -4,6 +4,26 @@ import Testing
 
 @Suite("Recoverable audio capture")
 struct AudioCaptureServiceTests {
+    @Test("frequency levels are ephemeral and available only while recording")
+    func frequencyLevelsFollowActiveCaptureOnly() async throws {
+        let levels = VoiceFrequencyBands(
+            bass: 0.9, lowMids: 0.7, mids: 0.5, upperMids: 0.3, highs: 0.1
+        )
+        let recorder = RecorderSpy(frequencyBands: levels)
+        let service = AudioCaptureService(
+            session: SessionSpy(), recorder: recorder, files: FileStoreSpy()
+        )
+        let turnID = UUID()
+
+        _ = try await service.start(turnID: turnID)
+        #expect(try await service.frequencyBands(turnID: turnID) == levels)
+        #expect(try await service.snapshot(turnID: turnID).frequencyBands == levels)
+
+        try await service.pause(turnID: turnID)
+        #expect(try await service.frequencyBands(turnID: turnID) == .zero)
+        #expect(try await service.snapshot(turnID: turnID).frequencyBands == .zero)
+    }
+
     @Test("live snapshot is content-free and tracks the capture boundary")
     func liveSnapshotTracksCaptureBoundary() async throws {
         let recorder = RecorderSpy(elapsed: 0)
@@ -225,9 +245,14 @@ private actor RecorderSpy: AudioRecorderAdapting {
     private(set) var resumeCount = 0
 
     private var elapsed: TimeInterval
+    private let frequencyLevels: VoiceFrequencyBands
 
-    init(elapsed: TimeInterval = 4.25) {
+    init(
+        elapsed: TimeInterval = 4.25,
+        frequencyBands: VoiceFrequencyBands = .zero
+    ) {
         self.elapsed = elapsed
+        frequencyLevels = frequencyBands
     }
 
     func start(at url: URL) async throws { startCount += 1 }
@@ -240,6 +265,7 @@ private actor RecorderSpy: AudioRecorderAdapting {
     func meter() async -> AudioMeterSample { .init(averagePower: -18, peakPower: -6) }
     func elapsedTime() async -> TimeInterval { elapsed }
     func hasRecordedAudio() async -> Bool { elapsed > 0 }
+    func frequencyBands() async -> VoiceFrequencyBands { frequencyLevels }
     func setElapsed(_ elapsed: TimeInterval) { self.elapsed = elapsed }
 }
 
