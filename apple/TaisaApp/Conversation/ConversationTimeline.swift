@@ -117,6 +117,7 @@ struct ConversationTimeline: View {
     let streamingFinalMessageID: String?
     let isSendingText: Bool
     let isThinking: Bool
+    let isStreamingResponse: Bool
     let streamingDidFinish: @MainActor @Sendable () -> Void
     let retryResponseUpdate: @MainActor @Sendable () -> Void
     let keepEditedMessage: @MainActor @Sendable () -> Void
@@ -133,6 +134,8 @@ struct ConversationTimeline: View {
     @State private var actualContentFrame: CGRect = .zero
     @State private var anchoredUserMessageID: String?
     @State private var shouldReleaseAnchorWhenScrollSettles = false
+    @State private var needsInitialLatestPosition = true
+    @State private var releasesAnchorAfterJump = false
 
     init(
         messages: [MessageRecord],
@@ -144,6 +147,7 @@ struct ConversationTimeline: View {
         streamingFinalMessageID: String? = nil,
         isSendingText: Bool = false,
         isThinking: Bool = false,
+        isStreamingResponse: Bool = false,
         streamingDidFinish: @escaping @MainActor @Sendable () -> Void = {},
         retryResponseUpdate: @escaping @MainActor @Sendable () -> Void = {},
         keepEditedMessage: @escaping @MainActor @Sendable () -> Void = {},
@@ -161,6 +165,7 @@ struct ConversationTimeline: View {
         self.streamingFinalMessageID = streamingFinalMessageID
         self.isSendingText = isSendingText
         self.isThinking = isThinking
+        self.isStreamingResponse = isStreamingResponse
         self.streamingDidFinish = streamingDidFinish
         self.retryResponseUpdate = retryResponseUpdate
         self.keepEditedMessage = keepEditedMessage
@@ -258,6 +263,17 @@ struct ConversationTimeline: View {
                         } action: { _, frame in
                             actualContentFrame = frame
                             refreshJumpVisibility()
+                            if needsInitialLatestPosition, !presentedMessages.isEmpty {
+                                needsInitialLatestPosition = false
+                                Task { @MainActor in
+                                    await Task.yield()
+                                    isAwayFromLatest = false
+                                    scrollToLatest(using: proxy, animated: false)
+                                }
+                            } else if releasesAnchorAfterJump, !isAwayFromLatest {
+                                anchoredUserMessageID = nil
+                                releasesAnchorAfterJump = false
+                            }
                         }
 
                     let responseRunwayHeight = ConversationTimelineLayout.responseRunwayHeight(
@@ -303,14 +319,10 @@ struct ConversationTimeline: View {
                     }
                     if isAwayFromLatest, !presentedMessages.isEmpty {
                         ConversationJumpToLatestButton(
-                            isLoading: !streamingResponse.isEmpty && isAwayFromLatest,
+                            isLoading: isStreamingResponse && isAwayFromLatest,
                             action: {
-                                isAwayFromLatest = false
-                                anchoredUserMessageID = nil
-                                Task { @MainActor in
-                                    await Task.yield()
-                                    scrollToLatest(using: proxy, animated: !reduceMotion)
-                                }
+                                releasesAnchorAfterJump = true
+                                scrollToLatest(using: proxy, animated: !reduceMotion)
                             }
                         )
                         .accessibilityIdentifier("conversation.jump-to-latest")
@@ -321,12 +333,9 @@ struct ConversationTimeline: View {
             .task(id: conversationID) {
                 anchoredUserMessageID = nil
                 shouldReleaseAnchorWhenScrollSettles = false
+                releasesAnchorAfterJump = false
                 hasPositionedInitialMessages = false
-                await Task.yield()
-                guard !messages.isEmpty else { return }
-                hasPositionedInitialMessages = true
-                isAwayFromLatest = false
-                scrollToLatest(using: proxy, animated: false)
+                needsInitialLatestPosition = true
             }
             .task(id: messages.last?.id) {
                 guard let message = messages.last else { return }
@@ -338,9 +347,7 @@ struct ConversationTimeline: View {
                 hasPositionedInitialMessages = true
                 switch action {
                 case .initialLatest:
-                    await Task.yield()
-                    isAwayFromLatest = false
-                    scrollToLatest(using: proxy, animated: false)
+                    needsInitialLatestPosition = true
                 case .anchorUserMessage:
                     await Task.yield()
                     isAwayFromLatest = false

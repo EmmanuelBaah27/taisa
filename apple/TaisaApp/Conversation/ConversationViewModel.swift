@@ -120,6 +120,7 @@ final class ConversationViewModel {
     private(set) var correctionRegenerationFailureMessageID: String?
     private(set) var partialCoaching = ""
     private(set) var streamingFinalMessageID: String?
+    private(set) var isResponseStreaming = false
     private(set) var pendingSentText: String?
     private(set) var failureContext: FailureContext = .request
     private(set) var responseActionFailures: [ResponseActionFailure] = []
@@ -398,9 +399,11 @@ final class ConversationViewModel {
                 transcriptBecameAvailable = true
                 await self.reloadMessages()
                 self.composer = .coaching
+                self.isResponseStreaming = true
             }
             await prepareCompletedStreamPresentation()
         } catch {
+            isResponseStreaming = false
             partialCoaching = ""
             streamingFinalMessageID = nil
             failureContext = transcriptBecameAvailable ? .request : .transcription
@@ -419,6 +422,7 @@ final class ConversationViewModel {
         let messageIDsBeforeSend = Set(messages.map(\.id))
         processingMessageIsDurable = false
         composer = .coaching
+        isResponseStreaming = true
         do {
             try await client.sendText(value) { [weak self] in
                 guard let self else { return }
@@ -435,6 +439,7 @@ final class ConversationViewModel {
             pendingSentText = nil
         }
         catch {
+            isResponseStreaming = false
             partialCoaching = ""
             streamingFinalMessageID = nil
             pendingSentText = nil
@@ -899,6 +904,7 @@ final class ConversationViewModel {
     }
 
     private func prepareCompletedStreamPresentation() async {
+        isResponseStreaming = false
         let finalPartial = await client.loadPartialCoaching()
         await reloadMessages()
         let finalAssistant = latestAssistantAfterLatestUser()
