@@ -429,6 +429,7 @@ final class ConversationViewModel {
 
     func requestDiscardRecording() {
         if composer == .preparingVoice, actionInFlight {
+            if messages.isEmpty { isClosing = true }
             voicePreparationExit = .discard
             return
         }

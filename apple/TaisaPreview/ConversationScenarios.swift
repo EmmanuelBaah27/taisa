@@ -121,9 +121,13 @@ enum ConversationScenarios {
                     sendText: { text, messageAvailable in
                         await store.appendUserMessage(text)
                         await messageAvailable()
-                        try? await Task.sleep(for: .seconds(5))
+                        try? await Task.sleep(for: .milliseconds(350))
+                        await store.beginStreamingResponse()
+                        try? await Task.sleep(for: .milliseconds(700))
+                        await store.finishResponse()
                     },
-                    retry: {}, saveDraft: { _ in }, discardDraft: {}
+                    retry: {}, saveDraft: { _ in }, discardDraft: {},
+                    loadPartialCoaching: { await store.partialResponse() }
                 )
             )
             return AnyView(ConversationView(model: model))
@@ -204,7 +208,9 @@ enum ConversationScenarios {
 }
 
 private actor ConversationScrollQAStore {
+    private static let finalMessageID = "sent-turn-final"
     private var messages: [MessageRecord]
+    private var partial = ""
 
     init(messages: [MessageRecord]) {
         self.messages = messages
@@ -221,6 +227,24 @@ private actor ConversationScrollQAStore {
             role: "user",
             body: body,
             createdAtMS: 100
+        ))
+    }
+
+    func partialResponse() -> String { partial }
+
+    func beginStreamingResponse() {
+        partial = Array(repeating: "This streamed response extends below the visible fold without moving the sent turn.", count: 16)
+            .joined(separator: " ")
+    }
+
+    func finishResponse() {
+        let body = partial
+        messages.append(MessageRecord(
+            id: Self.finalMessageID,
+            conversationID: "20000000-0000-4000-8000-000000000010",
+            role: "assistant",
+            body: body,
+            createdAtMS: 101
         ))
     }
 }

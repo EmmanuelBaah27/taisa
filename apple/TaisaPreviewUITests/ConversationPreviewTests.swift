@@ -51,8 +51,45 @@ final class ConversationPreviewTests: XCTestCase {
         XCTAssertLessThanOrEqual(sentMessage.frame.minY, maximumAnchoredY)
 
         let settledY = sentMessage.frame.minY
-        RunLoop.current.run(until: Date().addingTimeInterval(1))
+        XCTAssertTrue(app.descendants(matching: .any)["conversation.streaming-response"].waitForExistence(timeout: 3))
+        let finalResponse = app.descendants(matching: .any)["conversation.message.sent-turn-final"]
+        XCTAssertTrue(finalResponse.waitForExistence(timeout: 18))
         XCTAssertEqual(sentMessage.frame.minY, settledY, accuracy: 2)
+    }
+
+    func testJumpDuringAnchoredStreamingReachesTheActualResponseBottom() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-TAISAPreviewScenario", "conversation.sent-turn-anchor"]
+        app.launch()
+
+        XCTAssertTrue(app.buttons["Send message"].waitForExistence(timeout: 5))
+        app.buttons["Send message"].tap()
+
+        let jump = app.buttons["Jump to latest response"]
+        XCTAssertTrue(jump.waitForExistence(timeout: 12))
+        guard jump.exists else { return }
+        jump.tap()
+
+        XCTAssertFalse(jump.waitForExistence(timeout: 2))
+        XCTAssertTrue(app.descendants(matching: .any)["conversation.streaming-response"].isHittable)
+    }
+
+    func testJumpLoadingStateClearsAfterStreamingFinishesWhileRemainingAwayFromLatest() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-TAISAPreviewScenario", "conversation.sent-turn-anchor"]
+        app.launch()
+
+        XCTAssertTrue(app.buttons["Send message"].waitForExistence(timeout: 5))
+        app.buttons["Send message"].tap()
+
+        let jump = app.buttons["Jump to latest response"]
+        XCTAssertTrue(jump.waitForExistence(timeout: 12))
+        XCTAssertEqual(jump.value as? String, "Taisa is responding")
+
+        let finalResponse = app.descendants(matching: .any)["conversation.message.sent-turn-final"]
+        XCTAssertTrue(finalResponse.waitForExistence(timeout: 18))
+        XCTAssertTrue(jump.exists)
+        XCTAssertNotEqual(jump.value as? String, "Taisa is responding")
     }
 
     func testResponseFeedbackFactorsOpenInADismissibleSheet() {

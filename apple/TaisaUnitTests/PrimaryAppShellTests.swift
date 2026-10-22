@@ -35,6 +35,19 @@ final class PrimaryAppShellTests: XCTestCase {
         XCTAssertEqual(PrimaryDestination.allCases, [.home, .conversations, .you])
     }
 
+    func testAdjacentPagingClampsAtBothEnds() {
+        let model = PrimaryAppShellModel(selection: .home)
+
+        model.selectAdjacent(offset: -1)
+        XCTAssertEqual(model.selection, .home)
+        model.selectAdjacent(offset: 1)
+        XCTAssertEqual(model.selection, .conversations)
+        model.selectAdjacent(offset: 1)
+        XCTAssertEqual(model.selection, .you)
+        model.selectAdjacent(offset: 1)
+        XCTAssertEqual(model.selection, .you)
+    }
+
     func testConversationDismissalRefreshesTheConversationIndex() async {
         let model = PrimaryAppShellModel()
         model.presentNewConversation(.voice)
@@ -58,13 +71,12 @@ final class PrimaryAppShellTests: XCTestCase {
         XCTAssertFalse(model.showsConversationDock)
     }
 
-    func testPrimaryDestinationsRemainMountedBehindTheCustomNavigation() throws {
+    func testPrimaryDestinationsRemainMountedInTheNativePager() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let source = try String(contentsOf: root.appendingPathComponent("TaisaApp/AppShell/PrimaryAppShell.swift"), encoding: .utf8)
-        XCTAssertTrue(source.contains("ForEach(PrimaryDestination.allCases"))
-        XCTAssertTrue(source.contains("NavigationStack {\n                    destinationView(destination)"))
-        XCTAssertTrue(source.contains(".allowsHitTesting(model.selection == destination)"))
-        XCTAssertTrue(source.contains(".accessibilityHidden(model.selection != destination)"))
+        XCTAssertTrue(source.contains("TabView(selection:"))
+        XCTAssertTrue(source.contains(".tabViewStyle(.page(indexDisplayMode: .never))"))
+        XCTAssertTrue(source.contains(".simultaneousGesture(primaryPageCompletionGesture)"))
         XCTAssertFalse(source.contains("if model.selection == .careerWork"))
         XCTAssertTrue(source.contains("model.showsCareerWork"))
         XCTAssertTrue(source.contains(".safeAreaInset(edge: .bottom, spacing: 0)"))
@@ -73,7 +85,6 @@ final class PrimaryAppShellTests: XCTestCase {
         XCTAssertFalse(source.contains(".frame(height: 104)"))
         XCTAssertFalse(source.contains("primaryPageBottomReservation"))
         XCTAssertFalse(source.contains("selection == .conversations ? 0"))
-        XCTAssertFalse(source.contains(".safeAreaPadding(.bottom"))
         XCTAssertFalse(source.contains(".background {\n                    PageEdgeFade(.navigation)"))
     }
 

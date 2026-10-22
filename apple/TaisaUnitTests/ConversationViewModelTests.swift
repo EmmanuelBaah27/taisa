@@ -1005,6 +1005,36 @@ final class ConversationViewModelTests: XCTestCase {
         XCTAssertEqual(dismissed, 1)
     }
 
+    func testRecordingCancelDuringVoicePreparationHidesAnEmptyConversationImmediately() async {
+        let preparationStarted = AsyncGate()
+        let finishPreparation = AsyncGate()
+        var dismissed = 0
+        let client = ConversationScreenClient(
+            beginVoice: {
+                await preparationStarted.open()
+                await finishPreparation.wait()
+            }, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
+            sendText: { _, available in await available() }, retry: {},
+            saveDraft: { _ in }, discardDraft: {}, discardEmptyConversation: {}
+        )
+        let model = ConversationViewModel(
+            conversationID: UUID().uuidString, title: "New chat", entryIntent: nil,
+            composer: .waitingForReply, client: client, dismiss: { dismissed += 1 }
+        )
+
+        let preparation = Task { try await model.beginVoice() }
+        await preparationStarted.wait()
+
+        model.requestDiscardRecording()
+
+        XCTAssertTrue(model.isClosing)
+        XCTAssertEqual(dismissed, 0)
+
+        await finishPreparation.open()
+        try? await preparation.value
+        XCTAssertEqual(dismissed, 1)
+    }
+
     func testEmptyRecordingDiscardCleansUpProvisionalChatAndDismisses() async {
         let cleanupStarted = AsyncGate()
         let finishCleanup = AsyncGate()

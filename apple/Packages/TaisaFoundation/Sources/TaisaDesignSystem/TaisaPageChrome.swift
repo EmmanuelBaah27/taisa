@@ -83,7 +83,7 @@ public struct TaisaChildPageHeader: View {
     public var body: some View {
         ZStack {
             Text(title)
-                .font(.system(.headline, weight: .semibold))
+                .font(TaisaTypography.childHeaderTitle.font)
                 .foregroundStyle(TaisaColor.foreground.color)
                 .lineLimit(1)
 

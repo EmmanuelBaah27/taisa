@@ -4,6 +4,11 @@ import TaisaStorage
 import UIKit
 
 enum ConversationTimelineLayout {
+    enum JumpAnchorAction: Equatable {
+        case preserve
+        case release
+    }
+
     enum NewMessageScrollAction: Equatable {
         case initialLatest
         case anchorUserMessage
@@ -47,6 +52,13 @@ enum ConversationTimelineLayout {
             0,
             viewportHeight - TaisaControlMetric.appBarHeight - userToAssistantSpacing
         )
+    }
+
+    static func jumpAnchorAction(
+        releasePending: Bool,
+        isAwayFromLatest: Bool
+    ) -> JumpAnchorAction {
+        releasePending && !isAwayFromLatest ? .release : .preserve
     }
 
     static func userBubbleWidth(
@@ -148,6 +160,7 @@ struct ConversationTimeline: View {
     @State private var anchoredUserMessageID: String?
     @State private var headerProtectedMessageID: String?
     @State private var shouldReleaseAnchorWhenScrollSettles = false
+    @State private var shouldReleaseAnchorAfterJump = false
 
     init(
         messages: [MessageRecord],
@@ -312,6 +325,7 @@ struct ConversationTimeline: View {
                 } else if newPhase == .idle, shouldReleaseAnchorWhenScrollSettles {
                     anchoredUserMessageID = nil
                     shouldReleaseAnchorWhenScrollSettles = false
+                    shouldReleaseAnchorAfterJump = false
                 }
             }
             .onGeometryChange(for: CGRect.self) { geometry in
@@ -329,6 +343,7 @@ struct ConversationTimeline: View {
                         ConversationJumpToLatestButton(
                             isLoading: presentation.showsStreamingRing && isAwayFromLatest,
                             action: {
+                                shouldReleaseAnchorAfterJump = true
                                 scrollToLatest(using: proxy, animated: !reduceMotion)
                             }
                         )
@@ -341,6 +356,7 @@ struct ConversationTimeline: View {
                 anchoredUserMessageID = nil
                 headerProtectedMessageID = nil
                 shouldReleaseAnchorWhenScrollSettles = false
+                shouldReleaseAnchorAfterJump = false
                 hasPositionedInitialMessages = false
             }
             .task(id: presentation.isInitialLoadComplete) {
@@ -381,21 +397,28 @@ struct ConversationTimeline: View {
     }
 
     private func scrollToLatest(using proxy: ScrollViewProxy, animated: Bool) {
-        anchoredUserMessageID = nil
         if animated {
             withAnimation(.smooth(duration: TaisaMotion.settle)) {
-                proxy.scrollTo("conversation.timeline-bottom", anchor: .bottom)
+                proxy.scrollTo("conversation.actual-content-bottom", anchor: .bottom)
             }
         } else {
-            proxy.scrollTo("conversation.timeline-bottom", anchor: .bottom)
+            proxy.scrollTo("conversation.actual-content-bottom", anchor: .bottom)
         }
     }
 
     private func refreshJumpVisibility() {
-        isAwayFromLatest = ConversationTimelineLayout.shouldShowJumpToLatest(
+        let awayFromLatest = ConversationTimelineLayout.shouldShowJumpToLatest(
             actualContentFrame: actualContentFrame,
             readableViewport: readableViewportFrame
         )
+        isAwayFromLatest = awayFromLatest
+        if ConversationTimelineLayout.jumpAnchorAction(
+            releasePending: shouldReleaseAnchorAfterJump,
+            isAwayFromLatest: awayFromLatest
+        ) == .release {
+            anchoredUserMessageID = nil
+            shouldReleaseAnchorAfterJump = false
+        }
     }
 
     private func messageText(_ message: MessageRecord) -> Text {

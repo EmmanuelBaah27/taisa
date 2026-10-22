@@ -41,6 +41,16 @@ final class PrimaryAppShellModel {
         showsCareerWork = true
     }
 
+    func selectAdjacent(offset: Int) {
+        let destinations = PrimaryDestination.allCases
+        guard let currentIndex = destinations.firstIndex(of: selection) else { return }
+        let nextIndex = min(
+            max(currentIndex + offset, destinations.startIndex),
+            destinations.index(before: destinations.endIndex)
+        )
+        select(destinations[nextIndex])
+    }
+
     func presentNewConversation(_ intent: ConversationEntryIntent) {
         guard conversationRoute == nil else { return }
         conversationRoute = ConversationRoute(
@@ -75,6 +85,7 @@ final class PrimaryAppShellModel {
 
 struct PrimaryAppShell: View {
     @State var model: PrimaryAppShellModel
+    @State private var swipeStartSelection: PrimaryDestination?
     let homeModel: HomeModel
     var careerWorkModel: CareerWorkModel = CareerWorkModel(client: .init(loadOverview: { .init(active: [], paused: [], completed: [], archived: []) }))
     let conversationsModel: ConversationsModel
@@ -85,15 +96,18 @@ struct PrimaryAppShell: View {
     var openInsights: () -> Void = {}
 
     var body: some View {
-        ZStack {
-            ForEach(PrimaryDestination.allCases, id: \.self) { destination in
-                NavigationStack {
+        NavigationStack {
+            TabView(selection: Binding(
+                get: { model.selection },
+                set: { destination in model.select(destination) }
+            )) {
+                ForEach(PrimaryDestination.allCases, id: \.self) { destination in
                     destinationView(destination)
+                        .tag(destination)
                 }
-                .opacity(model.selection == destination ? 1 : 0)
-                .allowsHitTesting(model.selection == destination)
-                .accessibilityHidden(model.selection != destination)
             }
+            .tabViewStyle(.page(indexDisplayMode: .never))
+            .simultaneousGesture(primaryPageCompletionGesture)
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if model.showsConversationDock {
@@ -132,6 +146,23 @@ struct PrimaryAppShell: View {
                 dismiss: dismissConversationAndRefresh
             )
         }
+    }
+
+    private var primaryPageCompletionGesture: some Gesture {
+        DragGesture(minimumDistance: 24)
+            .onChanged { _ in
+                if swipeStartSelection == nil { swipeStartSelection = model.selection }
+            }
+            .onEnded { value in
+                let startSelection = swipeStartSelection
+                swipeStartSelection = nil
+                guard let startSelection,
+                      model.selection == startSelection,
+                      abs(value.translation.width) > abs(value.translation.height),
+                      abs(value.translation.width) >= 60
+                else { return }
+                model.selectAdjacent(offset: value.translation.width < 0 ? 1 : -1)
+            }
     }
 
     @MainActor

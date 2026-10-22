@@ -8,11 +8,13 @@ public enum TaisaTypography: String, CaseIterable, Sendable {
     case metadata
     case navigationLabel
     case supporting
+    case childHeaderTitle
 
     public var pointSize: CGFloat {
         switch self {
         case .navigationLabel: 16
         case .supporting: 14
+        case .childHeaderTitle: 0
         default: 0
         }
     }
@@ -41,6 +43,8 @@ public enum TaisaTypography: String, CaseIterable, Sendable {
             .system(size: pointSize, weight: .medium, design: .default)
         case .supporting:
             .system(size: pointSize, weight: .regular, design: .default)
+        case .childHeaderTitle:
+            .system(.headline, weight: .semibold)
         }
     }
 }
