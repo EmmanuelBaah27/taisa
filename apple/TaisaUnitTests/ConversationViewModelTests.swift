@@ -541,6 +541,34 @@ final class ConversationViewModelTests: XCTestCase {
         XCTAssertEqual(model.streamingFinalMessageID, assistant.id)
     }
 
+    func testPartialRefreshDoesNotPublishDurableAssistantBeforeStreamingMaskIsReady() async {
+        let user = message(role: "user", body: "Question")
+        let assistant = message(role: "assistant", body: "Complete response")
+        let messages = MessageSequence([[user], [user, assistant]])
+        let responseLoads = DelayedSecondResponseLoad()
+        let client = ConversationScreenClient(
+            loadMessages: { await messages.next() },
+            loadAssistantResponses: { await responseLoads.next() },
+            beginVoice: {}, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
+            sendText: { _, messageAvailable in await messageAvailable() },
+            retry: {}, saveDraft: { _ in }, discardDraft: {},
+            loadPartialCoaching: { "Complete response" }
+        )
+        let model = ConversationViewModel(
+            conversationID: user.conversationID, title: "Chat", entryIntent: nil,
+            composer: .coaching, client: client
+        )
+        await model.start()
+
+        let refresh = Task { await model.refreshPartialCoaching() }
+        while await responseLoads.callCount() < 2 { await Task.yield() }
+
+        XCTAssertEqual(model.messages, [user])
+
+        await responseLoads.releaseSecondLoad()
+        await refresh.value
+    }
+
     func testVoiceTranscriptAppearsBeforeCoachingCompletes() async {
         let transcriptShown = AsyncGate()
         let finishCoaching = AsyncGate()
@@ -1381,6 +1409,26 @@ private actor MessageSequence {
         let value = snapshots[min(index, snapshots.count - 1)]
         index += 1
         return value
+    }
+}
+
+private actor DelayedSecondResponseLoad {
+    private var calls = 0
+    private var continuation: CheckedContinuation<Void, Never>?
+
+    func next() async -> [String: AssistantResponseRecord] {
+        calls += 1
+        if calls > 1 {
+            await withCheckedContinuation { continuation = $0 }
+        }
+        return [:]
+    }
+
+    func callCount() -> Int { calls }
+
+    func releaseSecondLoad() {
+        continuation?.resume()
+        continuation = nil
     }
 }
 

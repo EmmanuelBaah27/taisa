@@ -121,6 +121,7 @@ final class ConversationViewModel {
     private(set) var partialCoaching = ""
     private(set) var streamingFinalMessageID: String?
     private(set) var isResponseStreaming = false
+    private(set) var isInitialLoadComplete = false
     private(set) var pendingSentText: String?
     private(set) var failureContext: FailureContext = .request
     private(set) var responseActionFailures: [ResponseActionFailure] = []
@@ -224,6 +225,7 @@ final class ConversationViewModel {
         )
         model.messages = messages
         model.assistantResponses = assistantResponses
+        model.isInitialLoadComplete = true
         return model
     }
 
@@ -238,6 +240,39 @@ final class ConversationViewModel {
                 createdAtMS: Int64(index)
             )
         }
+        let latestResponse = AssistantResponseRecord(
+            metadata: AssistantResponseMetadataRecord(
+                responseMessageID: "latest-message",
+                requestID: "90000000-0000-4000-8000-000000000001",
+                idempotencyReceipt: "overflow-qa-response",
+                mode: .coach,
+                relevance: "career-relevant",
+                contextSufficiency: "sufficient",
+                stance: "nudge",
+                inference: "The stored response metadata arrives after its message history.",
+                confidence: "high",
+                approach: "Expose the same staged layout used by stored conversations.",
+                createdAtMS: 18
+            ),
+            sources: [],
+            proposal: AssistantProposalRecord(
+                id: "90000000-0000-4000-8000-000000000002",
+                responseMessageID: "latest-message",
+                kind: "action",
+                canonicalPayload: Data(
+                    #"{"kind":"action","title":"Review the latest stored response","description":null,"priority":"medium","dueAt":null,"goalId":null}"#.utf8
+                ),
+                payloadDigest: "overflow-qa-proposal",
+                state: .pending,
+                targetType: nil,
+                targetID: nil,
+                targetVersionID: nil,
+                decisionReceipt: nil,
+                createdAtMS: 18,
+                resolvedAtMS: nil
+            ),
+            feedback: nil
+        )
         return ConversationViewModel(
             conversationID: conversationID,
             title: "Overflow conversation",
@@ -246,6 +281,10 @@ final class ConversationViewModel {
                 loadMessages: {
                     try? await Task.sleep(for: .milliseconds(100))
                     return messages
+                },
+                loadAssistantResponses: {
+                    try? await Task.sleep(for: .milliseconds(300))
+                    return ["latest-message": latestResponse]
                 },
                 beginVoice: {}, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
                 sendText: { _, messageAvailable in await messageAvailable() },
@@ -257,6 +296,7 @@ final class ConversationViewModel {
     func start() async {
         guard !started else { return }
         started = true
+        defer { isInitialLoadComplete = true }
         let recoveryEvents = client.recoveryEvents
         recoveryObservation = Task { [weak self] in
             let events = await recoveryEvents()
@@ -367,14 +407,19 @@ final class ConversationViewModel {
         if !latestPartial.isEmpty, latestPartial != partialCoaching {
             isResponseStreaming = true
         }
-        await reloadMessages()
+        let loadedMessages = (try? await client.loadMessages()) ?? messages
+        let loadedResponses = (try? await client.loadAssistantResponses()) ?? assistantResponses
+        let loadedTitle = (try? await client.loadTitle()) ?? title
         guard !Task.isCancelled, composer == .coaching else { return }
-        if let finalAssistant = latestAssistantAfterLatestUser() {
-            partialCoaching = latestPartial.isEmpty ? finalAssistant.body : latestPartial
+        if let finalAssistant = latestAssistantAfterLatestUser(in: loadedMessages) {
             streamingFinalMessageID = finalAssistant.id
+            partialCoaching = latestPartial.isEmpty ? finalAssistant.body : latestPartial
         } else {
             partialCoaching = latestPartial
         }
+        messages = loadedMessages
+        assistantResponses = loadedResponses
+        title = loadedTitle
     }
 
     func requestDiscardRecording() {
@@ -924,6 +969,10 @@ final class ConversationViewModel {
     }
 
     private func latestAssistantAfterLatestUser() -> MessageRecord? {
+        latestAssistantAfterLatestUser(in: messages)
+    }
+
+    private func latestAssistantAfterLatestUser(in messages: [MessageRecord]) -> MessageRecord? {
         guard let latestUserIndex = messages.lastIndex(where: { $0.role == "user" }) else {
             return messages.last(where: { $0.role == "assistant" })
         }
