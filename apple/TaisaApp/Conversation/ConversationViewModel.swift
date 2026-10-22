@@ -107,6 +107,7 @@ final class ConversationViewModel {
     let conversationID: String
     private(set) var title: String
     private(set) var composer: ComposerState
+    private(set) var isClosing = false
     private(set) var messages: [MessageRecord] = []
     private(set) var assistantResponses: [String: AssistantResponseRecord] = [:]
     private(set) var confirmation: Confirmation?
@@ -119,7 +120,6 @@ final class ConversationViewModel {
     private(set) var correctionRegenerationFailureMessageID: String?
     private(set) var partialCoaching = ""
     private(set) var streamingFinalMessageID: String?
-    private(set) var transitioningUserMessageID: String?
     private(set) var pendingSentText: String?
     private(set) var failureContext: FailureContext = .request
     private(set) var responseActionFailures: [ResponseActionFailure] = []
@@ -166,7 +166,6 @@ final class ConversationViewModel {
 
     var isCorrectionSubmitting: Bool { actionInFlight && correctionMessageID != nil }
     var isSendingText: Bool { pendingSentText != nil }
-    var transitioningSentText: String? { transitioningUserMessageID == nil ? nil : pendingSentText }
     var closeActionDisabled: Bool {
         if composer == .preparingVoice { return false }
         return actionInFlight && !(composer == .coaching && processingMessageIsDurable)
@@ -425,19 +424,19 @@ final class ConversationViewModel {
                 guard let self else { return }
                 await self.reloadMessages()
                 self.processingMessageIsDurable = true
-                if let insertedMessage = self.messages.last(where: {
+                if self.messages.contains(where: {
                     $0.role == "user" && $0.body == value && !messageIDsBeforeSend.contains($0.id)
                 }) {
-                    self.transitioningUserMessageID = insertedMessage.id
                     self.text = ""
+                    await Task.yield()
                 }
             }
             await prepareCompletedStreamPresentation()
+            pendingSentText = nil
         }
         catch {
             partialCoaching = ""
             streamingFinalMessageID = nil
-            transitioningUserMessageID = nil
             pendingSentText = nil
             await reloadMessages()
             failureContext = .request
@@ -461,11 +460,6 @@ final class ConversationViewModel {
         streamingFinalMessageID = nil
         partialCoaching = ""
         finishResponseIfPersisted()
-    }
-
-    func completeSentMessageTransition() {
-        transitioningUserMessageID = nil
-        pendingSentText = nil
     }
 
     func retry() async {
@@ -558,9 +552,9 @@ final class ConversationViewModel {
         }
         switch composer {
         case .transcribing:
-            dismiss()
+            closeConversation()
         case .coaching:
-            if processingMessageIsDurable { dismiss() }
+            if processingMessageIsDurable { closeConversation() }
         case .failure:
             if hasRecoverableFailurePayload {
                 confirmation = .saveDiscardOrCancel
@@ -578,8 +572,9 @@ final class ConversationViewModel {
                 defer { self.actionInFlight = false }
                 do {
                     try await client.discardEmptyConversation()
-                    dismiss()
+                    closeConversation()
                 } catch {
+                    isClosing = false
                     composer = .failure(.unavailable)
                 }
             }
@@ -590,17 +585,18 @@ final class ConversationViewModel {
                 defer { self.actionInFlight = false }
                 do {
                     try await client.discardEmptyConversation()
-                    dismiss()
+                    closeConversation()
                 } catch {
+                    isClosing = false
                     composer = .failure(.unavailable)
                 }
             }
         default:
-            dismiss()
+            closeConversation()
         }
     }
 
-    func cancelRecoveryAndClose() { dismiss() }
+    func cancelRecoveryAndClose() { closeConversation() }
 
     func continueWithKeyboardAfterPermissionDenial() {
         guard failureContext == .microphonePermissionDenied else { return }
@@ -623,24 +619,29 @@ final class ConversationViewModel {
     private func discardRecordingAndRemainOrDismiss() async {
         guard !actionInFlight else { return }
         actionInFlight = true
-        if !messages.isEmpty {
-            composer = .waitingForReply
-        }
+        confirmation = nil
+        let closesEmptyConversation = messages.isEmpty
+        if closesEmptyConversation { isClosing = true }
         do {
             try await client.discardDraft()
-            confirmation = nil
-            if messages.isEmpty {
-                try await client.discardEmptyConversation(); dismiss()
+            if closesEmptyConversation {
+                try await client.discardEmptyConversation()
+                closeConversation()
             } else {
                 composer = .waitingForReply
             }
-        } catch { composer = .failure(.unavailable); confirmation = nil }
+        } catch {
+            isClosing = false
+            composer = .failure(.unavailable)
+            confirmation = nil
+        }
         actionInFlight = false
     }
 
     func saveAndClose() async {
         guard !actionInFlight else { return }
         actionInFlight = true
+        isClosing = true
         defer { actionInFlight = false }
         do {
             let input: ConversationInput = {
@@ -650,21 +651,35 @@ final class ConversationViewModel {
             }()
             try await client.saveDraft(input)
             confirmation = nil
-            dismiss()
-        } catch { composer = .failure(.unavailable); confirmation = nil }
+            closeConversation()
+        } catch {
+            isClosing = false
+            composer = .failure(.unavailable)
+            confirmation = nil
+        }
     }
 
     func discardAndClose() async {
         guard !actionInFlight else { return }
         actionInFlight = true
+        isClosing = true
         defer { actionInFlight = false }
         do {
             try await client.discardDraft()
             if messages.isEmpty { try await client.discardEmptyConversation() }
             confirmation = nil
-            dismiss()
+            closeConversation()
         }
-        catch { composer = .failure(.unavailable); confirmation = nil }
+        catch {
+            isClosing = false
+            composer = .failure(.unavailable)
+            confirmation = nil
+        }
+    }
+
+    private func closeConversation() {
+        isClosing = true
+        dismiss()
     }
 
     func requestCorrection(_ message: MessageRecord) {
@@ -886,14 +901,6 @@ final class ConversationViewModel {
     private func prepareCompletedStreamPresentation() async {
         let finalPartial = await client.loadPartialCoaching()
         await reloadMessages()
-        if transitioningUserMessageID == nil,
-           let pendingSentText,
-           let insertedMessage = messages.last(where: {
-               $0.role == "user" && $0.body == pendingSentText
-           }) {
-            transitioningUserMessageID = insertedMessage.id
-            text = ""
-        }
         let finalAssistant = latestAssistantAfterLatestUser()
         guard let finalAssistant else {
             partialCoaching = ""

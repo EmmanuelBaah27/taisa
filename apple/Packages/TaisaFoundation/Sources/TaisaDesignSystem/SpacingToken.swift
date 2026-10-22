@@ -19,6 +19,8 @@ public enum TaisaMotion {
     public static let streamingWordGap: Double = 0.06
     /// Duration of each provisional word's soft resolution.
     public static let streamingWordFade: Double = 0.35
+    /// Continuous auto-follow must settle more gently than a discrete control response.
+    public static let streamingScrollFollow: Double = 0.35
     /// Semantic ease for provisional streamed words resolving into their final form.
     public static let streamingWordRevealCurve = UnitCurve.bezier(
         startControlPoint: UnitPoint(x: 0.22, y: 1),

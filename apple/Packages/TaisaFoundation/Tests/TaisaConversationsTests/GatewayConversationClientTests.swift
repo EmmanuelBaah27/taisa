@@ -11,7 +11,6 @@ private actor GatewayConversationTestKeys: DatabaseKeyStore {
     func loadKey() async throws -> Data? { key }
     func saveKey(_ key: Data) async throws { self.key = key }
 }
-
 private actor UnusedCoachingRunner: VoiceCoachingRunning {
     func stream(for turn: VoiceTurnRecord) async throws -> AsyncThrowingStream<CoachingStreamEvent, Error> {
         AsyncThrowingStream { $0.finish() }
@@ -129,10 +128,33 @@ struct GatewayConversationClientTests {
         #expect(snapshot.visibleMessages.filter { $0.role == "assistant" }.isEmpty)
         #expect(snapshot.assistantResponses.isEmpty)
     }
+
     @Test func fallbackTitleIsDerivedFromTheFirstUserMessage() {
         #expect(
             ConversationTitleDeriver.derive(from: "  Help me prepare for my quarterly performance review next week.  ")
-                == "Preparing for their quarterly performance review"
+                == "Preparing for my quarterly performance review"
+        )
+    }
+
+    @Test func fallbackTitleHandlesCurlyApostropheFirstPersonPreambles() {
+        #expect(
+            ConversationTitleDeriver.derive(from: "I’m typing to see if it will work")
+                == "Typing to see if it will work"
+        )
+    }
+
+    @Test func fallbackTitlesUseTheTopicInsteadOfThirdPersonReporting() {
+        #expect(
+            ConversationTitleDeriver.derive(from: "I’m trying to see if it will work")
+                == "Trying to see if it will work"
+        )
+        #expect(
+            ConversationTitleDeriver.derive(from: "I’m sending a typed message to test this")
+                == "Sending a typed message to test this"
+        )
+        #expect(
+            ConversationTitleDeriver.derive(from: "We had those discussions, do you remember")
+                == "We had those discussions"
         )
     }
 
@@ -149,17 +171,18 @@ struct GatewayConversationClientTests {
     @Test func fallbackTitleHandlesAnOverlongFirstToken() throws {
         let title = try #require(ConversationTitleDeriver.derive(from: String(repeating: "a", count: 80)))
         #expect(title.split(separator: " ").count < 8)
-        #expect(title == "Discussing")
+        #expect(title.count == ConversationTitleDeriver.maximumLength)
+        #expect(!title.hasPrefix("Discussing"))
     }
 
     @Test func ordinaryTopicsContainingFixtureKeywordsKeepTheirActualSubject() {
         #expect(
             ConversationTitleDeriver.derive(from: "Review my draft promotion packet")
-                == "Discussing Review their draft promotion packet"
+                == "Reviewing my draft promotion packet"
         )
         #expect(
             ConversationTitleDeriver.derive(from: "We achieved record sales this quarter")
-                == "Discussing We achieved record sales this quarter"
+                == "We achieved record sales this quarter"
         )
     }
 

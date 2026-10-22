@@ -4,6 +4,8 @@ public struct ConversationJumpToLatestButton: View {
     public enum Contract {
         public static let size: CGFloat = 48
         public static let iconSize: CGFloat = 24
+        public static let loadingRingLineWidth: CGFloat = 2
+        public static let loadingRingTracksOuterStroke = true
         public static let accessibilityLabel = "Jump to latest response"
     }
 
@@ -17,19 +19,43 @@ public struct ConversationJumpToLatestButton: View {
 
     public var body: some View {
         TaisaSecondaryCapsuleButton(height: Contract.size, action: action) {
-            ZStack {
-                if isLoading {
-                    ProgressView()
-                        .controlSize(.regular)
-                        .tint(TaisaColor.mutedForeground.color)
-                }
-                CentralIcon(.chevronDown)
-                    .frame(width: Contract.iconSize, height: Contract.iconSize)
-                    .foregroundStyle(TaisaColor.foreground.color)
+            CentralIcon(.chevronDown)
+                .frame(width: Contract.iconSize, height: Contract.iconSize)
+                .foregroundStyle(TaisaColor.foreground.color)
+                .frame(width: Contract.size, height: Contract.size)
+        }
+        .overlay {
+            if isLoading {
+                LoadingRing()
+                    .allowsHitTesting(false)
             }
-            .frame(width: Contract.size, height: Contract.size)
         }
         .accessibilityLabel(Contract.accessibilityLabel)
         .accessibilityValue(isLoading ? "Taisa is responding" : "")
+    }
+}
+
+private struct LoadingRing: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var rotation = Angle.zero
+
+    var body: some View {
+        Circle()
+            .trim(from: 0.08, to: 0.78)
+            .stroke(
+                TaisaColor.mutedForeground.color,
+                style: StrokeStyle(
+                    lineWidth: ConversationJumpToLatestButton.Contract.loadingRingLineWidth,
+                    lineCap: .round
+                )
+            )
+            .padding(1)
+            .rotationEffect(rotation)
+            .onAppear {
+                guard !reduceMotion else { return }
+                withAnimation(.linear(duration: 1).repeatForever(autoreverses: false)) {
+                    rotation = .degrees(360)
+                }
+            }
     }
 }

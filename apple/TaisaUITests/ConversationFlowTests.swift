@@ -13,9 +13,11 @@ final class ConversationFlowTests: XCTestCase {
         XCTAssertTrue(element("conversation.root", in: app).waitForExistence(timeout: 5))
         XCTAssertFalse(element("app-shell.conversation-dock", in: app).exists)
         XCTAssertFalse(element("app-shell.primary-navigation", in: app).exists)
+        XCTAssertFalse(app.staticTexts["Preparing microphone"].exists)
     }
 
     private func element(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
         app.descendants(matching: .any)[identifier]
     }
+
 }

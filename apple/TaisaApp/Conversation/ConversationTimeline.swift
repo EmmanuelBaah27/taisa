@@ -4,12 +4,17 @@ import TaisaStorage
 import UIKit
 
 enum ConversationTimelineLayout {
+    enum NewMessageScrollAction: Equatable {
+        case initialLatest
+        case anchorUserMessage
+        case preserveViewport
+    }
+
     static let userBubbleWidthFraction: CGFloat = 0.85
     static let jumpVisibilityThreshold: CGFloat = 160
     static let ordinaryMessageSpacing: CGFloat = 12
     static let userToAssistantSpacing: CGFloat = 32
     static let firstMessageTopSpacing: CGFloat = 8
-
     static func spacing(afterRole: String, beforeRole: String?) -> CGFloat {
         guard beforeRole != nil else { return 0 }
         return afterRole == "user" && beforeRole == "assistant"
@@ -17,19 +22,23 @@ enum ConversationTimelineLayout {
             : ordinaryMessageSpacing
     }
 
-    static func shouldShowJumpToLatest(distanceFromBottom: CGFloat) -> Bool {
-        distanceFromBottom >= jumpVisibilityThreshold
+    static func shouldShowJumpToLatest(
+        actualContentFrame: CGRect,
+        readableViewport: CGRect
+    ) -> Bool {
+        guard actualContentFrame != .zero, readableViewport != .zero else { return false }
+        return actualContentFrame.maxY - readableViewport.maxY >= jumpVisibilityThreshold
     }
 
-    static func shouldFollowResponse(
-        responseTop: CGFloat,
-        responseBottom: CGFloat,
-        readableTop: CGFloat,
-        readableBottom: CGFloat,
-        isAwayFromLatest: Bool
-    ) -> Bool {
-        guard !isAwayFromLatest else { return false }
-        return responseTop >= readableTop && responseBottom >= readableTop && responseTop <= readableBottom
+    static func newMessageScrollAction(
+        hasPositionedInitialMessages: Bool,
+        isSendingText: Bool,
+        messageRole: String
+    ) -> NewMessageScrollAction {
+        if !hasPositionedInitialMessages, !isSendingText {
+            return .initialLatest
+        }
+        return messageRole == "user" ? .anchorUserMessage : .preserveViewport
     }
 
     static func responseRunwayHeight(viewportHeight: CGFloat, isResponseActive: Bool) -> CGFloat {
@@ -105,8 +114,7 @@ struct ConversationTimeline: View {
     let failedResponseUpdateAfter: String?
     let streamingResponse: String
     let streamingFinalMessageID: String?
-    let sentMessageTransitionID: String?
-    let sentMessageTransition: Namespace.ID
+    let isSendingText: Bool
     let isThinking: Bool
     let streamingDidFinish: @MainActor @Sendable () -> Void
     let retryResponseUpdate: @MainActor @Sendable () -> Void
@@ -120,7 +128,8 @@ struct ConversationTimeline: View {
     @State private var expandedUserMessages: Set<String> = []
     @State private var copiedConfirmationVisible = false
     @State private var readableViewportHeight: CGFloat = 0
-    @State private var allowsAutomaticResponseFollow = false
+    @State private var readableViewportFrame: CGRect = .zero
+    @State private var actualContentFrame: CGRect = .zero
 
     init(
         messages: [MessageRecord],
@@ -129,8 +138,7 @@ struct ConversationTimeline: View {
         failedResponseUpdateAfter: String? = nil,
         streamingResponse: String = "",
         streamingFinalMessageID: String? = nil,
-        sentMessageTransitionID: String? = nil,
-        sentMessageTransition: Namespace.ID,
+        isSendingText: Bool = false,
         isThinking: Bool = false,
         streamingDidFinish: @escaping @MainActor @Sendable () -> Void = {},
         retryResponseUpdate: @escaping @MainActor @Sendable () -> Void = {},
@@ -146,8 +154,7 @@ struct ConversationTimeline: View {
         self.failedResponseUpdateAfter = failedResponseUpdateAfter
         self.streamingResponse = streamingResponse
         self.streamingFinalMessageID = streamingFinalMessageID
-        self.sentMessageTransitionID = sentMessageTransitionID
-        self.sentMessageTransition = sentMessageTransition
+        self.isSendingText = isSendingText
         self.isThinking = isThinking
         self.streamingDidFinish = streamingDidFinish
         self.retryResponseUpdate = retryResponseUpdate
@@ -174,11 +181,6 @@ struct ConversationTimeline: View {
                                         message: message,
                                         isExpanded: expandedUserMessages.contains(message.id),
                                         toggleExpansion: { toggleExpansion(for: message.id) }
-                                    )
-                                    .taisaMessageSendTransition(
-                                        isActive: message.id == sentMessageTransitionID,
-                                        namespace: sentMessageTransition,
-                                        role: .message
                                     )
                                     .contextMenu { messageActions(for: message) }
                                 }
@@ -234,23 +236,23 @@ struct ConversationTimeline: View {
                             .padding(.horizontal, TaisaSpacing.standard.rawValue)
                             .accessibilityIdentifier("conversation.thinking")
                             .id("conversation.thinking")
-                            .onGeometryChange(for: CGRect.self) { geometry in
-                                geometry.frame(in: .scrollView)
-                            } action: { _, frame in
-                                followResponseIfReadable(frame, using: proxy)
-                            }
                     } else if !streamingResponse.isEmpty {
                         TaisaStreamingText(streamingResponse, onRevealComplete: streamingDidFinish)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.horizontal, TaisaSpacing.standard.rawValue)
                             .accessibilityIdentifier("conversation.streaming-response")
                             .id(streamingFinalMessageID ?? "conversation.streaming-response.live")
-                            .onGeometryChange(for: CGRect.self) { geometry in
-                                geometry.frame(in: .scrollView)
-                            } action: { _, frame in
-                                followResponseIfReadable(frame, using: proxy)
-                            }
                     }
+
+                    Color.clear
+                        .frame(height: 1)
+                        .accessibilityHidden(true)
+                        .onGeometryChange(for: CGRect.self) { geometry in
+                            geometry.frame(in: .global)
+                        } action: { _, frame in
+                            actualContentFrame = frame
+                            refreshJumpVisibility()
+                        }
 
                     let responseRunwayHeight = ConversationTimelineLayout.responseRunwayHeight(
                         viewportHeight: readableViewportHeight,
@@ -261,6 +263,7 @@ struct ConversationTimeline: View {
                             .frame(height: responseRunwayHeight)
                             .accessibilityHidden(true)
                     }
+
                 }
                 .padding(.top, ConversationTimelineLayout.firstMessageTopSpacing)
                 .padding(.bottom, TaisaSpacing.standard.rawValue)
@@ -270,26 +273,14 @@ struct ConversationTimeline: View {
             }
             .scrollBounceBehavior(.always, axes: .vertical)
             .defaultScrollAnchor(.bottom, for: .initialOffset)
-            .contentMargins(
-                .top,
-                TaisaControlMetric.appBarHeight,
-                for: .scrollContent
-            )
-            .onScrollGeometryChange(for: Bool.self) { geometry in
-                let distanceFromBottom = geometry.contentSize.height
-                    - geometry.containerSize.height
-                    - geometry.contentOffset.y
-                return ConversationTimelineLayout.shouldShowJumpToLatest(
-                    distanceFromBottom: distanceFromBottom
-                )
-            } action: { _, away in isAwayFromLatest = away }
             .onScrollGeometryChange(for: CGFloat.self) { geometry in
                 geometry.containerSize.height
             } action: { _, height in readableViewportHeight = height }
-            .onScrollPhaseChange { _, phase in
-                if phase == .interacting {
-                    allowsAutomaticResponseFollow = false
-                }
+            .onGeometryChange(for: CGRect.self) { geometry in
+                geometry.frame(in: .global)
+            } action: { _, frame in
+                readableViewportFrame = frame
+                refreshJumpVisibility()
             }
             .overlay(alignment: .bottom) {
                 VStack(spacing: TaisaSpacing.control.rawValue) {
@@ -301,7 +292,6 @@ struct ConversationTimeline: View {
                             isLoading: isThinking || !streamingResponse.isEmpty,
                             action: {
                                 isAwayFromLatest = false
-                                allowsAutomaticResponseFollow = false
                                 scrollToLatest(using: proxy, animated: !reduceMotion)
                             }
                         )
@@ -311,24 +301,26 @@ struct ConversationTimeline: View {
                 .padding(.bottom, TaisaSpacing.standard.rawValue)
             }
             .task(id: messages.last?.id) {
-                guard messages.last != nil else { return }
-                if !hasPositionedInitialMessages {
+                guard let message = messages.last else { return }
+                let action = ConversationTimelineLayout.newMessageScrollAction(
+                    hasPositionedInitialMessages: hasPositionedInitialMessages,
+                    isSendingText: isSendingText,
+                    messageRole: message.role
+                )
+                hasPositionedInitialMessages = true
+                switch action {
+                case .initialLatest:
                     await Task.yield()
                     isAwayFromLatest = false
                     scrollToLatest(using: proxy, animated: false)
-                    hasPositionedInitialMessages = true
-                    return
-                }
-                await Task.yield()
-                guard let message = messages.last else { return }
-                if message.role == "user" {
+                case .anchorUserMessage:
+                    await Task.yield()
                     isAwayFromLatest = false
-                    allowsAutomaticResponseFollow = true
-                    withAnimation(ConversationTimelineMotion.animatesNewMessage(reduceMotion: reduceMotion) ? .smooth(duration: TaisaMotion.settle) : nil) {
+                    withAnimation(reduceMotion ? nil : .smooth(duration: TaisaMotion.settle)) {
                         proxy.scrollTo(message.id, anchor: .top)
                     }
-                } else if !isAwayFromLatest {
-                    scrollToLatest(using: proxy, animated: ConversationTimelineMotion.animatesNewMessage(reduceMotion: reduceMotion))
+                case .preserveViewport:
+                    break
                 }
             }
         }
@@ -345,18 +337,11 @@ struct ConversationTimeline: View {
         }
     }
 
-    private func followResponseIfReadable(_ frame: CGRect, using proxy: ScrollViewProxy) {
-        let readableTop = TaisaControlMetric.appBarHeight
-        let readableBottom = readableViewportHeight
-        guard frame.maxY > readableBottom,
-              ConversationTimelineLayout.shouldFollowResponse(
-                responseTop: frame.minY,
-                responseBottom: frame.maxY,
-                readableTop: readableTop,
-                readableBottom: readableBottom,
-                isAwayFromLatest: !allowsAutomaticResponseFollow
-              ) else { return }
-        scrollToLatest(using: proxy, animated: false)
+    private func refreshJumpVisibility() {
+        isAwayFromLatest = ConversationTimelineLayout.shouldShowJumpToLatest(
+            actualContentFrame: actualContentFrame,
+            readableViewport: readableViewportFrame
+        )
     }
 
     private func messageText(_ message: MessageRecord) -> Text {
@@ -477,7 +462,7 @@ private struct ExpandableUserMessage: View {
             }
         }
         .padding(TaisaSpacing.control.rawValue)
-        .background(TaisaColor.subtleSurface.color, in: RoundedRectangle(cornerRadius: TaisaRadius.panel.rawValue))
+        .background(TaisaColor.raisedSurface.color, in: RoundedRectangle(cornerRadius: TaisaRadius.panel.rawValue))
         .onPreferenceChange(LimitedMessageHeightKey.self) { limitedHeight = $0 }
         .onPreferenceChange(FullMessageHeightKey.self) { fullHeight = $0 }
     }

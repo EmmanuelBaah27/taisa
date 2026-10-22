@@ -98,4 +98,5 @@ final class PrimaryAppShellTests: XCTestCase {
         XCTAssertTrue(model.showsConversationDock)
         XCTAssertEqual(model.conversationReturnGeneration, 1)
     }
+
 }

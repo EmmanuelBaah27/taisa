@@ -10,6 +10,19 @@ struct ConversationComponentTests {
         #expect(contract.keyboardAccessibilityLabel == "Talk to Taisa with keyboard")
     }
 
+    @Test func disabledDockRemovesTheRecordingGlow() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let source = try String(
+            contentsOf: root.appendingPathComponent("Sources/TaisaDesignSystem/ConversationEntryDock.swift"),
+            encoding: .utf8
+        )
+
+        #expect(source.contains("recordingGlow(enabled: !disabled)"))
+    }
+
     @Test func conversationTokensCoverRequiredSemanticRoles() {
         #expect(TaisaColor.destructive.hex == "#C60000")
         #expect(TaisaColor.warning.hex == "#E46300")
@@ -22,6 +35,7 @@ struct ConversationComponentTests {
         #expect(TaisaMotion.settle == 0.50)
         #expect(TaisaMotion.streamingWordGap == 0.06)
         #expect(TaisaMotion.streamingWordFade == 0.35)
+        #expect(TaisaMotion.streamingScrollFollow == 0.35)
         #expect(TaisaMotion.streamingWordRevealCurve.value(at: 0) == 0)
         #expect(TaisaMotion.streamingWordRevealCurve.value(at: 1) == 1)
         #expect(TaisaControlMetric.primaryNavigationItemWidth == 56)
@@ -63,16 +77,12 @@ struct ConversationComponentTests {
         #expect(TaisaStreamingText.Motion.standard == .softWordResolution)
     }
 
-    @Test func sentMessageTransitionDefinesComposerAndMessageRoles() {
-        #expect(TaisaMessageSendTransition.Role.composer != .message)
-        #expect(TaisaMessageSendTransition.Contract.duration == TaisaMotion.fast)
-        #expect(TaisaMessageSendTransition.Contract.stabilizesConcurrentLayoutChanges)
-    }
-
     @Test func jumpToLatestIsIconOnlyAndKeepsStableGeometryWhileLoading() {
         #expect(ConversationJumpToLatestButton.Contract.size == 48)
         #expect(ConversationJumpToLatestButton.Contract.iconSize == 24)
         #expect(ConversationJumpToLatestButton.Contract.accessibilityLabel == "Jump to latest response")
+        #expect(ConversationJumpToLatestButton.Contract.loadingRingLineWidth == 2)
+        #expect(ConversationJumpToLatestButton.Contract.loadingRingTracksOuterStroke)
     }
 
     @Test func restoredVoiceDraftUsesStaticRecordedStatus() {
@@ -177,6 +187,7 @@ struct ConversationComponentTests {
         #expect(ConversationActionBar.Availability.recording.canDiscard)
         #expect(ConversationActionBar.Availability.preparing.canSwitchToKeyboard)
         #expect(ConversationActionBar.Availability.preparing.showsPause)
+        #expect(ConversationActionBar.Availability.preparing.primaryLabel == "Pause")
         #expect(ConversationActionBar.Availability.recording.canSwitchToKeyboard)
         #expect(ConversationActionBar.Availability.recording.showsSend)
         #expect(ConversationActionBar.Availability.recording.canSend == false)

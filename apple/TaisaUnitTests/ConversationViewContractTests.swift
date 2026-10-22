@@ -12,6 +12,7 @@ final class ConversationViewContractTests: XCTestCase {
 
         XCTAssertTrue(source.contains("ConversationPageHeader("))
         XCTAssertTrue(source.contains("ConversationComposerChrome"))
+        XCTAssertTrue(source.contains(".safeAreaInset(edge: .top, spacing: 0)"))
         XCTAssertTrue(source.contains(".safeAreaInset(edge: .bottom, spacing: 0)"))
         XCTAssertFalse(source.contains("private func bottomChrome"))
         XCTAssertFalse(source.contains("PageEdgeFade(.navigation)"))
@@ -145,57 +146,65 @@ final class ConversationViewContractTests: XCTestCase {
         XCTAssertTrue(source.contains(".smooth(duration: TaisaMotion.settle)"))
         XCTAssertTrue(source.contains("Edit message"))
         XCTAssertTrue(source.contains("isProcessing: isSubmitting"))
-        XCTAssertTrue(source.contains("taisaMessageSendTransition"))
-        XCTAssertTrue(source.contains("@Namespace private var sentMessageTransition"))
-        XCTAssertTrue(source.contains("sentMessageTransitionID: model.transitioningUserMessageID"))
-        XCTAssertTrue(source.contains(".seconds(TaisaMessageSendTransition.Contract.duration)"))
+        XCTAssertFalse(source.contains("TaisaMessageSendFlight"))
+        XCTAssertFalse(source.contains("sentMessageFrameChanged"))
+        XCTAssertFalse(source.contains("matchedGeometryEffect"))
+        XCTAssertFalse(source.contains("@Namespace private var sentMessageTransition"))
+        XCTAssertFalse(source.contains("sentMessageTransitionID"))
+        XCTAssertFalse(source.contains("stagedUserMessageID"))
         XCTAssertTrue(source.contains("UIApplication.openSettingsURLString"))
         XCTAssertTrue(source.contains("UIApplication.shared.open(settingsURL"))
-        XCTAssertTrue(source.contains("Task.sleep(for: .milliseconds(200))"))
+        XCTAssertTrue(source.contains("recordingBar(.preparing)"))
+        XCTAssertFalse(source.contains("Preparing microphone…"))
+        XCTAssertFalse(source.contains("Task.sleep(for: .milliseconds(200))"))
+        XCTAssertTrue(source.contains("model.actionInFlight && model.composer != .preparingVoice"))
         XCTAssertTrue(source.contains("Microphone unavailable. Resume when the call ends."))
-        XCTAssertTrue(source.contains(".disabled(model.actionInFlight)"))
         XCTAssertTrue(source.contains("TaisaControlMetric.conversationEmptyVoiceIcon"))
-        XCTAssertTrue(source.contains("TaisaTypography.metadata.font"))
+        XCTAssertTrue(source.contains("TaisaTypography.supporting.font"))
+        XCTAssertTrue(source.contains("case .durableProcessing: .recording"))
         XCTAssertTrue(source.contains("TAISA_CAPTURE begin.failure type="))
         XCTAssertFalse(source.contains("Correct transcript"))
         XCTAssertFalse(source.contains("Text(message.role == \"assistant\" ? \"Taisa\" : \"You\")"))
         XCTAssertFalse(source.contains("Text(\"You\")"))
         XCTAssertFalse(source.contains("conversation.transcript-preview"))
-        XCTAssertFalse(source.contains("containerRelativeFrame(.horizontal"))
         XCTAssertFalse(source.contains("import GRDB"))
     }
 
-    func testJumpToLatestAppearsOnlyAfterAUsefulDistance() {
-        XCTAssertFalse(ConversationTimelineLayout.shouldShowJumpToLatest(distanceFromBottom: 0))
-        XCTAssertFalse(ConversationTimelineLayout.shouldShowJumpToLatest(distanceFromBottom: 159))
-        XCTAssertTrue(ConversationTimelineLayout.shouldShowJumpToLatest(distanceFromBottom: 160))
-    }
-
-    func testResponseFollowingStopsWhenMeaningfulContentLeavesTheReadableViewport() {
-        XCTAssertTrue(ConversationTimelineLayout.shouldFollowResponse(
-            responseTop: 96,
-            responseBottom: 700,
-            readableTop: 64,
-            readableBottom: 720,
-            isAwayFromLatest: false
+    func testJumpToLatestUsesActualContentInsteadOfTheResponseRunway() {
+        XCTAssertFalse(ConversationTimelineLayout.shouldShowJumpToLatest(
+            actualContentFrame: CGRect(x: 0, y: 100, width: 390, height: 600),
+            readableViewport: CGRect(x: 0, y: 80, width: 390, height: 700)
         ))
-        XCTAssertFalse(ConversationTimelineLayout.shouldFollowResponse(
-            responseTop: 48,
-            responseBottom: 700,
-            readableTop: 64,
-            readableBottom: 720,
-            isAwayFromLatest: false
+        XCTAssertFalse(ConversationTimelineLayout.shouldShowJumpToLatest(
+            actualContentFrame: CGRect(x: 0, y: 100, width: 390, height: 839),
+            readableViewport: CGRect(x: 0, y: 80, width: 390, height: 700)
         ))
-        XCTAssertFalse(ConversationTimelineLayout.shouldFollowResponse(
-            responseTop: 96,
-            responseBottom: 700,
-            readableTop: 64,
-            readableBottom: 720,
-            isAwayFromLatest: true
+        XCTAssertTrue(ConversationTimelineLayout.shouldShowJumpToLatest(
+            actualContentFrame: CGRect(x: 0, y: 100, width: 390, height: 840),
+            readableViewport: CGRect(x: 0, y: 80, width: 390, height: 700)
         ))
     }
 
-    func testNewSentTurnUsesHeaderAnchorInsteadOfAbsoluteBottom() throws {
+    func testOnlyANewUserMessageTakesScrollOwnershipAfterInitialPositioning() {
+        XCTAssertEqual(
+            ConversationTimelineLayout.newMessageScrollAction(
+                hasPositionedInitialMessages: true,
+                isSendingText: true,
+                messageRole: "user"
+            ),
+            .anchorUserMessage
+        )
+        XCTAssertEqual(
+            ConversationTimelineLayout.newMessageScrollAction(
+                hasPositionedInitialMessages: true,
+                isSendingText: false,
+                messageRole: "assistant"
+            ),
+            .preserveViewport
+        )
+    }
+
+    func testNewSentTurnPreservesTheOriginalTitleRelativePlacement() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let source = try String(
             contentsOf: root.appendingPathComponent("TaisaApp/Conversation/ConversationTimeline.swift"),
@@ -203,13 +212,20 @@ final class ConversationViewContractTests: XCTestCase {
         )
 
         XCTAssertTrue(source.contains("proxy.scrollTo(message.id, anchor: .top)"))
-        XCTAssertTrue(source.contains("allowsAutomaticResponseFollow = true"))
-        XCTAssertTrue(source.contains(".onScrollPhaseChange"))
+        XCTAssertFalse(source.contains(".contentMargins(\n                .top,\n                TaisaControlMetric.appBarHeight"))
+        XCTAssertFalse(source.contains("sentMessageTopClearance"))
+        XCTAssertTrue(source.contains("if !hasPositionedInitialMessages, !isSendingText"))
+        XCTAssertFalse(source.contains(".onScrollPhaseChange"))
         XCTAssertFalse(source.contains(".onChange(of: streamingResponse)"))
         XCTAssertFalse(source.contains(".onChange(of: isThinking)"))
+        XCTAssertFalse(source.contains("followResponseIfReadable"))
+        XCTAssertFalse(source.contains("TaisaMotion.streamingScrollFollow"))
+        XCTAssertFalse(source.contains(".easeOut(duration: TaisaMotion.fast)"))
     }
 
-    func testActiveResponseProvidesEnoughRunwayForHeaderAnchoring() {
+    func testConversationUsesSemanticTurnSpacing() {
+        XCTAssertEqual(ConversationTimelineLayout.ordinaryMessageSpacing, 12)
+        XCTAssertEqual(ConversationTimelineLayout.userToAssistantSpacing, 32)
         XCTAssertEqual(
             ConversationTimelineLayout.responseRunwayHeight(
                 viewportHeight: 800,
@@ -224,11 +240,6 @@ final class ConversationViewContractTests: XCTestCase {
             ),
             0
         )
-    }
-
-    func testConversationUsesSemanticTurnSpacing() {
-        XCTAssertEqual(ConversationTimelineLayout.ordinaryMessageSpacing, 12)
-        XCTAssertEqual(ConversationTimelineLayout.userToAssistantSpacing, 32)
         XCTAssertEqual(
             ConversationTimelineLayout.spacing(afterRole: "user", beforeRole: "assistant"),
             32
