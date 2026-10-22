@@ -69,10 +69,15 @@ private struct PreviewScenarioView: View {
 
     var body: some View {
         Group {
-            if scenario.identifier == "recording-glow.tuner" {
+            if scenario.identifier == "recording-glow.tuner"
+                || scenario.identifier.hasPrefix("conversation.") {
                 VStack(spacing: 0) { scenario.makeRootView() }
-                    .accessibilityElement(children: .contain)
-                    .accessibilityIdentifier("preview.ready.\(scenario.identifier)")
+                    .overlay(alignment: .topLeading) {
+                        Text("Preview ready")
+                            .frame(width: 1, height: 1)
+                            .opacity(0.001)
+                            .accessibilityIdentifier("preview.ready.\(scenario.identifier)")
+                    }
             } else {
                 ScrollView { scenarioContent }
                     .accessibilityIdentifier("preview.ready.\(scenario.identifier)")

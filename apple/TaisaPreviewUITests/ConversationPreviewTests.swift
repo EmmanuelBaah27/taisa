@@ -2,6 +2,27 @@ import XCTest
 
 @MainActor
 final class ConversationPreviewTests: XCTestCase {
+    func testExistingConversationOpensAtLatestAndJumpReturnsToLatest() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-TAISAPreviewScenario", "conversation.existing-history"]
+        app.launch()
+
+        XCTAssertTrue(app.descendants(matching: .any)["preview.ready.conversation.existing-history"].waitForExistence(timeout: 5))
+        let latest = app.staticTexts["Latest rendered conversation message"]
+        XCTAssertTrue(latest.waitForExistence(timeout: 5))
+        XCTAssertTrue(latest.isHittable)
+
+        let timeline = app.scrollViews["conversation.root"]
+        timeline.swipeDown()
+        let jump = app.buttons["Jump to latest response"]
+        XCTAssertTrue(jump.waitForExistence(timeout: 3))
+        jump.tap()
+
+        XCTAssertTrue(latest.waitForExistence(timeout: 3))
+        XCTAssertTrue(latest.isHittable)
+        XCTAssertFalse(jump.waitForExistence(timeout: 1))
+    }
+
     func testResponseFeedbackFactorsOpenInADismissibleSheet() {
         let app = XCUIApplication()
         app.launchArguments = ["-TAISAPreviewScenario", "conversation.senior-self-response"]
@@ -43,6 +64,7 @@ final class ConversationPreviewTests: XCTestCase {
             "conversation-list.recovered-draft", "conversation-list.completed-history",
             "conversation.recording", "conversation.paused", "conversation.typing",
             "conversation.transcribing", "conversation.coaching", "conversation.waiting",
+            "conversation.existing-history",
             "conversation.permission-denied", "conversation.retry-transcription",
             "conversation.retry-coaching", "conversation.correction",
             "conversation.accessibility-xxxl", "conversation.ipad",
