@@ -41,11 +41,13 @@ final class ConversationPreviewTests: XCTestCase {
         XCTAssertTrue(sentMessage.waitForExistence(timeout: 5))
         let closeButton = app.buttons["Close conversation"]
         XCTAssertTrue(closeButton.exists)
+        let minimumAnchoredY = closeButton.frame.maxY + 8
         let maximumAnchoredY = closeButton.frame.maxY + 32
         let deadline = Date().addingTimeInterval(3)
         while sentMessage.frame.minY > maximumAnchoredY, Date() < deadline {
             RunLoop.current.run(until: Date().addingTimeInterval(0.05))
         }
+        XCTAssertGreaterThanOrEqual(sentMessage.frame.minY, minimumAnchoredY)
         XCTAssertLessThanOrEqual(sentMessage.frame.minY, maximumAnchoredY)
 
         let settledY = sentMessage.frame.minY

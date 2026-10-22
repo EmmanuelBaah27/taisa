@@ -146,8 +146,8 @@ struct ConversationTimeline: View {
     @State private var readableViewportFrame: CGRect = .zero
     @State private var actualContentFrame: CGRect = .zero
     @State private var anchoredUserMessageID: String?
+    @State private var headerProtectedMessageID: String?
     @State private var shouldReleaseAnchorWhenScrollSettles = false
-    @State private var scrollPosition = ScrollPosition(idType: String.self)
 
     init(
         messages: [MessageRecord],
@@ -185,7 +185,8 @@ struct ConversationTimeline: View {
 
     var body: some View {
         let presentedMessages = messages.filter { $0.id != streamingFinalMessageID }
-        ScrollView {
+        ScrollViewReader { proxy in
+            ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(Array(presentedMessages.enumerated()), id: \.element.id) { index, message in
                         VStack(alignment: message.role == "user" ? .trailing : .leading, spacing: TaisaSpacing.tight.rawValue) {
@@ -238,6 +239,12 @@ struct ConversationTimeline: View {
                         .accessibilityElement(children: .contain)
                         .accessibilityIdentifier("conversation.message.\(message.id)")
                         .id(message.id)
+                        .padding(
+                            .top,
+                            headerProtectedMessageID == message.id
+                                ? TaisaSpacing.standard.rawValue
+                                : 0
+                        )
                         .padding(
                             .bottom,
                             ConversationTimelineLayout.spacing(
@@ -294,7 +301,6 @@ struct ConversationTimeline: View {
                 .scrollTargetLayout()
         }
             .accessibilityIdentifier("conversation.timeline")
-            .scrollPosition($scrollPosition)
             .scrollBounceBehavior(.always, axes: .vertical)
             .defaultScrollAnchor(.bottom, for: .initialOffset)
             .onScrollGeometryChange(for: CGFloat.self) { geometry in
@@ -323,7 +329,7 @@ struct ConversationTimeline: View {
                         ConversationJumpToLatestButton(
                             isLoading: presentation.showsStreamingRing && isAwayFromLatest,
                             action: {
-                                scrollToLatest(animated: !reduceMotion)
+                                scrollToLatest(using: proxy, animated: !reduceMotion)
                             }
                         )
                         .accessibilityIdentifier("conversation.jump-to-latest")
@@ -333,15 +339,16 @@ struct ConversationTimeline: View {
             }
             .task(id: conversationID) {
                 anchoredUserMessageID = nil
+                headerProtectedMessageID = nil
                 shouldReleaseAnchorWhenScrollSettles = false
                 hasPositionedInitialMessages = false
-                scrollPosition = ScrollPosition(idType: String.self)
             }
             .task(id: presentation.isInitialLoadComplete) {
                 guard presentation.isInitialLoadComplete, !messages.isEmpty else { return }
                 hasPositionedInitialMessages = true
                 isAwayFromLatest = false
-                scrollToLatest(animated: false)
+                await Task.yield()
+                scrollToLatest(using: proxy, animated: false)
             }
             .task(id: messages.last?.id) {
                 guard let message = messages.last else { return }
@@ -354,29 +361,33 @@ struct ConversationTimeline: View {
                 hasPositionedInitialMessages = true
                 switch action {
                 case .initialLatest:
+                    await Task.yield()
                     isAwayFromLatest = false
-                    scrollToLatest(animated: false)
+                    scrollToLatest(using: proxy, animated: false)
                 case .anchorUserMessage:
+                    await Task.yield()
                     isAwayFromLatest = false
                     anchoredUserMessageID = message.id
+                    headerProtectedMessageID = message.id
                     shouldReleaseAnchorWhenScrollSettles = false
                     withAnimation(reduceMotion ? nil : .smooth(duration: TaisaMotion.settle)) {
-                        scrollPosition.scrollTo(id: message.id, anchor: .top)
+                        proxy.scrollTo(message.id, anchor: .top)
                     }
                 case .preserveViewport:
                     break
                 }
             }
+        }
     }
 
-    private func scrollToLatest(animated: Bool) {
+    private func scrollToLatest(using proxy: ScrollViewProxy, animated: Bool) {
         anchoredUserMessageID = nil
         if animated {
             withAnimation(.smooth(duration: TaisaMotion.settle)) {
-                scrollPosition.scrollTo(edge: .bottom)
+                proxy.scrollTo("conversation.timeline-bottom", anchor: .bottom)
             }
         } else {
-            scrollPosition.scrollTo(edge: .bottom)
+            proxy.scrollTo("conversation.timeline-bottom", anchor: .bottom)
         }
     }
 
