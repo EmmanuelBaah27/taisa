@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import TaisaDesignSystem
 
@@ -7,6 +8,19 @@ struct ConversationComponentTests {
         let contract = ConversationEntryDock.Contract.preview
         #expect(contract.voiceAccessibilityLabel == "Talk to Taisa, starts recording")
         #expect(contract.keyboardAccessibilityLabel == "Talk to Taisa with keyboard")
+    }
+
+    @Test func disabledDockRemovesTheRecordingGlow() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let source = try String(
+            contentsOf: root.appendingPathComponent("Sources/TaisaDesignSystem/ConversationEntryDock.swift"),
+            encoding: .utf8
+        )
+
+        #expect(source.contains("recordingGlow(enabled: !disabled)"))
     }
 
     @Test func conversationTokensCoverRequiredSemanticRoles() {
@@ -21,6 +35,7 @@ struct ConversationComponentTests {
         #expect(TaisaMotion.settle == 0.50)
         #expect(TaisaMotion.streamingWordGap == 0.06)
         #expect(TaisaMotion.streamingWordFade == 0.35)
+        #expect(TaisaMotion.streamingScrollFollow == 0.35)
         #expect(TaisaMotion.streamingWordRevealCurve.value(at: 0) == 0)
         #expect(TaisaMotion.streamingWordRevealCurve.value(at: 1) == 1)
         #expect(TaisaControlMetric.primaryNavigationItemWidth == 56)
@@ -34,6 +49,7 @@ struct ConversationComponentTests {
         #expect(TaisaTypography.navigationLabel.lineHeight == 24)
         #expect(TaisaTypography.supporting.pointSize == 14)
         #expect(TaisaTypography.supporting.lineHeight == 20)
+        #expect(TaisaTypography.allCases.contains(.childHeaderTitle))
         #expect(TaisaMotion.activityCycle == 2)
         #expect(TaisaMotion.activityStagger == 0.18)
         #expect(TaisaActivityIndicatorMetric.width == 44)
@@ -62,15 +78,17 @@ struct ConversationComponentTests {
         #expect(TaisaStreamingText.Motion.standard == .softWordResolution)
     }
 
-    @Test func sentMessageTransitionDefinesComposerAndMessageRoles() {
-        #expect(TaisaMessageSendTransition.Role.composer != .message)
-        #expect(TaisaMessageSendTransition.Contract.duration == TaisaMotion.fast)
-    }
-
     @Test func jumpToLatestIsIconOnlyAndKeepsStableGeometryWhileLoading() {
         #expect(ConversationJumpToLatestButton.Contract.size == 48)
         #expect(ConversationJumpToLatestButton.Contract.iconSize == 24)
+        #expect(ConversationJumpToLatestButton.Contract.icon == .arrowDown)
         #expect(ConversationJumpToLatestButton.Contract.accessibilityLabel == "Jump to latest response")
+        #expect(ConversationJumpToLatestButton.Contract.loadingRingLineWidth == 2)
+        #expect(ConversationJumpToLatestButton.Contract.loadingRingStart == 0.08)
+        #expect(ConversationJumpToLatestButton.Contract.loadingRingEnd == 0.78)
+        #expect(ConversationJumpToLatestButton.Contract.loadingRingInset == 1)
+        #expect(ConversationJumpToLatestButton.Contract.loadingRingCycle == 1)
+        #expect(ConversationJumpToLatestButton.Contract.loadingRingTracksOuterStroke)
     }
 
     @Test func restoredVoiceDraftUsesStaticRecordedStatus() {
@@ -95,13 +113,29 @@ struct ConversationComponentTests {
         #expect(TaisaButton.Contract.supportsInPlaceProgress)
     }
 
-    @Test func primaryNavigationMotionFallsBackToAnInstantAccessibleTransition() {
-        #expect(PrimaryNavigationMotion.transition(reduceMotion: false) == .spatial)
+    @Test func primaryNavigationMotionBeginsWithTheSelectionInteraction() {
+        #expect(PrimaryNavigationMotion.transition(reduceMotion: false) == .interactiveSpatial)
         #expect(PrimaryNavigationMotion.transition(reduceMotion: true) == .instant)
+    }
+
+    @Test func primaryNavigationIsolatesPillMotionFromPageSelectionWork() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let source = try String(
+            contentsOf: root.appendingPathComponent("Sources/TaisaDesignSystem/PrimaryNavigation.swift"),
+            encoding: .utf8
+        )
+
+        #expect(source.contains("visualSelection"))
+        #expect(source.contains("await Task.yield()"))
+        #expect(source.contains("transaction.disablesAnimations = true"))
     }
 
     @Test func centralIconCatalogCoversChatsPageControls() {
         #expect(CentralIconName.magnifyingGlass != .voiceMid)
+        #expect(CentralIconName.chevronLeft != .chevronDown)
         #expect(CentralIconName.voiceMid != .chatBubbles)
         #expect(CentralIconName.circleInfo != .thumbsUp)
         #expect(CentralIconName.thumbsUp != .thumbsDown)
@@ -110,8 +144,44 @@ struct ConversationComponentTests {
 
     @MainActor @Test func figmaEdgeFadesUseMeasuredStops() {
         #expect(PageEdgeFade.fadeStart == 0.40)
-        #expect(PageEdgeFade.headerOpaqueStop == 0.40)
+        #expect(PageEdgeFade.headerOpaqueStop == 0.56)
         #expect(PageEdgeFade.navigationOpaqueStop == 0.60)
+        #expect(TaisaBottomChromeContract.fadeHeight == TaisaControlMetric.primaryNavigationReservedHeight)
+        #expect(TaisaBottomChromeContract.coversBottomSafeArea)
+        #expect(TaisaControlMetric.childNavigationControlHeight == 48)
+    }
+
+    @Test func childPageHeaderUsesTheSharedFadeAndCentralBackControl() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let source = try String(
+            contentsOf: root.appendingPathComponent("Sources/TaisaDesignSystem/TaisaPageChrome.swift"),
+            encoding: .utf8
+        )
+
+        #expect(source.contains("public struct TaisaChildPageHeader"))
+        #expect(source.contains("icon: .chevronLeft"))
+        #expect(source.contains("PageEdgeFade(.header)"))
+        #expect(source.contains("TaisaControlMetric.childNavigationControlHeight"))
+        #expect(source.contains("case back"))
+        #expect(source.contains("case detail"))
+    }
+
+    @Test func conversationComposerChromeOwnsTheBottomSafeAreaFade() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let source = try String(
+            contentsOf: root.appendingPathComponent("Sources/TaisaDesignSystem/TaisaPageChrome.swift"),
+            encoding: .utf8
+        )
+
+        #expect(source.contains("public struct ConversationComposerChrome"))
+        #expect(source.contains("TaisaControlMetric.conversationComposerDockHeight"))
+        #expect(source.contains(".ignoresSafeArea(edges: [.horizontal, .bottom])"))
     }
 
     @Test func conversationHeaderAndActionBarMatchFigmaContracts() {
@@ -123,6 +193,7 @@ struct ConversationComponentTests {
         #expect(ConversationActionBar.Availability.recording.canDiscard)
         #expect(ConversationActionBar.Availability.preparing.canSwitchToKeyboard)
         #expect(ConversationActionBar.Availability.preparing.showsPause)
+        #expect(ConversationActionBar.Availability.preparing.primaryLabel == "Pause")
         #expect(ConversationActionBar.Availability.recording.canSwitchToKeyboard)
         #expect(ConversationActionBar.Availability.recording.showsSend)
         #expect(ConversationActionBar.Availability.recording.canSend == false)

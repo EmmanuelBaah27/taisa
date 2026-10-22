@@ -4,6 +4,13 @@ public struct ConversationJumpToLatestButton: View {
     public enum Contract {
         public static let size: CGFloat = 48
         public static let iconSize: CGFloat = 24
+        public static let icon = CentralIconName.arrowDown
+        public static let loadingRingLineWidth: CGFloat = 2
+        public static let loadingRingStart: CGFloat = 0.08
+        public static let loadingRingEnd: CGFloat = 0.78
+        public static let loadingRingInset: CGFloat = 1
+        public static let loadingRingCycle: TimeInterval = 1
+        public static let loadingRingTracksOuterStroke = true
         public static let accessibilityLabel = "Jump to latest response"
     }
 
@@ -17,19 +24,49 @@ public struct ConversationJumpToLatestButton: View {
 
     public var body: some View {
         TaisaSecondaryCapsuleButton(height: Contract.size, action: action) {
-            ZStack {
-                if isLoading {
-                    ProgressView()
-                        .controlSize(.regular)
-                        .tint(TaisaColor.mutedForeground.color)
-                }
-                CentralIcon(.chevronDown)
-                    .frame(width: Contract.iconSize, height: Contract.iconSize)
-                    .foregroundStyle(TaisaColor.foreground.color)
+            CentralIcon(Contract.icon)
+                .frame(width: Contract.iconSize, height: Contract.iconSize)
+                .foregroundStyle(TaisaColor.foreground.color)
+                .frame(width: Contract.size, height: Contract.size)
+        }
+        .overlay {
+            if isLoading {
+                LoadingRing()
+                    .allowsHitTesting(false)
             }
-            .frame(width: Contract.size, height: Contract.size)
         }
         .accessibilityLabel(Contract.accessibilityLabel)
         .accessibilityValue(isLoading ? "Taisa is responding" : "")
+    }
+}
+
+private struct LoadingRing: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var rotation = Angle.zero
+
+    var body: some View {
+        Circle()
+            .trim(
+                from: ConversationJumpToLatestButton.Contract.loadingRingStart,
+                to: ConversationJumpToLatestButton.Contract.loadingRingEnd
+            )
+            .stroke(
+                TaisaColor.mutedForeground.color,
+                style: StrokeStyle(
+                    lineWidth: ConversationJumpToLatestButton.Contract.loadingRingLineWidth,
+                    lineCap: .round
+                )
+            )
+            .padding(ConversationJumpToLatestButton.Contract.loadingRingInset)
+            .rotationEffect(rotation)
+            .onAppear {
+                guard !reduceMotion else { return }
+                withAnimation(
+                    .linear(duration: ConversationJumpToLatestButton.Contract.loadingRingCycle)
+                    .repeatForever(autoreverses: false)
+                ) {
+                    rotation = .degrees(360)
+                }
+            }
     }
 }

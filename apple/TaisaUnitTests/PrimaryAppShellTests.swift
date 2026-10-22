@@ -3,18 +3,20 @@ import XCTest
 
 @MainActor
 final class PrimaryAppShellTests: XCTestCase {
-    func testConversationDestinationUsesChatsAsItsUserFacingName() {
-        XCTAssertEqual(PrimaryDestination.conversations.title, "Chats")
+    func testYouChildDestinationsUseTheSharedAdaptiveHeaderFade() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let source = try String(
+            contentsOf: root.appendingPathComponent("TaisaApp/You/YouView.swift"),
+            encoding: .utf8
+        )
+
+        XCTAssertTrue(source.contains("TaisaChildPageHeader(destination.title"))
+        XCTAssertTrue(source.contains("horizontalSizeClass == .regular ? .detail : .back"))
+        XCTAssertTrue(source.contains(".safeAreaInset(edge: .top, spacing: 0)"))
     }
 
-    func testPrimaryDestinationSelectionRecordsHorizontalTravelDirection() {
-        let model = PrimaryAppShellModel(selection: .home)
-
-        model.select(.conversations)
-        XCTAssertEqual(model.navigationDirection, .forward)
-
-        model.select(.home)
-        XCTAssertEqual(model.navigationDirection, .backward)
+    func testConversationDestinationUsesChatsAsItsUserFacingName() {
+        XCTAssertEqual(PrimaryDestination.conversations.title, "Chats")
     }
 
     func testCareerWorkStaysInsideHomeWithoutLeavingThePrimaryPager() {
@@ -29,26 +31,21 @@ final class PrimaryAppShellTests: XCTestCase {
         XCTAssertFalse(model.showsCareerWork)
     }
 
-    func testAdjacentPagingCoversEveryDestinationInBothDirections() {
-        let model = PrimaryAppShellModel(selection: .home)
-
-        model.selectAdjacent(offset: 1)
-        XCTAssertEqual(model.selection, .conversations)
-        model.selectAdjacent(offset: 1)
-        XCTAssertEqual(model.selection, .you)
-        model.selectAdjacent(offset: 1)
-        XCTAssertEqual(model.selection, .you)
-
-        model.selectAdjacent(offset: -1)
-        XCTAssertEqual(model.selection, .conversations)
-        model.selectAdjacent(offset: -1)
-        XCTAssertEqual(model.selection, .home)
-        model.selectAdjacent(offset: -1)
-        XCTAssertEqual(model.selection, .home)
-    }
-
     func testPrimaryNavigationMatchesTheThreeDestinationProductArchitecture() {
         XCTAssertEqual(PrimaryDestination.allCases, [.home, .conversations, .you])
+    }
+
+    func testAdjacentPagingClampsAtBothEnds() {
+        let model = PrimaryAppShellModel(selection: .home)
+
+        model.selectAdjacent(offset: -1)
+        XCTAssertEqual(model.selection, .home)
+        model.selectAdjacent(offset: 1)
+        XCTAssertEqual(model.selection, .conversations)
+        model.selectAdjacent(offset: 1)
+        XCTAssertEqual(model.selection, .you)
+        model.selectAdjacent(offset: 1)
+        XCTAssertEqual(model.selection, .you)
     }
 
     func testConversationDismissalRefreshesTheConversationIndex() async {
@@ -74,19 +71,20 @@ final class PrimaryAppShellTests: XCTestCase {
         XCTAssertFalse(model.showsConversationDock)
     }
 
-    func testPagesSupportInteractiveHorizontalPagingAndFastNavigation() throws {
+    func testPrimaryDestinationsRemainMountedInTheNativePager() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let source = try String(contentsOf: root.appendingPathComponent("TaisaApp/AppShell/PrimaryAppShell.swift"), encoding: .utf8)
         XCTAssertTrue(source.contains("TabView(selection:"))
         XCTAssertTrue(source.contains(".tabViewStyle(.page(indexDisplayMode: .never))"))
-        XCTAssertFalse(source.contains("primaryPageFallbackGesture"))
-        XCTAssertTrue(source.contains("model.select(destination)"))
+        XCTAssertTrue(source.contains(".simultaneousGesture(primaryPageCompletionGesture)"))
         XCTAssertFalse(source.contains("if model.selection == .careerWork"))
         XCTAssertTrue(source.contains("model.showsCareerWork"))
-        XCTAssertTrue(source.contains("PageEdgeFade(.navigation)"))
-        XCTAssertTrue(source.contains(".frame(height: 104)"))
-        XCTAssertTrue(source.contains("model.primaryPageBottomReservation"))
-        XCTAssertTrue(source.contains("selection == .conversations ? 0"))
+        XCTAssertTrue(source.contains(".safeAreaInset(edge: .bottom, spacing: 0)"))
+        XCTAssertTrue(source.contains("TaisaBottomChrome"))
+        XCTAssertFalse(source.contains("PageEdgeFade(.navigation)"))
+        XCTAssertFalse(source.contains(".frame(height: 104)"))
+        XCTAssertFalse(source.contains("primaryPageBottomReservation"))
+        XCTAssertFalse(source.contains("selection == .conversations ? 0"))
         XCTAssertFalse(source.contains(".background {\n                    PageEdgeFade(.navigation)"))
     }
 
@@ -111,4 +109,5 @@ final class PrimaryAppShellTests: XCTestCase {
         XCTAssertTrue(model.showsConversationDock)
         XCTAssertEqual(model.conversationReturnGeneration, 1)
     }
+
 }

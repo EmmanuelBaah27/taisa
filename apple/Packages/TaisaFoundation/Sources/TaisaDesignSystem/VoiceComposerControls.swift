@@ -22,7 +22,7 @@ public struct VoiceComposerControls: View {
     }
     public var body: some View {
         HStack {
-            if phase == .recording || phase == .paused || phase == .saved {
+            if phase == .preparing || phase == .recording || phase == .paused || phase == .saved {
                 Button("Keyboard", systemImage: "keyboard", action: onKeyboard)
                     .accessibilityLabel("Switch to keyboard")
             }
@@ -36,6 +36,6 @@ public struct VoiceComposerControls: View {
         .background(TaisaColor.raisedSurface.color, in: RoundedRectangle(cornerRadius: TaisaRadius.composer.rawValue))
     }
     private var primaryLabel: String {
-        switch phase { case .preparing: "Preparing microphone"; case .recording: Contract.recording.pauseLabel; case .paused, .saved: Contract.paused.resumeLabel; case .waitingForReply: "Reply by voice, starts recording" }
+        switch phase { case .preparing, .recording: Contract.recording.pauseLabel; case .paused, .saved: Contract.paused.resumeLabel; case .waitingForReply: "Reply by voice, starts recording" }
     }
 }

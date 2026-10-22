@@ -24,12 +24,12 @@ public struct ConversationEntryDock: View {
                 .buttonStyle(.glassProminent)
                 .buttonBorderShape(.capsule)
                 .tint(TaisaColor.primaryAction.color)
-                .recordingGlow()
+                .recordingGlow(enabled: !disabled)
         } else {
             voiceButton
                 .buttonStyle(.plain)
                 .background(TaisaColor.primaryAction.color, in: Capsule())
-                .recordingGlow()
+                .recordingGlow(enabled: !disabled)
         }
     }
 
@@ -49,16 +49,20 @@ public struct ConversationEntryDock: View {
 }
 
 private extension View {
-    func recordingGlow() -> some View {
+    func recordingGlow(enabled: Bool) -> some View {
         compositingGroup()
             .shadow(
-                color: TaisaColor.primaryAction.color.opacity(TaisaEffect.recordingGlowOpacity),
+                color: enabled
+                    ? TaisaColor.primaryAction.color.opacity(TaisaEffect.recordingGlowOpacity)
+                    : .clear,
                 radius: TaisaEffect.recordingGlowBlurRadius,
                 x: 0,
                 y: 0
             )
             .shadow(
-                color: TaisaColor.primaryAction.color.opacity(TaisaEffect.recordingGlowOpacity),
+                color: enabled
+                    ? TaisaColor.primaryAction.color.opacity(TaisaEffect.recordingGlowOpacity)
+                    : .clear,
                 radius: TaisaEffect.recordingGlowSpread,
                 x: 0,
                 y: 0

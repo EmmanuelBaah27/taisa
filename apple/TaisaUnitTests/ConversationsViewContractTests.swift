@@ -14,6 +14,12 @@ final class ConversationsViewContractTests: XCTestCase {
         XCTAssertFalse(source.contains(".navigationTitle(\"Conversations\")"))
     }
 
+    func testChatsBackgroundCoversTheSystemSafeAreaRegions() throws {
+        let source = try conversationsSource()
+
+        XCTAssertTrue(source.contains(".background(TaisaColor.background.color.ignoresSafeArea())"))
+    }
+
     func testChatsVisualRepairUsesDefaultTypographyAndWhiteSeparators() throws {
         let source = try conversationsSource()
 
@@ -61,6 +67,7 @@ final class ConversationsViewContractTests: XCTestCase {
         XCTAssertTrue(pageChrome.contains("TaisaControlMetric.standardIcon"))
         XCTAssertTrue(pageChrome.contains(".glassEffect(.regular.interactive()"))
         XCTAssertTrue(pageChrome.contains("PageEdgeFade(.header)"))
+        XCTAssertTrue(pageChrome.contains(".ignoresSafeArea(edges: [.top, .horizontal])"))
         XCTAssertTrue(pageChrome.contains("TaisaControlMetric.appBarHeight"))
         XCTAssertTrue(pageChrome.contains("TaisaControlMetric.headerActionHeight"))
         XCTAssertFalse(source.contains("Image(systemName: \"magnifyingglass\")"))
@@ -80,11 +87,30 @@ final class ConversationsViewContractTests: XCTestCase {
         XCTAssertFalse(source.contains("showsDraftsOnly"))
         XCTAssertTrue(source.contains(".listSectionMargins(.horizontal, 0)"))
         XCTAssertTrue(source.contains(".scrollIndicators(.hidden)"))
-        XCTAssertTrue(source.contains("TaisaControlMetric.appBarHeight + TaisaSpacing.standard.rawValue"))
+        XCTAssertTrue(source.contains(".safeAreaInset(edge: .top, spacing: 0)"))
+        XCTAssertFalse(source.contains("TaisaControlMetric.appBarHeight + TaisaSpacing.standard.rawValue"))
         XCTAssertFalse(source.contains(".contentMargins(.bottom, 152"))
         XCTAssertTrue(source.contains(".listSectionSpacing(TaisaSpacing.section.rawValue)"))
         XCTAssertTrue(source.contains(".padding(.bottom, TaisaSpacing.compact.rawValue)"))
         XCTAssertFalse(source.contains("} header: {"))
+    }
+
+    func testDraftsUsesTheSharedChildHeaderAndLeadingBackControl() throws {
+        let source = try conversationsSource()
+        let drafts = source.components(separatedBy: "private struct DraftsView").last ?? ""
+
+        XCTAssertTrue(drafts.contains(".safeAreaInset(edge: .top, spacing: 0)"))
+        XCTAssertTrue(drafts.contains("TaisaChildPageHeader(\"Drafts\"") )
+        XCTAssertFalse(drafts.contains("icon: .chevronDown"))
+        XCTAssertFalse(drafts.contains(".contentMargins(.top"))
+    }
+
+    func testChatsHeaderOwnsTheTopSafeAreaInsteadOfOverlayingScrollContent() throws {
+        let source = try conversationsSource()
+
+        XCTAssertTrue(source.contains(".safeAreaInset(edge: .top, spacing: 0)"))
+        XCTAssertFalse(source.contains("ZStack(alignment: .top) {\n            content\n            header"))
+        XCTAssertFalse(source.contains(".contentMargins(\n                .top"))
     }
 
     func testApplicationIsLockedToLightAppearance() throws {

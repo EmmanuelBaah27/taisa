@@ -10,11 +10,8 @@ import TaisaYou
 @MainActor
 @Observable
 final class PrimaryAppShellModel {
-    enum NavigationDirection: Sendable, Equatable { case forward, backward }
-
     private(set) var selection: PrimaryDestination
     private(set) var showsCareerWork = false
-    private(set) var navigationDirection: NavigationDirection = .forward
     private(set) var conversationRoute: ConversationRoute?
     private(set) var conversationReturnGeneration = 0
     @ObservationIgnored private var pendingEntryIntent: ConversationEntryIntent?
@@ -29,19 +26,12 @@ final class PrimaryAppShellModel {
     }
 
     var showsConversationDock: Bool { conversationRoute == nil }
-    var primaryPageBottomReservation: CGFloat {
-        selection == .conversations ? 0 : TaisaControlMetric.primaryNavigationReservedHeight
-    }
 
     func select(_ destination: PrimaryDestination) {
         if destination == .careerWork {
             showCareerWork()
             return
         }
-        let destinations = PrimaryDestination.allCases
-        let currentIndex = destinations.firstIndex(of: selection) ?? 0
-        let nextIndex = destinations.firstIndex(of: destination) ?? currentIndex
-        navigationDirection = nextIndex >= currentIndex ? .forward : .backward
         selection = destination
         showsCareerWork = false
     }
@@ -54,7 +44,10 @@ final class PrimaryAppShellModel {
     func selectAdjacent(offset: Int) {
         let destinations = PrimaryDestination.allCases
         guard let currentIndex = destinations.firstIndex(of: selection) else { return }
-        let nextIndex = min(max(currentIndex + offset, destinations.startIndex), destinations.index(before: destinations.endIndex))
+        let nextIndex = min(
+            max(currentIndex + offset, destinations.startIndex),
+            destinations.index(before: destinations.endIndex)
+        )
         select(destinations[nextIndex])
     }
 
@@ -103,49 +96,43 @@ struct PrimaryAppShell: View {
     var openInsights: () -> Void = {}
 
     var body: some View {
-        ZStack(alignment: .bottom) {
-            NavigationStack {
-                TabView(selection: Binding(
-                    get: { model.selection },
-                    set: { destination in model.select(destination) }
-                )) {
-                    ForEach(PrimaryDestination.allCases, id: \.self) { destination in
-                        destinationView(destination)
-                            .tag(destination)
-                    }
+        NavigationStack {
+            TabView(selection: Binding(
+                get: { model.selection },
+                set: { destination in model.select(destination) }
+            )) {
+                ForEach(PrimaryDestination.allCases, id: \.self) { destination in
+                    destinationView(destination)
+                        .tag(destination)
                 }
-                .tabViewStyle(.page(indexDisplayMode: .never))
-                .simultaneousGesture(primaryPageCompletionGesture)
-                .safeAreaPadding(.bottom, model.primaryPageBottomReservation)
             }
-
+            .tabViewStyle(.page(indexDisplayMode: .never))
+            .simultaneousGesture(primaryPageCompletionGesture)
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
             if model.showsConversationDock {
-                PageEdgeFade(.navigation)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 104)
-                    .ignoresSafeArea(edges: [.horizontal, .bottom])
-                    .allowsHitTesting(false)
-
-                VStack(spacing: TaisaSpacing.compact.rawValue) {
-                    ConversationEntryDock(
-                        onVoice: { model.presentNewConversation(.voice) },
-                        onKeyboard: { model.presentNewConversation(.text) }
-                    )
-                    .zIndex(1)
-                    .accessibilityIdentifier("app-shell.conversation-dock")
-
-                    PrimaryNavigation(
-                        items: PrimaryDestination.allCases.map { ($0, $0.title, $0.icon) },
-                        selection: Binding(
-                            get: { model.selection },
-                            set: { model.select($0) }
+                TaisaBottomChrome {
+                    VStack(spacing: TaisaSpacing.compact.rawValue) {
+                        ConversationEntryDock(
+                            onVoice: { model.presentNewConversation(.voice) },
+                            onKeyboard: { model.presentNewConversation(.text) }
                         )
-                    )
-                    .accessibilityIdentifier("app-shell.primary-navigation")
+                        .zIndex(1)
+                        .accessibilityIdentifier("app-shell.conversation-dock")
+
+                        PrimaryNavigation(
+                            items: PrimaryDestination.allCases.map { ($0, $0.title, $0.icon) },
+                            selection: Binding(
+                                get: { model.selection },
+                                set: { model.select($0) }
+                            )
+                        )
+                        .accessibilityIdentifier("app-shell.primary-navigation")
+                    }
+                    .padding(.horizontal, TaisaSpacing.standard.rawValue)
+                    .padding(.top, TaisaSpacing.section.rawValue)
+                    .padding(.bottom, TaisaSpacing.compact.rawValue)
                 }
-                .padding(.horizontal, TaisaSpacing.standard.rawValue)
-                .padding(.top, TaisaSpacing.section.rawValue)
-                .padding(.bottom, TaisaSpacing.compact.rawValue)
             }
         }
         .fullScreenCover(item: Binding(
@@ -161,8 +148,6 @@ struct PrimaryAppShell: View {
         }
     }
 
-    /// Lets the native pager own the interactive motion, then only completes a
-    /// clearly horizontal page gesture when nested scroll content consumed it.
     private var primaryPageCompletionGesture: some Gesture {
         DragGesture(minimumDistance: 24)
             .onChanged { _ in

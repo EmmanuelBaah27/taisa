@@ -8,6 +8,9 @@ final class CareerWorkViewContractTests: XCTestCase {
 
         XCTAssertTrue(source.contains("NavigationSplitView"))
         XCTAssertTrue(source.contains("NavigationStack"))
+        XCTAssertTrue(source.contains("TaisaChildPageHeader(detailTitle"))
+        XCTAssertTrue(source.contains("horizontalSizeClass == .regular ? .detail : .back"))
+        XCTAssertTrue(source.contains(".safeAreaInset(edge: .top, spacing: 0)"))
         XCTAssertTrue(source.contains("career-work.empty"))
         XCTAssertTrue(source.contains("career-work.retry"))
         XCTAssertTrue(source.contains("career-work.recovery"))

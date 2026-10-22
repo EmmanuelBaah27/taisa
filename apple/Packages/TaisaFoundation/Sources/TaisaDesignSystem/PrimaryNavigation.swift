@@ -1,24 +1,28 @@
 import SwiftUI
 
 public enum PrimaryNavigationTransition: Sendable, Equatable {
-    case spatial
+    case interactiveSpatial
     case instant
 }
 
 public enum PrimaryNavigationMotion {
     public static func transition(reduceMotion: Bool) -> PrimaryNavigationTransition {
-        reduceMotion ? .instant : .spatial
+        reduceMotion ? .instant : .interactiveSpatial
     }
 }
 
 public struct PrimaryNavigation<Item: Hashable>: View {
     public let items: [(Item, String, CentralIconName)]
     @Binding private var selection: Item
+    @State private var visualSelection: Item
+    @State private var selectionGeneration = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Namespace private var selectionCapsule
 
     public init(items: [(Item, String, CentralIconName)], selection: Binding<Item>) {
-        self.items = items; _selection = selection
+        self.items = items
+        _selection = selection
+        _visualSelection = State(initialValue: selection.wrappedValue)
     }
 
     @ViewBuilder public var body: some View {
@@ -44,13 +48,13 @@ public struct PrimaryNavigation<Item: Hashable>: View {
                         CentralIcon(icon)
                             .frame(width: TaisaControlMetric.standardIcon, height: TaisaControlMetric.standardIcon)
 
-                        if selection == item {
+                        if visualSelection == item {
                             Text(label)
                                 .font(TaisaTypography.navigationLabel.font)
                                 .lineLimit(1)
                         }
                     }
-                    .foregroundStyle(selection == item ? TaisaColor.foreground.color : TaisaColor.inactiveForeground.color)
+                    .foregroundStyle(visualSelection == item ? TaisaColor.foreground.color : TaisaColor.inactiveForeground.color)
                     .padding(.horizontal, TaisaSpacing.standard.rawValue)
                     .frame(
                         minWidth: TaisaControlMetric.primaryNavigationItemWidth,
@@ -58,7 +62,7 @@ public struct PrimaryNavigation<Item: Hashable>: View {
                     )
                     .contentShape(Capsule())
                     .background {
-                        if selection == item {
+                        if visualSelection == item {
                             selectedSurface
                                 .matchedGeometryEffect(id: "primary-navigation-selection", in: selectionCapsule)
                         }
@@ -67,8 +71,13 @@ public struct PrimaryNavigation<Item: Hashable>: View {
                 .buttonStyle(.plain)
                 .contentShape(Capsule())
                 .accessibilityLabel(label)
-                .accessibilityAddTraits(selection == item ? .isSelected : [])
+                .accessibilityAddTraits(visualSelection == item ? .isSelected : [])
             }
+        }
+        .onChange(of: selection) { _, newSelection in
+            guard visualSelection != newSelection else { return }
+            selectionGeneration += 1
+            visualSelection = newSelection
         }
     }
 
@@ -82,7 +91,26 @@ public struct PrimaryNavigation<Item: Hashable>: View {
     }
 
     private func select(_ item: Item) {
-        guard selection != item else { return }
-        selection = item
+        guard visualSelection != item else { return }
+        selectionGeneration += 1
+        let generation = selectionGeneration
+
+        if PrimaryNavigationMotion.transition(reduceMotion: reduceMotion) == .instant {
+            visualSelection = item
+            selection = item
+        } else {
+            withAnimation(.snappy(duration: TaisaMotion.fast)) {
+                visualSelection = item
+            }
+            Task { @MainActor in
+                await Task.yield()
+                guard generation == selectionGeneration else { return }
+                var transaction = Transaction(animation: nil)
+                transaction.disablesAnimations = true
+                withTransaction(transaction) {
+                    selection = item
+                }
+            }
+        }
     }
 }

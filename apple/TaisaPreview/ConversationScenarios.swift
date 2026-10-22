@@ -17,6 +17,8 @@ enum ConversationScenarios {
         composer("conversation.transcribing", "Conversation transcribing", .transcribing),
         composer("conversation.coaching", "Conversation coaching", .coaching),
         composer("conversation.waiting", "Conversation waiting for Reply", .waitingForReply, messages: messages),
+        composer("conversation.existing-history", "Existing conversation history", .waitingForReply, messages: longHistoryMessages),
+        sentTurnAnchor,
         seniorSelfResponse,
         composer("conversation.permission-denied", "Conversation microphone denied", .failure(.unavailable)),
         composer("conversation.retry-transcription", "Conversation retry transcription", .failure(.retryable)),
@@ -98,6 +100,40 @@ enum ConversationScenarios {
         )
     }
 
+    private static var sentTurnAnchor: PreviewScenario {
+        PreviewScenario(
+            identifier: "conversation.sent-turn-anchor",
+            title: "Sent turn anchor",
+            deviceFamily: .adaptive,
+            accessibility: .default,
+            readiness: .ready
+        ) {
+            let store = ConversationScrollQAStore(messages: longHistoryMessages)
+            let model = ConversationViewModel(
+                conversationID: "20000000-0000-4000-8000-000000000010",
+                title: "Scroll anchor",
+                entryIntent: nil,
+                composer: .typing("Anchor this message"),
+                text: "Anchor this message",
+                client: ConversationScreenClient(
+                    loadMessages: { await store.loadMessages() },
+                    beginVoice: {}, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
+                    sendText: { text, messageAvailable in
+                        await store.appendUserMessage(text)
+                        await messageAvailable()
+                        try? await Task.sleep(for: .milliseconds(350))
+                        await store.beginStreamingResponse()
+                        try? await Task.sleep(for: .milliseconds(700))
+                        await store.finishResponse()
+                    },
+                    retry: {}, saveDraft: { _ in }, discardDraft: {},
+                    loadPartialCoaching: { await store.partialResponse() }
+                )
+            )
+            return AnyView(ConversationView(model: model))
+        }
+    }
+
     private static func list(
         _ identifier: String,
         _ title: String,
@@ -137,6 +173,16 @@ enum ConversationScenarios {
         .init(id: "10000000-0000-4000-8000-000000000002", conversationID: "20000000-0000-4000-8000-000000000001", role: "assistant", body: "Start with the impact you can support with evidence.", createdAtMS: 2),
     ]
 
+    private static let longHistoryMessages: [MessageRecord] = (0..<30).map { index in
+        MessageRecord(
+            id: String(format: "90000000-0000-4000-8000-%012d", index),
+            conversationID: "20000000-0000-4000-8000-000000000009",
+            role: index.isMultiple(of: 2) ? "user" : "assistant",
+            body: index == 29 ? "Latest rendered conversation message" : "Existing conversation message \(index + 1) with enough text to require scrolling.",
+            createdAtMS: Int64(index + 1)
+        )
+    }
+
     private static let listSnapshot = ConversationIndexSnapshot(
         drafts: [draft("30000000-0000-4000-8000-000000000001", .saved, 4), draft("30000000-0000-4000-8000-000000000002", .saved, 3)],
         conversations: [conversation("40000000-0000-4000-8000-000000000001", "Review preparation", 2)]
@@ -158,5 +204,48 @@ enum ConversationScenarios {
 
     private static func conversation(_ id: String, _ title: String, _ updated: Int64) -> ConversationRecord {
         .init(id: id, title: title, createdAtMS: 1, updatedAtMS: updated)
+    }
+}
+
+private actor ConversationScrollQAStore {
+    private static let finalMessageID = "sent-turn-final"
+    private var messages: [MessageRecord]
+    private var partial = ""
+
+    init(messages: [MessageRecord]) {
+        self.messages = messages
+    }
+
+    func loadMessages() -> [MessageRecord] {
+        messages
+    }
+
+    func appendUserMessage(_ body: String) {
+        messages.append(MessageRecord(
+            id: "sent-turn-anchor",
+            conversationID: "20000000-0000-4000-8000-000000000010",
+            role: "user",
+            body: body,
+            createdAtMS: 100
+        ))
+    }
+
+    func partialResponse() -> String { partial }
+
+    func beginStreamingResponse() {
+        partial = String(repeating: "response-overflow-", count: 500)
+            + " "
+            + Array(repeating: "continuing", count: 100).joined(separator: " ")
+    }
+
+    func finishResponse() {
+        let body = partial
+        messages.append(MessageRecord(
+            id: Self.finalMessageID,
+            conversationID: "20000000-0000-4000-8000-000000000010",
+            role: "assistant",
+            body: body,
+            createdAtMS: 101
+        ))
     }
 }

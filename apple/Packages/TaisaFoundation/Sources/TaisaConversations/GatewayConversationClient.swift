@@ -11,14 +11,15 @@ enum ConversationTitleDeriver {
     private static let leadingPhrases = [
         "can you help me ", "could you help me ", "would you help me ",
         "help me ", "i would like to ", "i'd like to ", "i want to ",
-        "i need to ", "i am going to ", "i'm going to ", "i am ", "i'm ",
+        "i need to ", "i am going to ", "i'm going to ", "i’m going to ",
+        "i am ", "i'm ", "i’m ",
     ]
 
     private static let gerunds = [
         "build": "Building", "change": "Changing", "decide": "Deciding",
         "deal": "Dealing", "discuss": "Discussing", "explore": "Exploring",
         "find": "Finding", "improve": "Improving", "navigate": "Navigating",
-        "plan": "Planning", "prepare": "Preparing", "start": "Starting",
+        "plan": "Planning", "prepare": "Preparing", "review": "Reviewing", "start": "Starting",
         "try": "Trying", "understand": "Understanding", "work": "Working",
     ]
 
@@ -30,10 +31,10 @@ enum ConversationTitleDeriver {
             .trimmingCharacters(in: .punctuationCharacters.union(.whitespacesAndNewlines))
         guard !collapsed.isEmpty else { return nil }
 
-        var topic = collapsed
-        let lowercase = collapsed.lowercased()
+        var topic = firstClause(in: collapsed)
+        let lowercase = topic.lowercased()
         if let prefix = leadingPhrases.first(where: { lowercase.hasPrefix($0) }) {
-            topic = String(collapsed.dropFirst(prefix.count))
+            topic = String(topic.dropFirst(prefix.count))
         }
 
         var words = topic.split(whereSeparator: { $0.isWhitespace }).map(String.init)
@@ -45,13 +46,9 @@ enum ConversationTitleDeriver {
         }
         if let gerund = gerunds[first] {
             words[0] = gerund
-        } else if !first.hasSuffix("ing") {
-            words.insert("Discussing", at: 0)
         } else {
             words[0] = words[0].prefix(1).uppercased() + words[0].dropFirst()
         }
-
-        words = words.flatMap { reportedWord($0).split(separator: " ").map(String.init) }
 
         return bounded(words)
     }
@@ -71,7 +68,7 @@ enum ConversationTitleDeriver {
     }
 
     private static func bounded(_ words: [String]) -> String? {
-        let weakEndings: Set<String> = ["a", "an", "and", "at", "but", "for", "in", "of", "on", "or", "the", "to", "with"]
+        let weakEndings: Set<String> = ["a", "an", "and", "at", "but", "for", "in", "next", "of", "on", "or", "the", "to", "with"]
         var title = ""
         for word in words.prefix(maximumWordCount) {
             let candidate = title.isEmpty ? word : "\(title) \(word)"
@@ -92,19 +89,11 @@ enum ConversationTitleDeriver {
         return trimmed.isEmpty ? nil : trimmed
     }
 
-    private static func reportedWord(_ word: String) -> String {
-        let punctuation = String(word.reversed().prefix(while: { $0.isPunctuation }).reversed())
-        let stem = word.dropLast(punctuation.count)
-        let replacement: String
-        switch stem.lowercased() {
-        case "i": replacement = "the user"
-        case "i'm", "i’m": replacement = "the user is"
-        case "i've", "i’ve": replacement = "the user has"
-        case "my": replacement = "their"
-        case "me": replacement = "them"
-        default: return word
-        }
-        return replacement + punctuation
+    private static func firstClause(in source: String) -> String {
+        let separators: Set<Character> = [",", ".", "?", "!", ";", ":"]
+        guard let boundary = source.firstIndex(where: separators.contains) else { return source }
+        let clause = source[..<boundary].trimmingCharacters(in: .whitespacesAndNewlines)
+        return clause.isEmpty ? source : clause
     }
 }
 
@@ -431,6 +420,7 @@ public actor GatewayConversationClient: ConversationClient {
             updatedAtMS: updatedAtMS
         ), context: context(updatedAtMS))
     }
+
 
     private func context(_ timestamp: Int64) -> MutationContext {
         MutationContext(id: UUID().uuidString, deviceID: deviceID, timestamp: timestamp)

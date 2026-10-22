@@ -9,8 +9,10 @@ public enum CentralIconName: Sendable, Equatable {
     case cross
     case keyboard
     case arrowUp
+    case arrowDown
     case pause
     case play
+    case chevronLeft
     case chevronDown
     case exclamationCircle
     case circleInfo
@@ -57,8 +59,10 @@ public struct CentralIcon: View {
         case .cross: cross
         case .keyboard: keyboard
         case .arrowUp: arrowUp
+        case .arrowDown: arrowDown
         case .pause: pause
         case .play: play
+        case .chevronLeft: chevronLeft
         case .chevronDown: chevronDown
         case .exclamationCircle: exclamationCircle
         case .circleInfo: circleInfo
@@ -150,6 +154,10 @@ public struct CentralIcon: View {
         var path = Path(); path.move(to: .init(x: 12, y: 20)); path.addLine(to: .init(x: 12, y: 5)); path.move(to: .init(x: 6, y: 11)); path.addLine(to: .init(x: 12, y: 5)); path.addLine(to: .init(x: 18, y: 11)); return path
     }
 
+    private var arrowDown: Path {
+        var path = Path(); path.move(to: .init(x: 18, y: 14)); path.addLine(to: .init(x: 12, y: 20)); path.addLine(to: .init(x: 6, y: 14)); path.move(to: .init(x: 12, y: 19)); path.addLine(to: .init(x: 12, y: 4)); return path
+    }
+
     private var pause: Path {
         var path = Path(); path.move(to: .init(x: 8, y: 6)); path.addLine(to: .init(x: 8, y: 18)); path.move(to: .init(x: 16, y: 6)); path.addLine(to: .init(x: 16, y: 18)); return path
     }
@@ -160,6 +168,10 @@ public struct CentralIcon: View {
 
     private var chevronDown: Path {
         var path = Path(); path.move(to: .init(x: 5, y: 9)); path.addLine(to: .init(x: 12, y: 16)); path.addLine(to: .init(x: 19, y: 9)); return path
+    }
+
+    private var chevronLeft: Path {
+        var path = Path(); path.move(to: .init(x: 15, y: 5)); path.addLine(to: .init(x: 8, y: 12)); path.addLine(to: .init(x: 15, y: 19)); return path
     }
 
     private var exclamationCircle: Path {
