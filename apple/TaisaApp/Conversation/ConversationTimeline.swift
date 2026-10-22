@@ -185,9 +185,8 @@ struct ConversationTimeline: View {
 
     var body: some View {
         let presentedMessages = messages.filter { $0.id != streamingFinalMessageID }
-        ScrollViewReader { proxy in
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 0) {
+        ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
                     ForEach(Array(presentedMessages.enumerated()), id: \.element.id) { index, message in
                         VStack(alignment: message.role == "user" ? .trailing : .leading, spacing: TaisaSpacing.tight.rawValue) {
                             if message.role == "user" {
@@ -358,28 +357,26 @@ struct ConversationTimeline: View {
                     isAwayFromLatest = false
                     scrollToLatest(animated: false)
                 case .anchorUserMessage:
-                    await Task.yield()
                     isAwayFromLatest = false
                     anchoredUserMessageID = message.id
                     shouldReleaseAnchorWhenScrollSettles = false
                     withAnimation(reduceMotion ? nil : .smooth(duration: TaisaMotion.settle)) {
-                        proxy.scrollTo(message.id, anchor: .top)
+                        scrollPosition.scrollTo(id: message.id, anchor: .top)
                     }
                 case .preserveViewport:
                     break
                 }
             }
-        }
     }
 
     private func scrollToLatest(animated: Bool) {
         anchoredUserMessageID = nil
         if animated {
             withAnimation(.smooth(duration: TaisaMotion.settle)) {
-                scrollPosition.scrollTo(id: "conversation.timeline-bottom", anchor: .bottom)
+                scrollPosition.scrollTo(edge: .bottom)
             }
         } else {
-            scrollPosition.scrollTo(id: "conversation.timeline-bottom", anchor: .bottom)
+            scrollPosition.scrollTo(edge: .bottom)
         }
     }
 
