@@ -4,7 +4,12 @@ public struct ConversationJumpToLatestButton: View {
     public enum Contract {
         public static let size: CGFloat = 48
         public static let iconSize: CGFloat = 24
+        public static let icon = CentralIconName.arrowDown
         public static let loadingRingLineWidth: CGFloat = 2
+        public static let loadingRingStart: CGFloat = 0.08
+        public static let loadingRingEnd: CGFloat = 0.78
+        public static let loadingRingInset: CGFloat = 1
+        public static let loadingRingCycle: TimeInterval = 1
         public static let loadingRingTracksOuterStroke = true
         public static let accessibilityLabel = "Jump to latest response"
     }
@@ -19,7 +24,7 @@ public struct ConversationJumpToLatestButton: View {
 
     public var body: some View {
         TaisaSecondaryCapsuleButton(height: Contract.size, action: action) {
-            CentralIcon(.chevronDown)
+            CentralIcon(Contract.icon)
                 .frame(width: Contract.iconSize, height: Contract.iconSize)
                 .foregroundStyle(TaisaColor.foreground.color)
                 .frame(width: Contract.size, height: Contract.size)
@@ -41,7 +46,10 @@ private struct LoadingRing: View {
 
     var body: some View {
         Circle()
-            .trim(from: 0.08, to: 0.78)
+            .trim(
+                from: ConversationJumpToLatestButton.Contract.loadingRingStart,
+                to: ConversationJumpToLatestButton.Contract.loadingRingEnd
+            )
             .stroke(
                 TaisaColor.mutedForeground.color,
                 style: StrokeStyle(
@@ -49,11 +57,14 @@ private struct LoadingRing: View {
                     lineCap: .round
                 )
             )
-            .padding(1)
+            .padding(ConversationJumpToLatestButton.Contract.loadingRingInset)
             .rotationEffect(rotation)
             .onAppear {
                 guard !reduceMotion else { return }
-                withAnimation(.linear(duration: 1).repeatForever(autoreverses: false)) {
+                withAnimation(
+                    .linear(duration: ConversationJumpToLatestButton.Contract.loadingRingCycle)
+                    .repeatForever(autoreverses: false)
+                ) {
                     rotation = .degrees(360)
                 }
             }

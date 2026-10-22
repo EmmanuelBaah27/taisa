@@ -120,7 +120,6 @@ final class ConversationViewModel {
     private(set) var correctionRegenerationFailureMessageID: String?
     private(set) var partialCoaching = ""
     private(set) var streamingFinalMessageID: String?
-    private(set) var isResponseStreaming = false
     private(set) var isInitialLoadComplete = false
     private(set) var pendingSentText: String?
     private(set) var failureContext: FailureContext = .request
@@ -303,9 +302,14 @@ final class ConversationViewModel {
             for await _ in events {
                 guard !Task.isCancelled else { return }
                 guard let self else { return }
-                await reloadMessages()
                 capture = await client.loadCaptureSnapshot()
-                if composer == .failure(.retryable) || composer == .coaching || composer == .transcribing {
+                if composer == .coaching {
+                    await refreshPartialCoaching()
+                    if streamingFinalMessageID == nil, partialCoaching.isEmpty {
+                        finishResponseIfPersisted()
+                    }
+                } else if composer == .failure(.retryable) || composer == .transcribing {
+                    await reloadMessages()
                     finishResponseIfPersisted()
                 }
             }
@@ -404,9 +408,6 @@ final class ConversationViewModel {
     func refreshPartialCoaching() async {
         let latestPartial = await client.loadPartialCoaching()
         guard !Task.isCancelled, composer == .coaching else { return }
-        if !latestPartial.isEmpty, latestPartial != partialCoaching {
-            isResponseStreaming = true
-        }
         let loadedMessages = (try? await client.loadMessages()) ?? messages
         let loadedResponses = (try? await client.loadAssistantResponses()) ?? assistantResponses
         let loadedTitle = (try? await client.loadTitle()) ?? title
@@ -424,6 +425,7 @@ final class ConversationViewModel {
 
     func requestDiscardRecording() {
         if composer == .preparingVoice, actionInFlight {
+            if messages.isEmpty { isClosing = true }
             voicePreparationExit = .discard
             return
         }
@@ -447,11 +449,9 @@ final class ConversationViewModel {
                 transcriptBecameAvailable = true
                 await self.reloadMessages()
                 self.composer = .coaching
-                self.isResponseStreaming = true
             }
             await prepareCompletedStreamPresentation()
         } catch {
-            isResponseStreaming = false
             partialCoaching = ""
             streamingFinalMessageID = nil
             failureContext = transcriptBecameAvailable ? .request : .transcription
@@ -470,7 +470,6 @@ final class ConversationViewModel {
         let messageIDsBeforeSend = Set(messages.map(\.id))
         processingMessageIsDurable = false
         composer = .coaching
-        isResponseStreaming = true
         do {
             try await client.sendText(value) { [weak self] in
                 guard let self else { return }
@@ -487,7 +486,6 @@ final class ConversationViewModel {
             pendingSentText = nil
         }
         catch {
-            isResponseStreaming = false
             partialCoaching = ""
             streamingFinalMessageID = nil
             pendingSentText = nil
@@ -509,7 +507,6 @@ final class ConversationViewModel {
     }
 
     func completeStreamingPresentation() {
-        isResponseStreaming = false
         guard streamingFinalMessageID != nil else { return }
         streamingFinalMessageID = nil
         partialCoaching = ""
@@ -957,7 +954,6 @@ final class ConversationViewModel {
         await reloadMessages()
         let finalAssistant = latestAssistantAfterLatestUser()
         guard let finalAssistant else {
-            isResponseStreaming = false
             partialCoaching = ""
             streamingFinalMessageID = nil
             finishResponseIfPersisted()
@@ -981,15 +977,7 @@ final class ConversationViewModel {
     }
 
     private func finishResponseIfPersisted() {
-        let hasAssistantReply: Bool
-        if let latestUserIndex = messages.lastIndex(where: { $0.role == "user" }) {
-            hasAssistantReply = messages[messages.index(after: latestUserIndex)...]
-                .contains(where: { $0.role == "assistant" })
-        } else {
-            hasAssistantReply = messages.contains(where: { $0.role == "assistant" })
-        }
-
-        if hasAssistantReply {
+        if latestAssistantAfterLatestUser() != nil {
             composer = .waitingForReply
         } else {
             failureContext = .request

@@ -49,6 +49,7 @@ struct ConversationComponentTests {
         #expect(TaisaTypography.navigationLabel.lineHeight == 24)
         #expect(TaisaTypography.supporting.pointSize == 14)
         #expect(TaisaTypography.supporting.lineHeight == 20)
+        #expect(TaisaTypography.allCases.contains(.childHeaderTitle))
         #expect(TaisaMotion.activityCycle == 2)
         #expect(TaisaMotion.activityStagger == 0.18)
         #expect(TaisaActivityIndicatorMetric.width == 44)
@@ -80,8 +81,13 @@ struct ConversationComponentTests {
     @Test func jumpToLatestIsIconOnlyAndKeepsStableGeometryWhileLoading() {
         #expect(ConversationJumpToLatestButton.Contract.size == 48)
         #expect(ConversationJumpToLatestButton.Contract.iconSize == 24)
+        #expect(ConversationJumpToLatestButton.Contract.icon == .arrowDown)
         #expect(ConversationJumpToLatestButton.Contract.accessibilityLabel == "Jump to latest response")
         #expect(ConversationJumpToLatestButton.Contract.loadingRingLineWidth == 2)
+        #expect(ConversationJumpToLatestButton.Contract.loadingRingStart == 0.08)
+        #expect(ConversationJumpToLatestButton.Contract.loadingRingEnd == 0.78)
+        #expect(ConversationJumpToLatestButton.Contract.loadingRingInset == 1)
+        #expect(ConversationJumpToLatestButton.Contract.loadingRingCycle == 1)
         #expect(ConversationJumpToLatestButton.Contract.loadingRingTracksOuterStroke)
     }
 
@@ -138,7 +144,7 @@ struct ConversationComponentTests {
 
     @MainActor @Test func figmaEdgeFadesUseMeasuredStops() {
         #expect(PageEdgeFade.fadeStart == 0.40)
-        #expect(PageEdgeFade.headerOpaqueStop == 0.40)
+        #expect(PageEdgeFade.headerOpaqueStop == 0.56)
         #expect(PageEdgeFade.navigationOpaqueStop == 0.60)
         #expect(TaisaBottomChromeContract.fadeHeight == TaisaControlMetric.primaryNavigationReservedHeight)
         #expect(TaisaBottomChromeContract.coversBottomSafeArea)

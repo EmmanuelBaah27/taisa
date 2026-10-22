@@ -505,14 +505,12 @@ final class ConversationViewModelTests: XCTestCase {
         XCTAssertEqual(model.composer, .coaching)
         XCTAssertEqual(model.partialCoaching, "Short answer")
         XCTAssertEqual(model.streamingFinalMessageID, assistant.id)
-        XCTAssertTrue(model.isResponseStreaming)
 
         model.completeStreamingPresentation()
 
         XCTAssertEqual(model.composer, .waitingForReply)
         XCTAssertEqual(model.partialCoaching, "")
         XCTAssertNil(model.streamingFinalMessageID)
-        XCTAssertFalse(model.isResponseStreaming)
     }
 
     func testPartialRefreshReconcilesAssistantReplyPersistedWhileRequestIsStillWaiting() async {
@@ -674,6 +672,46 @@ final class ConversationViewModelTests: XCTestCase {
 
         XCTAssertEqual(model.composer, .failure(.retryable))
         XCTAssertEqual(model.failureContext, .request)
+        continuation.finish()
+    }
+
+    func testRecoveryEventDoesNotPublishDurableAssistantBeforeStreamingMaskIsReady() async {
+        let user = message(role: "user", body: "Question")
+        let assistant = message(role: "assistant", body: "Recovered response")
+        let messages = MessageSequence([[user], [user, assistant]])
+        let responseLoads = DelayedSecondResponseLoad()
+        let (events, continuation) = AsyncStream<Void>.makeStream()
+        let client = ConversationScreenClient(
+            loadMessages: { await messages.next() },
+            loadAssistantResponses: { await responseLoads.next() },
+            beginVoice: {}, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
+            sendText: { _, available in await available() },
+            retry: {}, saveDraft: { _ in }, discardDraft: {},
+            loadPartialCoaching: { "Recovered response" },
+            recoveryEvents: { events }
+        )
+        let model = ConversationViewModel(
+            conversationID: user.conversationID,
+            title: "Chat",
+            entryIntent: nil,
+            composer: .coaching,
+            client: client
+        )
+        await model.start()
+
+        continuation.yield(())
+        while await responseLoads.callCount() < 2 { await Task.yield() }
+
+        XCTAssertEqual(model.messages, [user])
+        XCTAssertEqual(model.composer, .coaching)
+
+        await responseLoads.releaseSecondLoad()
+        for _ in 0..<100 where model.streamingFinalMessageID == nil { await Task.yield() }
+
+        XCTAssertEqual(model.messages, [user, assistant])
+        XCTAssertEqual(model.streamingFinalMessageID, assistant.id)
+        XCTAssertEqual(model.partialCoaching, assistant.body)
+        XCTAssertEqual(model.composer, .coaching)
         continuation.finish()
     }
 
@@ -962,6 +1000,36 @@ final class ConversationViewModelTests: XCTestCase {
 
         let recordedEvents = await events.values()
         XCTAssertEqual(recordedEvents, ["discard-draft", "discard-conversation"])
+        XCTAssertEqual(dismissed, 1)
+    }
+
+    func testRecordingCancelDuringVoicePreparationHidesAnEmptyConversationImmediately() async {
+        let preparationStarted = AsyncGate()
+        let finishPreparation = AsyncGate()
+        var dismissed = 0
+        let client = ConversationScreenClient(
+            beginVoice: {
+                await preparationStarted.open()
+                await finishPreparation.wait()
+            }, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
+            sendText: { _, available in await available() }, retry: {},
+            saveDraft: { _ in }, discardDraft: {}, discardEmptyConversation: {}
+        )
+        let model = ConversationViewModel(
+            conversationID: UUID().uuidString, title: "New chat", entryIntent: nil,
+            composer: .waitingForReply, client: client, dismiss: { dismissed += 1 }
+        )
+
+        let preparation = Task { try await model.beginVoice() }
+        await preparationStarted.wait()
+
+        model.requestDiscardRecording()
+
+        XCTAssertTrue(model.isClosing)
+        XCTAssertEqual(dismissed, 0)
+
+        await finishPreparation.open()
+        try? await preparation.value
         XCTAssertEqual(dismissed, 1)
     }
 

@@ -23,6 +23,79 @@ final class ConversationPreviewTests: XCTestCase {
         XCTAssertFalse(jump.waitForExistence(timeout: 1))
     }
 
+    func testSentMessageAnchorsNearTopBeforeResponseArrives() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-TAISAPreviewScenario", "conversation.sent-turn-anchor"]
+        app.launch()
+
+        XCTAssertTrue(
+            app.descendants(matching: .any)["preview.ready.conversation.sent-turn-anchor"]
+                .waitForExistence(timeout: 5)
+        )
+
+        let send = app.buttons["Send message"]
+        XCTAssertTrue(send.waitForExistence(timeout: 5))
+        send.tap()
+
+        let sentMessage = app.descendants(matching: .any)["conversation.message.sent-turn-anchor"]
+        XCTAssertTrue(sentMessage.waitForExistence(timeout: 5))
+        let closeButton = app.buttons["Close conversation"]
+        XCTAssertTrue(closeButton.exists)
+        let minimumAnchoredY = closeButton.frame.maxY + 8
+        let maximumAnchoredY = closeButton.frame.maxY + 32
+        let deadline = Date().addingTimeInterval(3)
+        while sentMessage.frame.minY > maximumAnchoredY, Date() < deadline {
+            RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+        }
+        XCTAssertGreaterThanOrEqual(sentMessage.frame.minY, minimumAnchoredY)
+        XCTAssertLessThanOrEqual(sentMessage.frame.minY, maximumAnchoredY)
+
+        let settledY = sentMessage.frame.minY
+        XCTAssertTrue(app.descendants(matching: .any)["conversation.streaming-response"].waitForExistence(timeout: 3))
+        let finalResponse = app.descendants(matching: .any)["conversation.message.sent-turn-final"]
+        XCTAssertTrue(finalResponse.waitForExistence(timeout: 18))
+        XCTAssertEqual(sentMessage.frame.minY, settledY, accuracy: 2)
+    }
+
+    func testJumpDuringAnchoredStreamingReachesTheActualResponseBottom() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-TAISAPreviewScenario", "conversation.sent-turn-anchor"]
+        app.launch()
+
+        XCTAssertTrue(app.buttons["Send message"].waitForExistence(timeout: 5))
+        app.buttons["Send message"].tap()
+
+        let jump = app.buttons["Jump to latest response"]
+        XCTAssertTrue(jump.waitForExistence(timeout: 12))
+        guard jump.exists else { return }
+        jump.tap()
+
+        XCTAssertFalse(jump.waitForExistence(timeout: 2))
+        XCTAssertTrue(app.descendants(matching: .any)["conversation.streaming-response"].isHittable)
+    }
+
+    func testJumpLoadingStateClearsAfterStreamingFinishesWhileRemainingAwayFromLatest() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-TAISAPreviewScenario", "conversation.sent-turn-anchor"]
+        app.launch()
+
+        XCTAssertTrue(app.buttons["Send message"].waitForExistence(timeout: 5))
+        app.buttons["Send message"].tap()
+
+        let jump = app.buttons["Jump to latest response"]
+        XCTAssertTrue(jump.waitForExistence(timeout: 12))
+        XCTAssertEqual(jump.value as? String, "Taisa is responding")
+
+        let finalResponse = app.descendants(matching: .any)["conversation.message.sent-turn-final"]
+        XCTAssertTrue(finalResponse.waitForExistence(timeout: 18))
+        let timeline = app.scrollViews["conversation.root"]
+        XCTAssertTrue(timeline.waitForExistence(timeout: 3))
+        XCTAssertTrue(timeline.isHittable)
+        timeline.swipeDown()
+        XCTAssertTrue(jump.waitForExistence(timeout: 3))
+        XCTAssertNotEqual(jump.value as? String, "Taisa is responding")
+    }
+
     func testResponseFeedbackFactorsOpenInADismissibleSheet() {
         let app = XCUIApplication()
         app.launchArguments = ["-TAISAPreviewScenario", "conversation.senior-self-response"]
