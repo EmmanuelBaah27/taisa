@@ -139,7 +139,7 @@ struct ConversationComponentTests {
 
     @MainActor @Test func figmaEdgeFadesUseMeasuredStops() {
         #expect(PageEdgeFade.fadeStart == 0.40)
-        #expect(PageEdgeFade.headerOpaqueStop == 0.40)
+        #expect(PageEdgeFade.headerOpaqueStop == 0.56)
         #expect(PageEdgeFade.navigationOpaqueStop == 0.60)
         #expect(TaisaBottomChromeContract.fadeHeight == TaisaControlMetric.primaryNavigationReservedHeight)
         #expect(TaisaBottomChromeContract.coversBottomSafeArea)
