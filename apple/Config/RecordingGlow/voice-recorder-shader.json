@@ -1,4 +1,5 @@
 {
+  "schemaVersion": 1,
   "preset": {
     "center": {
       "brightness": 1,
@@ -88,5 +89,12 @@
     "peakContribution": 0.2,
     "releaseSeconds": 0.6044575989246368,
     "responseExponent": 1.5044378519058228
-  }
+  },
+  "motion": {
+    "waveStaggerSeconds": 0.035,
+    "attackDuration": 0.16,
+    "attackBounce": 0.45,
+    "releaseDuration": 0.16
+  },
+  "surfaceHeight": 240
 }

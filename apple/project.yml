@@ -36,6 +36,8 @@ targets:
     sources:
       - path: TaisaApp
       - path: Generated
+      - path: Config/RecordingGlow/voice-recorder-shader.json
+        buildPhase: resources
     settings:
       base:
         PRODUCT_NAME: Taisa
@@ -98,6 +100,8 @@ targets:
       - path: TaisaApp/Conversation/TranscriptCorrectionView.swift
       - path: TaisaApp/Conversations
       - path: Generated
+      - path: Config/RecordingGlow/voice-recorder-shader.json
+        buildPhase: resources
     settings:
       base:
         PRODUCT_NAME: TaisaPreview

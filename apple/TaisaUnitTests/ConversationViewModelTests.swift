@@ -24,6 +24,15 @@ final class ConversationViewModelTests: XCTestCase {
         XCTAssertEqual(try JSONDecoder().decode(RecordingGlowConfiguration.self, from: data), approved)
     }
 
+    func testApprovedRecordingGlowConfigurationComesFromBundledLabExport() throws {
+        let bundled = try RecordingGlowConfiguration.loadApproved(from: .main)
+
+        XCTAssertEqual(bundled, RecordingGlowConfiguration.approved)
+        XCTAssertEqual(bundled.schemaVersion, 1)
+        XCTAssertEqual(bundled.surfaceHeight, 240)
+        XCTAssertEqual(bundled.motion, .approved)
+    }
+
     func testStartRefreshesPersistedConversationTitle() async {
         let client = ConversationScreenClient(
             loadTitle: { "Persisted conversation title" },
