@@ -88,7 +88,10 @@ final class ConversationPreviewTests: XCTestCase {
 
         let finalResponse = app.descendants(matching: .any)["conversation.message.sent-turn-final"]
         XCTAssertTrue(finalResponse.waitForExistence(timeout: 18))
-        app.scrollViews["conversation.root"].swipeDown()
+        let timeline = app.scrollViews["conversation.timeline"]
+        XCTAssertTrue(timeline.waitForExistence(timeout: 3))
+        XCTAssertTrue(timeline.isHittable)
+        timeline.swipeDown()
         XCTAssertTrue(jump.waitForExistence(timeout: 3))
         XCTAssertNotEqual(jump.value as? String, "Taisa is responding")
     }
