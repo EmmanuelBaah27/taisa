@@ -505,12 +505,14 @@ final class ConversationViewModelTests: XCTestCase {
         XCTAssertEqual(model.composer, .coaching)
         XCTAssertEqual(model.partialCoaching, "Short answer")
         XCTAssertEqual(model.streamingFinalMessageID, assistant.id)
+        XCTAssertTrue(model.isResponseStreaming)
 
         model.completeStreamingPresentation()
 
         XCTAssertEqual(model.composer, .waitingForReply)
         XCTAssertEqual(model.partialCoaching, "")
         XCTAssertNil(model.streamingFinalMessageID)
+        XCTAssertFalse(model.isResponseStreaming)
     }
 
     func testPartialRefreshReconcilesAssistantReplyPersistedWhileRequestIsStillWaiting() async {

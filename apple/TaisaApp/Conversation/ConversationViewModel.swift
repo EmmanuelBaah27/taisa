@@ -364,6 +364,9 @@ final class ConversationViewModel {
     func refreshPartialCoaching() async {
         let latestPartial = await client.loadPartialCoaching()
         guard !Task.isCancelled, composer == .coaching else { return }
+        if !latestPartial.isEmpty, latestPartial != partialCoaching {
+            isResponseStreaming = true
+        }
         await reloadMessages()
         guard !Task.isCancelled, composer == .coaching else { return }
         if let finalAssistant = latestAssistantAfterLatestUser() {
@@ -461,6 +464,7 @@ final class ConversationViewModel {
     }
 
     func completeStreamingPresentation() {
+        isResponseStreaming = false
         guard streamingFinalMessageID != nil else { return }
         streamingFinalMessageID = nil
         partialCoaching = ""
@@ -904,11 +908,11 @@ final class ConversationViewModel {
     }
 
     private func prepareCompletedStreamPresentation() async {
-        isResponseStreaming = false
         let finalPartial = await client.loadPartialCoaching()
         await reloadMessages()
         let finalAssistant = latestAssistantAfterLatestUser()
         guard let finalAssistant else {
+            isResponseStreaming = false
             partialCoaching = ""
             streamingFinalMessageID = nil
             finishResponseIfPersisted()

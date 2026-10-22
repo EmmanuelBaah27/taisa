@@ -128,6 +128,13 @@ final class ConversationViewContractTests: XCTestCase {
         XCTAssertFalse(source.contains("isLoading: isThinking || !streamingResponse.isEmpty"))
         XCTAssertTrue(source.contains("needsInitialLatestPosition"))
         XCTAssertTrue(source.contains("releasesAnchorAfterJump"))
+        let lazyStackRange = source.range(of: "LazyVStack(alignment: .leading, spacing: 0)")!
+        let actualBottomRange = source.range(of: ".id(\"conversation.actual-content-bottom\")")!
+        let lazyStackBottomPaddingRange = source.range(
+            of: ".padding(.bottom, TaisaSpacing.standard.rawValue)",
+            range: lazyStackRange.upperBound..<source.endIndex
+        )!
+        XCTAssertLessThan(lazyStackBottomPaddingRange.lowerBound, actualBottomRange.lowerBound)
         XCTAssertEqual(ConversationTimelineLayout.userBubbleWidthFraction, 0.85)
         XCTAssertTrue(source.contains("withAnimation"))
         XCTAssertTrue(source.contains("scrollBounceBehavior(.always, axes: .vertical)"))

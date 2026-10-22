@@ -253,46 +253,47 @@ struct ConversationTimeline: View {
                             .accessibilityIdentifier("conversation.streaming-response")
                             .id(streamingFinalMessageID ?? "conversation.streaming-response.live")
                     }
-
-                    Color.clear
-                        .frame(height: 1)
-                        .id("conversation.actual-content-bottom")
-                        .accessibilityHidden(true)
-                        .onGeometryChange(for: CGRect.self) { geometry in
-                            geometry.frame(in: .global)
-                        } action: { _, frame in
-                            actualContentFrame = frame
-                            refreshJumpVisibility()
-                            if needsInitialLatestPosition, !presentedMessages.isEmpty {
-                                needsInitialLatestPosition = false
-                                Task { @MainActor in
-                                    await Task.yield()
-                                    isAwayFromLatest = false
-                                    scrollToLatest(using: proxy, animated: false)
-                                }
-                            } else if releasesAnchorAfterJump, !isAwayFromLatest {
-                                anchoredUserMessageID = nil
-                                releasesAnchorAfterJump = false
-                            }
-                        }
-
-                    let responseRunwayHeight = ConversationTimelineLayout.responseRunwayHeight(
-                        viewportHeight: readableViewportHeight,
-                        preservesAnchoredTurn: anchoredUserMessageID != nil
-                    )
-                    if responseRunwayHeight > 0 {
-                        Spacer(minLength: 0)
-                            .frame(height: responseRunwayHeight)
-                            .accessibilityHidden(true)
-                    }
-
                 }
                 .padding(.top, ConversationTimelineLayout.firstMessageTopSpacing)
                 .padding(.bottom, TaisaSpacing.standard.rawValue)
+
+                Color.clear
+                    .frame(height: 1)
+                    .id("conversation.actual-content-bottom")
+                    .accessibilityHidden(true)
+                    .onGeometryChange(for: CGRect.self) { geometry in
+                        geometry.frame(in: .global)
+                    } action: { _, frame in
+                        actualContentFrame = frame
+                        refreshJumpVisibility()
+                        if needsInitialLatestPosition, !presentedMessages.isEmpty {
+                            needsInitialLatestPosition = false
+                            Task { @MainActor in
+                                await Task.yield()
+                                isAwayFromLatest = false
+                                scrollToLatest(using: proxy, animated: false)
+                            }
+                        } else if releasesAnchorAfterJump, !isAwayFromLatest {
+                            anchoredUserMessageID = nil
+                            releasesAnchorAfterJump = false
+                        }
+                    }
+
+                let responseRunwayHeight = ConversationTimelineLayout.responseRunwayHeight(
+                    viewportHeight: readableViewportHeight,
+                    preservesAnchoredTurn: anchoredUserMessageID != nil
+                )
+                if responseRunwayHeight > 0 {
+                    Spacer(minLength: 0)
+                        .frame(height: responseRunwayHeight)
+                        .accessibilityHidden(true)
+                }
+
                 Color.clear
                     .frame(height: 1)
                     .id("conversation.timeline-bottom")
             }
+            .accessibilityIdentifier("conversation.timeline")
             .scrollBounceBehavior(.always, axes: .vertical)
             .defaultScrollAnchor(.bottom, for: .initialOffset)
             .onScrollGeometryChange(for: CGFloat.self) { geometry in
@@ -347,7 +348,10 @@ struct ConversationTimeline: View {
                 hasPositionedInitialMessages = true
                 switch action {
                 case .initialLatest:
-                    needsInitialLatestPosition = true
+                    needsInitialLatestPosition = false
+                    await Task.yield()
+                    isAwayFromLatest = false
+                    scrollToLatest(using: proxy, animated: false)
                 case .anchorUserMessage:
                     await Task.yield()
                     isAwayFromLatest = false
@@ -361,7 +365,6 @@ struct ConversationTimeline: View {
                 }
             }
         }
-        .accessibilityIdentifier("conversation.timeline")
     }
 
     private func scrollToLatest(using proxy: ScrollViewProxy, animated: Bool) {

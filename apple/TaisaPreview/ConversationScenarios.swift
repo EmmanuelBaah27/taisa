@@ -17,6 +17,7 @@ enum ConversationScenarios {
         composer("conversation.transcribing", "Conversation transcribing", .transcribing),
         composer("conversation.coaching", "Conversation coaching", .coaching),
         composer("conversation.waiting", "Conversation waiting for Reply", .waitingForReply, messages: messages),
+        composer("conversation.existing-history", "Existing conversation history", .waitingForReply, messages: longHistoryMessages),
         seniorSelfResponse,
         composer("conversation.permission-denied", "Conversation microphone denied", .failure(.unavailable)),
         composer("conversation.retry-transcription", "Conversation retry transcription", .failure(.retryable)),
@@ -136,6 +137,16 @@ enum ConversationScenarios {
         .init(id: "10000000-0000-4000-8000-000000000001", conversationID: "20000000-0000-4000-8000-000000000001", role: "user", body: "Help me prepare for my review.", createdAtMS: 1),
         .init(id: "10000000-0000-4000-8000-000000000002", conversationID: "20000000-0000-4000-8000-000000000001", role: "assistant", body: "Start with the impact you can support with evidence.", createdAtMS: 2),
     ]
+
+    private static let longHistoryMessages: [MessageRecord] = (0..<14).map { index in
+        MessageRecord(
+            id: String(format: "90000000-0000-4000-8000-%012d", index),
+            conversationID: "20000000-0000-4000-8000-000000000009",
+            role: index.isMultiple(of: 2) ? "user" : "assistant",
+            body: index == 13 ? "Latest rendered conversation message" : "Existing conversation message \(index + 1) with enough text to require scrolling.",
+            createdAtMS: Int64(index + 1)
+        )
+    }
 
     private static let listSnapshot = ConversationIndexSnapshot(
         drafts: [draft("30000000-0000-4000-8000-000000000001", .saved, 4), draft("30000000-0000-4000-8000-000000000002", .saved, 3)],
