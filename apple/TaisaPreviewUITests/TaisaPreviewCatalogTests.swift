@@ -60,6 +60,20 @@ final class TaisaPreviewCatalogTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["History"].exists)
     }
 
+    func testCareerActionScenarioShowsCanonicalDetailHierarchy() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-TAISAPreviewScenario", "career.action"]
+        app.launch()
+
+        XCTAssertTrue(element("career-work.action.detail", in: app).waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Outline first case study"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Checklist"].exists)
+        XCTAssertTrue(app.staticTexts["Evidence"].exists)
+        app.swipeUp()
+        XCTAssertTrue(app.staticTexts["History"].waitForExistence(timeout: 5))
+        retainScreenshot(of: app, name: "career-action-detail")
+    }
+
     private func element(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
         app.descendants(matching: .any)[identifier]
     }

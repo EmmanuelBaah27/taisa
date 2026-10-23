@@ -139,6 +139,11 @@ public final class CareerWorkModel {
         }
     }
 
+    public func cancelDuplicateReview() {
+        pendingActionDraft = nil
+        duplicateGate = nil
+    }
+
     public func editSelectedAction(_ draft: ActionDraft, expectedUpdatedAtMS: Int64) async {
         guard case let .action(id) = route else { return }
         await mutate { _ = try await client.editCanonicalAction(id, draft, expectedUpdatedAtMS) }
