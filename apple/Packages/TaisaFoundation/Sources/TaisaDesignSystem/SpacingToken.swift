@@ -29,6 +29,9 @@ public enum TaisaMotion {
 }
 
 public enum TaisaControlMetric {
+    public static let actionButtonHeight: CGFloat = 48
+    public static let compactActionButtonHeight: CGFloat = 36
+    public static let compactActionIcon: CGFloat = 20
     public static let conversationComposerDockHeight: CGFloat = 96
     public static let standardIcon: CGFloat = 24
     public static let appBarHeight: CGFloat = 64
