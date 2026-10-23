@@ -66,12 +66,39 @@ struct RecordingGlowWaveTiming: Sendable, Equatable {
     }
 }
 
-struct RecordingGlowWaveMotion: Sendable, Equatable {
-    let attackDuration: Double
-    let attackBounce: Double
-    let releaseDuration: Double
+public struct RecordingGlowMotionConfiguration: Codable, Sendable, Equatable {
+    public var waveStaggerSeconds: Double
+    public var attackDuration: Double
+    public var attackBounce: Double
+    public var releaseDuration: Double
 
-    static let `default` = Self(attackDuration: 0.16, attackBounce: 0.45, releaseDuration: 0.16)
+    public init(
+        waveStaggerSeconds: Double,
+        attackDuration: Double,
+        attackBounce: Double,
+        releaseDuration: Double
+    ) {
+        self.waveStaggerSeconds = waveStaggerSeconds
+        self.attackDuration = attackDuration
+        self.attackBounce = attackBounce
+        self.releaseDuration = releaseDuration
+    }
+
+    public static let approved = Self(
+        waveStaggerSeconds: 0.035,
+        attackDuration: 0.16,
+        attackBounce: 0.45,
+        releaseDuration: 0.16
+    )
+
+    fileprivate var normalized: Self {
+        .init(
+            waveStaggerSeconds: clamped(waveStaggerSeconds, maximum: 0.18),
+            attackDuration: clamped(attackDuration, minimum: 0.01, maximum: 2),
+            attackBounce: clamped(attackBounce),
+            releaseDuration: clamped(releaseDuration, minimum: 0.01, maximum: 2)
+        )
+    }
 }
 
 struct RecordingGlowWaveLevels: Sendable, Equatable {
@@ -120,11 +147,17 @@ struct RecordingGlowUniforms: Sendable, Equatable {
     var rightOuterContribution: Double { preset.rightOuter.strength * preset.edgeGain }
 }
 
+private enum RecordingGlowBoundaryMask {
+    static let center = UnitPoint(x: 0.5, y: 1.24)
+    static let opaqueStop = 0.72
+    static let endRadiusFraction = 1.24
+}
+
 public struct RecordingReactiveGlow: View {
     private let loudness: Double
     private let state: RecordingGlowState
     private let preset: RecordingGlowPreset
-    private let waveStagger: Double
+    private let motion: RecordingGlowMotionConfiguration
     private let frequencyLevels: RecordingGlowFrequencyLevels
     @State private var waveLevels: RecordingGlowWaveLevels
 
@@ -132,13 +165,13 @@ public struct RecordingReactiveGlow: View {
         loudness: Double,
         state: RecordingGlowState,
         preset: RecordingGlowPreset = .figmaDefault,
-        waveStagger: Double = 0.035,
+        motion: RecordingGlowMotionConfiguration = .approved,
         frequencyLevels: RecordingGlowFrequencyLevels? = nil
     ) {
         self.loudness = loudness
         self.state = state
         self.preset = preset
-        self.waveStagger = waveStagger
+        self.motion = motion.normalized
         self.frequencyLevels = frequencyLevels ?? .uniform(loudness)
         let initialLevels = self.frequencyLevels.visualPresence()
         _waveLevels = State(initialValue: state == .recording ? initialLevels : .zero)
@@ -157,11 +190,25 @@ public struct RecordingReactiveGlow: View {
                 shaderSurface
             }
         }
+        .mask(recordingFieldMask)
         .allowsHitTesting(false)
         .accessibilityHidden(true)
         .onChange(of: loudness) { _, _ in animateWave() }
         .onChange(of: frequencyLevels) { _, _ in animateWave() }
         .onChange(of: state) { _, _ in animateWave() }
+    }
+
+    private var recordingFieldMask: some View {
+        EllipticalGradient(
+            stops: [
+                .init(color: .white, location: 0),
+                .init(color: .white, location: RecordingGlowBoundaryMask.opaqueStop),
+                .init(color: .clear, location: 1),
+            ],
+            center: RecordingGlowBoundaryMask.center,
+            startRadiusFraction: 0,
+            endRadiusFraction: RecordingGlowBoundaryMask.endRadiusFraction
+        )
     }
 
     private var shaderSurface: some View {
@@ -217,9 +264,8 @@ public struct RecordingReactiveGlow: View {
     }
 
     private func animateWave() {
-        let timing = RecordingGlowWaveTiming(staggerSeconds: waveStagger)
+        let timing = RecordingGlowWaveTiming(staggerSeconds: motion.waveStaggerSeconds)
         let levels = state == .recording ? frequencyLevels.visualPresence() : .zero
-        let motion = RecordingGlowWaveMotion.default
         let isRising = max(levels.leftOuter, levels.leftInner, levels.center, levels.rightInner, levels.rightOuter)
             >= max(waveLevels.leftOuter, waveLevels.leftInner, waveLevels.center, waveLevels.rightInner, waveLevels.rightOuter)
         let animation = isRising
@@ -273,4 +319,9 @@ private extension RecordingGlowColor {
             opacity: color.opacity
         )
     }
+}
+
+private func clamped(_ value: Double, minimum: Double = 0, maximum: Double = 1) -> Double {
+    guard value.isFinite else { return minimum }
+    return min(max(value, minimum), maximum)
 }

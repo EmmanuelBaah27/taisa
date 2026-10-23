@@ -13,6 +13,7 @@
 		05AF7679289DD988AFFA1E02 /* ConversationViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A762C6B05EBE3E1F2EEE8FD3 /* ConversationViewModel.swift */; };
 		06F988DF8DA06BD0BC94D347 /* InsightDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97B1116C9FFEDAF680AF43A5 /* InsightDetailView.swift */; };
 		0808B24429C970DCF8653149 /* TaisaPreviewSupport in Frameworks */ = {isa = PBXBuildFile; productRef = 8FA686B6DCB4A6884B2DBA33 /* TaisaPreviewSupport */; };
+		093D360A285D263327A33EF1 /* RecordingGlowConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = F65A9A36CF0A4C988B0CCD6C /* RecordingGlowConfiguration.swift */; };
 		0A0EFEF2375FFF77B1162B18 /* TaisaConversations in Frameworks */ = {isa = PBXBuildFile; productRef = EE5CBE84C5CC2E71D74BA7FA /* TaisaConversations */; };
 		0AA4AD7C2E56F4FB0FEEE0C6 /* InsightDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97B1116C9FFEDAF680AF43A5 /* InsightDetailView.swift */; };
 		0C8E71835C74BC814F59AC1C /* TaisaHome in Frameworks */ = {isa = PBXBuildFile; productRef = 0DF31A4B9370F4FDAEA3315E /* TaisaHome */; };
@@ -29,6 +30,7 @@
 		1A9AA4F6A3D6FB605A972CB2 /* TaisaCore in Frameworks */ = {isa = PBXBuildFile; productRef = D2ACC0C577B5AEDE6763EFE5 /* TaisaCore */; };
 		1B01DF3A74C8A8F9C879C132 /* VoiceFailureDiagnosticTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FDC2B51AA253FE5071AA1D1 /* VoiceFailureDiagnosticTests.swift */; };
 		1C3C0759308495D3F89AD423 /* BuildDiagnosticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B59487963D8B0F07F92A741 /* BuildDiagnosticsView.swift */; };
+		1DDD6CC96CCEC600845CE9EA /* voice-recorder-shader.json in Resources */ = {isa = PBXBuildFile; fileRef = 2AB7DC889DDDA7CD9B77DE86 /* voice-recorder-shader.json */; };
 		1E89017FCDE18E2D8924951F /* TaisaVoice in Frameworks */ = {isa = PBXBuildFile; productRef = FDEFAC7298DC6A2773CC1955 /* TaisaVoice */; };
 		1E9F46005B09D3CCFF0801E6 /* VoiceSessionDiagnosticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37D6181795E1F88B04691E7E /* VoiceSessionDiagnosticsView.swift */; };
 		216146AFCFF15C3A6F486079 /* TaisaNetworking in Frameworks */ = {isa = PBXBuildFile; productRef = B340B485CA54E85F7EB41EA5 /* TaisaNetworking */; };
@@ -45,6 +47,7 @@
 		2BB2004C2A12D95BBDC43B00 /* HomeScenarios.swift in Sources */ = {isa = PBXBuildFile; fileRef = F55DF3928CFB2744E7DB4520 /* HomeScenarios.swift */; };
 		2C4953C9F7A77AFE60369188 /* BuildMetadata.generated.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5247C0A0A8695277E1212A3 /* BuildMetadata.generated.swift */; };
 		2C87AABC98E1700B738509C0 /* ConversationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DFC071BC87E24F810CB98DD /* ConversationView.swift */; };
+		2EBFB0C5BDB901C2298FF88C /* voice-recorder-shader.json in Resources */ = {isa = PBXBuildFile; fileRef = 2AB7DC889DDDA7CD9B77DE86 /* voice-recorder-shader.json */; };
 		2EC7CA4C5F7BD9D3CAC81ABA /* CareerWorkViewContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 936FCC11F9D526A7A5144337 /* CareerWorkViewContractTests.swift */; };
 		2EE4D74813E476437BE33A88 /* TaisaConversations in Frameworks */ = {isa = PBXBuildFile; productRef = AA731BE5321EDF14BB5F0943 /* TaisaConversations */; };
 		2F8325E955C7D322F3A85195 /* VoiceSessionDiagnosticsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79B1393C1FED95ECECC487CB /* VoiceSessionDiagnosticsViewModel.swift */; };
@@ -66,11 +69,13 @@
 		453968367E2C069858A27195 /* TaisaHome in Frameworks */ = {isa = PBXBuildFile; productRef = CDE1C319968A04D7C860E6AC /* TaisaHome */; };
 		456350405E9B8AC9184AB126 /* VoiceSessionScenarios.swift in Sources */ = {isa = PBXBuildFile; fileRef = 022B79237BF857BBC39C4E77 /* VoiceSessionScenarios.swift */; };
 		48B64188A4F2C1DA7AC4A4F3 /* TaisaConversations in Frameworks */ = {isa = PBXBuildFile; productRef = 8679BA8F5D8BF1716716D6F3 /* TaisaConversations */; };
+		4AFAF0E0BE1943A88E868418 /* RecordingGlowConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = F65A9A36CF0A4C988B0CCD6C /* RecordingGlowConfiguration.swift */; };
 		4C501F4AE644C0CB992030F9 /* InsightsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09FF4AF48190A145ED9F8694 /* InsightsView.swift */; };
 		4E7E86167BB1E06EF18592B2 /* PrimaryAppShellTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1800CA5B1C503275F9EAE770 /* PrimaryAppShellTests.swift */; };
 		4E9C7C4A9B317988D683DA1E /* TaisaCore in Frameworks */ = {isa = PBXBuildFile; productRef = A72C408F4F7BE22C7A7A5119 /* TaisaCore */; };
 		4F868BFB74A1FC040BBFD0E2 /* PrimaryAppShell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 985B59A5AA9B882A8A7CB454 /* PrimaryAppShell.swift */; };
 		518FC0410E534B728B8209C5 /* PersonalCombinedHomeQA.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF3CF6857F247C8075C0E478 /* PersonalCombinedHomeQA.swift */; };
+		5326A4652D47A363DF9D5793 /* voice-recorder-shader.json in Resources */ = {isa = PBXBuildFile; fileRef = 2AB7DC889DDDA7CD9B77DE86 /* voice-recorder-shader.json */; };
 		5424D4851C6A34AD682A1992 /* HomeViewContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66D126C7392BE051E45EF386 /* HomeViewContractTests.swift */; };
 		54C447F0AB3A057C5F0D619F /* TaisaHome in Frameworks */ = {isa = PBXBuildFile; productRef = 8F03A9525A2F8389BF08DB53 /* TaisaHome */; };
 		55B6B4178C42BC8B73A8F96B /* PersonalCombinedHomeQA.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF3CF6857F247C8075C0E478 /* PersonalCombinedHomeQA.swift */; };
@@ -170,6 +175,7 @@
 		D65CD3C640F6A696D18DD9A9 /* VoiceSessionDiagnosticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37D6181795E1F88B04691E7E /* VoiceSessionDiagnosticsView.swift */; };
 		D78923F4CFD4918C2BC107BC /* TaisaCareerWork in Frameworks */ = {isa = PBXBuildFile; productRef = 49C7FC5FD3E7F6628BC4FC4B /* TaisaCareerWork */; };
 		DBA10E146CE606FED896C76D /* PersonalVoiceSessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68CC4A35117BE0C1981CF4E2 /* PersonalVoiceSessionView.swift */; };
+		DD6B47B21CF4B13D44BD9089 /* RecordingGlowConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = F65A9A36CF0A4C988B0CCD6C /* RecordingGlowConfiguration.swift */; };
 		DF8C3E5BCC13F767A50E6CA6 /* TaisaYou in Frameworks */ = {isa = PBXBuildFile; productRef = DD85796C803F570823F79311 /* TaisaYou */; };
 		E09818AED28E05555E66B7F5 /* LeadInsightSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E564CC9D239D9DCCC17F0AE /* LeadInsightSection.swift */; };
 		E142786C2D3010C4A93CF144 /* PersonalDeviceQA.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84B4FC6A6B65DD3C62F773B1 /* PersonalDeviceQA.swift */; };
@@ -244,6 +250,7 @@
 		1D8CAD9BE68E8343796C4A99 /* TaisaAccessibilityLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaisaAccessibilityLayoutTests.swift; sourceTree = "<group>"; };
 		25ADE8BC471806F721DF84BC /* YouScenarios.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YouScenarios.swift; sourceTree = "<group>"; };
 		26928FC4DC6D3CCE75A38559 /* DraftRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DraftRow.swift; sourceTree = "<group>"; };
+		2AB7DC889DDDA7CD9B77DE86 /* voice-recorder-shader.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "voice-recorder-shader.json"; sourceTree = "<group>"; };
 		2C67580C7BC2D92BA207D078 /* TaisaPreviewUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = TaisaPreviewUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		2E564CC9D239D9DCCC17F0AE /* LeadInsightSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeadInsightSection.swift; sourceTree = "<group>"; };
 		305AAEAE3D76CAC24AA7C499 /* ConversationViewContractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationViewContractTests.swift; sourceTree = "<group>"; };
@@ -318,6 +325,7 @@
 		F5247C0A0A8695277E1212A3 /* BuildMetadata.generated.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildMetadata.generated.swift; sourceTree = "<group>"; };
 		F55DF3928CFB2744E7DB4520 /* HomeScenarios.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeScenarios.swift; sourceTree = "<group>"; };
 		F5B97AC1D5F21A3BF7F7BFA3 /* RecoveryViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecoveryViewModelTests.swift; sourceTree = "<group>"; };
+		F65A9A36CF0A4C988B0CCD6C /* RecordingGlowConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingGlowConfiguration.swift; sourceTree = "<group>"; };
 		F85D7A73226CB6E9770D24D6 /* Personal.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Personal.xcconfig; sourceTree = "<group>"; };
 		F903B811129986113206457E /* PersonalVoiceGatewayEnrollmentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalVoiceGatewayEnrollmentTests.swift; sourceTree = "<group>"; };
 		FB7D5832060268C72A352DB1 /* AppRuntimeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRuntimeTests.swift; sourceTree = "<group>"; };
@@ -610,6 +618,7 @@
 				D4CB250D4357A7E294F8C2E6 /* Config */,
 				C191D2E94CBA117F4E9E765C /* Generated */,
 				4F8F3D9EE97CEA0B954B5C6E /* Packages */,
+				E504B0729A1D32CDE2604BBD /* RecordingGlow */,
 				8383E1528B799AC12D21FB59 /* TaisaApp */,
 				DF3F74FDFC8EDE9B9AA0C6D7 /* TaisaPersonalTests */,
 				2E894D1E47C0090DB61C975D /* TaisaPersonalUITests */,
@@ -653,6 +662,15 @@
 			path = TaisaPersonalTests;
 			sourceTree = "<group>";
 		};
+		E504B0729A1D32CDE2604BBD /* RecordingGlow */ = {
+			isa = PBXGroup;
+			children = (
+				2AB7DC889DDDA7CD9B77DE86 /* voice-recorder-shader.json */,
+			);
+			name = RecordingGlow;
+			path = Config/RecordingGlow;
+			sourceTree = "<group>";
+		};
 		FDC8E03D1D07A8F2DAD8626B /* Conversation */ = {
 			isa = PBXGroup;
 			children = (
@@ -661,6 +679,7 @@
 				8141344AEEFB536E987E8D85 /* ConversationTimeline.swift */,
 				3DFC071BC87E24F810CB98DD /* ConversationView.swift */,
 				A762C6B05EBE3E1F2EEE8FD3 /* ConversationViewModel.swift */,
+				F65A9A36CF0A4C988B0CCD6C /* RecordingGlowConfiguration.swift */,
 				6F9F0E82CFDAD9C86AC289FF /* TranscriptCorrectionView.swift */,
 			);
 			path = Conversation;
@@ -701,6 +720,7 @@
 			buildConfigurationList = FD69A2EC75F970936BFEAD45 /* Build configuration list for PBXNativeTarget "TaisaPersonal" */;
 			buildPhases = (
 				877F347F4AA6DD95264963CD /* Sources */,
+				45EA1E12CEDF9B4C84CE0D4D /* Resources */,
 				3CA043D9D9C23199E785A038 /* Frameworks */,
 			);
 			buildRules = (
@@ -732,6 +752,7 @@
 			buildConfigurationList = 68E979BED0F9F61F2E898BF6 /* Build configuration list for PBXNativeTarget "Taisa" */;
 			buildPhases = (
 				F697230EA83A6555EFAC728D /* Sources */,
+				AADCE3B75A9F7AC949B79998 /* Resources */,
 				B605B215A495938EA165DC32 /* Frameworks */,
 			);
 			buildRules = (
@@ -764,6 +785,7 @@
 			buildConfigurationList = 219F967F5DE4862C3199F819 /* Build configuration list for PBXNativeTarget "TaisaPreview" */;
 			buildPhases = (
 				4D589187A1AF0F20BBD366FF /* Sources */,
+				CA58CF10FB2EA80155AF9A4F /* Resources */,
 				E084E96DCDB78EF5E35182D2 /* Frameworks */,
 			);
 			buildRules = (
@@ -929,6 +951,33 @@
 		};
 /* End PBXProject section */
 
+/* Begin PBXResourcesBuildPhase section */
+		45EA1E12CEDF9B4C84CE0D4D /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2EBFB0C5BDB901C2298FF88C /* voice-recorder-shader.json in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AADCE3B75A9F7AC949B79998 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5326A4652D47A363DF9D5793 /* voice-recorder-shader.json in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CA58CF10FB2EA80155AF9A4F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1DDD6CC96CCEC600845CE9EA /* voice-recorder-shader.json in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		4D589187A1AF0F20BBD366FF /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -958,6 +1007,7 @@
 				27647A73DE2201D81A1724E9 /* PreviewCatalogView.swift in Sources */,
 				B4D5E79232FA07135208B36F /* PreviewRootView.swift in Sources */,
 				16C7A44E431B3A16DB883F3F /* PrimaryDestination.swift in Sources */,
+				093D360A285D263327A33EF1 /* RecordingGlowConfiguration.swift in Sources */,
 				4163CCF8DC508E7DBDECFFB8 /* RecordingGlowScenarios.swift in Sources */,
 				69FC3E1259CACF0070226F8D /* RecordingGlowTuningView.swift in Sources */,
 				8EA94BF84706F6197B9CB847 /* TaisaPreviewApp.swift in Sources */,
@@ -1005,6 +1055,7 @@
 				34003D9D1C8966A752A3A7E2 /* PersonalVoiceSessionView.swift in Sources */,
 				4F868BFB74A1FC040BBFD0E2 /* PrimaryAppShell.swift in Sources */,
 				A056B1B31286275832533890 /* PrimaryDestination.swift in Sources */,
+				DD6B47B21CF4B13D44BD9089 /* RecordingGlowConfiguration.swift in Sources */,
 				5D3E2CD7D9A522B3FC372CFC /* RecoveryView.swift in Sources */,
 				D23CB4A7E400C56447E31548 /* RecoveryViewModel.swift in Sources */,
 				F204440FEA96C5FC1F7A9A7C /* TaisaApp.swift in Sources */,
@@ -1111,6 +1162,7 @@
 				DBA10E146CE606FED896C76D /* PersonalVoiceSessionView.swift in Sources */,
 				7A9F0B470941A7B341B71938 /* PrimaryAppShell.swift in Sources */,
 				E7A6652231C4DAF1E11C0739 /* PrimaryDestination.swift in Sources */,
+				4AFAF0E0BE1943A88E868418 /* RecordingGlowConfiguration.swift in Sources */,
 				10558363B760A0814005644A /* RecoveryView.swift in Sources */,
 				92AC13DEA84CC891F4654F4C /* RecoveryViewModel.swift in Sources */,
 				5DCEA91D737FD27D788EEF53 /* TaisaApp.swift in Sources */,

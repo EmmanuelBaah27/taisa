@@ -109,10 +109,7 @@ final class RecordingGlowPreviewTests: XCTestCase {
         app.tap()
 
         XCTAssertTrue(app.staticTexts["Live level"].waitForExistence(timeout: 5))
-        XCTAssertTrue(
-            app.staticTexts["Listening — receiving audio"]
-                .waitForExistence(timeout: 5)
-        )
+        XCTAssertTrue(app.staticTexts["Live microphone requires a physical device"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 5))
     }
 }

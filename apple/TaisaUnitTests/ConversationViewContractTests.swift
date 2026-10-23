@@ -42,6 +42,22 @@ final class ConversationViewContractTests: XCTestCase {
         XCTAssertFalse(runtimeSource.contains("ProgressView(\"Opening conversation…\")"))
     }
 
+    func testRecordingGlowUsesTheApprovedBottomAnchoredLabSurface() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let source = try String(
+            contentsOf: root.appendingPathComponent("TaisaApp/Conversation/ConversationView.swift"),
+            encoding: .utf8
+        )
+
+        XCTAssertTrue(source.contains("let configuration = RecordingGlowConfiguration.approved"))
+        XCTAssertTrue(source.contains(".frame(height: CGFloat(configuration.surfaceHeight))"))
+        XCTAssertTrue(source.contains("recordingGlowBackground"))
+        XCTAssertTrue(source.contains(".ignoresSafeArea(edges: [.horizontal, .bottom])"))
+        XCTAssertTrue(source.contains(".frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)"))
+        XCTAssertTrue(source.contains("ConversationComposerChrome(backdrop: { Color.clear })"))
+        XCTAssertTrue(source.contains("if showsRecordingGlow"))
+    }
+
     func testLatestDraftDiagnosticReportsOnlyContentFreeFields() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let factory = try String(

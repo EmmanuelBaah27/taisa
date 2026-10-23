@@ -1,17 +1,25 @@
 import Foundation
 import SwiftUI
+import TaisaAudio
 import TaisaConversations
 import TaisaDesignSystem
 import UIKit
 
 struct ConversationView: View {
     @State var model: ConversationViewModel
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     var body: some View {
         NavigationStack {
             ZStack(alignment: .top) {
                 StatusBarBackground()
                     .zIndex(4)
+                if showsRecordingGlow {
+                    recordingGlowBackground
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                        .ignoresSafeArea(edges: [.horizontal, .bottom])
+                }
                 VStack(spacing: 0) {
                     ZStack {
                         ConversationTimeline(
@@ -120,8 +128,19 @@ struct ConversationView: View {
     }
 
     @ViewBuilder private var composer: some View {
-        ConversationComposerChrome {
-            switch model.composer {
+        if showsRecordingGlow {
+            ConversationComposerChrome(backdrop: { Color.clear }) {
+                composerContent
+            }
+        } else {
+            ConversationComposerChrome {
+                composerContent
+            }
+        }
+    }
+
+    @ViewBuilder private var composerContent: some View {
+        switch model.composer {
             case .preparingVoice:
                 recordingBar(.preparing)
             case .recording:
@@ -179,7 +198,6 @@ struct ConversationView: View {
                     onRetry: performRecoveryPrimaryAction
                 )
                 .accessibilityIdentifier("conversation.retry")
-            }
         }
     }
 
@@ -235,6 +253,38 @@ struct ConversationView: View {
                 : 1
         )
         .accessibilityIdentifier("conversation.voice-composer")
+    }
+
+    private var showsRecordingGlow: Bool {
+        switch model.composer {
+        case .recording, .paused, .savedVoiceDraft: true
+        case .preparingVoice, .typing, .transcribing, .coaching, .waitingForReply, .failure: false
+        }
+    }
+
+    private var recordingGlowBackground: some View {
+        let configuration = RecordingGlowConfiguration.approved
+        return RecordingReactiveGlow(
+            loudness: model.recordingGlowLoudness,
+            state: recordingGlowState,
+            preset: configuration.preset,
+            motion: configuration.motion,
+            frequencyLevels: .init(
+                bass: model.capture.frequencyBands.bass,
+                lowMids: model.capture.frequencyBands.lowMids,
+                mids: model.capture.frequencyBands.mids,
+                upperMids: model.capture.frequencyBands.upperMids,
+                highs: model.capture.frequencyBands.highs
+            )
+        )
+        .frame(maxWidth: .infinity)
+        .frame(height: CGFloat(configuration.surfaceHeight))
+    }
+
+    private var recordingGlowState: RecordingGlowState {
+        if reduceTransparency { return .reducedTransparency }
+        if reduceMotion { return .reduceMotion }
+        return model.composer == .recording ? .recording : .paused
     }
 
     private var elapsed: String {

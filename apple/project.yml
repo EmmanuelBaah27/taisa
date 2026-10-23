@@ -36,6 +36,8 @@ targets:
     sources:
       - path: TaisaApp
       - path: Generated
+      - path: Config/RecordingGlow/voice-recorder-shader.json
+        buildPhase: resources
     settings:
       base:
         PRODUCT_NAME: Taisa
@@ -94,9 +96,12 @@ targets:
       - path: TaisaApp/Conversation/ConversationTimeline.swift
       - path: TaisaApp/Conversation/ConversationView.swift
       - path: TaisaApp/Conversation/ConversationViewModel.swift
+      - path: TaisaApp/Conversation/RecordingGlowConfiguration.swift
       - path: TaisaApp/Conversation/TranscriptCorrectionView.swift
       - path: TaisaApp/Conversations
       - path: Generated
+      - path: Config/RecordingGlow/voice-recorder-shader.json
+        buildPhase: resources
     settings:
       base:
         PRODUCT_NAME: TaisaPreview
@@ -157,6 +162,8 @@ targets:
     sources:
       - path: TaisaApp
       - path: Generated
+      - path: Config/RecordingGlow/voice-recorder-shader.json
+        buildPhase: resources
     settings:
       base:
         PRODUCT_NAME: TaisaPersonal

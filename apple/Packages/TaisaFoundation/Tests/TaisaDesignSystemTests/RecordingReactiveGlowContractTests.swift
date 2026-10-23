@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import TaisaDesignSystem
 
@@ -96,11 +97,29 @@ struct RecordingReactiveGlowContractTests {
 
     @Test("voice energy feels light and fluid rather than viscous")
     func waveMotionStaysLightAndFluid() {
-        let motion = RecordingGlowWaveMotion.default
+        let motion = RecordingGlowMotionConfiguration.approved
 
         #expect(motion.attackBounce > 0)
         #expect(motion.attackBounce == 0.45)
         #expect(motion.attackDuration == 0.16)
         #expect(motion.releaseDuration == 0.16)
+    }
+
+    @Test("the field follows a curved fade before its upper canvas boundary")
+    func upperCanvasBoundaryUsesACurvedFade() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let source = try String(
+            contentsOf: root.appendingPathComponent("Sources/TaisaDesignSystem/RecordingReactiveGlow.swift"),
+            encoding: .utf8
+        )
+
+        #expect(source.contains(".mask(recordingFieldMask)"))
+        #expect(source.contains("EllipticalGradient("))
+        #expect(source.contains("RecordingGlowBoundaryMask.center"))
+        #expect(source.contains("RecordingGlowBoundaryMask.opaqueStop"))
+        #expect(!source.contains("private var recordingFieldMask: some View {\n        LinearGradient("))
     }
 }

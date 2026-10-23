@@ -4,19 +4,6 @@ import TaisaAudio
 import TaisaDesignSystem
 import UIKit
 
-private extension LoudnessEnvelopeConfiguration {
-    static let recordingGlowApproved = Self(
-        noiseFloorDecibels: -55,
-        ceilingDecibels: -6,
-        inputGain: 1,
-        responseExponent: 1.5044378519058228,
-        peakContribution: 0.2,
-        attackSeconds: 0.07,
-        releaseSeconds: 0.6044575989246368,
-        maximumRisePerSecond: 7
-    )
-}
-
 struct RecordingGlowTuningView: View {
     @StateObject private var liveMeter = PreviewLiveLoudnessMonitor()
     @State private var preset = RecordingGlowPreset.figmaDefault
@@ -31,7 +18,7 @@ struct RecordingGlowTuningView: View {
     )
     @State private var inputMode = TuningInputMode.simulated
     @State private var simulatedState = SimulatedGlowState.recording
-    @State private var waveStagger = 0.035
+    @State private var motion = RecordingGlowMotionConfiguration.approved
     @State private var copied = false
 
     var body: some View {
@@ -40,11 +27,11 @@ struct RecordingGlowTuningView: View {
                 loudness: displayedLoudness,
                 state: simulatedState.recordingGlowState,
                 preset: preset,
-                waveStagger: waveStagger,
+                motion: motion,
                 frequencyLevels: displayedFrequencyLevels
             )
                 .frame(maxWidth: .infinity)
-                .frame(height: 240)
+                .frame(height: CGFloat(RecordingGlowConfiguration.approved.surfaceHeight))
                 .padding(.horizontal, TaisaSpacing.page.rawValue)
                 .padding(.vertical, TaisaSpacing.standard.rawValue)
                 .accessibilityElement(children: .ignore)
@@ -76,7 +63,10 @@ struct RecordingGlowTuningView: View {
                         slider("Response curve", value: $response.responseExponent, range: 0.2...2)
                         slider("Attack seconds", value: $response.attackSeconds, range: 0.02...0.6)
                         slider("Release seconds", value: $response.releaseSeconds, range: 0.1...1.5)
-                        slider("Wave stagger seconds", value: $waveStagger, range: 0...0.18)
+                        slider("Wave stagger seconds", value: $motion.waveStaggerSeconds, range: 0...0.18)
+                        slider("Wave attack seconds", value: $motion.attackDuration, range: 0.05...0.6)
+                        slider("Wave bounce", value: $motion.attackBounce)
+                        slider("Wave release seconds", value: $motion.releaseDuration, range: 0.05...0.8)
                     }
 
                     section("Center") {
@@ -310,12 +300,17 @@ struct RecordingGlowTuningView: View {
         simulatedBands = .init(bass: 0.42, lowMids: 0.58, mids: 0.72, upperMids: 0.46, highs: 0.28)
         inputMode = .simulated
         simulatedState = .recording
-        waveStagger = 0.035
+        motion = .approved
         copied = false
     }
 
     private func copyJSON() {
-        let snapshot = TuningSnapshot(preset: preset.normalized(), response: response)
+        let snapshot = RecordingGlowConfiguration(
+            preset: preset.normalized(),
+            response: response,
+            motion: motion,
+            surfaceHeight: RecordingGlowConfiguration.approved.surfaceHeight
+        )
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         guard let data = try? encoder.encode(snapshot),
@@ -324,7 +319,6 @@ struct RecordingGlowTuningView: View {
         copied = true
     }
 }
-
 private protocol TuningChoice: Hashable, Identifiable {
     var title: String { get }
 }
@@ -377,6 +371,10 @@ private final class PreviewLiveLoudnessMonitor: ObservableObject {
 
     func start(configuration: LoudnessEnvelopeConfiguration) async {
         stop()
+#if targetEnvironment(simulator)
+        status = "Live microphone requires a physical device"
+        return
+#else
         status = "Requesting microphone access…"
         guard await AVAudioApplication.requestRecordPermission() else {
             status = "Microphone access denied"
@@ -418,6 +416,7 @@ private final class PreviewLiveLoudnessMonitor: ObservableObject {
             stop()
             status = "Couldn’t start microphone"
         }
+#endif
     }
 
     func update(configuration: LoudnessEnvelopeConfiguration) {
@@ -473,9 +472,4 @@ private final class PreviewLiveLoudnessMonitor: ObservableObject {
             .seconds(Double(count) / sampleRate)
         )
     }
-}
-
-private struct TuningSnapshot: Codable {
-    let preset: RecordingGlowPreset
-    let response: LoudnessEnvelopeConfiguration
 }
