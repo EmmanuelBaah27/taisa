@@ -223,7 +223,7 @@ struct ConversationComponentTests {
         #expect(InlineRecoveryAlert.Contract.actionSpacing == 12)
     }
 
-    @Test func recordingControlsUseClearGlassWithATintedCircularSendControl() throws {
+    @Test func recordingControlsUseVisibleClearGlassWithATintedCircularSendControl() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .deletingLastPathComponent()
@@ -241,6 +241,8 @@ struct ConversationComponentTests {
         #expect(chrome.contains("case regular"))
         #expect(chrome.contains("case clear"))
         #expect(chrome.contains(".glassEffect(.clear.interactive(), in: Circle())"))
+        #expect(chrome.contains("Circle().stroke(TaisaColor.border.color)"))
+        #expect(chrome.contains("Capsule().stroke(TaisaColor.border.color)"))
         #expect(actionBar.contains("glassStyle: .clear"))
         #expect(actionBar.contains(".glassEffect(.clear.tint(TaisaColor.primaryAction.color).interactive(), in: Circle())"))
         #expect(!actionBar.contains(".buttonStyle(.glassProminent)"))
