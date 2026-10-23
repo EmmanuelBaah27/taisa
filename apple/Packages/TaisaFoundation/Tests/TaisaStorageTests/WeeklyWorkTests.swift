@@ -73,6 +73,25 @@ import Testing
         #expect(snapshot.items.isEmpty)
         #expect(snapshot.unresolvedPriorWeekCount == 0)
     }
+
+    @Test func interruptedPlacementRollsBackPlacementAndHistoryTogether() async throws {
+        let fixture = try await WeeklyFixture()
+        defer { fixture.remove() }
+        let action = try await fixture.createAction(title: "Atomic placement")
+        let accra = try #require(TimeZone(identifier: "Africa/Accra"))
+        let week = fixture.date(2026, 10, 5, hour: 9, timeZone: accra)
+        let failing = WeeklyWorkRepository(store: fixture.store, failAfterPlacementMutation: true)
+
+        await #expect(throws: WeeklyWorkTestError.injectedFailure) {
+            try await failing.place(actionID: action.id, weekContaining: week, plannedDay: nil, timeZone: accra, context: fixture.context(10))
+        }
+        #expect(try await fixture.store.read { db in try Int.fetchOne(db, sql: "SELECT count(*) FROM weekly_placements WHERE action_id = ?", arguments: [action.id]) } == 0)
+        #expect(try await fixture.store.read { db in try Int.fetchOne(db, sql: "SELECT count(*) FROM work_events WHERE action_id = ?", arguments: [action.id]) } == 0)
+
+        try await fixture.repository.place(actionID: action.id, weekContaining: week, plannedDay: nil, timeZone: accra, context: fixture.context(20))
+        #expect(try await fixture.store.read { db in try Int.fetchOne(db, sql: "SELECT count(*) FROM weekly_placements WHERE action_id = ?", arguments: [action.id]) } == 1)
+        #expect(try await fixture.store.read { db in try Int.fetchOne(db, sql: "SELECT count(*) FROM work_events WHERE action_id = ?", arguments: [action.id]) } == 1)
+    }
 }
 
 private struct WeeklyFixture {
