@@ -97,7 +97,7 @@ public struct ConversationActionBar: View {
         } else if phase == .saved {
             RecordedVoiceDraftBadge(elapsed: elapsed)
         } else {
-            TaisaSecondaryCapsuleButton(glassStyle: .clear, action: onPrimary) {
+            TaisaSecondaryCapsuleButton(action: onPrimary) {
                 HStack(spacing: TaisaSpacing.compact.rawValue) {
                     CentralIcon(.play).frame(width: 20, height: 20)
                     Text(availability.primaryLabel)
@@ -139,7 +139,7 @@ public struct ConversationActionBar: View {
     }
 
     private func iconButton(_ icon: CentralIconName, label: String, action: @escaping @MainActor () -> Void) -> some View {
-        TaisaSecondaryIconButton(icon: icon, accessibilityLabel: label, glassStyle: .clear, action: action)
+        TaisaSecondaryIconButton(icon: icon, accessibilityLabel: label, action: action)
             .frame(width: TaisaControlMetric.conversationRecordingControl, height: TaisaControlMetric.conversationRecordingControl)
     }
 }

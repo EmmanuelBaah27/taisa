@@ -223,7 +223,7 @@ struct ConversationComponentTests {
         #expect(InlineRecoveryAlert.Contract.actionSpacing == 12)
     }
 
-    @Test func recordingControlsUseShadowedClearGlassWithATintedCircularSendControl() throws {
+    @Test func recordingSecondaryControlsUseChevronGlassAnatomyWithATintedCircularSendControl() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .deletingLastPathComponent()
@@ -241,22 +241,15 @@ struct ConversationComponentTests {
             encoding: .utf8
         )
 
-        #expect(chrome.contains("public enum TaisaGlassStyle"))
-        #expect(chrome.contains("case regular"))
-        #expect(chrome.contains("case clear"))
-        #expect(chrome.contains(".glassEffect(.clear.interactive(), in: Circle())"))
+        #expect(!chrome.contains("public enum TaisaGlassStyle"))
+        #expect(chrome.contains(".glassEffect(.regular.interactive(), in: Circle())"))
+        #expect(chrome.contains(".glassEffect(.regular.interactive(), in: Capsule())"))
         #expect(!chrome.contains("Circle().stroke(TaisaColor.border.color)"))
         #expect(!chrome.contains("Capsule().stroke(TaisaColor.border.color)"))
-        #expect(chrome.contains("TaisaEffect.clearGlassShadowOpacity"))
-        #expect(chrome.contains("TaisaEffect.clearGlassShadowRadius"))
-        #expect(chrome.contains("TaisaEffect.clearGlassShadowOffsetY"))
-        #expect(tokens.contains("public static let clearGlassShadowOpacity"))
-        #expect(tokens.contains("public static let clearGlassShadowRadius"))
-        #expect(tokens.contains("public static let clearGlassShadowOffsetY"))
-        #expect(tokens.contains("public static let clearGlassShadowOpacity: Double = 0.04"))
-        #expect(tokens.contains("public static let clearGlassShadowRadius: CGFloat = 14"))
-        #expect(tokens.contains("public static let clearGlassShadowOffsetY: CGFloat = 0"))
-        #expect(actionBar.contains("glassStyle: .clear"))
+        #expect(!chrome.contains("TaisaEffect.clearGlassShadow"))
+        #expect(!tokens.contains("public static let clearGlassShadow"))
+        #expect(!actionBar.contains("glassStyle: .clear"))
+        #expect(actionBar.contains("TaisaSecondaryIconButton(icon: icon, accessibilityLabel: label, action: action)"))
         #expect(actionBar.contains(".glassEffect(.clear.tint(TaisaColor.primaryAction.color).interactive(), in: Circle())"))
         #expect(!actionBar.contains(".buttonStyle(.glassProminent)"))
     }
