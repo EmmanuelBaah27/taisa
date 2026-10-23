@@ -87,6 +87,10 @@ public struct ActionDetailSnapshot: Sendable, Equatable {
     public let currentEvidence: [EvidenceRecord]
     public let supersededEvidence: [EvidenceRecord]
     public let placement: WeeklyPlacementRecord?
+    public init(action: ActionRecord, goal: GoalRecord?, milestone: MilestoneRecord?, checklist: [ActionChecklistItemRecord], events: [ActionEventRecord], currentEvidence: [EvidenceRecord], supersededEvidence: [EvidenceRecord], placement: WeeklyPlacementRecord?) {
+        self.action = action; self.goal = goal; self.milestone = milestone; self.checklist = checklist
+        self.events = events; self.currentEvidence = currentEvidence; self.supersededEvidence = supersededEvidence; self.placement = placement
+    }
 }
 
 public struct ActionDuplicateReview: Sendable, Equatable {
