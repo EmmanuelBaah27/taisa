@@ -92,6 +92,24 @@ import Testing
         #expect(try await fixture.store.read { db in try Int.fetchOne(db, sql: "SELECT count(*) FROM weekly_placements WHERE action_id = ?", arguments: [action.id]) } == 1)
         #expect(try await fixture.store.read { db in try Int.fetchOne(db, sql: "SELECT count(*) FROM work_events WHERE action_id = ?", arguments: [action.id]) } == 1)
     }
+
+    @Test func snapshotPreservesCanonicalParentDueDayAndOrigin() async throws {
+        let fixture = try await WeeklyFixture()
+        defer { fixture.remove() }
+        let commands = CareerWorkCommandRepository(store: fixture.store)
+        let goal = try await commands.createGoal(title: "Goal", detail: "", context: fixture.context(1))
+        let milestone = try await commands.createMilestone(goalID: goal.id, title: "Milestone", targetAtMS: nil, context: fixture.context(2))
+        let action = try await commands.createAction(goalID: goal.id, milestoneID: milestone.id, title: "Canonical", detail: "", dueDay: try ActionDueDay(validating: "2026-10-23"), context: fixture.context(3))
+        let accra = try #require(TimeZone(identifier: "Africa/Accra"))
+        let week = fixture.date(2026, 10, 23, hour: 23, timeZone: accra)
+        try await fixture.repository.place(actionID: action.id, weekContaining: week, plannedDay: nil, timeZone: accra, context: fixture.context(4))
+
+        let stored = try #require(try await fixture.query.snapshot(weekContaining: week, timeZone: accra).items.first?.action)
+        #expect(stored.goalID == goal.id)
+        #expect(stored.milestoneID == milestone.id)
+        #expect(stored.dueDay?.rawValue == "2026-10-23")
+        #expect(stored.origin == .manual)
+    }
 }
 
 private struct WeeklyFixture {

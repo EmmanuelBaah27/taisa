@@ -17,6 +17,7 @@ public struct HomeQuery: Sendable {
             let week = try WeekCalendar(timeZone: timeZone).week(containing: date)
             let weekStartMS = Int64((week.start.timeIntervalSince1970 * 1_000).rounded())
             let nowMS = Int64((date.timeIntervalSince1970 * 1_000).rounded())
+            let localDay = try Self.localDay(date, timeZone: timeZone)
             return try await store.read { db in
                 let conversationRows = try Row.fetchAll(
                     db,
@@ -50,14 +51,14 @@ public struct HomeQuery: Sendable {
                 let actionRows = try Row.fetchAll(
                     db,
                     sql: """
-                    SELECT id, goal_id, title, detail, status, due_at_ms, created_at_ms, updated_at_ms
+                    SELECT *
                     FROM actions
                     WHERE status = 'active'
                       AND NOT EXISTS (
                         SELECT 1 FROM tombstones
                         WHERE entity_type = 'action' AND entity_id = actions.id
                       )
-                    ORDER BY due_at_ms IS NULL ASC, due_at_ms ASC, updated_at_ms DESC, id ASC
+                    ORDER BY (due_day IS NULL AND due_at_ms IS NULL), due_day, due_at_ms, updated_at_ms DESC, id ASC
                     LIMIT ?
                     """,
                     arguments: [limits.actions]
@@ -98,6 +99,33 @@ public struct HomeQuery: Sendable {
                       AND NOT EXISTS (SELECT 1 FROM tombstones t WHERE t.entity_type = 'weekly_placement' AND t.entity_id = p.id COLLATE NOCASE)
                       AND NOT EXISTS (SELECT 1 FROM tombstones t WHERE t.entity_type = 'action' AND t.entity_id = a.id COLLATE NOCASE)
                     """, arguments: [weekStartMS]) ?? 0
+                let overdueRows = try Row.fetchAll(db, sql: """
+                    SELECT a.* FROM actions a
+                    WHERE a.status = 'active' AND a.due_day < ?
+                      AND NOT EXISTS (SELECT 1 FROM tombstones t WHERE t.entity_type = 'action' AND t.entity_id = a.id COLLATE NOCASE)
+                    ORDER BY a.due_day, a.updated_at_ms DESC, a.id
+                    LIMIT ?
+                    """, arguments: [localDay.rawValue, limits.actions])
+                let reopenedRows = try Row.fetchAll(db, sql: """
+                    SELECT a.*, max(e.occurred_at_ms) AS reopened_at_ms
+                    FROM actions a JOIN action_events e ON e.action_id = a.id
+                    WHERE a.status = 'active' AND e.kind = 'reopened' AND e.occurred_at_ms >= ? AND e.occurred_at_ms <= ?
+                      AND NOT EXISTS (SELECT 1 FROM tombstones t WHERE t.entity_type = 'action' AND t.entity_id = a.id COLLATE NOCASE)
+                    GROUP BY a.id
+                    ORDER BY reopened_at_ms DESC, a.id
+                    LIMIT ?
+                    """, arguments: [weekStartMS, nowMS, limits.actions])
+                let statusRows = try Row.fetchAll(db, sql: """
+                    SELECT status, count(*) AS total FROM actions a
+                    WHERE NOT EXISTS (SELECT 1 FROM tombstones t WHERE t.entity_type = 'action' AND t.entity_id = a.id COLLATE NOCASE)
+                    GROUP BY status
+                    """)
+                let counts = Dictionary(uniqueKeysWithValues: statusRows.map { ($0["status"] as String, $0["total"] as Int) })
+                let reopenedCount = try Int.fetchOne(db, sql: """
+                    SELECT count(DISTINCT e.action_id) FROM action_events e JOIN actions a ON a.id = e.action_id
+                    WHERE e.kind = 'reopened'
+                      AND NOT EXISTS (SELECT 1 FROM tombstones t WHERE t.entity_type = 'action' AND t.entity_id = a.id COLLATE NOCASE)
+                    """) ?? 0
                 let grounded = "EXISTS (SELECT 1 FROM insight_sources s WHERE s.insight_id = i.id COLLATE NOCASE AND NOT EXISTS (SELECT 1 FROM tombstones t WHERE t.entity_type = 'insight_source' AND t.entity_id = s.id COLLATE NOCASE))"
                 let leadRow = try Row.fetchOne(db, sql: """
                     SELECT i.* FROM insights i
@@ -119,6 +147,9 @@ public struct HomeQuery: Sendable {
                     actions: actionRows.map(Self.action),
                     thisWeek: weeklyRows.map(Self.weeklyItem),
                     unresolvedPriorWeekCount: unresolved,
+                    overdueActions: overdueRows.map(Self.action),
+                    recentlyReopenedActions: reopenedRows.map(Self.action),
+                    actionReviewFacts: .init(active: counts["active"] ?? 0, completed: counts["completed"] ?? 0, dropped: counts["dropped"] ?? 0, reopened: reopenedCount),
                     leadInsight: leadRow.map(Self.insight),
                     hasConfirmedInsightHistory: hasInsightHistory
                 )
@@ -159,8 +190,17 @@ public struct HomeQuery: Sendable {
             status: row["status"],
             dueAtMS: row["due_at_ms"],
             createdAtMS: row["created_at_ms"],
-            updatedAtMS: row["updated_at_ms"]
+            updatedAtMS: row["updated_at_ms"],
+            milestoneID: row["milestone_id"],
+            dueDay: (row["due_day"] as String?).flatMap(ActionDueDay.init(rawValue:)),
+            origin: ActionOrigin(rawValue: row["origin"] as String) ?? .manual
         )
+    }
+
+    private static func localDay(_ date: Date, timeZone: TimeZone) throws -> ActionDueDay {
+        var calendar = Calendar(identifier: .gregorian); calendar.timeZone = timeZone
+        let values = calendar.dateComponents([.year, .month, .day], from: date)
+        return try ActionDueDay(validating: String(format: "%04d-%02d-%02d", values.year!, values.month!, values.day!))
     }
 
     private static func milestone(_ row: Row) -> MilestoneRecord {

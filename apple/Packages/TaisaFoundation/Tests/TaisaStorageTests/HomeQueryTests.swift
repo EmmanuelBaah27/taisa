@@ -104,6 +104,33 @@ private actor HomeQueryKeys: DatabaseKeyStore {
         #expect(snapshot.hasConfirmedInsightHistory)
     }
 
+    @Test func actionAttentionCohortsUseLocalDayAndExposeReviewFacts() async throws {
+        let fixture = try await makeStore()
+        defer { fixture.cleanup() }
+        let zone = try #require(TimeZone(identifier: "Africa/Accra"))
+        var calendar = Calendar(identifier: .gregorian); calendar.timeZone = zone
+        let now = try #require(calendar.date(from: DateComponents(year: 2026, month: 10, day: 23, hour: 12)))
+        let base = Int64(now.timeIntervalSince1970 * 1_000)
+        let deviceID = UUID().uuidString
+        let commands = CareerWorkCommandRepository(store: fixture.store)
+        func context(_ offset: Int64) -> MutationContext { .init(id: UUID().uuidString, deviceID: deviceID, timestamp: base + offset) }
+
+        let overdue = try await commands.createAction(goalID: nil, milestoneID: nil, title: "Overdue", detail: "", dueDay: try ActionDueDay(validating: "2026-10-22"), context: context(-500))
+        _ = try await commands.createAction(goalID: nil, milestoneID: nil, title: "Due today", detail: "", dueDay: try ActionDueDay(validating: "2026-10-23"), context: context(-400))
+        let completed = try await commands.createAction(goalID: nil, milestoneID: nil, title: "Completed", detail: "", dueDay: nil, context: context(-300))
+        _ = try await commands.completeAction(id: completed.id, evidenceTitle: "Completed", context: context(-250))
+        let dropped = try await commands.createAction(goalID: nil, milestoneID: nil, title: "Dropped", detail: "", dueDay: nil, context: context(-200))
+        _ = try await commands.dropAction(id: dropped.id, context: context(-150))
+        let reopened = try await commands.createAction(goalID: nil, milestoneID: nil, title: "Reopened", detail: "", dueDay: nil, context: context(-100))
+        _ = try await commands.completeAction(id: reopened.id, evidenceTitle: "Initially complete", context: context(-90))
+        _ = try await commands.reopenAction(id: reopened.id, context: context(-80))
+
+        let snapshot = try await HomeQuery(store: fixture.store).load(weekContaining: now, timeZone: zone)
+        #expect(snapshot.overdueActions.map(\.id) == [overdue.id])
+        #expect(snapshot.recentlyReopenedActions.map(\.id) == [reopened.id])
+        #expect(snapshot.actionReviewFacts == .init(active: 3, completed: 1, dropped: 1, reopened: 1))
+    }
+
     @Test(arguments: [
         HomeLimits(conversations: 0, goals: 1, actions: 1),
         HomeLimits(conversations: 1, goals: -1, actions: 1),
