@@ -115,6 +115,7 @@ final class ConversationViewModel {
         activity: .prepared, elapsedMilliseconds: 0,
         meter: .init(averagePower: -160, peakPower: -160), disposition: .empty
     )
+    private(set) var recordingGlowLoudness = 0.0
     private(set) var correctionMessageID: String?
     private(set) var correctionRegenerationMessageID: String?
     private(set) var correctionRegenerationFailureMessageID: String?
@@ -162,6 +163,9 @@ final class ConversationViewModel {
     private(set) var actionInFlight = false
     @ObservationIgnored private var voicePreparationExit: VoicePreparationExit?
     @ObservationIgnored private var recoveryObservation: Task<Void, Never>?
+    @ObservationIgnored private var recordingGlowEnvelope = LoudnessEnvelope(
+        configuration: RecordingGlowConfiguration.approved.response
+    )
 
     private enum VoicePreparationExit { case discard, keyboard }
 
@@ -386,6 +390,13 @@ final class ConversationViewModel {
     func refreshCapture() async {
         let wasUnavailable = capture.interruption == .microphoneUnavailable
         capture = await client.loadCaptureSnapshot()
+        if capture.activity == .recording {
+            recordingGlowLoudness = recordingGlowEnvelope.update(
+                sample: capture.meter, delta: .milliseconds(100)
+            )
+        } else {
+            recordingGlowLoudness = recordingGlowEnvelope.reset()
+        }
         if capture.interruption == .microphoneUnavailable, !wasUnavailable {
             showsMicrophoneUnavailable = true
         } else if capture.interruption == nil {

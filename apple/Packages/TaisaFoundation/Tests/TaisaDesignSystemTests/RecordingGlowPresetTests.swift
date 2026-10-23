@@ -9,12 +9,26 @@ struct RecordingGlowPresetTests {
         let preset = RecordingGlowPreset.figmaDefault
 
         #expect(preset.regions.map(\.color.hex) == [
-            "#FDE68A", "#91C9FD", "#CBAEFF", "#F6B8B7", "#ADEBB5",
+            "#F6B8B7", "#FDE68A", "#CBAEFF", "#91C9FD", "#ADEBB5",
         ])
         #expect(preset.center.strength > preset.leftOuter.strength)
         #expect(preset.center.strength > preset.leftInner.strength)
         #expect(preset.center.strength > preset.rightInner.strength)
         #expect(preset.center.strength > preset.rightOuter.strength)
+    }
+
+    @Test("the default matches Baah's approved APF-64 tuning export")
+    func figmaDefaultMatchesApprovedAPF64Tuning() {
+        let preset = RecordingGlowPreset.figmaDefault
+
+        #expect(preset.center.saturation == 0.42307692766189575)
+        #expect(preset.center.opacity == 0.9575936794281006)
+        #expect(preset.center.strength == 0.5197238922119141)
+        #expect(preset.centerWidth == 0.2258974313735962)
+        #expect(preset.centerBloom == 0.6253648996353149)
+        #expect(preset.grain.amount == 0.22777120769023895)
+        #expect(preset.grain.scale == 0.043116360902786255)
+        #expect(preset.grain.softness == 0.7248126268386841)
     }
 
     @Test("normalization clamps opacity, contribution, geometry, and grain")

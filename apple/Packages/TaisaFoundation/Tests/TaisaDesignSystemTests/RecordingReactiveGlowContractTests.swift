@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import TaisaDesignSystem
 
@@ -8,6 +9,43 @@ struct RecordingReactiveGlowContractTests {
         #expect(RecordingGlowUniforms(loudness: -.infinity, state: .recording).loudness == 0)
         #expect(RecordingGlowUniforms(loudness: .nan, state: .recording).loudness == 0)
         #expect(RecordingGlowUniforms(loudness: 4, state: .recording).loudness == 1)
+    }
+
+    @Test("frequency order maps bass through highs from left to right")
+    func frequencyBandsMapLeftToRight() {
+        let levels = RecordingGlowFrequencyLevels(
+            bass: 1,
+            lowMids: 0.75,
+            mids: 0.5,
+            upperMids: 0.25,
+            highs: 0
+        ).visualPresence()
+
+        #expect(levels.leftOuter == 1)
+        #expect(levels.leftInner == 0.7875)
+        #expect(levels.center == 0.575)
+        #expect(levels.rightInner == 0.3625)
+        #expect(levels.rightOuter == 0.15)
+    }
+
+    @Test("inactive frequencies retain fifteen percent supporting presence")
+    func inactiveBandsRetainSupportingPresence() {
+        let levels = RecordingGlowFrequencyLevels.zero.visualPresence()
+
+        #expect(levels == .uniform(0.15))
+    }
+
+    @Test("frequency input is finite and clamped before shader construction")
+    func frequencyInputIsClamped() {
+        let levels = RecordingGlowFrequencyLevels(
+            bass: .nan,
+            lowMids: -.infinity,
+            mids: 4,
+            upperMids: -2,
+            highs: .infinity
+        )
+
+        #expect(levels == .init(bass: 0, lowMids: 0, mids: 1, upperMids: 0, highs: 0))
     }
 
     @Test("paused, unavailable, and Reduce Motion preserve static geometry")
@@ -59,11 +97,29 @@ struct RecordingReactiveGlowContractTests {
 
     @Test("voice energy feels light and fluid rather than viscous")
     func waveMotionStaysLightAndFluid() {
-        let motion = RecordingGlowWaveMotion.default
+        let motion = RecordingGlowMotionConfiguration.approved
 
         #expect(motion.attackBounce > 0)
         #expect(motion.attackBounce == 0.45)
         #expect(motion.attackDuration == 0.16)
         #expect(motion.releaseDuration == 0.16)
+    }
+
+    @Test("the field follows a curved fade before its upper canvas boundary")
+    func upperCanvasBoundaryUsesACurvedFade() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let source = try String(
+            contentsOf: root.appendingPathComponent("Sources/TaisaDesignSystem/RecordingReactiveGlow.swift"),
+            encoding: .utf8
+        )
+
+        #expect(source.contains(".mask(recordingFieldMask)"))
+        #expect(source.contains("EllipticalGradient("))
+        #expect(source.contains("RecordingGlowBoundaryMask.center"))
+        #expect(source.contains("RecordingGlowBoundaryMask.opaqueStop"))
+        #expect(!source.contains("private var recordingFieldMask: some View {\n        LinearGradient("))
     }
 }

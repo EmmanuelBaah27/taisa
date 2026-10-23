@@ -54,36 +54,46 @@ public struct ConversationActionBar: View {
                 .disabled(!availability.canResume)
         }
         if availability.showsSend {
-            Button(action: onSend) {
-                CentralIcon(.arrowUp)
-                    .frame(width: 24, height: 24)
-                    .frame(
-                        width: TaisaControlMetric.conversationRecordingControl,
-                        height: TaisaControlMetric.conversationRecordingControl
-                    )
-            }
-                .buttonStyle(.plain)
-                .background(TaisaColor.primaryAction.color, in: Circle())
+            sendControl
                 .disabled(!availability.canSend)
                 .opacity(availability.canSend ? 1 : 0.38)
                 .accessibilityLabel(availability.canSend ? "Send recording" : "Send recording, unavailable until enough audio is captured")
         }
     }
 
+    @ViewBuilder private var sendControl: some View {
+        if #available(iOS 26.0, macOS 26.0, *) {
+            sendButton
+                .buttonStyle(.plain)
+                .glassEffect(.clear.tint(TaisaColor.primaryAction.color).interactive(), in: Circle())
+                .contentShape(Circle())
+        } else {
+            sendButton
+                .buttonStyle(.plain)
+                .background(TaisaColor.primaryAction.color, in: Circle())
+        }
+    }
+
+    private var sendButton: some View {
+        Button(action: onSend) {
+            CentralIcon(.arrowUp)
+                .frame(width: 24, height: 24)
+                .frame(
+                    width: TaisaControlMetric.conversationRecordingControl,
+                    height: TaisaControlMetric.conversationRecordingControl
+                )
+        }
+    }
+
     @ViewBuilder private var centerControl: some View {
-        if isActiveCapture {
-            ZStack {
-                ConversationActivityIndicator(active: isActiveCapture)
-                    .blur(radius: TaisaEffect.recordingGlowBlurRadius)
-                    .opacity(TaisaEffect.recordingGlowOpacity)
-                Text(elapsed)
-                    .font(TaisaTypography.metadata.font)
-                    .foregroundStyle(TaisaColor.foreground.color)
-                    .monospacedDigit()
-            }
+        if isActiveCapture || phase == .preparing {
+            Text(elapsed)
+                .font(TaisaTypography.metadata.font)
+                .foregroundStyle(TaisaColor.foreground.color)
+                .monospacedDigit()
             .frame(minWidth: 56, minHeight: TaisaControlMetric.conversationRecordingControl)
             .accessibilityElement(children: .combine)
-            .accessibilityLabel("Recording, \(elapsed)")
+            .accessibilityLabel(phase == .preparing ? "Preparing microphone" : "Recording, \(elapsed)")
         } else if phase == .saved {
             RecordedVoiceDraftBadge(elapsed: elapsed)
         } else {

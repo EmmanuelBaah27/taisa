@@ -181,6 +181,9 @@ struct ConversationComponentTests {
 
         #expect(source.contains("public struct ConversationComposerChrome"))
         #expect(source.contains("TaisaControlMetric.conversationComposerDockHeight"))
+        #expect(source.contains("private let backdrop: Backdrop"))
+        #expect(source.contains(".background(alignment: .bottom)"))
+        #expect(source.contains("PageEdgeFade(.navigation)"))
         #expect(source.contains(".ignoresSafeArea(edges: [.horizontal, .bottom])"))
     }
 
@@ -218,6 +221,38 @@ struct ConversationComponentTests {
         #expect(InlineRecoveryAlert.Contract.stackedActionsFillAvailableWidth)
         #expect(InlineRecoveryAlert.Contract.actionHeight == 48)
         #expect(InlineRecoveryAlert.Contract.actionSpacing == 12)
+    }
+
+    @Test func secondaryControlsUseClearRefractiveGlassAnatomyWithATintedCircularSendControl() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let actionBar = try String(
+            contentsOf: root.appendingPathComponent("Sources/TaisaDesignSystem/ConversationActionBar.swift"),
+            encoding: .utf8
+        )
+        let chrome = try String(
+            contentsOf: root.appendingPathComponent("Sources/TaisaDesignSystem/TaisaPageChrome.swift"),
+            encoding: .utf8
+        )
+        let tokens = try String(
+            contentsOf: root.appendingPathComponent("Sources/TaisaDesignSystem/SpacingToken.swift"),
+            encoding: .utf8
+        )
+
+        #expect(!chrome.contains("public enum TaisaGlassStyle"))
+        #expect(chrome.contains(".glassEffect(.clear.interactive(), in: Circle())"))
+        #expect(chrome.contains(".glassEffect(.clear.interactive(), in: Capsule())"))
+        #expect(!chrome.contains(".glassEffect(.regular.interactive()"))
+        #expect(!chrome.contains("Circle().stroke(TaisaColor.border.color)"))
+        #expect(!chrome.contains("Capsule().stroke(TaisaColor.border.color)"))
+        #expect(!chrome.contains("TaisaEffect.clearGlassShadow"))
+        #expect(!tokens.contains("public static let clearGlassShadow"))
+        #expect(!actionBar.contains("glassStyle: .clear"))
+        #expect(actionBar.contains("TaisaSecondaryIconButton(icon: icon, accessibilityLabel: label, action: action)"))
+        #expect(actionBar.contains(".glassEffect(.clear.tint(TaisaColor.primaryAction.color).interactive(), in: Circle())"))
+        #expect(!actionBar.contains(".buttonStyle(.glassProminent)"))
     }
 
     @Test func conversationMetricsNameEveryReviewedProductRole() {

@@ -98,6 +98,7 @@ public struct VoiceCaptureSnapshot: Sendable, Equatable {
     public let activity: AudioCaptureActivity
     public let elapsedMilliseconds: Int64
     public let meter: AudioMeterSample
+    public let frequencyBands: VoiceFrequencyBands
     public let disposition: VoiceCaptureDisposition
     public let interruption: VoiceCaptureInterruption?
 
@@ -105,12 +106,14 @@ public struct VoiceCaptureSnapshot: Sendable, Equatable {
         activity: AudioCaptureActivity,
         elapsedMilliseconds: Int64,
         meter: AudioMeterSample,
+        frequencyBands: VoiceFrequencyBands = .zero,
         disposition: VoiceCaptureDisposition,
         interruption: VoiceCaptureInterruption? = nil
     ) {
         self.activity = activity
         self.elapsedMilliseconds = elapsedMilliseconds
         self.meter = meter
+        self.frequencyBands = frequencyBands
         self.disposition = disposition
         self.interruption = interruption
     }
@@ -242,6 +245,7 @@ public actor VoiceSessionCoordinator {
                 activity: captureSnapshot?.activity ?? .prepared,
                 elapsedMilliseconds: elapsed,
                 meter: captureSnapshot?.meter ?? .init(averagePower: -160, peakPower: -160),
+                frequencyBands: captureSnapshot?.frequencyBands ?? .zero,
                 disposition: disposition,
                 interruption: captureInterruption
             )

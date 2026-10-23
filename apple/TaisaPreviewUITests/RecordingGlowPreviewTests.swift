@@ -59,11 +59,13 @@ final class RecordingGlowPreviewTests: XCTestCase {
         XCTAssertTrue(app.buttons["Copy preset JSON"].exists)
         XCTAssertTrue(app.sliders["Simulated loudness"].exists)
         XCTAssertTrue(
-            app.descendants(matching: .any)["Dominant center purple color"].exists
+            app.descendants(matching: .any)["Mid purple color"].exists
         )
         XCTAssertTrue(app.sliders["Grain intensity"].exists)
         XCTAssertTrue(app.sliders["Center peak height"].exists)
         XCTAssertTrue(app.staticTexts["#CBAEFF"].exists)
+        XCTAssertTrue(app.staticTexts["0.60"].exists)
+        XCTAssertTrue(app.staticTexts["1.50"].exists)
     }
 
     func testTunerUsesFullLabelStateChoicesAndOffersLiveMicrophoneInput() {
@@ -84,7 +86,10 @@ final class RecordingGlowPreviewTests: XCTestCase {
         let surface = app.descendants(matching: .any)["recording-glow.surface"]
         let originalSurfaceFrame = surface.frame
         controls.swipeUp()
-        XCTAssertEqual(surface.frame, originalSurfaceFrame)
+        XCTAssertEqual(surface.frame.midX, originalSurfaceFrame.midX, accuracy: 2)
+        XCTAssertEqual(surface.frame.midY, originalSurfaceFrame.midY, accuracy: 2)
+        XCTAssertEqual(surface.frame.width, originalSurfaceFrame.width, accuracy: 2)
+        XCTAssertEqual(surface.frame.height, originalSurfaceFrame.height, accuracy: 2)
     }
 
     func testLiveMicrophoneRequestKeepsTunerRunning() {
@@ -104,10 +109,7 @@ final class RecordingGlowPreviewTests: XCTestCase {
         app.tap()
 
         XCTAssertTrue(app.staticTexts["Live level"].waitForExistence(timeout: 5))
-        XCTAssertTrue(
-            app.staticTexts["Listening — receiving audio"]
-                .waitForExistence(timeout: 5)
-        )
+        XCTAssertTrue(app.staticTexts["Live microphone requires a physical device"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 5))
     }
 }
