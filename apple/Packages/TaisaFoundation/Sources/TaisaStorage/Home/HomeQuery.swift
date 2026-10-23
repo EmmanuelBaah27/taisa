@@ -52,7 +52,7 @@ public struct HomeQuery: Sendable {
                     sql: """
                     SELECT id, goal_id, title, detail, status, due_at_ms, created_at_ms, updated_at_ms
                     FROM actions
-                    WHERE status = 'open'
+                    WHERE status = 'active'
                       AND NOT EXISTS (
                         SELECT 1 FROM tombstones
                         WHERE entity_type = 'action' AND entity_id = actions.id
@@ -87,14 +87,14 @@ public struct HomeQuery: Sendable {
                            p.week_start_ms, p.planned_day_ms, p.created_at_ms AS placement_created_at_ms,
                            p.updated_at_ms AS placement_updated_at_ms
                     FROM weekly_placements p JOIN actions a ON a.id = p.action_id
-                    WHERE p.week_start_ms = ? AND a.status = 'open'
+                    WHERE p.week_start_ms = ? AND a.status = 'active'
                       AND NOT EXISTS (SELECT 1 FROM tombstones t WHERE t.entity_type = 'weekly_placement' AND t.entity_id = p.id COLLATE NOCASE)
                       AND NOT EXISTS (SELECT 1 FROM tombstones t WHERE t.entity_type = 'action' AND t.entity_id = a.id COLLATE NOCASE)
                     ORDER BY p.planned_day_ms IS NULL, p.planned_day_ms, a.created_at_ms, a.id
                     """, arguments: [weekStartMS])
                 let unresolved = try Int.fetchOne(db, sql: """
                     SELECT COUNT(*) FROM weekly_placements p JOIN actions a ON a.id = p.action_id
-                    WHERE p.week_start_ms < ? AND a.status = 'open'
+                    WHERE p.week_start_ms < ? AND a.status = 'active'
                       AND NOT EXISTS (SELECT 1 FROM tombstones t WHERE t.entity_type = 'weekly_placement' AND t.entity_id = p.id COLLATE NOCASE)
                       AND NOT EXISTS (SELECT 1 FROM tombstones t WHERE t.entity_type = 'action' AND t.entity_id = a.id COLLATE NOCASE)
                     """, arguments: [weekStartMS]) ?? 0

@@ -24,10 +24,10 @@ private actor HomeQueryKeys: DatabaseKeyStore {
             try db.execute(sql: "INSERT INTO goals VALUES (?, 'Active newest', '', 'active', 100, 300)", arguments: [ids[0]])
             try db.execute(sql: "INSERT INTO goals VALUES (?, 'Active tie', '', 'active', 100, 300)", arguments: [ids[1]])
             try db.execute(sql: "INSERT INTO goals VALUES (?, 'Completed', '', 'completed', 100, 400)", arguments: [ids[2]])
-            try db.execute(sql: "INSERT INTO actions VALUES (?, NULL, 'Due first', '', 'open', 200, 100, 100)", arguments: [ids[3]])
-            try db.execute(sql: "INSERT INTO actions VALUES (?, NULL, 'Due second', '', 'open', 300, 100, 100)", arguments: [ids[4]])
-            try db.execute(sql: "INSERT INTO actions VALUES (?, NULL, 'Undated', '', 'open', NULL, 100, 900)", arguments: [ids[5]])
-            try db.execute(sql: "INSERT INTO actions VALUES (?, NULL, 'Completed', '', 'completed', 100, 100, 100)", arguments: [ids[6]])
+            try db.execute(sql: "INSERT INTO actions (id, title, status, due_at_ms, created_at_ms, updated_at_ms) VALUES (?, 'Due first', 'active', 200, 100, 100)", arguments: [ids[3]])
+            try db.execute(sql: "INSERT INTO actions (id, title, status, due_at_ms, created_at_ms, updated_at_ms) VALUES (?, 'Due second', 'active', 300, 100, 100)", arguments: [ids[4]])
+            try db.execute(sql: "INSERT INTO actions (id, title, status, created_at_ms, updated_at_ms) VALUES (?, 'Undated', 'active', 100, 900)", arguments: [ids[5]])
+            try db.execute(sql: "INSERT INTO actions (id, title, status, due_at_ms, created_at_ms, updated_at_ms) VALUES (?, 'Completed', 'completed', 100, 100, 100)", arguments: [ids[6]])
             try db.execute(sql: "INSERT INTO tombstones VALUES (?, 'conversation', ?, ?, 999)", arguments: [UUID().uuidString, ids[0], UUID().uuidString])
         }
 
