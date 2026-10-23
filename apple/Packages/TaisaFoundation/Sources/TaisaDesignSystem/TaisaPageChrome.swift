@@ -183,7 +183,7 @@ public struct TaisaSecondaryIconButton: View {
         if #available(iOS 26.0, macOS 26.0, *) {
             button
                 .buttonStyle(.plain)
-                .glassEffect(.regular.interactive(), in: Circle())
+                .glassEffect(.clear.interactive(), in: Circle())
                 .contentShape(Circle())
         } else {
             button
@@ -223,7 +223,7 @@ public struct TaisaSecondaryCapsuleButton<Label: View>: View {
         if #available(iOS 26.0, macOS 26.0, *) {
             button
                 .buttonStyle(.plain)
-                .glassEffect(.regular.interactive(), in: Capsule())
+                .glassEffect(.clear.interactive(), in: Capsule())
                 .contentShape(Capsule())
         } else {
             button

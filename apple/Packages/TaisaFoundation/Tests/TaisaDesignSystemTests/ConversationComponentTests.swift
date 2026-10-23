@@ -223,7 +223,7 @@ struct ConversationComponentTests {
         #expect(InlineRecoveryAlert.Contract.actionSpacing == 12)
     }
 
-    @Test func recordingSecondaryControlsUseChevronGlassAnatomyWithATintedCircularSendControl() throws {
+    @Test func secondaryControlsUseClearRefractiveGlassAnatomyWithATintedCircularSendControl() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .deletingLastPathComponent()
@@ -242,8 +242,9 @@ struct ConversationComponentTests {
         )
 
         #expect(!chrome.contains("public enum TaisaGlassStyle"))
-        #expect(chrome.contains(".glassEffect(.regular.interactive(), in: Circle())"))
-        #expect(chrome.contains(".glassEffect(.regular.interactive(), in: Capsule())"))
+        #expect(chrome.contains(".glassEffect(.clear.interactive(), in: Circle())"))
+        #expect(chrome.contains(".glassEffect(.clear.interactive(), in: Capsule())"))
+        #expect(!chrome.contains(".glassEffect(.regular.interactive()"))
         #expect(!chrome.contains("Circle().stroke(TaisaColor.border.color)"))
         #expect(!chrome.contains("Capsule().stroke(TaisaColor.border.color)"))
         #expect(!chrome.contains("TaisaEffect.clearGlassShadow"))
