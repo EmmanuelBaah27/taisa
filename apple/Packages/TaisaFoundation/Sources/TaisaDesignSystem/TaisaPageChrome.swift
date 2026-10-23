@@ -199,10 +199,11 @@ public struct TaisaSecondaryIconButton: View {
                 button
                     .buttonStyle(.plain)
                     .glassEffect(.clear.interactive(), in: Circle())
-                    .overlay {
-                        Circle().stroke(TaisaColor.border.color)
-                            .allowsHitTesting(false)
-                    }
+                    .shadow(
+                        color: TaisaColor.foreground.color.opacity(TaisaEffect.clearGlassShadowOpacity),
+                        radius: TaisaEffect.clearGlassShadowRadius,
+                        y: TaisaEffect.clearGlassShadowOffsetY
+                    )
                     .contentShape(Circle())
             }
         } else {
@@ -215,10 +216,11 @@ public struct TaisaSecondaryIconButton: View {
             case .clear:
                 button
                     .buttonStyle(.plain)
-                    .overlay {
-                        Circle().stroke(TaisaColor.border.color)
-                            .allowsHitTesting(false)
-                    }
+                    .shadow(
+                        color: TaisaColor.foreground.color.opacity(TaisaEffect.clearGlassShadowOpacity),
+                        radius: TaisaEffect.clearGlassShadowRadius,
+                        y: TaisaEffect.clearGlassShadowOffsetY
+                    )
                     .contentShape(Circle())
             }
         }
@@ -265,10 +267,11 @@ public struct TaisaSecondaryCapsuleButton<Label: View>: View {
                 button
                     .buttonStyle(.plain)
                     .glassEffect(.clear.interactive(), in: Capsule())
-                    .overlay {
-                        Capsule().stroke(TaisaColor.border.color)
-                            .allowsHitTesting(false)
-                    }
+                    .shadow(
+                        color: TaisaColor.foreground.color.opacity(TaisaEffect.clearGlassShadowOpacity),
+                        radius: TaisaEffect.clearGlassShadowRadius,
+                        y: TaisaEffect.clearGlassShadowOffsetY
+                    )
                     .contentShape(Capsule())
             }
         } else {
@@ -281,10 +284,11 @@ public struct TaisaSecondaryCapsuleButton<Label: View>: View {
             case .clear:
                 button
                     .buttonStyle(.plain)
-                    .overlay {
-                        Capsule().stroke(TaisaColor.border.color)
-                            .allowsHitTesting(false)
-                    }
+                    .shadow(
+                        color: TaisaColor.foreground.color.opacity(TaisaEffect.clearGlassShadowOpacity),
+                        radius: TaisaEffect.clearGlassShadowRadius,
+                        y: TaisaEffect.clearGlassShadowOffsetY
+                    )
                     .contentShape(Capsule())
             }
         }

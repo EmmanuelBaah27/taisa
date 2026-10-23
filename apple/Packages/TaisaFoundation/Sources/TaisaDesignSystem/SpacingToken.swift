@@ -54,6 +54,10 @@ public enum TaisaControlMetric {
 
 public enum TaisaEffect {
     public static let edgeFadeBlurOpacity: Double = 0.42
+    /// Soft elevation for clear Liquid Glass controls without adding a visible edge or fill.
+    public static let clearGlassShadowOpacity: Double = 0.12
+    public static let clearGlassShadowRadius: CGFloat = 8
+    public static let clearGlassShadowOffsetY: CGFloat = 2
     /// Figma's 20px blur maps to Core Graphics' 10pt blur radius.
     public static let recordingGlowBlurRadius: CGFloat = 10
     public static let recordingGlowSpread: CGFloat = 4

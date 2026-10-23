@@ -223,7 +223,7 @@ struct ConversationComponentTests {
         #expect(InlineRecoveryAlert.Contract.actionSpacing == 12)
     }
 
-    @Test func recordingControlsUseVisibleClearGlassWithATintedCircularSendControl() throws {
+    @Test func recordingControlsUseShadowedClearGlassWithATintedCircularSendControl() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .deletingLastPathComponent()
@@ -236,13 +236,23 @@ struct ConversationComponentTests {
             contentsOf: root.appendingPathComponent("Sources/TaisaDesignSystem/TaisaPageChrome.swift"),
             encoding: .utf8
         )
+        let tokens = try String(
+            contentsOf: root.appendingPathComponent("Sources/TaisaDesignSystem/SpacingToken.swift"),
+            encoding: .utf8
+        )
 
         #expect(chrome.contains("public enum TaisaGlassStyle"))
         #expect(chrome.contains("case regular"))
         #expect(chrome.contains("case clear"))
         #expect(chrome.contains(".glassEffect(.clear.interactive(), in: Circle())"))
-        #expect(chrome.contains("Circle().stroke(TaisaColor.border.color)"))
-        #expect(chrome.contains("Capsule().stroke(TaisaColor.border.color)"))
+        #expect(!chrome.contains("Circle().stroke(TaisaColor.border.color)"))
+        #expect(!chrome.contains("Capsule().stroke(TaisaColor.border.color)"))
+        #expect(chrome.contains("TaisaEffect.clearGlassShadowOpacity"))
+        #expect(chrome.contains("TaisaEffect.clearGlassShadowRadius"))
+        #expect(chrome.contains("TaisaEffect.clearGlassShadowOffsetY"))
+        #expect(tokens.contains("public static let clearGlassShadowOpacity"))
+        #expect(tokens.contains("public static let clearGlassShadowRadius"))
+        #expect(tokens.contains("public static let clearGlassShadowOffsetY"))
         #expect(actionBar.contains("glassStyle: .clear"))
         #expect(actionBar.contains(".glassEffect(.clear.tint(TaisaColor.primaryAction.color).interactive(), in: Circle())"))
         #expect(!actionBar.contains(".buttonStyle(.glassProminent)"))
