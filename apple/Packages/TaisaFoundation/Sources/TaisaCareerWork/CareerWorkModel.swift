@@ -39,6 +39,8 @@ public final class CareerWorkModel {
             do {
                 async let overview = client.loadOverview()
                 async let actions = client.loadActions(filter, day)
+                async let milestones = client.loadMilestones()
+                async let deletedActions = client.loadDeletedActions()
                 let detail: CareerGoalSnapshot?
                 let action: ActionRecord?
                 let actionDetail: ActionDetailSnapshot?
@@ -56,7 +58,7 @@ public final class CareerWorkModel {
                 case .overview:
                     detail = nil; action = nil; actionDetail = nil; evidence = nil
                 }
-                let snapshot = try await CareerWorkProductSnapshot(overview: overview, actions: actions, selectedGoal: detail, selectedAction: action, selectedActionDetail: actionDetail, selectedEvidence: evidence)
+                let snapshot = try await CareerWorkProductSnapshot(overview: overview, actions: actions, milestones: milestones, deletedActions: deletedActions, selectedGoal: detail, selectedAction: action, selectedActionDetail: actionDetail, selectedEvidence: evidence)
                 try Task.checkCancellation()
                 return .success(snapshot)
             } catch is CancellationError {
@@ -188,6 +190,11 @@ public final class CareerWorkModel {
     public func reopenSelectedAction() async {
         guard case let .action(id) = route else { return }
         await mutate { _ = try await client.reopenAction(id) }
+    }
+
+    public func correctSelectedCompletion(eventID: String) async {
+        guard case let .action(id) = route else { return }
+        await mutate { _ = try await client.undoMistakenCompletion(id, eventID) }
     }
 
     public func deleteSelectedAction() async {

@@ -193,6 +193,57 @@ import TaisaStorage
         #expect(model.route == .action(id: action.id))
         #expect(model.state.snapshot?.selectedActionDetail == detail)
     }
+
+    @Test func loadPublishesDurableParentOptionsAndDeletedActions() async {
+        let parent = goal(title: "Parent")
+        let milestone = MilestoneRecord(id: UUID().uuidString, goalID: parent.id, title: "Proof", status: "planned", targetAtMS: nil, updatedAtMS: 2)
+        let deleted = ActionRecord(id: UUID().uuidString, goalID: nil, title: "Recover me", detail: "", status: "active", dueAtMS: nil, createdAtMS: 1, updatedAtMS: 3)
+        let model = CareerWorkModel(client: .init(
+            loadOverview: { .init(active: [parent], paused: [], completed: [], archived: []) },
+            loadMilestones: { [milestone] },
+            loadDeletedActions: { [deleted] }
+        ))
+
+        await model.load()
+
+        #expect(model.state.snapshot?.milestones == [milestone])
+        #expect(model.state.snapshot?.deletedActions == [deleted])
+    }
+
+    @Test func mistakenCompletionCorrectionUsesSelectedCompletionEventAndReloads() async {
+        let action = ActionRecord(id: UUID().uuidString, goalID: nil, title: "Correct me", detail: "", status: "completed", dueAtMS: nil, createdAtMS: 1, updatedAtMS: 2)
+        let completionID = UUID().uuidString
+        let recorder = CareerMutationRecorder()
+        let client = CareerWorkClient(
+            loadOverview: { .init(active: [], paused: [], completed: [], archived: []) },
+            loadActionDetail: { _ in .init(action: action, goal: nil, milestone: nil, checklist: [], events: [], currentEvidence: [], supersededEvidence: [], placement: nil) },
+            undoMistakenCompletion: { id, eventID in await recorder.record("correct:\(id):\(eventID)"); return action }
+        )
+        let model = CareerWorkModel(client: client, route: .action(id: action.id))
+
+        await model.correctSelectedCompletion(eventID: completionID)
+
+        #expect(await recorder.values == ["correct:\(action.id):\(completionID)"])
+        #expect(model.route == .action(id: action.id))
+    }
+
+    @Test func restoreRemainsAvailableAfterModelReconstruction() async {
+        let deleted = ActionRecord(id: UUID().uuidString, goalID: nil, title: "Recover me", detail: "", status: "active", dueAtMS: nil, createdAtMS: 1, updatedAtMS: 2)
+        let recorder = CareerMutationRecorder()
+        let client = CareerWorkClient(
+            loadOverview: { .init(active: [], paused: [], completed: [], archived: []) },
+            loadDeletedActions: { [deleted] },
+            restoreAction: { id in await recorder.record("restore:\(id)"); return deleted }
+        )
+        let reconstructed = CareerWorkModel(client: client)
+        await reconstructed.load()
+        #expect(reconstructed.state.snapshot?.deletedActions == [deleted])
+
+        await reconstructed.restoreAction(id: deleted.id)
+
+        #expect(await recorder.values == ["restore:\(deleted.id)"])
+        #expect(reconstructed.route == .action(id: deleted.id))
+    }
 }
 
 private func goal(title: String) -> GoalRecord { .init(id: "11111111-1111-4111-8111-111111111111", title: title, detail: "", status: "active", createdAtMS: 1, updatedAtMS: 1) }

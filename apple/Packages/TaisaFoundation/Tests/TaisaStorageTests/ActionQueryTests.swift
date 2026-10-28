@@ -70,6 +70,22 @@ import Testing
         #expect(detail.goal?.title == "Parent goal")
         #expect(detail.goalAvailability == .deleted)
     }
+
+    @Test func parentOptionsAndDeletedRecoveryAreDurableQueries() async throws {
+        let fixture = try await ActionQueryFixture()
+        defer { fixture.remove() }
+        let goal = try await fixture.commands.createGoal(title: "Parent", detail: "", context: fixture.context(10))
+        let milestone = try await fixture.commands.createMilestone(goalID: goal.id, title: "Proof", targetAtMS: nil, context: fixture.context(20))
+        let action = try await fixture.commands.createAction(goalID: goal.id, milestoneID: milestone.id, title: "Recover me", detail: "", dueDay: nil, context: fixture.context(30))
+        try await fixture.commands.deleteAction(id: action.id, context: fixture.context(40))
+        let reconstructed = CareerWorkQuery(store: fixture.store)
+
+        #expect(try await reconstructed.milestones().map(\.id) == [milestone.id])
+        #expect(try await reconstructed.deletedActions().map(\.id) == [action.id])
+
+        _ = try await fixture.commands.restoreAction(id: action.id, context: fixture.context(50))
+        #expect(try await reconstructed.deletedActions().isEmpty)
+    }
 }
 
 private struct ActionQueryFixture {

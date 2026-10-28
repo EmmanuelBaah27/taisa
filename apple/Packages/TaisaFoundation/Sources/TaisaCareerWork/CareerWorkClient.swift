@@ -15,6 +15,8 @@ public struct ActionDraft: Sendable, Equatable {
 
 public struct CareerWorkClient: Sendable {
     public var loadOverview: @Sendable () async throws -> CareerWorkOverview
+    public var loadMilestones: @Sendable () async throws -> [MilestoneRecord]
+    public var loadDeletedActions: @Sendable () async throws -> [ActionRecord]
     public var loadActions: @Sendable (ActionCollectionFilter, ActionDueDay) async throws -> [ActionRecord]
     public var loadActionDetail: @Sendable (String) async throws -> ActionDetailSnapshot?
     public var reviewActionDuplicates: @Sendable (String, String?) async throws -> ActionDuplicateReview
@@ -23,6 +25,7 @@ public struct CareerWorkClient: Sendable {
     public var setChecklistItemCompleted: @Sendable (String, Bool) async throws -> ActionChecklistItemRecord
     public var completeAction: @Sendable (String, String) async throws -> ActionCompletionResult
     public var reopenAction: @Sendable (String) async throws -> ActionRecord
+    public var undoMistakenCompletion: @Sendable (String, String) async throws -> ActionRecord
     public var editCanonicalAction: @Sendable (String, ActionDraft, Int64) async throws -> ActionRecord
     public var renameChecklistItem: @Sendable (String, String) async throws -> ActionChecklistItemRecord
     public var removeChecklistItem: @Sendable (String) async throws -> Void
@@ -45,6 +48,8 @@ public struct CareerWorkClient: Sendable {
 
     public init(
         loadOverview: @escaping @Sendable () async throws -> CareerWorkOverview,
+        loadMilestones: @escaping @Sendable () async throws -> [MilestoneRecord] = { [] },
+        loadDeletedActions: @escaping @Sendable () async throws -> [ActionRecord] = { [] },
         loadActions: @escaping @Sendable (ActionCollectionFilter, ActionDueDay) async throws -> [ActionRecord] = { _, _ in [] },
         loadActionDetail: @escaping @Sendable (String) async throws -> ActionDetailSnapshot? = { _ in nil },
         reviewActionDuplicates: @escaping @Sendable (String, String?) async throws -> ActionDuplicateReview = { _, _ in .init(candidates: []) },
@@ -53,6 +58,7 @@ public struct CareerWorkClient: Sendable {
         setChecklistItemCompleted: @escaping @Sendable (String, Bool) async throws -> ActionChecklistItemRecord = { _, _ in throw CareerWorkClientError.mutationUnavailable },
         completeAction: @escaping @Sendable (String, String) async throws -> ActionCompletionResult = { _, _ in throw CareerWorkClientError.mutationUnavailable },
         reopenAction: @escaping @Sendable (String) async throws -> ActionRecord = { _ in throw CareerWorkClientError.mutationUnavailable },
+        undoMistakenCompletion: @escaping @Sendable (String, String) async throws -> ActionRecord = { _, _ in throw CareerWorkClientError.mutationUnavailable },
         editCanonicalAction: @escaping @Sendable (String, ActionDraft, Int64) async throws -> ActionRecord = { _, _, _ in throw CareerWorkClientError.mutationUnavailable },
         renameChecklistItem: @escaping @Sendable (String, String) async throws -> ActionChecklistItemRecord = { _, _ in throw CareerWorkClientError.mutationUnavailable },
         removeChecklistItem: @escaping @Sendable (String) async throws -> Void = { _ in throw CareerWorkClientError.mutationUnavailable },
@@ -74,6 +80,8 @@ public struct CareerWorkClient: Sendable {
         restoreGoal: @escaping @Sendable (String) async throws -> Void = { _ in throw CareerWorkClientError.mutationUnavailable }
     ) {
         self.loadOverview = loadOverview
+        self.loadMilestones = loadMilestones
+        self.loadDeletedActions = loadDeletedActions
         self.loadActions = loadActions
         self.loadActionDetail = loadActionDetail
         self.reviewActionDuplicates = reviewActionDuplicates
@@ -82,6 +90,7 @@ public struct CareerWorkClient: Sendable {
         self.setChecklistItemCompleted = setChecklistItemCompleted
         self.completeAction = completeAction
         self.reopenAction = reopenAction
+        self.undoMistakenCompletion = undoMistakenCompletion
         self.editCanonicalAction = editCanonicalAction
         self.renameChecklistItem = renameChecklistItem
         self.removeChecklistItem = removeChecklistItem
@@ -111,6 +120,8 @@ public extension CareerWorkClient {
         let context: @Sendable () -> MutationContext = { .init(id: UUID().uuidString, deviceID: deviceID, timestamp: nowMS()) }
         return .init(
             loadOverview: { try await query.overview() },
+            loadMilestones: { try await query.milestones() },
+            loadDeletedActions: { try await query.deletedActions() },
             loadActions: { try await query.actions(filter: $0, localDay: $1) },
             loadActionDetail: { try await query.actionDetail(id: $0) },
             reviewActionDuplicates: { try await query.duplicateReview(title: $0, excludingActionID: $1) },
@@ -127,6 +138,7 @@ public extension CareerWorkClient {
             setChecklistItemCompleted: { try await commands.setChecklistItemCompleted(id: $0, completed: $1, context: context()) },
             completeAction: { try await commands.completeAction(id: $0, evidenceTitle: $1, context: context()) },
             reopenAction: { try await commands.reopenAction(id: $0, context: context()) },
+            undoMistakenCompletion: { try await commands.undoMistakenCompletion(id: $0, completionEventID: $1, context: context()) },
             editCanonicalAction: { id, draft, expected in
                 let goalID: String?, milestoneID: String?
                 switch draft.parent {

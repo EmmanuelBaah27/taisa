@@ -125,6 +125,18 @@ public struct CareerWorkQuery: Sendable {
         }
     }
 
+    public func milestones() async throws -> [MilestoneRecord] {
+        try await store.read { db in
+            try Row.fetchAll(db, sql: "SELECT m.* FROM milestones m WHERE NOT EXISTS (SELECT 1 FROM tombstones t WHERE t.entity_type = 'milestone' AND t.entity_id = m.id COLLATE NOCASE) ORDER BY m.updated_at_ms DESC, m.id ASC").map(Self.milestone)
+        }
+    }
+
+    public func deletedActions() async throws -> [ActionRecord] {
+        try await store.read { db in
+            try Row.fetchAll(db, sql: "SELECT a.* FROM actions a WHERE EXISTS (SELECT 1 FROM tombstones t WHERE t.entity_type = 'action' AND t.entity_id = a.id COLLATE NOCASE) ORDER BY a.updated_at_ms DESC, a.id ASC").map(Self.action)
+        }
+    }
+
     public func goal(id: String) async throws -> CareerGoalSnapshot? {
         try await store.read { db in
             guard let goalRow = try Row.fetchOne(db, sql: "SELECT * FROM goals WHERE id = ? COLLATE NOCASE AND NOT EXISTS (SELECT 1 FROM tombstones WHERE entity_type = 'goal' AND entity_id = ? COLLATE NOCASE)", arguments: [id, id]) else { return nil }

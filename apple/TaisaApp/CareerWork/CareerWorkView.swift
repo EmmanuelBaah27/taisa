@@ -8,8 +8,8 @@ struct CareerWorkView: View {
     @State private var selectedRoute: CareerWorkRoute?
     @State private var showsCreateGoal = false
     @State private var showsCreateAction = false
+    @State private var showsActionFilters = false
     @State private var editor: CareerWorkEditor?
-    @State private var recentlyDeletedActionID: String?
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     var openRecovery: () -> Void = {}
 
@@ -58,12 +58,18 @@ struct CareerWorkView: View {
             }
         }
         .sheet(isPresented: $showsCreateAction) {
-            ActionEditorSheet(goals: allGoals, milestones: model.state.snapshot?.selectedGoal?.milestones ?? []) { draft in
+            ActionEditorSheet(goals: allGoals, milestones: allMilestones) { draft in
                 await model.createAction(draft)
                 showsCreateAction = false
                 if model.duplicateGate == nil {
                     selectedRoute = model.route
                 }
+            }
+        }
+        .sheet(isPresented: $showsActionFilters) {
+            ActionFilterSheet(filter: model.actionFilter, goals: allGoals, milestones: allMilestones) { filter in
+                await model.setActionFilter(filter)
+                showsActionFilters = false
             }
         }
         .sheet(isPresented: duplicateReviewPresented) {
@@ -123,6 +129,8 @@ struct CareerWorkView: View {
 
     private func actionCollection(_ actions: [ActionRecord]) -> some View {
         Section {
+            TaisaButton(role: .secondary, label: "Filter actions") { showsActionFilters = true }
+                .accessibilityIdentifier("career-work.action.filters")
             ScrollView(.horizontal) {
                 HStack {
                     ForEach(ActionLifecycleFilter.allCases, id: \.self) { lifecycle in
@@ -133,7 +141,10 @@ struct CareerWorkView: View {
                             size: .small,
                             isSelected: model.actionFilter.lifecycle == lifecycle
                         ) {
-                            Task { await model.setActionFilter(.init(lifecycle: lifecycle)) }
+                            Task {
+                                let current = model.actionFilter
+                                await model.setActionFilter(.init(lifecycle: lifecycle, goalID: current.goalID, milestoneID: current.milestoneID, due: current.due, weekStartMS: current.weekStartMS, origin: current.origin))
+                            }
                         }
                     }
                 }
@@ -147,15 +158,16 @@ struct CareerWorkView: View {
                 .tag(CareerWorkRoute.action(id: action.id))
                 .accessibilityLabel("Action \(action.title), \(action.status)")
             }
-            if let recentlyDeletedActionID {
-                TaisaButton(role: .secondary, label: "Undo deleted action", icon: .undo) {
-                    Task {
-                        await model.restoreAction(id: recentlyDeletedActionID)
-                        self.recentlyDeletedActionID = nil
-                        selectedRoute = model.route
+            if let deletedActions = model.state.snapshot?.deletedActions, !deletedActions.isEmpty {
+                ForEach(deletedActions, id: \.id) { action in
+                    HStack {
+                        TaisaRow(title: action.title, supporting: "Deleted action", icon: .delete)
+                        TaisaButton(role: .secondary, label: "Restore", icon: .undo) {
+                            Task { await model.restoreAction(id: action.id); selectedRoute = model.route }
+                        }
                     }
+                    .accessibilityIdentifier("career-work.action.restore")
                 }
-                .accessibilityIdentifier("career-work.action.restore")
             }
         } header: {
             Text("Actions")
@@ -210,11 +222,11 @@ struct CareerWorkView: View {
                 isArchived: model.state.snapshot?.overview.archived.contains(where: { $0.id == goal.goal.id }) == true,
                 model: model,
                 open: { selectedRoute = $0 },
-                add: { editor = $0 }
+                add: { editor = $0 },
+                addAction: { showsCreateAction = true }
             )
         } else if let action = model.state.snapshot?.selectedActionDetail {
-            CareerActionDetail(snapshot: action, goals: allGoals, model: model) {
-                recentlyDeletedActionID = action.action.id
+            CareerActionDetail(snapshot: action, goals: allGoals, milestones: allMilestones, model: model) {
                 selectedRoute = nil
             }
         } else if let evidence = model.state.snapshot?.selectedEvidence {
@@ -226,6 +238,8 @@ struct CareerWorkView: View {
         guard let overview = model.state.snapshot?.overview else { return [] }
         return overview.active + overview.paused + overview.completed
     }
+
+    private var allMilestones: [MilestoneRecord] { model.state.snapshot?.milestones ?? [] }
 
     private var duplicateReviewPresented: Binding<Bool> {
         Binding(
@@ -274,13 +288,14 @@ private struct CareerGoalDetail: View {
     let model: CareerWorkModel
     let open: (CareerWorkRoute) -> Void
     let add: (CareerWorkEditor) -> Void
+    let addAction: () -> Void
 
     var body: some View {
         List {
             Section("Progress") { Text(snapshot.progress.summary) }
             Section("Add work") {
                 TaisaButton(role: .secondary, label: "Add milestone", icon: .milestone) { add(.milestone) }
-                TaisaButton(role: .secondary, label: "Add action", icon: .action) { add(.action) }
+                TaisaButton(role: .secondary, label: "Add action", icon: .action) { addAction() }
                 TaisaButton(role: .secondary, label: "Add evidence", icon: .evidence) { add(.evidence(actions: snapshot.actions)) }
             }
             if !snapshot.milestones.isEmpty {
@@ -430,6 +445,7 @@ struct CareerWorkProposalReviewView: View {
 private struct CareerActionDetail: View {
     let snapshot: ActionDetailSnapshot
     let goals: [GoalRecord]
+    let milestones: [MilestoneRecord]
     let model: CareerWorkModel
     let deleted: () -> Void
     @State private var checklistTitle = ""
@@ -515,7 +531,7 @@ private struct CareerActionDetail: View {
             Task { await model.deleteSelectedAction(); deleted() }
         })
         .sheet(isPresented: $showsEdit) {
-            ActionEditorSheet(goals: goals, milestones: snapshot.milestone.map { [$0] } ?? [], initial: currentDraft) { draft in
+            ActionEditorSheet(goals: goals, milestones: milestones, initial: currentDraft) { draft in
                 await model.editSelectedAction(draft, expectedUpdatedAtMS: snapshot.action.updatedAtMS)
                 showsEdit = false
             }
@@ -531,6 +547,12 @@ private struct CareerActionDetail: View {
             TaisaButton(role: .secondary, label: "Drop action", icon: .drop) { showsDrop = true }
         case .completed, .dropped:
             TaisaButton(role: .secondary, label: "Reopen action", icon: .undo) { Task { await model.reopenSelectedAction() } }
+            if snapshot.action.status == ActionStatus.completed.rawValue, let completionEvent = latestCompletionEvent {
+                TaisaButton(role: .secondary, label: "Correct mistaken completion", icon: .undo) {
+                    Task { await model.correctSelectedCompletion(eventID: completionEvent.id) }
+                }
+                .accessibilityIdentifier("career-work.action.correct-completion")
+            }
         case nil:
             EmptyView()
         }
@@ -539,6 +561,7 @@ private struct CareerActionDetail: View {
     }
 
     private var trimmedChecklistTitle: String { checklistTitle.trimmingCharacters(in: .whitespacesAndNewlines) }
+    private var latestCompletionEvent: ActionEventRecord? { snapshot.events.last(where: { $0.kind == .completed }) }
     private func parentNotice(_ availability: ActionParentAvailability?) -> String? {
         switch availability {
         case .inactive: "Parent is inactive"
@@ -576,6 +599,83 @@ private enum ActionParentChoice: Hashable {
 }
 
 private enum ActionDueChoice: Hashable { case none, date }
+
+private enum ActionFilterParentChoice: Hashable {
+    case all, goal(String), milestone(String, String)
+}
+
+private enum ActionFilterWeekChoice: Hashable { case all, thisWeek }
+private enum ActionFilterOriginChoice: Hashable { case all, manual }
+
+private struct ActionFilterSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let goals: [GoalRecord]
+    let milestones: [MilestoneRecord]
+    let apply: (ActionCollectionFilter) async -> Void
+    @State private var lifecycle: ActionLifecycleFilter
+    @State private var parent: ActionFilterParentChoice
+    @State private var due: ActionDueFilter
+    @State private var week: ActionFilterWeekChoice
+    @State private var origin: ActionFilterOriginChoice
+
+    init(filter: ActionCollectionFilter, goals: [GoalRecord], milestones: [MilestoneRecord], apply: @escaping (ActionCollectionFilter) async -> Void) {
+        self.goals = goals
+        self.milestones = milestones
+        self.apply = apply
+        _lifecycle = State(initialValue: filter.lifecycle)
+        _parent = State(initialValue: Self.parentChoice(filter))
+        _due = State(initialValue: filter.due)
+        _week = State(initialValue: filter.weekStartMS == nil ? .all : .thisWeek)
+        _origin = State(initialValue: filter.origin == nil ? .all : .manual)
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                TaisaPicker("Lifecycle", selection: $lifecycle, options: ActionLifecycleFilter.allCases) { $0.rawValue.capitalized }
+                TaisaPicker("Relationship", selection: $parent, options: parentOptions, label: parentLabel)
+                TaisaPicker("Due", selection: $due, options: ActionDueFilter.allCases) { dueLabel($0) }
+                TaisaPicker("Week", selection: $week, options: [.all, .thisWeek]) { $0 == .all ? "Any week" : "This week" }
+                TaisaPicker("Origin", selection: $origin, options: [.all, .manual]) { $0 == .all ? "Any origin" : "Manual" }
+                TaisaButton(role: .primary, label: "Apply filters") { Task { await apply(filter) } }
+                TaisaButton(role: .secondary, label: "Cancel") { dismiss() }
+            }
+            .navigationTitle("Filter actions")
+            .accessibilityIdentifier("career-work.action.filter-sheet")
+        }
+    }
+
+    private var parentOptions: [ActionFilterParentChoice] {
+        [.all] + goals.map { .goal($0.id) } + milestones.map { .milestone($0.goalID, $0.id) }
+    }
+    private func parentLabel(_ choice: ActionFilterParentChoice) -> String {
+        switch choice {
+        case .all: "Any relationship"
+        case let .goal(id): goals.first(where: { $0.id == id })?.title ?? "Goal"
+        case let .milestone(_, id): milestones.first(where: { $0.id == id })?.title ?? "Milestone"
+        }
+    }
+    private func dueLabel(_ value: ActionDueFilter) -> String {
+        switch value { case .all: "Any due date"; case .overdue: "Overdue"; case .due: "Due today"; case .noDueDay: "No due date" }
+    }
+    private var filter: ActionCollectionFilter {
+        let relationship: (String?, String?) = switch parent {
+        case .all: (nil, nil)
+        case let .goal(id): (id, nil)
+        case let .milestone(goalID, milestoneID): (goalID, milestoneID)
+        }
+        return .init(lifecycle: lifecycle, goalID: relationship.0, milestoneID: relationship.1, due: due, weekStartMS: week == .thisWeek ? Self.currentWeekStartMS : nil, origin: origin == .manual ? .manual : nil)
+    }
+    private static func parentChoice(_ filter: ActionCollectionFilter) -> ActionFilterParentChoice {
+        if let milestoneID = filter.milestoneID { return .milestone(filter.goalID ?? "", milestoneID) }
+        if let goalID = filter.goalID { return .goal(goalID) }
+        return .all
+    }
+    private static var currentWeekStartMS: Int64 {
+        let start = Calendar.current.dateInterval(of: .weekOfYear, for: Date())?.start ?? Date()
+        return Int64((start.timeIntervalSince1970 * 1_000).rounded())
+    }
+}
 
 private struct ActionEditorSheet: View {
     @Environment(\.dismiss) private var dismiss
