@@ -188,6 +188,15 @@ Use requesting-code-review and verification-before-completion. Resolve blockers,
 exact verified mobile revision to canonical preview, record QA, prepare a PR to `main`, and
 stop at Ship.
 
+Apply the authoritative **candidate-freeze contract** in `docs/workflow.md` under
+**Review + QA** without redefining or reordering it: readiness preflight → focused checks →
+fresh whole-candidate review → blocker resolution and re-review → frozen exact revision →
+complete applicable matrix once → canonical-preview topology and exact-revision proof plus
+focused build/smoke checks. Reuse evidence only while code, dependencies, toolchain, signing,
+configuration, and covered inputs are unchanged. Candidate-content changes reopen review;
+preview integration repeats the complete matrix only when it changes candidate content or
+another named invalidator. Whole-candidate review must finish before the complete matrix.
+
 For Product work, Review must contain the pre-merge DS audit evidence, every replacement made
 with available DS contracts and Central Icons, and every remaining unavailable item or approved
 exception. Missing evidence or an available-but-unused DS contract is blocking and prevents a
@@ -211,7 +220,7 @@ is prohibited.
 If that interaction fails, remain in quarantine and loop with new diagnostic evidence without
 running the full matrix. After the named interaction passes, freeze that exact revision and run
 a fresh whole-candidate code review. Resolve every blocking finding with focused checks; if code,
-dependencies, toolchain, signing, or configuration changes, return to the candidate loop and
+dependencies, toolchain, signing, configuration, or covered inputs change, return to the candidate loop and
 review the resulting candidate again. Once review is clean and the physical proof still applies
 to that exact unchanged revision, run the full native matrix once. Only then request Ship, merge
 to `main`, synchronize canonical preview, confirm the installed revision, and smoke-test.
@@ -293,16 +302,22 @@ served or installed. Repeat for every QA revision.
 ## 9. Verification matrix
 
 Start with the smallest applicable verification that can disprove the change. Reuse fresh evidence
-only when revision, code, toolchain, configuration, and coverage are unchanged. Run
+only when the exact revision, code, dependencies, toolchain, signing, configuration, and covered
+inputs are unchanged. Run
 independent checks concurrently when they do not share mutable state, and reserve the full
 matrix for its named merge, release, final repair-release after physical proof and clean review,
 or high-risk gate. A repair plan must preserve the sequence `focused + fast → exact over-install
 → one named interaction → fresh whole-candidate review → resolve blockers and re-prove if changed
 → full matrix once on the reviewed, proven, unchanged candidate`; it cannot move the full matrix
 earlier or repeat it after unchanged evidence. At Ship, reuse valid exact-revision
-evidence and rerun only checks invalidated by a code, dependency, toolchain, signing, or
-configuration change. Never weaken a named gate or claim that a narrower check proves a
+evidence and rerun only checks invalidated by a code, dependency, toolchain, signing,
+configuration, or covered-input change. Never weaken a named gate or claim that a narrower check proves a
 broader surface.
+
+Run a readiness preflight before an expensive gate. For long-running work, prefer an
+event-capable wait or the longest practical bounded wait compatible with the needed response
+window. Poll only when new output can change the next decision; unchanged running state creates
+no reasoning turn, transcript, Linear comment, or user update.
 
 Do not rerun an unchanged failed approach or narrate unchanged waits. After three materially distinct unsuccessful approaches
 without new diagnostic evidence, terminate the bounded Goal as `UNRESOLVED_ESCALATION` with

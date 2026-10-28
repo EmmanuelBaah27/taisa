@@ -1,7 +1,7 @@
 # Taisa Build Workflow
 
 **Status:** Active
-**Last updated:** 2026-10-19
+**Last updated:** 2026-10-28
 
 How Taisa work moves from intake to shipped. Linear is the sole live authority.
 Linear project `Taisa`
@@ -263,6 +263,28 @@ Invoke `requesting-code-review` and `verification-before-completion`. Resolve bl
 findings. Record exact checks, revisions, PR, preview, device observations, remaining risk,
 and approval state in Linear.
 
+The following sequence is the authoritative **candidate-freeze contract** for every final QA
+or release gate. Other workflow surfaces reference this contract; they do not redefine it.
+
+1. Confirm verification readiness before spending the gate: required dependencies, runtimes,
+   signing, simulators/devices, and standard repository links or generated inputs are present.
+2. Complete implementation and the smallest applicable focused checks.
+3. Run a fresh whole-candidate review before the complete matrix. Resolve every blocking
+   finding with focused checks, then review the resulting candidate again.
+4. Freeze the clean candidate revision. Run the complete applicable matrix once on that exact
+   revision, concurrently where checks do not share mutable state.
+5. Preserve that exact-revision evidence through PR and Ship while code, dependencies,
+   toolchain, signing, configuration, and covered inputs remain unchanged. Any change to one
+   of those invalidators reopens only the affected proof, plus review when candidate content
+   changed; it does not justify repeating unaffected checks.
+6. For device-facing work, integrate the verified candidate into canonical preview and prove
+   topology, exact ancestry/revision, and the affected interaction with focused build/smoke
+   checks. Repeat the complete matrix only when preview integration changes candidate content
+   or an invalidator above, not for a clean one-way merge of already-verified commits.
+
+The complete matrix never substitutes for review, and a review that can still change the
+candidate never follows the complete matrix.
+
 For Product changes, review evidence also includes the pre-merge DS audit, replacements made
 with available DS contracts and Central Icons, and the complete list of remaining unavailable
 items or approved exceptions. Missing evidence or an available-but-unused DS contract blocks
@@ -272,11 +294,17 @@ Ship approval.
 
 Use the smallest applicable verification that can falsify the current change first, then
 expand only after focused checks pass or the risk boundary requires it. Reuse fresh evidence
-when the code, toolchain, configuration, and covered revision are unchanged; do not rerun an
+when code, dependencies, toolchain, signing, configuration, and covered inputs are unchanged
+for the exact covered revision; do not rerun an
 identical expensive command merely to produce another transcript. Run independent checks concurrently
 when they do not share mutable state. The complete release matrix remains mandatory at its
 named merge, release, final repair-release, or high-risk gate. During repair quarantine, do
 not spend the complete matrix before the named broken interaction is proven fixed.
+
+Before an expensive gate, run a readiness preflight that can fail cheaply. For long-running
+commands, use an event-capable wait or the longest practical bounded wait that still meets the
+needed response window. Poll only when output can materially change the next decision; unchanged
+running state produces no new reasoning turn, transcript, Linear comment, or user update.
 
 Autonomous repair remains outcome-based, not attempt-based. Do not repeat the same failed
 approach or unchanged verification. After three materially distinct unsuccessful approaches
@@ -341,8 +369,8 @@ fast native → exact over-install; do not run the full native matrix merely to 
 
 After the named interaction passes, freeze that exact candidate and run a fresh whole-candidate
 code review before the expensive final matrix. Resolve every blocking finding with the smallest
-applicable checks. Any code, dependency, toolchain, signing, or configuration change after
-physical proof invalidates the proof and returns to the candidate loop; review must run again on
+applicable checks. Any code, dependency, toolchain, signing, configuration, or covered-input
+change after physical proof invalidates the proof and returns to the candidate loop; review must run again on
 the resulting candidate. Once review is clean and the physical proof still applies to that exact
 unchanged revision, run the full native matrix once. Then obtain Ship approval, merge to `main`,
 synchronize one-way into canonical preview, confirm the served/installed revision, and perform
@@ -578,7 +606,7 @@ After Ship approval:
 2. Fetch and reconcile with `origin/main` safely.
 3. Confirm the complete verification matrix and final review for the exact revision. At Ship,
    reuse fresh exact-revision evidence from the final repair-release or high-risk gate when
-   code, dependencies, toolchain, signing, and configuration are unchanged; otherwise run
+   code, dependencies, toolchain, signing, configuration, and covered inputs are unchanged; otherwise run
    the invalidated checks before merge.
 4. Confirm required device QA and exact preview evidence.
 5. Push branch and create/update the PR.
