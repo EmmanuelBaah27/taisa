@@ -60,6 +60,36 @@ final class TaisaPreviewCatalogTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["History"].exists)
     }
 
+    func testCombinedHomeOpensCompletionEvidenceBeforeCompleting() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-TAISAPreviewScenario", "home.combined"]
+        app.launch()
+
+        let complete = app.buttons["Complete Draft the studio lighting plan"]
+        XCTAssertTrue(complete.waitForExistence(timeout: 5))
+        complete.tap()
+        XCTAssertTrue(element("home.this-week.completion-evidence", in: app).waitForExistence(timeout: 5))
+        XCTAssertTrue(app.textFields["What shows this is complete?"].exists)
+        XCTAssertFalse(app.buttons["Complete action"].isEnabled)
+    }
+
+    func testCareerActionScenarioShowsCanonicalDetailHierarchy() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-TAISAPreviewScenario", "career.action"]
+        app.launch()
+
+        let detail = element("career-work.action.detail", in: app)
+        XCTAssertTrue(detail.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Outline first case study"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Checklist"].exists)
+        let evidence = element("career-work.action.evidence", in: app)
+        let history = element("career-work.action.history", in: app)
+        for _ in 0..<4 where !evidence.exists || !history.exists { detail.swipeUp() }
+        XCTAssertTrue(evidence.waitForExistence(timeout: 5))
+        XCTAssertTrue(history.waitForExistence(timeout: 5))
+        retainScreenshot(of: app, name: "career-action-detail")
+    }
+
     private func element(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
         app.descendants(matching: .any)[identifier]
     }

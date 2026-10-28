@@ -29,7 +29,7 @@ import TaisaHome
         #expect(insights.history.count == 1)
     }
 
-    @Test func fixtureSupportsCompletionAndImmediateUndo() async throws {
+    @Test func fixtureSupportsCompletionAndMistakenCompletionCorrection() async throws {
         let fixture = PersonalCombinedHomeQA.fixture()
         await fixture.home.load()
         guard case let .content(initial, _, _) = fixture.home.state,
@@ -38,7 +38,7 @@ import TaisaHome
             return
         }
 
-        await fixture.home.complete(actionID: item.action.id)
+        await fixture.home.complete(actionID: item.action.id, evidenceTitle: "QA fixture delivered")
         guard case let .content(completed, _, _) = fixture.home.state else {
             Issue.record("Expected Home to remain usable after completion")
             return
@@ -47,11 +47,11 @@ import TaisaHome
         #expect(fixture.home.canUndoCompletion)
 
         await fixture.home.undoCompletion()
-        guard case let .content(restored, _, _) = fixture.home.state else {
-            Issue.record("Expected Home to remain usable after Undo")
+        guard case let .content(corrected, _, _) = fixture.home.state else {
+            Issue.record("Expected Home to remain usable after correction")
             return
         }
-        #expect(restored.thisWeek.map(\.action.id) == [item.action.id])
+        #expect(corrected.thisWeek.isEmpty, "Correction must not silently restore weekly placement")
         #expect(!fixture.home.canUndoCompletion)
     }
 }
