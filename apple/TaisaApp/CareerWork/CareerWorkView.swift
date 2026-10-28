@@ -445,8 +445,14 @@ private struct CareerActionDetail: View {
                 TaisaStatusSurface(statusRole, label: snapshot.action.status.capitalized)
                 if !snapshot.action.detail.isEmpty { TaisaRow(title: snapshot.action.detail) }
                 if let dueDay = snapshot.action.dueDay { LabeledContent("Due", value: dueDay.rawValue) }
-                if let goal = snapshot.goal { LabeledContent("Goal", value: goal.title) }
-                if let milestone = snapshot.milestone { LabeledContent("Milestone", value: milestone.title) }
+                if let goal = snapshot.goal {
+                    TaisaRow(title: goal.title, supporting: parentNotice(snapshot.goalAvailability), icon: .goal, emphasis: snapshot.goalAvailability == .available ? .standard : .attention)
+                        .accessibilityIdentifier("career-work.action.parent-goal")
+                }
+                if let milestone = snapshot.milestone {
+                    TaisaRow(title: milestone.title, supporting: parentNotice(snapshot.milestoneAvailability), icon: .milestone, emphasis: snapshot.milestoneAvailability == .available ? .standard : .attention)
+                        .accessibilityIdentifier("career-work.action.parent-milestone")
+                }
             }
             Section("Checklist") {
                 ForEach(snapshot.checklist, id: \.id) { item in
@@ -533,6 +539,13 @@ private struct CareerActionDetail: View {
     }
 
     private var trimmedChecklistTitle: String { checklistTitle.trimmingCharacters(in: .whitespacesAndNewlines) }
+    private func parentNotice(_ availability: ActionParentAvailability?) -> String? {
+        switch availability {
+        case .inactive: "Parent is inactive"
+        case .deleted: "Parent was deleted"
+        case .available, nil: nil
+        }
+    }
     private var currentDraft: ActionDraft {
         let parent: ActionParentContext
         if let goalID = snapshot.action.goalID, let milestoneID = snapshot.action.milestoneID {

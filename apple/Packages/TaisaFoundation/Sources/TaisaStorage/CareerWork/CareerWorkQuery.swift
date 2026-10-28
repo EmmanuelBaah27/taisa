@@ -87,11 +87,16 @@ public struct ActionDetailSnapshot: Sendable, Equatable {
     public let currentEvidence: [EvidenceRecord]
     public let supersededEvidence: [EvidenceRecord]
     public let placement: WeeklyPlacementRecord?
-    public init(action: ActionRecord, goal: GoalRecord?, milestone: MilestoneRecord?, checklist: [ActionChecklistItemRecord], events: [ActionEventRecord], currentEvidence: [EvidenceRecord], supersededEvidence: [EvidenceRecord], placement: WeeklyPlacementRecord?) {
+    public let goalAvailability: ActionParentAvailability?
+    public let milestoneAvailability: ActionParentAvailability?
+    public init(action: ActionRecord, goal: GoalRecord?, milestone: MilestoneRecord?, checklist: [ActionChecklistItemRecord], events: [ActionEventRecord], currentEvidence: [EvidenceRecord], supersededEvidence: [EvidenceRecord], placement: WeeklyPlacementRecord?, goalAvailability: ActionParentAvailability? = nil, milestoneAvailability: ActionParentAvailability? = nil) {
         self.action = action; self.goal = goal; self.milestone = milestone; self.checklist = checklist
         self.events = events; self.currentEvidence = currentEvidence; self.supersededEvidence = supersededEvidence; self.placement = placement
+        self.goalAvailability = goalAvailability; self.milestoneAvailability = milestoneAvailability
     }
 }
+
+public enum ActionParentAvailability: Sendable, Equatable { case available, inactive, deleted }
 
 public struct ActionDuplicateReview: Sendable, Equatable {
     public let candidates: [ActionRecord]
@@ -173,13 +178,20 @@ public struct CareerWorkQuery: Sendable {
             let action = Self.action(row)
             let goal = try action.goalID.flatMap { goalID in try Row.fetchOne(db, sql: "SELECT * FROM goals WHERE id = ? COLLATE NOCASE", arguments: [goalID]).map(Self.goal) }
             let milestone = try action.milestoneID.flatMap { milestoneID in try Row.fetchOne(db, sql: "SELECT * FROM milestones WHERE id = ? COLLATE NOCASE", arguments: [milestoneID]).map(Self.milestone) }
+            let goalAvailability = try action.goalID.flatMap { id in try Self.parentAvailability(entity: "goal", id: id, active: goal?.status == GoalStatus.active.rawValue, db: db) }
+            let milestoneAvailability = try action.milestoneID.flatMap { id in try Self.parentAvailability(entity: "milestone", id: id, active: milestone?.status == MilestoneStatus.planned.storageValue, db: db) }
             let checklist = try Row.fetchAll(db, sql: "SELECT * FROM action_checklist_items WHERE action_id = ? COLLATE NOCASE ORDER BY position, id", arguments: [id]).map(Self.checklistItem)
             let events = try Row.fetchAll(db, sql: "SELECT * FROM action_events WHERE action_id = ? COLLATE NOCASE ORDER BY occurred_at_ms, id", arguments: [id]).compactMap(Self.actionEvent)
             let currentEvidence = try Row.fetchAll(db, sql: "SELECT e.* FROM evidence e JOIN action_evidence_links l ON l.evidence_id = e.id WHERE e.action_id = ? COLLATE NOCASE AND l.superseded_by_event_id IS NULL AND NOT EXISTS (SELECT 1 FROM tombstones t WHERE t.entity_type = 'evidence' AND t.entity_id = e.id COLLATE NOCASE) ORDER BY e.occurred_at_ms, e.id", arguments: [id]).map(Self.evidence)
             let supersededEvidence = try Row.fetchAll(db, sql: "SELECT e.* FROM evidence e JOIN action_evidence_links l ON l.evidence_id = e.id WHERE e.action_id = ? COLLATE NOCASE AND l.superseded_by_event_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM tombstones t WHERE t.entity_type = 'evidence' AND t.entity_id = e.id COLLATE NOCASE) ORDER BY e.occurred_at_ms, e.id", arguments: [id]).map(Self.evidence)
             let placement = try Row.fetchOne(db, sql: "SELECT p.* FROM weekly_placements p WHERE p.action_id = ? COLLATE NOCASE AND NOT EXISTS (SELECT 1 FROM tombstones t WHERE t.entity_type = 'weekly_placement' AND t.entity_id = p.id COLLATE NOCASE) ORDER BY p.updated_at_ms DESC, p.id LIMIT 1", arguments: [id]).map(Self.placement)
-            return ActionDetailSnapshot(action: action, goal: goal, milestone: milestone, checklist: checklist, events: events, currentEvidence: currentEvidence, supersededEvidence: supersededEvidence, placement: placement)
+            return ActionDetailSnapshot(action: action, goal: goal, milestone: milestone, checklist: checklist, events: events, currentEvidence: currentEvidence, supersededEvidence: supersededEvidence, placement: placement, goalAvailability: goalAvailability, milestoneAvailability: milestoneAvailability)
         }
+    }
+
+    private static func parentAvailability(entity: String, id: String, active: Bool, db: Database) throws -> ActionParentAvailability {
+        let deleted = try Int.fetchOne(db, sql: "SELECT count(*) FROM tombstones WHERE entity_type = ? AND entity_id = ? COLLATE NOCASE", arguments: [entity, id]) == 1
+        return deleted ? .deleted : (active ? .available : .inactive)
     }
 
     public func duplicateCandidates(title: String, excludingActionID: String?) async throws -> [ActionRecord] {

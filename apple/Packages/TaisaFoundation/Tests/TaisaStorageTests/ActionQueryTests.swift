@@ -54,6 +54,22 @@ import Testing
         #expect(duplicateReview.candidates.map(\.id) == [action.id])
         #expect(duplicateReview.decisions == [.openExisting, .createSeparate])
     }
+
+    @Test func detailKeepsParentContextAndMarksInactiveOrDeletedParents() async throws {
+        let fixture = try await ActionQueryFixture()
+        defer { fixture.remove() }
+        let goal = try await fixture.commands.createGoal(title: "Parent goal", detail: "", context: fixture.context(10))
+        let action = try await fixture.commands.createAction(goalID: goal.id, milestoneID: nil, title: "Child action", detail: "", dueDay: nil, context: fixture.context(20))
+        let query = CareerWorkQuery(store: fixture.store)
+
+        _ = try await fixture.commands.transitionGoal(id: goal.id, to: .paused, source: .user, context: fixture.context(30))
+        #expect(try await query.actionDetail(id: action.id)?.goalAvailability == .inactive)
+
+        try await GoalRepository(store: fixture.store).delete(id: goal.id, context: fixture.context(40))
+        let detail = try #require(try await query.actionDetail(id: action.id))
+        #expect(detail.goal?.title == "Parent goal")
+        #expect(detail.goalAvailability == .deleted)
+    }
 }
 
 private struct ActionQueryFixture {
