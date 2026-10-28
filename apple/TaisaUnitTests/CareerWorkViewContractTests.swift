@@ -47,5 +47,7 @@ final class CareerWorkViewContractTests: XCTestCase {
         XCTAssertTrue(source.contains("CentralIcon(.history)"))
         XCTAssertFalse(source.contains("Color("))
         XCTAssertFalse(source.contains("systemImage:"))
+        XCTAssertFalse(source.contains(".font("))
+        XCTAssertFalse(source.contains(".foregroundStyle("))
     }
 }

@@ -183,7 +183,7 @@ struct CareerWorkView: View {
                 } label: {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(goal.title)
-                        if !goal.detail.isEmpty { Text(goal.detail).font(.subheadline).foregroundStyle(.secondary).lineLimit(2) }
+                        if !goal.detail.isEmpty { TaisaText(role: .supporting, color: .mutedForeground, content: goal.detail).lineLimit(2) }
                     }
                 }
                 .tag(CareerWorkRoute.goal(id: goal.id))
@@ -323,9 +323,7 @@ private struct CareerGoalDetail: View {
                             VStack(alignment: .leading) {
                                 TaisaRow(title: evidence.title, icon: .evidence)
                                 if let provenance = snapshot.provenance.first(where: { $0.evidenceID == evidence.id }) {
-                                    Text("Origin: \(provenance.origin.rawValue.capitalized)")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
+                                    TaisaText(role: .metadata, color: .mutedForeground, content: "Origin: \(provenance.origin.rawValue.capitalized)")
                                 }
                             }
                         }
@@ -427,7 +425,7 @@ struct CareerWorkProposalReviewView: View {
     var body: some View {
         Form {
             Section("Proposed change") {
-                Text(title).font(.headline)
+                TaisaText(role: .childHeaderTitle, content: title)
                 Text(exactChange)
                 LabeledContent("Source", value: source)
             }
