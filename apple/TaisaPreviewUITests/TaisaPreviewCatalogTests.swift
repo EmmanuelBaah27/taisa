@@ -60,6 +60,19 @@ final class TaisaPreviewCatalogTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["History"].exists)
     }
 
+    func testCombinedHomeOpensCompletionEvidenceBeforeCompleting() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-TAISAPreviewScenario", "home.combined"]
+        app.launch()
+
+        let complete = app.buttons["Complete Draft the studio lighting plan"]
+        XCTAssertTrue(complete.waitForExistence(timeout: 5))
+        complete.tap()
+        XCTAssertTrue(element("home.this-week.completion-evidence", in: app).waitForExistence(timeout: 5))
+        XCTAssertTrue(app.textFields["What shows this is complete?"].exists)
+        XCTAssertFalse(app.buttons["Complete action"].isEnabled)
+    }
+
     func testCareerActionScenarioShowsCanonicalDetailHierarchy() {
         let app = XCUIApplication()
         app.launchArguments = ["-TAISAPreviewScenario", "career.action"]

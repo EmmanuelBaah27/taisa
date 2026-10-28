@@ -40,6 +40,7 @@ public struct TaisaField: View {
             TaisaText(role: .label, content: title)
             field
                 .font(TaisaTypography.body.font)
+                .accessibilityLabel(title)
                 .padding(TaisaSpacing.control.rawValue)
                 .background(TaisaColor.background.color)
                 .overlay {

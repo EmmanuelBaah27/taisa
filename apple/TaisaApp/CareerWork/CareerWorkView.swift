@@ -446,11 +446,11 @@ private struct CareerActionDetail: View {
                 if !snapshot.action.detail.isEmpty { TaisaRow(title: snapshot.action.detail) }
                 if let dueDay = snapshot.action.dueDay { LabeledContent("Due", value: dueDay.rawValue) }
                 if let goal = snapshot.goal {
-                    TaisaRow(title: goal.title, supporting: parentNotice(snapshot.goalAvailability), icon: .goal, emphasis: snapshot.goalAvailability == .available ? .standard : .attention)
+                    TaisaRow(title: goal.title, supporting: parentNotice(snapshot.goalAvailability), icon: .goal, emphasis: parentEmphasis(snapshot.goalAvailability))
                         .accessibilityIdentifier("career-work.action.parent-goal")
                 }
                 if let milestone = snapshot.milestone {
-                    TaisaRow(title: milestone.title, supporting: parentNotice(snapshot.milestoneAvailability), icon: .milestone, emphasis: snapshot.milestoneAvailability == .available ? .standard : .attention)
+                    TaisaRow(title: milestone.title, supporting: parentNotice(snapshot.milestoneAvailability), icon: .milestone, emphasis: parentEmphasis(snapshot.milestoneAvailability))
                         .accessibilityIdentifier("career-work.action.parent-milestone")
                 }
             }
@@ -545,6 +545,9 @@ private struct CareerActionDetail: View {
         case .deleted: "Parent was deleted"
         case .available, nil: nil
         }
+    }
+    private func parentEmphasis(_ availability: ActionParentAvailability?) -> TaisaRowEmphasis {
+        availability == .inactive || availability == .deleted ? .attention : .standard
     }
     private var currentDraft: ActionDraft {
         let parent: ActionParentContext

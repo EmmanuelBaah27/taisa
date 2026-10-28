@@ -68,6 +68,7 @@ struct ActionComponentTests {
 
         #expect(field.contains("public struct TaisaField"))
         #expect(field.contains("public struct TaisaDateField"))
+        #expect(field.contains(".accessibilityLabel(title)"))
         #expect(controls.contains("public struct TaisaPicker"))
         #expect(controls.contains("public struct TaisaMenu"))
         #expect(controls.contains("public struct TaisaNavigationRow"))
