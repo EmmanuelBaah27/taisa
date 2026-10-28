@@ -78,12 +78,15 @@ final class TaisaPreviewCatalogTests: XCTestCase {
         app.launchArguments = ["-TAISAPreviewScenario", "career.action"]
         app.launch()
 
-        XCTAssertTrue(element("career-work.action.detail", in: app).waitForExistence(timeout: 5))
+        let detail = element("career-work.action.detail", in: app)
+        XCTAssertTrue(detail.waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Outline first case study"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Checklist"].exists)
-        XCTAssertTrue(app.staticTexts["Evidence"].exists)
-        app.swipeUp()
-        XCTAssertTrue(app.staticTexts["History"].waitForExistence(timeout: 5))
+        let evidence = element("career-work.action.evidence", in: app)
+        let history = element("career-work.action.history", in: app)
+        for _ in 0..<4 where !evidence.exists || !history.exists { detail.swipeUp() }
+        XCTAssertTrue(evidence.waitForExistence(timeout: 5))
+        XCTAssertTrue(history.waitForExistence(timeout: 5))
         retainScreenshot(of: app, name: "career-action-detail")
     }
 
