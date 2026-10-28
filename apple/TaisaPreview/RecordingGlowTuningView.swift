@@ -7,11 +7,18 @@ import UIKit
 struct RecordingGlowTuningView: View {
     @StateObject private var liveMeter = PreviewLiveLoudnessMonitor()
     @State private var preset = RecordingGlowPreset.figmaDefault
-    @State private var response = LoudnessEnvelopeConfiguration()
+    @State private var response = LoudnessEnvelopeConfiguration.recordingGlowApproved
     @State private var loudness = 0.52
+    @State private var simulatedBands = VoiceFrequencyBands(
+        bass: 0.42,
+        lowMids: 0.58,
+        mids: 0.72,
+        upperMids: 0.46,
+        highs: 0.28
+    )
     @State private var inputMode = TuningInputMode.simulated
     @State private var simulatedState = SimulatedGlowState.recording
-    @State private var waveStagger = 0.035
+    @State private var motion = RecordingGlowMotionConfiguration.approved
     @State private var copied = false
 
     var body: some View {
@@ -20,10 +27,11 @@ struct RecordingGlowTuningView: View {
                 loudness: displayedLoudness,
                 state: simulatedState.recordingGlowState,
                 preset: preset,
-                waveStagger: waveStagger
+                motion: motion,
+                frequencyLevels: displayedFrequencyLevels
             )
                 .frame(maxWidth: .infinity)
-                .frame(height: 240)
+                .frame(height: CGFloat(RecordingGlowConfiguration.approved.surfaceHeight))
                 .padding(.horizontal, TaisaSpacing.page.rawValue)
                 .padding(.vertical, TaisaSpacing.standard.rawValue)
                 .accessibilityElement(children: .ignore)
@@ -40,6 +48,7 @@ struct RecordingGlowTuningView: View {
                         choiceGrid(TuningInputMode.allCases, selection: $inputMode)
                         if inputMode == .simulated {
                             slider("Simulated loudness", value: $loudness)
+                            frequencySliders
                         } else {
                             liveLevel
                         }
@@ -54,7 +63,10 @@ struct RecordingGlowTuningView: View {
                         slider("Response curve", value: $response.responseExponent, range: 0.2...2)
                         slider("Attack seconds", value: $response.attackSeconds, range: 0.02...0.6)
                         slider("Release seconds", value: $response.releaseSeconds, range: 0.1...1.5)
-                        slider("Wave stagger seconds", value: $waveStagger, range: 0...0.18)
+                        slider("Wave stagger seconds", value: $motion.waveStaggerSeconds, range: 0...0.18)
+                        slider("Wave attack seconds", value: $motion.attackDuration, range: 0.05...0.6)
+                        slider("Wave bounce", value: $motion.attackBounce)
+                        slider("Wave release seconds", value: $motion.releaseDuration, range: 0.05...0.8)
                     }
 
                     section("Center") {
@@ -71,17 +83,17 @@ struct RecordingGlowTuningView: View {
                         slider("Edge balance", value: $preset.edgeBalance)
                     }
 
-                    section("Palette · left outer yellow") {
-                        region("Left outer yellow", value: $preset.leftOuter)
+                    section("Palette · bass coral") {
+                        region("Bass coral", value: $preset.leftOuter)
                     }
-                    section("Palette · left inner blue") {
-                        region("Left inner blue", value: $preset.leftInner)
+                    section("Palette · low-mid yellow") {
+                        region("Low-mid yellow", value: $preset.leftInner)
                     }
-                    section("Palette · dominant center purple") {
-                        region("Dominant center purple", value: $preset.center)
+                    section("Palette · mid purple") {
+                        region("Mid purple", value: $preset.center)
                     }
-                    section("Palette · right inner coral") {
-                        region("Right inner coral", value: $preset.rightInner)
+                    section("Palette · upper-mid blue") {
+                        region("Upper-mid blue", value: $preset.rightInner)
                     }
                     section("Palette · right outer green") {
                         region("Right outer green", value: $preset.rightOuter)
@@ -125,6 +137,28 @@ struct RecordingGlowTuningView: View {
         inputMode == .simulated ? loudness : liveMeter.loudness
     }
 
+    private var displayedFrequencyLevels: RecordingGlowFrequencyLevels {
+        let bands = inputMode == .simulated ? simulatedBands : liveMeter.frequencyBands
+        return .init(
+            bass: bands.bass,
+            lowMids: bands.lowMids,
+            mids: bands.mids,
+            upperMids: bands.upperMids,
+            highs: bands.highs
+        )
+    }
+
+    private var frequencySliders: some View {
+        VStack(alignment: .leading, spacing: TaisaSpacing.standard.rawValue) {
+            Text("Frequency energy").font(.subheadline.weight(.semibold))
+            slider("Bass · coral", value: $simulatedBands.bass)
+            slider("Low-mids · yellow", value: $simulatedBands.lowMids)
+            slider("Mids · purple", value: $simulatedBands.mids)
+            slider("Upper-mids · blue", value: $simulatedBands.upperMids)
+            slider("Highs · green", value: $simulatedBands.highs)
+        }
+    }
+
     private var liveLevel: some View {
         VStack(alignment: .leading, spacing: TaisaSpacing.compact.rawValue) {
             HStack {
@@ -134,6 +168,16 @@ struct RecordingGlowTuningView: View {
                     .monospacedDigit()
             }
             ProgressView(value: displayedLoudness)
+            ForEach(Array(zip(frequencyLabels, liveMeter.frequencyBands.values)), id: \.0) { label, value in
+                HStack(spacing: 8) {
+                    Text(label).frame(width: 88, alignment: .leading)
+                    ProgressView(value: value)
+                    Text(value.formatted(.percent.precision(.fractionLength(0))))
+                        .monospacedDigit()
+                        .frame(width: 42, alignment: .trailing)
+                }
+                .font(.caption)
+            }
             Text(liveMeter.status)
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -141,6 +185,10 @@ struct RecordingGlowTuningView: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Live microphone level")
         .accessibilityValue(displayedLoudness.formatted(.percent.precision(.fractionLength(0))))
+    }
+
+    private var frequencyLabels: [String] {
+        ["Bass", "Low-mids", "Mids", "Upper-mids", "Highs"]
     }
 
     @ViewBuilder
@@ -169,24 +217,40 @@ struct RecordingGlowTuningView: View {
         _ choices: [Choice],
         selection: Binding<Choice>
     ) -> some View {
-        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
-            ForEach(choices) { choice in
-                Button {
-                    selection.wrappedValue = choice
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: selection.wrappedValue == choice ? "checkmark.circle.fill" : "circle")
-                        Text(choice.title)
-                            .lineLimit(2)
-                            .minimumScaleFactor(0.85)
-                        Spacer(minLength: 0)
+        Grid(horizontalSpacing: 8, verticalSpacing: 8) {
+            ForEach(Array(choices.enumerated()), id: \.element.id) { index, choice in
+                if index.isMultiple(of: 2) {
+                    GridRow {
+                        choiceButton(choice, selection: selection)
+                        if index + 1 < choices.count {
+                            choiceButton(choices[index + 1], selection: selection)
+                        } else {
+                            Color.clear
+                        }
                     }
-                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
                 }
-                .buttonStyle(.bordered)
-                .accessibilityAddTraits(selection.wrappedValue == choice ? .isSelected : [])
             }
         }
+    }
+
+    private func choiceButton<Choice: TuningChoice>(
+        _ choice: Choice,
+        selection: Binding<Choice>
+    ) -> some View {
+        Button {
+            selection.wrappedValue = choice
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: selection.wrappedValue == choice ? "checkmark.circle.fill" : "circle")
+                Text(choice.title)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.85)
+                Spacer(minLength: 0)
+            }
+            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+        }
+        .buttonStyle(.bordered)
+        .accessibilityAddTraits(selection.wrappedValue == choice ? .isSelected : [])
     }
 
     private func color(_ title: String, value: Binding<RecordingGlowColor>) -> some View {
@@ -231,16 +295,22 @@ struct RecordingGlowTuningView: View {
 
     private func reset() {
         preset = .figmaDefault
-        response = .init()
+        response = .recordingGlowApproved
         loudness = 0.52
+        simulatedBands = .init(bass: 0.42, lowMids: 0.58, mids: 0.72, upperMids: 0.46, highs: 0.28)
         inputMode = .simulated
         simulatedState = .recording
-        waveStagger = 0.035
+        motion = .approved
         copied = false
     }
 
     private func copyJSON() {
-        let snapshot = TuningSnapshot(preset: preset.normalized(), response: response)
+        let snapshot = RecordingGlowConfiguration(
+            preset: preset.normalized(),
+            response: response,
+            motion: motion,
+            surfaceHeight: RecordingGlowConfiguration.approved.surfaceHeight
+        )
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         guard let data = try? encoder.encode(snapshot),
@@ -249,7 +319,6 @@ struct RecordingGlowTuningView: View {
         copied = true
     }
 }
-
 private protocol TuningChoice: Hashable, Identifiable {
     var title: String { get }
 }
@@ -292,14 +361,20 @@ private enum SimulatedGlowState: String, CaseIterable, TuningChoice {
 @MainActor
 private final class PreviewLiveLoudnessMonitor: ObservableObject {
     @Published private(set) var loudness = 0.0
+    @Published private(set) var frequencyBands = VoiceFrequencyBands.zero
     @Published private(set) var status = "Microphone off"
 
     private let engine = AVAudioEngine()
     private var envelope = LoudnessEnvelope()
+    private var spectrumAnalyzer = VoiceSpectrumAnalyzer()
     private var tapInstalled = false
 
     func start(configuration: LoudnessEnvelopeConfiguration) async {
         stop()
+#if targetEnvironment(simulator)
+        status = "Live microphone requires a physical device"
+        return
+#else
         status = "Requesting microphone access…"
         guard await AVAudioApplication.requestRecordPermission() else {
             status = "Microphone access denied"
@@ -327,6 +402,8 @@ private final class PreviewLiveLoudnessMonitor: ObservableObject {
                 Task { @MainActor [weak self] in
                     self?.consume(
                         reading.sample,
+                        samples: reading.samples,
+                        sampleRate: sampleRate,
                         delta: reading.delta
                     )
                 }
@@ -339,6 +416,7 @@ private final class PreviewLiveLoudnessMonitor: ObservableObject {
             stop()
             status = "Couldn’t start microphone"
         }
+#endif
     }
 
     func update(configuration: LoudnessEnvelopeConfiguration) {
@@ -353,18 +431,26 @@ private final class PreviewLiveLoudnessMonitor: ObservableObject {
         engine.stop()
         try? AVAudioSession.sharedInstance().setActive(false, options: [.notifyOthersOnDeactivation])
         loudness = 0
+        frequencyBands = .zero
+        spectrumAnalyzer.reset()
         status = "Microphone off"
     }
 
-    private func consume(_ sample: AudioMeterSample, delta: Duration) {
+    private func consume(
+        _ sample: AudioMeterSample,
+        samples: [Float],
+        sampleRate: Double,
+        delta: Duration
+    ) {
         loudness = envelope.update(sample: sample, delta: delta)
+        frequencyBands = spectrumAnalyzer.analyze(samples: samples, sampleRate: sampleRate, delta: delta)
         status = "Listening — receiving audio"
     }
 
     private nonisolated static func meterReading(
         from buffer: AVAudioPCMBuffer,
         sampleRate: Double
-    ) -> (sample: AudioMeterSample, delta: Duration)? {
+    ) -> (sample: AudioMeterSample, samples: [Float], delta: Duration)? {
         guard let channel = buffer.floatChannelData?.pointee else { return nil }
         let count = Int(buffer.frameLength)
         guard count > 0 else { return nil }
@@ -382,12 +468,8 @@ private final class PreviewLiveLoudnessMonitor: ObservableObject {
         let peakDB = 20 * log10(max(peak, 0.000_000_1))
         return (
             AudioMeterSample(averagePower: averageDB, peakPower: peakDB),
+            Array(UnsafeBufferPointer(start: channel, count: count)),
             .seconds(Double(count) / sampleRate)
         )
     }
-}
-
-private struct TuningSnapshot: Codable {
-    let preset: RecordingGlowPreset
-    let response: LoudnessEnvelopeConfiguration
 }

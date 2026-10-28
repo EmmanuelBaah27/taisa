@@ -1,0 +1,100 @@
+{
+  "schemaVersion": 1,
+  "preset": {
+    "center": {
+      "brightness": 1,
+      "color": {
+        "blue": 1,
+        "green": 0.6823529411764706,
+        "opacity": 1,
+        "red": 0.796078431372549
+      },
+      "opacity": 0.9575936794281006,
+      "saturation": 0.42307692766189575,
+      "strength": 0.5197238922119141
+    },
+    "centerBaselineHeight": 0.12,
+    "centerBloom": 0.6253648996353149,
+    "centerPeakHeight": 0.72,
+    "centerWidth": 0.2258974313735962,
+    "edgeBalance": 0.5,
+    "edgeGain": 0.42,
+    "edgeSoftness": 0.62,
+    "edgeSpread": 0.74,
+    "globalOpacity": 0.92,
+    "grain": {
+      "amount": 0.22777120769023895,
+      "contrast": 0.42,
+      "loudnessInfluence": 0.22,
+      "scale": 0.043116360902786255,
+      "seed": 1413564755,
+      "softness": 0.7248126268386841
+    },
+    "leftInner": {
+      "brightness": 0.95,
+      "color": {
+        "blue": 0.5411764705882353,
+        "green": 0.9019607843137255,
+        "opacity": 1,
+        "red": 0.9921568627450981
+      },
+      "opacity": 0.72,
+      "saturation": 0.84,
+      "strength": 0.48
+    },
+    "leftOuter": {
+      "brightness": 0.96,
+      "color": {
+        "blue": 0.7176470588235294,
+        "green": 0.7215686274509804,
+        "opacity": 1,
+        "red": 0.9647058823529412
+      },
+      "opacity": 0.76,
+      "saturation": 0.82,
+      "strength": 0.36
+    },
+    "rightInner": {
+      "brightness": 0.98,
+      "color": {
+        "blue": 0.9921568627450981,
+        "green": 0.788235294117647,
+        "opacity": 1,
+        "red": 0.5686274509803921
+      },
+      "opacity": 0.78,
+      "saturation": 0.86,
+      "strength": 0.46
+    },
+    "rightOuter": {
+      "brightness": 0.94,
+      "color": {
+        "blue": 0.7098039215686275,
+        "green": 0.9215686274509803,
+        "opacity": 1,
+        "red": 0.6784313725490196
+      },
+      "opacity": 0.68,
+      "saturation": 0.78,
+      "strength": 0.34
+    },
+    "verticalOrigin": 0.94
+  },
+  "response": {
+    "attackSeconds": 0.07,
+    "ceilingDecibels": -6,
+    "inputGain": 1,
+    "maximumRisePerSecond": 7,
+    "noiseFloorDecibels": -55,
+    "peakContribution": 0.2,
+    "releaseSeconds": 0.6044575989246368,
+    "responseExponent": 1.5044378519058228
+  },
+  "motion": {
+    "waveStaggerSeconds": 0.035,
+    "attackDuration": 0.16,
+    "attackBounce": 0.45,
+    "releaseDuration": 0.16
+  },
+  "surfaceHeight": 240
+}

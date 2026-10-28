@@ -19,6 +19,9 @@ struct VoiceSessionCoordinatorTests {
         )
 
         #expect(await coordinator.snapshot().capture.disposition == .empty)
+        #expect(await coordinator.snapshot().capture.frequencyBands == .init(
+            bass: 0.9, lowMids: 0.7, mids: 0.5, upperMids: 0.3, highs: 0.1
+        ))
         await capture.setElapsedMilliseconds(999)
         #expect(await coordinator.snapshot().capture.disposition == .shortCapture)
         await capture.setElapsedMilliseconds(1_000)
@@ -412,7 +415,10 @@ private actor SnapshotCapture: VoiceCaptureControlling {
         .init(
             activity: .recording,
             elapsedMilliseconds: elapsedMilliseconds,
-            meter: .init(averagePower: -18, peakPower: -6)
+            meter: .init(averagePower: -18, peakPower: -6),
+            frequencyBands: .init(
+                bass: 0.9, lowMids: 0.7, mids: 0.5, upperMids: 0.3, highs: 0.1
+            )
         )
     }
     func events() -> AsyncStream<AudioCaptureEvent> { AsyncStream { $0.finish() } }

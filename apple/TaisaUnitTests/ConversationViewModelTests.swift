@@ -7,6 +7,32 @@ import TaisaVoice
 
 @MainActor
 final class ConversationViewModelTests: XCTestCase {
+    func testApprovedRecordingGlowConfigurationRoundTripsEveryLabDimension() throws {
+        let approved = RecordingGlowConfiguration.approved
+        let data = try JSONEncoder().encode(approved)
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let motion = try XCTUnwrap(json["motion"] as? [String: Any])
+
+        XCTAssertEqual(json["schemaVersion"] as? Int, 1)
+        XCTAssertEqual(json["surfaceHeight"] as? Double, 240)
+        XCTAssertEqual(motion["waveStaggerSeconds"] as? Double, 0.035)
+        XCTAssertEqual(motion["attackDuration"] as? Double, 0.16)
+        XCTAssertEqual(motion["attackBounce"] as? Double, 0.45)
+        XCTAssertEqual(motion["releaseDuration"] as? Double, 0.16)
+        XCTAssertNotNil(json["preset"])
+        XCTAssertNotNil(json["response"])
+        XCTAssertEqual(try JSONDecoder().decode(RecordingGlowConfiguration.self, from: data), approved)
+    }
+
+    func testApprovedRecordingGlowConfigurationComesFromBundledLabExport() throws {
+        let bundled = try RecordingGlowConfiguration.loadApproved(from: .main)
+
+        XCTAssertEqual(bundled, RecordingGlowConfiguration.approved)
+        XCTAssertEqual(bundled.schemaVersion, 1)
+        XCTAssertEqual(bundled.surfaceHeight, 240)
+        XCTAssertEqual(bundled.motion, .approved)
+    }
+
     func testStartRefreshesPersistedConversationTitle() async {
         let client = ConversationScreenClient(
             loadTitle: { "Persisted conversation title" },
@@ -878,6 +904,33 @@ final class ConversationViewModelTests: XCTestCase {
 
         XCTAssertEqual(model.composer, .paused)
         XCTAssertTrue(model.showsMicrophoneUnavailable)
+    }
+
+    func testActiveCapturePublishesSmoothedGlowLoudnessAndFrequencyBands() async {
+        let bands = VoiceFrequencyBands(
+            bass: 0.8, lowMids: 0.6, mids: 0.9, upperMids: 0.4, highs: 0.2
+        )
+        let client = ConversationScreenClient(
+            beginVoice: {}, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
+            sendText: { _, available in await available() }, retry: {},
+            saveDraft: { _ in }, discardDraft: {},
+            loadCaptureSnapshot: {
+                .init(
+                    activity: .recording, elapsedMilliseconds: 1_500,
+                    meter: .init(averagePower: -18, peakPower: -6),
+                    frequencyBands: bands, disposition: .sendable
+                )
+            }
+        )
+        let model = ConversationViewModel(
+            conversationID: UUID().uuidString, title: "Chat", entryIntent: nil,
+            composer: .recording, client: client
+        )
+
+        await model.refreshCapture()
+
+        XCTAssertGreaterThan(model.recordingGlowLoudness, 0)
+        XCTAssertEqual(model.capture.frequencyBands, bands)
     }
 
     func testRouteRestorationClearsMicrophoneUnavailableNotice() async {

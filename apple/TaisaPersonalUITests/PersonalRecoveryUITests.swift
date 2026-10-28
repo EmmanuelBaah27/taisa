@@ -121,6 +121,10 @@ import XCTest
         )
         XCTAssertFalse(app.staticTexts["Conversation unavailable"].exists)
         XCTAssertFalse(app.descendants(matching: .any)["voice.diagnostics.root"].exists)
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = "production-recording-glow"
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
     }
 
     func testExplicitQALaunchCanCreateOnceAndInspectAfterRelaunch() {
