@@ -6,8 +6,8 @@ import TaisaStorage
 @Observable
 public final class HomeModel {
     public private(set) var state: HomeState
-    public private(set) var completionUndoToken: WeeklyWorkUndoToken?
-    public var canUndoCompletion: Bool { completionUndoToken != nil }
+    public private(set) var completionCorrection: HomeCompletionCorrection?
+    public var canUndoCompletion: Bool { completionCorrection != nil }
 
     @ObservationIgnored private let client: HomeClient
     @ObservationIgnored private var generation = 0
@@ -67,13 +67,13 @@ public final class HomeModel {
         }
     }
 
-    public func complete(actionID: String) async {
+    public func complete(actionID: String, evidenceTitle: String) async {
         mutationGeneration += 1
         let active = mutationGeneration
         do {
-            let token = try await client.complete(actionID)
+            let result = try await client.complete(actionID, evidenceTitle)
             guard mutationGeneration == active else { return }
-            completionUndoToken = token
+            completionCorrection = HomeCompletionCorrection(actionID: result.action.id, completionEventID: result.event.id)
             await load()
         } catch {
             guard mutationGeneration == active else { return }
@@ -82,13 +82,13 @@ public final class HomeModel {
     }
 
     public func undoCompletion() async {
-        guard let token = completionUndoToken else { return }
+        guard let correction = completionCorrection else { return }
         mutationGeneration += 1
         let active = mutationGeneration
         do {
-            try await client.restore(token)
+            _ = try await client.correctCompletion(correction.actionID, correction.completionEventID)
             guard mutationGeneration == active else { return }
-            completionUndoToken = nil
+            completionCorrection = nil
             await load()
         } catch {
             guard mutationGeneration == active else { return }
@@ -135,6 +135,16 @@ public final class HomeModel {
              .openFailed, .cipherUnavailable, .configurationFailed, .migrationFailed:
             return .storageUnavailable
         }
+    }
+}
+
+public struct HomeCompletionCorrection: Sendable, Equatable {
+    public let actionID: String
+    public let completionEventID: String
+
+    public init(actionID: String, completionEventID: String) {
+        self.actionID = actionID
+        self.completionEventID = completionEventID
     }
 }
 
