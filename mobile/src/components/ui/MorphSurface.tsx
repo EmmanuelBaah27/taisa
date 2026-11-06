@@ -5,6 +5,7 @@ import Animated, {
   SharedValue,
 } from 'react-native-reanimated';
 import { useWindowDimensions } from 'react-native';
+import { colors } from '../../constants/theme';
 
 // Must match VoiceButton.tsx exactly:
 //   paddingHorizontal: 44 (×2 = 88) + icon width 24 = 112
@@ -17,7 +18,7 @@ const PILL_RADIUS = 48;
 
 // Must match VoiceButton's backgroundColor exactly so the morph looks like
 // the button itself expanding.
-const BUTTON_COLOR = '#cdec1a';
+const BUTTON_COLOR = colors.accent;
 const SCREEN_COLOR = '#ffffff';
 
 interface MorphSurfaceProps {

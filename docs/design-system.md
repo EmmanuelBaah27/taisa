@@ -109,7 +109,7 @@ tokens; any explicit styling layered on top of them still follows this rule.
 | Default border | `border-border` | `#e6e6e6` | Cards, inputs |
 | Subtle border | `border-border-subtle` | `rgba(6,7,7,0.08)` | Hairline separators |
 | Strong border | `border-border-strong` | `#dadada` | Elevated borders |
-| Primary CTA bg | `bg-primary` | `#cdec1a` | Buttons, FAB, active indicators |
+| Primary CTA bg | `bg-primary` | `#dede0f` | Buttons, FAB, active indicators |
 | Text on primary | `text-primary-foreground` | `#060707` | Text on lime buttons |
 | Lime accent text | `text-lime-700` | `#778700` | Accent-colored text on light bg |
 | Lime subtle bg | `bg-lime-100` | `#edfbca` | ThemeTag, subtle tints |

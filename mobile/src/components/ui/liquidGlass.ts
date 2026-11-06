@@ -33,13 +33,13 @@ export interface LiquidGlassAppearance {
 
 const TINTS: Record<LiquidGlassTone, string | undefined> = {
   neutral: undefined,
-  accent: 'rgba(205,236,26,0.72)',
+  accent: 'rgba(222,222,15,0.72)',
   destructive: 'rgba(198,0,0,0.72)',
 };
 
 const FALLBACK_BACKGROUND: Record<LiquidGlassTone, string> = {
   neutral: 'rgba(255,255,255,0.54)',
-  accent: 'rgba(205,236,26,0.82)',
+  accent: 'rgba(222,222,15,0.82)',
   destructive: 'rgba(198,0,0,0.82)',
 };
 

@@ -29,7 +29,7 @@ float3 glowAt(float2 uv, float amp, float t) {
   float2 pOff = uv - float2(0.95, 1.30);
   float  peach = exp(-dot(pOff * float2(0.80, 0.50), pOff * float2(0.80, 0.50)) * 3.2 / breath);
 
-  float3 limeCol  = float3(0.776, 0.922, 0.322);
+  float3 limeCol  = float3(0.871, 0.871, 0.059);
   float3 peachCol = float3(0.980, 0.714, 0.573);
   return lime * limeCol + peach * peachCol;
 }

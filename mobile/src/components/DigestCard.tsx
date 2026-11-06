@@ -1,6 +1,7 @@
 import { View, Text, TouchableOpacity } from 'react-native';
 import { router } from 'expo-router';
 import { LOCAL_CAPTURE_ROUTE } from '../navigation/localCaptureRoute';
+import { colors } from '../constants/theme';
 
 interface DigestItem {
   type: string;
@@ -15,7 +16,7 @@ interface DigestCardProps {
 }
 
 const dotColors: Record<string, string> = {
-  accent:   '#cdec1a',  // lime-500
+  accent:   colors.accent,
   positive: '#04851a',  // green-500
   warning:  '#e46300',  // orange-500
 };
@@ -35,7 +36,7 @@ export function DigestCard({ headline, items }: DigestCardProps) {
         >
           <View
             className="w-2 h-2 rounded-full mt-1 mr-3 flex-shrink-0"
-            style={{ backgroundColor: dotColors[item.color] ?? '#cdec1a' }}
+            style={{ backgroundColor: dotColors[item.color] ?? colors.accent }}
           />
           <View className="flex-1">
             <Text className="text-muted-foreground text-sm leading-relaxed">{item.text}</Text>
