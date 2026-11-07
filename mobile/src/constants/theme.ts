@@ -12,9 +12,9 @@ export const colors = {
   recordingMark: '#666666',
 
   // Primary (lime-500)
-  accent: '#cdec1a',
+  accent: '#dede0f',
   accentMuted: '#edfbca',
-  accentGlow: 'rgba(205,236,26,0.3)',
+  accentGlow: 'rgba(222,222,15,0.3)',
 
   // Semantic
   positive: '#04851a',

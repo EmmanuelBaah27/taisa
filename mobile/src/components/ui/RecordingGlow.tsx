@@ -50,7 +50,7 @@ half4 main(float2 fragCoord) {
     violet = exp(-dot(vOff * float2(0.90, 0.50), vOff * float2(0.90, 0.50)) * 3.2 / breath);
   }
 
-  float3 limeCol   = float3(0.776, 0.922, 0.322);
+  float3 limeCol   = float3(0.871, 0.871, 0.059);
   float3 peachCol  = float3(0.980, 0.714, 0.573);
   float3 violetCol = float3(0.600, 0.400, 0.900);
 
