@@ -277,9 +277,14 @@ struct CareerWorkView: View {
                 }
             )
         } else if let action = model.state.snapshot?.selectedActionDetail {
-            CareerActionDetail(snapshot: action, goals: allGoals, milestones: allMilestones, model: model) {
-                selectedRoute = nil
-            }
+            CareerActionDetail(
+                snapshot: action,
+                goals: allGoals,
+                milestones: allMilestones,
+                model: model,
+                open: { selectedRoute = $0 },
+                deleted: { selectedRoute = nil }
+            )
         } else if let evidence = model.state.snapshot?.selectedEvidence {
             CareerEvidenceDetail(evidence: evidence)
         }
@@ -496,6 +501,7 @@ private struct CareerActionDetail: View {
     let goals: [GoalRecord]
     let milestones: [MilestoneRecord]
     let model: CareerWorkModel
+    let open: (CareerWorkRoute) -> Void
     let deleted: () -> Void
     @State private var checklistTitle = ""
     @State private var completionEvidence = ""
@@ -511,11 +517,15 @@ private struct CareerActionDetail: View {
                 if !snapshot.action.detail.isEmpty { TaisaRow(title: snapshot.action.detail) }
                 if let due = actionDueText(snapshot.action) { LabeledContent("Due", value: due.replacingOccurrences(of: "Due ", with: "")) }
                 if let goal = snapshot.goal {
-                    TaisaRow(title: goal.title, supporting: parentNotice(snapshot.goalAvailability), icon: .goal, emphasis: parentEmphasis(snapshot.goalAvailability))
+                    Button { open(.goal(id: goal.id)) } label: {
+                        TaisaRow(title: goal.title, supporting: parentNotice(snapshot.goalAvailability), icon: .goal, emphasis: parentEmphasis(snapshot.goalAvailability))
+                    }
                         .accessibilityIdentifier("career-work.action.parent-goal")
                 }
                 if let milestone = snapshot.milestone {
-                    TaisaRow(title: milestone.title, supporting: parentNotice(snapshot.milestoneAvailability), icon: .milestone, emphasis: parentEmphasis(snapshot.milestoneAvailability))
+                    Button { open(.goal(id: milestone.goalID)) } label: {
+                        TaisaRow(title: milestone.title, supporting: parentNotice(snapshot.milestoneAvailability), icon: .milestone, emphasis: parentEmphasis(snapshot.milestoneAvailability))
+                    }
                         .accessibilityIdentifier("career-work.action.parent-milestone")
                 }
             }
@@ -551,8 +561,16 @@ private struct CareerActionDetail: View {
             .accessibilityIdentifier("career-work.action.checklist")
             if !snapshot.currentEvidence.isEmpty || !snapshot.supersededEvidence.isEmpty {
                 Section("Evidence") {
-                    ForEach(snapshot.currentEvidence, id: \.id) { TaisaRow(title: $0.title, supporting: $0.detail, icon: .evidence) }
-                    ForEach(snapshot.supersededEvidence, id: \.id) { TaisaRow(title: $0.title, supporting: "Corrected completion", icon: .undo) }
+                    ForEach(snapshot.currentEvidence, id: \.id) { evidence in
+                        Button { open(.evidence(id: evidence.id)) } label: {
+                            TaisaRow(title: evidence.title, supporting: evidence.detail, icon: .evidence)
+                        }
+                    }
+                    ForEach(snapshot.supersededEvidence, id: \.id) { evidence in
+                        Button { open(.evidence(id: evidence.id)) } label: {
+                            TaisaRow(title: evidence.title, supporting: "Corrected completion", icon: .undo)
+                        }
+                    }
                 }
                 .accessibilityIdentifier("career-work.action.evidence")
             }

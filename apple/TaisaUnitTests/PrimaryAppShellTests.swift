@@ -41,6 +41,14 @@ final class PrimaryAppShellTests: XCTestCase {
         XCTAssertEqual(model.workDestination, .goals(route: .goal(id: "goal-1")))
     }
 
+    func testLegacyCareerWorkRestorationRedirectsByIntent() {
+        XCTAssertEqual(WorkDestination.restoringLegacyCareerWork(routeStableID: "action:a1"), .actions(route: .action(id: "a1")))
+        XCTAssertEqual(WorkDestination.restoringLegacyCareerWork(routeStableID: "goal:g1"), .goals(route: .goal(id: "g1")))
+        XCTAssertEqual(WorkDestination.restoringLegacyCareerWork(routeStableID: "milestone:g1"), .goals(route: .goal(id: "g1")))
+        XCTAssertEqual(WorkDestination.restoringLegacyCareerWork(routeStableID: "evidence:e1"), .goals(route: .evidence(id: "e1")))
+        XCTAssertEqual(WorkDestination.restoringLegacyCareerWork(routeStableID: nil), .actions(route: nil))
+    }
+
     func testPrimaryNavigationMatchesTheThreeDestinationProductArchitecture() {
         XCTAssertEqual(PrimaryDestination.allCases, [.home, .conversations, .you])
     }
