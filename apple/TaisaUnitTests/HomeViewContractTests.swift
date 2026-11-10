@@ -93,6 +93,8 @@ final class HomeViewContractTests: XCTestCase {
         XCTAssertTrue(scenarios.contains("home.combined"))
         XCTAssertTrue(scenarios.contains("home.insights"))
         XCTAssertTrue(scenarios.contains("thisWeek:"))
+        XCTAssertTrue(scenarios.contains("actionPrompts:"))
+        XCTAssertTrue(scenarios.contains("reason: .blocked"))
         XCTAssertTrue(scenarios.contains("leadInsight:"))
         XCTAssertTrue(scenarioView.contains("InsightsView(model:"))
         XCTAssertTrue(scenarioView.contains("openInsights:"))

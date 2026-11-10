@@ -75,7 +75,7 @@ final class TaisaPreviewCatalogTests: XCTestCase {
 
     func testCareerActionScenarioShowsCanonicalDetailHierarchy() {
         let app = XCUIApplication()
-        app.launchArguments = ["-TAISAPreviewScenario", "career.action"]
+        app.launchArguments = ["-TAISAPreviewScenario", "actions.action"]
         app.launch()
 
         let detail = element("career-work.action.detail", in: app)
