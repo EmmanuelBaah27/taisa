@@ -146,7 +146,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
       )}
       <View
         className={`rounded-xl px-3 py-2 max-w-xs ${isUser ? 'bg-lime-100 rounded-tr-sm' : 'bg-card rounded-tl-sm'}`}
-        style={!isUser ? { borderLeftWidth: 2, borderLeftColor: '#cdec1a' } : undefined}
+        style={!isUser ? { borderLeftWidth: 2, borderLeftColor: colors.accent } : undefined}
       >
         <Text className={`text-sm leading-relaxed ${isUser ? 'text-foreground' : 'text-muted-foreground'}`}>
           {message.content}

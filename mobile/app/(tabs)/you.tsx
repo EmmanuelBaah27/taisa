@@ -196,7 +196,7 @@ export default function YouScreen() {
           <NaviiAvatar seed={userId} size={64} />
         ) : (
           <View className="w-16 h-16 rounded-full bg-accent-muted items-center justify-center"
-            style={{ borderWidth: 1.5, borderColor: 'rgba(205,236,26,0.3)' }}>
+            style={{ borderWidth: 1.5, borderColor: colors.accentGlow }}>
             <Text className="text-lime-700 text-xl font-bold">T</Text>
           </View>
         )}

@@ -31,7 +31,7 @@ module.exports = {
           200: '#e0f7a4',
           300: '#d8f37c',
           400: '#d3f04e',
-          500: '#cdec1a',  // primary CTA
+          500: '#dede0f',  // primary CTA
           600: '#a0b90f',
           700: '#778700',  // readable lime text on white
           800: '#4e5a00',
@@ -138,8 +138,8 @@ module.exports = {
         overlay:             'rgba(6,7,7,0.5)',
 
         // Primary action (lime)
-        primary:             '#cdec1a',   // CTA button bg
-        'primary-hover':     '#d3f04e',   // CTA hover
+        primary:             '#dede0f',   // CTA button bg
+        'primary-hover':     '#dede0f',   // CTA hover
         'primary-foreground':'#060707',   // text on CTA button
 
         // Secondary

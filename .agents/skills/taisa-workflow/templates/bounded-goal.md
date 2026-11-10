@@ -20,6 +20,9 @@ Fill every field before creating a Goal. Replace angle-bracket guidance with exa
 - Remaining unavailable DS items: `<each item, affected surface, recommendation, and Baah approval URL, or none>`
 - Acceptance criteria: `<Linear checklist>`
 - Verification matrix: `<exact commands and checks>`
+- Verification readiness: `<dependencies, runtimes, signing, simulator/device, repository links, and generated inputs confirmed>`
+- Candidate-freeze evidence: `<focused checks → clean whole-candidate review → frozen exact revision → complete matrix once>`
+- Evidence invalidators: `<code, dependencies, toolchain, signing, configuration, or covered inputs that would reopen proof>`
 - Permitted mutations: `<bounded list>`
 - Prohibited actions: `<bounded list>`
 - Repair evidence: `<attempts and quarantine state, or not-a-repair>`
@@ -54,14 +57,22 @@ above without asking Baah to say “continue.”
   Preserve device data during an exact signed over-install for one named broken interaction.
 - A repair candidate is not canonical. It is not `QA_READY`, Ship-ready, shippable, or merge-ready. If
   the interaction fails, keep looping with new evidence and no full matrix. After it passes, run
-  the full native matrix on the exact unchanged candidate before final repair-release.
+  fresh whole-candidate review, resolve blockers and re-prove if changed, then run the full native
+  matrix once on the reviewed, proven, exact unchanged candidate before final repair-release.
 - Each repair-release gate item must pass or be explicitly marked inapplicable with evidence;
   an omitted item does not pass the gate.
 - Device-facing QA requires the exact verified commit on canonical `preview/taisa`, confirmed
   served or installed, plus agent-owned simulator/accessibility/preview smoke checks.
+- Execute the authoritative candidate-freeze contract in `docs/workflow.md` under
+  **Review + QA**, using the readiness, freeze, and invalidator fields above as run evidence.
+  The fixed order is focused checks → whole-candidate review and blocker re-review → frozen
+  exact revision → complete matrix once → focused canonical-preview topology, exact-revision,
+  and build/smoke proof. Candidate-content changes reopen review; any named invalidator reopens
+  only its affected proof.
 - Never infer approval, start a successor issue, expand Scope, resume another chat, perform
   destructive cleanup, or merge without the named authority.
-- Prohibit unchanged polling. Prefer an event-capable wait. If none exists, record
+- Prohibit unchanged polling. Prefer an event-capable wait or the longest practical bounded wait
+  whose output can change the next decision. If none exists, record
   `EXTERNAL_WAIT_RECORDED`, complete this Goal, and schedule or request one later check near
   the normal terminal window.
 - Do not emit user or Linear updates for unchanged state.

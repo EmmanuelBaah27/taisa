@@ -28,7 +28,10 @@ describe('liquid glass capability and appearance', () => {
   test('maps semantic prominence and tint without changing layout', () => {
     expect(getLiquidGlassAppearance('prominent', 'accent')).toMatchObject({
       glassEffectStyle: 'regular',
-      tintColor: 'rgba(205,236,26,0.72)',
+      tintColor: 'rgba(222,222,15,0.72)',
+      fallback: {
+        backgroundColor: 'rgba(222,222,15,0.82)',
+      },
     });
     expect(getLiquidGlassAppearance('prominent', 'destructive')).toMatchObject({
       glassEffectStyle: 'regular',

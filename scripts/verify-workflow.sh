@@ -66,6 +66,11 @@ require_workflow_pattern() {
   rg -qi "$pattern" "$file" || fail "$file is missing $description"
 }
 
+require_workflow_multiline_pattern() {
+  local file="$1" pattern="$2" description="$3"
+  rg -Uqi --multiline-dotall "$pattern" "$file" || fail "$file is missing $description"
+}
+
 require_workflow_order() {
   local file="$1" first_pattern="$2" second_pattern="$3" description="$4"
   local first_line second_line
@@ -176,6 +181,9 @@ for invariant in \
   'Remaining unavailable DS items' \
   'Acceptance criteria' \
   'Verification matrix' \
+  'Verification readiness' \
+  'Candidate-freeze evidence' \
+  'Evidence invalidators' \
   'Permitted mutations' \
   'Prohibited actions' \
   'Repair evidence' \
@@ -344,12 +352,49 @@ for efficiency_invariant in \
   'smallest applicable verification' \
   'reuse fresh evidence' \
   'independent checks concurrently' \
+  'readiness preflight' \
+  'whole-candidate review.*before the complete matrix' \
+  'complete.*matrix once' \
+  'focused build/smoke' \
+  'longest practical bounded wait' \
   'three materially distinct unsuccessful approaches'; do
   rg -qi "$efficiency_invariant" docs/workflow.md ||
     fail "workflow is missing efficiency invariant: $efficiency_invariant"
   rg -qi "$efficiency_invariant" .agents/skills/taisa-workflow/SKILL.md ||
     fail "orchestrator is missing efficiency invariant: $efficiency_invariant"
 done
+for candidate_freeze_file in \
+  docs/workflow.md \
+  .agents/skills/taisa-workflow/SKILL.md \
+  .agents/skills/taisa-workflow/templates/bounded-goal.md; do
+  for evidence_invalidator in code dependencies toolchain signing configuration 'covered inputs'; do
+    require_workflow_pattern "$candidate_freeze_file" "$evidence_invalidator" \
+      "candidate evidence invalidator: $evidence_invalidator"
+  done
+done
+require_workflow_order docs/workflow.md \
+  'Complete implementation and the smallest applicable focused checks' \
+  'Run a fresh whole-candidate review before the complete matrix' \
+  'focused checks before final review'
+require_workflow_order docs/workflow.md \
+  'Run a fresh whole-candidate review before the complete matrix' \
+  'Run the complete applicable matrix once' \
+  'final review before the complete matrix'
+require_workflow_multiline_pattern .agents/skills/taisa-workflow/SKILL.md \
+  'authoritative.*candidate-freeze contract.*docs/workflow\.md[\s\S]{0,900}readiness preflight.*focused checks.*whole-candidate review.*re-review.*frozen exact revision.*complete applicable matrix once.*build/smoke' \
+  'reference to the complete authoritative candidate-freeze contract'
+require_workflow_multiline_pattern .agents/skills/taisa-workflow/templates/bounded-goal.md \
+  'authoritative candidate-freeze contract.*docs/workflow\.md[\s\S]{0,900}focused checks.*whole-candidate review.*re-review.*frozen.*exact revision.*complete matrix once.*build/smoke' \
+  'reference to the review-first candidate-freeze sequence'
+require_workflow_multiline_pattern docs/workflow.md \
+  'authoritative.*candidate-freeze contract.*Confirm verification readiness.*smallest applicable focused checks.*fresh whole-candidate review.*review the resulting candidate again.*Freeze the clean candidate revision.*complete applicable matrix once.*focused build/smoke' \
+  'complete authoritative candidate-freeze behavior'
+require_workflow_multiline_pattern docs/workflow.md \
+  'Any code, dependency, toolchain, signing, configuration, or covered-input.*change after physical proof invalidates the proof.*review must run again' \
+  'complete repair-proof invalidation contract'
+require_workflow_multiline_pattern .agents/skills/taisa-workflow/SKILL.md \
+  'if code,.*dependencies, toolchain, signing, configuration, or covered inputs change.*return to the candidate loop.*review the resulting candidate again' \
+  'complete repair-proof invalidation contract'
 rg -q 'superpowers:brainstorming' .agents/skills/taisa-workflow/SKILL.md || fail "brainstorming routing is missing"
 rg -q 'superpowers:verification-before-completion' .agents/skills/taisa-workflow/SKILL.md || fail "completion verification routing is missing"
 rg -q '\.agents/skills/taisa-workflow/SKILL\.md' AGENTS.md || fail "AGENTS.md does not load the canonical orchestrator"
