@@ -19,16 +19,26 @@ final class PrimaryAppShellTests: XCTestCase {
         XCTAssertEqual(PrimaryDestination.conversations.title, "Chats")
     }
 
-    func testCareerWorkStaysInsideHomeWithoutLeavingThePrimaryPager() {
+    func testWorkDestinationsStayInsideHomeWithoutLeavingThePrimaryPager() {
         let model = PrimaryAppShellModel(selection: .conversations)
 
-        model.showCareerWork()
+        model.showWork(.actions(route: nil))
 
         XCTAssertEqual(model.selection, .home)
-        XCTAssertTrue(model.showsCareerWork)
+        XCTAssertEqual(model.workDestination, .actions(route: nil))
 
         model.select(.conversations)
-        XCTAssertFalse(model.showsCareerWork)
+        XCTAssertNil(model.workDestination)
+    }
+
+    func testWorkDestinationsPreserveExactActionAndGoalIntent() {
+        let model = PrimaryAppShellModel()
+
+        model.showWork(.actions(route: .action(id: "action-1")))
+        XCTAssertEqual(model.workDestination, .actions(route: .action(id: "action-1")))
+
+        model.showWork(.goals(route: .goal(id: "goal-1")))
+        XCTAssertEqual(model.workDestination, .goals(route: .goal(id: "goal-1")))
     }
 
     func testPrimaryNavigationMatchesTheThreeDestinationProductArchitecture() {
@@ -78,7 +88,10 @@ final class PrimaryAppShellTests: XCTestCase {
         XCTAssertTrue(source.contains(".tabViewStyle(.page(indexDisplayMode: .never))"))
         XCTAssertTrue(source.contains(".simultaneousGesture(primaryPageCompletionGesture)"))
         XCTAssertFalse(source.contains("if model.selection == .careerWork"))
-        XCTAssertTrue(source.contains("model.showsCareerWork"))
+        XCTAssertTrue(source.contains("model.workDestination"))
+        XCTAssertTrue(source.contains("ActionsView("))
+        XCTAssertTrue(source.contains("GoalsView("))
+        XCTAssertFalse(source.contains("CareerWorkView("))
         XCTAssertTrue(source.contains(".safeAreaInset(edge: .bottom, spacing: 0)"))
         XCTAssertTrue(source.contains("TaisaBottomChrome"))
         XCTAssertFalse(source.contains("PageEdgeFade(.navigation)"))

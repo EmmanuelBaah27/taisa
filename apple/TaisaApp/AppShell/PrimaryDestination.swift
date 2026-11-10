@@ -1,9 +1,9 @@
 import Foundation
 import TaisaDesignSystem
+import TaisaStorage
 
 enum PrimaryDestination: String, CaseIterable, Hashable, Sendable {
     case home
-    case careerWork
     case conversations
     case you
 
@@ -12,7 +12,6 @@ enum PrimaryDestination: String, CaseIterable, Hashable, Sendable {
     var title: String {
         switch self {
         case .home: "Home"
-        case .careerWork: "Career Work"
         case .conversations: "Chats"
         case .you: "You"
         }
@@ -21,11 +20,15 @@ enum PrimaryDestination: String, CaseIterable, Hashable, Sendable {
     var icon: CentralIconName {
         switch self {
         case .home: .homeLine
-        case .careerWork: .homeLine
         case .conversations: .chatBubbles
         case .you: .peopleCircle
         }
     }
+}
+
+enum WorkDestination: Hashable, Sendable {
+    case actions(route: CareerWorkRoute?)
+    case goals(route: CareerWorkRoute?)
 }
 
 enum ConversationEntryIntent: Sendable, Equatable {

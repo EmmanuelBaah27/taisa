@@ -17,6 +17,7 @@ public struct CareerWorkClient: Sendable {
     public var loadOverview: @Sendable () async throws -> CareerWorkOverview
     public var loadMilestones: @Sendable () async throws -> [MilestoneRecord]
     public var loadDeletedActions: @Sendable () async throws -> [ActionRecord]
+    public var hasStoredActions: @Sendable () async throws -> Bool
     public var loadActions: @Sendable (ActionCollectionFilter, ActionDueDay) async throws -> [ActionRecord]
     public var loadActionDetail: @Sendable (String) async throws -> ActionDetailSnapshot?
     public var reviewActionDuplicates: @Sendable (String, String?) async throws -> ActionDuplicateReview
@@ -50,6 +51,7 @@ public struct CareerWorkClient: Sendable {
         loadOverview: @escaping @Sendable () async throws -> CareerWorkOverview,
         loadMilestones: @escaping @Sendable () async throws -> [MilestoneRecord] = { [] },
         loadDeletedActions: @escaping @Sendable () async throws -> [ActionRecord] = { [] },
+        hasStoredActions: @escaping @Sendable () async throws -> Bool = { false },
         loadActions: @escaping @Sendable (ActionCollectionFilter, ActionDueDay) async throws -> [ActionRecord] = { _, _ in [] },
         loadActionDetail: @escaping @Sendable (String) async throws -> ActionDetailSnapshot? = { _ in nil },
         reviewActionDuplicates: @escaping @Sendable (String, String?) async throws -> ActionDuplicateReview = { _, _ in .init(candidates: []) },
@@ -82,6 +84,7 @@ public struct CareerWorkClient: Sendable {
         self.loadOverview = loadOverview
         self.loadMilestones = loadMilestones
         self.loadDeletedActions = loadDeletedActions
+        self.hasStoredActions = hasStoredActions
         self.loadActions = loadActions
         self.loadActionDetail = loadActionDetail
         self.reviewActionDuplicates = reviewActionDuplicates
@@ -122,6 +125,7 @@ public extension CareerWorkClient {
             loadOverview: { try await query.overview() },
             loadMilestones: { try await query.milestones() },
             loadDeletedActions: { try await query.deletedActions() },
+            hasStoredActions: { try await query.hasStoredActions() },
             loadActions: { try await query.actions(filter: $0, localDay: $1) },
             loadActionDetail: { try await query.actionDetail(id: $0) },
             reviewActionDuplicates: { try await query.duplicateReview(title: $0, excludingActionID: $1) },

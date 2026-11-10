@@ -137,6 +137,12 @@ public struct CareerWorkQuery: Sendable {
         }
     }
 
+    public func hasStoredActions() async throws -> Bool {
+        try await store.read { db in
+            try Int.fetchOne(db, sql: "SELECT EXISTS(SELECT 1 FROM actions a WHERE NOT EXISTS (SELECT 1 FROM tombstones t WHERE t.entity_type = 'action' AND t.entity_id = a.id COLLATE NOCASE))") == 1
+        }
+    }
+
     public func goal(id: String) async throws -> CareerGoalSnapshot? {
         try await store.read { db in
             guard let goalRow = try Row.fetchOne(db, sql: "SELECT * FROM goals WHERE id = ? COLLATE NOCASE AND NOT EXISTS (SELECT 1 FROM tombstones WHERE entity_type = 'goal' AND entity_id = ? COLLATE NOCASE)", arguments: [id, id]) else { return nil }

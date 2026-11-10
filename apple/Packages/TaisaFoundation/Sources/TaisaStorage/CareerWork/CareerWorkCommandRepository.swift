@@ -204,6 +204,11 @@ public struct CareerWorkCommandRepository: Sendable {
                     db,
                     sql: "SELECT count(*) FROM action_evidence_links WHERE completion_event_id = ? COLLATE NOCASE AND superseded_by_event_id IS NULL",
                     arguments: [completionEventID]
+                  ) == 1,
+                  try Int.fetchOne(
+                    db,
+                    sql: "SELECT count(*) FROM action_events candidate WHERE candidate.id = ? COLLATE NOCASE AND NOT EXISTS (SELECT 1 FROM action_events newer WHERE newer.action_id = candidate.action_id COLLATE NOCASE AND newer.kind = 'completed' AND (newer.occurred_at_ms > candidate.occurred_at_ms OR (newer.occurred_at_ms = candidate.occurred_at_ms AND newer.id > candidate.id)))",
+                    arguments: [completionEventID]
                   ) == 1 else { throw CareerWorkContractError.invalidTransition }
 
             let corrected = Self.copyAction(current, status: .active, timestamp: context.timestamp)

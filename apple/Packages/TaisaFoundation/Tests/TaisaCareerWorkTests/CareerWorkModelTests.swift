@@ -142,10 +142,24 @@ import TaisaStorage
         )
         let model = CareerWorkModel(client: client, route: .action(id: action.id))
         await model.load()
-        await model.editSelectedAction(.init(title: "Changed", detail: "", parent: .standalone, dueDay: nil), expectedUpdatedAtMS: 1)
+        let saved = await model.editSelectedAction(.init(title: "Changed", detail: "", parent: .standalone, dueDay: nil), expectedUpdatedAtMS: 1)
 
+        #expect(!saved)
         #expect(model.state.issue == .conflict)
         #expect(model.state.snapshot?.selectedActionDetail == detail)
+    }
+
+    @Test func filteredEmptyActionsRemainContentWhenDurableActionsExist() async {
+        let model = CareerWorkModel(client: .init(
+            loadOverview: { .init(active: [], paused: [], completed: [], archived: []) },
+            hasStoredActions: { true },
+            loadActions: { _, _ in [] }
+        ))
+
+        await model.load()
+
+        #expect(model.state.snapshot?.actions == [])
+        #expect(model.state != .empty)
     }
 
     @Test func olderCancelledLoadCannotOverwriteNewerGeneration() async {

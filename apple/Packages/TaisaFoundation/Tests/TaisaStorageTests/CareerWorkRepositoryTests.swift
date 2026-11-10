@@ -155,6 +155,13 @@ import Testing
             evidenceTitle: "Ship review completed again",
             context: fixture.context(40)
         )
+        await #expect(throws: CareerWorkContractError.invalidTransition) {
+            _ = try await fixture.commands.undoMistakenCompletion(
+                id: action.id,
+                completionEventID: completion.event.id,
+                context: fixture.context(45)
+            )
+        }
         let corrected = try await fixture.commands.undoMistakenCompletion(
             id: action.id,
             completionEventID: secondCompletion.event.id,
