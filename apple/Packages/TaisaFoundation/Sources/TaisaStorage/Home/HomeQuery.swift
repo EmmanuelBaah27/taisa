@@ -193,7 +193,9 @@ public struct HomeQuery: Sendable {
             updatedAtMS: row["updated_at_ms"],
             milestoneID: row["milestone_id"],
             dueDay: (row["due_day"] as String?).flatMap(ActionDueDay.init(rawValue:)),
-            origin: ActionOrigin(rawValue: row["origin"] as String) ?? .manual
+            origin: ActionOrigin(rawValue: row["origin"] as String) ?? .manual,
+            blockedAtMS: row["blocked_at_ms"],
+            blockerNote: row["blocker_note"]
         )
     }
 

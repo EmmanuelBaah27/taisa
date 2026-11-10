@@ -85,6 +85,8 @@ public enum ActionEventKind: String, Codable, Sendable, CaseIterable {
     case completed, dropped, reopened
     case completionCorrected = "completion_corrected"
     case deleted, restored
+    case blockerSet = "blocker_set"
+    case blockerCleared = "blocker_cleared"
 }
 public enum ActionParentContext: Sendable, Equatable {
     case standalone
@@ -112,6 +114,7 @@ public enum CareerWorkContractError: Error, Equatable, Sendable {
     case invalidDueDay
     case invalidTransition
     case invalidRelationship
+    case invalidBlockerNote
     case staleTarget
 
     public var diagnosticCode: String {
@@ -120,6 +123,7 @@ public enum CareerWorkContractError: Error, Equatable, Sendable {
         case .invalidDueDay: "career_work_invalid_due_day"
         case .invalidTransition: "career_work_invalid_transition"
         case .invalidRelationship: "career_work_invalid_relationship"
+        case .invalidBlockerNote: "career_work_invalid_blocker_note"
         case .staleTarget: "career_work_stale_target"
         }
     }

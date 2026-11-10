@@ -232,7 +232,7 @@ public struct CareerWorkCommandRepository: Sendable {
             guard let current = try Self.fetchAction(id: id, db: db) else { throw RepositoryError.notFound }
             guard current.updatedAtMS == expectedUpdatedAtMS else { throw CareerWorkContractError.staleTarget }
             let parent = try Self.resolvedGoalID(goalID: goalID, milestoneID: milestoneID, db: db)
-            let updated = ActionRecord(id: id, goalID: parent, title: title, detail: detail, status: current.status, dueAtMS: current.dueAtMS, createdAtMS: current.createdAtMS, updatedAtMS: context.timestamp, milestoneID: milestoneID, dueDay: dueDay, origin: current.origin)
+            let updated = ActionRecord(id: id, goalID: parent, title: title, detail: detail, status: current.status, dueAtMS: current.dueAtMS, createdAtMS: current.createdAtMS, updatedAtMS: context.timestamp, milestoneID: milestoneID, dueDay: dueDay, origin: current.origin, blockedAtMS: current.blockedAtMS, blockerNote: current.blockerNote)
             try Self.actionCore(self.store).update(updated, context: context, db: db)
             _ = try Self.insertActionEvent(actionID: id, kind: (current.goalID != parent || current.milestoneID != milestoneID) ? .relationshipChanged : .edited, from: ActionStatus(rawValue: current.status), to: ActionStatus(rawValue: current.status), source: .user, sourceID: context.id, context: context, db: db)
             return updated
@@ -314,6 +314,32 @@ public struct CareerWorkCommandRepository: Sendable {
             try Self.removeActivePlacements(actionID: id, context: context, store: self.store, db: db)
             _ = try Self.insertActionEvent(actionID: id, kind: .dropped, from: .active, to: .dropped, source: .user, sourceID: context.id, context: context, db: db)
             return dropped
+        }
+    }
+
+    public func setActionBlocked(id: String, note: String?, context: MutationContext) async throws -> ActionRecord {
+        let normalizedNote = note?.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard normalizedNote?.count ?? 0 <= 500 else { throw CareerWorkContractError.invalidBlockerNote }
+        return try await store.write { db in
+            guard let current = try Self.fetchAction(id: id, db: db), current.status == ActionStatus.active.rawValue else {
+                throw CareerWorkContractError.invalidTransition
+            }
+            let updated = Self.copyAction(current, status: .active, timestamp: context.timestamp, blockedAtMS: context.timestamp, blockerNote: normalizedNote?.isEmpty == true ? nil : normalizedNote)
+            try Self.actionCore(self.store).update(updated, context: context, db: db)
+            _ = try Self.insertActionEvent(actionID: id, kind: .blockerSet, from: .active, to: .active, detail: updated.blockerNote, source: .user, sourceID: context.id, context: context, db: db)
+            return updated
+        }
+    }
+
+    public func clearActionBlocked(id: String, context: MutationContext) async throws -> ActionRecord {
+        try await store.write { db in
+            guard let current = try Self.fetchAction(id: id, db: db), current.status == ActionStatus.active.rawValue, current.blockedAtMS != nil else {
+                throw CareerWorkContractError.invalidTransition
+            }
+            let updated = Self.copyAction(current, status: .active, timestamp: context.timestamp)
+            try Self.actionCore(self.store).update(updated, context: context, db: db)
+            _ = try Self.insertActionEvent(actionID: id, kind: .blockerCleared, from: .active, to: .active, source: .user, sourceID: context.id, context: context, db: db)
+            return updated
         }
     }
 
@@ -429,7 +455,9 @@ public struct CareerWorkCommandRepository: Sendable {
             updatedAtMS: row["updated_at_ms"],
             milestoneID: row["milestone_id"],
             dueDay: (row["due_day"] as String?).flatMap(ActionDueDay.init(rawValue:)),
-            origin: ActionOrigin(rawValue: row["origin"] as String) ?? .manual
+            origin: ActionOrigin(rawValue: row["origin"] as String) ?? .manual,
+            blockedAtMS: row["blocked_at_ms"],
+            blockerNote: row["blocker_note"]
         )
     } }
     private static func fetchEvidence(id: String, db: Database) throws -> EvidenceRecord? { try Row.fetchOne(db, sql: "SELECT * FROM evidence WHERE id = ? COLLATE NOCASE", arguments: [id]).map { EvidenceRecord(id: $0["id"], goalID: $0["goal_id"], actionID: $0["action_id"], title: $0["title"], detail: $0["detail"], occurredAtMS: $0["occurred_at_ms"], createdAtMS: $0["created_at_ms"]) } }
@@ -463,10 +491,10 @@ public struct CareerWorkCommandRepository: Sendable {
 
     private static func goalCore(_ store: TaisaStore) -> RepositoryCore<GoalRecord> { .init(store: store, spec: .init(table: "goals", entity: "goal", fields: [("id", "id"), ("title", "title"), ("detail", "detail"), ("status", "status"), ("createdAtMS", "created_at_ms"), ("updatedAtMS", "updated_at_ms")], immutable: ["createdAtMS"], appendOnly: false)) }
     private static func milestoneCore(_ store: TaisaStore) -> RepositoryCore<MilestoneRecord> { .init(store: store, spec: .init(table: "milestones", entity: "milestone", fields: [("id", "id"), ("goalID", "goal_id"), ("title", "title"), ("status", "status"), ("targetAtMS", "target_at_ms"), ("updatedAtMS", "updated_at_ms")], immutable: ["goalID"], appendOnly: false)) }
-    private static func actionCore(_ store: TaisaStore) -> RepositoryCore<ActionRecord> { .init(store: store, spec: .init(table: "actions", entity: "action", fields: [("id", "id"), ("goalID", "goal_id"), ("milestoneID", "milestone_id"), ("title", "title"), ("detail", "detail"), ("status", "status"), ("dueDay", "due_day"), ("dueAtMS", "due_at_ms"), ("origin", "origin"), ("createdAtMS", "created_at_ms"), ("updatedAtMS", "updated_at_ms")], immutable: ["createdAtMS", "origin"], appendOnly: false)) }
+    private static func actionCore(_ store: TaisaStore) -> RepositoryCore<ActionRecord> { .init(store: store, spec: .init(table: "actions", entity: "action", fields: [("id", "id"), ("goalID", "goal_id"), ("milestoneID", "milestone_id"), ("title", "title"), ("detail", "detail"), ("status", "status"), ("dueDay", "due_day"), ("dueAtMS", "due_at_ms"), ("origin", "origin"), ("blockedAtMS", "blocked_at_ms"), ("blockerNote", "blocker_note"), ("createdAtMS", "created_at_ms"), ("updatedAtMS", "updated_at_ms")], immutable: ["createdAtMS", "origin"], appendOnly: false)) }
     private static func evidenceCore(_ store: TaisaStore) -> RepositoryCore<EvidenceRecord> { .init(store: store, spec: .init(table: "evidence", entity: "evidence", fields: [("id", "id"), ("goalID", "goal_id"), ("actionID", "action_id"), ("title", "title"), ("detail", "detail"), ("occurredAtMS", "occurred_at_ms"), ("createdAtMS", "created_at_ms")], immutable: ["createdAtMS"], appendOnly: false)) }
 
-    private static func copyAction(_ action: ActionRecord, status: ActionStatus, timestamp: Int64) -> ActionRecord {
+    private static func copyAction(_ action: ActionRecord, status: ActionStatus, timestamp: Int64, blockedAtMS: Int64? = nil, blockerNote: String? = nil) -> ActionRecord {
         ActionRecord(
             id: action.id,
             goalID: action.goalID,
@@ -478,7 +506,9 @@ public struct CareerWorkCommandRepository: Sendable {
             updatedAtMS: timestamp,
             milestoneID: action.milestoneID,
             dueDay: action.dueDay,
-            origin: action.origin
+            origin: action.origin,
+            blockedAtMS: blockedAtMS,
+            blockerNote: blockerNote
         )
     }
 
