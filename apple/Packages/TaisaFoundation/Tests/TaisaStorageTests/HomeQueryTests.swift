@@ -116,7 +116,9 @@ private actor HomeQueryKeys: DatabaseKeyStore {
         func context(_ offset: Int64) -> MutationContext { .init(id: UUID().uuidString, deviceID: deviceID, timestamp: base + offset) }
 
         let overdue = try await commands.createAction(goalID: nil, milestoneID: nil, title: "Overdue", detail: "", dueDay: try ActionDueDay(validating: "2026-10-22"), context: context(-500))
-        _ = try await commands.createAction(goalID: nil, milestoneID: nil, title: "Due today", detail: "", dueDay: try ActionDueDay(validating: "2026-10-23"), context: context(-400))
+        let dueToday = try await commands.createAction(goalID: nil, milestoneID: nil, title: "Due today", detail: "", dueDay: try ActionDueDay(validating: "2026-10-23"), context: context(-400))
+        let blocked = try await commands.createAction(goalID: nil, milestoneID: nil, title: "Blocked", detail: "", dueDay: nil, context: context(-350))
+        _ = try await commands.setActionBlocked(id: blocked.id, note: "Waiting", context: context(-340))
         let completed = try await commands.createAction(goalID: nil, milestoneID: nil, title: "Completed", detail: "", dueDay: nil, context: context(-300))
         _ = try await commands.completeAction(id: completed.id, evidenceTitle: "Completed", context: context(-250))
         let dropped = try await commands.createAction(goalID: nil, milestoneID: nil, title: "Dropped", detail: "", dueDay: nil, context: context(-200))
@@ -128,7 +130,11 @@ private actor HomeQueryKeys: DatabaseKeyStore {
         let snapshot = try await HomeQuery(store: fixture.store).load(weekContaining: now, timeZone: zone)
         #expect(snapshot.overdueActions.map(\.id) == [overdue.id])
         #expect(snapshot.recentlyReopenedActions.map(\.id) == [reopened.id])
-        #expect(snapshot.actionReviewFacts == .init(active: 3, completed: 1, dropped: 1, reopened: 1))
+        #expect(snapshot.actionPrompts.map(\.action.id) == [overdue.id, dueToday.id, blocked.id])
+        #expect(snapshot.actionPrompts.map(\.reason) == [.overdue, .dueSoon, .blocked])
+        #expect(Set(snapshot.actionPrompts.map(\.action.id)).count == snapshot.actionPrompts.count)
+        #expect(snapshot.actionPrompts.count == 3)
+        #expect(snapshot.actionReviewFacts == .init(active: 4, completed: 1, dropped: 1, reopened: 1))
     }
 
     @Test(arguments: [

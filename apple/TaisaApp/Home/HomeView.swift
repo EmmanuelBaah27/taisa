@@ -39,10 +39,6 @@ struct HomeView: View {
         .task { if model.state == .idle { await model.load() } }
         .sheet(item: $activeSheet) { sheet in
             switch sheet {
-            case let .planning(item):
-                WeeklyPlanningSheet(item: item, model: model)
-            case let .completion(item):
-                CompletionEvidenceSheet(item: item, model: model)
             case let .priorWeekReview(unresolvedCount):
                 PriorWeekReviewSheet(unresolvedCount: unresolvedCount)
             }
@@ -74,57 +70,39 @@ struct HomeView: View {
         case .idle, .loading:
             ProgressView("Loading Home…")
         case .empty:
-            ContentUnavailableView(
-                "Nothing here yet",
-                systemImage: "house",
-                description: Text("Your recent conversations, active goals, and open actions will appear here.")
-            )
+            List {
+                ThisWeekSection(items: [], send: send)
+                HomeActionsPreviewSection(prompts: [], send: send)
+                HomeGoalsSummarySection(goals: [], send: send)
+            }
             .accessibilityIdentifier("home.empty")
         case let .content(snapshot, isRefreshing, issue):
             List {
                 if let issue { issueRow(issue) }
+                ThisWeekSection(
+                    items: snapshot.thisWeek,
+                    send: send
+                )
+                HomeActionsPreviewSection(prompts: snapshot.actionPrompts, send: send)
+                HomeGoalsSummarySection(goals: snapshot.goals, send: send)
                 if let leadInsight = snapshot.leadInsight {
                     LeadInsightSection(insight: leadInsight, openInsights: openInsights)
                 }
-                ThisWeekSection(
-                    items: snapshot.thisWeek,
-                    unresolvedPriorWeekCount: snapshot.unresolvedPriorWeekCount,
-                    model: model,
-                    openPlanning: { activeSheet = .planning($0) },
-                    openCompletion: { activeSheet = .completion($0) },
-                    openPriorWeekReview: { activeSheet = .priorWeekReview(unresolvedCount: $0) }
-                )
-                HomeActionAttentionSection(overdue: snapshot.overdueActions, reopened: snapshot.recentlyReopenedActions, reviewFacts: snapshot.actionReviewFacts, send: send)
                 if snapshot.leadInsight == nil && snapshot.hasConfirmedInsightHistory {
                     Button("View insights", systemImage: "lightbulb", action: openInsights)
                         .font(.subheadline)
                         .accessibilityIdentifier("home.insights.link")
+                }
+                if snapshot.unresolvedPriorWeekCount > 0 {
+                    HomeReviewSection(unresolvedCount: snapshot.unresolvedPriorWeekCount) {
+                        activeSheet = .priorWeekReview(unresolvedCount: $0)
+                    }
                 }
                 if showsRecentConversations && !snapshot.conversations.isEmpty {
                     Section("Recent conversations") {
                         ForEach(snapshot.conversations, id: \.id) { ConversationRow(conversation: $0, send: send) }
                     }
                     .accessibilityIdentifier("home.conversations")
-                }
-                if !snapshot.goals.isEmpty {
-                    Section("Active goals") {
-                        ForEach(snapshot.goals, id: \.id) { GoalRow(goal: $0, send: send) }
-                    }
-                    .accessibilityIdentifier("home.goals")
-                }
-                if !snapshot.milestones.isEmpty {
-                    Section("Upcoming milestones") {
-                        ForEach(snapshot.milestones, id: \.id) { milestone in
-                            MilestoneRow(milestone: milestone, send: send)
-                        }
-                    }
-                    .accessibilityIdentifier("home.milestones")
-                }
-                if !snapshot.actions.isEmpty {
-                    Section("Open actions") {
-                        ForEach(snapshot.actions, id: \.id) { ActionRow(action: $0, send: send) }
-                    }
-                    .accessibilityIdentifier("home.actions")
                 }
                 if isRefreshing { ProgressView().frame(maxWidth: .infinity) }
             }

@@ -220,6 +220,10 @@ struct PrimaryAppShell: View {
             model.showWork(.actions(route: .action(id: id)))
         case let .milestone(goalID):
             model.showWork(.goals(route: .goal(id: goalID)))
+        case .actions:
+            model.showWork(.actions(route: nil))
+        case .goals:
+            model.showWork(.goals(route: nil))
         }
     }
 }
