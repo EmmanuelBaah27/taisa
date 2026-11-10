@@ -53,24 +53,25 @@ final class TaisaPreviewCatalogTests: XCTestCase {
         let insight = app.buttons.matching(
             NSPredicate(format: "label CONTAINS %@", "Your best planning sessions happen before midday.")
         ).firstMatch
+        for _ in 0..<6 where !insight.isHittable { app.swipeUp() }
         XCTAssertTrue(insight.waitForExistence(timeout: 5))
+        XCTAssertTrue(insight.isHittable)
         insight.tap()
         XCTAssertTrue(app.navigationBars["Insights"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Needs review"].exists)
         XCTAssertTrue(app.staticTexts["History"].exists)
     }
 
-    func testCombinedHomeOpensCompletionEvidenceBeforeCompleting() {
+    func testCombinedHomeRoutesCurrentFocusWithoutCompletionManagement() {
         let app = XCUIApplication()
         app.launchArguments = ["-TAISAPreviewScenario", "home.combined"]
         app.launch()
 
-        let complete = app.buttons["Complete Draft the studio lighting plan"]
-        XCTAssertTrue(complete.waitForExistence(timeout: 5))
-        complete.tap()
-        XCTAssertTrue(element("home.this-week.completion-evidence", in: app).waitForExistence(timeout: 5))
-        XCTAssertTrue(app.textFields["What shows this is complete?"].exists)
-        XCTAssertFalse(app.buttons["Complete action"].isEnabled)
+        let action = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Draft the studio lighting plan")).firstMatch
+        XCTAssertTrue(action.waitForExistence(timeout: 5))
+        XCTAssertTrue(action.isHittable)
+        XCTAssertFalse(app.buttons["Complete Draft the studio lighting plan"].exists)
+        XCTAssertFalse(element("home.this-week.completion-evidence", in: app).exists)
     }
 
     func testCareerActionScenarioShowsCanonicalDetailHierarchy() {
