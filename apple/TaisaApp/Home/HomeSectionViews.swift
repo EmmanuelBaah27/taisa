@@ -3,36 +3,13 @@ import TaisaDesignSystem
 import TaisaHome
 import TaisaStorage
 
-struct CompletionEvidenceSheet: View {
-    let item: WeeklyWorkItem
-    let model: HomeModel
-    @State private var evidenceTitle = ""
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        NavigationStack {
-            List {
-                Section("Completion evidence") {
-                    TaisaField("What shows this is complete?", text: $evidenceTitle, placeholder: "Describe the delivered result")
-                    TaisaButton(role: .primary, label: "Complete action", icon: .completeAction, isEnabled: !trimmedEvidence.isEmpty) {
-                        let evidence = trimmedEvidence
-                        Task { await model.complete(actionID: item.action.id, evidenceTitle: evidence); dismiss() }
-                    }
-                }
-            }
-            .navigationTitle(item.action.title)
-            .accessibilityIdentifier("home.this-week.completion-evidence")
-        }
-    }
-
-    private var trimmedEvidence: String { evidenceTitle.trimmingCharacters(in: .whitespacesAndNewlines) }
-}
-
 enum HomeIntent: Sendable, Equatable {
     case conversation(String)
     case goal(String)
     case action(String)
     case milestone(goalID: String)
+    case actions
+    case goals
 }
 
 struct MilestoneRow: View {

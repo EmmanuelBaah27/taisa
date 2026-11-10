@@ -8,7 +8,7 @@ enum TaisaSchema {
         let body: [String]
     }
 
-    static let currentVersion = 8
+    static let currentVersion = 9
 
     static func createVersion1(in db: Database) throws {
         for statement in version1Statements { try db.execute(sql: statement) }
@@ -42,6 +42,10 @@ enum TaisaSchema {
         for statement in version8Statements { try db.execute(sql: statement) }
     }
 
+    static func createVersion9(in db: Database) throws {
+        for statement in version9Statements { try db.execute(sql: statement) }
+    }
+
     static var migrationLedger: [MigrationLedgerEntry] {
         [
             .init(version: 1, identifier: "v1", predecessor: nil, body: version1Statements),
@@ -52,6 +56,7 @@ enum TaisaSchema {
             .init(version: 6, identifier: "v6", predecessor: "v5", body: version6Statements),
             .init(version: 7, identifier: "v7", predecessor: "v6", body: version7Statements),
             .init(version: 8, identifier: "v8", predecessor: "v7", body: version8Statements),
+            .init(version: 9, identifier: "v9", predecessor: "v8", body: version9Statements),
         ]
     }
 
@@ -669,6 +674,32 @@ enum TaisaSchema {
         "CREATE INDEX action_evidence_by_completion ON action_evidence_links(completion_event_id)",
     ]
 
+    private static let version9ActionEventsTable = """
+    CREATE TABLE action_events_v9 (
+        id TEXT PRIMARY KEY NOT NULL CHECK (length(id) = 36),
+        action_id TEXT NOT NULL REFERENCES actions(id) ON DELETE CASCADE,
+        kind TEXT NOT NULL CHECK (kind IN ('created', 'edited', 'relationship_changed', 'checklist_changed', 'checklist_promoted', 'completed', 'dropped', 'reopened', 'completion_corrected', 'deleted', 'restored', 'blocker_set', 'blocker_cleared')),
+        from_status TEXT CHECK (from_status IS NULL OR from_status IN ('active', 'completed', 'dropped')),
+        to_status TEXT CHECK (to_status IS NULL OR to_status IN ('active', 'completed', 'dropped')),
+        detail TEXT,
+        source_type TEXT NOT NULL CHECK (source_type IN ('user', 'undo', 'migration')),
+        source_id TEXT CHECK (source_id IS NULL OR length(source_id) = 36),
+        occurred_at_ms INTEGER NOT NULL CHECK (occurred_at_ms >= 0)
+    )
+    """
+
+    private static let version9Statements: [String] = [
+        "PRAGMA defer_foreign_keys = ON",
+        "ALTER TABLE actions ADD COLUMN blocked_at_ms INTEGER CHECK (blocked_at_ms IS NULL OR blocked_at_ms >= 0)",
+        "ALTER TABLE actions ADD COLUMN blocker_note TEXT CHECK (blocker_note IS NULL OR (length(trim(blocker_note)) > 0 AND length(blocker_note) <= 500))",
+        version9ActionEventsTable,
+        "INSERT INTO action_events_v9 SELECT id, action_id, kind, from_status, to_status, detail, source_type, source_id, occurred_at_ms FROM action_events",
+        "DROP TABLE action_events",
+        "ALTER TABLE action_events_v9 RENAME TO action_events",
+        "CREATE INDEX action_events_by_action ON action_events(action_id, occurred_at_ms, id)",
+        "CREATE INDEX actions_by_blocked_attention ON actions(status, blocked_at_ms) WHERE blocked_at_ms IS NOT NULL",
+    ]
+
     static func validateVersion1(in db: Database, allowingConversationExtensions: Bool = false, allowingGoalLifecycleExtension: Bool = false, allowingCanonicalActionExtension: Bool = false) throws {
         let requiredColumns: [String: Set<String>] = [
             "profile": ["id", "display_name", "headline", "biography", "updated_at_ms"],
@@ -886,7 +917,7 @@ enum TaisaSchema {
         }
     }
 
-    static func validateVersion8(in db: Database) throws {
+    static func validateVersion8(in db: Database, allowingBlockerExtension: Bool = false) throws {
         try validateVersion7(in: db, allowingCanonicalActionExtension: true)
         let requiredColumns: [String: Set<String>] = [
             "actions": ["id", "goal_id", "milestone_id", "title", "detail", "status", "due_day", "due_at_ms", "origin", "created_at_ms", "updated_at_ms"],
@@ -896,20 +927,40 @@ enum TaisaSchema {
         ]
         do {
             for (table, expected) in requiredColumns {
-                guard try db.tableExists(table), Set(try db.columns(in: table).map(\.name)) == expected else {
+                let actual = Set(try db.columns(in: table).map(\.name))
+                let accepted = allowingBlockerExtension && table == "actions"
+                    ? actual == expected.union(["blocked_at_ms", "blocker_note"])
+                    : actual == expected
+                guard try db.tableExists(table), accepted else {
                     throw StorageError.schemaMismatch
                 }
             }
-            let storedAction = try String.fetchOne(db, sql: "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'actions'")
-            let expectedAction = version8ActionTable.replacingOccurrences(of: "actions_v8", with: "\"actions\"")
-            guard storedAction == expectedAction else { throw StorageError.schemaMismatch }
+            if !allowingBlockerExtension {
+                let storedAction = try String.fetchOne(db, sql: "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'actions'")
+                let expectedAction = version8ActionTable.replacingOccurrences(of: "actions_v8", with: "\"actions\"")
+                guard storedAction == expectedAction else { throw StorageError.schemaMismatch }
+            }
             for statement in version8Statements where statement.hasPrefix("CREATE TABLE action_") || statement.hasPrefix("CREATE INDEX ") {
                 let name = String(statement.split(separator: " ", maxSplits: 3)[2])
                 let objectType = statement.hasPrefix("CREATE TABLE ") ? "table" : "index"
+                if allowingBlockerExtension && name == "action_events" { continue }
                 guard try String.fetchOne(db, sql: "SELECT sql FROM sqlite_master WHERE type = ? AND name = ?", arguments: [objectType, name]) == statement else {
                     throw StorageError.schemaMismatch
                 }
             }
+        } catch {
+            throw StorageError.schemaMismatch
+        }
+    }
+
+    static func validateVersion9(in db: Database) throws {
+        try validateVersion8(in: db, allowingBlockerExtension: true)
+        do {
+            let storedEvents = try String.fetchOne(db, sql: "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'action_events'")
+            let expectedEvents = version9ActionEventsTable.replacingOccurrences(of: "action_events_v9", with: "\"action_events\"")
+            guard storedEvents == expectedEvents else { throw StorageError.schemaMismatch }
+            let index = try String.fetchOne(db, sql: "SELECT sql FROM sqlite_master WHERE type = 'index' AND name = 'actions_by_blocked_attention'")
+            guard index == version9Statements.last else { throw StorageError.schemaMismatch }
         } catch {
             throw StorageError.schemaMismatch
         }

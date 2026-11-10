@@ -16,8 +16,9 @@ public struct CareerWorkProductSnapshot: Sendable, Equatable {
     public let selectedAction: ActionRecord?
     public let selectedActionDetail: ActionDetailSnapshot?
     public let selectedEvidence: EvidenceRecord?
+    public let hasStoredActions: Bool
 
-    public init(overview: CareerWorkOverview, actions: [ActionRecord] = [], milestones: [MilestoneRecord] = [], deletedActions: [ActionRecord] = [], selectedGoal: CareerGoalSnapshot?, selectedAction: ActionRecord? = nil, selectedActionDetail: ActionDetailSnapshot? = nil, selectedEvidence: EvidenceRecord? = nil) {
+    public init(overview: CareerWorkOverview, actions: [ActionRecord] = [], milestones: [MilestoneRecord] = [], deletedActions: [ActionRecord] = [], selectedGoal: CareerGoalSnapshot?, selectedAction: ActionRecord? = nil, selectedActionDetail: ActionDetailSnapshot? = nil, selectedEvidence: EvidenceRecord? = nil, hasStoredActions: Bool? = nil) {
         self.overview = overview
         self.actions = actions
         self.milestones = milestones
@@ -26,10 +27,11 @@ public struct CareerWorkProductSnapshot: Sendable, Equatable {
         self.selectedAction = selectedAction
         self.selectedActionDetail = selectedActionDetail
         self.selectedEvidence = selectedEvidence
+        self.hasStoredActions = hasStoredActions ?? (!actions.isEmpty || selectedAction != nil || selectedActionDetail != nil)
     }
 
     public var isEmpty: Bool {
-        overview.active.isEmpty && overview.paused.isEmpty && overview.completed.isEmpty && overview.archived.isEmpty && actions.isEmpty && deletedActions.isEmpty
+        overview.active.isEmpty && overview.paused.isEmpty && overview.completed.isEmpty && overview.archived.isEmpty && actions.isEmpty && !hasStoredActions && deletedActions.isEmpty
     }
 }
 

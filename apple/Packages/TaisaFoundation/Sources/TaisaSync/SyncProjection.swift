@@ -126,7 +126,7 @@ struct SyncEntityShape {
         "message": .init(table: "messages", columns: ["conversationID": "conversation_id", "role": "role", "body": "body", "createdAtMS": "created_at_ms"]),
         "goal": .init(table: "goals", columns: ["title": "title", "detail": "detail", "status": "status", "createdAtMS": "created_at_ms", "updatedAtMS": "updated_at_ms"]),
         "milestone": .init(table: "milestones", columns: ["goalID": "goal_id", "title": "title", "status": "status", "targetAtMS": "target_at_ms", "updatedAtMS": "updated_at_ms"], optional: ["targetAtMS"]),
-        "action": .init(table: "actions", columns: ["goalID": "goal_id", "milestoneID": "milestone_id", "title": "title", "detail": "detail", "status": "status", "dueDay": "due_day", "dueAtMS": "due_at_ms", "origin": "origin", "createdAtMS": "created_at_ms", "updatedAtMS": "updated_at_ms"], optional: ["goalID", "milestoneID", "dueDay", "dueAtMS"]),
+        "action": .init(table: "actions", columns: ["goalID": "goal_id", "milestoneID": "milestone_id", "title": "title", "detail": "detail", "status": "status", "dueDay": "due_day", "dueAtMS": "due_at_ms", "origin": "origin", "blockedAtMS": "blocked_at_ms", "blockerNote": "blocker_note", "createdAtMS": "created_at_ms", "updatedAtMS": "updated_at_ms"], optional: ["goalID", "milestoneID", "dueDay", "dueAtMS", "blockedAtMS", "blockerNote"]),
         "evidence": .init(table: "evidence", columns: ["goalID": "goal_id", "actionID": "action_id", "title": "title", "detail": "detail", "occurredAtMS": "occurred_at_ms", "createdAtMS": "created_at_ms"], optional: ["goalID", "actionID"]),
         "memory": .init(table: "memory_items", columns: ["kind": "kind", "content": "content", "status": "status", "createdAtMS": "created_at_ms", "updatedAtMS": "updated_at_ms"]),
         "memory_source": .init(table: "memory_sources", columns: ["memoryItemID": "memory_item_id", "sourceType": "source_type", "sourceID": "source_id", "createdAtMS": "created_at_ms"]),
@@ -164,9 +164,16 @@ struct SyncEntityShape {
     ]
 
     func completeFields(_ record: [String: Any]) throws -> [String: Data] {
-        guard Set(record.keys).isSubset(of: Set(columns.keys).union(["id"])),
-              record["id"] is String else { throw SyncMergeError.malformedMutation }
-        let data = try JSONSerialization.data(withJSONObject: record, options: [.sortedKeys])
+        var canonical = record
+        if table == "actions" {
+            canonical["origin"] = canonical["origin"] ?? ActionOrigin.manual.rawValue
+            if let status = canonical["status"] as? String {
+                canonical["status"] = status == "open" ? ActionStatus.active.rawValue : (status == "archived" ? ActionStatus.dropped.rawValue : status)
+            }
+        }
+        guard Set(canonical.keys).isSubset(of: Set(columns.keys).union(["id"])),
+              canonical["id"] is String else { throw SyncMergeError.malformedMutation }
+        let data = try JSONSerialization.data(withJSONObject: canonical, options: [.sortedKeys])
         do {
             switch table {
             case "profile": _ = try JSONDecoder().decode(ProfileRecord.self, from: data)
@@ -193,7 +200,7 @@ struct SyncEntityShape {
         var result: [String: Data] = [:]
         for name in columns.keys {
             let value: Any
-            if let present = record[name] { value = present }
+            if let present = canonical[name] { value = present }
             else if optional.contains(name) { value = NSNull() }
             else { throw SyncMergeError.malformedMutation }
             result[name] = try JSONSerialization.data(withJSONObject: value, options: [.fragmentsAllowed, .sortedKeys])

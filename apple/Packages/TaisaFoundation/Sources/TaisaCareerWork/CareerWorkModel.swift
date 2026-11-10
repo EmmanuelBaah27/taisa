@@ -41,6 +41,7 @@ public final class CareerWorkModel {
                 async let actions = client.loadActions(filter, day)
                 async let milestones = client.loadMilestones()
                 async let deletedActions = client.loadDeletedActions()
+                async let hasStoredActions = client.hasStoredActions()
                 let detail: CareerGoalSnapshot?
                 let action: ActionRecord?
                 let actionDetail: ActionDetailSnapshot?
@@ -58,7 +59,7 @@ public final class CareerWorkModel {
                 case .overview:
                     detail = nil; action = nil; actionDetail = nil; evidence = nil
                 }
-                let snapshot = try await CareerWorkProductSnapshot(overview: overview, actions: actions, milestones: milestones, deletedActions: deletedActions, selectedGoal: detail, selectedAction: action, selectedActionDetail: actionDetail, selectedEvidence: evidence)
+                let snapshot = try await CareerWorkProductSnapshot(overview: overview, actions: actions, milestones: milestones, deletedActions: deletedActions, selectedGoal: detail, selectedAction: action, selectedActionDetail: actionDetail, selectedEvidence: evidence, hasStoredActions: hasStoredActions)
                 try Task.checkCancellation()
                 return .success(snapshot)
             } catch is CancellationError {
@@ -146,9 +147,9 @@ public final class CareerWorkModel {
         duplicateGate = nil
     }
 
-    public func editSelectedAction(_ draft: ActionDraft, expectedUpdatedAtMS: Int64) async {
-        guard case let .action(id) = route else { return }
-        await mutate { _ = try await client.editCanonicalAction(id, draft, expectedUpdatedAtMS) }
+    public func editSelectedAction(_ draft: ActionDraft, expectedUpdatedAtMS: Int64) async -> Bool {
+        guard case let .action(id) = route else { return false }
+        return await mutate { _ = try await client.editCanonicalAction(id, draft, expectedUpdatedAtMS) }
     }
 
     public func addChecklistItem(title: String) async {
@@ -232,13 +233,15 @@ public final class CareerWorkModel {
         await mutate { try await client.restoreGoal(id) }
     }
 
-    private func mutate(_ operation: () async throws -> Void) async {
+    @discardableResult private func mutate(_ operation: () async throws -> Void) async -> Bool {
         do {
             try await operation()
             await load()
+            return true
         } catch {
             let issue = Self.issue(for: error)
             state = state.snapshot.map { .content($0, isRefreshing: false, issue: issue) } ?? .failure(issue)
+            return false
         }
     }
 

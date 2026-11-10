@@ -18,6 +18,7 @@ public struct HomeQuery: Sendable {
             let weekStartMS = Int64((week.start.timeIntervalSince1970 * 1_000).rounded())
             let nowMS = Int64((date.timeIntervalSince1970 * 1_000).rounded())
             let localDay = try Self.localDay(date, timeZone: timeZone)
+            let dueSoonEnd = try Self.localDay(Self.addingLocalDays(3, to: date, timeZone: timeZone), timeZone: timeZone)
             return try await store.read { db in
                 let conversationRows = try Row.fetchAll(
                     db,
@@ -115,6 +116,18 @@ public struct HomeQuery: Sendable {
                     ORDER BY reopened_at_ms DESC, a.id
                     LIMIT ?
                     """, arguments: [weekStartMS, nowMS, limits.actions])
+                let dueSoonRows = try Row.fetchAll(db, sql: """
+                    SELECT a.* FROM actions a
+                    WHERE a.status = 'active' AND a.due_day >= ? AND a.due_day <= ?
+                      AND NOT EXISTS (SELECT 1 FROM tombstones t WHERE t.entity_type = 'action' AND t.entity_id = a.id COLLATE NOCASE)
+                    ORDER BY a.due_day, a.updated_at_ms DESC, a.id
+                    """, arguments: [localDay.rawValue, dueSoonEnd.rawValue])
+                let blockedRows = try Row.fetchAll(db, sql: """
+                    SELECT a.* FROM actions a
+                    WHERE a.status = 'active' AND a.blocked_at_ms IS NOT NULL
+                      AND NOT EXISTS (SELECT 1 FROM tombstones t WHERE t.entity_type = 'action' AND t.entity_id = a.id COLLATE NOCASE)
+                    ORDER BY a.blocked_at_ms, a.updated_at_ms DESC, a.id
+                    """)
                 let statusRows = try Row.fetchAll(db, sql: """
                     SELECT status, count(*) AS total FROM actions a
                     WHERE NOT EXISTS (SELECT 1 FROM tombstones t WHERE t.entity_type = 'action' AND t.entity_id = a.id COLLATE NOCASE)
@@ -140,11 +153,19 @@ public struct HomeQuery: Sendable {
                       AND NOT EXISTS (SELECT 1 FROM tombstones t WHERE t.entity_type = 'insight' AND t.entity_id = i.id COLLATE NOCASE)
                     """) ?? 0 > 0
 
+                let prompts = Self.actionPrompts(
+                    overdue: overdueRows.map(Self.action),
+                    dueSoon: dueSoonRows.map(Self.action),
+                    blocked: blockedRows.map(Self.action),
+                    reopened: reopenedRows.map(Self.action),
+                    thisWeek: weeklyRows.map(Self.weeklyItem).map(\.action)
+                )
                 return HomeSnapshot(
                     conversations: conversationRows.map(Self.conversation),
                     goals: goalRows.map(Self.goal),
                     milestones: milestoneRows.map(Self.milestone),
                     actions: actionRows.map(Self.action),
+                    actionPrompts: prompts,
                     thisWeek: weeklyRows.map(Self.weeklyItem),
                     unresolvedPriorWeekCount: unresolved,
                     overdueActions: overdueRows.map(Self.action),
@@ -193,7 +214,9 @@ public struct HomeQuery: Sendable {
             updatedAtMS: row["updated_at_ms"],
             milestoneID: row["milestone_id"],
             dueDay: (row["due_day"] as String?).flatMap(ActionDueDay.init(rawValue:)),
-            origin: ActionOrigin(rawValue: row["origin"] as String) ?? .manual
+            origin: ActionOrigin(rawValue: row["origin"] as String) ?? .manual,
+            blockedAtMS: row["blocked_at_ms"],
+            blockerNote: row["blocker_note"]
         )
     }
 
@@ -201,6 +224,23 @@ public struct HomeQuery: Sendable {
         var calendar = Calendar(identifier: .gregorian); calendar.timeZone = timeZone
         let values = calendar.dateComponents([.year, .month, .day], from: date)
         return try ActionDueDay(validating: String(format: "%04d-%02d-%02d", values.year!, values.month!, values.day!))
+    }
+
+    private static func addingLocalDays(_ count: Int, to date: Date, timeZone: TimeZone) throws -> Date {
+        var calendar = Calendar(identifier: .gregorian); calendar.timeZone = timeZone
+        guard let result = calendar.date(byAdding: .day, value: count, to: date) else { throw HomeQueryError.readFailed }
+        return result
+    }
+
+    private static func actionPrompts(overdue: [ActionRecord], dueSoon: [ActionRecord], blocked: [ActionRecord], reopened: [ActionRecord], thisWeek: [ActionRecord]) -> [HomeActionPrompt] {
+        let cohorts: [(HomeActionPromptReason, [ActionRecord])] = [
+            (.overdue, overdue), (.dueSoon, dueSoon), (.blocked, blocked),
+            (.recentlyReopened, reopened), (.thisWeek, thisWeek),
+        ]
+        var seen = Set<String>()
+        return cohorts.flatMap { reason, actions in
+            actions.compactMap { action in seen.insert(action.id).inserted ? HomeActionPrompt(action: action, reason: reason) : nil }
+        }.prefix(3).map { $0 }
     }
 
     private static func milestone(_ row: Row) -> MilestoneRecord {

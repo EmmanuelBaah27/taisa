@@ -6,28 +6,30 @@ import TaisaStorage
 @MainActor
 enum CareerWorkScenarios {
     static let scenarios: [PreviewScenario] = [
-        scenario("career.empty", "Career Work empty", .phone, state: .empty),
-        scenario("career.content", "Career Work content", .adaptive, state: .content(.preview, isRefreshing: false, issue: nil)),
-        scenario("career.action", "Career Work action detail", .adaptive, state: .content(.actionPreview, isRefreshing: false, issue: nil), route: .action(id: ActionRecord.preview.id)),
-        scenario("career.failure", "Career Work denied network", .phone, state: .failure(.storageUnavailable)),
-        scenario("career.recovery", "Career Work recovery", .phone, state: .failure(.recoveryRequired)),
+        scenario("actions.empty", "Actions empty", .phone, root: .actions, state: .empty),
+        scenario("goals.content", "Goals content", .adaptive, root: .goals, state: .content(.preview, isRefreshing: false, issue: nil)),
+        scenario("actions.action", "Action detail", .adaptive, root: .actions, state: .content(.actionPreview, isRefreshing: false, issue: nil), route: .action(id: ActionRecord.preview.id)),
+        scenario("actions.failure", "Actions denied network", .phone, root: .actions, state: .failure(.storageUnavailable)),
+        scenario("actions.recovery", "Actions recovery", .phone, root: .actions, state: .failure(.recoveryRequired)),
         scenario(
-            "career.accessibilityText",
-            "Career Work accessibility text",
+            "goals.accessibilityText",
+            "Goals accessibility text",
             .phone,
             accessibility: .init(contentSize: .accessibilityExtraExtraExtraLarge),
+            root: .goals,
             state: .content(.preview, isRefreshing: false, issue: nil)
         ),
         scenario(
-            "career.actionAccessibilityText",
-            "Career Work action accessibility text",
+            "actions.actionAccessibilityText",
+            "Action detail accessibility text",
             .phone,
             accessibility: .init(contentSize: .accessibilityExtraExtraExtraLarge),
+            root: .actions,
             state: .content(.actionPreview, isRefreshing: false, issue: nil),
             route: .action(id: ActionRecord.preview.id)
         ),
-        scenario("career.narrowIPad", "Career Work narrow iPad", .tablet, state: .content(.preview, isRefreshing: false, issue: nil)),
-        PreviewScenario(identifier: "career.proposal", title: "Career Work proposal", deviceFamily: .phone, accessibility: .default, readiness: .ready) {
+        scenario("goals.narrowIPad", "Goals narrow iPad", .tablet, root: .goals, state: .content(.preview, isRefreshing: false, issue: nil)),
+        PreviewScenario(identifier: "goals.proposal", title: "Goal proposal", deviceFamily: .phone, accessibility: .default, readiness: .ready) {
             AnyView(NavigationStack {
                 CareerWorkProposalReviewView(
                     title: "Add a portfolio milestone",
@@ -39,16 +41,23 @@ enum CareerWorkScenarios {
         },
     ]
 
+    private enum Root { case actions, goals }
+
     private static func scenario(
         _ identifier: String,
         _ title: String,
         _ family: PreviewDeviceFamily,
         accessibility: PreviewAccessibilitySettings = .default,
+        root: Root,
         state: CareerWorkState,
-        route: CareerWorkRoute = .overview
+        route: CareerWorkRoute? = nil
     ) -> PreviewScenario {
         PreviewScenario(identifier: identifier, title: title, deviceFamily: family, accessibility: accessibility, readiness: .ready) {
-            AnyView(CareerWorkView(model: CareerWorkModel(client: .preview, initialState: state, route: route)))
+            let model = CareerWorkModel(client: .preview, initialState: state, route: route ?? .overview)
+            switch root {
+            case .actions: return AnyView(ActionsView(model: model, initialRoute: route))
+            case .goals: return AnyView(GoalsView(model: model, initialRoute: route))
+            }
         }
     }
 }

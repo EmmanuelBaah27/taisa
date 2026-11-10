@@ -73,6 +73,11 @@ extension HomeSnapshot {
         conversations: previewContent.conversations,
         goals: previewContent.goals,
         actions: previewContent.actions,
+        actionPrompts: [
+            HomeActionPrompt(action: ActionRecord(id: "30000000-0000-0000-0000-000000000003", goalID: nil, title: "Send the overdue lighting brief", detail: "", status: ActionStatus.active.rawValue, dueAtMS: nil, createdAtMS: 1, updatedAtMS: 3, dueDay: ActionDueDay(rawValue: "2027-01-10")), reason: .overdue),
+            HomeActionPrompt(action: ActionRecord(id: "30000000-0000-0000-0000-000000000005", goalID: nil, title: "Confirm the electrician schedule", detail: "", status: ActionStatus.active.rawValue, dueAtMS: nil, createdAtMS: 1, updatedAtMS: 5, blockedAtMS: 5, blockerNote: "Waiting for the electrician"), reason: .blocked),
+            HomeActionPrompt(action: ActionRecord(id: "30000000-0000-0000-0000-000000000004", goalID: nil, title: "Revisit the supplier shortlist", detail: "", status: ActionStatus.active.rawValue, dueAtMS: nil, createdAtMS: 1, updatedAtMS: 4), reason: .recentlyReopened),
+        ],
         thisWeek: [
             WeeklyWorkItem(
                 action: ActionRecord(

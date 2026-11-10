@@ -155,6 +155,13 @@ import Testing
             evidenceTitle: "Ship review completed again",
             context: fixture.context(40)
         )
+        await #expect(throws: CareerWorkContractError.invalidTransition) {
+            _ = try await fixture.commands.undoMistakenCompletion(
+                id: action.id,
+                completionEventID: completion.event.id,
+                context: fixture.context(45)
+            )
+        }
         let corrected = try await fixture.commands.undoMistakenCompletion(
             id: action.id,
             completionEventID: secondCompletion.event.id,
@@ -238,6 +245,60 @@ import Testing
         let restored = try await fixture.commands.restoreAction(id: action.id, context: fixture.context(70))
         #expect(restored.id == action.id)
         #expect(try await fixture.activePlacementCount(actionID: action.id) == 0)
+    }
+
+    @Test func blockerAttentionIsInspectableAndClearsWithoutBecomingLifecycle() async throws {
+        let fixture = try await CareerWorkFixture()
+        defer { fixture.remove() }
+        let action = try await fixture.commands.createAction(
+            goalID: nil, milestoneID: nil, title: "Wait for approval", detail: "", dueDay: nil,
+            context: fixture.context(10)
+        )
+
+        let blocked = try await fixture.commands.setActionBlocked(
+            id: action.id, note: "  Waiting for finance  ", context: fixture.context(20)
+        )
+        #expect(blocked.status == ActionStatus.active.rawValue)
+        #expect(blocked.blockedAtMS == 20)
+        #expect(blocked.blockerNote == "Waiting for finance")
+
+        let cleared = try await fixture.commands.clearActionBlocked(id: action.id, context: fixture.context(30))
+        #expect(cleared.status == ActionStatus.active.rawValue)
+        #expect(cleared.blockedAtMS == nil)
+        #expect(cleared.blockerNote == nil)
+
+        let eventKinds = try await fixture.store.read { db in
+            try String.fetchAll(db, sql: "SELECT kind FROM action_events WHERE action_id = ? ORDER BY occurred_at_ms", arguments: [action.id])
+        }
+        #expect(eventKinds == ["created", "blocker_set", "blocker_cleared"])
+
+        await #expect(throws: CareerWorkContractError.invalidBlockerNote) {
+            _ = try await fixture.commands.setActionBlocked(
+                id: action.id, note: String(repeating: "x", count: 501), context: fixture.context(40)
+            )
+        }
+    }
+
+    @Test func completionClearsCurrentBlockerButReopenDoesNotRestoreIt() async throws {
+        let fixture = try await CareerWorkFixture()
+        defer { fixture.remove() }
+        let action = try await fixture.commands.createAction(
+            goalID: nil, milestoneID: nil, title: "Ship", detail: "", dueDay: nil,
+            context: fixture.context(10)
+        )
+        _ = try await fixture.commands.setActionBlocked(id: action.id, note: nil, context: fixture.context(20))
+        let completed = try await fixture.commands.completeAction(id: action.id, evidenceTitle: "Shipped", context: fixture.context(30))
+        #expect(completed.action.blockedAtMS == nil)
+        #expect(completed.action.blockerNote == nil)
+        let reopened = try await fixture.commands.reopenAction(id: action.id, context: fixture.context(40))
+        #expect(reopened.blockedAtMS == nil)
+        #expect(reopened.blockerNote == nil)
+
+        let dropped = try await fixture.commands.dropAction(id: action.id, context: fixture.context(50))
+        #expect(dropped.blockedAtMS == nil)
+        await #expect(throws: CareerWorkContractError.invalidTransition) {
+            _ = try await fixture.commands.setActionBlocked(id: action.id, note: nil, context: fixture.context(60))
+        }
     }
 
     @Test func completionRetryIsIdempotentAndInjectedInterruptionRollsBack() async throws {

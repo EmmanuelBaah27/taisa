@@ -11,7 +11,7 @@ import TaisaYou
 @Observable
 final class PrimaryAppShellModel {
     private(set) var selection: PrimaryDestination
-    private(set) var showsCareerWork = false
+    private(set) var workDestination: WorkDestination?
     private(set) var conversationRoute: ConversationRoute?
     private(set) var conversationReturnGeneration = 0
     @ObservationIgnored private var pendingEntryIntent: ConversationEntryIntent?
@@ -28,17 +28,13 @@ final class PrimaryAppShellModel {
     var showsConversationDock: Bool { conversationRoute == nil }
 
     func select(_ destination: PrimaryDestination) {
-        if destination == .careerWork {
-            showCareerWork()
-            return
-        }
         selection = destination
-        showsCareerWork = false
+        workDestination = nil
     }
 
-    func showCareerWork() {
-        select(.home)
-        showsCareerWork = true
+    func showWork(_ destination: WorkDestination) {
+        selection = .home
+        workDestination = destination
     }
 
     func presentNewConversation(_ intent: ConversationEntryIntent) {
@@ -147,8 +143,13 @@ struct PrimaryAppShell: View {
     private func destinationView(_ destination: PrimaryDestination) -> some View {
         switch destination {
         case .home:
-            if model.showsCareerWork {
-                CareerWorkView(model: careerWorkModel, openRecovery: openRecovery)
+            if let destination = model.workDestination {
+                switch destination {
+                case let .actions(route):
+                    ActionsView(model: careerWorkModel, initialRoute: route, openRecovery: openRecovery)
+                case let .goals(route):
+                    GoalsView(model: careerWorkModel, initialRoute: route, openRecovery: openRecovery)
+                }
             } else {
                 HomeView(
                     model: homeModel,
@@ -160,8 +161,6 @@ struct PrimaryAppShell: View {
                     showsRecentConversations: false
                 )
             }
-        case .careerWork:
-            CareerWorkView(model: careerWorkModel, openRecovery: openRecovery)
         case .conversations:
             ConversationsView(
                 model: conversationsModel,
@@ -185,14 +184,15 @@ struct PrimaryAppShell: View {
         switch intent {
         case let .conversation(id): model.openConversation(id: id, title: "Conversation")
         case let .goal(id):
-            model.showCareerWork()
-            Task { await careerWorkModel.select(.goal(id: id)) }
+            model.showWork(.goals(route: .goal(id: id)))
         case let .action(id):
-            model.showCareerWork()
-            Task { await careerWorkModel.select(.action(id: id)) }
+            model.showWork(.actions(route: .action(id: id)))
         case let .milestone(goalID):
-            model.showCareerWork()
-            Task { await careerWorkModel.select(.goal(id: goalID)) }
+            model.showWork(.goals(route: .goal(id: goalID)))
+        case .actions:
+            model.showWork(.actions(route: nil))
+        case .goals:
+            model.showWork(.goals(route: nil))
         }
     }
 }

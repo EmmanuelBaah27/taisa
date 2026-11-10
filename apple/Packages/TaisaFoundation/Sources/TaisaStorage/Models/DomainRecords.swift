@@ -275,17 +275,20 @@ public struct ActionRecord: Codable, Sendable, Equatable {
     /// Legacy pre-v8 instant retained only while older sync/proposal callers are migrated.
     public let dueAtMS: Int64?
     public let origin: ActionOrigin
+    public let blockedAtMS: Int64?
+    public let blockerNote: String?
     public let createdAtMS: Int64
     public let updatedAtMS: Int64
-    public init(id: String, goalID: String?, title: String, detail: String, status: String, dueAtMS: Int64?, createdAtMS: Int64, updatedAtMS: Int64, milestoneID: String? = nil, dueDay: ActionDueDay? = nil, origin: ActionOrigin = .manual) {
+    public init(id: String, goalID: String?, title: String, detail: String, status: String, dueAtMS: Int64?, createdAtMS: Int64, updatedAtMS: Int64, milestoneID: String? = nil, dueDay: ActionDueDay? = nil, origin: ActionOrigin = .manual, blockedAtMS: Int64? = nil, blockerNote: String? = nil) {
         self.id = UUIDIdentity.normalizedOrOriginal(id); self.goalID = goalID.map(UUIDIdentity.normalizedOrOriginal); self.title = title; self.detail = detail
         self.status = status == "open" ? ActionStatus.active.rawValue : (status == "archived" ? ActionStatus.dropped.rawValue : status)
         self.milestoneID = milestoneID.map(UUIDIdentity.normalizedOrOriginal); self.dueDay = dueDay; self.dueAtMS = dueAtMS; self.origin = origin
+        self.blockedAtMS = blockedAtMS; self.blockerNote = blockerNote
         self.createdAtMS = createdAtMS; self.updatedAtMS = updatedAtMS
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, goalID, milestoneID, title, detail, status, dueDay, dueAtMS, origin, createdAtMS, updatedAtMS
+        case id, goalID, milestoneID, title, detail, status, dueDay, dueAtMS, origin, blockedAtMS, blockerNote, createdAtMS, updatedAtMS
     }
 
     public init(from decoder: Decoder) throws {
@@ -301,7 +304,9 @@ public struct ActionRecord: Codable, Sendable, Equatable {
             updatedAtMS: try values.decode(Int64.self, forKey: .updatedAtMS),
             milestoneID: try values.decodeIfPresent(String.self, forKey: .milestoneID),
             dueDay: try values.decodeIfPresent(ActionDueDay.self, forKey: .dueDay),
-            origin: try values.decodeIfPresent(ActionOrigin.self, forKey: .origin) ?? .manual
+            origin: try values.decodeIfPresent(ActionOrigin.self, forKey: .origin) ?? .manual,
+            blockedAtMS: try values.decodeIfPresent(Int64.self, forKey: .blockedAtMS),
+            blockerNote: try values.decodeIfPresent(String.self, forKey: .blockerNote)
         )
     }
 }
