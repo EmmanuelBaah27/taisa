@@ -173,7 +173,14 @@ struct PrimaryAppShell: View {
             if let youModel {
                 YouView(model: youModel, openRecovery: openRecovery)
             } else {
-                ContentUnavailableView("You is unavailable", systemImage: "person.crop.circle.badge.exclamationmark", description: Text("Your local profile could not be opened."))
+                ContentUnavailableView {
+                    VStack {
+                        CentralIcon(.peopleCircle).frame(width: 32, height: 32)
+                        TaisaText(role: .heading, content: "You is unavailable")
+                    }
+                } description: {
+                    TaisaText(role: .body, color: .mutedForeground, content: "Your local profile could not be opened.")
+                }
                     .navigationTitle("You")
                     .accessibilityIdentifier("you.unavailable")
             }

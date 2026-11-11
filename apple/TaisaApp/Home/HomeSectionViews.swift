@@ -18,18 +18,15 @@ struct MilestoneRow: View {
 
     var body: some View {
         Button { send(.milestone(goalID: milestone.goalID)) } label: {
-            HStack {
-                Image(systemName: "flag")
-                VStack(alignment: .leading) {
-                    Text(milestone.title)
-                    if let targetAtMS = milestone.targetAtMS {
-                        Text(Date(timeIntervalSince1970: Double(targetAtMS) / 1_000), format: .dateTime.day().month())
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-            }
+            TaisaRow(
+                title: milestone.title,
+                supporting: milestone.targetAtMS.map {
+                    Date(timeIntervalSince1970: Double($0) / 1_000).formatted(.dateTime.day().month())
+                },
+                icon: .milestone
+            )
         }
+        .buttonStyle(.plain)
     }
 }
 
@@ -39,8 +36,9 @@ struct ConversationRow: View {
 
     var body: some View {
         Button { send(.conversation(conversation.id)) } label: {
-            Label(conversation.title, systemImage: "bubble.left.and.bubble.right")
+            TaisaRow(title: conversation.title, icon: .chatBubbles)
         }
+        .buttonStyle(.plain)
     }
 }
 
@@ -50,11 +48,9 @@ struct GoalRow: View {
 
     var body: some View {
         Button { send(.goal(goal.id)) } label: {
-            VStack(alignment: .leading) {
-                Text(goal.title)
-                if !goal.detail.isEmpty { Text(goal.detail).font(.subheadline).foregroundStyle(.secondary) }
-            }
+            TaisaRow(title: goal.title, supporting: goal.detail.isEmpty ? nil : goal.detail, icon: .goal)
         }
+        .buttonStyle(.plain)
     }
 }
 
@@ -66,5 +62,6 @@ struct ActionRow: View {
         Button { send(.action(action.id)) } label: {
             TaisaRow(title: action.title, supporting: action.dueDay.map { "Due \($0.rawValue)" }, icon: .action)
         }
+        .buttonStyle(.plain)
     }
 }

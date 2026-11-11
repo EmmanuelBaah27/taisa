@@ -132,12 +132,16 @@ struct CareerWorkView: View {
                     TaisaText(role: .heading, content: root == .actions ? "Add your first action" : "Start with one meaningful goal")
                 }
             } description: {
-                Text(root == .actions ? "Capture one concrete commitment you want to move forward." : "Break it into milestones and actions, then keep the evidence that shows your progress.")
+                TaisaText(
+                    role: .body,
+                    color: .mutedForeground,
+                    content: root == .actions ? "Capture one concrete commitment you want to move forward." : "Break it into milestones and actions, then keep the evidence that shows your progress."
+                )
             } actions: {
                 if root == .actions {
-                    Button("Create action") { showsCreateAction = true }
+                    TaisaButton(role: .primary, label: "Create action", icon: .add) { showsCreateAction = true }
                 } else {
-                    Button("Create goal") { showsCreateGoal = true }
+                    TaisaButton(role: .primary, label: "Create goal", icon: .goal) { showsCreateGoal = true }
                 }
             }
             .accessibilityIdentifier(root == .actions ? "actions.empty" : "goals.empty")
@@ -229,11 +233,9 @@ struct CareerWorkView: View {
                 Button {
                     selectedRoute = .goal(id: goal.id)
                 } label: {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(goal.title)
-                        if !goal.detail.isEmpty { TaisaText(role: .supporting, color: .mutedForeground, content: goal.detail).lineLimit(2) }
-                    }
+                    TaisaRow(title: goal.title, supporting: goal.detail.isEmpty ? nil : goal.detail, icon: .goal)
                 }
+                .buttonStyle(.plain)
                 .tag(CareerWorkRoute.goal(id: goal.id))
                 .accessibilityLabel("\(title) goal, \(goal.title)")
             }
@@ -258,7 +260,7 @@ struct CareerWorkView: View {
                     TaisaText(role: .heading, content: "Select career work")
                 }
             } description: {
-                Text("Choose a goal, action, or evidence item to inspect it.")
+                TaisaText(role: .body, color: .mutedForeground, content: "Choose a goal, action, or evidence item to inspect it.")
             }
         }
     }
@@ -327,12 +329,14 @@ struct CareerWorkView: View {
                 TaisaText(role: .heading, content: issue == .recoveryRequired ? "Recovery required" : "Career Work unavailable")
             }
         } description: {
-            Text(issue == .recoveryRequired ? "Open recovery to restore secure access." : "Taisa couldn’t read your encrypted career work.")
+            TaisaText(role: .body, color: .mutedForeground, content: issue == .recoveryRequired ? "Open recovery to restore secure access." : "Taisa couldn’t read your encrypted career work.")
         } actions: {
             if issue == .recoveryRequired {
-                Button("Open recovery", action: openRecovery).accessibilityIdentifier("career-work.recovery")
+                TaisaButton(role: .primary, label: "Open recovery", icon: .recovery) { openRecovery() }
+                    .accessibilityIdentifier("career-work.recovery")
             } else {
-                Button("Try again") { Task { await model.retry() } }.accessibilityIdentifier("career-work.retry")
+                TaisaButton(role: .primary, label: "Try again", icon: .refresh) { Task { await model.retry() } }
+                    .accessibilityIdentifier("career-work.retry")
             }
         }
     }
@@ -348,7 +352,7 @@ private struct CareerGoalDetail: View {
 
     var body: some View {
         List {
-            Section("Progress") { Text(snapshot.progress.summary) }
+            Section("Progress") { TaisaRow(title: snapshot.progress.summary, icon: .goal) }
             Section("Add work") {
                 TaisaButton(role: .secondary, label: "Add milestone", icon: .milestone) { add(.milestone) }
                 TaisaButton(role: .secondary, label: "Add action", icon: .action) { addAction() }
@@ -443,25 +447,21 @@ private struct CareerWorkEditorSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                TextField("Title", text: $title)
-                if case .milestone = editor { EmptyView() } else { TextField("Optional details", text: $detail, axis: .vertical) }
-                DatePicker(editorDateLabel, selection: $date, displayedComponents: .date)
+                TaisaField("Title", text: $title)
+                if case .milestone = editor { EmptyView() } else { TaisaField("Optional details", text: $detail, kind: .multiline) }
+                TaisaDateField(editorDateLabel, selection: $date)
                 if case let .evidence(actions) = editor, !actions.isEmpty {
-                    Picker("Related action", selection: $actionID) {
-                        Text("Goal overall").tag(String?.none)
-                        ForEach(actions, id: \.id) { Text($0.title).tag(String?.some($0.id)) }
+                    TaisaPicker("Related action", selection: $actionID, options: [nil] + actions.map { Optional($0.id) }) { id in
+                        id.flatMap { selected in actions.first(where: { $0.id == selected })?.title } ?? "Goal overall"
                     }
                 }
+                TaisaButton(role: .primary, label: "Save", icon: .completed, isEnabled: !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) {
+                    Task { await save(title, detail, date, actionID); dismiss() }
+                }
+                .accessibilityLabel("Save career \(name)")
+                TaisaButton(role: .secondary, label: "Cancel") { dismiss() }
             }
             .navigationTitle("New \(name)")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { Task { await save(title, detail, date, actionID); dismiss() } }
-                        .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                        .accessibilityLabel("Save career \(name)")
-                }
-            }
         }
     }
 
@@ -482,8 +482,8 @@ struct CareerWorkProposalReviewView: View {
         Form {
             Section("Proposed change") {
                 TaisaText(role: .childHeaderTitle, content: title)
-                Text(exactChange)
-                LabeledContent("Source", value: source)
+                TaisaText(role: .body, content: exactChange)
+                TaisaRow(title: "Source", supporting: source, icon: .evidence)
             }
             Section("Review") {
                 TaisaButton(role: .primary, label: "Accept change", icon: .completed) { accept() }
@@ -515,7 +515,9 @@ private struct CareerActionDetail: View {
             Section("Action") {
                 TaisaStatusSurface(statusRole, label: snapshot.action.status.capitalized)
                 if !snapshot.action.detail.isEmpty { TaisaRow(title: snapshot.action.detail) }
-                if let due = actionDueText(snapshot.action) { LabeledContent("Due", value: due.replacingOccurrences(of: "Due ", with: "")) }
+                if let due = actionDueText(snapshot.action) {
+                    TaisaRow(title: "Due", supporting: due.replacingOccurrences(of: "Due ", with: ""), icon: .action)
+                }
                 if let goal = snapshot.goal {
                     Button { open(.goal(id: goal.id)) } label: {
                         TaisaRow(title: goal.title, supporting: parentNotice(snapshot.goalAvailability), icon: .goal, emphasis: parentEmphasis(snapshot.goalAvailability))
@@ -863,8 +865,8 @@ private struct CareerEvidenceDetail: View {
     let evidence: EvidenceRecord
     var body: some View {
         Form {
-            LabeledContent("Occurred", value: Date(timeIntervalSince1970: Double(evidence.occurredAtMS) / 1_000).formatted(date: .abbreviated, time: .omitted))
-            if !evidence.detail.isEmpty { Section("Details") { Text(evidence.detail) } }
+            TaisaRow(title: "Occurred", supporting: Date(timeIntervalSince1970: Double(evidence.occurredAtMS) / 1_000).formatted(date: .abbreviated, time: .omitted), icon: .evidence)
+            if !evidence.detail.isEmpty { Section("Details") { TaisaText(role: .body, content: evidence.detail) } }
         }
         .accessibilityIdentifier("career-work.evidence.detail")
     }
@@ -879,18 +881,15 @@ private struct GoalEditorSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                TextField("Goal title", text: $title)
-                TextField("Optional details", text: $detail, axis: .vertical)
+                TaisaField("Goal title", text: $title)
+                TaisaField("Optional details", text: $detail, kind: .multiline)
+                TaisaButton(role: .primary, label: "Save", icon: .completed, isEnabled: !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) {
+                    Task { await save(title, detail); dismiss() }
+                }
+                .accessibilityLabel("Save career goal")
+                TaisaButton(role: .secondary, label: "Cancel") { dismiss() }
             }
             .navigationTitle("New goal")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { Task { await save(title, detail); dismiss() } }
-                        .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                        .accessibilityLabel("Save career goal")
-                }
-            }
         }
     }
 }
