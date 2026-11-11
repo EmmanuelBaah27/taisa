@@ -24,6 +24,14 @@ orientation and infer the lightest fitting tier. Missing workflow keywords never
 actionable request into a future-only direction. Every actionable task requires a
 non-duplicate Linear issue before work; activation does not bypass approval gates.
 
+## Agent skills
+
+Matt Pocock’s engineering skills use Taisa’s existing authorities:
+
+- **Issue tracker:** Linear. See `docs/agents/issue-tracker.md`.
+- **Triage labels:** intake classification only. See `docs/agents/triage-labels.md`.
+- **Domain docs:** multi-context, routed through `docs/project-memory.md`. See `docs/agents/domain.md`.
+
 ## Authority and gates
 
 Linear is the sole live authority. It owns roadmap, task intake, priority, ownership, stage,
