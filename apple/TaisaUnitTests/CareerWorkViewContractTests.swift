@@ -57,5 +57,8 @@ final class CareerWorkViewContractTests: XCTestCase {
         XCTAssertFalse(source.contains("systemImage:"))
         XCTAssertFalse(source.contains(".font("))
         XCTAssertFalse(source.contains(".foregroundStyle("))
+        XCTAssertNil(source.range(of: #"(?<!Taisa)TextField\("#, options: .regularExpression))
+        XCTAssertNil(source.range(of: #"(?<!Taisa)DatePicker\("#, options: .regularExpression))
+        XCTAssertNil(source.range(of: #"(?<!Taisa)Picker\("#, options: .regularExpression))
     }
 }

@@ -34,6 +34,10 @@ public enum CentralIconName: Sendable, Equatable {
     case goal
     case milestone
     case warning
+    case refresh
+    case recovery
+    case insights
+    case testflight
 }
 
 /// Native rendering of the Central Icons paths used by Taisa's primary navigation.
@@ -97,14 +101,92 @@ public struct CentralIcon: View {
         case .goal: goal
         case .milestone: milestone
         case .warning: warning
+        case .refresh: refresh
+        case .recovery: recovery
+        case .insights: insights
+        case .testflight: testflight
         }
     }
 
     private var filledPath: Path? {
-        guard name == .circleInfo else { return nil }
         var path = Path()
-        path.addEllipse(in: CGRect(x: 11.375, y: 7.375, width: 1.25, height: 1.25))
+        switch name {
+        case .circleInfo:
+            path.addEllipse(in: CGRect(x: 11.375, y: 7.375, width: 1.25, height: 1.25))
+        case .insights:
+            path.move(to: .init(x: 12.354, y: 6.146))
+            path.addLine(to: .init(x: 14.146, y: 4.354))
+            path.addCurve(to: .init(x: 14.854, y: 4.354), control1: .init(x: 14.342, y: 4.158), control2: .init(x: 14.658, y: 4.158))
+            path.addLine(to: .init(x: 16.646, y: 6.146))
+            path.addCurve(to: .init(x: 16.646, y: 6.854), control1: .init(x: 16.842, y: 6.342), control2: .init(x: 16.842, y: 6.658))
+            path.addLine(to: .init(x: 14.854, y: 8.646))
+            path.addCurve(to: .init(x: 14.146, y: 8.646), control1: .init(x: 14.658, y: 8.842), control2: .init(x: 14.342, y: 8.842))
+            path.addLine(to: .init(x: 12.354, y: 6.854))
+            path.addCurve(to: .init(x: 12.354, y: 6.146), control1: .init(x: 12.158, y: 6.658), control2: .init(x: 12.158, y: 6.342))
+            path.closeSubpath()
+            path.addEllipse(in: .init(x: 2, y: 16, width: 4, height: 4))
+            path.addEllipse(in: .init(x: 7, y: 9, width: 4, height: 4))
+            path.addEllipse(in: .init(x: 13, y: 14, width: 4, height: 4))
+            path.addEllipse(in: .init(x: 18, y: 8, width: 4, height: 4))
+            path.addEllipse(in: .init(x: 3, y: 7, width: 3, height: 3))
+        default:
+            return nil
+        }
         return path
+    }
+
+    private var refresh: Path {
+        var p = Path()
+        p.move(to: .init(x: 19.517, y: 14.667))
+        p.addCurve(to: .init(x: 11.972, y: 20), control1: .init(x: 18.418, y: 17.774), control2: .init(x: 15.455, y: 20))
+        p.addCurve(to: .init(x: 3.972, y: 12), control1: .init(x: 7.553, y: 20), control2: .init(x: 3.972, y: 16.418))
+        p.addCurve(to: .init(x: 11.972, y: 4), control1: .init(x: 3.972, y: 7.582), control2: .init(x: 7.553, y: 4))
+        p.addCurve(to: .init(x: 19, y: 8), control1: .init(x: 15.068, y: 4), control2: .init(x: 17, y: 5.5))
+        p.move(to: .init(x: 19, y: 4)); p.addLine(to: .init(x: 19, y: 8)); p.addLine(to: .init(x: 15, y: 8))
+        return p
+    }
+
+    private var recovery: Path {
+        var p = Path()
+        p.addEllipse(in: .init(x: 10.5, y: 9, width: 3, height: 3))
+        p.move(to: .init(x: 12, y: 9)); p.addLine(to: .init(x: 12, y: 15))
+        p.move(to: .init(x: 20, y: 11.912)); p.addLine(to: .init(x: 20, y: 7.177))
+        p.addCurve(to: .init(x: 18.65, y: 5.286), control1: .init(x: 20, y: 6.323), control2: .init(x: 19.458, y: 5.564))
+        p.addLine(to: .init(x: 12.975, y: 3.335))
+        p.addCurve(to: .init(x: 11.025, y: 3.335), control1: .init(x: 12.343, y: 3.118), control2: .init(x: 11.657, y: 3.118))
+        p.addLine(to: .init(x: 5.35, y: 5.286))
+        p.addCurve(to: .init(x: 4, y: 7.177), control1: .init(x: 4.542, y: 5.564), control2: .init(x: 4, y: 6.323))
+        p.addLine(to: .init(x: 4, y: 11.912))
+        p.addCurve(to: .init(x: 12, y: 21.158), control1: .init(x: 4, y: 16.885), control2: .init(x: 8, y: 19))
+        p.addCurve(to: .init(x: 20, y: 11.912), control1: .init(x: 16, y: 19), control2: .init(x: 20, y: 16.885))
+        return p
+    }
+
+    private var insights: Path {
+        var p = Path()
+        p.move(to: .init(x: 4, y: 18)); p.addLine(to: .init(x: 9, y: 11)); p.addLine(to: .init(x: 15, y: 16)); p.addLine(to: .init(x: 20, y: 10))
+        return p
+    }
+
+    private var testflight: Path {
+        var p = Path()
+        p.move(to: .init(x: 11, y: 9.5)); p.addLine(to: .init(x: 10.264, y: 3.982))
+        p.addCurve(to: .init(x: 12, y: 2), control1: .init(x: 10.124, y: 2.933), control2: .init(x: 10.941, y: 2))
+        p.addCurve(to: .init(x: 13.736, y: 3.982), control1: .init(x: 13.059, y: 2), control2: .init(x: 13.876, y: 2.933))
+        p.addLine(to: .init(x: 13, y: 9.5))
+        p.move(to: .init(x: 10.335, y: 14.116)); p.addLine(to: .init(x: 5.924, y: 17.512))
+        p.addCurve(to: .init(x: 3.34, y: 17), control1: .init(x: 5.085, y: 18.158), control2: .init(x: 3.869, y: 17.917))
+        p.addCurve(to: .init(x: 4.189, y: 14.506), control1: .init(x: 2.81, y: 16.083), control2: .init(x: 3.21, y: 14.909))
+        p.addLine(to: .init(x: 9.335, y: 12.384))
+        p.move(to: .init(x: 14.665, y: 12.384)); p.addLine(to: .init(x: 19.811, y: 14.506))
+        p.addCurve(to: .init(x: 20.66, y: 17), control1: .init(x: 20.79, y: 14.909), control2: .init(x: 21.19, y: 16.083))
+        p.addCurve(to: .init(x: 18.076, y: 17.512), control1: .init(x: 20.131, y: 17.917), control2: .init(x: 18.915, y: 18.158))
+        p.addLine(to: .init(x: 13.665, y: 14.116))
+        p.move(to: .init(x: 9, y: 20.488)); p.addCurve(to: .init(x: 15, y: 20.488), control1: .init(x: 10.877, y: 21.151), control2: .init(x: 13.123, y: 21.151))
+        p.move(to: .init(x: 6.149, y: 5.158)); p.addCurve(to: .init(x: 3.149, y: 10.354), control1: .init(x: 4.636, y: 6.452), control2: .init(x: 3.513, y: 8.397))
+        p.move(to: .init(x: 20.851, y: 10.354)); p.addCurve(to: .init(x: 17.851, y: 5.158), control1: .init(x: 20.487, y: 8.397), control2: .init(x: 19.364, y: 6.452))
+        p.addEllipse(in: .init(x: 9.5, y: 9.5, width: 5, height: 5))
+        return p
     }
 
     private var checklist: Path {

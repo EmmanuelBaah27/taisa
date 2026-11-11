@@ -50,6 +50,10 @@ struct ActionComponentTests {
             .goal,
             .milestone,
             .warning,
+            .refresh,
+            .recovery,
+            .insights,
+            .testflight,
         ]
         #expect(Set(concepts.map(String.init(describing:))).count == concepts.count)
     }

@@ -1,4 +1,5 @@
 import SwiftUI
+import TaisaDesignSystem
 import TaisaHome
 import TaisaStorage
 
@@ -50,15 +51,15 @@ struct HomeView: View {
             .navigationTitle("Home")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Refresh", systemImage: "arrow.clockwise") { Task { await model.load() } }
+                    TaisaToolbarAction(label: "Refresh", icon: .refresh) { Task { await model.load() } }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Backup and recovery", systemImage: "lock.shield", action: openRecovery)
+                    TaisaToolbarAction(label: "Backup and recovery", icon: .recovery, action: openRecovery)
                         .accessibilityIdentifier("foundation.recovery.action")
                 }
                 if let openPersonalQA {
                     ToolbarItem(placement: .topBarTrailing) {
-                        Button("Personal device QA", action: openPersonalQA)
+                        TaisaToolbarAction(label: "Personal device QA", icon: .testflight, action: openPersonalQA)
                             .accessibilityIdentifier("foundation.personal-qa.action")
                     }
                 }
@@ -89,8 +90,7 @@ struct HomeView: View {
                     LeadInsightSection(insight: leadInsight, openInsights: openInsights)
                 }
                 if snapshot.leadInsight == nil && snapshot.hasConfirmedInsightHistory {
-                    Button("View insights", systemImage: "lightbulb", action: openInsights)
-                        .font(.subheadline)
+                    TaisaButton(role: .secondary, label: "View insights", icon: .insights) { openInsights() }
                         .accessibilityIdentifier("home.insights.link")
                 }
                 if snapshot.unresolvedPriorWeekCount > 0 {
@@ -109,15 +109,18 @@ struct HomeView: View {
             .refreshable { await model.load() }
         case let .failure(issue):
             ContentUnavailableView {
-                Label(issue == .recoveryRequired ? "Recovery required" : "Home unavailable", systemImage: "exclamationmark.triangle")
+                VStack {
+                    CentralIcon(.warning).frame(width: 32, height: 32)
+                    TaisaText(role: .heading, content: issue == .recoveryRequired ? "Recovery required" : "Home unavailable")
+                }
             } description: {
-                Text(issue == .recoveryRequired ? "Open recovery to restore secure access." : "Taisa couldn’t read your Home securely.")
+                TaisaText(role: .body, color: .mutedForeground, content: issue == .recoveryRequired ? "Open recovery to restore secure access." : "Taisa couldn’t read your Home securely.")
             } actions: {
                 if issue == .recoveryRequired {
-                    Button("Open recovery", action: openRecovery)
+                    TaisaButton(role: .primary, label: "Open recovery", icon: .recovery) { openRecovery() }
                         .accessibilityIdentifier("home.recovery")
                 } else {
-                    Button("Try again") { Task { await model.load() } }
+                    TaisaButton(role: .primary, label: "Try again", icon: .refresh) { Task { await model.load() } }
                         .accessibilityIdentifier("home.retry")
                 }
             }
@@ -130,9 +133,13 @@ struct HomeView: View {
             if issue == .recoveryRequired { openRecovery() }
             else { Task { await model.load() } }
         } label: {
-            Label(issue == .recoveryRequired ? "Open recovery" : "Try refresh again", systemImage: "exclamationmark.triangle")
+            TaisaRow(
+                title: issue == .recoveryRequired ? "Open recovery" : "Try refresh again",
+                icon: .warning,
+                emphasis: .attention
+            )
         }
-        .foregroundStyle(.secondary)
+        .buttonStyle(.plain)
         .accessibilityIdentifier(issue == .recoveryRequired ? "home.recovery" : "home.retry")
     }
 }

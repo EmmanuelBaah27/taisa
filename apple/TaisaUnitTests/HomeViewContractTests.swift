@@ -64,6 +64,21 @@ final class HomeViewContractTests: XCTestCase {
         XCTAssertTrue(leadInsight.contains("home.lead-insight"))
     }
 
+    func testTouchedHomeSurfaceUsesSharedDesignSystemContracts() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let home = root.appendingPathComponent("TaisaApp/Home")
+        let sources = try ["HomeView.swift", "HomeSectionViews.swift", "ThisWeekSection.swift"]
+            .map { try String(contentsOf: home.appendingPathComponent($0), encoding: .utf8) }
+            .joined(separator: "\n")
+
+        for contract in ["TaisaRow(", "TaisaText(", "TaisaButton(", "TaisaToolbarAction(", "CentralIcon("] {
+            XCTAssertTrue(sources.contains(contract), "Missing shared contract \(contract)")
+        }
+        for forbidden in ["systemImage:", "Image(systemName:", ".font(", ".foregroundStyle("] {
+            XCTAssertFalse(sources.contains(forbidden), "Touched Home surface contains raw presentation: \(forbidden)")
+        }
+    }
+
     func testInsightsStayNestedByCurrentReviewAndHistoryWithGroundedDetail() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let home = root.appendingPathComponent("TaisaApp/Home")

@@ -11,15 +11,20 @@ struct ThisWeekSection: View {
         Section {
             if items.isEmpty {
                 ContentUnavailableView {
-                    VStack { CentralIcon(.completed).frame(width: 32, height: 32); Text("Nothing needs focus right now") }
-                } description: { Text("Your chosen work for this week will appear here.") }
+                    VStack {
+                        CentralIcon(.completed).frame(width: 32, height: 32)
+                        TaisaText(role: .heading, content: "Nothing needs focus right now")
+                    }
+                } description: {
+                    TaisaText(role: .body, color: .mutedForeground, content: "Your chosen work for this week will appear here.")
+                }
             } else {
                 ForEach(items, id: \.action.id) { item in
                     weeklyRow(item)
                 }
             }
         } header: {
-            Text("Current focus")
+            TaisaText(role: .label, content: "Current focus")
         }
         .accessibilityIdentifier("home.this-week")
     }
@@ -63,7 +68,8 @@ struct HomeActionsPreviewSection: View {
                     }
                 }
             }
-            Button("View all actions") { send(.actions) }
+            Button { send(.actions) } label: { TaisaNavigationRow(label: "View all actions", icon: .action) }
+                .buttonStyle(.plain)
                 .accessibilityIdentifier("home.actions.view-all")
         }
         .accessibilityIdentifier("home.actions.preview")
@@ -99,7 +105,8 @@ struct HomeGoalsSummarySection: View {
             } else {
                 ForEach(goals.prefix(3), id: \.id) { GoalRow(goal: $0, send: send) }
             }
-            Button("View all goals") { send(.goals) }
+            Button { send(.goals) } label: { TaisaNavigationRow(label: "View all goals", icon: .goal) }
+                .buttonStyle(.plain)
                 .accessibilityIdentifier("home.goals.view-all")
         }
         .accessibilityIdentifier("home.goals.summary")
@@ -127,13 +134,18 @@ struct PriorWeekReviewSheet: View {
     var body: some View {
         NavigationStack {
             ContentUnavailableView {
-                VStack { CentralIcon(.history).frame(width: 32, height: 32); Text("Unfinished work") }
+                VStack {
+                    CentralIcon(.history).frame(width: 32, height: 32)
+                    TaisaText(role: .heading, content: "Unfinished work")
+                }
             } description: {
-                Text("You have \(unresolvedCount) unfinished \(unresolvedCount == 1 ? "item" : "items") from an earlier week. Decide what still belongs before planning more work.")
+                TaisaText(role: .body, color: .mutedForeground, content: "You have \(unresolvedCount) unfinished \(unresolvedCount == 1 ? "item" : "items") from an earlier week. Decide what still belongs before planning more work.")
             }
             .navigationTitle("Review prior week")
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    TaisaToolbarAction(label: "Done", icon: .completed) { dismiss() }
+                }
             }
         }
         .presentationDetents([.medium])
