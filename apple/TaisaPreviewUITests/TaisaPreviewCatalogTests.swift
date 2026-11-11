@@ -53,11 +53,42 @@ final class TaisaPreviewCatalogTests: XCTestCase {
         let insight = app.buttons.matching(
             NSPredicate(format: "label CONTAINS %@", "Your best planning sessions happen before midday.")
         ).firstMatch
+        for _ in 0..<6 where !insight.isHittable { app.swipeUp() }
         XCTAssertTrue(insight.waitForExistence(timeout: 5))
+        XCTAssertTrue(insight.isHittable)
         insight.tap()
         XCTAssertTrue(app.navigationBars["Insights"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Needs review"].exists)
         XCTAssertTrue(app.staticTexts["History"].exists)
+    }
+
+    func testCombinedHomeRoutesCurrentFocusWithoutCompletionManagement() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-TAISAPreviewScenario", "home.combined"]
+        app.launch()
+
+        let action = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Draft the studio lighting plan")).firstMatch
+        XCTAssertTrue(action.waitForExistence(timeout: 5))
+        XCTAssertTrue(action.isHittable)
+        XCTAssertFalse(app.buttons["Complete Draft the studio lighting plan"].exists)
+        XCTAssertFalse(element("home.this-week.completion-evidence", in: app).exists)
+    }
+
+    func testCareerActionScenarioShowsCanonicalDetailHierarchy() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-TAISAPreviewScenario", "actions.action"]
+        app.launch()
+
+        let detail = element("career-work.action.detail", in: app)
+        XCTAssertTrue(detail.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Outline first case study"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Checklist"].exists)
+        let evidence = element("career-work.action.evidence", in: app)
+        let history = element("career-work.action.history", in: app)
+        for _ in 0..<4 where !evidence.exists || !history.exists { detail.swipeUp() }
+        XCTAssertTrue(evidence.waitForExistence(timeout: 5))
+        XCTAssertTrue(history.waitForExistence(timeout: 5))
+        retainScreenshot(of: app, name: "career-action-detail")
     }
 
     private func element(_ identifier: String, in app: XCUIApplication) -> XCUIElement {

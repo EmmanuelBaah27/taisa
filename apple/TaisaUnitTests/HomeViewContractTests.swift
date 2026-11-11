@@ -2,7 +2,7 @@ import Foundation
 import XCTest
 
 final class HomeViewContractTests: XCTestCase {
-    func testHomeSurfacesUpcomingMilestonesInsideCareerProgress() throws {
+    func testHomeRoutesDirectlyToActionsAndGoalsWithoutCareerWorkSections() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let home = root.appendingPathComponent("TaisaApp/Home")
         let sources = try FileManager.default.contentsOfDirectory(at: home, includingPropertiesForKeys: nil)
@@ -10,8 +10,9 @@ final class HomeViewContractTests: XCTestCase {
             .map { try String(contentsOf: $0, encoding: .utf8) }
             .joined(separator: "\n")
 
-        XCTAssertTrue(sources.contains("Section(\"Upcoming milestones\")"))
-        XCTAssertTrue(sources.contains("case milestone(goalID: String)"))
+        XCTAssertFalse(sources.contains("Section(\"Upcoming milestones\")"))
+        XCTAssertTrue(sources.contains("case actions"))
+        XCTAssertTrue(sources.contains("case goals"))
     }
 
     func testHomeUsesRequiredNativeStateIdentifiersAndNoGRDB() throws {
@@ -22,7 +23,7 @@ final class HomeViewContractTests: XCTestCase {
             .map { try String(contentsOf: $0, encoding: .utf8) }
             .joined(separator: "\n")
 
-        for identifier in ["home.root", "home.conversations", "home.goals", "home.actions", "home.empty", "home.retry", "home.recovery"] {
+        for identifier in ["home.root", "home.conversations", "home.goals.summary", "home.actions.preview", "home.empty", "home.retry", "home.recovery"] {
             XCTAssertTrue(sources.contains(identifier), "Missing \(identifier)")
         }
         XCTAssertFalse(sources.contains("import GRDB"))
@@ -31,7 +32,7 @@ final class HomeViewContractTests: XCTestCase {
         XCTAssertTrue(sources.contains("refreshable"))
     }
 
-    func testCombinedHomeKeepsTheLeadInsightConditionalAndWeeklyWorkPrimary() throws {
+    func testCombinedHomeUsesTheApprovedCalmSectionOrder() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let home = root.appendingPathComponent("TaisaApp/Home")
         let homeView = try String(contentsOf: home.appendingPathComponent("HomeView.swift"), encoding: .utf8)
@@ -41,19 +42,41 @@ final class HomeViewContractTests: XCTestCase {
         XCTAssertTrue(homeView.contains("if let leadInsight = snapshot.leadInsight"))
         XCTAssertTrue(homeView.contains("LeadInsightSection(insight: leadInsight"))
         XCTAssertTrue(homeView.contains("ThisWeekSection("))
-        XCTAssertLessThan(
-            try XCTUnwrap(homeView.range(of: "LeadInsightSection(insight: leadInsight")?.lowerBound),
-            try XCTUnwrap(homeView.range(of: "ThisWeekSection(")?.lowerBound)
-        )
+        let focus = try XCTUnwrap(homeView.range(of: "ThisWeekSection(")?.lowerBound)
+        let actions = try XCTUnwrap(homeView.range(of: "HomeActionsPreviewSection(")?.lowerBound)
+        let goals = try XCTUnwrap(homeView.range(of: "HomeGoalsSummarySection(")?.lowerBound)
+        let insight = try XCTUnwrap(homeView.range(of: "LeadInsightSection(insight: leadInsight")?.lowerBound)
+        let review = try XCTUnwrap(homeView.range(of: "HomeReviewSection(")?.lowerBound)
+        XCTAssertLessThan(focus, actions)
+        XCTAssertLessThan(actions, goals)
+        XCTAssertLessThan(goals, insight)
+        XCTAssertLessThan(insight, review)
         XCTAssertTrue(homeView.contains("snapshot.hasConfirmedInsightHistory"))
         XCTAssertTrue(homeView.contains("home.insights.link"))
 
-        for identifier in ["home.this-week", "home.this-week.complete", "home.this-week.undo", "home.prior-week.review"] {
+        for identifier in ["home.this-week", "home.prior-week.review", "home.actions.preview", "home.actions.view-all", "home.goals.summary", "home.goals.view-all"] {
             XCTAssertTrue(thisWeek.contains(identifier), "Missing \(identifier)")
         }
-        XCTAssertTrue(thisWeek.contains("await model.complete(actionID:"))
-        XCTAssertTrue(thisWeek.contains("await model.undoCompletion()"))
+        XCTAssertFalse(thisWeek.contains("await model.undoCompletion()"))
+        XCTAssertFalse(thisWeek.contains("home.this-week.complete"))
+        XCTAssertTrue(thisWeek.contains("TaisaRow("))
+        XCTAssertFalse(thisWeek.contains("systemImage:"), "Touched Home Action UI must use Central Icons")
         XCTAssertTrue(leadInsight.contains("home.lead-insight"))
+    }
+
+    func testTouchedHomeSurfaceUsesSharedDesignSystemContracts() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let home = root.appendingPathComponent("TaisaApp/Home")
+        let sources = try ["HomeView.swift", "HomeSectionViews.swift", "ThisWeekSection.swift"]
+            .map { try String(contentsOf: home.appendingPathComponent($0), encoding: .utf8) }
+            .joined(separator: "\n")
+
+        for contract in ["TaisaRow(", "TaisaText(", "TaisaButton(", "TaisaToolbarAction(", "CentralIcon("] {
+            XCTAssertTrue(sources.contains(contract), "Missing shared contract \(contract)")
+        }
+        for forbidden in ["systemImage:", "Image(systemName:", ".font(", ".foregroundStyle("] {
+            XCTAssertFalse(sources.contains(forbidden), "Touched Home surface contains raw presentation: \(forbidden)")
+        }
     }
 
     func testInsightsStayNestedByCurrentReviewAndHistoryWithGroundedDetail() throws {
@@ -85,6 +108,8 @@ final class HomeViewContractTests: XCTestCase {
         XCTAssertTrue(scenarios.contains("home.combined"))
         XCTAssertTrue(scenarios.contains("home.insights"))
         XCTAssertTrue(scenarios.contains("thisWeek:"))
+        XCTAssertTrue(scenarios.contains("actionPrompts:"))
+        XCTAssertTrue(scenarios.contains("reason: .blocked"))
         XCTAssertTrue(scenarios.contains("leadInsight:"))
         XCTAssertTrue(scenarioView.contains("InsightsView(model:"))
         XCTAssertTrue(scenarioView.contains("openInsights:"))

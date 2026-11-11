@@ -52,6 +52,29 @@ private actor CombinedHomeSyncKeys: DatabaseKeyStore {
         #expect(try await WorkEventRepository(store: fixture.receiver).get(id: event.id) == event)
     }
 
+    @Test func actionBlockerAttentionSurvivesRepositorySync() async throws {
+        let fixture = try await SyncFixture()
+        defer { fixture.remove() }
+        let deviceID = UUID().uuidString
+        let action = ActionRecord(
+            id: UUID().uuidString,
+            goalID: nil,
+            title: "Waiting for review",
+            detail: "",
+            status: ActionStatus.active.rawValue,
+            dueAtMS: nil,
+            createdAtMS: 1,
+            updatedAtMS: 2,
+            blockedAtMS: 2,
+            blockerNote: "Needs approval"
+        )
+        try await ActionRepository(store: fixture.sender).create(action, context: fixture.context(deviceID: deviceID, at: 2))
+
+        #expect(await fixture.send().state == .upToDate)
+        #expect(await fixture.receive().state == .upToDate)
+        #expect(try await ActionRepository(store: fixture.receiver).get(id: action.id) == action)
+    }
+
     @Test func insightProposalSyncsWithoutBecomingConfirmedTruth() async throws {
         let fixture = try await SyncFixture()
         defer { fixture.remove() }
@@ -105,6 +128,34 @@ private actor CombinedHomeSyncKeys: DatabaseKeyStore {
         let record: [String: Any] = ["id": entityID, "body": "Invalid", "status": "invented", "isTimeSensitive": 1, "homeEligibleUntilMS": NSNull(), "createdAtMS": 1, "updatedAtMS": 1]
         let payload = try JSONSerialization.data(withJSONObject: ["id": mutationID, "deviceID": deviceID, "entityType": "insight", "entityID": entityID, "timestamp": 1, "operation": "create", "record": record, "causality": JSONSerialization.jsonObject(with: JSONEncoder().encode(causality))], options: [.sortedKeys])
         #expect(throws: SyncMergeError.malformedMutation) { _ = try SyncProjection(payload) }
+    }
+
+    @Test func legacyActionProjectionCanonicalizesLifecycleAndMissingV8Fields() throws {
+        let mutationID = UUID().uuidString, entityID = UUID().uuidString, deviceID = UUID().uuidString
+        let names = ["goalID", "title", "detail", "status", "dueAtMS", "createdAtMS", "updatedAtMS"]
+        let causality = CausalSnapshot(logicalVersionID: mutationID, recordParentVersionID: nil, resolvedParentVersionIDs: nil, retainedDeletionCausality: nil, deviceID: deviceID, deviceCounter: 1, changedFields: names.map { FieldCausalVersion(fieldName: $0, versionID: mutationID, parentVersionID: nil, ancestorVersionIDs: [], deviceCounter: 1) }, observedFieldVersions: [])
+        let record: [String: Any] = ["id": entityID, "goalID": NSNull(), "title": "Legacy", "detail": "", "status": "open", "dueAtMS": NSNull(), "createdAtMS": 1, "updatedAtMS": 1]
+        let payload = try JSONSerialization.data(withJSONObject: ["id": mutationID, "deviceID": deviceID, "entityType": "action", "entityID": entityID, "timestamp": 1, "operation": "create", "record": record, "causality": JSONSerialization.jsonObject(with: JSONEncoder().encode(causality))], options: [.sortedKeys])
+
+        let projection = try SyncProjection(payload)
+
+        #expect(try JSONDecoder().decode(String.self, from: projection.fullFields["status"]!) == "active")
+        #expect(try JSONDecoder().decode(String.self, from: projection.fullFields["origin"]!) == "manual")
+        #expect(projection.fullFields["blockedAtMS"] == Data("null".utf8))
+        #expect(projection.fullFields["blockerNote"] == Data("null".utf8))
+    }
+
+    @Test func currentActionProjectionCarriesBlockerAttentionFields() throws {
+        let mutationID = UUID().uuidString, entityID = UUID().uuidString, deviceID = UUID().uuidString
+        let names = ["title", "blockedAtMS", "blockerNote"]
+        let causality = CausalSnapshot(logicalVersionID: mutationID, recordParentVersionID: nil, resolvedParentVersionIDs: nil, retainedDeletionCausality: nil, deviceID: deviceID, deviceCounter: 1, changedFields: names.map { FieldCausalVersion(fieldName: $0, versionID: mutationID, parentVersionID: nil, ancestorVersionIDs: [], deviceCounter: 1) }, observedFieldVersions: [])
+        let record: [String: Any] = ["id": entityID, "goalID": NSNull(), "milestoneID": NSNull(), "title": "Blocked", "detail": "", "status": "active", "dueDay": NSNull(), "dueAtMS": NSNull(), "origin": "manual", "blockedAtMS": 5, "blockerNote": "Waiting", "createdAtMS": 1, "updatedAtMS": 5]
+        let payload = try JSONSerialization.data(withJSONObject: ["id": mutationID, "deviceID": deviceID, "entityType": "action", "entityID": entityID, "timestamp": 5, "operation": "update", "record": record, "causality": JSONSerialization.jsonObject(with: JSONEncoder().encode(causality))], options: [.sortedKeys])
+
+        let projection = try SyncProjection(payload)
+
+        #expect(try JSONDecoder().decode(Int64.self, from: projection.fullFields["blockedAtMS"]!) == 5)
+        #expect(try JSONDecoder().decode(String.self, from: projection.fullFields["blockerNote"]!) == "Waiting")
     }
 
     @Test func remoteInsightWithMissingInspectableSourceIsQuarantined() async throws {
