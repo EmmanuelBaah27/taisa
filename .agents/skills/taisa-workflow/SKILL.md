@@ -1,6 +1,6 @@
 ---
 name: taisa-workflow
-description: Use at the start of every Taisa change, investigation, plan, build, review, or Ship task to reconcile Linear live delivery state with Git technical evidence and route the required process skill.
+description: Use only when a Taisa-specific Linear, Preview, QA, repair, or Ship adapter is triggered; Matt's router in AGENTS.md selects the engineering process.
 ---
 
 # Taisa Workflow Orchestrator
@@ -16,23 +16,11 @@ Team: `e95356d8-17f7-4700-bdfe-222782bea546`
 
 ## 1. Cycle start and incremental orientation
 
-Read completely:
-
-- `AGENTS.md`
-- `docs/workflow.md`
-- `docs/project-memory.md`
-- this skill
-
-Then:
-
-1. Query the Taisa Linear project, milestones, active issues, relations, blockers,
-   priorities, recent updates, Scope/Plan documents, and approval evidence.
-2. Run `git status --short --branch`, `git worktree list --porcelain`, `git branch -avv`,
-   `git fetch --prune origin`, and inspect relevant commits, PRs, tests, preview revision,
-   and active delivery chats.
-3. Reconcile contradictions before product or workflow mutation.
-4. State tier, issue/milestone, stage, branch/worktree, blocker/dependency, next action,
-   next Baah gate, and Linear availability.
+Read `AGENTS.md`, then orient lightly: inspect the primary Linear issue and its live
+dependencies/blockers, current branch/worktree and remote revision, and the relevant domain
+index at `docs/project-memory.md`. Load this skill only when a Taisa-specific adapter requires it. Inspect additional
+milestones, worktrees, PRs, tests, Preview revisions, or delivery chats only when the issue or
+adapter makes them relevant. Reconcile contradictions before product or workflow mutation.
 
 Perform this full reconciliation once at delivery-cycle entry. Within a stable cycle, re-read
 only state whose issue, approval, dependency, branch/worktree, PR, CI, preview, or remote
@@ -81,21 +69,21 @@ orientation and an answer only. Explicit future-only ideas go to the relevant mi
 
 | Tier | Treatment |
 |---|---|
-| Quick | Compact kickoff bundle approves Scope and Plan when no high-risk predicate applies. |
-| Standard | Inline Work Map + Discussion Map; kickoff bundle approves Scope and Plan when no high-risk predicate applies. |
+| Quick | Confirm product intent once; the agent records the technical Plan. |
+| Standard | Inline Work Map + Discussion Map; confirm product intent once; the agent records the technical Plan. |
 | Full | Full track decomposition, Linear documents/sub-issues as useful, every gate. |
 
-Quick/Standard fast path requires one explicit kickoff bundle: outcome, user-visible result,
+Quick/Standard fast path requires one explicit product-intent decision: outcome, user-visible result,
 inclusions, exclusions, risks, implementation direction, and verification. Full work, or any
 tier involving migration/data loss, privacy/security/trust, consent/regulation, destructive
 action, public contracts/major architecture, paid services/credentials/infrastructure,
 ambiguous product behavior, release strategy, or weakened verification, requires separate
-Scope and Plan approval.
+Baah approval of the material or high-risk choice; the agent owns the technical Plan.
 
 ## 4. Work ownership and maps
 
-Standard/Full work begins with a Linear-linked Work Map: slices, Platform/Product/Integration
-owner, outcome, dependency, approval, `XS / S / M / L / XL`, pickup order, parallel work,
+Standard/Full work begins with a Linear-linked Work Map: vertical tracers, accountable owner,
+user outcome, dependency, approval, `XS / S / M / L / XL`, pickup order, parallel work,
 critical path, counters, and an evidence-based pace estimate.
 
 Show a Discussion Map before the first substantive question:
@@ -110,9 +98,8 @@ Show a Discussion Map before the first substantive question:
 Diagrams use layman meaning plus technical truth, real component/service/store labels, plain
 language arrows, and visible ownership, trust, storage, failure, and offline boundaries.
 
-Every task has exactly one owner: Platform owns capability/contracts; Product owns
-experience/accessibility/design-system work; Integration owns wiring, combined states,
-preview, and end-to-end proof. They remain under one issue and conductor. Cross-cutting
+Every tracer has one accountable owner. Platform, Product, and Integration remain discussion
+lenses inside that tracer, never separate ticket ownership or persistent tracks. Cross-cutting
 quality is an acceptance constraint, never a duplicate slice.
 
 ## 5. Stages and automatic skill routing
@@ -144,7 +131,7 @@ approved Visual Companion result. Record layout intent, key states, components/t
 interactions, accessibility, and device-QA evidence in Linear. Material differences return
 to Scope.
 
-Every Product build is design-system-first. Before Product Scope or Plan approval, inventory
+Every Product build is design-system-first. Before Product code, inventory
 every visible component, interaction style, token, and icon and map each to an existing shared
 component, semantic style/token, and Central Icons asset. If anything required is unavailable,
 stop before screen or Product code, tell Baah which surfaces are affected, show why existing
@@ -165,15 +152,17 @@ shown to Baah and recorded in Linear.
 ### Plan
 
 Store tasks, tests, interfaces, dependencies, integration, verification, and Product DS
-inventory in Linear. Present a plain-language summary; Baah approves Plan. Material build-path
-changes return to Plan.
+inventory in Linear. The agent owns and records the Plan; Baah does not approve ordinary
+technical mechanics. Material product, high-risk, or difficult-to-reverse changes return to
+Baah; routine build-path changes remain agent-owned.
 
 ### Build
 
-After kickoff or separate Plan approval, set In Progress and execute within one bounded Goal.
-Platform and independent
-Product foundation may run in parallel; Integration waits for both sides. Use TDD and record
-exact commits/checks at material evidence transitions.
+After required product/high-risk decisions and Plan recording, set In Progress and execute
+within one bounded Goal.
+Use Platform, Product, and Integration only as discussion lenses inside vertical tracer
+tickets, never as mandatory horizontal tracks. Use TDD and record exact commits/checks at
+material evidence transitions.
 
 For Product work, the Goal entry evidence must include the approved component/style/token/icon
 inventory, Central Icons mapping, approved design-system gaps, and narrowly approved

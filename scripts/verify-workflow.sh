@@ -17,6 +17,8 @@ test -f docs/decisions/README.md || fail "decision record guide is missing"
 test -f docs/decisions/0001-use-repository-native-project-memory.md || fail "initial project memory decision is missing"
 test -f docs/learnings.md || fail "reusable learning log is missing"
 node scripts/canonical-origin.mjs "$(git remote get-url origin)" || fail "origin does not use the canonical Taisa URL"
+node --test scripts/__tests__/matt-workflow-routing.test.mjs ||
+  fail "representative Matt workflow routing fixtures failed"
 
 active_skills=(
   taisa-workflow
@@ -81,6 +83,41 @@ require_workflow_order() {
   test "$first_line" -lt "$second_line" || fail "$file has the wrong order for $description"
 }
 
+# The always-loaded instructions must deterministically select Matt's process
+# before the legacy Taisa workflow is consulted. APF-86 removes the legacy
+# duplication after the replacement route has proved itself.
+for matt_route in \
+  'Matt-first engineering router' \
+  'grill-with-docs' \
+  'one focused session.*implement' \
+  'multi-session.*to-spec.*to-tickets.*per-ticket.*implement' \
+  'foggy.*wayfinder' \
+  'hard bug.*diagnosing-bugs' \
+  'closeout.*retro'; do
+  require_workflow_multiline_pattern AGENTS.md "$matt_route" \
+    "Matt-first route: $matt_route"
+done
+require_workflow_order AGENTS.md 'hard bug.*diagnosing-bugs' \
+  'one focused session.*implement' 'hard bugs override generic session sizing'
+require_workflow_order AGENTS.md 'foggy.*wayfinder' \
+  'repo feature or change discovery.*grill-with-docs' 'foggy work is clarified before discovery'
+require_workflow_pattern AGENTS.md \
+  'Linear operation and evidence.*docs/agents/issue-tracker' 'Linear adapter pointer'
+require_workflow_pattern AGENTS.md \
+  'Product UI.*docs/design-system.*design-handoff' 'Product adapter pointer'
+require_workflow_multiline_pattern AGENTS.md \
+  'Canonical Preview, QA, repair quarantine, and Ship:[^\n]*\n[^\n]*docs/workflow\.md.*taisa-workflow/SKILL\.md' \
+  'Preview, QA, repair, and Ship adapter pointer'
+require_workflow_multiline_pattern AGENTS.md \
+  'readable personal data encrypted and device-authoritative.*device UUID is the user identifier.*authentication middleware' \
+  'privacy, data-authority, and identity invariants'
+require_workflow_multiline_pattern AGENTS.md \
+  'Baah decides.*product intent.*materially different.*difficult-to-reverse.*security.*privacy.*destructive-data.*paid-service.*tracer experience.*physical.*perceptual QA.*Ship' \
+  'Baah decision boundary'
+require_workflow_multiline_pattern AGENTS.md \
+  'agent owns.*specification.*tracer decomposition.*blockers.*branches and worktrees.*judgment.*tests.*review.*verification.*pull requests' \
+  'agent engineering boundary'
+
 for invariant in \
   'bounded Goal run' \
   'kickoff bundle' \
@@ -89,8 +126,13 @@ for invariant in \
   'Unfixed; blocking; unshippable'; do
   require_workflow_pattern docs/workflow.md "$invariant" "bounded-delivery invariant: $invariant"
 done
-require_workflow_pattern docs/workflow.md 'Platform.*Product.*Integration.*exclusive|exclusive.*Platform.*Product.*Integration' \
-  'exclusive Platform/Product/Integration ownership'
+require_workflow_multiline_pattern docs/workflow.md \
+  'Platform, Product, and Integration are discussion lenses, never exclusive ticket owners or.*persistent tracks.*vertical tracer may cross all three' \
+  'non-persistent Platform/Product/Integration vocabulary'
+if rg -qi 'Platform and independent Product foundation|Integration begins only when both|Baah chooses Wait or an approved skeleton' \
+  docs/workflow.md .agents/skills/taisa-workflow/SKILL.md; then
+  fail "legacy horizontal-track sequencing remains"
+fi
 
 for execution_authority_file in \
   docs/workflow.md \
@@ -406,7 +448,8 @@ rg -q 'Platform discussion' .agents/skills/taisa-workflow/SKILL.md || fail "Plat
 rg -q 'Product discussion' .agents/skills/taisa-workflow/SKILL.md || fail "Product discussion agenda is missing"
 rg -q 'Integration discussion' .agents/skills/taisa-workflow/SKILL.md || fail "integration discussion agenda is missing"
 rg -q 'XS.*S.*M.*L.*XL' docs/workflow.md || fail "slice sizing scale is missing"
-rg -q 'independent Product foundation' docs/workflow.md || fail "Product skeleton dependency boundary is missing"
+rg -qi 'vertical tracer.*blocker|blocker.*vertical tracer' docs/workflow.md ||
+  fail "vertical tracer dependency boundary is missing"
 rg -q '^### Activation bias' docs/workflow.md || fail "workflow activation bias is missing"
 rg -qi 'default.*activat|activate.*default' .agents/skills/taisa-workflow/SKILL.md || fail "orchestrator does not default toward activation"
 rg -q '^## Documentation freshness cadence' docs/workflow.md || fail "documentation freshness cadence is missing"

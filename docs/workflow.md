@@ -34,17 +34,12 @@ exceptions. Search exact and semantic matches, including archived work, before c
 
 ## Cycle orientation
 
-At the start of one approved delivery cycle, before modifying product or workflow state:
-
-1. Read the Taisa Linear project, six milestones, active issues, dependencies, blockers,
-   priorities, recent updates, Scope/Plan evidence, and approval comments.
-2. Read `AGENTS.md`, this file, `.agents/skills/taisa-workflow/SKILL.md`, and
-   `docs/project-memory.md`.
-3. Inspect the current branch, worktree, all relevant worktrees, remote tracking, exact
-   commits, tests, PRs, canonical preview revision, and related active delivery chats.
-4. Reconcile contradictions before modifying product code or advancing a stage.
-5. State tier, Linear issue and milestone, stage, branch/worktree, blocker/dependency, next
-   action, next Baah gate, and whether Linear was unavailable or contradictory.
+At the start of one approved delivery cycle, read `AGENTS.md`, then perform lightweight
+orientation: inspect the primary Linear issue and its live dependencies/blockers, current
+branch/worktree and remote revision, and the relevant domain index. Load this workflow only
+for the Taisa adapter triggered by the work (such as Preview, QA, repair, or Ship). Inspect
+additional milestones, worktrees, PRs, chats, or evidence only when the issue or adapter makes
+them relevant. Reconcile contradictions before modifying product code or advancing a gate.
 
 Within a stable cycle, orientation is incremental. Re-read only state whose issue, approval,
 dependency, branch/worktree, PR, CI, preview, or remote revision changed since the last
@@ -80,9 +75,9 @@ Linear before the next stage or gate.
 
 | Tier | Signal | Process |
 |---|---|---|
-| **Quick** (< 1h) | One bounded change, no new DS component or Platform boundary | One compact kickoff bundle approves Scope and Plan when no high-risk predicate applies. |
-| **Standard** (half day) | New screen or significant component using existing contracts | Inline Work Map and Discussion Map; one kickoff bundle approves Scope and Plan when no high-risk predicate applies. |
-| **Full** (multi-day / multi-track) | New Platform work, DS components, migration, or complex Product | Separate Scope and Plan approvals, Linear documents/sub-issues where useful, all gates and tracking. |
+| **Quick** (< 1h) | One bounded change, no new DS component or Platform boundary | Confirm product intent once; the agent records the technical Plan. |
+| **Standard** (half day) | New screen or significant component using existing contracts | Inline Work Map and Discussion Map; confirm product intent once; the agent records the technical Plan. |
+| **Full** (multi-day / multi-track) | New Platform work, DS components, migration, or complex Product | Approve product intent and any material/high-risk choices; the agent owns the Plan, Linear decomposition, gates, and tracking. |
 
 ### Approval-path decision
 
@@ -90,10 +85,10 @@ The path is deterministic:
 
 | Condition | Approval path |
 |---|---|
-| Quick or Standard with no high-risk predicate | One explicit kickoff bundle approves Scope and Plan |
-| Full | Separate Scope and Plan approvals |
-| Any tier with a high-risk predicate | Separate Scope and Plan approvals |
-| Baah requests separate review | Separate Scope and Plan approvals |
+| Quick or Standard with no high-risk predicate | One explicit product-intent decision; agent-owned Plan |
+| Full | Product-intent and material experience decisions; agent-owned Plan |
+| Any tier with a high-risk predicate | Baah approves the high-risk choice; agent-owned Plan |
+| Baah requests separate review | Review the requested product decision; agent-owned Plan |
 
 High-risk predicates are data migration or loss risk; privacy, security, trust-boundary,
 regulatory, or consent changes; destructive or irreversible operations; public-contract or
@@ -105,39 +100,29 @@ For Quick and Standard fast-path work, the kickoff bundle contains the recommend
 user-visible result, inclusions, exclusions, key risks, implementation direction, and
 verification approach. During Build, a material change completes the active Goal as
 `MATERIAL_REAPPROVAL_REQUIRED`. Present an amended kickoff bundle only when the work remains
-Quick/Standard and no high-risk predicate applies; otherwise obtain separate revised Scope
-and Plan approvals.
+Quick/Standard and no high-risk predicate applies; otherwise obtain Baah's revised product or
+high-risk decision. The agent revises the technical Plan.
 
-## Platform, Product, and Integration ownership
+## Platform, Product, and Integration vocabulary
 
-Platform, Product, and Integration use exclusive ownership: every planned task has exactly
-one of those owners. **Platform** owns AI, backend,
-infrastructure, persistence, privacy/security enforcement, and Product-facing contracts.
-**Product** owns journeys, screens, interaction, accessibility behavior, design-system
-foundation/consumption, and device experience. **Integration** owns contract wiring between
-completed Platform and Product slices, end-to-end states and failures, canonical preview,
-combined verification, and release readiness; it never duplicates capability or experience
-implementation owned by the other slices.
-Design System is a mandatory foundation layer inside Product work, not a separate track.
-Cross-cutting privacy, accessibility, performance, and verification requirements are
-acceptance constraints on the owning task, not additional slices. These slices stay inside
-one primary Linear issue and one conductor. A sub-issue or separate worktree requires an
-independently reviewable outcome, distinct owner, real dependency boundary, or independently
-shippable slice, and it cannot create another persistent Goal.
+Platform, Product, and Integration are discussion lenses, never exclusive ticket owners or
+persistent tracks. A vertical tracer may cross all three: **Platform** names AI, backend,
+infrastructure, persistence, privacy/security enforcement, and Product-facing contracts;
+**Product** names journeys, screens, interaction, accessibility, design-system consumption,
+and device experience; **Integration** names contract wiring, end-to-end states and failures,
+canonical Preview, combined verification, and release readiness. A vertical tracer uses real blocker
+relationships and independently reviewable user value, never these lenses, for decomposition.
+Design System remains a mandatory foundation inside Product work, not a separate track.
 
 ```mermaid
 flowchart LR
-  O["Orient in Linear"] --> D["Discuss one slice"]
-  D --> S["Scope approval"]
-  S --> PP["Platform Plan"]
-  S --> DH["Product design handoff"]
-  DH --> PRP["Product Plan"]
-  PP --> PB["Platform Build"]
-  PRP --> PF["independent Product foundation"]
-  PB --> I["Integration"]
-  PF --> I
-  I --> R["Review + QA"]
-  R --> SH["Ship approval"]
+  O["Orient in Linear"] --> D["Confirm product intent"]
+  D --> T["Vertical tracer"]
+  T --> C["Creative + functional loops"]
+  C --> R["Review + focused verification"]
+  R --> P["Cumulative Preview when meaningful"]
+  P --> N["Next ready tracer or final QA"]
+  N --> SH["Ship approval"]
 ```
 
 ## The six stages
@@ -152,7 +137,7 @@ service.
 
 - Intake and approval preparation happen in ordinary chat; no continuous Goal runs while
   Baah decides.
-- A Build Goal starts after kickoff-bundle approval or separate Plan approval. It terminates
+- A Build Goal starts after required product/high-risk decisions and an agent-owned Plan. It terminates
   at `QA_READY`, `UNRESOLVED_ESCALATION`, `MATERIAL_REAPPROVAL_REQUIRED`,
   `NON_DEVICE_SHIP_READY`, or `EXTERNAL_WAIT_RECORDED`.
 - A repair Goal stays on the same Linear issue and terminates at `QA_READY`,
@@ -170,7 +155,7 @@ reasoning turn, Linear comment, or user notification.
 ### Work Map
 
 Before detailed discussion for Standard and Full work, store or link a Work Map in Linear.
-It includes a table of contents, one Platform/Product/Integration owner per slice, outcome,
+It includes a table of contents, one accountable owner per vertical tracer, user outcome,
 dependency, approval point, size (`XS / S / M / L / XL`), pickup order, parallel work,
 critical path, progress counters, and a pace forecast only after repository inspection.
 
@@ -208,7 +193,7 @@ Visual Companion result. Record layout intent, key states, token/component mappi
 interaction evidence, accessibility, and device-QA expectations in Linear. Material
 differences return to Scope.
 
-Every Product build is design-system-first. Before Product Scope or Plan approval, inventory
+Every Product build is design-system-first. Before Product code, inventory
 every visible component, interaction style, token, and icon and map each one to an existing
 shared component, semantic style/token, and Central Icons asset. An unavailable item is a
 blocking design-system gap: stop before screen or Product code and present Baah with the
@@ -230,16 +215,18 @@ is undone or an unavailable item has not been shown to Baah and recorded in Line
 
 Plan lives in the Linear issue or attached Linear document. It names tasks, tests,
 dependencies, interfaces, integration, verification, and for Product work the existing/new
-DS components. Baah approves the plain-language Plan summary. A material change to build
-path, public contract, persistence, security/privacy, verification, or approval ownership
-returns to Plan.
+DS components. The agent owns and records the Plan; Baah does not approve ordinary technical
+mechanics. A material change to product intent, public contract, persistence, security/privacy,
+destructive data behavior, paid services, or a difficult-to-reverse experience returns to Baah.
 
-If a Product dependency is not in Build, Baah chooses Wait or an approved skeleton:
-independent Product foundation may proceed, while contract wiring remains blocked.
+The agent owns routine dependency ordering. A tracer with an unresolved blocker waits while
+independent ready tracers continue; only a materially different experience or high-risk choice
+returns to Baah.
 
 ### Build
 
-After Plan approval, set the issue In Progress and use `executing-plans` with TDD where
+After required decisions and Plan recording, set the issue In Progress and use `implement`
+with TDD where
 practical. Use subagents only when Baah explicitly authorizes them and tasks are independent.
 
 Product DS order is strict:
@@ -254,8 +241,8 @@ A Product Build Goal cannot start with an unresolved design-system gap or missin
 evidence. A newly discovered gap completes the active Goal as `MATERIAL_REAPPROVAL_REQUIRED`;
 it never authorizes an in-place screen implementation.
 
-For cross-track work, Platform and independent Product foundation may run in parallel.
-Integration begins only when both named sides are ready.
+Ready vertical tracers may run in parallel. Native Linear blocker edges, not
+Platform/Product/Integration labels, determine what waits.
 
 ### Review + QA
 
@@ -331,7 +318,7 @@ Before the first Baah QA request, all applicable requirements must pass:
 1. Acceptance criteria map to concrete evidence.
 2. Narrow and complete applicable verification layers pass on the candidate revision.
 3. Blocking review findings are resolved.
-4. Required Platform, Product, and Integration slices are complete.
+4. Required vertical tracers and their cross-cutting acceptance constraints are complete.
 5. Device-facing work is committed, integrated, and pushed to canonical preview.
 6. The served or installed build is confirmed as that exact revision.
 7. Agent-owned simulator, accessibility, preview, and smoke checks pass.
@@ -476,7 +463,7 @@ lifecycle history. Lifecycle is **Captured → Watching → Candidate → Planne
 - Captured preserves the outcome without prioritizing it.
 - Watching means evidence or dependencies are being monitored.
 - Candidate is a recommendation only and does not authorize Scope.
-- Planned requires explicit Baah Scope and Plan approvals recorded in Linear.
+- Planned requires Baah's product-intent approval and the agent-owned Plan recorded in Linear.
 - Shipped requires canonical `main` merge evidence and applicable acceptance.
 - Dropped requires Baah's explicit decision or documented supersession evidence.
 

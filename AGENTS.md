@@ -1,118 +1,81 @@
 # Taisa Agent Operating Instructions
 
-## Mandatory startup
+## Matt-first engineering router
 
-At the start of every scoped delivery cycle:
-
-1. Read `docs/workflow.md` and `.agents/skills/taisa-workflow/SKILL.md` completely.
-2. Read `docs/project-memory.md`, then inspect only the accepted decisions, reusable learnings, and canonical domain documents relevant to the task.
-3. Query the Taisa Linear project, milestones, active issues, dependencies, blockers, Scope/Plan evidence, and approvals.
-4. Inspect the current branch, working tree, worktrees, remote tracking, relevant contracts, verification evidence, preview revision, and active delivery chats.
-5. Reconcile contradictions before modifying product code.
-6. State the work tier, Linear issue/milestone, current stage, branch, blocker, next action, and next Baah approval gate.
-7. Invoke the Superpowers process skill required by the Taisa orchestrator.
-
-Within a stable cycle, re-read only state whose issue, approval, dependency, branch/worktree,
-PR, CI, preview, or remote revision changed. Do not repeat global orientation merely because
-a new turn or bounded Goal run began.
-
-Read-only questions require orientation but do not create branches or workflow artifacts.
-
-Bias toward activation: when a request is ambiguous but plausibly asks for a Taisa change,
-investigation, design, process improvement, or delivery action, run lightweight workflow
-orientation and infer the lightest fitting tier. Missing workflow keywords never turns an
-actionable request into a future-only direction. Every actionable task requires a
-non-duplicate Linear issue before work; activation does not bypass approval gates.
-
-## Agent skills
-
-Matt Pocock’s engineering skills use Taisa’s existing authorities:
-
-- **Issue tracker:** Linear. See `docs/agents/issue-tracker.md`.
-- **Triage labels:** intake classification only. See `docs/agents/triage-labels.md`.
-- **Domain docs:** multi-context, routed through `docs/project-memory.md`. See `docs/agents/domain.md`.
-
-## Authority and gates
-
-Linear is the sole live authority. It owns roadmap, task intake, priority, ownership, stage,
-dependencies, blockers, Scope, Plan, acceptance, discussion, and gate evidence.
-`docs/workflow.md` and the Taisa orchestrator define how work is performed; Git owns
-versioned technical truth. Quick and ordinary Standard work uses one explicit kickoff bundle
-to approve Scope and Plan together. Full or high-risk work uses separate Scope and Plan
-approval. Baah retains physical-device judgment and Ship.
-The agent owns routine Linear, Git, GitHub, verification, and code-coupled documentation
-housekeeping within those approvals.
-
-One delivery cycle has one primary Linear issue and one accountable conductor. Platform,
-Product, and Integration remain exclusive internal work slices under that conductor, not
-separate persistent Goals. Product work still uses the design-handoff process for UI design
-and implementation readiness.
-
-After approval, use `.agents/skills/taisa-workflow/templates/bounded-goal.md` for one BUILD,
-REPAIR, or SHIP run. A Goal completes at its named terminal outcome and never stays active
-solely to wait for Baah or unchanged CI, device, or service state. It never selects successor
-work or infers approval.
-
-One Baah defect observation enters `REPAIR_QUARANTINE`. The agent owns reproduction,
-diagnosis, fix, verification, exact preview publication, and smoke testing before one focused
-retest. Until the repair-release gate passes, the issue is `Unfixed; blocking; unshippable`.
-Do not use Baah as a repeated exploratory tester.
-
+Linear is the sole live authority for roadmap, task intake, priority, ownership, stage,
+dependencies, blockers, Scope, acceptance, discussion, and gate evidence. Git owns versioned
+technical truth. Every actionable task needs a non-duplicate Linear issue before work begins.
 If Linear is unavailable, continue only already-approved work supported by trusted recent
-Scope/Plan context and Git evidence. Do not start or advance work, change a blocker, or claim
-approval until Linear is available and reconciled.
+context and Git evidence; do not start or advance work, change a blocker, or claim approval.
 
-Clear Ship approval authorizes the verified pull-request merge and safe deletion of the merged local and remote work branch. It does not authorize force-pushes, history rewrites, deletion of unmerged work, or removal of unrelated worktrees.
+After lightweight Linear, branch/worktree, dependency, and relevant-domain orientation, choose
+exactly one primary Matt route in this precedence order:
 
-## Safety
+1. A hard bug or performance regression routes to `diagnosing-bugs`, even when the repair may
+   fit in one focused session.
+2. A foggy or stalled effort routes to `wayfinder` before implementation.
+3. Repo feature or change discovery routes to `grill-with-docs` so decisions become durable
+   evidence rather than a conversational checklist.
+4. Approved work that fits in one focused session routes to `implement`.
+5. Approved multi-session work routes to `to-spec`, then `to-tickets`, then per-ticket
+   `implement`. Tickets are vertical tracer slices with native Linear blocker relationships;
+   each tracer contains its creative and functional loops, TDD, Standards review, Spec review,
+   focused verification, and a meaningful cumulative Preview checkpoint.
+6. Delivery closeout and process waste route to `retro`. Apply small reversible improvements
+   autonomously; return material authority, safety, Preview, cost, or Ship changes to Baah.
 
-Preserve user changes. Never develop directly on `main`. Never delete a branch until its commits are accounted for in canonical `main`. Stop and report dirty worktrees, unique commits, failed checks, conflicts, unexpected pull-request bases, or unverifiable remote state.
+Ordinary technical Plan approval is not a Baah gate. Baah decides product intent, priorities,
+exclusions, materially different or difficult-to-reverse experience choices, security,
+privacy, destructive-data and paid-service choices, tracer experience reviews, physical and
+perceptual QA, and Ship. The agent owns specification, tracer decomposition, blockers,
+branches and worktrees, routine product and engineering judgment, tests, review, verification,
+pull requests, and delivery mechanics within those decisions.
 
-## Product and architecture constraints
+## Taisa safety invariants
 
-Taisa is a personal AI career companion. Users capture daily work by voice; the native
-product turns it into evidence-grounded coaching, wins, challenges, actions, and CV-worthy
-moments. The shipping direction is a SwiftUI iPhone/iPad product; React Native remains a
-legacy migration source until its required behavior and unique work are accounted for.
+- Preserve user changes. Never develop directly on `main`. Stop on dirty worktrees, unique
+  commits, failed checks, conflicts, unexpected pull-request bases, or unverifiable remote
+  state. Never delete a branch until its commits are accounted for in canonical `main`.
+- Keep readable personal data encrypted and device-authoritative. Preserve the current v1
+  identity boundary unless approved Scope changes it: the device UUID is the user identifier;
+  do not add application authentication middleware accidentally.
+- Every Product build is design-system-first. Inventory each component, style, token, and icon
+  from Central Icons before Product implementation. Every authored visual style must use an existing semantic
+  design-system token or component. A missing semantic role is a DS gap:
+  stop before Product or screen code, tell Baah the affected surfaces and recommendation, and
+  record Baah's approval in Linear before the exact shared-system addition or narrow exception
+  proceeds. At code review and before merge approval, audit Product work already built. Replace every eligible
+  feature-local presentation with the available design-system contract. If an
+  item is unavailable, tell Baah which surface is affected and keep the gate closed.
+- Preserve SwiftUI and iOS/iPadOS 26+ as the shipping direction. React Native is a legacy
+  migration source. Never run `npx expo run:ios` or `npx expo eject` without explicit approval.
+- The legacy backend remains Node/Express with SQLite and no migration framework; schema
+  changes need an approved migration path. Install `mobile/` dependencies from `mobile/`;
+  root workspaces are `backend` and `shared`. Rebuilt legacy UI uses NativeWind, never new
+  `StyleSheet.create()`. Do not confuse the legacy analyser with the unimplemented four-mode
+  Senior Self experience: Mirror, Nudge, Challenge, and Direct.
+- Clear Ship approval authorizes only the verified pull-request merge and safe deletion of the
+  merged work branch. It never authorizes force-pushes, history rewrites, deletion of unmerged
+  work, or removal of unrelated worktrees.
 
-Every Product build is design-system-first. Before Product Scope or Plan approval, inventory
-each visible component, interaction style, token, and icon, then map it to an existing shared
-component, semantic style/token, and Central Icons asset. If any required item is unavailable,
-stop before screen or Product code, tell Baah which surfaces are affected and recommend one
-reuse, extension, addition, or narrow system-owned exception. The build must not proceed until
-Baah approves that exact treatment and the approval is recorded in Linear. Never silently build
-a feature-local substitute, parallel component API, raw style, invented icon mapping, SF Symbol
-substitution, or design-system extension. Implement approved design-system contracts and tests
-before their screen consumers.
+## Conditional Taisa extensions
 
-The same gate applies to Product work already built before this rule or first discovered during
-code review. Before merge or Ship approval, audit the complete changed Product surface and
-replace every eligible feature-local component, style, token, and icon with the available DS
-component/style/token or Central icon. Tell Baah every remaining unavailable item, affected
-surface, and recommended DS addition or narrow system-owned exception. Never request or infer
-approval while an available adoption remains undone or an unavailable item has not been shown
-to Baah.
+Load only the adapter triggered by the work:
 
-- Preserve SwiftUI and the iOS/iPadOS 26+ deployment target.
-- Keep readable personal data encrypted and device-authoritative.
-- Preserve the current v1 identity boundary unless an approved Scope changes it: the device
-  UUID is the user identifier. Do not add application auth middleware by accident.
-- The legacy backend remains Node/Express with SQLite and no migration framework. Schema
-  changes require an approved migration path and matching durable documentation.
-- Do not run `npx expo run:ios` or `npx expo eject` without explicit approval; use
-  `npx expo start` for the legacy application. Install `mobile/` dependencies from `mobile/`;
-  root workspaces are `backend` and `shared` only.
-- New or rebuilt legacy UI uses NativeWind and the documented design system; do not add
-  `StyleSheet.create()` to new or rebuilt components.
-- Every authored visual style must use an existing semantic design-system token or component.
-  Do not introduce raw or arbitrary colors, typography, spacing, radii, shadows, materials,
-  motion values, or one-off style variants in Product UI. If the required semantic role does
-  not exist, extend, document, and verify the design system before consuming it in a screen.
-- Do not confuse the legacy one-shot journal analyser with the unimplemented four-mode Senior
-  Self experience: Mirror, Nudge, Challenge, and Direct.
+- Linear operation and evidence: `docs/agents/issue-tracker.md`.
+- Domain, privacy, data, identity, and architecture: `docs/project-memory.md`, then only the
+  relevant canonical documents it routes to.
+- Product UI: `docs/design-system.md` plus `design-handoff`.
+- Canonical Preview, QA, repair quarantine, and Ship: the applicable sections of
+  `docs/workflow.md` and `.agents/skills/taisa-workflow/SKILL.md` until thin adapters replace
+  the legacy source. These sources retain safety contracts but do not restore ordinary Plan
+  approval or override the Matt-first route.
+- Triage classification only: `docs/agents/triage-labels.md`.
 
-Read `docs/project-memory.md` to route to the narrowest relevant domain source. Common
-commands are `npm run backend`, `npm run mobile`, and `npm run verify:native-apple:all`.
+A Taisa extension must name the unmet need, use the smallest mechanism, and state when it can
+be removed. During APF-80's expand phase, the legacy workflow remains reachable for retained
+safety contracts. APF-86 removes its duplicated process only after the tracer workflow is
+proven.
 
 `CLAUDE.md` is a compatibility pointer for consumers that discover that filename. It must not
 carry an independently editable copy of these instructions.
