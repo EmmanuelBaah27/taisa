@@ -1,5 +1,32 @@
 import SwiftUI
+import TaisaDesignSystem
+import TaisaHome
 import TaisaStorage
+
+struct CompletionEvidenceSheet: View {
+    let item: WeeklyWorkItem
+    let model: HomeModel
+    @State private var evidenceTitle = ""
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section("Completion evidence") {
+                    TaisaField("What shows this is complete?", text: $evidenceTitle, placeholder: "Describe the delivered result")
+                    TaisaButton(role: .primary, label: "Complete action", icon: .completeAction, isEnabled: !trimmedEvidence.isEmpty) {
+                        let evidence = trimmedEvidence
+                        Task { await model.complete(actionID: item.action.id, evidenceTitle: evidence); dismiss() }
+                    }
+                }
+            }
+            .navigationTitle(item.action.title)
+            .accessibilityIdentifier("home.this-week.completion-evidence")
+        }
+    }
+
+    private var trimmedEvidence: String { evidenceTitle.trimmingCharacters(in: .whitespacesAndNewlines) }
+}
 
 enum HomeIntent: Sendable, Equatable {
     case conversation(String)
@@ -60,17 +87,7 @@ struct ActionRow: View {
 
     var body: some View {
         Button { send(.action(action.id)) } label: {
-            HStack {
-                Image(systemName: "circle")
-                VStack(alignment: .leading) {
-                    Text(action.title)
-                    if let dueAtMS = action.dueAtMS {
-                        Text(Date(timeIntervalSince1970: Double(dueAtMS) / 1_000), format: .dateTime.day().month())
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-            }
+            TaisaRow(title: action.title, supporting: action.dueDay.map { "Due \($0.rawValue)" }, icon: .action)
         }
     }
 }

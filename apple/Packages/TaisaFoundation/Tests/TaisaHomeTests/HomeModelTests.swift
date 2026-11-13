@@ -96,10 +96,10 @@ import TaisaStorage
         #expect(model.state == .content(populatedSnapshot(title: "Newest"), isRefreshing: false, issue: nil))
     }
 
-    @Test func completeUndoPlaceAndMoveUseLocalMutationsThenReload() async throws {
+    @Test func completeCorrectionPlaceAndMoveUseCanonicalMutationsThenReload() async throws {
         let recorder = MutationRecorder()
-        let action = ActionRecord(id: UUID().uuidString, goalID: nil, title: "Work", detail: "", status: "open", dueAtMS: nil, createdAtMS: 1, updatedAtMS: 1)
-        let token = WeeklyWorkUndoToken(action: action)
+        let action = makeAction(id: UUID().uuidString, status: .active)
+        let result = completionResult(action: action)
         let responses = ResponseQueue([
             .success(populatedSnapshot(title: "Initial")),
             .success(populatedSnapshot(title: "Completed")),
@@ -109,41 +109,41 @@ import TaisaStorage
         ])
         let model = HomeModel(client: HomeClient(
             load: { try await responses.next() },
-            complete: { id in await recorder.record("complete", id: id); return token },
-            restore: { value in await recorder.record("restore", id: value.action.id) },
+            complete: { id, evidence in await recorder.record("complete:\(evidence)", id: id); return result },
+            correctCompletion: { id, eventID in await recorder.record("correct:\(eventID)", id: id); return action },
             place: { id, _, _ in await recorder.record("place", id: id) },
             move: { id, _, _ in await recorder.record("move", id: id) }
         ))
         await model.load()
 
-        await model.complete(actionID: action.id)
+        await model.complete(actionID: action.id, evidenceTitle: "Shipped the work")
         #expect(model.canUndoCompletion)
         await model.undoCompletion()
         #expect(!model.canUndoCompletion)
         await model.place(actionID: action.id, weekContaining: Date(timeIntervalSince1970: 100), plannedDay: nil)
         await model.move(actionID: action.id, weekContaining: Date(timeIntervalSince1970: 200), plannedDay: Date(timeIntervalSince1970: 300))
 
-        #expect(await recorder.values == ["complete:\(action.id)", "restore:\(action.id)", "place:\(action.id)", "move:\(action.id)"])
+        #expect(await recorder.values == ["complete:Shipped the work:\(action.id)", "correct:\(result.event.id):\(action.id)", "place:\(action.id)", "move:\(action.id)"])
         #expect(model.state == .content(populatedSnapshot(title: "Moved"), isRefreshing: false, issue: nil))
     }
 
     @Test func staleMutationCompletionCannotOverwriteNewerLocalState() async {
         let gate = CompletionGate()
         let responses = ResponseQueue([.success(populatedSnapshot(title: "Newest"))])
-        let model = HomeModel(client: HomeClient(load: { try await responses.next() }, complete: { try await gate.next(id: $0) }))
+        let model = HomeModel(client: HomeClient(load: { try await responses.next() }, complete: { try await gate.next(id: $0, evidenceTitle: $1) }))
         let olderID = UUID().uuidString
         let newerID = UUID().uuidString
 
-        let older = Task { await model.complete(actionID: olderID) }
+        let older = Task { await model.complete(actionID: olderID, evidenceTitle: "Older evidence") }
         await gate.waitForRequests(1)
-        let newer = Task { await model.complete(actionID: newerID) }
+        let newer = Task { await model.complete(actionID: newerID, evidenceTitle: "Newer evidence") }
         await gate.waitForRequests(2)
         await gate.resolveRequest(1)
         await newer.value
         await gate.resolveRequest(0)
         await older.value
 
-        #expect(model.completionUndoToken?.action.id == newerID)
+        #expect(model.completionCorrection?.actionID == newerID)
         #expect(model.state == .content(populatedSnapshot(title: "Newest"), isRefreshing: false, issue: nil))
     }
 
@@ -161,10 +161,37 @@ import TaisaStorage
 
         try await client.place(action.id, date, nil)
         #expect(try await client.load().thisWeek.map(\.action.id) == [action.id])
-        let token = try await client.complete(action.id)
+        let result = try await client.complete(action.id, "Delivered the local work")
         #expect(try await client.load().thisWeek.isEmpty)
-        try await client.restore(token)
-        #expect(try await client.load().thisWeek.map(\.action.id) == [action.id])
+        let completedDetail = try #require(try await CareerWorkQuery(store: store).actionDetail(id: action.id))
+        #expect(completedDetail.currentEvidence.map(\.title) == ["Delivered the local work"])
+        #expect(completedDetail.events.contains { $0.id == result.event.id && $0.kind == .completed })
+
+        _ = try await client.correctCompletion(action.id, result.event.id)
+        #expect(try await client.load().thisWeek.isEmpty, "Correction must not silently restore weekly placement")
+        let correctedDetail = try #require(try await CareerWorkQuery(store: store).actionDetail(id: action.id))
+        #expect(correctedDetail.currentEvidence.isEmpty)
+        #expect(correctedDetail.supersededEvidence.map(\.title) == ["Delivered the local work"])
+        #expect(correctedDetail.events.contains { $0.kind == .completionCorrected })
+    }
+
+    @Test func localLifecycleMutationsNeverRestoreRemovedWeeklyPlacement() async throws {
+        let fixture = try await LocalFixture.make()
+        defer { try? FileManager.default.removeItem(at: fixture.directory) }
+        let client = fixture.client
+        let action = fixture.action
+
+        try await client.place(action.id, fixture.date, nil)
+        _ = try await client.drop(action.id)
+        #expect(try await client.load().thisWeek.isEmpty)
+        _ = try await client.reopen(action.id)
+        #expect(try await client.load().thisWeek.isEmpty)
+
+        try await client.place(action.id, fixture.date, nil)
+        try await client.delete(action.id)
+        #expect(try await client.load().thisWeek.isEmpty)
+        _ = try await client.restoreDeleted(action.id)
+        #expect(try await client.load().thisWeek.isEmpty)
     }
 }
 
@@ -243,10 +270,10 @@ private actor HomeKeys: DatabaseKeyStore {
 }
 
 private actor CompletionGate {
-    private struct Request { let id: String; let continuation: CheckedContinuation<WeeklyWorkUndoToken, any Error> }
+    private struct Request { let id: String; let continuation: CheckedContinuation<ActionCompletionResult, any Error> }
     private var requests: [Request] = []
     private var waiters: [(Int, CheckedContinuation<Void, Never>)] = []
-    func next(id: String) async throws -> WeeklyWorkUndoToken {
+    func next(id: String, evidenceTitle: String) async throws -> ActionCompletionResult {
         try await withCheckedThrowingContinuation { continuation in
             requests.append(Request(id: id, continuation: continuation))
             let ready = waiters.filter { requests.count >= $0.0 }
@@ -260,6 +287,36 @@ private actor CompletionGate {
     }
     func resolveRequest(_ index: Int) {
         let request = requests.remove(at: index)
-        request.continuation.resume(returning: WeeklyWorkUndoToken(action: ActionRecord(id: request.id, goalID: nil, title: "", detail: "", status: "open", dueAtMS: nil, createdAtMS: 1, updatedAtMS: 1)))
+        request.continuation.resume(returning: completionResult(action: makeAction(id: request.id, status: .completed)))
+    }
+}
+
+private func makeAction(id: String, status: ActionStatus) -> ActionRecord {
+    ActionRecord(id: id, goalID: nil, title: "Work", detail: "", status: status.rawValue, dueAtMS: nil, createdAtMS: 1, updatedAtMS: 1)
+}
+
+private func completionResult(action: ActionRecord) -> ActionCompletionResult {
+    let event = ActionEventRecord(id: UUID().uuidString, actionID: action.id, kind: .completed, fromStatus: .active, toStatus: .completed, detail: nil, source: .user, sourceID: nil, occurredAtMS: 2)
+    let evidence = EvidenceRecord(id: UUID().uuidString, goalID: action.goalID, actionID: action.id, title: "Evidence", detail: "", occurredAtMS: 2, createdAtMS: 2)
+    return ActionCompletionResult(action: action, evidence: evidence, event: event)
+}
+
+private struct LocalFixture {
+    let directory: URL
+    let store: TaisaStore
+    let client: HomeClient
+    let action: ActionRecord
+    let date: Date
+
+    static func make() async throws -> LocalFixture {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let store = try await TaisaStore.open(at: directory.appendingPathComponent("store.sqlite"), keyStore: HomeKeys())
+        let date = Date(timeIntervalSince1970: 1_782_086_400)
+        let zone = try #require(TimeZone(identifier: "UTC"))
+        let record = makeAction(id: UUID().uuidString, status: .active)
+        let deviceID = UUID().uuidString
+        try await ActionRepository(store: store).create(record, context: .init(id: UUID().uuidString, deviceID: deviceID, timestamp: 1))
+        return LocalFixture(directory: directory, store: store, client: .local(store: store, deviceID: deviceID, now: { date }, timeZone: { zone }), action: record, date: date)
     }
 }

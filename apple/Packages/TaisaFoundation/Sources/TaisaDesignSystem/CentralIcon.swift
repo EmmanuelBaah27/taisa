@@ -20,6 +20,20 @@ public enum CentralIconName: Sendable, Equatable {
     case thumbsDown
     case copy
     case edit
+    case action
+    case checklist
+    case add
+    case incomplete
+    case completeAction
+    case completed
+    case drop
+    case delete
+    case undo
+    case evidence
+    case history
+    case goal
+    case milestone
+    case warning
 }
 
 /// Native rendering of the Central Icons paths used by Taisa's primary navigation.
@@ -70,6 +84,19 @@ public struct CentralIcon: View {
         case .thumbsDown: thumbsDown
         case .copy: copy
         case .edit: edit
+        case .action, .checklist: checklist
+        case .add: add
+        case .incomplete: incomplete
+        case .completeAction: completeAction
+        case .completed: completed
+        case .drop: drop
+        case .delete: delete
+        case .undo: undo
+        case .evidence: evidence
+        case .history: history
+        case .goal: goal
+        case .milestone: milestone
+        case .warning: warning
         }
     }
 
@@ -78,6 +105,91 @@ public struct CentralIcon: View {
         var path = Path()
         path.addEllipse(in: CGRect(x: 11.375, y: 7.375, width: 1.25, height: 1.25))
         return path
+    }
+
+    private var checklist: Path {
+        var p = Path()
+        p.move(to: .init(x: 13, y: 16)); p.addLine(to: .init(x: 20, y: 16))
+        p.move(to: .init(x: 13, y: 8)); p.addLine(to: .init(x: 20, y: 8))
+        p.move(to: .init(x: 4, y: 9)); p.addLine(to: .init(x: 5.5, y: 10)); p.addLine(to: .init(x: 8.5, y: 6))
+        p.move(to: .init(x: 4, y: 17)); p.addLine(to: .init(x: 5.5, y: 18)); p.addLine(to: .init(x: 8.5, y: 14))
+        return p
+    }
+
+    private var add: Path {
+        var p = Path()
+        p.move(to: .init(x: 12, y: 5.5)); p.addLine(to: .init(x: 12, y: 18.5))
+        p.move(to: .init(x: 5.5, y: 12)); p.addLine(to: .init(x: 18.5, y: 12))
+        return p
+    }
+
+    private var incomplete: Path {
+        var p = Path()
+        for angle in stride(from: 0.0, to: 360.0, by: 22.5) {
+            let radians = angle * .pi / 180
+            let point = CGPoint(x: 12 + 9 * cos(radians), y: 12 + 9 * sin(radians))
+            p.move(to: point); p.addLine(to: CGPoint(x: point.x + 0.01, y: point.y + 0.01))
+        }
+        return p
+    }
+
+    private var completeAction: Path {
+        var p = Path(); p.addEllipse(in: .init(x: 3, y: 3, width: 18, height: 18)); return p
+    }
+
+    private var completed: Path {
+        var p = completeAction
+        p.move(to: .init(x: 8, y: 12.875)); p.addLine(to: .init(x: 10.625, y: 15.5)); p.addLine(to: .init(x: 15, y: 9))
+        return p
+    }
+
+    private var drop: Path {
+        var p = Path()
+        p.move(to: .init(x: 20, y: 8)); p.addLine(to: .init(x: 20, y: 15.2)); p.addCurve(to: .init(x: 15.2, y: 20), control1: .init(x: 20, y: 18.4), control2: .init(x: 18.4, y: 20)); p.addLine(to: .init(x: 8.8, y: 20)); p.addCurve(to: .init(x: 4, y: 15.2), control1: .init(x: 5.6, y: 20), control2: .init(x: 4, y: 18.4)); p.addLine(to: .init(x: 4, y: 8))
+        p.addRect(.init(x: 3, y: 4, width: 18, height: 4))
+        p.move(to: .init(x: 10, y: 12)); p.addLine(to: .init(x: 14, y: 12))
+        return p
+    }
+
+    private var delete: Path {
+        var p = Path()
+        p.move(to: .init(x: 5, y: 6.5)); p.addLine(to: .init(x: 5.807, y: 18.206)); p.addCurve(to: .init(x: 8.8, y: 21), control1: .init(x: 5.916, y: 19.779), control2: .init(x: 7.223, y: 21)); p.addLine(to: .init(x: 15.2, y: 21)); p.addCurve(to: .init(x: 18.193, y: 18.206), control1: .init(x: 16.777, y: 21), control2: .init(x: 18.084, y: 19.779)); p.addLine(to: .init(x: 19, y: 6.5))
+        p.move(to: .init(x: 10, y: 11)); p.addLine(to: .init(x: 10, y: 16)); p.move(to: .init(x: 14, y: 11)); p.addLine(to: .init(x: 14, y: 16)); p.move(to: .init(x: 3.5, y: 6)); p.addLine(to: .init(x: 20.5, y: 6))
+        p.move(to: .init(x: 8.071, y: 5.746)); p.addCurve(to: .init(x: 15.929, y: 5.746), control1: .init(x: 8.423, y: 3.897), control2: .init(x: 15.577, y: 3.897))
+        return p
+    }
+
+    private var undo: Path {
+        var p = Path()
+        p.move(to: .init(x: 6.5, y: 5)); p.addLine(to: .init(x: 3.56, y: 7.94)); p.addCurve(to: .init(x: 3.56, y: 10.06), control1: .init(x: 2.975, y: 8.525), control2: .init(x: 2.975, y: 9.475)); p.addLine(to: .init(x: 6.5, y: 13))
+        p.move(to: .init(x: 4, y: 9)); p.addLine(to: .init(x: 16.5, y: 9)); p.addCurve(to: .init(x: 16.5, y: 18), control1: .init(x: 22.5, y: 9), control2: .init(x: 22.5, y: 18)); p.addLine(to: .init(x: 12, y: 18))
+        return p
+    }
+
+    private var evidence: Path {
+        var p = Path()
+        p.move(to: .init(x: 12.172, y: 3)); p.addLine(to: .init(x: 8, y: 3)); p.addCurve(to: .init(x: 5, y: 6), control1: .init(x: 6.343, y: 3), control2: .init(x: 5, y: 4.343)); p.addLine(to: .init(x: 5, y: 18)); p.addCurve(to: .init(x: 8, y: 21), control1: .init(x: 5, y: 19.657), control2: .init(x: 6.343, y: 21)); p.addLine(to: .init(x: 16, y: 21)); p.addCurve(to: .init(x: 19, y: 18), control1: .init(x: 17.657, y: 21), control2: .init(x: 19, y: 19.657)); p.addLine(to: .init(x: 19, y: 9.828)); p.addLine(to: .init(x: 12.172, y: 3));
+        p.move(to: .init(x: 13, y: 3.5)); p.addLine(to: .init(x: 13, y: 7)); p.addCurve(to: .init(x: 15, y: 9), control1: .init(x: 13, y: 8.105), control2: .init(x: 13.895, y: 9)); p.addLine(to: .init(x: 18.5, y: 9)); p.move(to: .init(x: 9, y: 13)); p.addLine(to: .init(x: 12, y: 13)); p.move(to: .init(x: 9, y: 17)); p.addLine(to: .init(x: 15.5, y: 17))
+        return p
+    }
+
+    private var history: Path {
+        var p = Path()
+        p.move(to: .init(x: 3, y: 5)); p.addLine(to: .init(x: 3, y: 9)); p.addLine(to: .init(x: 7, y: 9))
+        p.move(to: .init(x: 3.512, y: 15)); p.addCurve(to: .init(x: 3.706, y: 8.5), control1: .init(x: 1.8, y: 10), control2: .init(x: 2.4, y: 9)); p.addCurve(to: .init(x: 12, y: 3), control1: .init(x: 5.071, y: 5.268), control2: .init(x: 8.27, y: 3)); p.addEllipse(in: .init(x: 3, y: 3, width: 18, height: 18)); p.move(to: .init(x: 12, y: 8)); p.addLine(to: .init(x: 12, y: 12)); p.addLine(to: .init(x: 15, y: 15))
+        return p
+    }
+
+    private var goal: Path {
+        var p = Path(); p.addEllipse(in: .init(x: 3, y: 3, width: 18, height: 18)); p.addEllipse(in: .init(x: 7, y: 7, width: 10, height: 10)); p.addEllipse(in: .init(x: 11, y: 11, width: 2, height: 2)); return p
+    }
+
+    private var milestone: Path {
+        var p = Path(); p.move(to: .init(x: 5, y: 15)); p.addLine(to: .init(x: 5, y: 4)); p.addCurve(to: .init(x: 6, y: 3), control1: .init(x: 5, y: 3.448), control2: .init(x: 5.448, y: 3)); p.addLine(to: .init(x: 19.132, y: 3)); p.addLine(to: .init(x: 17.37, y: 8.445)); p.addLine(to: .init(x: 19.132, y: 15)); p.addLine(to: .init(x: 5, y: 15)); p.addLine(to: .init(x: 5, y: 21)); return p
+    }
+
+    private var warning: Path {
+        exclamationCircle
     }
 
     private var homeLine: Path {

@@ -9,19 +9,27 @@ public enum CareerWorkIssue: Sendable, Equatable {
 
 public struct CareerWorkProductSnapshot: Sendable, Equatable {
     public let overview: CareerWorkOverview
+    public let actions: [ActionRecord]
+    public let milestones: [MilestoneRecord]
+    public let deletedActions: [ActionRecord]
     public let selectedGoal: CareerGoalSnapshot?
     public let selectedAction: ActionRecord?
+    public let selectedActionDetail: ActionDetailSnapshot?
     public let selectedEvidence: EvidenceRecord?
 
-    public init(overview: CareerWorkOverview, selectedGoal: CareerGoalSnapshot?, selectedAction: ActionRecord? = nil, selectedEvidence: EvidenceRecord? = nil) {
+    public init(overview: CareerWorkOverview, actions: [ActionRecord] = [], milestones: [MilestoneRecord] = [], deletedActions: [ActionRecord] = [], selectedGoal: CareerGoalSnapshot?, selectedAction: ActionRecord? = nil, selectedActionDetail: ActionDetailSnapshot? = nil, selectedEvidence: EvidenceRecord? = nil) {
         self.overview = overview
+        self.actions = actions
+        self.milestones = milestones
+        self.deletedActions = deletedActions
         self.selectedGoal = selectedGoal
         self.selectedAction = selectedAction
+        self.selectedActionDetail = selectedActionDetail
         self.selectedEvidence = selectedEvidence
     }
 
     public var isEmpty: Bool {
-        overview.active.isEmpty && overview.paused.isEmpty && overview.completed.isEmpty && overview.archived.isEmpty
+        overview.active.isEmpty && overview.paused.isEmpty && overview.completed.isEmpty && overview.archived.isEmpty && actions.isEmpty && deletedActions.isEmpty
     }
 }
 

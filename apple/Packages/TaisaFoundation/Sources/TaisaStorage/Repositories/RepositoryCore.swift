@@ -92,7 +92,7 @@ enum DomainEntity: String, CaseIterable {
         switch self {
         case .message: [("conversationID", "conversation_id", "conversations")]
         case .milestone: [("goalID", "goal_id", "goals")]
-        case .action: [("goalID", "goal_id", "goals")]
+        case .action: [("goalID", "goal_id", "goals"), ("milestoneID", "milestone_id", "milestones")]
         case .evidence: [("goalID", "goal_id", "goals"), ("actionID", "action_id", "actions")]
         case .memory_source: [("memoryItemID", "memory_item_id", "memory_items")]
         case .voice_turn: [
