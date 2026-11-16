@@ -159,6 +159,28 @@ It includes a table of contents, one accountable owner per vertical tracer, user
 dependency, approval point, size (`XS / S / M / L / XL`), pickup order, parallel work,
 critical path, progress counters, and a pace forecast only after repository inspection.
 
+### Multi-session tracer delivery
+
+After product/design intent is approved, `to-spec` produces the engineering specification and
+`to-tickets` decomposes it into vertical tracer tickets. Each ticket must expose working user
+value, use native Linear `blockedBy` relationships for real dependencies, and name its focused
+proof. Ticket granularity, blocker edges, implementation seams, and test seams are agent-owned.
+Baah reviews working tracer experiences, not the technical Plan or ticket graph.
+
+Run every ticket through `implement` in a fresh implementation context. The ticket is the
+bounded context: read its spec slice, current contracts, and direct blockers; do not reload an
+unrelated delivery history. Complete its creative and functional loops with TDD and focused
+proof, then run ticket-level Standards and Spec review. Publish the cumulative Preview when the
+checkpoint is meaningful, or record why it is not meaningful, before marking the tracer ready.
+
+A tracer awaiting Baah experience feedback blocks only tickets whose product decision depends
+on it. Continue other ready tickets while that review is pending. Dependent tickets remain
+blocked until the decision is recorded in Linear; do not infer approval from silence.
+
+After every tracer has that evidence and all tickets are integrated, run one whole-spec review.
+This is a prerequisite—not the complete freeze gate. Resolve its blocking findings, then apply
+the full candidate-freeze contract before the complete verification matrix.
+
 ### Discussion Map
 
 After selecting a slice, present its agenda before the first substantive question and keep

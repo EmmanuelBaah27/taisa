@@ -86,6 +86,14 @@ Standard/Full work begins with a Linear-linked Work Map: vertical tracers, accou
 user outcome, dependency, approval, `XS / S / M / L / XL`, pickup order, parallel work,
 critical path, counters, and an evidence-based pace estimate.
 
+For multi-session work, `to-spec` creates the engineering specification and `to-tickets`
+creates vertical tracer tickets with native Linear blocker relationships. Ticket granularity,
+blocker edges, implementation seams, and test seams are agent-owned. Run each ready ticket
+through `implement` in a fresh implementation context with TDD, focused proof, Standards
+review, Spec review, and a cumulative Preview checkpoint when meaningful. A tracer awaiting Baah experience feedback blocks only dependent
+tickets; continue independent ready tickets. After integration, whole-spec review must pass
+as a prerequisite before the full candidate-freeze contract.
+
 Show a Discussion Map before the first substantive question:
 
 - **Platform discussion:** outcome, current system, ownership/persistence, behavior, Product

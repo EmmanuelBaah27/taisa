@@ -19,6 +19,8 @@ test -f docs/learnings.md || fail "reusable learning log is missing"
 node scripts/canonical-origin.mjs "$(git remote get-url origin)" || fail "origin does not use the canonical Taisa URL"
 node --test scripts/__tests__/matt-workflow-routing.test.mjs ||
   fail "representative Matt workflow routing fixtures failed"
+node --test scripts/__tests__/tracer-delivery.test.mjs ||
+  fail "multi-session tracer delivery fixtures failed"
 
 active_skills=(
   taisa-workflow
@@ -129,6 +131,21 @@ done
 require_workflow_multiline_pattern docs/workflow.md \
   'Platform, Product, and Integration are discussion lenses, never exclusive ticket owners or.*persistent tracks.*vertical tracer may cross all three' \
   'non-persistent Platform/Product/Integration vocabulary'
+require_workflow_multiline_pattern docs/workflow.md \
+  'to-spec.*to-tickets.*vertical tracer.*blockedBy.*granularity.*blocker edges.*implementation seams.*test seams are agent-owned' \
+  'agent-owned multi-session tracer decomposition'
+require_workflow_multiline_pattern docs/workflow.md \
+  'fresh implementation context.*creative and functional loops.*TDD.*focused.*Standards.*Spec review.*cumulative Preview' \
+  'fresh per-ticket implementation and review loop'
+require_workflow_pattern docs/workflow.md \
+  'awaiting Baah experience feedback blocks only' 'narrow tracer review blocker'
+require_workflow_pattern docs/workflow.md \
+  'Continue other ready tickets' 'independent ready-ticket continuation'
+require_workflow_pattern docs/workflow.md \
+  'Dependent tickets remain' 'dependent ticket wait behavior'
+require_workflow_multiline_pattern docs/workflow.md \
+  'whole-spec review.*prerequisite.*full candidate-freeze contract' \
+  'whole-spec review prerequisite to full candidate freeze'
 if rg -qi 'Platform and independent Product foundation|Integration begins only when both|Baah chooses Wait or an approved skeleton' \
   docs/workflow.md .agents/skills/taisa-workflow/SKILL.md; then
   fail "legacy horizontal-track sequencing remains"
