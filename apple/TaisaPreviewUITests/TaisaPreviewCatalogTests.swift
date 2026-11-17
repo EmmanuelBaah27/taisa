@@ -71,6 +71,17 @@ final class TaisaPreviewCatalogTests: XCTestCase {
         app.launch()
 
         XCTAssertTrue(element("preview.ready.home.taskComposer", in: app).waitForExistence(timeout: 5))
+        let due = app.buttons["Due"]
+        XCTAssertTrue(due.waitForExistence(timeout: 5))
+        due.tap()
+        let done = app.buttons["Done"]
+        XCTAssertTrue(done.waitForExistence(timeout: 5))
+        done.tap()
+        let selectedDueDate = app.buttons.matching(
+            NSPredicate(format: "label BEGINSWITH %@", "Due date,")
+        ).firstMatch
+        XCTAssertTrue(selectedDueDate.waitForExistence(timeout: 5))
+        XCTAssertNotEqual(selectedDueDate.label, "Due")
         let title = app.textFields["Task title"]
         XCTAssertTrue(title.waitForExistence(timeout: 5))
         title.tap()

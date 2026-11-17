@@ -92,6 +92,8 @@ public struct TaisaDatedPageHeader<Actions: View>: View {
 public struct TaisaInlineTaskComposer: View {
     @FocusState private var titleIsFocused: Bool
     @State private var keyboardHeight: CGFloat = 0
+    @State private var showsDueDatePicker = false
+    @State private var draftDueDate = Date()
     @Binding private var title: String
     @Binding private var dueDate: Date?
     private let submit: @MainActor () -> Void
@@ -110,15 +112,16 @@ public struct TaisaInlineTaskComposer: View {
                 .focused($titleIsFocused)
                 .accessibilityLabel("Task title")
             HStack {
-                if let binding = Binding($dueDate) {
-                    DatePicker(selection: binding, displayedComponents: .date) {
-                        dueLabel(dueDate?.formatted(.dateTime.weekday(.abbreviated)) ?? "Due")
-                    }
-                        .font(TaisaTypography.taskSupporting.font)
-                } else {
-                    Button { dueDate = Date() } label: { dueLabel("Due") }
-                        .buttonStyle(.plain)
+                Button {
+                    draftDueDate = dueDate ?? Date()
+                    titleIsFocused = false
+                    showsDueDatePicker = true
+                } label: {
+                    dueLabel(dueDate?.taskComposerLabel ?? "Due")
                 }
+                .buttonStyle(.plain)
+                .accessibilityLabel(dueDate.map { "Due date, \($0.taskComposerLabel)" } ?? "Due")
+                .accessibilityIdentifier("task.composer.due")
                 Spacer(minLength: 0)
                 Button(action: submit) {
                     CentralIcon(.arrowUp)
@@ -157,6 +160,30 @@ public struct TaisaInlineTaskComposer: View {
             keyboardHeight = 0
         }
 #endif
+        .sheet(isPresented: $showsDueDatePicker) {
+            NavigationStack {
+                DatePicker("Due date", selection: $draftDueDate, displayedComponents: .date)
+                    .datePickerStyle(.graphical)
+                    .labelsHidden()
+                    .padding(TaisaSpacing.standard.rawValue)
+                    .toolbar {
+                        ToolbarItem(placement: .principal) {
+                            Text("Due date").font(.headline)
+                        }
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Cancel") { closeDueDatePicker() }
+                        }
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("Done") {
+                                dueDate = draftDueDate
+                                closeDueDatePicker()
+                            }
+                        }
+                    }
+            }
+            .presentationDetents([.medium])
+            .presentationDragIndicator(.visible)
+        }
     }
 
     private func dueLabel(_ text: String) -> some View {
@@ -167,6 +194,14 @@ public struct TaisaInlineTaskComposer: View {
         }
     }
 
+    private func closeDueDatePicker() {
+        showsDueDatePicker = false
+        Task { @MainActor in
+            await Task.yield()
+            titleIsFocused = true
+        }
+    }
+
 #if canImport(UIKit)
     private func keyboardEndFrame(from notification: Notification) -> CGRect {
         (notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect) ?? .zero
@@ -174,10 +209,9 @@ public struct TaisaInlineTaskComposer: View {
 #endif
 }
 
-private extension Binding where Value == Date? {
-    init?(_ source: Binding<Date?>) {
-        guard source.wrappedValue != nil else { return nil }
-        self.init(get: { source.wrappedValue! }, set: { source.wrappedValue = $0 })
+private extension Date {
+    var taskComposerLabel: String {
+        formatted(.dateTime.day().month(.abbreviated))
     }
 }
 
