@@ -75,19 +75,26 @@ final class HomeViewContractTests: XCTestCase {
         let home = try String(contentsOf: root.appendingPathComponent("TaisaApp/Home/HomeView.swift"), encoding: .utf8)
         let sections = try String(contentsOf: root.appendingPathComponent("TaisaApp/Home/ThisWeekSection.swift"), encoding: .utf8)
         let chrome = try String(contentsOf: root.appendingPathComponent("Packages/TaisaFoundation/Sources/TaisaDesignSystem/TaisaPageChrome.swift"), encoding: .utf8)
+        let taskRows = try String(contentsOf: root.appendingPathComponent("Packages/TaisaFoundation/Sources/TaisaDesignSystem/TaisaTaskRow.swift"), encoding: .utf8)
 
         XCTAssertTrue(home.contains("TaisaDatedPageHeader"))
         XCTAssertTrue(home.contains("TaisaInlineTaskComposer"))
         XCTAssertTrue(home.contains("Task added"))
         XCTAssertTrue(home.contains("home.tasks.composer"))
         XCTAssertTrue(home.contains("actions: snapshot.actions"), "Newly created canonical tasks must remain visible after reload")
+        XCTAssertTrue(home.contains("ScrollView"), "Figma composition is a free canvas, not a native List")
+        XCTAssertFalse(home.contains("List {"), "Native List chrome does not match the Figma frame")
         XCTAssertFalse(home.contains("HomeGoalsSummarySection("))
         XCTAssertFalse(home.contains("LeadInsightSection("))
         XCTAssertFalse(home.contains("HomeReviewSection("))
         XCTAssertTrue(sections.contains("Tasks this week"))
-        XCTAssertTrue(sections.contains("View all tasks"))
+        XCTAssertTrue(taskRows.contains("View all tasks"))
         XCTAssertTrue(chrome.contains("public struct TaisaDatedPageHeader"))
         XCTAssertTrue(chrome.contains("public struct TaisaInlineTaskComposer"))
+        XCTAssertTrue(chrome.contains("TaisaControlMetric.taskComposerHeight"))
+        XCTAssertTrue(taskRows.contains("TaisaRadius.taskGroup"))
+        XCTAssertTrue(taskRows.contains("CentralIcon(.incomplete)"))
+        XCTAssertTrue(sections.contains("dueLabel"))
     }
 
     func testInsightsStayNestedByCurrentReviewAndHistoryWithGroundedDetail() throws {

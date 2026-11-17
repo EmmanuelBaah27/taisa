@@ -55,31 +55,44 @@ enum ThisWeekSheet: Identifiable {
 
 struct HomeActionsPreviewSection: View {
     let actions: [ActionRecord]
+    let totalCount: Int
     let send: (HomeIntent) -> Void
     let add: () -> Void
 
     var body: some View {
-        Section {
+        VStack(spacing: TaisaSpacing.tight.rawValue) {
+            HStack(spacing: TaisaSpacing.compact.rawValue) {
+                TaisaText(role: .taskSupporting, color: .mutedForeground, content: "Tasks this week")
+                Spacer()
+                TaisaSecondaryIconButton(icon: .add, accessibilityLabel: "Add task", size: TaisaControlMetric.taskControl, action: add)
+            }
+            VStack(spacing: TaisaSpacing.tight.rawValue) {
             if actions.isEmpty {
-                TaisaRow(title: "No tasks this week", supporting: "Add a task when something needs your attention.", icon: .action)
+                TaisaTaskRow(title: "No tasks this week")
             } else {
                 ForEach(actions.prefix(3), id: \.id) { action in
                     Button { send(.action(action.id)) } label: {
-                        TaisaRow(title: action.title, icon: .action)
+                        TaisaTaskRow(title: action.title, dueLabel: dueLabel(for: action))
                     }
+                    .buttonStyle(.plain)
                 }
             }
-            Button { send(.actions) } label: { TaisaNavigationRow(label: "View all tasks", icon: .action) }
+            }
+            .clipShape(RoundedRectangle(cornerRadius: TaisaRadius.taskGroup))
+            Button { send(.actions) } label: { TaisaTaskSummaryRow(count: totalCount) }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("home.actions.view-all")
-        } header: {
-            HStack {
-                TaisaText(role: .supporting, color: .mutedForeground, content: "Tasks this week")
-                Spacer()
-                TaisaSecondaryIconButton(icon: .add, accessibilityLabel: "Add task", action: add)
-            }
         }
         .accessibilityIdentifier("home.actions.preview")
+    }
+
+    private func dueLabel(for action: ActionRecord) -> String? {
+        guard let raw = action.dueDay?.rawValue else { return nil }
+        let formatter = DateFormatter()
+        formatter.locale = .current
+        formatter.dateFormat = "yyyy-MM-dd"
+        guard let date = formatter.date(from: raw) else { return nil }
+        return date.formatted(.dateTime.weekday(.abbreviated))
     }
 
 }

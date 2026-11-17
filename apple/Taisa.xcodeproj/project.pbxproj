@@ -20,6 +20,7 @@
 		0DD1C832FDFC93C59D572AC4 /* InsightsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09FF4AF48190A145ED9F8694 /* InsightsView.swift */; };
 		0E0F162C7E603373770D80EA /* VoiceSessionDiagnosticsViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AB82F356059A4761E465BC9 /* VoiceSessionDiagnosticsViewModelTests.swift */; };
 		10558363B760A0814005644A /* RecoveryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E8B118B86D060B608C88EC8 /* RecoveryView.swift */; };
+		107C568D596406598E79EC45 /* InterVariable.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 822F2476C7D73118B0E16CB4 /* InterVariable.ttf */; };
 		12AA0E6983CDDBDA69C0DE7B /* TaisaVoice in Frameworks */ = {isa = PBXBuildFile; productRef = 59F6EB601F04E46C4F72469B /* TaisaVoice */; };
 		132DEDB24FA15D3B111375FC /* PersonalVoiceGatewayEnrollmentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F903B811129986113206457E /* PersonalVoiceGatewayEnrollmentTests.swift */; };
 		14CE1254613B51B8A732F31E /* VoiceSessionAccessibilityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB678CC682AABEFD72A2A63D /* VoiceSessionAccessibilityTests.swift */; };
@@ -34,6 +35,7 @@
 		1E89017FCDE18E2D8924951F /* TaisaVoice in Frameworks */ = {isa = PBXBuildFile; productRef = FDEFAC7298DC6A2773CC1955 /* TaisaVoice */; };
 		1E9F46005B09D3CCFF0801E6 /* VoiceSessionDiagnosticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37D6181795E1F88B04691E7E /* VoiceSessionDiagnosticsView.swift */; };
 		216146AFCFF15C3A6F486079 /* TaisaNetworking in Frameworks */ = {isa = PBXBuildFile; productRef = B340B485CA54E85F7EB41EA5 /* TaisaNetworking */; };
+		23EAC1E56051FDF92DB87E94 /* InterVariable.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 822F2476C7D73118B0E16CB4 /* InterVariable.ttf */; };
 		23F902852DA35474CB0D79D0 /* TaisaContracts in Frameworks */ = {isa = PBXBuildFile; productRef = 3D8E0B5042A6307078A2815B /* TaisaContracts */; };
 		250AAE7D3E2D26899DBB5EB3 /* CareerWorkScenarios.swift in Sources */ = {isa = PBXBuildFile; fileRef = 329E813033BF75796D0AD0CE /* CareerWorkScenarios.swift */; };
 		264ACBC992C077312BF36A7F /* PersonalDeviceQAView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92D5594A142F5C6089D8C7E2 /* PersonalDeviceQAView.swift */; };
@@ -102,6 +104,7 @@
 		7123CE009420812A33170858 /* TaisaCareerWork in Frameworks */ = {isa = PBXBuildFile; productRef = B287C5869C13C1DC6D300D79 /* TaisaCareerWork */; };
 		7140D458E177D716DDF995ED /* TaisaYou in Frameworks */ = {isa = PBXBuildFile; productRef = BE6250A9F4E93CA86FEBE3D5 /* TaisaYou */; };
 		7236186363DA6E89483D248C /* TaisaStorage in Frameworks */ = {isa = PBXBuildFile; productRef = B6433508F77896BF3BB8142E /* TaisaStorage */; };
+		734700F50209E01B99893BD1 /* ScoutieSans-VariableFont_wght.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 87E084C5623DF3EBD9C215F5 /* ScoutieSans-VariableFont_wght.ttf */; };
 		735261FA7E7C99694A4BADF2 /* TaisaYou in Frameworks */ = {isa = PBXBuildFile; productRef = B0873295A277A4F397D7D3E2 /* TaisaYou */; };
 		753F597C11D6E06916123006 /* PersonalRecoveryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 163DACBEE83EA3467C0A3AE7 /* PersonalRecoveryUITests.swift */; };
 		75C41727467C062CC7EA09D4 /* PersonalIsolationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5A6963E5BEC4FF073F86F31 /* PersonalIsolationTests.swift */; };
@@ -125,6 +128,7 @@
 		92AC13DEA84CC891F4654F4C /* RecoveryViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A01B83066FC36CB8726EE5C8 /* RecoveryViewModel.swift */; };
 		94FCF4B5DD490F5575F5DFEB /* ConversationPreviewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18515B6E6B1AF610940D68D5 /* ConversationPreviewTests.swift */; };
 		9753FAC0095857148C7D78B0 /* TaisaAudio in Frameworks */ = {isa = PBXBuildFile; productRef = 5A284C439BF302F372B6C93E /* TaisaAudio */; };
+		97DCD939ABA0E75D81BB9B2F /* InterVariable.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 822F2476C7D73118B0E16CB4 /* InterVariable.ttf */; };
 		980EFD6B050D14F51379E3F9 /* PersonalVoiceSessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68CC4A35117BE0C1981CF4E2 /* PersonalVoiceSessionView.swift */; };
 		98BAD9001F4039865F00E14F /* CareerWorkView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46A8FEB0D11F6C9B75B6E2B3 /* CareerWorkView.swift */; };
 		98EE3C3736F76DACD2460EB9 /* TranscriptCorrectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F9F0E82CFDAD9C86AC289FF /* TranscriptCorrectionView.swift */; };
@@ -172,6 +176,7 @@
 		D23CB4A7E400C56447E31548 /* RecoveryViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A01B83066FC36CB8726EE5C8 /* RecoveryViewModel.swift */; };
 		D374E1D963E6C7AFF28A2CD2 /* TranscriptCorrectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F9F0E82CFDAD9C86AC289FF /* TranscriptCorrectionView.swift */; };
 		D48AEA73F935C95091CDF774 /* ConversationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 635CFCFFA33769B5C636954D /* ConversationsView.swift */; };
+		D61E4D7DF074DA029E9D00BB /* ScoutieSans-VariableFont_wght.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 87E084C5623DF3EBD9C215F5 /* ScoutieSans-VariableFont_wght.ttf */; };
 		D65CD3C640F6A696D18DD9A9 /* VoiceSessionDiagnosticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37D6181795E1F88B04691E7E /* VoiceSessionDiagnosticsView.swift */; };
 		D78923F4CFD4918C2BC107BC /* TaisaCareerWork in Frameworks */ = {isa = PBXBuildFile; productRef = 49C7FC5FD3E7F6628BC4FC4B /* TaisaCareerWork */; };
 		DBA10E146CE606FED896C76D /* PersonalVoiceSessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68CC4A35117BE0C1981CF4E2 /* PersonalVoiceSessionView.swift */; };
@@ -183,6 +188,7 @@
 		E417A17D0B99B34A5154D18D /* TaisaHome in Frameworks */ = {isa = PBXBuildFile; productRef = DFFC76E82692D72BB95B98A3 /* TaisaHome */; };
 		E557F16FB50247937021BC14 /* AppRuntimeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB7D5832060268C72A352DB1 /* AppRuntimeTests.swift */; };
 		E7A6652231C4DAF1E11C0739 /* PrimaryDestination.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15559F553404687F14A6B460 /* PrimaryDestination.swift */; };
+		E9C3536ED7440111609F125C /* ScoutieSans-VariableFont_wght.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 87E084C5623DF3EBD9C215F5 /* ScoutieSans-VariableFont_wght.ttf */; };
 		EB27A0A8339056CA57C45029 /* PersonalVoiceSessionModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D98709FA19C97713E47DCC11 /* PersonalVoiceSessionModel.swift */; };
 		EC74446FB69DD28FE30B19F8 /* TaisaVoice in Frameworks */ = {isa = PBXBuildFile; productRef = B4AF963C3CB1ACBE917F55B6 /* TaisaVoice */; };
 		EEC155B2BFD7C9E712BA3AA4 /* AppRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 358347F16F086497135A3080 /* AppRootView.swift */; };
@@ -288,8 +294,10 @@
 		7EAA31D1FAABB9F9ABA4FF1E /* ConversationRuntimeFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationRuntimeFactory.swift; sourceTree = "<group>"; };
 		7FDC2B51AA253FE5071AA1D1 /* VoiceFailureDiagnosticTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceFailureDiagnosticTests.swift; sourceTree = "<group>"; };
 		8141344AEEFB536E987E8D85 /* ConversationTimeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationTimeline.swift; sourceTree = "<group>"; };
+		822F2476C7D73118B0E16CB4 /* InterVariable.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = InterVariable.ttf; sourceTree = "<group>"; };
 		8287F686EE049BD6CFB7E075 /* ConversationsViewContractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationsViewContractTests.swift; sourceTree = "<group>"; };
 		84B4FC6A6B65DD3C62F773B1 /* PersonalDeviceQA.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalDeviceQA.swift; sourceTree = "<group>"; };
+		87E084C5623DF3EBD9C215F5 /* ScoutieSans-VariableFont_wght.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "ScoutieSans-VariableFont_wght.ttf"; sourceTree = "<group>"; };
 		8CEFCCBD837E69BEFE5B509E /* AssistantResponseActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantResponseActions.swift; sourceTree = "<group>"; };
 		8DE282C2E35864B24E4EE76E /* HomeSectionViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeSectionViews.swift; sourceTree = "<group>"; };
 		8DE603EA1A17036021FA0FF9 /* HomeScenarioView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeScenarioView.swift; sourceTree = "<group>"; };
@@ -469,6 +477,16 @@
 			path = Packages;
 			sourceTree = "<group>";
 		};
+		6AEC187112EED0B640E04510 /* Fonts */ = {
+			isa = PBXGroup;
+			children = (
+				822F2476C7D73118B0E16CB4 /* InterVariable.ttf */,
+				87E084C5623DF3EBD9C215F5 /* ScoutieSans-VariableFont_wght.ttf */,
+			);
+			name = Fonts;
+			path = Config/Fonts;
+			sourceTree = "<group>";
+		};
 		6C8147F0F2BBC50811874CA3 /* TaisaPreviewUITests */ = {
 			isa = PBXGroup;
 			children = (
@@ -616,6 +634,7 @@
 			isa = PBXGroup;
 			children = (
 				D4CB250D4357A7E294F8C2E6 /* Config */,
+				6AEC187112EED0B640E04510 /* Fonts */,
 				C191D2E94CBA117F4E9E765C /* Generated */,
 				4F8F3D9EE97CEA0B954B5C6E /* Packages */,
 				E504B0729A1D32CDE2604BBD /* RecordingGlow */,
@@ -956,6 +975,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				23EAC1E56051FDF92DB87E94 /* InterVariable.ttf in Resources */,
+				E9C3536ED7440111609F125C /* ScoutieSans-VariableFont_wght.ttf in Resources */,
 				2EBFB0C5BDB901C2298FF88C /* voice-recorder-shader.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -964,6 +985,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				97DCD939ABA0E75D81BB9B2F /* InterVariable.ttf in Resources */,
+				734700F50209E01B99893BD1 /* ScoutieSans-VariableFont_wght.ttf in Resources */,
 				5326A4652D47A363DF9D5793 /* voice-recorder-shader.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -972,6 +995,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				107C568D596406598E79EC45 /* InterVariable.ttf in Resources */,
+				D61E4D7DF074DA029E9D00BB /* ScoutieSans-VariableFont_wght.ttf in Resources */,
 				1DDD6CC96CCEC600845CE9EA /* voice-recorder-shader.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -1212,6 +1237,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Config/TaisaPreview.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = Config/TaisaPreviewInfo.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Taisa Preview";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Taisa uses the microphone only when you choose to test live audio.";
 				INFOPLIST_KEY_TaisaEnvironment = "$(TAISA_ENVIRONMENT)";
@@ -1270,6 +1296,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Config/TaisaPreview.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = Config/TaisaPreviewInfo.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Taisa Preview";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Taisa uses the microphone only when you choose to test live audio.";
 				INFOPLIST_KEY_TaisaEnvironment = "$(TAISA_ENVIRONMENT)";
@@ -1486,6 +1513,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Config/TaisaPreview.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = Config/TaisaPreviewInfo.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Taisa Preview";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Taisa uses the microphone only when you choose to test live audio.";
 				INFOPLIST_KEY_TaisaEnvironment = "$(TAISA_ENVIRONMENT)";
@@ -1702,6 +1730,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Config/TaisaPreview.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = Config/TaisaPreviewInfo.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Taisa Preview";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Taisa uses the microphone only when you choose to test live audio.";
 				INFOPLIST_KEY_TaisaEnvironment = "$(TAISA_ENVIRONMENT)";

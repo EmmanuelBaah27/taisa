@@ -67,7 +67,9 @@ extension HomeSnapshot {
             GoalRecord(id: "20000000-0000-0000-0000-000000000001", title: "Finish the studio", detail: "A fictional preview goal", status: "active", createdAtMS: 1, updatedAtMS: 3)
         ],
         actions: [
-            ActionRecord(id: "30000000-0000-0000-0000-000000000001", goalID: nil, title: "Measure the north wall", detail: "", status: "open", dueAtMS: 1_800_000_000_000, createdAtMS: 1, updatedAtMS: 2)
+            ActionRecord(id: "30000000-0000-0000-0000-000000000001", goalID: nil, title: "Draft Peu Commun pitch deck", detail: "", status: "open", dueAtMS: nil, createdAtMS: 1, updatedAtMS: 2, dueDay: ActionDueDay(rawValue: "2026-11-18")),
+            ActionRecord(id: "30000000-0000-0000-0000-000000000006", goalID: nil, title: "Luuknow website strategy", detail: "", status: "open", dueAtMS: nil, createdAtMS: 1, updatedAtMS: 2),
+            ActionRecord(id: "30000000-0000-0000-0000-000000000007", goalID: nil, title: "Follow up with Erica on pitch deck", detail: "", status: "open", dueAtMS: nil, createdAtMS: 1, updatedAtMS: 2, dueDay: ActionDueDay(rawValue: "2026-11-20"))
         ]
     )
 

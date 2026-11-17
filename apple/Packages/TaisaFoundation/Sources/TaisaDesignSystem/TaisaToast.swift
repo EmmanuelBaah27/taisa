@@ -1,6 +1,7 @@
 import SwiftUI
 
 public struct TaisaToast: View {
+    public enum Style: Sendable, Equatable { case dark, light }
     public enum Placement: Sendable, Equatable { case top }
     public enum SwipeDirection: Sendable, Equatable { case up }
 
@@ -26,42 +27,54 @@ public struct TaisaToast: View {
     private let action: (@MainActor () -> Void)?
     private let dismiss: @MainActor () -> Void
     private let contract: Contract
+    private let style: Style
 
     public init(
         message: String,
         actionLabel: String? = nil,
         contract: Contract = .default,
+        style: Style = .dark,
         action: (@MainActor () -> Void)? = nil,
         dismiss: @escaping @MainActor () -> Void
     ) {
         self.message = message
         self.actionLabel = actionLabel
         self.contract = contract
+        self.style = style
         self.action = action
         self.dismiss = dismiss
     }
 
     public var body: some View {
         HStack(spacing: TaisaSpacing.control.rawValue) {
+            if style == .light {
+                CentralIcon(.completed)
+                    .frame(width: TaisaControlMetric.compactActionIcon, height: TaisaControlMetric.compactActionIcon)
+            }
             Text(message)
                 .font(TaisaTypography.navigationLabel.font)
-                .foregroundStyle(TaisaColor.background.color)
+                .foregroundStyle(style == .light ? TaisaColor.foreground.color : TaisaColor.background.color)
                 .lineLimit(1)
 
             if let actionLabel, let action {
                 Button(actionLabel, action: action)
                     .font(TaisaTypography.navigationLabel.font)
-                    .foregroundStyle(TaisaColor.background.color)
-                    .frame(minHeight: 44)
+                    .foregroundStyle(style == .light ? TaisaColor.foreground.color : TaisaColor.background.color)
+                    .frame(minHeight: TaisaControlMetric.toastMinimumHeight)
                     .padding(.horizontal, TaisaSpacing.compact.rawValue)
                     .buttonStyle(.plain)
                     .layoutPriority(1)
             }
         }
-        .padding(.horizontal, TaisaSpacing.standard.rawValue)
+        .padding(.horizontal, TaisaSpacing.control.rawValue)
         .frame(minHeight: TaisaControlMetric.toastMinimumHeight)
-        .background(TaisaColor.foreground.color, in: Capsule())
-        .shadow(color: TaisaColor.foreground.color.opacity(0.14), radius: TaisaSpacing.control.rawValue)
+        .background(style == .light ? TaisaColor.background.color : TaisaColor.foreground.color, in: RoundedRectangle(cornerRadius: style == .light ? TaisaRadius.taskToast : TaisaRadius.circular.rawValue))
+        .shadow(
+            color: TaisaColor.foreground.color.opacity(TaisaEffect.taskToastShadowOpacity),
+            radius: TaisaEffect.taskToastShadowRadius,
+            x: TaisaEffect.taskToastShadowX,
+            y: TaisaEffect.taskToastShadowY
+        )
         .offset(y: min(0, dragOffset))
         .contentShape(Capsule())
         .gesture(

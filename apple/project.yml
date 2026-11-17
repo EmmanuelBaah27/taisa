@@ -32,11 +32,14 @@ targets:
       path: Config/TaisaInfo.plist
       properties:
         UIBackgroundModes: [remote-notification]
+        UIAppFonts: [ScoutieSans-VariableFont_wght.ttf, InterVariable.ttf]
         NSMicrophoneUsageDescription: "Taisa uses the microphone only when you choose to record a conversation."
     sources:
       - path: TaisaApp
       - path: Generated
       - path: Config/RecordingGlow/voice-recorder-shader.json
+        buildPhase: resources
+      - path: Config/Fonts
         buildPhase: resources
     settings:
       base:
@@ -85,6 +88,10 @@ targets:
   TaisaPreview:
     type: application
     platform: iOS
+    info:
+      path: Config/TaisaPreviewInfo.plist
+      properties:
+        UIAppFonts: [ScoutieSans-VariableFont_wght.ttf, InterVariable.ttf]
     sources:
       - path: TaisaPreview
       - path: TaisaApp/Voice
@@ -101,6 +108,8 @@ targets:
       - path: TaisaApp/Conversations
       - path: Generated
       - path: Config/RecordingGlow/voice-recorder-shader.json
+        buildPhase: resources
+      - path: Config/Fonts
         buildPhase: resources
     settings:
       base:
@@ -145,6 +154,7 @@ targets:
       path: Config/TaisaPersonalInfo.plist
       properties:
         TaisaEnvironment: "$(TAISA_ENVIRONMENT)"
+        UIAppFonts: [ScoutieSans-VariableFont_wght.ttf, InterVariable.ttf]
         TaisaVoiceGatewayURL: "$(TAISA_VOICE_GATEWAY_URL)"
         NSFaceIDUsageDescription: "Authenticate to use your Taisa recovery key."
         NSMicrophoneUsageDescription: "Taisa uses the microphone only when you choose to record a conversation."
@@ -163,6 +173,8 @@ targets:
       - path: TaisaApp
       - path: Generated
       - path: Config/RecordingGlow/voice-recorder-shader.json
+        buildPhase: resources
+      - path: Config/Fonts
         buildPhase: resources
     settings:
       base:

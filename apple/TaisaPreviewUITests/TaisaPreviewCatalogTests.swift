@@ -58,10 +58,10 @@ final class TaisaPreviewCatalogTests: XCTestCase {
         app.launchArguments = ["-TAISAPreviewScenario", "home.combined"]
         app.launch()
 
-        let action = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Measure the north wall")).firstMatch
+        let action = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Draft Peu Commun pitch deck")).firstMatch
         XCTAssertTrue(action.waitForExistence(timeout: 5))
         XCTAssertTrue(action.isHittable)
-        XCTAssertFalse(app.buttons["Complete Measure the north wall"].exists)
+        XCTAssertFalse(app.buttons["Complete Draft Peu Commun pitch deck"].exists)
         XCTAssertFalse(element("home.this-week.completion-evidence", in: app).exists)
     }
 

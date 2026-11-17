@@ -9,11 +9,15 @@ public enum TaisaTypography: String, CaseIterable, Sendable {
     case navigationLabel
     case supporting
     case childHeaderTitle
+    case datedPageTitle
+    case taskTitle
+    case taskSupporting
 
     public var pointSize: CGFloat {
         switch self {
-        case .navigationLabel: 16
-        case .supporting: 14
+        case .navigationLabel, .taskTitle: 16
+        case .supporting, .taskSupporting: 14
+        case .datedPageTitle: 28
         case .childHeaderTitle: 0
         default: 0
         }
@@ -21,8 +25,9 @@ public enum TaisaTypography: String, CaseIterable, Sendable {
 
     public var lineHeight: CGFloat {
         switch self {
-        case .navigationLabel: 24
-        case .supporting: 20
+        case .navigationLabel, .taskTitle: 24
+        case .supporting, .taskSupporting: 20
+        case .datedPageTitle: 36
         default: 0
         }
     }
@@ -45,6 +50,13 @@ public enum TaisaTypography: String, CaseIterable, Sendable {
             .system(size: pointSize, weight: .regular, design: .default)
         case .childHeaderTitle:
             .system(.headline, weight: .semibold)
+        case .datedPageTitle:
+            .custom("Scoutie Sans", size: pointSize, relativeTo: .title)
+                .weight(.semibold)
+        case .taskTitle:
+            .custom("Inter", size: pointSize, relativeTo: .body).weight(.medium)
+        case .taskSupporting:
+            .custom("Inter", size: pointSize, relativeTo: .subheadline)
         }
     }
 }

@@ -55,21 +55,21 @@ struct HomeView: View {
     private var homeContent: some View {
         content
             .safeAreaInset(edge: .top, spacing: 0) {
-                TaisaDatedPageHeader(date: Date().formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated)), title: "Let’s noodle") { EmptyView() }
+                TaisaDatedPageHeader(date: Date().taskHeaderLabel, title: "Let’s noodle") { EmptyView() }
             }
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 if showsTaskComposer {
                     TaisaInlineTaskComposer(title: $taskTitle, dueDate: $taskDueDate, submit: submitTask)
-                        .padding(TaisaSpacing.control.rawValue)
                         .accessibilityIdentifier("home.tasks.composer")
                 }
             }
             .overlay(alignment: .top) {
                 if showsTaskAddedToast {
-                    TaisaToast(message: "Task added") { showsTaskAddedToast = false }
+                    TaisaToast(message: "Task added", style: .light) { showsTaskAddedToast = false }
                         .padding(.top, TaisaSpacing.compact.rawValue)
                 }
             }
+            .ignoresSafeArea(.keyboard, edges: .bottom)
     }
 
     @ViewBuilder private var content: some View {
@@ -77,16 +77,24 @@ struct HomeView: View {
         case .idle, .loading:
             ProgressView("Loading Home…")
         case .empty:
-            List {
-                HomeActionsPreviewSection(actions: [], send: send, add: { showsTaskComposer = true })
+            ScrollView {
+                HomeActionsPreviewSection(actions: [], totalCount: 0, send: send, add: { showsTaskComposer = true })
+                    .padding(.horizontal, TaisaSpacing.content.rawValue)
+                    .padding(.top, TaisaSpacing.control.rawValue)
             }
+            .background(TaisaColor.background.color)
             .accessibilityIdentifier("home.empty")
         case let .content(snapshot, isRefreshing, issue):
-            List {
+            ScrollView {
+                VStack(spacing: TaisaSpacing.control.rawValue) {
                 if let issue { issueRow(issue) }
-                HomeActionsPreviewSection(actions: snapshot.actions, send: send, add: { showsTaskComposer = true })
+                HomeActionsPreviewSection(actions: snapshot.actions, totalCount: snapshot.actions.count, send: send, add: { showsTaskComposer = true })
                 if isRefreshing { ProgressView().frame(maxWidth: .infinity) }
+                }
+                .padding(.horizontal, TaisaSpacing.content.rawValue)
+                .padding(.top, TaisaSpacing.control.rawValue)
             }
+            .background(TaisaColor.background.color)
             .refreshable { await model.load() }
         case let .failure(issue):
             ContentUnavailableView {
@@ -139,6 +147,13 @@ struct HomeView: View {
 }
 
 private extension Date {
+    var taskHeaderLabel: String {
+        let formatter = DateFormatter()
+        formatter.locale = .current
+        formatter.dateFormat = "EEE d MMM"
+        return formatter.string(from: self)
+    }
+
     var actionDueDay: ActionDueDay? {
         let values = Calendar.current.dateComponents([.year, .month, .day], from: self)
         guard let year = values.year, let month = values.month, let day = values.day else { return nil }

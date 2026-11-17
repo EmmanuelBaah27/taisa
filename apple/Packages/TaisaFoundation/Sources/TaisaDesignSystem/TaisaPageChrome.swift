@@ -1,4 +1,7 @@
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 
 public enum TaisaBottomChromeContract {
     public static let fadeHeight = TaisaControlMetric.primaryNavigationReservedHeight
@@ -72,20 +75,23 @@ public struct TaisaDatedPageHeader<Actions: View>: View {
 
     public var body: some View {
         HStack(alignment: .bottom, spacing: TaisaSpacing.standard.rawValue) {
-            VStack(alignment: .leading, spacing: TaisaSpacing.tight.rawValue) {
-                TaisaText(role: .supporting, color: .mutedForeground, content: date)
-                TaisaText(role: .display, content: title)
+            VStack(alignment: .leading, spacing: TaisaTaskSpacing.headerGap) {
+                TaisaText(role: .taskSupporting, color: .mutedForeground, content: date)
+                TaisaText(role: .datedPageTitle, content: title)
             }
             Spacer(minLength: 0)
             actions
         }
         .padding(.horizontal, TaisaSpacing.content.rawValue)
         .padding(.vertical, TaisaSpacing.control.rawValue)
+        .frame(height: TaisaControlMetric.taskHeaderHeight)
         .background(TaisaColor.background.color)
     }
 }
 
 public struct TaisaInlineTaskComposer: View {
+    @FocusState private var titleIsFocused: Bool
+    @State private var keyboardHeight: CGFloat = 0
     @Binding private var title: String
     @Binding private var dueDate: Date?
     private let submit: @MainActor () -> Void
@@ -99,29 +105,73 @@ public struct TaisaInlineTaskComposer: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: TaisaSpacing.control.rawValue) {
             TextField("Add task…", text: $title, axis: .vertical)
-                .font(TaisaTypography.body.font)
+                .font(TaisaTypography.taskTitle.font)
                 .lineLimit(1...3)
+                .focused($titleIsFocused)
                 .accessibilityLabel("Task title")
             HStack {
                 if let binding = Binding($dueDate) {
-                    DatePicker("Due", selection: binding, displayedComponents: .date)
-                        .font(TaisaTypography.supporting.font)
+                    DatePicker(selection: binding, displayedComponents: .date) {
+                        dueLabel(dueDate?.formatted(.dateTime.weekday(.abbreviated)) ?? "Due")
+                    }
+                        .font(TaisaTypography.taskSupporting.font)
                 } else {
-                    Button("Due") { dueDate = Date() }
-                        .font(TaisaTypography.supporting.font)
-                        .foregroundStyle(TaisaColor.mutedForeground.color)
+                    Button { dueDate = Date() } label: { dueLabel("Due") }
+                        .buttonStyle(.plain)
                 }
                 Spacer(minLength: 0)
-                TaisaSecondaryIconButton(icon: .arrowUp, accessibilityLabel: "Save task", action: submit)
+                Button(action: submit) {
+                    CentralIcon(.arrowUp)
+                        .frame(width: TaisaControlMetric.compactActionIcon, height: TaisaControlMetric.compactActionIcon)
+                        .frame(width: TaisaControlMetric.taskControl, height: TaisaControlMetric.taskControl)
+                        .background(TaisaColor.primaryAction.color, in: Circle())
+                }
+                    .buttonStyle(.plain)
                     .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     .accessibilityIdentifier("task.composer.submit")
+                    .accessibilityLabel("Save task")
             }
         }
         .padding(TaisaSpacing.control.rawValue)
+        .frame(height: TaisaControlMetric.taskComposerCardHeight)
         .background(TaisaColor.background.color)
-        .clipShape(RoundedRectangle(cornerRadius: TaisaRadius.composer.rawValue))
-        .shadow(color: TaisaColor.foreground.color.opacity(0.08), radius: TaisaSpacing.control.rawValue)
+        .clipShape(RoundedRectangle(cornerRadius: TaisaRadius.taskComposer))
+        .overlay { RoundedRectangle(cornerRadius: TaisaRadius.taskComposer).stroke(TaisaColor.border.color.opacity(0.7)) }
+        .shadow(
+            color: TaisaColor.foreground.color.opacity(TaisaEffect.taskComposerShadowOpacity),
+            radius: TaisaEffect.taskComposerShadowRadius
+        )
+        .padding(TaisaSpacing.control.rawValue)
+        .frame(height: TaisaControlMetric.taskComposerHeight)
+        .background { PageEdgeFade(.navigation) }
+        // Home keeps its page geometry stable while the software keyboard is up.
+        // Reserve the keyboard's real end-frame height here so the card remains
+        // immediately above it and hardware-keyboard layouts keep their baseline.
+        .padding(.bottom, keyboardHeight)
+        .task { titleIsFocused = true }
+#if canImport(UIKit)
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { notification in
+            keyboardHeight = keyboardEndFrame(from: notification).height
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+            keyboardHeight = 0
+        }
+#endif
     }
+
+    private func dueLabel(_ text: String) -> some View {
+        HStack(spacing: TaisaTaskSpacing.dueGap) {
+            CentralIcon(.calendar)
+                .frame(width: TaisaControlMetric.taskDueIcon, height: TaisaControlMetric.taskDueIcon)
+            TaisaText(role: .taskSupporting, color: .mutedForeground, content: text)
+        }
+    }
+
+#if canImport(UIKit)
+    private func keyboardEndFrame(from notification: Notification) -> CGRect {
+        (notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect) ?? .zero
+    }
+#endif
 }
 
 private extension Binding where Value == Date? {

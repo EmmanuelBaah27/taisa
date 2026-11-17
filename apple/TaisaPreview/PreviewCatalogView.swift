@@ -69,7 +69,8 @@ private struct PreviewScenarioView: View {
 
     var body: some View {
         Group {
-            if scenario.identifier == "recording-glow.tuner"
+            if scenario.identifier.hasPrefix("home.")
+                || scenario.identifier == "recording-glow.tuner"
                 || scenario.identifier.hasPrefix("conversation.") {
                 VStack(spacing: 0) { scenario.makeRootView() }
                     .overlay(alignment: .topLeading) {
@@ -85,6 +86,7 @@ private struct PreviewScenarioView: View {
         }
         .navigationTitle(scenario.title)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar(scenario.identifier.hasPrefix("home.") ? .hidden : .visible, for: .navigationBar)
         .environment(\.dynamicTypeSize, dynamicTypeSize)
     }
 

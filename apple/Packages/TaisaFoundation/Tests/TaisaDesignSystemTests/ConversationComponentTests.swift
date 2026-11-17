@@ -70,6 +70,20 @@ struct ConversationComponentTests {
         #expect(TaisaRadius.historyGroup.rawValue == 20)
     }
 
+    @Test func taskJourneyTokensMatchApprovedFigmaFrames() {
+        #expect(TaisaTypography.datedPageTitle.pointSize == 28)
+        #expect(TaisaTypography.taskTitle.pointSize == 16)
+        #expect(TaisaTypography.taskSupporting.pointSize == 14)
+        #expect(TaisaControlMetric.taskHeaderHeight == 82)
+        #expect(TaisaControlMetric.taskComposerHeight == 124)
+        #expect(TaisaControlMetric.taskComposerCardHeight == 100)
+        #expect(TaisaControlMetric.taskControl == 40)
+        #expect(TaisaRadius.taskGroup == 20)
+        #expect(TaisaRadius.taskComposer == 28)
+        #expect(CentralIconName.calendar != .incomplete)
+        #expect(CentralIconName.chevronRight != .chevronLeft)
+    }
+
     @Test func streamingTextPreservesWhitespaceAndUsesPerWordResolution() {
         #expect(TaisaStreamingText.chunks(in: "One  two\nthree") == ["One  ", "two\n", "three"])
         #expect(TaisaStreamingText.revealDuration(wordCount: 0) == 0)
