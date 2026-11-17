@@ -23,7 +23,7 @@ final class HomeViewContractTests: XCTestCase {
             .map { try String(contentsOf: $0, encoding: .utf8) }
             .joined(separator: "\n")
 
-        for identifier in ["home.root", "home.conversations", "home.goals.summary", "home.actions.preview", "home.empty", "home.retry", "home.recovery"] {
+        for identifier in ["home.root", "home.actions.preview", "home.empty", "home.retry", "home.recovery", "home.tasks.composer"] {
             XCTAssertTrue(sources.contains(identifier), "Missing \(identifier)")
         }
         XCTAssertFalse(sources.contains("import GRDB"))
@@ -32,27 +32,18 @@ final class HomeViewContractTests: XCTestCase {
         XCTAssertTrue(sources.contains("refreshable"))
     }
 
-    func testCombinedHomeUsesTheApprovedCalmSectionOrder() throws {
+    func testHomeUsesTheApprovedTasksOnlyComposition() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let home = root.appendingPathComponent("TaisaApp/Home")
         let homeView = try String(contentsOf: home.appendingPathComponent("HomeView.swift"), encoding: .utf8)
         let thisWeek = try String(contentsOf: home.appendingPathComponent("ThisWeekSection.swift"), encoding: .utf8)
         let leadInsight = try String(contentsOf: home.appendingPathComponent("LeadInsightSection.swift"), encoding: .utf8)
 
-        XCTAssertTrue(homeView.contains("if let leadInsight = snapshot.leadInsight"))
-        XCTAssertTrue(homeView.contains("LeadInsightSection(insight: leadInsight"))
-        XCTAssertTrue(homeView.contains("ThisWeekSection("))
-        let focus = try XCTUnwrap(homeView.range(of: "ThisWeekSection(")?.lowerBound)
-        let actions = try XCTUnwrap(homeView.range(of: "HomeActionsPreviewSection(")?.lowerBound)
-        let goals = try XCTUnwrap(homeView.range(of: "HomeGoalsSummarySection(")?.lowerBound)
-        let insight = try XCTUnwrap(homeView.range(of: "LeadInsightSection(insight: leadInsight")?.lowerBound)
-        let review = try XCTUnwrap(homeView.range(of: "HomeReviewSection(")?.lowerBound)
-        XCTAssertLessThan(focus, actions)
-        XCTAssertLessThan(actions, goals)
-        XCTAssertLessThan(goals, insight)
-        XCTAssertLessThan(insight, review)
-        XCTAssertTrue(homeView.contains("snapshot.hasConfirmedInsightHistory"))
-        XCTAssertTrue(homeView.contains("home.insights.link"))
+        XCTAssertTrue(homeView.contains("HomeActionsPreviewSection("))
+        XCTAssertFalse(homeView.contains("ThisWeekSection("))
+        XCTAssertFalse(homeView.contains("HomeGoalsSummarySection("))
+        XCTAssertFalse(homeView.contains("LeadInsightSection("))
+        XCTAssertFalse(homeView.contains("HomeReviewSection("))
 
         for identifier in ["home.this-week", "home.prior-week.review", "home.actions.preview", "home.actions.view-all", "home.goals.summary", "home.goals.view-all"] {
             XCTAssertTrue(thisWeek.contains(identifier), "Missing \(identifier)")
@@ -61,7 +52,7 @@ final class HomeViewContractTests: XCTestCase {
         XCTAssertFalse(thisWeek.contains("home.this-week.complete"))
         XCTAssertTrue(thisWeek.contains("TaisaRow("))
         XCTAssertFalse(thisWeek.contains("systemImage:"), "Touched Home Action UI must use Central Icons")
-        XCTAssertTrue(leadInsight.contains("home.lead-insight"))
+        XCTAssertTrue(leadInsight.contains("home.lead-insight"), "Nested Insights remains implemented even though Home does not expose it in this iteration")
     }
 
     func testTouchedHomeSurfaceUsesSharedDesignSystemContracts() throws {
@@ -77,6 +68,26 @@ final class HomeViewContractTests: XCTestCase {
         for forbidden in ["systemImage:", "Image(systemName:", ".font(", ".foregroundStyle("] {
             XCTAssertFalse(sources.contains(forbidden), "Touched Home surface contains raw presentation: \(forbidden)")
         }
+    }
+
+    func testHomeImplementsApprovedTasksOnlyComposerJourney() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let home = try String(contentsOf: root.appendingPathComponent("TaisaApp/Home/HomeView.swift"), encoding: .utf8)
+        let sections = try String(contentsOf: root.appendingPathComponent("TaisaApp/Home/ThisWeekSection.swift"), encoding: .utf8)
+        let chrome = try String(contentsOf: root.appendingPathComponent("Packages/TaisaFoundation/Sources/TaisaDesignSystem/TaisaPageChrome.swift"), encoding: .utf8)
+
+        XCTAssertTrue(home.contains("TaisaDatedPageHeader"))
+        XCTAssertTrue(home.contains("TaisaInlineTaskComposer"))
+        XCTAssertTrue(home.contains("Task added"))
+        XCTAssertTrue(home.contains("home.tasks.composer"))
+        XCTAssertTrue(home.contains("actions: snapshot.actions"), "Newly created canonical tasks must remain visible after reload")
+        XCTAssertFalse(home.contains("HomeGoalsSummarySection("))
+        XCTAssertFalse(home.contains("LeadInsightSection("))
+        XCTAssertFalse(home.contains("HomeReviewSection("))
+        XCTAssertTrue(sections.contains("Tasks this week"))
+        XCTAssertTrue(sections.contains("View all tasks"))
+        XCTAssertTrue(chrome.contains("public struct TaisaDatedPageHeader"))
+        XCTAssertTrue(chrome.contains("public struct TaisaInlineTaskComposer"))
     }
 
     func testInsightsStayNestedByCurrentReviewAndHistoryWithGroundedDetail() throws {
@@ -113,5 +124,17 @@ final class HomeViewContractTests: XCTestCase {
         XCTAssertTrue(scenarios.contains("leadInsight:"))
         XCTAssertTrue(scenarioView.contains("InsightsView(model:"))
         XCTAssertTrue(scenarioView.contains("openInsights:"))
+    }
+
+    func testPreviewIncludesDeterministicTaskComposerState() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let preview = root.appendingPathComponent("TaisaPreview")
+        let scenarios = try String(contentsOf: preview.appendingPathComponent("HomeScenarios.swift"), encoding: .utf8)
+        let scenarioView = try String(contentsOf: preview.appendingPathComponent("HomeScenarioView.swift"), encoding: .utf8)
+
+        XCTAssertTrue(scenarios.contains("home.taskComposer"))
+        XCTAssertTrue(scenarios.contains("case taskComposer"))
+        XCTAssertTrue(scenarioView.contains("initiallyShowsTaskComposer: mode == .taskComposer"))
+        XCTAssertTrue(scenarioView.contains("create:"), "Preview composer must exercise the same create closure as the app")
     }
 }

@@ -6,6 +6,10 @@ import TaisaStorage
 struct HomeView: View {
     @State private var model: HomeModel
     @State private var activeSheet: ThisWeekSheet?
+    @State private var showsTaskComposer = false
+    @State private var taskTitle = ""
+    @State private var taskDueDate: Date?
+    @State private var showsTaskAddedToast = false
     var send: (HomeIntent) -> Void = { _ in }
     var openRecovery: () -> Void = {}
     var openPersonalQA: (() -> Void)?
@@ -20,9 +24,11 @@ struct HomeView: View {
         openPersonalQA: (() -> Void)? = nil,
         openInsights: @escaping () -> Void = {},
         ownsNavigation: Bool = true,
-        showsRecentConversations: Bool = true
+        showsRecentConversations: Bool = true,
+        initiallyShowsTaskComposer: Bool = false
     ) {
         _model = State(initialValue: model)
+        _showsTaskComposer = State(initialValue: initiallyShowsTaskComposer)
         self.send = send
         self.openRecovery = openRecovery
         self.openPersonalQA = openPersonalQA
@@ -48,20 +54,20 @@ struct HomeView: View {
 
     private var homeContent: some View {
         content
-            .navigationTitle("Home")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    TaisaToolbarAction(label: "Refresh", icon: .refresh) { Task { await model.load() } }
+            .safeAreaInset(edge: .top, spacing: 0) {
+                TaisaDatedPageHeader(date: Date().formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated)), title: "Let’s noodle") { EmptyView() }
+            }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                if showsTaskComposer {
+                    TaisaInlineTaskComposer(title: $taskTitle, dueDate: $taskDueDate, submit: submitTask)
+                        .padding(TaisaSpacing.control.rawValue)
+                        .accessibilityIdentifier("home.tasks.composer")
                 }
-                ToolbarItem(placement: .topBarTrailing) {
-                    TaisaToolbarAction(label: "Backup and recovery", icon: .recovery, action: openRecovery)
-                        .accessibilityIdentifier("foundation.recovery.action")
-                }
-                if let openPersonalQA {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        TaisaToolbarAction(label: "Personal device QA", icon: .testflight, action: openPersonalQA)
-                            .accessibilityIdentifier("foundation.personal-qa.action")
-                    }
+            }
+            .overlay(alignment: .top) {
+                if showsTaskAddedToast {
+                    TaisaToast(message: "Task added") { showsTaskAddedToast = false }
+                        .padding(.top, TaisaSpacing.compact.rawValue)
                 }
             }
     }
@@ -72,38 +78,13 @@ struct HomeView: View {
             ProgressView("Loading Home…")
         case .empty:
             List {
-                ThisWeekSection(items: [], send: send)
-                HomeActionsPreviewSection(prompts: [], send: send)
-                HomeGoalsSummarySection(goals: [], send: send)
+                HomeActionsPreviewSection(actions: [], send: send, add: { showsTaskComposer = true })
             }
             .accessibilityIdentifier("home.empty")
         case let .content(snapshot, isRefreshing, issue):
             List {
                 if let issue { issueRow(issue) }
-                ThisWeekSection(
-                    items: snapshot.thisWeek,
-                    send: send
-                )
-                HomeActionsPreviewSection(prompts: snapshot.actionPrompts, send: send)
-                HomeGoalsSummarySection(goals: snapshot.goals, send: send)
-                if let leadInsight = snapshot.leadInsight {
-                    LeadInsightSection(insight: leadInsight, openInsights: openInsights)
-                }
-                if snapshot.leadInsight == nil && snapshot.hasConfirmedInsightHistory {
-                    TaisaButton(role: .secondary, label: "View insights", icon: .insights) { openInsights() }
-                        .accessibilityIdentifier("home.insights.link")
-                }
-                if snapshot.unresolvedPriorWeekCount > 0 {
-                    HomeReviewSection(unresolvedCount: snapshot.unresolvedPriorWeekCount) {
-                        activeSheet = .priorWeekReview(unresolvedCount: $0)
-                    }
-                }
-                if showsRecentConversations && !snapshot.conversations.isEmpty {
-                    Section("Recent conversations") {
-                        ForEach(snapshot.conversations, id: \.id) { ConversationRow(conversation: $0, send: send) }
-                    }
-                    .accessibilityIdentifier("home.conversations")
-                }
+                HomeActionsPreviewSection(actions: snapshot.actions, send: send, add: { showsTaskComposer = true })
                 if isRefreshing { ProgressView().frame(maxWidth: .infinity) }
             }
             .refreshable { await model.load() }
@@ -128,6 +109,19 @@ struct HomeView: View {
         }
     }
 
+    private func submitTask() {
+        let title = taskTitle
+        let dueDay = taskDueDate.flatMap(\.actionDueDay)
+        Task {
+            if await model.createTask(title: title, dueDay: dueDay) {
+                taskTitle = ""
+                taskDueDate = nil
+                showsTaskComposer = false
+                showsTaskAddedToast = true
+            }
+        }
+    }
+
     private func issueRow(_ issue: HomeIssue) -> some View {
         Button {
             if issue == .recoveryRequired { openRecovery() }
@@ -141,5 +135,13 @@ struct HomeView: View {
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier(issue == .recoveryRequired ? "home.recovery" : "home.retry")
+    }
+}
+
+private extension Date {
+    var actionDueDay: ActionDueDay? {
+        let values = Calendar.current.dateComponents([.year, .month, .day], from: self)
+        guard let year = values.year, let month = values.month, let day = values.day else { return nil }
+        return ActionDueDay(rawValue: String(format: "%04d-%02d-%02d", year, month, day))
     }
 }

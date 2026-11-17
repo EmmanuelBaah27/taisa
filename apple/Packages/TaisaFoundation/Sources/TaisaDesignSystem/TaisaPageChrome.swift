@@ -59,6 +59,78 @@ public struct TaisaPageHeader<Actions: View>: View {
     }
 }
 
+public struct TaisaDatedPageHeader<Actions: View>: View {
+    private let date: String
+    private let title: String
+    private let actions: Actions
+
+    public init(date: String, title: String, @ViewBuilder actions: () -> Actions) {
+        self.date = date
+        self.title = title
+        self.actions = actions()
+    }
+
+    public var body: some View {
+        HStack(alignment: .bottom, spacing: TaisaSpacing.standard.rawValue) {
+            VStack(alignment: .leading, spacing: TaisaSpacing.tight.rawValue) {
+                TaisaText(role: .supporting, color: .mutedForeground, content: date)
+                TaisaText(role: .display, content: title)
+            }
+            Spacer(minLength: 0)
+            actions
+        }
+        .padding(.horizontal, TaisaSpacing.content.rawValue)
+        .padding(.vertical, TaisaSpacing.control.rawValue)
+        .background(TaisaColor.background.color)
+    }
+}
+
+public struct TaisaInlineTaskComposer: View {
+    @Binding private var title: String
+    @Binding private var dueDate: Date?
+    private let submit: @MainActor () -> Void
+
+    public init(title: Binding<String>, dueDate: Binding<Date?>, submit: @escaping @MainActor () -> Void) {
+        _title = title
+        _dueDate = dueDate
+        self.submit = submit
+    }
+
+    public var body: some View {
+        VStack(alignment: .leading, spacing: TaisaSpacing.control.rawValue) {
+            TextField("Add task…", text: $title, axis: .vertical)
+                .font(TaisaTypography.body.font)
+                .lineLimit(1...3)
+                .accessibilityLabel("Task title")
+            HStack {
+                if let binding = Binding($dueDate) {
+                    DatePicker("Due", selection: binding, displayedComponents: .date)
+                        .font(TaisaTypography.supporting.font)
+                } else {
+                    Button("Due") { dueDate = Date() }
+                        .font(TaisaTypography.supporting.font)
+                        .foregroundStyle(TaisaColor.mutedForeground.color)
+                }
+                Spacer(minLength: 0)
+                TaisaSecondaryIconButton(icon: .arrowUp, accessibilityLabel: "Save task", action: submit)
+                    .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .accessibilityIdentifier("task.composer.submit")
+            }
+        }
+        .padding(TaisaSpacing.control.rawValue)
+        .background(TaisaColor.background.color)
+        .clipShape(RoundedRectangle(cornerRadius: TaisaRadius.composer.rawValue))
+        .shadow(color: TaisaColor.foreground.color.opacity(0.08), radius: TaisaSpacing.control.rawValue)
+    }
+}
+
+private extension Binding where Value == Date? {
+    init?(_ source: Binding<Date?>) {
+        guard source.wrappedValue != nil else { return nil }
+        self.init(get: { source.wrappedValue! }, set: { source.wrappedValue = $0 })
+    }
+}
+
 /// Shared top chrome for pages pushed within a primary destination.
 public struct TaisaChildPageHeader: View {
     public enum Mode: Sendable {

@@ -43,20 +43,11 @@ final class TaisaPreviewCatalogTests: XCTestCase {
         }
     }
 
-    func testCombinedHomeOpensNestedInsights() {
+    func testInsightsScenarioShowsNestedInsightHierarchy() {
         let app = XCUIApplication()
-        app.launchArguments = ["-TAISAPreviewScenario", "home.combined"]
+        app.launchArguments = ["-TAISAPreviewScenario", "home.insights"]
         app.launch()
 
-        let weeklyWork = app.staticTexts["Draft the studio lighting plan"]
-        XCTAssertTrue(weeklyWork.waitForExistence(timeout: 5))
-        let insight = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS %@", "Your best planning sessions happen before midday.")
-        ).firstMatch
-        for _ in 0..<6 where !insight.isHittable { app.swipeUp() }
-        XCTAssertTrue(insight.waitForExistence(timeout: 5))
-        XCTAssertTrue(insight.isHittable)
-        insight.tap()
         XCTAssertTrue(app.navigationBars["Insights"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Needs review"].exists)
         XCTAssertTrue(app.staticTexts["History"].exists)
@@ -67,11 +58,30 @@ final class TaisaPreviewCatalogTests: XCTestCase {
         app.launchArguments = ["-TAISAPreviewScenario", "home.combined"]
         app.launch()
 
-        let action = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Draft the studio lighting plan")).firstMatch
+        let action = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Measure the north wall")).firstMatch
         XCTAssertTrue(action.waitForExistence(timeout: 5))
         XCTAssertTrue(action.isHittable)
-        XCTAssertFalse(app.buttons["Complete Draft the studio lighting plan"].exists)
+        XCTAssertFalse(app.buttons["Complete Measure the north wall"].exists)
         XCTAssertFalse(element("home.this-week.completion-evidence", in: app).exists)
+    }
+
+    func testTaskComposerCreatesAndRevealsTaskOnHome() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-TAISAPreviewScenario", "home.taskComposer"]
+        app.launch()
+
+        XCTAssertTrue(element("preview.ready.home.taskComposer", in: app).waitForExistence(timeout: 5))
+        let title = app.textFields["Task title"]
+        XCTAssertTrue(title.waitForExistence(timeout: 5))
+        title.tap()
+        title.typeText("Book electrician")
+        let submit = app.buttons["Save task"]
+        XCTAssertTrue(submit.waitForExistence(timeout: 5))
+        submit.tap()
+
+        XCTAssertTrue(app.staticTexts["Task added"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Book electrician"].waitForExistence(timeout: 5))
+        XCTAssertFalse(element("home.tasks.composer", in: app).exists)
     }
 
     func testCareerActionScenarioShowsCanonicalDetailHierarchy() {
