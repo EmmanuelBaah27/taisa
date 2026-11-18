@@ -17,9 +17,23 @@ struct ActionComponentTests {
         #expect(TaisaButton.Contract.supportsInPlaceProgress)
         #expect(TaisaButton.Contract.supportsIntrinsicLayout)
         #expect(TaisaButton.Contract.supportsIconOnlyContent)
+        #expect(TaisaButton.Contract.supportsGhostRole)
+        #expect(TaisaButtonRole.ghost != .secondary)
         #expect(TaisaButtonLayout.fill != .intrinsic)
         #expect(TaisaButtonShape.circle != .capsule)
         #expect(TaisaButtonSize.small.minimumHitHeight == 44)
+    }
+
+    @Test func graphicalDatePickerUsesPrimarySelectionAndSeparatesCancelFromCommit() {
+        #expect(TaisaGraphicalDatePickerContract.tint == .primaryAction)
+
+        let original = Date(timeIntervalSince1970: 1_800_000_000)
+        let changed = Date(timeIntervalSince1970: 1_900_000_000)
+        var draft = TaisaDateSelectionDraft(initial: original)
+        draft.selection = changed
+
+        #expect(draft.cancelledValue == original)
+        #expect(draft.committedValue == changed)
     }
 
     @Test func fieldsAndBorrowedControlsHaveTypedSharedContracts() {

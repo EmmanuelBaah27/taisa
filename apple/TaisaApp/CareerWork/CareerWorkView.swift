@@ -3,7 +3,7 @@ import TaisaCareerWork
 import TaisaDesignSystem
 import TaisaStorage
 
-struct ActionsView: View {
+struct TasksView: View {
     let model: CareerWorkModel
     var initialRoute: CareerWorkRoute?
     var openRecovery: () -> Void = {}
@@ -27,7 +27,7 @@ fileprivate enum CareerWorkRoot {
     case actions
     case goals
 
-    var title: String { self == .actions ? "Actions" : "Goals" }
+    var title: String { self == .actions ? "Tasks" : "Goals" }
 }
 
 struct CareerWorkView: View {
@@ -63,14 +63,13 @@ struct CareerWorkView: View {
                     detail
                 }
             } else {
-                NavigationStack {
-                    collection
-                        .navigationTitle(root.title)
-                        .navigationDestination(item: $selectedRoute) { _ in detail }
-                }
+                collection
+                    .navigationTitle(root.title)
+                    .navigationBarTitleDisplayMode(.inline)
+                    .navigationDestination(item: $selectedRoute) { _ in detail }
             }
         }
-        .accessibilityIdentifier(root == .actions ? "actions.root" : "goals.root")
+        .accessibilityIdentifier(root == .actions ? "tasks.root" : "goals.root")
         .task {
             if let selectedRoute, selectedRoute != model.route { await model.select(selectedRoute) }
             else if model.state == .idle { await model.load() }
@@ -89,7 +88,6 @@ struct CareerWorkView: View {
             CareerWorkEditorSheet(editor: editor) { title, detail, date, actionID in
                 switch editor {
                 case .milestone: await model.createMilestone(title: title, targetAtMS: date.milliseconds)
-                case .action: await model.createAction(title: title, detail: detail, dueAtMS: date.milliseconds)
                 case .evidence: await model.addEvidence(actionID: actionID, title: title, detail: detail, occurredAtMS: date.milliseconds)
                 }
             }
@@ -100,7 +98,7 @@ struct CareerWorkView: View {
                 showsCreateAction = false
                 if model.duplicateGate == nil {
                     actionEditorInitial = nil
-                    selectedRoute = model.route
+                    selectedRoute = nil
                 }
             }
         }
@@ -114,7 +112,7 @@ struct CareerWorkView: View {
             ActionDuplicateReviewSheet(review: model.duplicateGate) { decision in
                 await model.resolveDuplicate(decision)
                 showsCreateAction = false
-                selectedRoute = model.route
+                selectedRoute = decision == .openExisting ? model.route : nil
             } cancel: {
                 model.cancelDuplicateReview()
             }
@@ -129,38 +127,48 @@ struct CareerWorkView: View {
             ContentUnavailableView {
                 VStack {
                     CentralIcon(root == .actions ? .action : .goal).frame(width: 32, height: 32)
-                    TaisaText(role: .heading, content: root == .actions ? "Add your first action" : "Start with one meaningful goal")
+                    TaisaText(role: .heading, content: root == .actions ? "Add your first task" : "Start with one meaningful goal")
                 }
             } description: {
                 TaisaText(
                     role: .body,
                     color: .mutedForeground,
-                    content: root == .actions ? "Capture one concrete commitment you want to move forward." : "Break it into milestones and actions, then keep the evidence that shows your progress."
+                    content: root == .actions ? "Capture one concrete commitment you want to move forward." : "Break it into milestones and tasks, then keep the evidence that shows your progress."
                 )
             } actions: {
                 if root == .actions {
-                    TaisaButton(role: .primary, label: "Create action", icon: .add) { showsCreateAction = true }
+                    TaisaButton(role: .secondary, label: "Create task", icon: .add) { showsCreateAction = true }
                 } else {
                     TaisaButton(role: .primary, label: "Create goal", icon: .goal) { showsCreateGoal = true }
                 }
             }
-            .accessibilityIdentifier(root == .actions ? "actions.empty" : "goals.empty")
+            .accessibilityIdentifier(root == .actions ? "tasks.empty" : "goals.empty")
             .toolbar { createToolbar }
         case let .content(snapshot, isRefreshing, issue):
-            List(selection: $selectedRoute) {
-                if let issue { issueRow(issue) }
-                if root == .actions {
-                    actionCollection(snapshot.actions)
-                } else {
+            if root == .actions {
+                ScrollView {
+                    LazyVStack(spacing: TaisaSpacing.compact.rawValue) {
+                        if let issue { issueRow(issue) }
+                        taskCollection(snapshot.actions)
+                        if isRefreshing { ProgressView().frame(maxWidth: .infinity) }
+                    }
+                    .padding(.horizontal, TaisaSpacing.content.rawValue)
+                    .padding(.vertical, TaisaSpacing.control.rawValue)
+                }
+                .refreshable { await model.load() }
+                .toolbar { createToolbar }
+            } else {
+                List(selection: $selectedRoute) {
+                    if let issue { issueRow(issue) }
                     goalSection("Active", goals: snapshot.overview.active)
                     goalSection("Paused", goals: snapshot.overview.paused)
                     goalSection("Completed", goals: snapshot.overview.completed)
                     goalSection("Archived", goals: snapshot.overview.archived)
+                    if isRefreshing { ProgressView().frame(maxWidth: .infinity) }
                 }
-                if isRefreshing { ProgressView().frame(maxWidth: .infinity) }
+                .refreshable { await model.load() }
+                .toolbar { createToolbar }
             }
-            .refreshable { await model.load() }
-            .toolbar { createToolbar }
         case let .failure(issue):
             failure(issue)
         }
@@ -169,8 +177,8 @@ struct CareerWorkView: View {
     @ToolbarContentBuilder private var createToolbar: some ToolbarContent {
         if root == .actions {
             ToolbarItem(placement: .topBarTrailing) {
-                TaisaToolbarAction(label: "Create an action", icon: .add) { showsCreateAction = true }
-                    .accessibilityIdentifier("career-work.action.create")
+                TaisaToolbarAction(label: "Create task", icon: .add) { showsCreateAction = true }
+                    .accessibilityIdentifier("tasks.create")
             }
         } else {
             ToolbarItem(placement: .topBarTrailing) {
@@ -179,10 +187,10 @@ struct CareerWorkView: View {
         }
     }
 
-    private func actionCollection(_ actions: [ActionRecord]) -> some View {
-        Section {
-            TaisaButton(role: .secondary, label: "Filter actions") { showsActionFilters = true }
-                .accessibilityIdentifier("career-work.action.filters")
+    private func taskCollection(_ actions: [ActionRecord]) -> some View {
+        VStack(spacing: TaisaSpacing.compact.rawValue) {
+            TaisaButton(role: .secondary, label: "Filter tasks") { showsActionFilters = true }
+                .accessibilityIdentifier("tasks.filters")
             ScrollView(.horizontal) {
                 HStack {
                     ForEach(ActionLifecycleFilter.allCases, id: \.self) { lifecycle in
@@ -204,15 +212,14 @@ struct CareerWorkView: View {
             .scrollIndicators(.hidden)
             ForEach(actions, id: \.id) { action in
                 TaisaPressable(action: { selectedRoute = .action(id: action.id) }) {
-                    TaisaRow(title: action.title, supporting: actionDueText(action), icon: .action)
+                    TaisaTaskRow(title: action.title, dueLabel: actionDueText(action)?.replacingOccurrences(of: "Due ", with: ""))
                 }
-                .tag(CareerWorkRoute.action(id: action.id))
-                .accessibilityLabel("Action \(action.title), \(action.status)")
+                .accessibilityLabel("Task \(action.title), \(action.status)")
             }
             if let deletedActions = model.state.snapshot?.deletedActions, !deletedActions.isEmpty {
                 ForEach(deletedActions, id: \.id) { action in
                     HStack {
-                        TaisaRow(title: action.title, supporting: "Deleted action", icon: .delete)
+                        TaisaRow(title: action.title, supporting: "Deleted task", icon: .delete)
                         TaisaButton(role: .secondary, label: "Restore", icon: .undo) {
                             Task { await model.restoreAction(id: action.id); selectedRoute = model.route }
                         }
@@ -220,10 +227,8 @@ struct CareerWorkView: View {
                     .accessibilityIdentifier("career-work.action.restore")
                 }
             }
-        } header: {
-            Text("Actions")
         }
-        .accessibilityIdentifier("career-work.actions.collection")
+        .accessibilityIdentifier("tasks.collection")
     }
 
     private func goalSection(_ title: String, goals: [GoalRecord]) -> some View {
@@ -258,7 +263,7 @@ struct CareerWorkView: View {
                     TaisaText(role: .heading, content: "Select career work")
                 }
             } description: {
-                TaisaText(role: .body, color: .mutedForeground, content: "Choose a goal, action, or evidence item to inspect it.")
+                TaisaText(role: .body, color: .mutedForeground, content: "Choose a goal, task, or evidence item to inspect it.")
             }
         }
     }
@@ -353,7 +358,7 @@ private struct CareerGoalDetail: View {
             Section("Progress") { TaisaRow(title: snapshot.progress.summary, icon: .goal) }
             Section("Add work") {
                 TaisaButton(role: .secondary, label: "Add milestone", icon: .milestone) { add(.milestone) }
-                TaisaButton(role: .secondary, label: "Add action", icon: .action) { addAction() }
+                TaisaButton(role: .secondary, label: "Add task", icon: .action) { addAction() }
                 TaisaButton(role: .secondary, label: "Add evidence", icon: .evidence) { add(.evidence(actions: snapshot.actions)) }
             }
             if !snapshot.milestones.isEmpty {
@@ -365,12 +370,12 @@ private struct CareerGoalDetail: View {
                 }
             }
             if !snapshot.actions.isEmpty {
-                Section("Actions") {
+                Section("Tasks") {
                     ForEach(snapshot.actions, id: \.id) { action in
                         TaisaPressable(action: { open(.action(id: action.id)) }) {
                             TaisaRow(title: action.title, supporting: action.status, icon: action.status == "completed" ? .completed : .incomplete)
                         }
-                        .accessibilityLabel("Action \(action.title), \(action.status)")
+                        .accessibilityLabel("Task \(action.title), \(action.status)")
                     }
                 }
             }
@@ -417,11 +422,10 @@ private struct CareerGoalDetail: View {
 
 enum CareerWorkEditor: Identifiable {
     case milestone
-    case action
     case evidence(actions: [ActionRecord])
 
     var id: String {
-        switch self { case .milestone: "milestone"; case .action: "action"; case .evidence: "evidence" }
+        switch self { case .milestone: "milestone"; case .evidence: "evidence" }
     }
 }
 
@@ -439,7 +443,7 @@ private struct CareerWorkEditorSheet: View {
     @State private var actionID: String?
 
     private var name: String {
-        switch editor { case .milestone: "milestone"; case .action: "action"; case .evidence: "evidence" }
+        switch editor { case .milestone: "milestone"; case .evidence: "evidence" }
     }
 
     var body: some View {
@@ -449,7 +453,7 @@ private struct CareerWorkEditorSheet: View {
                 if case .milestone = editor { EmptyView() } else { TaisaField("Optional details", text: $detail, kind: .multiline) }
                 TaisaDateField(editorDateLabel, selection: $date)
                 if case let .evidence(actions) = editor, !actions.isEmpty {
-                    TaisaPicker("Related action", selection: $actionID, options: [nil] + actions.map { Optional($0.id) }) { id in
+                    TaisaPicker("Related task", selection: $actionID, options: [nil] + actions.map { Optional($0.id) }) { id in
                         id.flatMap { selected in actions.first(where: { $0.id == selected })?.title } ?? "Goal overall"
                     }
                 }
@@ -464,7 +468,7 @@ private struct CareerWorkEditorSheet: View {
     }
 
     private var editorDateLabel: String {
-        switch editor { case .milestone: "Target date"; case .action: "Due date"; case .evidence: "Occurred" }
+        switch editor { case .milestone: "Target date"; case .evidence: "Occurred" }
     }
 }
 
@@ -510,7 +514,7 @@ private struct CareerActionDetail: View {
 
     var body: some View {
         List {
-            Section("Action") {
+            Section("Task") {
                 TaisaStatusSurface(statusRole, label: snapshot.action.status.capitalized)
                 if !snapshot.action.detail.isEmpty { TaisaRow(title: snapshot.action.detail) }
                 if let due = actionDueText(snapshot.action) {
@@ -537,13 +541,13 @@ private struct CareerActionDetail: View {
                         }) {
                             TaisaRow(
                                 title: item.title,
-                                supporting: item.state == .promoted ? "Promoted to action" : nil,
+                                supporting: item.state == .promoted ? "Promoted to task" : nil,
                                 icon: item.state == .completed ? .completed : .incomplete
                             )
                         }
                         if item.state == .pending {
                             TaisaMenu(label: "More", actions: [
-                                ("Promote to action", .standard, { Task { await model.promoteChecklistItem(id: item.id) } }),
+                                ("Promote to task", .standard, { Task { await model.promoteChecklistItem(id: item.id) } }),
                                 ("Remove", .destructive, { Task { await model.removeChecklistItem(id: item.id) } }),
                             ])
                         }
@@ -587,13 +591,13 @@ private struct CareerActionDetail: View {
             Section("Manage") { lifecycleControls }
         }
         .accessibilityIdentifier("career-work.action.detail")
-        .modifier(TaisaConfirmationDialog(title: "Complete this action?", isPresented: $showsComplete, confirmLabel: "Complete action", cancelLabel: "Keep working") {
+        .modifier(TaisaConfirmationDialog(title: "Complete this task?", isPresented: $showsComplete, confirmLabel: "Complete task", cancelLabel: "Keep working") {
             Task { await model.completeSelectedAction(evidenceTitle: completionEvidence) }
         })
-        .modifier(TaisaConfirmationDialog(title: "Drop this action?", isPresented: $showsDrop, confirmLabel: "Drop action", cancelLabel: "Keep action", role: .destructive) {
+        .modifier(TaisaConfirmationDialog(title: "Drop this task?", isPresented: $showsDrop, confirmLabel: "Drop task", cancelLabel: "Keep task", role: .destructive) {
             Task { await model.dropSelectedAction() }
         })
-        .modifier(TaisaConfirmationDialog(title: "Delete this action?", isPresented: $showsDelete, confirmLabel: "Delete action", cancelLabel: "Keep action", role: .destructive) {
+        .modifier(TaisaConfirmationDialog(title: "Delete this task?", isPresented: $showsDelete, confirmLabel: "Delete task", cancelLabel: "Keep task", role: .destructive) {
             Task { await model.deleteSelectedAction(); deleted() }
         })
         .sheet(isPresented: $showsEdit) {
@@ -606,14 +610,14 @@ private struct CareerActionDetail: View {
     }
 
     @ViewBuilder private var lifecycleControls: some View {
-        TaisaButton(role: .secondary, label: "Edit action", icon: .edit) { showsEdit = true }
+        TaisaButton(role: .secondary, label: "Edit task", icon: .edit) { showsEdit = true }
         switch ActionStatus(rawValue: snapshot.action.status) {
         case .active:
             TaisaField("Completion evidence", text: $completionEvidence, placeholder: "What shows this is complete?")
-            TaisaButton(role: .primary, label: "Complete action", icon: .completeAction, isEnabled: !completionEvidence.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) { showsComplete = true }
-            TaisaButton(role: .secondary, label: "Drop action", icon: .drop) { showsDrop = true }
+            TaisaButton(role: .primary, label: "Complete task", icon: .completeAction, isEnabled: !completionEvidence.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) { showsComplete = true }
+            TaisaButton(role: .secondary, label: "Drop task", icon: .drop) { showsDrop = true }
         case .completed, .dropped:
-            TaisaButton(role: .secondary, label: "Reopen action", icon: .undo) { Task { await model.reopenSelectedAction() } }
+            TaisaButton(role: .secondary, label: "Reopen task", icon: .undo) { Task { await model.reopenSelectedAction() } }
             if snapshot.action.status == ActionStatus.completed.rawValue, let completionEvent = latestCompletionEvent {
                 TaisaButton(role: .secondary, label: "Correct mistaken completion", icon: .undo) {
                     Task { await model.correctSelectedCompletion(eventID: completionEvent.id) }
@@ -623,7 +627,7 @@ private struct CareerActionDetail: View {
         case nil:
             EmptyView()
         }
-        TaisaButton(role: .destructive, label: "Delete action", icon: .delete) { showsDelete = true }
+        TaisaButton(role: .destructive, label: "Delete task", icon: .delete) { showsDelete = true }
             .accessibilityIdentifier("career-work.action.delete")
     }
 
@@ -666,7 +670,6 @@ private enum ActionParentChoice: Hashable {
     case milestone(String, String)
 }
 
-private enum ActionDueChoice: Hashable { case none, date }
 
 private enum ActionFilterParentChoice: Hashable {
     case all, goal(String), milestone(String, String)
@@ -708,7 +711,7 @@ private struct ActionFilterSheet: View {
                 TaisaButton(role: .primary, label: "Apply filters") { Task { await apply(filter) } }
                 TaisaButton(role: .secondary, label: "Cancel") { dismiss() }
             }
-            .navigationTitle("Filter actions")
+            .navigationTitle("Filter tasks")
             .accessibilityIdentifier("career-work.action.filter-sheet")
         }
     }
@@ -760,8 +763,7 @@ private struct ActionEditorSheet: View {
     @State private var title = ""
     @State private var detail = ""
     @State private var parent: ActionParentChoice = .standalone
-    @State private var dueChoice: ActionDueChoice = .none
-    @State private var dueDate = Date()
+    @State private var dueDate: Date?
 
     init(goals: [GoalRecord], milestones: [MilestoneRecord], initial: ActionDraft? = nil, editing: Bool = false, save: @escaping (ActionDraft) async -> Void) {
         self.goals = goals
@@ -771,25 +773,23 @@ private struct ActionEditorSheet: View {
         _title = State(initialValue: initial?.title ?? "")
         _detail = State(initialValue: initial?.detail ?? "")
         _parent = State(initialValue: initial.map(Self.choice) ?? .standalone)
-        _dueChoice = State(initialValue: initial?.dueDay == nil ? .none : .date)
-        _dueDate = State(initialValue: initial?.dueDay.flatMap(Self.date) ?? Date())
+        _dueDate = State(initialValue: initial?.dueDay.flatMap(Self.date))
     }
 
     var body: some View {
         NavigationStack {
-            Form {
-                TaisaField("Action title", text: $title, placeholder: "What needs to happen?")
-                TaisaField("Details", text: $detail, placeholder: "Optional context", kind: .multiline)
-                TaisaPicker("Parent", selection: $parent, options: parentOptions, label: parentLabel)
-                TaisaPicker("Due", selection: $dueChoice, options: [.none, .date]) { $0 == .none ? "No due date" : "Choose a date" }
-                if dueChoice == .date { TaisaDateField("Due date", selection: $dueDate) }
-                TaisaButton(role: .primary, label: isEditing ? "Save changes" : "Create action", icon: isEditing ? .edit : .add, isEnabled: !trimmedTitle.isEmpty) {
-                    Task { await save(draft) }
+            TaisaColor.background.color
+                .ignoresSafeArea()
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    TaskComposerView(title: $title, dueDate: $dueDate) {
+                        Task {
+                            await save(draft)
+                            dismiss()
+                        }
+                    }
                 }
-                TaisaButton(role: .secondary, label: "Cancel") { dismiss() }
-            }
-            .navigationTitle(isEditing ? "Edit action" : "New action")
-            .accessibilityIdentifier("career-work.action.editor")
+            .navigationTitle(isEditing ? "Edit task" : "New task")
+            .accessibilityIdentifier("tasks.editor")
         }
     }
 
@@ -810,7 +810,7 @@ private struct ActionEditorSheet: View {
         case let .goal(id): .goal(id: id)
         case let .milestone(goalID, milestoneID): .milestone(goalID: goalID, milestoneID: milestoneID)
         }
-        return ActionDraft(title: trimmedTitle, detail: detail, parent: context, dueDay: dueChoice == .date ? dueDate.actionDueDay : nil)
+        return ActionDraft(title: trimmedTitle, detail: detail, parent: context, dueDay: dueDate?.actionDueDay)
     }
 
     private static func choice(_ draft: ActionDraft) -> ActionParentChoice {
@@ -840,12 +840,12 @@ private struct ActionDuplicateReviewSheet: View {
                     ForEach(review?.candidates ?? [], id: \.id) { TaisaRow(title: $0.title, supporting: $0.detail, icon: .warning, emphasis: .attention) }
                 }
                 Section("Choose") {
-                    TaisaButton(role: .secondary, label: "Open existing action", icon: .action) { Task { await decide(.openExisting) } }
-                    TaisaButton(role: .primary, label: "Create separate action", icon: .add) { Task { await decide(.createSeparate) } }
+                    TaisaButton(role: .secondary, label: "Open existing task", icon: .action) { Task { await decide(.openExisting) } }
+                    TaisaButton(role: .primary, label: "Create separate task", icon: .add) { Task { await decide(.createSeparate) } }
                     TaisaButton(role: .secondary, label: "Cancel") { cancel() }
                 }
             }
-            .navigationTitle("Similar action found")
+            .navigationTitle("Similar task found")
             .accessibilityIdentifier("career-work.action.duplicate-review")
         }
     }

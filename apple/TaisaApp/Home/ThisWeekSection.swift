@@ -33,7 +33,7 @@ struct ThisWeekSection: View {
         TaisaPressable(action: { send(.action(item.action.id)) }) {
             TaisaRow(title: item.action.title, supporting: supportingText(for: item), icon: .action)
         }
-        .accessibilityHint("Open this action")
+        .accessibilityHint("Open this task")
     }
 
     private func supportingText(for item: WeeklyWorkItem) -> String? {
@@ -101,7 +101,7 @@ struct HomeGoalsSummarySection: View {
     var body: some View {
         Section("Goals") {
             if goals.isEmpty {
-                TaisaRow(title: "No active goals", supporting: "Create a goal when an outcome needs more than one action.", icon: .goal)
+                TaisaRow(title: "No active goals", supporting: "Create a goal when an outcome needs more than one task.", icon: .goal)
             } else {
                 ForEach(goals.prefix(3), id: \.id) { GoalRow(goal: $0, send: send) }
             }

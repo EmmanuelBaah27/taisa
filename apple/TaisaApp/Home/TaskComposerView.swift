@@ -21,14 +21,10 @@ struct TaskComposerView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: TaisaSpacing.control.rawValue) {
-            TextField("Add task…", text: $title, axis: .vertical)
-                .font(TaisaTypography.taskTitle.font)
-                .lineLimit(1...3)
-                .focused($titleIsFocused)
-                .accessibilityLabel("Task title")
+            TaisaTaskTitleField(text: $title, focus: $titleIsFocused)
             HStack {
                 TaisaButton(
-                    role: .secondary,
+                    role: .ghost,
                     shape: .capsule,
                     label: dueDate?.taskComposerLabel ?? "Due",
                     icon: .calendar,
@@ -81,30 +77,14 @@ struct TaskComposerView: View {
         }
 #endif
         .sheet(isPresented: $showsDueDatePicker) {
-            NavigationStack {
-                DatePicker("Due date", selection: $draftDueDate, displayedComponents: .date)
-                    .datePickerStyle(.graphical)
-                    .labelsHidden()
-                    .padding(TaisaSpacing.standard.rawValue)
-                    .toolbar {
-                        ToolbarItem(placement: .principal) {
-                            Text("Due date").font(.headline)
-                        }
-                        ToolbarItem(placement: .cancellationAction) {
-                            TaisaButton(role: .secondary, label: "Cancel", size: .small, layout: .intrinsic) {
-                                closeDueDatePicker()
-                            }
-                        }
-                        ToolbarItem(placement: .confirmationAction) {
-                            TaisaButton(role: .primary, label: "Done", size: .small, layout: .intrinsic) {
-                                dueDate = draftDueDate
-                                closeDueDatePicker()
-                            }
-                        }
-                    }
-            }
-            .presentationDetents([.medium])
-            .presentationDragIndicator(.visible)
+            TaisaGraphicalDatePickerSheet(
+                selection: draftDueDate,
+                cancel: closeDueDatePicker,
+                commit: { selected in
+                    dueDate = selected
+                    closeDueDatePicker()
+                }
+            )
         }
     }
 

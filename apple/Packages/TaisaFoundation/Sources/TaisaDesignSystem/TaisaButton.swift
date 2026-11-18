@@ -3,6 +3,7 @@ import SwiftUI
 public enum TaisaButtonRole: Sendable, Equatable {
     case primary
     case secondary
+    case ghost
     case destructive
 }
 
@@ -42,6 +43,7 @@ public struct TaisaButton: View {
         public static let supportsInPlaceProgress = true
         public static let supportsIntrinsicLayout = true
         public static let supportsIconOnlyContent = true
+        public static let supportsGhostRole = true
     }
 
     private let role: TaisaButtonRole
@@ -114,6 +116,7 @@ public struct TaisaButton: View {
                 .clipShape(buttonShape)
         }
         .buttonStyle(.plain)
+        .fixedSize(horizontal: layout == .intrinsic, vertical: false)
         .frame(minWidth: size.minimumHitHeight, minHeight: size.minimumHitHeight)
         .contentShape(Rectangle())
         .disabled(isProcessing || !isEnabled)
@@ -134,8 +137,10 @@ public struct TaisaButton: View {
         switch role {
         case .primary:
             TaisaColor.primaryAction.color
-        case .secondary, .destructive:
-            isSelected ? TaisaColor.selectedSurface.color : TaisaColor.background.color
+        case .secondary, .ghost, .destructive:
+            if isSelected { TaisaColor.primaryAction.color }
+            else if role == .ghost { Color.clear }
+            else { TaisaColor.background.color }
         }
     }
 
@@ -146,7 +151,8 @@ public struct TaisaButton: View {
     private var borderColor: Color {
         switch role {
         case .primary: .clear
-        case .secondary: TaisaColor.border.color
+        case .secondary: isSelected ? .clear : TaisaColor.border.color
+        case .ghost: .clear
         case .destructive: TaisaColor.destructive.color
         }
     }

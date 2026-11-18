@@ -37,6 +37,8 @@ final class PrimaryAppShellModel {
         workDestination = destination
     }
 
+    func dismissWork() { workDestination = nil }
+
     func selectAdjacent(offset: Int) {
         let destinations = PrimaryDestination.allCases
         guard let currentIndex = destinations.firstIndex(of: selection) else { return }
@@ -104,6 +106,12 @@ struct PrimaryAppShell: View {
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
             .simultaneousGesture(primaryPageCompletionGesture)
+            .navigationDestination(item: Binding(
+                get: { model.workDestination },
+                set: { if $0 == nil { model.dismissWork() } }
+            )) { destination in
+                workDestinationView(destination)
+            }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if model.showsConversationDock {
@@ -174,24 +182,15 @@ struct PrimaryAppShell: View {
     private func destinationView(_ destination: PrimaryDestination) -> some View {
         switch destination {
         case .home:
-            if let destination = model.workDestination {
-                switch destination {
-                case let .actions(route):
-                    ActionsView(model: careerWorkModel, initialRoute: route, openRecovery: openRecovery)
-                case let .goals(route):
-                    GoalsView(model: careerWorkModel, initialRoute: route, openRecovery: openRecovery)
-                }
-            } else {
-                HomeView(
-                    model: homeModel,
-                    send: openHomeIntent,
-                    openRecovery: openRecovery,
-                    openPersonalQA: openPersonalQA,
-                    openInsights: openInsights,
-                    ownsNavigation: false,
-                    showsRecentConversations: false
-                )
-            }
+            HomeView(
+                model: homeModel,
+                send: openHomeIntent,
+                openRecovery: openRecovery,
+                openPersonalQA: openPersonalQA,
+                openInsights: openInsights,
+                ownsNavigation: false,
+                showsRecentConversations: false
+            )
         case .conversations:
             ConversationsView(
                 model: conversationsModel,
@@ -218,17 +217,27 @@ struct PrimaryAppShell: View {
         }
     }
 
+    @ViewBuilder
+    private func workDestinationView(_ destination: WorkDestination) -> some View {
+        switch destination {
+        case let .tasks(route):
+            TasksView(model: careerWorkModel, initialRoute: route, openRecovery: openRecovery)
+        case let .goals(route):
+            GoalsView(model: careerWorkModel, initialRoute: route, openRecovery: openRecovery)
+        }
+    }
+
     private func openHomeIntent(_ intent: HomeIntent) {
         switch intent {
         case let .conversation(id): model.openConversation(id: id, title: "Conversation")
         case let .goal(id):
             model.showWork(.goals(route: .goal(id: id)))
         case let .action(id):
-            model.showWork(.actions(route: .action(id: id)))
+            model.showWork(.tasks(route: .action(id: id)))
         case let .milestone(goalID):
             model.showWork(.goals(route: .goal(id: goalID)))
         case .actions:
-            model.showWork(.actions(route: nil))
+            model.showWork(.tasks(route: nil))
         case .goals:
             model.showWork(.goals(route: nil))
         }
