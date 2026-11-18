@@ -62,6 +62,7 @@ public enum TaisaControlMetric {
 
 public enum TaisaEffect {
     public static let taskComposerShadowOpacity: Double = 0.08
+    public static let taskComposerBackdropOpacity: Double = 0.30
     public static let taskComposerShadowRadius: CGFloat = 10
     public static let taskToastShadowOpacity: Double = 0.16
     public static let taskToastShadowRadius: CGFloat = 8

@@ -80,6 +80,7 @@ final class HomeViewContractTests: XCTestCase {
         let taskRows = try String(contentsOf: root.appendingPathComponent("Packages/TaisaFoundation/Sources/TaisaDesignSystem/TaisaTaskRow.swift"), encoding: .utf8)
 
         XCTAssertTrue(home.contains("TaisaDatedPageHeader"))
+        XCTAssertTrue(home.contains("title: \"Up late, Beats?\""))
         XCTAssertTrue(home.contains("TaskComposerView"))
         XCTAssertTrue(home.contains("Task added"))
         XCTAssertTrue(home.contains("home.tasks.composer"))
@@ -101,6 +102,20 @@ final class HomeViewContractTests: XCTestCase {
         XCTAssertTrue(sections.contains("dueLabel"))
     }
 
+    func testHomeEmptyTasksUsesTheSharedFigmaEmptyStateAndCanonicalComposer() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let sections = try String(contentsOf: root.appendingPathComponent("TaisaApp/Home/ThisWeekSection.swift"), encoding: .utf8)
+
+        XCTAssertTrue(sections.contains("TaisaTaskEmptyStateCard(action: add)"))
+        XCTAssertFalse(sections.contains("TaisaTaskRow(title: \"No tasks this week\")"))
+        XCTAssertTrue(sections.contains("if !actions.isEmpty"))
+        XCTAssertTrue(sections.contains("let add: @MainActor @Sendable () -> Void"))
+        XCTAssertTrue(sections.contains(".padding(.vertical, TaisaSpacing.compact.rawValue)"))
+
+        let home = try String(contentsOf: root.appendingPathComponent("TaisaApp/Home/HomeView.swift"), encoding: .utf8)
+        XCTAssertTrue(home.contains(".padding(.top, TaisaSpacing.section.rawValue)"))
+    }
+
     func testTaskComposerReservesThePrimaryNavigationDockAndStartsClosed() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let home = try String(contentsOf: root.appendingPathComponent("TaisaApp/Home/HomeView.swift"), encoding: .utf8)
@@ -110,6 +125,9 @@ final class HomeViewContractTests: XCTestCase {
             home.contains(".padding(.bottom, TaisaBottomChromeContract.fadeHeight)"),
             "The composer must sit above the shell-owned navigation and voice dock"
         )
+        XCTAssertTrue(home.contains("taskComposerDismissalLayer"))
+        XCTAssertTrue(home.contains(".onTapGesture { dismissTaskComposer() }"))
+        XCTAssertTrue(home.contains(".opacity(TaisaEffect.taskComposerBackdropOpacity)"))
     }
 
     func testInsightsStayNestedByCurrentReviewAndHistoryWithGroundedDetail() throws {

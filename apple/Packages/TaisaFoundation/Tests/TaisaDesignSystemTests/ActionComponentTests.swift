@@ -22,6 +22,7 @@ struct ActionComponentTests {
         #expect(TaisaButtonLayout.fill != .intrinsic)
         #expect(TaisaButtonShape.circle != .capsule)
         #expect(TaisaButtonSize.small.minimumHitHeight == 44)
+        #expect(TaisaEffect.taskComposerBackdropOpacity == 0.30)
     }
 
     @Test func graphicalDatePickerUsesPrimarySelectionAndSeparatesCancelFromCommit() {
@@ -56,6 +57,7 @@ struct ActionComponentTests {
         let concepts: [CentralIconName] = [
             .action,
             .checklist,
+            .planning,
             .add,
             .incomplete,
             .completeAction,
@@ -75,6 +77,28 @@ struct ActionComponentTests {
             .testflight,
         ]
         #expect(Set(concepts.map(String.init(describing:))).count == concepts.count)
+    }
+
+    @Test func taskEmptyStateOwnsTheApprovedSharedComposition() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let source = try String(
+            contentsOf: root.appendingPathComponent("Sources/TaisaDesignSystem/TaisaTaskEmptyStateCard.swift"),
+            encoding: .utf8
+        )
+
+        #expect(source.contains("public struct TaisaTaskEmptyStateCard"))
+        #expect(source.contains("CentralIcon(.planning)"))
+        #expect(source.contains("TaisaColor.subtleSurface.color"))
+        #expect(source.contains("TaisaRadius.taskGroup"))
+        #expect(source.contains("TaisaButton("))
+        #expect(source.contains("role: .secondary"))
+        #expect(source.contains("label: \"Add a task\""))
+        #expect(source.contains("icon: .add"))
+        #expect(source.contains("size: .small"))
+        #expect(source.contains("layout: .intrinsic"))
     }
 
     @Test func sharedActionComponentsExposeOnePublicEntryPath() throws {

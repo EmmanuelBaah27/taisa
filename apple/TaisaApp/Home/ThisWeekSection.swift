@@ -56,29 +56,32 @@ struct HomeActionsPreviewSection: View {
     let actions: [ActionRecord]
     let totalCount: Int
     let send: (HomeIntent) -> Void
-    let add: () -> Void
+    let add: @MainActor @Sendable () -> Void
 
     var body: some View {
         VStack(spacing: TaisaSpacing.tight.rawValue) {
             HStack(spacing: TaisaSpacing.compact.rawValue) {
                 TaisaText(role: .taskSupporting, color: .mutedForeground, content: "Tasks this week")
                 Spacer()
-                TaisaSecondaryIconButton(icon: .add, accessibilityLabel: "Add task", size: TaisaControlMetric.taskControl, action: add)
-            }
-            VStack(spacing: TaisaSpacing.tight.rawValue) {
-            if actions.isEmpty {
-                TaisaTaskRow(title: "No tasks this week")
-            } else {
-                ForEach(actions.prefix(3), id: \.id) { action in
-                    TaisaPressable(action: { send(.action(action.id)) }) {
-                        TaisaTaskRow(title: action.title, dueLabel: dueLabel(for: action))
-                    }
+                if !actions.isEmpty {
+                    TaisaSecondaryIconButton(icon: .add, accessibilityLabel: "Add task", size: TaisaControlMetric.taskControl, action: add)
                 }
             }
+            .padding(.vertical, TaisaSpacing.compact.rawValue)
+            if actions.isEmpty {
+                TaisaTaskEmptyStateCard(action: add)
+            } else {
+                VStack(spacing: TaisaSpacing.tight.rawValue) {
+                    ForEach(actions.prefix(3), id: \.id) { action in
+                        TaisaPressable(action: { send(.action(action.id)) }) {
+                            TaisaTaskRow(title: action.title, dueLabel: dueLabel(for: action))
+                        }
+                    }
+                }
+                .clipShape(RoundedRectangle(cornerRadius: TaisaRadius.taskGroup))
+                TaisaPressable(action: { send(.actions) }) { TaisaTaskSummaryRow(count: totalCount) }
+                    .accessibilityIdentifier("home.actions.view-all")
             }
-            .clipShape(RoundedRectangle(cornerRadius: TaisaRadius.taskGroup))
-            TaisaPressable(action: { send(.actions) }) { TaisaTaskSummaryRow(count: totalCount) }
-                .accessibilityIdentifier("home.actions.view-all")
         }
         .accessibilityIdentifier("home.actions.preview")
     }

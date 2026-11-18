@@ -24,6 +24,7 @@ public enum CentralIconName: Sendable, Equatable {
     case edit
     case action
     case checklist
+    case planning
     case add
     case incomplete
     case completeAction
@@ -60,7 +61,7 @@ public struct CentralIcon: View {
             context.stroke(
                 path.applying(transform),
                 with: .foreground,
-                style: StrokeStyle(lineWidth: 2 * scale, lineCap: .round, lineJoin: .round)
+                style: StrokeStyle(lineWidth: strokeWidth * scale, lineCap: .round, lineJoin: .round)
             )
             if let filledPath {
                 context.fill(filledPath.applying(transform), with: .foreground)
@@ -93,6 +94,7 @@ public struct CentralIcon: View {
         case .copy: copy
         case .edit: edit
         case .action, .checklist: checklist
+        case .planning: planning
         case .add: add
         case .incomplete: incomplete
         case .completeAction: completeAction
@@ -200,6 +202,19 @@ public struct CentralIcon: View {
         p.move(to: .init(x: 4, y: 9)); p.addLine(to: .init(x: 5.5, y: 10)); p.addLine(to: .init(x: 8.5, y: 6))
         p.move(to: .init(x: 4, y: 17)); p.addLine(to: .init(x: 5.5, y: 18)); p.addLine(to: .init(x: 8.5, y: 14))
         return p
+    }
+
+    private var planning: Path {
+        var p = Path()
+        p.move(to: .init(x: 11.75, y: 7.75)); p.addLine(to: .init(x: 20.25, y: 7.75))
+        p.addEllipse(in: .init(x: 3.75, y: 14.25, width: 4, height: 4))
+        p.move(to: .init(x: 11.75, y: 16.25)); p.addLine(to: .init(x: 20.25, y: 16.25))
+        p.move(to: .init(x: 3.75, y: 8.25)); p.addLine(to: .init(x: 5.4167, y: 9.75)); p.addLine(to: .init(x: 8.75, y: 5.25))
+        return p
+    }
+
+    private var strokeWidth: CGFloat {
+        name == .planning ? 1.5 : 2
     }
 
     private var add: Path {

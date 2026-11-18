@@ -55,8 +55,9 @@ struct HomeView: View {
     private var homeContent: some View {
         content
             .safeAreaInset(edge: .top, spacing: 0) {
-                TaisaDatedPageHeader(date: Date().taskHeaderLabel, title: "Let’s noodle") { EmptyView() }
+                TaisaDatedPageHeader(date: Date().taskHeaderLabel, title: "Up late, Beats?") { EmptyView() }
             }
+            .overlay { taskComposerDismissalLayer }
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 if showsTaskComposer {
                     TaskComposerView(title: $taskTitle, dueDate: $taskDueDate, submit: submitTask)
@@ -73,6 +74,16 @@ struct HomeView: View {
             .ignoresSafeArea(.keyboard, edges: .bottom)
     }
 
+    @ViewBuilder private var taskComposerDismissalLayer: some View {
+        if showsTaskComposer {
+            TaisaColor.foreground.color
+                .opacity(TaisaEffect.taskComposerBackdropOpacity)
+                .contentShape(Rectangle())
+                .onTapGesture { dismissTaskComposer() }
+                .accessibilityHidden(true)
+        }
+    }
+
     @ViewBuilder private var content: some View {
         switch model.state {
         case .idle, .loading:
@@ -81,7 +92,7 @@ struct HomeView: View {
             ScrollView {
                 HomeActionsPreviewSection(actions: [], totalCount: 0, send: send, add: { showsTaskComposer = true })
                     .padding(.horizontal, TaisaSpacing.content.rawValue)
-                    .padding(.top, TaisaSpacing.control.rawValue)
+                    .padding(.top, TaisaSpacing.section.rawValue)
             }
             .background(TaisaColor.background.color)
             .accessibilityIdentifier("home.empty")
@@ -93,7 +104,7 @@ struct HomeView: View {
                 if isRefreshing { ProgressView().frame(maxWidth: .infinity) }
                 }
                 .padding(.horizontal, TaisaSpacing.content.rawValue)
-                .padding(.top, TaisaSpacing.control.rawValue)
+                .padding(.top, TaisaSpacing.section.rawValue)
             }
             .background(TaisaColor.background.color)
             .refreshable { await model.load() }
@@ -129,6 +140,10 @@ struct HomeView: View {
                 showsTaskAddedToast = true
             }
         }
+    }
+
+    private func dismissTaskComposer() {
+        showsTaskComposer = false
     }
 
     private func issueRow(_ issue: HomeIssue) -> some View {
