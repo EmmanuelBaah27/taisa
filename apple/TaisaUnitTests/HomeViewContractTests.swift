@@ -123,21 +123,18 @@ final class HomeViewContractTests: XCTestCase {
 
         XCTAssertTrue(home.contains("@State private var showsTaskComposer = false"))
         XCTAssertFalse(home.contains(".padding(.bottom, TaisaBottomChromeContract.fadeHeight)"))
-        XCTAssertTrue(home.contains("taskComposerDismissalLayer"))
+        XCTAssertTrue(home.contains(".fullScreenCover(isPresented: $showsTaskComposer)"))
+        XCTAssertTrue(home.contains("taskComposerPresentationLayer"))
         XCTAssertTrue(home.contains(".onTapGesture { dismissTaskComposer() }"))
         XCTAssertTrue(home.contains(".opacity(TaisaEffect.taskComposerBackdropOpacity)"))
         XCTAssertTrue(
             home.contains(".ignoresSafeArea()"),
             "The composer backdrop must continue behind the composer through every safe area"
         )
-        XCTAssertTrue(home.contains("onTaskComposerPresentationChanged(showsTaskComposer)"))
-        XCTAssertTrue(shell.contains("@State private var showsTaskComposer = false"))
-        XCTAssertTrue(shell.contains("model.showsConversationDock && !showsTaskComposer"))
-        XCTAssertTrue(shell.contains("onTaskComposerPresentationChanged: { showsTaskComposer = $0 }"))
-        XCTAssertTrue(shell.contains("taskComposerStatusBarBackdrop"))
-        XCTAssertTrue(shell.contains("taskComposerBottomBackdrop"))
-        XCTAssertTrue(shell.contains(".ignoresSafeArea(edges: .top)"))
-        XCTAssertTrue(shell.contains(".ignoresSafeArea(edges: .bottom)"))
+        XCTAssertTrue(home.contains(".presentationBackground(.clear)"))
+        XCTAssertFalse(shell.contains("@State private var showsTaskComposer = false"))
+        XCTAssertFalse(shell.contains("taskComposerStatusBarBackdrop"))
+        XCTAssertFalse(shell.contains("taskComposerBottomBackdrop"))
     }
 
     func testInsightsStayNestedByCurrentReviewAndHistoryWithGroundedDetail() throws {

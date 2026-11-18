@@ -14,7 +14,6 @@ struct HomeView: View {
     var openRecovery: () -> Void = {}
     var openPersonalQA: (() -> Void)?
     var openInsights: () -> Void = {}
-    var onTaskComposerPresentationChanged: (Bool) -> Void = { _ in }
     private let ownsNavigation: Bool
     private let showsRecentConversations: Bool
 
@@ -24,7 +23,6 @@ struct HomeView: View {
         openRecovery: @escaping () -> Void = {},
         openPersonalQA: (() -> Void)? = nil,
         openInsights: @escaping () -> Void = {},
-        onTaskComposerPresentationChanged: @escaping (Bool) -> Void = { _ in },
         ownsNavigation: Bool = true,
         showsRecentConversations: Bool = true,
         initiallyShowsTaskComposer: Bool = false
@@ -35,7 +33,6 @@ struct HomeView: View {
         self.openRecovery = openRecovery
         self.openPersonalQA = openPersonalQA
         self.openInsights = openInsights
-        self.onTaskComposerPresentationChanged = onTaskComposerPresentationChanged
         self.ownsNavigation = ownsNavigation
         self.showsRecentConversations = showsRecentConversations
     }
@@ -46,10 +43,11 @@ struct HomeView: View {
             else { homeContent }
         }
         .accessibilityIdentifier("home.root")
-        .onChange(of: showsTaskComposer, initial: true) { _, _ in
-            onTaskComposerPresentationChanged(showsTaskComposer)
-        }
         .task { if model.state == .idle { await model.load() } }
+        .fullScreenCover(isPresented: $showsTaskComposer) {
+            taskComposerPresentationLayer
+                .presentationBackground(.clear)
+        }
         .sheet(item: $activeSheet) { sheet in
             switch sheet {
             case let .priorWeekReview(unresolvedCount):
@@ -63,30 +61,25 @@ struct HomeView: View {
             .safeAreaInset(edge: .top, spacing: 0) {
                 TaisaDatedPageHeader(date: Date().taskHeaderLabel, title: "Up late, Beats?") { EmptyView() }
             }
-            .overlay { taskComposerDismissalLayer }
-            .safeAreaInset(edge: .bottom, spacing: 0) {
-                if showsTaskComposer {
-                    TaskComposerView(title: $taskTitle, dueDate: $taskDueDate, submit: submitTask)
-                        .accessibilityIdentifier("home.tasks.composer")
-                }
-            }
             .overlay(alignment: .top) {
                 if showsTaskAddedToast {
                     TaisaToast(message: "Task added", style: .light) { showsTaskAddedToast = false }
                         .padding(.top, TaisaSpacing.compact.rawValue)
                 }
             }
-            .ignoresSafeArea(.keyboard, edges: .bottom)
     }
 
-    @ViewBuilder private var taskComposerDismissalLayer: some View {
-        if showsTaskComposer {
+    private var taskComposerPresentationLayer: some View {
+        ZStack(alignment: .bottom) {
             TaisaColor.foreground.color
                 .opacity(TaisaEffect.taskComposerBackdropOpacity)
                 .ignoresSafeArea()
                 .contentShape(Rectangle())
                 .onTapGesture { dismissTaskComposer() }
                 .accessibilityHidden(true)
+
+            TaskComposerView(title: $taskTitle, dueDate: $taskDueDate, submit: submitTask)
+                .accessibilityIdentifier("home.tasks.composer")
         }
     }
 
