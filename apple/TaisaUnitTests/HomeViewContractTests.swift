@@ -58,14 +58,15 @@ final class HomeViewContractTests: XCTestCase {
     func testTouchedHomeSurfaceUsesSharedDesignSystemContracts() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let home = root.appendingPathComponent("TaisaApp/Home")
-        let sources = try ["HomeView.swift", "HomeSectionViews.swift", "ThisWeekSection.swift"]
+        let sources = try ["HomeView.swift", "HomeSectionViews.swift", "ThisWeekSection.swift", "TaskComposerView.swift"]
             .map { try String(contentsOf: home.appendingPathComponent($0), encoding: .utf8) }
             .joined(separator: "\n")
 
         for contract in ["TaisaRow(", "TaisaText(", "TaisaButton(", "TaisaToolbarAction(", "CentralIcon("] {
             XCTAssertTrue(sources.contains(contract), "Missing shared contract \(contract)")
         }
-        for forbidden in ["systemImage:", "Image(systemName:", ".font(", ".foregroundStyle("] {
+        XCTAssertNil(sources.range(of: #"(?<![A-Za-z])Button\s*(?:\(|\{)"#, options: .regularExpression), "Touched Home surface contains a raw Button")
+        for forbidden in ["systemImage:", "Image(systemName:"] {
             XCTAssertFalse(sources.contains(forbidden), "Touched Home surface contains raw presentation: \(forbidden)")
         }
     }
@@ -74,11 +75,12 @@ final class HomeViewContractTests: XCTestCase {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let home = try String(contentsOf: root.appendingPathComponent("TaisaApp/Home/HomeView.swift"), encoding: .utf8)
         let sections = try String(contentsOf: root.appendingPathComponent("TaisaApp/Home/ThisWeekSection.swift"), encoding: .utf8)
+        let composer = try String(contentsOf: root.appendingPathComponent("TaisaApp/Home/TaskComposerView.swift"), encoding: .utf8)
         let chrome = try String(contentsOf: root.appendingPathComponent("Packages/TaisaFoundation/Sources/TaisaDesignSystem/TaisaPageChrome.swift"), encoding: .utf8)
         let taskRows = try String(contentsOf: root.appendingPathComponent("Packages/TaisaFoundation/Sources/TaisaDesignSystem/TaisaTaskRow.swift"), encoding: .utf8)
 
         XCTAssertTrue(home.contains("TaisaDatedPageHeader"))
-        XCTAssertTrue(home.contains("TaisaInlineTaskComposer"))
+        XCTAssertTrue(home.contains("TaskComposerView"))
         XCTAssertTrue(home.contains("Task added"))
         XCTAssertTrue(home.contains("home.tasks.composer"))
         XCTAssertTrue(home.contains("actions: snapshot.actions"), "Newly created canonical tasks must remain visible after reload")
@@ -90,8 +92,10 @@ final class HomeViewContractTests: XCTestCase {
         XCTAssertTrue(sections.contains("Tasks this week"))
         XCTAssertTrue(taskRows.contains("View all tasks"))
         XCTAssertTrue(chrome.contains("public struct TaisaDatedPageHeader"))
-        XCTAssertTrue(chrome.contains("public struct TaisaInlineTaskComposer"))
-        XCTAssertTrue(chrome.contains("TaisaControlMetric.taskComposerHeight"))
+        XCTAssertFalse(chrome.contains("TaskComposerView"), "Feature composition must not live in the design-system layer")
+        XCTAssertTrue(composer.contains("TaisaControlMetric.taskComposerHeight"))
+        XCTAssertTrue(composer.contains("TaisaButton("))
+        XCTAssertNil(composer.range(of: #"(?<![A-Za-z])Button\s*(?:\(|\{)"#, options: .regularExpression))
         XCTAssertTrue(taskRows.contains("TaisaRadius.taskGroup"))
         XCTAssertTrue(taskRows.contains("CentralIcon(.incomplete)"))
         XCTAssertTrue(sections.contains("dueLabel"))

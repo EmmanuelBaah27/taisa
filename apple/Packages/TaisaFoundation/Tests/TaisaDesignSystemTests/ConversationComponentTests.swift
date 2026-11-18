@@ -246,22 +246,26 @@ struct ConversationComponentTests {
             contentsOf: root.appendingPathComponent("Sources/TaisaDesignSystem/ConversationActionBar.swift"),
             encoding: .utf8
         )
-        let chrome = try String(
-            contentsOf: root.appendingPathComponent("Sources/TaisaDesignSystem/TaisaPageChrome.swift"),
-            encoding: .utf8
-        )
+        let secondaryControls = try ["TaisaSecondaryIconButton.swift", "TaisaSecondaryCapsuleButton.swift"]
+            .map {
+                try String(
+                    contentsOf: root.appendingPathComponent("Sources/TaisaDesignSystem/\($0)"),
+                    encoding: .utf8
+                )
+            }
+            .joined(separator: "\n")
         let tokens = try String(
             contentsOf: root.appendingPathComponent("Sources/TaisaDesignSystem/SpacingToken.swift"),
             encoding: .utf8
         )
 
-        #expect(!chrome.contains("public enum TaisaGlassStyle"))
-        #expect(chrome.contains(".glassEffect(.clear.interactive(), in: Circle())"))
-        #expect(chrome.contains(".glassEffect(.clear.interactive(), in: Capsule())"))
-        #expect(!chrome.contains(".glassEffect(.regular.interactive()"))
-        #expect(!chrome.contains("Circle().stroke(TaisaColor.border.color)"))
-        #expect(!chrome.contains("Capsule().stroke(TaisaColor.border.color)"))
-        #expect(!chrome.contains("TaisaEffect.clearGlassShadow"))
+        #expect(!secondaryControls.contains("public enum TaisaGlassStyle"))
+        #expect(secondaryControls.contains(".glassEffect(.clear.interactive(), in: Circle())"))
+        #expect(secondaryControls.contains(".glassEffect(.clear.interactive(), in: Capsule())"))
+        #expect(!secondaryControls.contains(".glassEffect(.regular.interactive()"))
+        #expect(!secondaryControls.contains("Circle().stroke(TaisaColor.border.color)"))
+        #expect(!secondaryControls.contains("Capsule().stroke(TaisaColor.border.color)"))
+        #expect(!secondaryControls.contains("TaisaEffect.clearGlassShadow"))
         #expect(!tokens.contains("public static let clearGlassShadow"))
         #expect(!actionBar.contains("glassStyle: .clear"))
         #expect(actionBar.contains("TaisaSecondaryIconButton(icon: icon, accessibilityLabel: label, action: action)"))

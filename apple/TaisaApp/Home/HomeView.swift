@@ -59,7 +59,7 @@ struct HomeView: View {
             }
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 if showsTaskComposer {
-                    TaisaInlineTaskComposer(title: $taskTitle, dueDate: $taskDueDate, submit: submitTask)
+                    TaskComposerView(title: $taskTitle, dueDate: $taskDueDate, submit: submitTask)
                         .accessibilityIdentifier("home.tasks.composer")
                 }
             }
@@ -131,17 +131,16 @@ struct HomeView: View {
     }
 
     private func issueRow(_ issue: HomeIssue) -> some View {
-        Button {
+        TaisaPressable(action: {
             if issue == .recoveryRequired { openRecovery() }
             else { Task { await model.load() } }
-        } label: {
+        }) {
             TaisaRow(
                 title: issue == .recoveryRequired ? "Open recovery" : "Try refresh again",
                 icon: .warning,
                 emphasis: .attention
             )
         }
-        .buttonStyle(.plain)
         .accessibilityIdentifier(issue == .recoveryRequired ? "home.recovery" : "home.retry")
     }
 }

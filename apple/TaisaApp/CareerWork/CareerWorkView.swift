@@ -203,10 +203,9 @@ struct CareerWorkView: View {
             }
             .scrollIndicators(.hidden)
             ForEach(actions, id: \.id) { action in
-                Button { selectedRoute = .action(id: action.id) } label: {
+                TaisaPressable(action: { selectedRoute = .action(id: action.id) }) {
                     TaisaRow(title: action.title, supporting: actionDueText(action), icon: .action)
                 }
-                .buttonStyle(.plain)
                 .tag(CareerWorkRoute.action(id: action.id))
                 .accessibilityLabel("Action \(action.title), \(action.status)")
             }
@@ -230,12 +229,11 @@ struct CareerWorkView: View {
     private func goalSection(_ title: String, goals: [GoalRecord]) -> some View {
         Section(title) {
             ForEach(goals, id: \.id) { goal in
-                Button {
+                TaisaPressable(action: {
                     selectedRoute = .goal(id: goal.id)
-                } label: {
+                }) {
                     TaisaRow(title: goal.title, supporting: goal.detail.isEmpty ? nil : goal.detail, icon: .goal)
                 }
-                .buttonStyle(.plain)
                 .tag(CareerWorkRoute.goal(id: goal.id))
                 .accessibilityLabel("\(title) goal, \(goal.title)")
             }
@@ -314,10 +312,10 @@ struct CareerWorkView: View {
     }
 
     private func issueRow(_ issue: CareerWorkIssue) -> some View {
-        Button {
+        TaisaPressable(action: {
             if issue == .recoveryRequired { openRecovery() }
             else { Task { await model.retry() } }
-        } label: {
+        }) {
             TaisaRow(title: issue == .conflict ? "This changed elsewhere. Review the latest version." : "Career Work needs attention", icon: .warning, emphasis: .attention)
         }
     }
@@ -369,7 +367,7 @@ private struct CareerGoalDetail: View {
             if !snapshot.actions.isEmpty {
                 Section("Actions") {
                     ForEach(snapshot.actions, id: \.id) { action in
-                        Button { open(.action(id: action.id)) } label: {
+                        TaisaPressable(action: { open(.action(id: action.id)) }) {
                             TaisaRow(title: action.title, supporting: action.status, icon: action.status == "completed" ? .completed : .incomplete)
                         }
                         .accessibilityLabel("Action \(action.title), \(action.status)")
@@ -379,7 +377,7 @@ private struct CareerGoalDetail: View {
             if !snapshot.evidence.isEmpty {
                 Section("Evidence") {
                     ForEach(snapshot.evidence, id: \.id) { evidence in
-                        Button { open(.evidence(id: evidence.id)) } label: {
+                        TaisaPressable(action: { open(.evidence(id: evidence.id)) }) {
                             VStack(alignment: .leading) {
                                 TaisaRow(title: evidence.title, icon: .evidence)
                                 if let provenance = snapshot.provenance.first(where: { $0.evidenceID == evidence.id }) {
@@ -519,13 +517,13 @@ private struct CareerActionDetail: View {
                     TaisaRow(title: "Due", supporting: due.replacingOccurrences(of: "Due ", with: ""), icon: .action)
                 }
                 if let goal = snapshot.goal {
-                    Button { open(.goal(id: goal.id)) } label: {
+                    TaisaPressable(action: { open(.goal(id: goal.id)) }) {
                         TaisaRow(title: goal.title, supporting: parentNotice(snapshot.goalAvailability), icon: .goal, emphasis: parentEmphasis(snapshot.goalAvailability))
                     }
                         .accessibilityIdentifier("career-work.action.parent-goal")
                 }
                 if let milestone = snapshot.milestone {
-                    Button { open(.goal(id: milestone.goalID)) } label: {
+                    TaisaPressable(action: { open(.goal(id: milestone.goalID)) }) {
                         TaisaRow(title: milestone.title, supporting: parentNotice(snapshot.milestoneAvailability), icon: .milestone, emphasis: parentEmphasis(snapshot.milestoneAvailability))
                     }
                         .accessibilityIdentifier("career-work.action.parent-milestone")
@@ -534,16 +532,15 @@ private struct CareerActionDetail: View {
             Section("Checklist") {
                 ForEach(snapshot.checklist, id: \.id) { item in
                     HStack {
-                        Button {
+                        TaisaPressable(action: {
                             Task { await model.setChecklistItemCompleted(id: item.id, completed: item.state != .completed) }
-                        } label: {
+                        }) {
                             TaisaRow(
                                 title: item.title,
                                 supporting: item.state == .promoted ? "Promoted to action" : nil,
                                 icon: item.state == .completed ? .completed : .incomplete
                             )
                         }
-                        .buttonStyle(.plain)
                         if item.state == .pending {
                             TaisaMenu(label: "More", actions: [
                                 ("Promote to action", .standard, { Task { await model.promoteChecklistItem(id: item.id) } }),
@@ -564,12 +561,12 @@ private struct CareerActionDetail: View {
             if !snapshot.currentEvidence.isEmpty || !snapshot.supersededEvidence.isEmpty {
                 Section("Evidence") {
                     ForEach(snapshot.currentEvidence, id: \.id) { evidence in
-                        Button { open(.evidence(id: evidence.id)) } label: {
+                        TaisaPressable(action: { open(.evidence(id: evidence.id)) }) {
                             TaisaRow(title: evidence.title, supporting: evidence.detail, icon: .evidence)
                         }
                     }
                     ForEach(snapshot.supersededEvidence, id: \.id) { evidence in
-                        Button { open(.evidence(id: evidence.id)) } label: {
+                        TaisaPressable(action: { open(.evidence(id: evidence.id)) }) {
                             TaisaRow(title: evidence.title, supporting: "Corrected completion", icon: .undo)
                         }
                     }

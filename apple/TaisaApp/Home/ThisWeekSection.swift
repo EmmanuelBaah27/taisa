@@ -30,10 +30,9 @@ struct ThisWeekSection: View {
     }
 
     private func weeklyRow(_ item: WeeklyWorkItem) -> some View {
-        Button { send(.action(item.action.id)) } label: {
+        TaisaPressable(action: { send(.action(item.action.id)) }) {
             TaisaRow(title: item.action.title, supporting: supportingText(for: item), icon: .action)
         }
-        .buttonStyle(.plain)
         .accessibilityHint("Open this action")
     }
 
@@ -71,16 +70,14 @@ struct HomeActionsPreviewSection: View {
                 TaisaTaskRow(title: "No tasks this week")
             } else {
                 ForEach(actions.prefix(3), id: \.id) { action in
-                    Button { send(.action(action.id)) } label: {
+                    TaisaPressable(action: { send(.action(action.id)) }) {
                         TaisaTaskRow(title: action.title, dueLabel: dueLabel(for: action))
                     }
-                    .buttonStyle(.plain)
                 }
             }
             }
             .clipShape(RoundedRectangle(cornerRadius: TaisaRadius.taskGroup))
-            Button { send(.actions) } label: { TaisaTaskSummaryRow(count: totalCount) }
-                .buttonStyle(.plain)
+            TaisaPressable(action: { send(.actions) }) { TaisaTaskSummaryRow(count: totalCount) }
                 .accessibilityIdentifier("home.actions.view-all")
         }
         .accessibilityIdentifier("home.actions.preview")
@@ -108,8 +105,7 @@ struct HomeGoalsSummarySection: View {
             } else {
                 ForEach(goals.prefix(3), id: \.id) { GoalRow(goal: $0, send: send) }
             }
-            Button { send(.goals) } label: { TaisaNavigationRow(label: "View all goals", icon: .goal) }
-                .buttonStyle(.plain)
+            TaisaPressable(action: { send(.goals) }) { TaisaNavigationRow(label: "View all goals", icon: .goal) }
                 .accessibilityIdentifier("home.goals.view-all")
         }
         .accessibilityIdentifier("home.goals.summary")
@@ -122,7 +118,7 @@ struct HomeReviewSection: View {
 
     var body: some View {
         Section("Review") {
-            Button { open(unresolvedCount) } label: {
+            TaisaPressable(action: { open(unresolvedCount) }) {
                 TaisaRow(title: "Review \(unresolvedCount) unfinished \(unresolvedCount == 1 ? "item" : "items")", icon: .history, emphasis: .attention)
             }
             .accessibilityIdentifier("home.prior-week.review")
