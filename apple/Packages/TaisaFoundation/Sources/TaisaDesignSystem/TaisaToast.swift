@@ -57,13 +57,14 @@ public struct TaisaToast: View {
                 .lineLimit(1)
 
             if let actionLabel, let action {
-                Button(actionLabel, action: action)
-                    .font(TaisaTypography.navigationLabel.font)
-                    .foregroundStyle(style == .light ? TaisaColor.foreground.color : TaisaColor.background.color)
-                    .frame(minHeight: TaisaControlMetric.toastMinimumHeight)
-                    .padding(.horizontal, TaisaSpacing.compact.rawValue)
-                    .buttonStyle(.plain)
-                    .layoutPriority(1)
+                TaisaPressable(action: action) {
+                    Text(actionLabel)
+                        .font(TaisaTypography.navigationLabel.font)
+                        .foregroundStyle(style == .light ? TaisaColor.foreground.color : TaisaColor.background.color)
+                        .frame(minHeight: TaisaControlMetric.toastMinimumHeight)
+                        .padding(.horizontal, TaisaSpacing.compact.rawValue)
+                }
+                .layoutPriority(1)
             }
         }
         .padding(.horizontal, TaisaSpacing.control.rawValue)

@@ -3,7 +3,13 @@
     "Button"
   ],
   "primitiveFiles": [
-    "apple/Packages/TaisaFoundation/Sources/TaisaDesignSystem/TaisaButton.swift"
+    "apple/Packages/TaisaFoundation/Sources/TaisaDesignSystem/TaisaButton.swift",
+    "apple/Packages/TaisaFoundation/Sources/TaisaDesignSystem/TaisaConfirmationDialog.swift",
+    "apple/Packages/TaisaFoundation/Sources/TaisaDesignSystem/TaisaMenu.swift",
+    "apple/Packages/TaisaFoundation/Sources/TaisaDesignSystem/TaisaPressable.swift",
+    "apple/Packages/TaisaFoundation/Sources/TaisaDesignSystem/TaisaSecondaryCapsuleButton.swift",
+    "apple/Packages/TaisaFoundation/Sources/TaisaDesignSystem/TaisaSecondaryIconButton.swift",
+    "apple/Packages/TaisaFoundation/Sources/TaisaDesignSystem/TaisaToolbarAction.swift"
   ],
   "legacyOccurrences": [
     {
