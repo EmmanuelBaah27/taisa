@@ -14,7 +14,8 @@ struct YouScenarioView: View {
         case .failure:
             client = .init(load: { throw YouContractError.persistenceFailed })
         case .content, .permissionDenied, .gatewayUnavailable:
-            client = .init(load: { Self.snapshot(mode: mode) })
+            let store = YouPreviewProfileStore(snapshot: Self.snapshot(mode: mode))
+            client = .init(load: { await store.load() }, saveProfile: { await store.save($0) })
         }
         _model = State(initialValue: YouModel(client: client))
     }
@@ -39,11 +40,24 @@ struct YouScenarioView: View {
             profile: .init(
                 id: "10000000-0000-4000-8000-000000000049",
                 displayName: "Baah",
-                headline: "Product builder",
-                biography: "Building a private, local-first working companion.",
+                headline: "",
+                biography: "Product designer at Oyster",
                 updatedAtMS: 1
             ),
             diagnostics: .init(store: .healthy, recovery: .ready, microphone: permission, gateway: gateway, appProtection: .enabled)
         )
+    }
+}
+
+private actor YouPreviewProfileStore {
+    private var snapshot: YouSnapshot
+    init(snapshot: YouSnapshot) { self.snapshot = snapshot }
+    func load() -> YouSnapshot { snapshot }
+    func save(_ draft: ProfileDraft) -> YouSnapshot {
+        snapshot = .init(profile: .init(
+            id: snapshot.profile?.id ?? "10000000-0000-4000-8000-000000000049",
+            displayName: draft.displayName, headline: draft.headline,
+            biography: draft.biography, updatedAtMS: 1), diagnostics: snapshot.diagnostics)
+        return snapshot
     }
 }
