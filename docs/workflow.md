@@ -1,7 +1,7 @@
 # Taisa Build Workflow
 
 **Status:** Active
-**Last updated:** 2026-10-28
+**Last updated:** 2026-11-18
 
 How Taisa work moves from intake to shipped. Linear is the sole live authority.
 Linear project `Taisa`
@@ -225,6 +225,27 @@ token, and icon with the available DS component/style/token or Central icon. Pre
 every remaining unavailable item, its affected surfaces, and exactly one recommended DS addition
 or narrow system-owned exception. Do not request or infer approval while an available adoption
 is undone or an unavailable item has not been shown to Baah and recorded in Linear.
+
+### Design-system adoption evidence
+
+A passing source check is bounded evidence, not proof that an entire app has migrated.
+For each changed Product surface, audit its complete visible states and the shared components
+and typography roles it consumes. A DS import or component name alone is insufficient: a
+shared button can still resolve an obsolete font. Prove bundled font resolution and semantic
+role mapping in shared contracts; do not treat inherited body typography as proof of the
+intended label, title, field, or supporting role.
+
+`scripts/native-apple/verify-design-system.mjs` audits registered Product surfaces plus every
+changed Product Swift file against the PR base (`origin/main`, or the verified `TAISA_DS_BASE_REF`).
+It follows named shared DS dependencies, prohibits implicit Product text/control presentation,
+and checks shared typography. Raw Button wrappers are confined to dedicated primitive files
+in `design-system-control-policy.json`; composite files receive no module-wide exemption.
+An unchanged legacy exception is migration debt, not adoption evidence. A changed file must
+retire its legacy controls rather than refresh their fingerprints. New primitive registration
+requires the approved reusable presentation/accessibility contract; moving feature-local code
+into the DS folder is not approval. Explicit platform-owned exceptions remain narrow and must
+be recorded before implementation. Missing parser coverage or unsupported platform behavior
+must be reported as a limitation, never represented as verified compliance.
 
 ### Plan
 

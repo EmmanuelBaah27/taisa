@@ -1,7 +1,7 @@
 import CoreText
 import Foundation
 
-/// Scoped to the approved profile typography; does not retheme other screens.
+/// Registers the bundled families used by every semantic typography role.
 enum TaisaProfileFonts {
     private static let registration: Void = {
         for name in ["ScoutieSans", "Inter"] {

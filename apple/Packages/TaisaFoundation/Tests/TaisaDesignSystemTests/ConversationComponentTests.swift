@@ -232,10 +232,9 @@ struct ConversationComponentTests {
             contentsOf: root.appendingPathComponent("Sources/TaisaDesignSystem/ConversationActionBar.swift"),
             encoding: .utf8
         )
-        let chrome = try String(
-            contentsOf: root.appendingPathComponent("Sources/TaisaDesignSystem/TaisaPageChrome.swift"),
-            encoding: .utf8
-        )
+        let chrome = try ["TaisaPageChrome", "TaisaSecondaryIconButton", "TaisaSecondaryCapsuleButton"].map { name in
+            try String(contentsOf: root.appendingPathComponent("Sources/TaisaDesignSystem/\(name).swift"), encoding: .utf8)
+        }.joined(separator: "\n")
         let tokens = try String(
             contentsOf: root.appendingPathComponent("Sources/TaisaDesignSystem/SpacingToken.swift"),
             encoding: .utf8

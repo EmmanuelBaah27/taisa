@@ -1,66 +1,64 @@
 import SwiftUI
 
+/// All native typography resolves through bundled fonts, including older shared controls.
 public enum TaisaTypography: String, CaseIterable, Sendable {
-    case display
-    case profileName
-    case profileBody
-    case profileLabel
-    case profileSupporting
-    case heading
-    case body
-    case label
-    case metadata
-    case navigationLabel
-    case supporting
-    case childHeaderTitle
+    case display, profileName, profileBody, profileLabel, profileSupporting
+    case heading, body, label, metadata, navigationLabel, supporting, childHeaderTitle
+
+    public var fontName: String {
+        switch self {
+        case .display, .profileName: "ScoutieSans-SemiBold"
+        default: "Inter-Regular"
+        }
+    }
 
     public var pointSize: CGFloat {
         switch self {
-        case .navigationLabel: 16
-        case .supporting: 14
-        case .childHeaderTitle: 0
-        default: 0
+        case .display: 34
+        case .profileName: TaisaProfileMetric.nameSize
+        case .heading: 22
+        case .profileBody, .profileLabel, .navigationLabel: 16
+        case .body, .childHeaderTitle: 17
+        case .label: 15
+        case .metadata: 12
+        case .profileSupporting, .supporting: 14
         }
     }
 
     public var lineHeight: CGFloat {
         switch self {
-        case .navigationLabel: 24
-        case .supporting: 20
-        default: 0
+        case .display: 41
+        case .profileName: TaisaProfileMetric.nameLineHeight
+        case .heading: 28
+        case .body, .childHeaderTitle: 22
+        case .profileBody, .profileLabel, .navigationLabel: 24
+        case .label, .profileSupporting, .supporting: 20
+        case .metadata: 16
+        }
+    }
+
+    public var relativeTextStyle: Font.TextStyle {
+        switch self {
+        case .display: .largeTitle
+        case .profileName: .title
+        case .heading: .title2
+        case .profileBody, .profileLabel, .body, .navigationLabel: .body
+        case .label, .profileSupporting, .supporting: .subheadline
+        case .metadata: .caption
+        case .childHeaderTitle: .headline
+        }
+    }
+
+    public var weight: Font.Weight {
+        switch self {
+        case .display, .profileName, .heading, .label, .childHeaderTitle: .semibold
+        case .profileLabel, .navigationLabel: .medium
+        default: .regular
         }
     }
 
     public var font: Font {
-        switch self {
-        case .profileName:
-            TaisaProfileFonts.register()
-            return .custom("ScoutieSans-SemiBold", size: TaisaProfileMetric.nameSize, relativeTo: .title).weight(.semibold)
-        case .profileLabel:
-            TaisaProfileFonts.register()
-            return .custom("Inter-Regular_Medium", size: 16, relativeTo: .body)
-        case .profileBody:
-            TaisaProfileFonts.register()
-            return .custom("Inter-Regular", size: 16, relativeTo: .body)
-        case .profileSupporting:
-            TaisaProfileFonts.register()
-            return .custom("Inter-Regular", size: 14, relativeTo: .subheadline)
-        case .display:
-            return .system(.largeTitle, design: .rounded, weight: .semibold)
-        case .heading:
-            return .system(.title2, design: .rounded, weight: .semibold)
-        case .body:
-            return .system(.body, design: .rounded, weight: .regular)
-        case .label:
-            return .system(.subheadline, design: .rounded, weight: .semibold)
-        case .metadata:
-            return .system(.caption, design: .rounded, weight: .regular)
-        case .navigationLabel:
-            return .system(size: pointSize, weight: .medium, design: .default)
-        case .supporting:
-            return .system(size: pointSize, weight: .regular, design: .default)
-        case .childHeaderTitle:
-            return .system(.headline, weight: .semibold)
-        }
+        TaisaProfileFonts.register()
+        return .custom(fontName, size: pointSize, relativeTo: relativeTextStyle).weight(weight)
     }
 }

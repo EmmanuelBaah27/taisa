@@ -1,5 +1,8 @@
 # Taisa Design System
 
+**Status:** Active
+**Last updated:** 2026-11-18
+
 Living reference for all UI work. Update when a new component is added or a token changes.
 Full token definitions and decision rules: `foundations.md` (root of repo).
 
@@ -322,3 +325,26 @@ The provided portrait is not bundled as a default identity for every user.
 You's app-shell navigation and voice entry are reused, not recreated by the page.
 The editor owns only Display name and Bio. Auto-save and the compatibility move
 from headline into empty Bio remain in TaisaYou and existing encrypted storage.
+
+
+### Native adoption verification boundary
+
+All semantic typography roles, including generic button labels and child headers, resolve
+through the bundled Inter family; display/profile-name roles use bundled Scoutie Sans.
+`TaisaProfileFonts` registers these shared resources despite its historical name. Custom
+font construction belongs only to `TypographyToken.swift`. A shared component must consume
+`TaisaText` and semantic roles rather than inherit an unspecified system face. Dynamic Type
+continues through each role's `relativeTextStyle`.
+
+The native verifier reports registered and changed Product surfaces, their transitive named
+DS dependencies, raw-control policy, and changed-file debt retirement. It does not claim that
+unchanged legacy surfaces have migrated. `design-system-surface-policy.json` retains reviewed
+surfaces for ongoing checks; changed Product Swift files enter the audit automatically even
+when newly generated or implemented before the DS. Compare against the real PR base with
+`TAISA_DS_BASE_REF` when it differs from `origin/main`.
+
+The existing secondary icon/capsule, profile icon, and settings-row wrappers each live in a
+dedicated primitive source file, preserving their existing styling, accessibility, and APIs.
+Their explicit raw-control registration does not exempt composite components. Product You
+uses the shared secondary `TaisaButton` for recovery; its button, child header and supporting
+copy are covered together by source and bundled-font runtime regressions.
