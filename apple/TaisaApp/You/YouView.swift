@@ -122,14 +122,12 @@ private struct CareerProfileView: View {
             }
             if editing, model.profileDraft != nil {
                 TextField("Display name", text: binding(\.displayName))
-                TextField("Headline", text: binding(\.headline))
-                TextField("Biography", text: binding(\.biography), axis: .vertical)
+                TextField("Bio", text: binding(\.biography), axis: .vertical)
                 Button("Save") { Task { await model.saveProfile(); editing = model.profileDraft != nil } }
                 Button("Cancel", role: .cancel) { model.cancelProfileEdit(); editing = false }
             } else {
                 LabeledContent("Display name", value: profile?.displayName.isEmpty == false ? profile!.displayName : "Not set")
-                LabeledContent("Headline", value: profile?.headline.isEmpty == false ? profile!.headline : "Not set")
-                if let biography = profile?.biography, !biography.isEmpty { Text(biography) }
+                LabeledContent("Bio", value: profile?.biography.isEmpty == false ? profile!.biography : "Not set")
                 Button("Edit career profile") { model.beginProfileEdit(); editing = true }
             }
         }

@@ -69,6 +69,37 @@ import TaisaStorage
         #expect(rows.allSatisfy { !$0.value.contains("/") && !$0.value.contains("http") })
     }
 
+    @Test func legacyHeadlineMovesToEmptyBioOnceAndNeverReturnsAfterClearing() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let deviceID = UUID().uuidString
+        let store = try await TaisaStore.open(at: directory.appendingPathComponent("store.sqlite"), keyStore: YouClientTestKeys())
+        let client = YouClient.local(store: store, deviceID: deviceID, operational: .unknown, nowMS: { 10 })
+        _ = try await client.saveProfile(.init(displayName: "Baah", headline: "Product designer", biography: ""))
+
+        let migrated = try await client.load()
+        #expect(migrated.profile?.biography == "Product designer")
+        #expect(migrated.profile?.headline == "")
+        #expect(try await client.load() == migrated)
+        _ = try await client.saveProfile(.init(displayName: "Baah", biography: ""))
+        #expect(try await client.load().profile?.biography == "")
+    }
+
+    @Test func existingBioIsNeverOverwrittenAndEmptyFirstBuildCreatesNoProfile() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let deviceID = UUID().uuidString
+        let store = try await TaisaStore.open(at: directory.appendingPathComponent("store.sqlite"), keyStore: YouClientTestKeys())
+        let client = YouClient.local(store: store, deviceID: deviceID, operational: .unknown, nowMS: { 10 })
+        #expect(try await client.load().profile == nil)
+        _ = try await client.saveProfile(.init(displayName: "Baah", headline: "Older title", biography: "Existing bio"))
+        let existing = try await client.load()
+        #expect(existing.profile?.biography == "Existing bio")
+        #expect(existing.profile?.headline == "Older title")
+    }
+
     @Test func localClientPersistsProfileWithoutTransport() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
