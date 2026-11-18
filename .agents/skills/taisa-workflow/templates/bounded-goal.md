@@ -15,6 +15,9 @@ Fill every field before creating a Goal. Replace angle-bracket guidance with exa
 - Approved DS gaps: `<Linear approval URLs for each reuse, extension, addition, or none>`
 - Central Icons mapping: `<Linear URL mapping every Product icon, or not-Product with reason>`
 - Approved system-owned exceptions: `<narrow exception plus Linear approval URL, or none>`
+- Designated primitive files: `<exact files plus Linear approval URL, or none>`
+- Legacy raw-control debt: `<exact policy entries and owning migration issue, or none>`
+- No broad DS module exemption: `<confirmed; exact primitive files are the only raw-control boundary>`
 - No unresolved DS gap: `<confirmed with evidence; Product Build cannot start otherwise>`
 - Pre-merge DS audit evidence: `<complete changed Product surface, available DS replacements, and Linear URL, or not-Product with reason>`
 - Remaining unavailable DS items: `<each item, affected surface, recommendation, and Baah approval URL, or none>`
@@ -43,6 +46,11 @@ above without asking Baah to say “continue.”
   and icon inventory must reuse shared contracts and Central Icons. If an item is unavailable,
   stop before screen or Product code, tell Baah, and do not proceed until the exact treatment is
   approved and recorded in Linear. Never create a silent feature-local substitute or exception.
+- Using an existing DS component is mandatory whenever it covers the interaction. Raw platform
+  interactive controls may appear only inside explicitly designated primitive implementation
+  files; Product files and composite DS files compose those primitives. A missing component or
+  variant is a blocking design-system gap. There is no directory or module exemption or
+  allowlist: record exact primitive files, legacy raw-control debt, and Linear authority above.
 - Apply the same rule to Product work already built before the workflow change or discovered in
   code review. Before merge or Ship approval, replace every eligible feature-local component,
   style, token, and icon with the available DS contract or Central icon. Tell Baah every remaining

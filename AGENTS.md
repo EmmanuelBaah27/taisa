@@ -85,6 +85,14 @@ a feature-local substitute, parallel component API, raw style, invented icon map
 substitution, or design-system extension. Implement approved design-system contracts and tests
 before their screen consumers.
 
+Using an existing DS component is mandatory whenever it covers the interaction. Raw platform
+interactive controls may appear only inside explicitly designated primitive implementation
+files; Product files and composite DS files must compose those primitives. A missing component
+or variant is a blocking design-system gap, never permission to bypass the shared contract.
+There is no directory or module exemption or allowlist: primitive permission is granted by exact
+file classification with prior Linear approval. Existing classified legacy debt may only shrink
+under its owning migration issue; new, moved, or changed raw-control debt is blocking.
+
 The same gate applies to Product work already built before this rule or first discovered during
 code review. Before merge or Ship approval, audit the complete changed Product surface and
 replace every eligible feature-local component, style, token, and icon with the available DS
