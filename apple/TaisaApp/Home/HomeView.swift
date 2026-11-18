@@ -60,6 +60,7 @@ struct HomeView: View {
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 if showsTaskComposer {
                     TaskComposerView(title: $taskTitle, dueDate: $taskDueDate, submit: submitTask)
+                        .padding(.bottom, TaisaBottomChromeContract.fadeHeight)
                         .accessibilityIdentifier("home.tasks.composer")
                 }
             }

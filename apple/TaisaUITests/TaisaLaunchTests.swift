@@ -58,6 +58,23 @@ final class TaisaLaunchTests: XCTestCase {
         XCTAssertLessThanOrEqual(app.buttons["Talk to Taisa, starts recording"].frame.maxX, window.maxX)
     }
 
+    func testTaskComposerStartsClosedAndStaysAbovePrimaryNavigation() {
+        let app = XCUIApplication()
+        app.launch()
+
+        let taskTitle = app.textFields["Task title"]
+        XCTAssertFalse(taskTitle.exists)
+
+        let addTask = app.buttons["Add task"]
+        XCTAssertTrue(addTask.waitForExistence(timeout: 5))
+        addTask.tap()
+
+        XCTAssertTrue(taskTitle.waitForExistence(timeout: 2))
+        let navigation = app.buttons["Home"]
+        XCTAssertTrue(navigation.exists)
+        XCTAssertLessThanOrEqual(taskTitle.frame.maxY, navigation.frame.minY)
+    }
+
     private func element(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
         app.descendants(matching: .any)[identifier]
     }

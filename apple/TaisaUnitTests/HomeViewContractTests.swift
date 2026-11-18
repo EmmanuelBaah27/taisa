@@ -101,6 +101,17 @@ final class HomeViewContractTests: XCTestCase {
         XCTAssertTrue(sections.contains("dueLabel"))
     }
 
+    func testTaskComposerReservesThePrimaryNavigationDockAndStartsClosed() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let home = try String(contentsOf: root.appendingPathComponent("TaisaApp/Home/HomeView.swift"), encoding: .utf8)
+
+        XCTAssertTrue(home.contains("@State private var showsTaskComposer = false"))
+        XCTAssertTrue(
+            home.contains(".padding(.bottom, TaisaBottomChromeContract.fadeHeight)"),
+            "The composer must sit above the shell-owned navigation and voice dock"
+        )
+    }
+
     func testInsightsStayNestedByCurrentReviewAndHistoryWithGroundedDetail() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let home = root.appendingPathComponent("TaisaApp/Home")
