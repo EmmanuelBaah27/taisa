@@ -7,10 +7,7 @@ public enum TaisaButtonRole: Sendable, Equatable {
     case destructive
 
     public var labelTypography: TaisaTypography {
-        switch self {
-        case .secondary, .ghost: .buttonLabel
-        case .primary, .destructive: .label
-        }
+        .buttonLabel
     }
 }
 
