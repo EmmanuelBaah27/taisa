@@ -60,6 +60,23 @@ final class TaisaPreviewCatalogTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["History"].exists)
     }
 
+    func testYouRecoveryActionUsesOneNavigationHeaderAndRemainsReachable() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-TAISAPreviewScenario", "you.content"]
+        app.launch()
+        let destination = app.buttons["you.destination.backupRecovery"]
+        XCTAssertTrue(destination.waitForExistence(timeout: 5))
+        destination.tap()
+        let action = app.buttons["Open backup and recovery"]
+        XCTAssertTrue(action.waitForExistence(timeout: 5))
+        XCTAssertTrue(action.isHittable)
+        XCTAssertGreaterThanOrEqual(action.frame.height, 48)
+        XCTAssertLessThanOrEqual(app.buttons.matching(NSPredicate(format: "label == %@", "Back")).count, 1)
+        retainScreenshot(of: app, name: "you-recovery-glass-action")
+        action.tap()
+        XCTAssertTrue(app.staticTexts["This preview route composes the existing secure recovery flow."].waitForExistence(timeout: 5))
+    }
+
     private func element(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
         app.descendants(matching: .any)[identifier]
     }

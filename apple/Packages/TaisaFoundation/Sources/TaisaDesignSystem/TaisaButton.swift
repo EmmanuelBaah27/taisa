@@ -16,6 +16,7 @@ public struct TaisaButton: View {
         public static let supportsInPlaceProgress = true
     }
 
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     private let role: TaisaButtonRole
     private let shape: TaisaButtonShape
     private let label: String
@@ -41,24 +42,36 @@ public struct TaisaButton: View {
 
     public var body: some View {
         Button(action: action) {
-            ZStack {
-                TaisaText(role: .label, color: labelColor, content: label)
-                    .opacity(isProcessing ? 0 : 1)
-                if isProcessing {
-                    ProgressView()
-                        .tint(TaisaColor.foreground.color)
-                }
-            }
-                .frame(maxWidth: .infinity, minHeight: TaisaControlMetric.headerActionHeight)
-                .padding(.horizontal, TaisaSpacing.standard.rawValue)
-                .background(background, in: buttonShape)
-                .overlay { buttonShape.stroke(borderColor) }
-                .clipShape(buttonShape)
-                .contentShape(Rectangle())
+            buttonSurface
         }
         .buttonStyle(.plain)
         .disabled(isProcessing)
         .accessibilityLabel(isProcessing ? processingAccessibilityLabel : label)
+    }
+
+    @ViewBuilder private var buttonSurface: some View {
+        let content = ZStack {
+            TaisaText(role: .label, color: labelColor, content: label)
+                .opacity(isProcessing ? 0 : 1)
+            if isProcessing {
+                ProgressView()
+                    .tint(TaisaColor.foreground.color)
+            }
+        }
+        .frame(maxWidth: .infinity, minHeight: TaisaControlMetric.actionButtonHeight)
+        .padding(.horizontal, TaisaSpacing.standard.rawValue)
+        .contentShape(buttonShape)
+
+        if #available(iOS 26.0, macOS 26.0, *), !reduceTransparency {
+            switch role {
+            case .primary:
+                content.glassEffect(.clear.tint(TaisaColor.primaryAction.color).interactive(), in: buttonShape)
+            case .secondary, .destructive:
+                content.glassEffect(.clear.interactive(), in: buttonShape)
+            }
+        } else {
+            content.background(fallbackColor, in: buttonShape)
+        }
     }
 
     private var buttonShape: AnyShape {
@@ -68,25 +81,12 @@ public struct TaisaButton: View {
         }
     }
 
-    private var background: Color {
-        switch role {
-        case .primary:
-            TaisaColor.primaryAction.color
-        case .secondary, .destructive:
-            TaisaColor.background.color
-        }
+    private var fallbackColor: Color {
+        role == .primary ? TaisaColor.primaryAction.color : TaisaColor.raisedSurface.color
     }
 
     private var labelColor: TaisaColor {
         role == .destructive ? .destructive : .foreground
-    }
-
-    private var borderColor: Color {
-        switch role {
-        case .primary: .clear
-        case .secondary: TaisaColor.border.color
-        case .destructive: TaisaColor.destructive.color
-        }
     }
 }
 

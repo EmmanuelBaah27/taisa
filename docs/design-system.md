@@ -348,3 +348,14 @@ dedicated primitive source file, preserving their existing styling, accessibilit
 Their explicit raw-control registration does not exempt composite components. Product You
 uses the shared secondary `TaisaButton` for recovery; its button, child header and supporting
 copy are covered together by source and bundled-font runtime regressions.
+
+
+### Authored in-page button material
+
+`TaisaButton` implements the approved 48pt action height with native interactive clear
+Liquid Glass on iOS/macOS 26. Primary actions tint the glass with `primaryAction`;
+secondary/destructive actions retain clear glass and their semantic foreground. The
+retired flat white fill and grey stroke are not a secondary variant. Reduce Transparency
+and unsupported platforms use semantic opaque surfaces without an authored outline.
+Both existing shapes, disabled/loading semantics and accessibility labels are preserved.
+The recovery entry action consumes this same shared contract, not a feature-local material.
