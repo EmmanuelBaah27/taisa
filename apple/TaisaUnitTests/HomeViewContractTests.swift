@@ -127,15 +127,17 @@ final class HomeViewContractTests: XCTestCase {
         XCTAssertTrue(home.contains(".onTapGesture { dismissTaskComposer() }"))
         XCTAssertTrue(home.contains(".opacity(TaisaEffect.taskComposerBackdropOpacity)"))
         XCTAssertTrue(
-            home.contains(".ignoresSafeArea(edges: .top)"),
-            "The composer backdrop must dim the status-bar safe area"
+            home.contains(".ignoresSafeArea()"),
+            "The composer backdrop must continue behind the composer through every safe area"
         )
         XCTAssertTrue(home.contains("onTaskComposerPresentationChanged(showsTaskComposer)"))
         XCTAssertTrue(shell.contains("@State private var showsTaskComposer = false"))
         XCTAssertTrue(shell.contains("model.showsConversationDock && !showsTaskComposer"))
         XCTAssertTrue(shell.contains("onTaskComposerPresentationChanged: { showsTaskComposer = $0 }"))
         XCTAssertTrue(shell.contains("taskComposerStatusBarBackdrop"))
+        XCTAssertTrue(shell.contains("taskComposerBottomBackdrop"))
         XCTAssertTrue(shell.contains(".ignoresSafeArea(edges: .top)"))
+        XCTAssertTrue(shell.contains(".ignoresSafeArea(edges: .bottom)"))
     }
 
     func testInsightsStayNestedByCurrentReviewAndHistoryWithGroundedDetail() throws {

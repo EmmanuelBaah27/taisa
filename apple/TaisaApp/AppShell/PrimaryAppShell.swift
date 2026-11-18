@@ -144,6 +144,9 @@ struct PrimaryAppShell: View {
             .overlay(alignment: .top) {
                 taskComposerStatusBarBackdrop(height: geometry.safeAreaInsets.top)
             }
+            .overlay(alignment: .bottom) {
+                taskComposerBottomBackdrop(height: geometry.safeAreaInsets.bottom)
+            }
             .fullScreenCover(item: Binding(
                 get: { model.conversationRoute },
                 set: { if $0 == nil { model.dismissConversation() } }
@@ -165,6 +168,18 @@ struct PrimaryAppShell: View {
                 .opacity(TaisaEffect.taskComposerBackdropOpacity)
                 .frame(height: height)
                 .ignoresSafeArea(edges: .top)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+        }
+    }
+
+    @ViewBuilder
+    private func taskComposerBottomBackdrop(height: CGFloat) -> some View {
+        if showsTaskComposer {
+            TaisaColor.foreground.color
+                .opacity(TaisaEffect.taskComposerBackdropOpacity)
+                .frame(height: height)
+                .ignoresSafeArea(edges: .bottom)
                 .allowsHitTesting(false)
                 .accessibilityHidden(true)
         }

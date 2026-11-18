@@ -83,7 +83,7 @@ struct HomeView: View {
         if showsTaskComposer {
             TaisaColor.foreground.color
                 .opacity(TaisaEffect.taskComposerBackdropOpacity)
-                .ignoresSafeArea(edges: .top)
+                .ignoresSafeArea()
                 .contentShape(Rectangle())
                 .onTapGesture { dismissTaskComposer() }
                 .accessibilityHidden(true)
