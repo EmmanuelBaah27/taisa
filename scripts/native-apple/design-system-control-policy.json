@@ -1,0 +1,749 @@
+{
+  "controlledConstructors": [
+    "Button"
+  ],
+  "primitiveFiles": [
+    "apple/Packages/TaisaFoundation/Sources/TaisaDesignSystem/ResponseActionControls.swift",
+    "apple/Packages/TaisaFoundation/Sources/TaisaDesignSystem/TaisaButton.swift"
+  ],
+  "legacyOccurrences": [
+    {
+      "file": "apple/TaisaApp/App/AppRootView.swift",
+      "constructor": "Button",
+      "line": 111,
+      "column": 13,
+      "sourceHash": "a0ef1fa5a5a2ef2ad6c0c23c630c9d0497ebe21fe47595dccbe89a94ecfe8787",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/App/AppRootView.swift",
+      "constructor": "Button",
+      "line": 117,
+      "column": 13,
+      "sourceHash": "c8cf4eed0f25fd6a1a5e23f723e5066f40feea620be22dabb1ea8db2fc644c9f",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/CareerWork/CareerWorkView.swift",
+      "constructor": "Button",
+      "line": 70,
+      "column": 17,
+      "sourceHash": "97edbaf1305c2ea65e6cc8a0640332e6ee83b43f426c987155449ea7ef4bc648",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/CareerWork/CareerWorkView.swift",
+      "constructor": "Button",
+      "line": 92,
+      "column": 13,
+      "sourceHash": "bad6331561e7c04e7d33f5ba744d5df588eaca1ae000bb6e94dc2b0f71489a15",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/CareerWork/CareerWorkView.swift",
+      "constructor": "Button",
+      "line": 169,
+      "column": 17,
+      "sourceHash": "1e3bf14952856e56fe918a46f9b19fdb56d9670b4aa6e419720cd16a3608c5f3",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/CareerWork/CareerWorkView.swift",
+      "constructor": "Button",
+      "line": 171,
+      "column": 17,
+      "sourceHash": "cf05b509756d3afaa404fcea69d240c10fc3f5e94962f55f6c490301cbe283c8",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/CareerWork/CareerWorkView.swift",
+      "constructor": "Button",
+      "line": 188,
+      "column": 17,
+      "sourceHash": "2fc020b26cc276531895c4064b950936ad9d188ca53e3fc41b3aa3bb9fa189b0",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/CareerWork/CareerWorkView.swift",
+      "constructor": "Button",
+      "line": 189,
+      "column": 17,
+      "sourceHash": "6c299e4239a384619e58aa4c783301f505d0a2926f0d11849d27c4a0e01f63a9",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/CareerWork/CareerWorkView.swift",
+      "constructor": "Button",
+      "line": 190,
+      "column": 17,
+      "sourceHash": "378a893b535f3d7f490bb139129f5be8663c6422a769ce95dc0ee23f62b94628",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/CareerWork/CareerWorkView.swift",
+      "constructor": "Button",
+      "line": 230,
+      "column": 21,
+      "sourceHash": "140b92cd2b2a8c8d30bdfc84c6da09f22e48c4f4fb2711a556e9b515229600f3",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/CareerWork/CareerWorkView.swift",
+      "constructor": "Button",
+      "line": 232,
+      "column": 21,
+      "sourceHash": "f7dcfa46b6f6fa761db62aa6a9f6b5eeb002ce7ebbd17f86aa4d591e7e977b6d",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/CareerWork/CareerWorkView.swift",
+      "constructor": "Button",
+      "line": 242,
+      "column": 13,
+      "sourceHash": "db6ebb35fd430201966e49944f20344a1032886e87068b282e8703374e9454c2",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/CareerWork/CareerWorkView.swift",
+      "constructor": "Button",
+      "line": 243,
+      "column": 13,
+      "sourceHash": "d66789b9d1174f545722d346393f948e4a531570ef28dc0937be320c15c8e7aa",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/CareerWork/CareerWorkView.swift",
+      "constructor": "Button",
+      "line": 245,
+      "column": 13,
+      "sourceHash": "09f7dd10f08ef694c86468ff012b52d7f80f52dc975fe4fb33edd0a070f0eb03",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/CareerWork/CareerWorkView.swift",
+      "constructor": "Button",
+      "line": 247,
+      "column": 13,
+      "sourceHash": "b3dad5b6f15322542bda9790769c18d18863781db527dc1063fc9b45e9b5504c",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/CareerWork/CareerWorkView.swift",
+      "constructor": "Button",
+      "line": 295,
+      "column": 63,
+      "sourceHash": "18d481e1028b26a10cfadc9b8baf05cac66a91f7aaccc8b5018fb362a9c007ee",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/CareerWork/CareerWorkView.swift",
+      "constructor": "Button",
+      "line": 297,
+      "column": 21,
+      "sourceHash": "536534a1b2340ca24d41330591c45b8556903e2bada60a9db6c9aaf0d1edcc76",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/CareerWork/CareerWorkView.swift",
+      "constructor": "Button",
+      "line": 326,
+      "column": 17,
+      "sourceHash": "501c49d05ee9429a0acaf8f640a0a73a82ae7fef4331acf6eb520e77e6d0ce90",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/CareerWork/CareerWorkView.swift",
+      "constructor": "Button",
+      "line": 327,
+      "column": 17,
+      "sourceHash": "b3c43828da657da8e0047b820f4cf164e6d5da687bb12ef1e41e9df93eaa4bb7",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/CareerWork/CareerWorkView.swift",
+      "constructor": "Button",
+      "line": 328,
+      "column": 17,
+      "sourceHash": "a56980ffe5cf1028531c24a91c07f1009c4d46d448b07acd301142ce2662a6fd",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/CareerWork/CareerWorkView.swift",
+      "constructor": "Button",
+      "line": 373,
+      "column": 63,
+      "sourceHash": "18d481e1028b26a10cfadc9b8baf05cac66a91f7aaccc8b5018fb362a9c007ee",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/CareerWork/CareerWorkView.swift",
+      "constructor": "Button",
+      "line": 375,
+      "column": 21,
+      "sourceHash": "d5570b0a025363d7bbc5eb8b538cac2dd6137301fcac339a39adeac3d06c848f",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/Conversation/AssistantResponseActions.swift",
+      "constructor": "Button",
+      "line": 75,
+      "column": 25,
+      "sourceHash": "c059bc2aa6732663e60fc5a7a80febe608cedf07df1510a29e98b673c38df67f",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/Conversation/AssistantResponseActions.swift",
+      "constructor": "Button",
+      "line": 100,
+      "column": 25,
+      "sourceHash": "1de15d99e3439cd879bbdf0b1045e547ec7aa2dfc5836712e801a4f65694fefe",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/Conversation/AssistantResponseActions.swift",
+      "constructor": "Button",
+      "line": 107,
+      "column": 25,
+      "sourceHash": "b62424a302c707e8df96492fe436e9e82fa8ffe54b521c32570f711dd10310d3",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/Conversation/ConversationRuntimeFactory.swift",
+      "constructor": "Button",
+      "line": 800,
+      "column": 25,
+      "sourceHash": "39ed8877fc3679f6826ec708ac2c7e080bbb87ab3040a13090b714e04f44602c",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/Conversation/ConversationTimeline.swift",
+      "constructor": "Button",
+      "line": 554,
+      "column": 17,
+      "sourceHash": "6ba02a97fd3730f9fb5b91f37910519fa86f405ef0ed35cad5b36e2ca19a37ba",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/Conversation/ConversationView.swift",
+      "constructor": "Button",
+      "line": 111,
+      "column": 21,
+      "sourceHash": "2abf79298560fe90a2ac13fdd646c5a27d7735e6bc5136f63cd8096e9a8b7659",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/Conversation/ConversationView.swift",
+      "constructor": "Button",
+      "line": 112,
+      "column": 21,
+      "sourceHash": "fc189ed88c6f91ea4b55f9973597a6fc70ab82e1af76d52e04f6c918c64334cf",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/Conversation/ConversationView.swift",
+      "constructor": "Button",
+      "line": 114,
+      "column": 21,
+      "sourceHash": "6915bf8073c4e788fe9e2361c58ba304b936a5034bff6d9ac39ae7c8d8346b31",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/Conversation/ConversationView.swift",
+      "constructor": "Button",
+      "line": 115,
+      "column": 21,
+      "sourceHash": "c59981b65fbc38e3aa08db51a89c223207c59462839cd06c0769056cce743fb3",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/Conversation/ConversationView.swift",
+      "constructor": "Button",
+      "line": 117,
+      "column": 21,
+      "sourceHash": "584a058dacd211cca7e069a4626a5db1faef47ad1f25bb057d7e140504d27c7a",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/Conversation/ConversationView.swift",
+      "constructor": "Button",
+      "line": 118,
+      "column": 21,
+      "sourceHash": "e40de5995837c6ed447c18d88fdb7f10e65fd242afc1174ceae599b490102871",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/Conversation/ConversationView.swift",
+      "constructor": "Button",
+      "line": 120,
+      "column": 21,
+      "sourceHash": "d9b4d494c0f0d361bb1170a6e17f46f0d911429ef00b5d23f40131b27144b637",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/Conversation/ConversationView.swift",
+      "constructor": "Button",
+      "line": 121,
+      "column": 21,
+      "sourceHash": "e566423e991ee29d7441430ed4ae477f1dfb3271bb82264a2bae17b968a34f1a",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/Conversation/ConversationView.swift",
+      "constructor": "Button",
+      "line": 122,
+      "column": 21,
+      "sourceHash": "fc189ed88c6f91ea4b55f9973597a6fc70ab82e1af76d52e04f6c918c64334cf",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/Conversation/TranscriptCorrectionView.swift",
+      "constructor": "Button",
+      "line": 42,
+      "column": 13,
+      "sourceHash": "5670e87fcef22011917c4cb01518d7aa03d4b75e72e3a2cedf1f05ebb4079d20",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/Conversation/TranscriptCorrectionView.swift",
+      "constructor": "Button",
+      "line": 43,
+      "column": 13,
+      "sourceHash": "e6c736c5e3e6a8c56af65ca7599207a652fa631dcbc9559acbc64c6d8e424d3d",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/Conversations/ConversationsView.swift",
+      "constructor": "Button",
+      "line": 78,
+      "column": 21,
+      "sourceHash": "53ceafde1942a67b8291dc8eb88b118ce4207a68b2aa29b2180d56f1575356bd",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/Conversations/ConversationsView.swift",
+      "constructor": "Button",
+      "line": 80,
+      "column": 21,
+      "sourceHash": "5e39e40aac10b8e597d912a2b1de78da1d13298ef03eacf76879d796573a6a1c",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/Conversations/ConversationsView.swift",
+      "constructor": "Button",
+      "line": 84,
+      "column": 17,
+      "sourceHash": "8f2103a6cb3f8d189e31ea6db943b1757fc8b5d0d4c52e05af88d4d8c6a69edd",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/Conversations/ConversationsView.swift",
+      "constructor": "Button",
+      "line": 91,
+      "column": 17,
+      "sourceHash": "e2c140e500f208dd75a573285fb4cbd79916294c32ebcf68f3fec0ea166fcba9",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/Conversations/ConversationsView.swift",
+      "constructor": "Button",
+      "line": 97,
+      "column": 17,
+      "sourceHash": "cd6efe584e9a044e25780cb735c40f2341b74a9ea8362379b17304725506f15d",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/Conversations/ConversationsView.swift",
+      "constructor": "Button",
+      "line": 143,
+      "column": 37,
+      "sourceHash": "f63f117fe9091a4bcd96f3c47e3c6480cc83a53f8f7eb87b9d0981d604c4528a",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/Conversations/ConversationsView.swift",
+      "constructor": "Button",
+      "line": 144,
+      "column": 37,
+      "sourceHash": "ef9820cb46c95048a3507924dcc1a61004cb68bbe85641726bb92b3c3c563768",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/Conversations/ConversationsView.swift",
+      "constructor": "Button",
+      "line": 172,
+      "column": 21,
+      "sourceHash": "d397e8e74296e0edfb5e5ff54ff7ee1518d5ab94399ff99d7bb2cee19ca2a32d",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/Conversations/ConversationsView.swift",
+      "constructor": "Button",
+      "line": 174,
+      "column": 21,
+      "sourceHash": "ba2047383a9f572ba6a60c33123eb7106e384fc4d877f29b82f786facdae4462",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/Conversations/ConversationsView.swift",
+      "constructor": "Button",
+      "line": 345,
+      "column": 21,
+      "sourceHash": "294af10dab31e5008df274c0cb8de5c65e422980ab5a68c158d0b347523a4c67",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/Home/HomeView.swift",
+      "constructor": "Button",
+      "line": 55,
+      "column": 21,
+      "sourceHash": "f11dba5306a819b96bd11727c796aabcaddd5beb0a9ca9f29fba8813a5018cf3",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/Home/HomeView.swift",
+      "constructor": "Button",
+      "line": 58,
+      "column": 21,
+      "sourceHash": "04f77ff4f606ea6b19ddd8cfdf9bcc26c591abcd559937f3eb443c801c2968b2",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/Home/HomeView.swift",
+      "constructor": "Button",
+      "line": 63,
+      "column": 25,
+      "sourceHash": "be3d69060cc45754789671f9a95b61fa278f4ac3fae724f2a32352effde96408",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/Home/HomeView.swift",
+      "constructor": "Button",
+      "line": 95,
+      "column": 21,
+      "sourceHash": "14139f756005d496e2609e94110e315ae2515fee30ae230b7361b31dd4498a1f",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/Home/HomeView.swift",
+      "constructor": "Button",
+      "line": 135,
+      "column": 21,
+      "sourceHash": "c02c4fac1a56f0326315698554470b847614e0c4ab1688db70dd8ce402c0ad3d",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/Home/HomeView.swift",
+      "constructor": "Button",
+      "line": 138,
+      "column": 21,
+      "sourceHash": "e3b86ec887cf2ecbd465f8144400abfb704d0f2b61d0d644ea7c5e3fddc57928",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/Home/InsightDetailView.swift",
+      "constructor": "Button",
+      "line": 74,
+      "column": 17,
+      "sourceHash": "e94ef966b30e853640cfbbe9f1f38cf3b047e2b188f3d5db61b9c66d909c4dec",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/Home/InsightsView.swift",
+      "constructor": "Button",
+      "line": 42,
+      "column": 17,
+      "sourceHash": "e3b86ec887cf2ecbd465f8144400abfb704d0f2b61d0d644ea7c5e3fddc57928",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/Home/LeadInsightSection.swift",
+      "constructor": "Button",
+      "line": 10,
+      "column": 13,
+      "sourceHash": "3ee3403ff252351638969b3c7c608d31e0655a05fadd49f079df30debbd343cc",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/Home/ThisWeekSection.swift",
+      "constructor": "Button",
+      "line": 39,
+      "column": 17,
+      "sourceHash": "f318881c0bbfbe9f6c0409d5a07f7c8e4fb7eac8c314f946e3795d10487302b9",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/Home/ThisWeekSection.swift",
+      "constructor": "Button",
+      "line": 109,
+      "column": 21,
+      "sourceHash": "6dc9cf56fa59c612d1b9f4e8195d9c957f26a3a402e5d394fd5fbbaa438ca8d2",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/Home/ThisWeekSection.swift",
+      "constructor": "Button",
+      "line": 110,
+      "column": 21,
+      "sourceHash": "450ab00f1539edfddb64a96c1ed766c1e37788c87c3e481c80b95587a24c29ce",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/Home/ThisWeekSection.swift",
+      "constructor": "Button",
+      "line": 117,
+      "column": 63,
+      "sourceHash": "18d481e1028b26a10cfadc9b8baf05cac66a91f7aaccc8b5018fb362a9c007ee",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/Home/ThisWeekSection.swift",
+      "constructor": "Button",
+      "line": 143,
+      "column": 63,
+      "sourceHash": "0510c1c623d6beed3935993980c049de09840d7c615e227aaea2f5a73875c451",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/Recovery/RecoveryView.swift",
+      "constructor": "Button",
+      "line": 62,
+      "column": 21,
+      "sourceHash": "555a3cbb52770c0a5159ab10fab6066d47198f51a2ec3e31bbf9e78e6f61eb9f",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/Voice/PersonalVoiceSessionView.swift",
+      "constructor": "Button",
+      "line": 47,
+      "column": 17,
+      "sourceHash": "6377928d60754a12bcce0d9d0a4763830935113f43d1b4e4c743795872fc3cdb",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/You/YouView.swift",
+      "constructor": "Button",
+      "line": 24,
+      "column": 25,
+      "sourceHash": "b65b93af41c679e9b1f99625cfb631eca0c53b42584ec41a9534d6a783ea11d7",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/You/YouView.swift",
+      "constructor": "Button",
+      "line": 26,
+      "column": 25,
+      "sourceHash": "9dbac012052ae96179606fd3fe5ce37854e99f197085e92722d4224590f34a15",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/You/YouView.swift",
+      "constructor": "Button",
+      "line": 80,
+      "column": 24,
+      "sourceHash": "ac91c00362e5fd427e57311739433a3bdda3c8914c452fd451f56d9013c2efdd",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/You/YouView.swift",
+      "constructor": "Button",
+      "line": 127,
+      "column": 17,
+      "sourceHash": "7e2a284ed9a33129eb6f66304dd6e83e3ee55c78504e39896063c7a6781e2206",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/You/YouView.swift",
+      "constructor": "Button",
+      "line": 128,
+      "column": 17,
+      "sourceHash": "8eac3cc34bd363ab2ab73e8158c28895159d8abfc9358772b158074a17478ef6",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/TaisaApp/You/YouView.swift",
+      "constructor": "Button",
+      "line": 133,
+      "column": 17,
+      "sourceHash": "ac9a90699a8e8542a02acf4915c46827fcbbb9bff9f7f6d22adcd3051fe3ff02",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/Packages/TaisaFoundation/Sources/TaisaDesignSystem/ConversationActionBar.swift",
+      "constructor": "Button",
+      "line": 78,
+      "column": 9,
+      "sourceHash": "adc64c3d109fe2eb80dd428f1d73f4fa245f67d6e6772d453bce2fd6de9a8e20",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/Packages/TaisaFoundation/Sources/TaisaDesignSystem/ConversationEntryDock.swift",
+      "constructor": "Button",
+      "line": 37,
+      "column": 9,
+      "sourceHash": "068f92ff2561e836975d2f4f975dc8b78f1145a8605cf5f2a5aab8ffb8ecfd35",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/Packages/TaisaFoundation/Sources/TaisaDesignSystem/ConversationStatusViews.swift",
+      "constructor": "Button",
+      "line": 22,
+      "column": 33,
+      "sourceHash": "4baf1dd0a9f1b8d7f1d59b159854882fa109996d1fd5c3a5384497d19313d5f1",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/Packages/TaisaFoundation/Sources/TaisaDesignSystem/ConversationStatusViews.swift",
+      "constructor": "Button",
+      "line": 22,
+      "column": 89,
+      "sourceHash": "4baf1dd0a9f1b8d7f1d59b159854882fa109996d1fd5c3a5384497d19313d5f1",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/Packages/TaisaFoundation/Sources/TaisaDesignSystem/ConversationStatusViews.swift",
+      "constructor": "Button",
+      "line": 22,
+      "column": 127,
+      "sourceHash": "4baf1dd0a9f1b8d7f1d59b159854882fa109996d1fd5c3a5384497d19313d5f1",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/Packages/TaisaFoundation/Sources/TaisaDesignSystem/TaisaPageChrome.swift",
+      "constructor": "Button",
+      "line": 171,
+      "column": 22,
+      "sourceHash": "f446f7048f48f04c3b11929d36f231ddc9a4520a0882b3a14486ae183ced2c41",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/Packages/TaisaFoundation/Sources/TaisaDesignSystem/TaisaPageChrome.swift",
+      "constructor": "Button",
+      "line": 218,
+      "column": 22,
+      "sourceHash": "f446f7048f48f04c3b11929d36f231ddc9a4520a0882b3a14486ae183ced2c41",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/Packages/TaisaFoundation/Sources/TaisaDesignSystem/TaisaToast.swift",
+      "constructor": "Button",
+      "line": 52,
+      "column": 17,
+      "sourceHash": "0256d11a94e9a61fb1fd502f20eabd1a21b49a36205dbf5241d3205fab23ee9a",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/Packages/TaisaFoundation/Sources/TaisaDesignSystem/TextComposer.swift",
+      "constructor": "Button",
+      "line": 34,
+      "column": 13,
+      "sourceHash": "3e9d5b475d225b9fc296232dcedb6eb0354215afdc0882a17ca46af1dc1dc68f",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/Packages/TaisaFoundation/Sources/TaisaDesignSystem/VoiceComposerControls.swift",
+      "constructor": "Button",
+      "line": 26,
+      "column": 17,
+      "sourceHash": "f2aa7536d1692cfeeda4946afcdc963bb60007b4f1929d1cc4fd74dfa7f46a3c",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/Packages/TaisaFoundation/Sources/TaisaDesignSystem/VoiceComposerControls.swift",
+      "constructor": "Button",
+      "line": 30,
+      "column": 17,
+      "sourceHash": "4b2ba9261d5e28a3110bcf9eb4f50ee0929d4a07a89bcb6bc419f1addcec3a26",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    },
+    {
+      "file": "apple/Packages/TaisaFoundation/Sources/TaisaDesignSystem/VoiceComposerControls.swift",
+      "constructor": "Button",
+      "line": 33,
+      "column": 44,
+      "sourceHash": "ad2d283af07ca4de62a9b8d695d016d3c724d912e48d97f3158c4baf3d8e2dcb",
+      "owner": "APF-75",
+      "reason": "Existing native DS adoption migration debt"
+    }
+  ]
+}
