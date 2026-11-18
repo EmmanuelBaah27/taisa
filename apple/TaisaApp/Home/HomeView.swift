@@ -14,6 +14,7 @@ struct HomeView: View {
     var openRecovery: () -> Void = {}
     var openPersonalQA: (() -> Void)?
     var openInsights: () -> Void = {}
+    var onTaskComposerPresentationChanged: (Bool) -> Void = { _ in }
     private let ownsNavigation: Bool
     private let showsRecentConversations: Bool
 
@@ -23,6 +24,7 @@ struct HomeView: View {
         openRecovery: @escaping () -> Void = {},
         openPersonalQA: (() -> Void)? = nil,
         openInsights: @escaping () -> Void = {},
+        onTaskComposerPresentationChanged: @escaping (Bool) -> Void = { _ in },
         ownsNavigation: Bool = true,
         showsRecentConversations: Bool = true,
         initiallyShowsTaskComposer: Bool = false
@@ -33,6 +35,7 @@ struct HomeView: View {
         self.openRecovery = openRecovery
         self.openPersonalQA = openPersonalQA
         self.openInsights = openInsights
+        self.onTaskComposerPresentationChanged = onTaskComposerPresentationChanged
         self.ownsNavigation = ownsNavigation
         self.showsRecentConversations = showsRecentConversations
     }
@@ -43,6 +46,9 @@ struct HomeView: View {
             else { homeContent }
         }
         .accessibilityIdentifier("home.root")
+        .onChange(of: showsTaskComposer, initial: true) { _, _ in
+            onTaskComposerPresentationChanged(showsTaskComposer)
+        }
         .task { if model.state == .idle { await model.load() } }
         .sheet(item: $activeSheet) { sheet in
             switch sheet {
@@ -61,7 +67,6 @@ struct HomeView: View {
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 if showsTaskComposer {
                     TaskComposerView(title: $taskTitle, dueDate: $taskDueDate, submit: submitTask)
-                        .padding(.bottom, TaisaBottomChromeContract.fadeHeight)
                         .accessibilityIdentifier("home.tasks.composer")
                 }
             }
@@ -78,6 +83,7 @@ struct HomeView: View {
         if showsTaskComposer {
             TaisaColor.foreground.color
                 .opacity(TaisaEffect.taskComposerBackdropOpacity)
+                .ignoresSafeArea(edges: .top)
                 .contentShape(Rectangle())
                 .onTapGesture { dismissTaskComposer() }
                 .accessibilityHidden(true)

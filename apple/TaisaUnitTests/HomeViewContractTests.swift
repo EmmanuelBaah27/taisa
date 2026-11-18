@@ -116,18 +116,26 @@ final class HomeViewContractTests: XCTestCase {
         XCTAssertTrue(home.contains(".padding(.top, TaisaSpacing.section.rawValue)"))
     }
 
-    func testTaskComposerReservesThePrimaryNavigationDockAndStartsClosed() throws {
+    func testTaskComposerCoversAppChromeAndAnchorsToTheKeyboard() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let home = try String(contentsOf: root.appendingPathComponent("TaisaApp/Home/HomeView.swift"), encoding: .utf8)
+        let shell = try String(contentsOf: root.appendingPathComponent("TaisaApp/AppShell/PrimaryAppShell.swift"), encoding: .utf8)
 
         XCTAssertTrue(home.contains("@State private var showsTaskComposer = false"))
-        XCTAssertTrue(
-            home.contains(".padding(.bottom, TaisaBottomChromeContract.fadeHeight)"),
-            "The composer must sit above the shell-owned navigation and voice dock"
-        )
+        XCTAssertFalse(home.contains(".padding(.bottom, TaisaBottomChromeContract.fadeHeight)"))
         XCTAssertTrue(home.contains("taskComposerDismissalLayer"))
         XCTAssertTrue(home.contains(".onTapGesture { dismissTaskComposer() }"))
         XCTAssertTrue(home.contains(".opacity(TaisaEffect.taskComposerBackdropOpacity)"))
+        XCTAssertTrue(
+            home.contains(".ignoresSafeArea(edges: .top)"),
+            "The composer backdrop must dim the status-bar safe area"
+        )
+        XCTAssertTrue(home.contains("onTaskComposerPresentationChanged(showsTaskComposer)"))
+        XCTAssertTrue(shell.contains("@State private var showsTaskComposer = false"))
+        XCTAssertTrue(shell.contains("model.showsConversationDock && !showsTaskComposer"))
+        XCTAssertTrue(shell.contains("onTaskComposerPresentationChanged: { showsTaskComposer = $0 }"))
+        XCTAssertTrue(shell.contains("taskComposerStatusBarBackdrop"))
+        XCTAssertTrue(shell.contains(".ignoresSafeArea(edges: .top)"))
     }
 
     func testInsightsStayNestedByCurrentReviewAndHistoryWithGroundedDetail() throws {

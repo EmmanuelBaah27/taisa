@@ -84,6 +84,7 @@ final class PrimaryAppShellModel {
 struct PrimaryAppShell: View {
     @State var model: PrimaryAppShellModel
     @State private var swipeStartSelection: PrimaryDestination?
+    @State private var showsTaskComposer = false
     let homeModel: HomeModel
     var careerWorkModel: CareerWorkModel = CareerWorkModel(client: .init(loadOverview: { .init(active: [], paused: [], completed: [], archived: []) }))
     let conversationsModel: ConversationsModel
@@ -94,61 +95,78 @@ struct PrimaryAppShell: View {
     var openInsights: () -> Void = {}
 
     var body: some View {
-        NavigationStack {
-            TabView(selection: Binding(
-                get: { model.selection },
-                set: { destination in model.select(destination) }
-            )) {
-                ForEach(PrimaryDestination.allCases, id: \.self) { destination in
-                    destinationView(destination)
-                        .tag(destination)
-                }
-            }
-            .tabViewStyle(.page(indexDisplayMode: .never))
-            .simultaneousGesture(primaryPageCompletionGesture)
-            .navigationDestination(item: Binding(
-                get: { model.workDestination },
-                set: { if $0 == nil { model.dismissWork() } }
-            )) { destination in
-                workDestinationView(destination)
-            }
-        }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            if model.showsConversationDock {
-                TaisaBottomChrome {
-                    VStack(spacing: TaisaSpacing.compact.rawValue) {
-                        ConversationEntryDock(
-                            onVoice: { model.presentNewConversation(.voice) },
-                            onKeyboard: { model.presentNewConversation(.text) }
-                        )
-                        .zIndex(1)
-                        .accessibilityIdentifier("app-shell.conversation-dock")
-
-                        PrimaryNavigation(
-                            items: PrimaryDestination.allCases.map { ($0, $0.title, $0.icon) },
-                            selection: Binding(
-                                get: { model.selection },
-                                set: { model.select($0) }
-                            )
-                        )
-                        .accessibilityIdentifier("app-shell.primary-navigation")
+        GeometryReader { geometry in
+            NavigationStack {
+                TabView(selection: Binding(
+                    get: { model.selection },
+                    set: { destination in model.select(destination) }
+                )) {
+                    ForEach(PrimaryDestination.allCases, id: \.self) { destination in
+                        destinationView(destination)
+                            .tag(destination)
                     }
-                    .padding(.horizontal, TaisaSpacing.standard.rawValue)
-                    .padding(.top, TaisaSpacing.section.rawValue)
-                    .padding(.bottom, TaisaSpacing.compact.rawValue)
+                }
+                .tabViewStyle(.page(indexDisplayMode: .never))
+                .simultaneousGesture(primaryPageCompletionGesture)
+                .navigationDestination(item: Binding(
+                    get: { model.workDestination },
+                    set: { if $0 == nil { model.dismissWork() } }
+                )) { destination in
+                    workDestinationView(destination)
                 }
             }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                if model.showsConversationDock && !showsTaskComposer {
+                    TaisaBottomChrome {
+                        VStack(spacing: TaisaSpacing.compact.rawValue) {
+                            ConversationEntryDock(
+                                onVoice: { model.presentNewConversation(.voice) },
+                                onKeyboard: { model.presentNewConversation(.text) }
+                            )
+                            .zIndex(1)
+                            .accessibilityIdentifier("app-shell.conversation-dock")
+
+                            PrimaryNavigation(
+                                items: PrimaryDestination.allCases.map { ($0, $0.title, $0.icon) },
+                                selection: Binding(
+                                    get: { model.selection },
+                                    set: { model.select($0) }
+                                )
+                            )
+                            .accessibilityIdentifier("app-shell.primary-navigation")
+                        }
+                        .padding(.horizontal, TaisaSpacing.standard.rawValue)
+                        .padding(.top, TaisaSpacing.section.rawValue)
+                        .padding(.bottom, TaisaSpacing.compact.rawValue)
+                    }
+                }
+            }
+            .overlay(alignment: .top) {
+                taskComposerStatusBarBackdrop(height: geometry.safeAreaInsets.top)
+            }
+            .fullScreenCover(item: Binding(
+                get: { model.conversationRoute },
+                set: { if $0 == nil { model.dismissConversation() } }
+            )) { route in
+                ConversationHostView(
+                    route: route,
+                    entryIntent: model.consumeEntryIntent(),
+                    factory: conversationFactory,
+                    dismiss: dismissConversationAndRefresh
+                )
+            }
         }
-        .fullScreenCover(item: Binding(
-            get: { model.conversationRoute },
-            set: { if $0 == nil { model.dismissConversation() } }
-        )) { route in
-            ConversationHostView(
-                route: route,
-                entryIntent: model.consumeEntryIntent(),
-                factory: conversationFactory,
-                dismiss: dismissConversationAndRefresh
-            )
+    }
+
+    @ViewBuilder
+    private func taskComposerStatusBarBackdrop(height: CGFloat) -> some View {
+        if showsTaskComposer {
+            TaisaColor.foreground.color
+                .opacity(TaisaEffect.taskComposerBackdropOpacity)
+                .frame(height: height)
+                .ignoresSafeArea(edges: .top)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
         }
     }
 
@@ -188,6 +206,7 @@ struct PrimaryAppShell: View {
                 openRecovery: openRecovery,
                 openPersonalQA: openPersonalQA,
                 openInsights: openInsights,
+                onTaskComposerPresentationChanged: { showsTaskComposer = $0 },
                 ownsNavigation: false,
                 showsRecentConversations: false
             )
