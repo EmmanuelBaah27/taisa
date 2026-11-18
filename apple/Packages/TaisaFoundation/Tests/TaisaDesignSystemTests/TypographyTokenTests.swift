@@ -10,6 +10,7 @@ struct TypographyTokenTests {
             .heading: .init(family: "Inter", fontName: "InterVariable", size: 22, style: .title2, weight: .semibold),
             .body: .init(family: "Inter", fontName: "InterVariable", size: 17, style: .body, weight: .regular),
             .label: .init(family: "Inter", fontName: "InterVariable", size: 15, style: .subheadline, weight: .semibold),
+            .buttonLabel: .init(family: "Inter", fontName: "InterVariable", size: 15, style: .subheadline, weight: .medium),
             .metadata: .init(family: "Inter", fontName: "InterVariable", size: 12, style: .caption, weight: .regular),
             .navigationLabel: .init(family: "Inter", fontName: "InterVariable", size: 16, style: .body, weight: .medium),
             .supporting: .init(family: "Inter", fontName: "InterVariable", size: 14, style: .subheadline, weight: .regular),

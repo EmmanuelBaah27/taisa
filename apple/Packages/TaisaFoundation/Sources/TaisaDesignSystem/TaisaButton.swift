@@ -5,6 +5,13 @@ public enum TaisaButtonRole: Sendable, Equatable {
     case secondary
     case ghost
     case destructive
+
+    public var labelTypography: TaisaTypography {
+        switch self {
+        case .secondary, .ghost: .buttonLabel
+        case .primary, .destructive: .label
+        }
+    }
 }
 
 public enum TaisaButtonShape: Sendable, Equatable {
@@ -96,7 +103,7 @@ public struct TaisaButton: View {
                             .frame(width: size.iconSize, height: size.iconSize)
                     }
                     if !label.isEmpty {
-                        TaisaText(role: .label, color: labelColor, content: label)
+                        TaisaText(role: role.labelTypography, color: labelColor, content: label)
                     }
                 }
                     .opacity(isProcessing ? 0 : 1)

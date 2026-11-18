@@ -22,6 +22,9 @@ struct ActionComponentTests {
         #expect(TaisaButtonLayout.fill != .intrinsic)
         #expect(TaisaButtonShape.circle != .capsule)
         #expect(TaisaButtonSize.small.minimumHitHeight == 44)
+        #expect(TaisaButtonRole.primary.labelTypography == .label)
+        #expect(TaisaButtonRole.secondary.labelTypography == .buttonLabel)
+        #expect(TaisaButtonRole.ghost.labelTypography == .buttonLabel)
         #expect(TaisaEffect.taskComposerBackdropOpacity == 0.30)
     }
 

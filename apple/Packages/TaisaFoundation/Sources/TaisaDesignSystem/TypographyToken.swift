@@ -5,6 +5,7 @@ public enum TaisaTypography: String, CaseIterable, Sendable {
     case heading
     case body
     case label
+    case buttonLabel
     case metadata
     case navigationLabel
     case supporting
@@ -32,7 +33,7 @@ public enum TaisaTypography: String, CaseIterable, Sendable {
         case .display: 34
         case .heading: 22
         case .body: 17
-        case .label: 15
+        case .label, .buttonLabel: 15
         case .metadata: 12
         case .navigationLabel, .taskTitle: 16
         case .supporting, .taskSupporting: 14
@@ -46,7 +47,7 @@ public enum TaisaTypography: String, CaseIterable, Sendable {
         case .display: 41
         case .heading: 28
         case .body, .childHeaderTitle: 22
-        case .label, .supporting, .taskSupporting: 20
+        case .label, .buttonLabel, .supporting, .taskSupporting: 20
         case .metadata: 16
         case .navigationLabel, .taskTitle: 24
         case .datedPageTitle: 36
@@ -58,7 +59,7 @@ public enum TaisaTypography: String, CaseIterable, Sendable {
         case .display: .largeTitle
         case .heading: .title2
         case .body, .navigationLabel, .taskTitle: .body
-        case .label, .supporting, .taskSupporting: .subheadline
+        case .label, .buttonLabel, .supporting, .taskSupporting: .subheadline
         case .metadata: .caption
         case .childHeaderTitle: .headline
         case .datedPageTitle: .title
@@ -68,7 +69,7 @@ public enum TaisaTypography: String, CaseIterable, Sendable {
     public var weight: Font.Weight {
         switch self {
         case .display, .heading, .label, .childHeaderTitle, .datedPageTitle: .semibold
-        case .navigationLabel, .taskTitle: .medium
+        case .buttonLabel, .navigationLabel, .taskTitle: .medium
         case .body, .metadata, .supporting, .taskSupporting: .regular
         }
     }
