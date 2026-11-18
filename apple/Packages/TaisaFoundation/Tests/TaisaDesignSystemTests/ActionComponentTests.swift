@@ -15,6 +15,11 @@ struct ActionComponentTests {
         #expect(TaisaButton.Contract.supportsDisabledState)
         #expect(TaisaButton.Contract.supportsSelectedState)
         #expect(TaisaButton.Contract.supportsInPlaceProgress)
+        #expect(TaisaButton.Contract.supportsIntrinsicLayout)
+        #expect(TaisaButton.Contract.supportsIconOnlyContent)
+        #expect(TaisaButtonLayout.fill != .intrinsic)
+        #expect(TaisaButtonShape.circle != .capsule)
+        #expect(TaisaButtonSize.small.minimumHitHeight == 44)
     }
 
     @Test func fieldsAndBorrowedControlsHaveTypedSharedContracts() {
@@ -67,6 +72,7 @@ struct ActionComponentTests {
 
         let field = try String(contentsOf: sourceRoot.appendingPathComponent("TaisaField.swift"), encoding: .utf8)
         let controls = try String(contentsOf: sourceRoot.appendingPathComponent("TaisaSystemControls.swift"), encoding: .utf8)
+        let pressable = try String(contentsOf: sourceRoot.appendingPathComponent("TaisaPressable.swift"), encoding: .utf8)
         let row = try String(contentsOf: sourceRoot.appendingPathComponent("TaisaRow.swift"), encoding: .utf8)
         let status = try String(contentsOf: sourceRoot.appendingPathComponent("TaisaStatus.swift"), encoding: .utf8)
 
@@ -78,6 +84,8 @@ struct ActionComponentTests {
         #expect(controls.contains("public struct TaisaNavigationRow"))
         #expect(controls.contains("public struct TaisaToolbarAction"))
         #expect(controls.contains("public struct TaisaConfirmationDialog"))
+        #expect(pressable.contains("public struct TaisaPressable"))
+        #expect(pressable.contains("@ViewBuilder label"))
         #expect(row.contains("public struct TaisaRow"))
         #expect(status.contains("public struct TaisaStatusMark"))
         #expect(status.contains("public struct TaisaStatusSurface"))

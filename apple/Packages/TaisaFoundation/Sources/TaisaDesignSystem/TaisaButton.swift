@@ -9,6 +9,12 @@ public enum TaisaButtonRole: Sendable, Equatable {
 public enum TaisaButtonShape: Sendable, Equatable {
     case roundedRectangle
     case capsule
+    case circle
+}
+
+public enum TaisaButtonLayout: Sendable, Equatable {
+    case fill
+    case intrinsic
 }
 
 public enum TaisaButtonSize: Sendable, Equatable {
@@ -21,6 +27,9 @@ public enum TaisaButtonSize: Sendable, Equatable {
     public var iconSize: CGFloat {
         self == .standard ? TaisaControlMetric.standardIcon : TaisaControlMetric.compactActionIcon
     }
+    public var minimumHitHeight: CGFloat {
+        max(minimumHeight, TaisaControlMetric.headerActionHeight)
+    }
 }
 
 public struct TaisaButton: View {
@@ -31,6 +40,8 @@ public struct TaisaButton: View {
         public static let supportsDisabledState = true
         public static let supportsSelectedState = true
         public static let supportsInPlaceProgress = true
+        public static let supportsIntrinsicLayout = true
+        public static let supportsIconOnlyContent = true
     }
 
     private let role: TaisaButtonRole
@@ -38,10 +49,12 @@ public struct TaisaButton: View {
     private let label: String
     private let icon: CentralIconName?
     private let size: TaisaButtonSize
+    private let layout: TaisaButtonLayout
     private let isSelected: Bool
     private let isEnabled: Bool
     private let isProcessing: Bool
     private let processingAccessibilityLabel: String
+    private let accessibilityLabel: String
     private let action: @MainActor () -> Void
 
     public init(
@@ -50,10 +63,12 @@ public struct TaisaButton: View {
         label: String,
         icon: CentralIconName? = nil,
         size: TaisaButtonSize = .standard,
+        layout: TaisaButtonLayout = .fill,
         isSelected: Bool = false,
         isEnabled: Bool = true,
         isProcessing: Bool = false,
         processingAccessibilityLabel: String = "Working",
+        accessibilityLabel: String? = nil,
         action: @escaping @MainActor () -> Void
     ) {
         self.role = role
@@ -61,10 +76,12 @@ public struct TaisaButton: View {
         self.label = label
         self.icon = icon
         self.size = size
+        self.layout = layout
         self.isSelected = isSelected
         self.isEnabled = isEnabled
         self.isProcessing = isProcessing
         self.processingAccessibilityLabel = processingAccessibilityLabel
+        self.accessibilityLabel = accessibilityLabel ?? label
         self.action = action
     }
 
@@ -86,24 +103,30 @@ public struct TaisaButton: View {
                         .tint(TaisaColor.foreground.color)
                 }
             }
-                .frame(maxWidth: .infinity, minHeight: size.minimumHeight)
-                .padding(.horizontal, TaisaSpacing.standard.rawValue)
+                .frame(
+                    minWidth: shape == .circle ? size.minimumHeight : nil,
+                    maxWidth: layout == .fill ? .infinity : nil,
+                    minHeight: size.minimumHeight
+                )
+                .padding(.horizontal, shape == .circle ? 0 : TaisaSpacing.standard.rawValue)
                 .background(background, in: buttonShape)
                 .overlay { buttonShape.stroke(borderColor) }
                 .clipShape(buttonShape)
-                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .frame(minWidth: size.minimumHitHeight, minHeight: size.minimumHitHeight)
+        .contentShape(Rectangle())
         .disabled(isProcessing || !isEnabled)
         .opacity(isEnabled ? 1 : TaisaControlMetric.disabledControlOpacity)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
-        .accessibilityLabel(isProcessing ? processingAccessibilityLabel : label)
+        .accessibilityLabel(isProcessing ? processingAccessibilityLabel : accessibilityLabel)
     }
 
     private var buttonShape: AnyShape {
         switch shape {
         case .roundedRectangle: AnyShape(RoundedRectangle(cornerRadius: TaisaRadius.control.rawValue))
         case .capsule: AnyShape(Capsule())
+        case .circle: AnyShape(Circle())
         }
     }
 
