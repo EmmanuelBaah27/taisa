@@ -5,6 +5,7 @@ import path from 'node:path';
 import test from 'node:test';
 
 import {
+  nativeControlRoots,
   rawInteractiveControlViolations,
   rawVisualValues,
 } from '../verify-design-system.mjs';
@@ -78,7 +79,7 @@ test('allows only the exact approved legacy occurrence', async () => {
     ...emptyControlPolicy,
     legacyOccurrences: [{
       file, constructor: 'Button', line: 1, column: 1,
-      sourceHash: '02dfa18c492be39643bc6c0cdcbd36725aa9dfa854b0f49ca549bce1f6ab40ac',
+      sourceHash: '8f6006c4b2687a7f4c46969083013066ac923f5d2cb28863990ac06fbcf4063a',
       owner: 'APF-75', reason: 'Existing migration debt',
     }],
   };
@@ -99,7 +100,7 @@ test('rejects a changed legacy occurrence and reports the stale approval', async
     ...emptyControlPolicy,
     legacyOccurrences: [{
       file, constructor: 'Button', line: 1, column: 1,
-      sourceHash: '02dfa18c492be39643bc6c0cdcbd36725aa9dfa854b0f49ca549bce1f6ab40ac',
+      sourceHash: '8f6006c4b2687a7f4c46969083013066ac923f5d2cb28863990ac06fbcf4063a',
       owner: 'APF-75', reason: 'Existing migration debt',
     }],
   };
@@ -125,7 +126,7 @@ test('rejects a stale legacy occurrence after migration removes the raw control'
       ...emptyControlPolicy,
       legacyOccurrences: [{
         file, constructor: 'Button', line: 1, column: 1,
-        sourceHash: '02dfa18c492be39643bc6c0cdcbd36725aa9dfa854b0f49ca549bce1f6ab40ac',
+        sourceHash: '8f6006c4b2687a7f4c46969083013066ac923f5d2cb28863990ac06fbcf4063a',
         owner: 'APF-75', reason: 'Existing migration debt',
       }],
     },
@@ -148,6 +149,113 @@ test('ignores constructor text in comments and string literals', async () => {
       }), []);
     },
   );
+});
+
+test('detects trailing-closure, qualified, generic, init, and backticked button constructors', async () => {
+  const source = [
+    'Button { save() } label: { Text("Save") }',
+    'SwiftUI.Button("Save") {}',
+    'Button<Text>("Save") {}',
+    'Button.init("Save") {}',
+    '`Button`("Save") {}',
+  ].join('\n');
+  await withControlFixture(
+    { 'apple/TaisaApp/FeatureView.swift': `${source}\n` },
+    emptyControlPolicy,
+    async ({ repositoryRoot, policyPath }) => {
+      const violations = await rawInteractiveControlViolations({
+        roots: ['apple/TaisaApp'], policyPath, repositoryRoot,
+      });
+      assert.equal(violations.filter(({ kind }) => kind === 'unclassified-control').length, 5);
+    },
+  );
+});
+
+test('changing a multiline legacy invocation invalidates its whole-source fingerprint', async () => {
+  const file = 'apple/TaisaApp/LegacyView.swift';
+  const original = 'Button(\n    action: { save() },\n    label: { Text("Save") }\n)\n';
+  const changed = original.replace('save()', 'delete()');
+  await withControlFixture(
+    { [file]: changed },
+    {
+      ...emptyControlPolicy,
+      legacyOccurrences: [{
+        file, constructor: 'Button', line: 1, column: 1,
+        sourceHash: '0000000000000000000000000000000000000000000000000000000000000000',
+        owner: 'APF-75', reason: 'Existing migration debt',
+      }],
+    },
+    async ({ repositoryRoot, policyPath }) => {
+      const violations = await rawInteractiveControlViolations({
+        roots: ['apple/TaisaApp'], policyPath, repositoryRoot,
+      });
+      assert.deepEqual(violations.map(({ kind }) => kind).sort(), [
+        'stale-legacy-occurrence', 'unclassified-control',
+      ]);
+    },
+  );
+});
+
+test('Swift masking handles nested comments, raw strings, and Unicode without shifting source positions', async () => {
+  const source = [
+    '/* outer /* Button("Nested") {} */ still outer */',
+    'let example = #"Button("Raw")"#',
+    '// emoji 😀 must preserve UTF-16 offsets',
+    'Button("Real") {}',
+  ].join('\n');
+  await withControlFixture(
+    { 'apple/TaisaApp/FeatureView.swift': `${source}\n` },
+    emptyControlPolicy,
+    async ({ repositoryRoot, policyPath }) => {
+      const violations = await rawInteractiveControlViolations({
+        roots: ['apple/TaisaApp'], policyPath, repositoryRoot,
+      });
+      assert.deepEqual(
+        violations.map(({ kind, line, column }) => ({ kind, line, column })),
+        [{ kind: 'unclassified-control', line: 4, column: 1 }],
+      );
+    },
+  );
+});
+
+test('rejects primitive paths that escape the canonical DS source root', async () => {
+  const escaped = 'apple/Packages/TaisaFoundation/Sources/TaisaDesignSystem/../../../../TaisaApp/Fake.swift';
+  await withControlFixture(
+    {
+      'apple/TaisaApp/Fake.swift': 'public struct Fake { var body: some View { Button("Raw") {} } }\n',
+      'apple/Packages/TaisaFoundation/Sources/TaisaDesignSystem/TaisaButton.swift': 'public struct TaisaButton {}\n',
+    },
+    { ...emptyControlPolicy, primitiveFiles: [escaped] },
+    async ({ repositoryRoot, policyPath }) => {
+      await assert.rejects(
+        rawInteractiveControlViolations({ roots: ['apple/TaisaApp'], policyPath, repositoryRoot }),
+        /canonical design-system source root/,
+      );
+    },
+  );
+});
+
+test('rejects malformed and duplicate legacy policy entries', async () => {
+  const file = 'apple/TaisaApp/LegacyView.swift';
+  const entry = {
+    file, constructor: 'Button', line: 1, column: 1,
+    sourceHash: '8f6006c4b2687a7f4c46969083013066ac923f5d2cb28863990ac06fbcf4063a',
+    owner: '', reason: '',
+  };
+  await withControlFixture(
+    { [file]: 'Button("Legacy") {}\n' },
+    { ...emptyControlPolicy, legacyOccurrences: [entry, entry] },
+    async ({ repositoryRoot, policyPath }) => {
+      await assert.rejects(
+        rawInteractiveControlViolations({ roots: ['apple/TaisaApp'], policyPath, repositoryRoot }),
+        /valid fields, owner, and semantic reason|duplicate/,
+      );
+    },
+  );
+});
+
+test('default roots include shipping feature package sources', async () => {
+  assert.ok(nativeControlRoots.includes('apple/Packages/TaisaFoundation/Sources'));
 });
 
 test('feature views contain no raw color literals', async () => {

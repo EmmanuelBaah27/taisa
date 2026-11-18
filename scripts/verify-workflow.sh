@@ -153,7 +153,7 @@ for ds_authority_file in \
     'existing (DS|design-system) component.{0,80}mandatory|must use.{0,80}existing (DS|design-system) component' \
     'mandatory reuse of an existing design-system component'
   require_workflow_multiline_pattern "$ds_authority_file" \
-    'raw platform.{0,120}only.{0,80}designated.{0,80}primitive' \
+    'raw platform.{0,160}shared (DS|design-system) component.{0,120}only.{0,80}designated.{0,80}primitive' \
     'raw platform controls restricted to designated primitive files'
   require_workflow_multiline_pattern "$ds_authority_file" \
     'missing.{0,80}variant.{0,80}blocking.{0,80}(DS|design-system) gap' \
@@ -161,6 +161,9 @@ for ds_authority_file in \
   require_workflow_multiline_pattern "$ds_authority_file" \
     'no.{0,80}(directory|module).{0,80}(exemption|allowlist)|must not.{0,80}(directory|module).{0,80}(exemption|allowlist)' \
     'no broad design-system directory exemption'
+  require_workflow_multiline_pattern "$ds_authority_file" \
+    '(new |a )?primitive.{0,120}no existing component.{0,160}coherent variant.{0,160}accessibility.{0,160}reusable' \
+    'reusable primitive-creation criteria'
 done
 
 for invariant in \
@@ -189,6 +192,7 @@ for invariant in \
   'Central Icons mapping' \
   'Approved system-owned exceptions' \
   'Designated primitive files' \
+  'Primitive creation rationale' \
   'Legacy raw-control debt' \
   'No broad DS module exemption' \
   'No unresolved DS gap' \

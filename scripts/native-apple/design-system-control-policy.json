@@ -3,7 +3,6 @@
     "Button"
   ],
   "primitiveFiles": [
-    "apple/Packages/TaisaFoundation/Sources/TaisaDesignSystem/ResponseActionControls.swift",
     "apple/Packages/TaisaFoundation/Sources/TaisaDesignSystem/TaisaButton.swift"
   ],
   "legacyOccurrences": [
@@ -12,738 +11,909 @@
       "constructor": "Button",
       "line": 111,
       "column": 13,
-      "sourceHash": "a0ef1fa5a5a2ef2ad6c0c23c630c9d0497ebe21fe47595dccbe89a94ecfe8787",
+      "sourceHash": "c27ca45d1af2984b5d36f0d379bfb0567425b67aa96013c98e79be08cc54a6ca",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Try Again\") {); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/App/AppRootView.swift",
       "constructor": "Button",
       "line": 117,
       "column": 13,
-      "sourceHash": "c8cf4eed0f25fd6a1a5e23f723e5066f40feea620be22dabb1ea8db2fc644c9f",
+      "sourceHash": "c27ca45d1af2984b5d36f0d379bfb0567425b67aa96013c98e79be08cc54a6ca",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Open backup and recovery\") { showsRuntimeRecovery = true }); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/CareerWork/CareerWorkView.swift",
       "constructor": "Button",
       "line": 70,
       "column": 17,
-      "sourceHash": "97edbaf1305c2ea65e6cc8a0640332e6ee83b43f426c987155449ea7ef4bc648",
+      "sourceHash": "177edd8a8a9f212faa111a4c34cb80a750074fb13bf159383b29e70497349ef1",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Create goal\") { showsCreateGoal = true }); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/CareerWork/CareerWorkView.swift",
       "constructor": "Button",
       "line": 92,
       "column": 13,
-      "sourceHash": "bad6331561e7c04e7d33f5ba744d5df588eaca1ae000bb6e94dc2b0f71489a15",
+      "sourceHash": "177edd8a8a9f212faa111a4c34cb80a750074fb13bf159383b29e70497349ef1",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Create goal\", systemImage: \"plus\") { showsCreateGoal = true }); classify and migrate to the approved shared DS contract under APF-75"
+    },
+    {
+      "file": "apple/TaisaApp/CareerWork/CareerWorkView.swift",
+      "constructor": "Button",
+      "line": 100,
+      "column": 17,
+      "sourceHash": "177edd8a8a9f212faa111a4c34cb80a750074fb13bf159383b29e70497349ef1",
+      "owner": "APF-75",
+      "reason": "Existing raw Button (Button {); classify and migrate to the approved shared DS contract under APF-75"
+    },
+    {
+      "file": "apple/TaisaApp/CareerWork/CareerWorkView.swift",
+      "constructor": "Button",
+      "line": 154,
+      "column": 9,
+      "sourceHash": "177edd8a8a9f212faa111a4c34cb80a750074fb13bf159383b29e70497349ef1",
+      "owner": "APF-75",
+      "reason": "Existing raw Button (Button {); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/CareerWork/CareerWorkView.swift",
       "constructor": "Button",
       "line": 169,
       "column": 17,
-      "sourceHash": "1e3bf14952856e56fe918a46f9b19fdb56d9670b4aa6e419720cd16a3608c5f3",
+      "sourceHash": "177edd8a8a9f212faa111a4c34cb80a750074fb13bf159383b29e70497349ef1",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Open recovery\", action: openRecovery).accessibilityIdentifier(\"career-work.recovery\")); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/CareerWork/CareerWorkView.swift",
       "constructor": "Button",
       "line": 171,
       "column": 17,
-      "sourceHash": "cf05b509756d3afaa404fcea69d240c10fc3f5e94962f55f6c490301cbe283c8",
+      "sourceHash": "177edd8a8a9f212faa111a4c34cb80a750074fb13bf159383b29e70497349ef1",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Try again\") { Task { await model.retry() } }.accessibilityIdentifier(\"career-work.retry\")); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/CareerWork/CareerWorkView.swift",
       "constructor": "Button",
       "line": 188,
       "column": 17,
-      "sourceHash": "2fc020b26cc276531895c4064b950936ad9d188ca53e3fc41b3aa3bb9fa189b0",
+      "sourceHash": "177edd8a8a9f212faa111a4c34cb80a750074fb13bf159383b29e70497349ef1",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Add milestone\", systemImage: \"flag\") { add(.milestone) }); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/CareerWork/CareerWorkView.swift",
       "constructor": "Button",
       "line": 189,
       "column": 17,
-      "sourceHash": "6c299e4239a384619e58aa4c783301f505d0a2926f0d11849d27c4a0e01f63a9",
+      "sourceHash": "177edd8a8a9f212faa111a4c34cb80a750074fb13bf159383b29e70497349ef1",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Add action\", systemImage: \"checklist\") { add(.action) }); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/CareerWork/CareerWorkView.swift",
       "constructor": "Button",
       "line": 190,
       "column": 17,
-      "sourceHash": "378a893b535f3d7f490bb139129f5be8663c6422a769ce95dc0ee23f62b94628",
+      "sourceHash": "177edd8a8a9f212faa111a4c34cb80a750074fb13bf159383b29e70497349ef1",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Add evidence\", systemImage: \"doc.badge.plus\") { add(.evidence(actions: snapshot.actions)) }); classify and migrate to the approved shared DS contract under APF-75"
+    },
+    {
+      "file": "apple/TaisaApp/CareerWork/CareerWorkView.swift",
+      "constructor": "Button",
+      "line": 203,
+      "column": 25,
+      "sourceHash": "177edd8a8a9f212faa111a4c34cb80a750074fb13bf159383b29e70497349ef1",
+      "owner": "APF-75",
+      "reason": "Existing raw Button (Button { open(.action(id: action.id)) } label: {); classify and migrate to the approved shared DS contract under APF-75"
+    },
+    {
+      "file": "apple/TaisaApp/CareerWork/CareerWorkView.swift",
+      "constructor": "Button",
+      "line": 213,
+      "column": 25,
+      "sourceHash": "177edd8a8a9f212faa111a4c34cb80a750074fb13bf159383b29e70497349ef1",
+      "owner": "APF-75",
+      "reason": "Existing raw Button (Button { open(.evidence(id: evidence.id)) } label: {); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/CareerWork/CareerWorkView.swift",
       "constructor": "Button",
       "line": 230,
       "column": 21,
-      "sourceHash": "140b92cd2b2a8c8d30bdfc84c6da09f22e48c4f4fb2711a556e9b515229600f3",
+      "sourceHash": "177edd8a8a9f212faa111a4c34cb80a750074fb13bf159383b29e70497349ef1",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Restore goal\", systemImage: \"arrow.uturn.backward\") { Task { await model.restoreSelectedGoal); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/CareerWork/CareerWorkView.swift",
       "constructor": "Button",
       "line": 232,
       "column": 21,
-      "sourceHash": "f7dcfa46b6f6fa761db62aa6a9f6b5eeb002ce7ebbd17f86aa4d591e7e977b6d",
+      "sourceHash": "177edd8a8a9f212faa111a4c34cb80a750074fb13bf159383b29e70497349ef1",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Archive goal\", systemImage: \"archivebox\") { Task { await model.archiveSelectedGoal() } }); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/CareerWork/CareerWorkView.swift",
       "constructor": "Button",
       "line": 242,
       "column": 13,
-      "sourceHash": "db6ebb35fd430201966e49944f20344a1032886e87068b282e8703374e9454c2",
+      "sourceHash": "177edd8a8a9f212faa111a4c34cb80a750074fb13bf159383b29e70497349ef1",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Pause goal\", systemImage: \"pause.circle\") { Task { await model.transitionSelectedGoal(to: .p); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/CareerWork/CareerWorkView.swift",
       "constructor": "Button",
       "line": 243,
       "column": 13,
-      "sourceHash": "d66789b9d1174f545722d346393f948e4a531570ef28dc0937be320c15c8e7aa",
+      "sourceHash": "177edd8a8a9f212faa111a4c34cb80a750074fb13bf159383b29e70497349ef1",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Complete goal\", systemImage: \"checkmark.circle\") { Task { await model.transitionSelectedGoal); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/CareerWork/CareerWorkView.swift",
       "constructor": "Button",
       "line": 245,
       "column": 13,
-      "sourceHash": "09f7dd10f08ef694c86468ff012b52d7f80f52dc975fe4fb33edd0a070f0eb03",
+      "sourceHash": "177edd8a8a9f212faa111a4c34cb80a750074fb13bf159383b29e70497349ef1",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Resume goal\", systemImage: \"play.circle\") { Task { await model.transitionSelectedGoal(to: .a); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/CareerWork/CareerWorkView.swift",
       "constructor": "Button",
       "line": 247,
       "column": 13,
-      "sourceHash": "b3dad5b6f15322542bda9790769c18d18863781db527dc1063fc9b45e9b5504c",
+      "sourceHash": "177edd8a8a9f212faa111a4c34cb80a750074fb13bf159383b29e70497349ef1",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Reopen goal\", systemImage: \"arrow.uturn.backward.circle\") { Task { await model.transitionSel); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/CareerWork/CareerWorkView.swift",
       "constructor": "Button",
       "line": 295,
       "column": 63,
-      "sourceHash": "18d481e1028b26a10cfadc9b8baf05cac66a91f7aaccc8b5018fb362a9c007ee",
+      "sourceHash": "177edd8a8a9f212faa111a4c34cb80a750074fb13bf159383b29e70497349ef1",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (ToolbarItem(placement: .cancellationAction) { Button(\"Cancel\") { dismiss() } }); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/CareerWork/CareerWorkView.swift",
       "constructor": "Button",
       "line": 297,
       "column": 21,
-      "sourceHash": "536534a1b2340ca24d41330591c45b8556903e2bada60a9db6c9aaf0d1edcc76",
+      "sourceHash": "177edd8a8a9f212faa111a4c34cb80a750074fb13bf159383b29e70497349ef1",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Save\") { Task { await save(title, detail, date, actionID); dismiss() } }); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/CareerWork/CareerWorkView.swift",
       "constructor": "Button",
       "line": 326,
       "column": 17,
-      "sourceHash": "501c49d05ee9429a0acaf8f640a0a73a82ae7fef4331acf6eb520e77e6d0ce90",
+      "sourceHash": "177edd8a8a9f212faa111a4c34cb80a750074fb13bf159383b29e70497349ef1",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Accept change\", systemImage: \"checkmark\") { accept() }); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/CareerWork/CareerWorkView.swift",
       "constructor": "Button",
       "line": 327,
       "column": 17,
-      "sourceHash": "b3c43828da657da8e0047b820f4cf164e6d5da687bb12ef1e41e9df93eaa4bb7",
+      "sourceHash": "177edd8a8a9f212faa111a4c34cb80a750074fb13bf159383b29e70497349ef1",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Correct before accepting\", systemImage: \"pencil\") { correct() }); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/CareerWork/CareerWorkView.swift",
       "constructor": "Button",
       "line": 328,
       "column": 17,
-      "sourceHash": "a56980ffe5cf1028531c24a91c07f1009c4d46d448b07acd301142ce2662a6fd",
+      "sourceHash": "177edd8a8a9f212faa111a4c34cb80a750074fb13bf159383b29e70497349ef1",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Reject change\", systemImage: \"xmark\", role: .destructive) { reject() }); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/CareerWork/CareerWorkView.swift",
       "constructor": "Button",
       "line": 373,
       "column": 63,
-      "sourceHash": "18d481e1028b26a10cfadc9b8baf05cac66a91f7aaccc8b5018fb362a9c007ee",
+      "sourceHash": "177edd8a8a9f212faa111a4c34cb80a750074fb13bf159383b29e70497349ef1",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (ToolbarItem(placement: .cancellationAction) { Button(\"Cancel\") { dismiss() } }); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/CareerWork/CareerWorkView.swift",
       "constructor": "Button",
       "line": 375,
       "column": 21,
-      "sourceHash": "d5570b0a025363d7bbc5eb8b538cac2dd6137301fcac339a39adeac3d06c848f",
+      "sourceHash": "177edd8a8a9f212faa111a4c34cb80a750074fb13bf159383b29e70497349ef1",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Save\") { Task { await save(title, detail); dismiss() } }); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/Conversation/AssistantResponseActions.swift",
       "constructor": "Button",
       "line": 75,
       "column": 25,
-      "sourceHash": "c059bc2aa6732663e60fc5a7a80febe608cedf07df1510a29e98b673c38df67f",
+      "sourceHash": "d73705514db8c2d6af8b11bce6df328a000dd7399deee14b215d69f44e00e0e2",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Done\") { showsExplanation = false }); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/Conversation/AssistantResponseActions.swift",
       "constructor": "Button",
       "line": 100,
       "column": 25,
-      "sourceHash": "1de15d99e3439cd879bbdf0b1045e547ec7aa2dfc5836712e801a4f65694fefe",
+      "sourceHash": "d73705514db8c2d6af8b11bce6df328a000dd7399deee14b215d69f44e00e0e2",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Close\") {); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/Conversation/AssistantResponseActions.swift",
       "constructor": "Button",
       "line": 107,
       "column": 25,
-      "sourceHash": "b62424a302c707e8df96492fe436e9e82fa8ffe54b521c32570f711dd10310d3",
+      "sourceHash": "d73705514db8c2d6af8b11bce6df328a000dd7399deee14b215d69f44e00e0e2",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Save feedback\") {); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/Conversation/ConversationRuntimeFactory.swift",
       "constructor": "Button",
       "line": 800,
       "column": 25,
-      "sourceHash": "39ed8877fc3679f6826ec708ac2c7e080bbb87ab3040a13090b714e04f44602c",
+      "sourceHash": "f5bb767738b7198fe753479ea6b269e3df4f0ec9c04c3da440d484c1981ecf3d",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Close\", action: dismiss)); classify and migrate to the approved shared DS contract under APF-75"
+    },
+    {
+      "file": "apple/TaisaApp/Conversation/ConversationTimeline.swift",
+      "constructor": "Button",
+      "line": 461,
+      "column": 9,
+      "sourceHash": "59e28f60d1bd72d446c94c70e3bfa83587c86b92939900d4017afa774e7b590b",
+      "owner": "APF-75",
+      "reason": "Existing raw Button (Button {); classify and migrate to the approved shared DS contract under APF-75"
+    },
+    {
+      "file": "apple/TaisaApp/Conversation/ConversationTimeline.swift",
+      "constructor": "Button",
+      "line": 476,
+      "column": 13,
+      "sourceHash": "59e28f60d1bd72d446c94c70e3bfa83587c86b92939900d4017afa774e7b590b",
+      "owner": "APF-75",
+      "reason": "Existing raw Button (Button { correct(message) } label: {); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/Conversation/ConversationTimeline.swift",
       "constructor": "Button",
       "line": 554,
       "column": 17,
-      "sourceHash": "6ba02a97fd3730f9fb5b91f37910519fa86f405ef0ed35cad5b36e2ca19a37ba",
+      "sourceHash": "59e28f60d1bd72d446c94c70e3bfa83587c86b92939900d4017afa774e7b590b",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(isExpanded ? \"Show less\" : \"Show more\", action: toggleExpansion)); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/Conversation/ConversationView.swift",
       "constructor": "Button",
       "line": 111,
       "column": 21,
-      "sourceHash": "2abf79298560fe90a2ac13fdd646c5a27d7735e6bc5136f63cd8096e9a8b7659",
+      "sourceHash": "590c32508d5203b6fe53da640c2f080807faa8cb5a430391e2971e61b0372c91",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Switch to keyboard\", role: .destructive, action: model.confirmKeyboardReplacement)); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/Conversation/ConversationView.swift",
       "constructor": "Button",
       "line": 112,
       "column": 21,
-      "sourceHash": "fc189ed88c6f91ea4b55f9973597a6fc70ab82e1af76d52e04f6c918c64334cf",
+      "sourceHash": "590c32508d5203b6fe53da640c2f080807faa8cb5a430391e2971e61b0372c91",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Cancel\", role: .cancel, action: model.cancelConfirmation)); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/Conversation/ConversationView.swift",
       "constructor": "Button",
       "line": 114,
       "column": 21,
-      "sourceHash": "6915bf8073c4e788fe9e2361c58ba304b936a5034bff6d9ac39ae7c8d8346b31",
+      "sourceHash": "590c32508d5203b6fe53da640c2f080807faa8cb5a430391e2971e61b0372c91",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Continue\", role: .destructive) { Task { await model.confirmDiscardRecording() } }); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/Conversation/ConversationView.swift",
       "constructor": "Button",
       "line": 115,
       "column": 21,
-      "sourceHash": "c59981b65fbc38e3aa08db51a89c223207c59462839cd06c0769056cce743fb3",
+      "sourceHash": "590c32508d5203b6fe53da640c2f080807faa8cb5a430391e2971e61b0372c91",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Go back\", role: .cancel, action: model.cancelConfirmation)); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/Conversation/ConversationView.swift",
       "constructor": "Button",
       "line": 117,
       "column": 21,
-      "sourceHash": "584a058dacd211cca7e069a4626a5db1faef47ad1f25bb057d7e140504d27c7a",
+      "sourceHash": "590c32508d5203b6fe53da640c2f080807faa8cb5a430391e2971e61b0372c91",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Discard recording\", role: .destructive) { Task { await model.confirmDiscardRecording() } }); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/Conversation/ConversationView.swift",
       "constructor": "Button",
       "line": 118,
       "column": 21,
-      "sourceHash": "e40de5995837c6ed447c18d88fdb7f10e65fd242afc1174ceae599b490102871",
+      "sourceHash": "590c32508d5203b6fe53da640c2f080807faa8cb5a430391e2971e61b0372c91",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Keep recording\", role: .cancel, action: model.cancelConfirmation)); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/Conversation/ConversationView.swift",
       "constructor": "Button",
       "line": 120,
       "column": 21,
-      "sourceHash": "d9b4d494c0f0d361bb1170a6e17f46f0d911429ef00b5d23f40131b27144b637",
+      "sourceHash": "590c32508d5203b6fe53da640c2f080807faa8cb5a430391e2971e61b0372c91",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Save draft\") { Task { await model.saveAndClose() } }.accessibilityIdentifier(\"conversation.s); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/Conversation/ConversationView.swift",
       "constructor": "Button",
       "line": 121,
       "column": 21,
-      "sourceHash": "e566423e991ee29d7441430ed4ae477f1dfb3271bb82264a2bae17b968a34f1a",
+      "sourceHash": "590c32508d5203b6fe53da640c2f080807faa8cb5a430391e2971e61b0372c91",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Discard\", role: .destructive) { Task { await model.discardAndClose() } }.accessibilityIdenti); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/Conversation/ConversationView.swift",
       "constructor": "Button",
       "line": 122,
       "column": 21,
-      "sourceHash": "fc189ed88c6f91ea4b55f9973597a6fc70ab82e1af76d52e04f6c918c64334cf",
+      "sourceHash": "590c32508d5203b6fe53da640c2f080807faa8cb5a430391e2971e61b0372c91",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Cancel\", role: .cancel, action: model.cancelConfirmation)); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/Conversation/TranscriptCorrectionView.swift",
       "constructor": "Button",
       "line": 42,
       "column": 13,
-      "sourceHash": "5670e87fcef22011917c4cb01518d7aa03d4b75e72e3a2cedf1f05ebb4079d20",
+      "sourceHash": "f95f488e029eec5be152601893e13accb72621e7161cffaf9f9666685b642cc0",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Discard changes\", role: .destructive, action: cancel)); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/Conversation/TranscriptCorrectionView.swift",
       "constructor": "Button",
       "line": 43,
       "column": 13,
-      "sourceHash": "e6c736c5e3e6a8c56af65ca7599207a652fa631dcbc9559acbc64c6d8e424d3d",
+      "sourceHash": "f95f488e029eec5be152601893e13accb72621e7161cffaf9f9666685b642cc0",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Keep editing\", role: .cancel) {}); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/Conversations/ConversationsView.swift",
       "constructor": "Button",
       "line": 78,
       "column": 21,
-      "sourceHash": "53ceafde1942a67b8291dc8eb88b118ce4207a68b2aa29b2180d56f1575356bd",
+      "sourceHash": "f729500618a00ce37a6bb1c84b14ad1fffb34282a096745684974cac22bd39eb",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Discard draft\", role: .destructive) { Task { await model.discardDraft(id: draft.id) } }); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/Conversations/ConversationsView.swift",
       "constructor": "Button",
       "line": 80,
       "column": 21,
-      "sourceHash": "5e39e40aac10b8e597d912a2b1de78da1d13298ef03eacf76879d796573a6a1c",
+      "sourceHash": "f729500618a00ce37a6bb1c84b14ad1fffb34282a096745684974cac22bd39eb",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Delete conversation\", role: .destructive) { Task { await model.deleteConversation(id: conver); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/Conversations/ConversationsView.swift",
       "constructor": "Button",
       "line": 84,
       "column": 17,
-      "sourceHash": "8f2103a6cb3f8d189e31ea6db943b1757fc8b5d0d4c52e05af88d4d8c6a69edd",
+      "sourceHash": "f729500618a00ce37a6bb1c84b14ad1fffb34282a096745684974cac22bd39eb",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Cancel\", role: .cancel) {}); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/Conversations/ConversationsView.swift",
       "constructor": "Button",
       "line": 91,
       "column": 17,
-      "sourceHash": "e2c140e500f208dd75a573285fb4cbd79916294c32ebcf68f3fec0ea166fcba9",
+      "sourceHash": "f729500618a00ce37a6bb1c84b14ad1fffb34282a096745684974cac22bd39eb",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Rename\") {); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/Conversations/ConversationsView.swift",
       "constructor": "Button",
       "line": 97,
       "column": 17,
-      "sourceHash": "cd6efe584e9a044e25780cb735c40f2341b74a9ea8362379b17304725506f15d",
+      "sourceHash": "f729500618a00ce37a6bb1c84b14ad1fffb34282a096745684974cac22bd39eb",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Cancel\", role: .cancel) { renameTarget = nil }); classify and migrate to the approved shared DS contract under APF-75"
+    },
+    {
+      "file": "apple/TaisaApp/Conversations/ConversationsView.swift",
+      "constructor": "Button",
+      "line": 131,
+      "column": 29,
+      "sourceHash": "f729500618a00ce37a6bb1c84b14ad1fffb34282a096745684974cac22bd39eb",
+      "owner": "APF-75",
+      "reason": "Existing raw Button (Button { open(conversation) } label: {); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/Conversations/ConversationsView.swift",
       "constructor": "Button",
       "line": 143,
       "column": 37,
-      "sourceHash": "f63f117fe9091a4bcd96f3c47e3c6480cc83a53f8f7eb87b9d0981d604c4528a",
+      "sourceHash": "f729500618a00ce37a6bb1c84b14ad1fffb34282a096745684974cac22bd39eb",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Rename\") { beginRename(conversation) }); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/Conversations/ConversationsView.swift",
       "constructor": "Button",
       "line": 144,
       "column": 37,
-      "sourceHash": "ef9820cb46c95048a3507924dcc1a61004cb68bbe85641726bb92b3c3c563768",
+      "sourceHash": "f729500618a00ce37a6bb1c84b14ad1fffb34282a096745684974cac22bd39eb",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Delete\", role: .destructive) { confirmation = .delete(conversation) }); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/Conversations/ConversationsView.swift",
       "constructor": "Button",
       "line": 172,
       "column": 21,
-      "sourceHash": "d397e8e74296e0edfb5e5ff54ff7ee1518d5ab94399ff99d7bb2cee19ca2a32d",
+      "sourceHash": "f729500618a00ce37a6bb1c84b14ad1fffb34282a096745684974cac22bd39eb",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Open recovery\", action: openRecovery).accessibilityIdentifier(\"conversations.recovery\")); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/Conversations/ConversationsView.swift",
       "constructor": "Button",
       "line": 174,
       "column": 21,
-      "sourceHash": "ba2047383a9f572ba6a60c33123eb7106e384fc4d877f29b82f786facdae4462",
+      "sourceHash": "f729500618a00ce37a6bb1c84b14ad1fffb34282a096745684974cac22bd39eb",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Try again\") { Task { await model.load() } }.accessibilityIdentifier(\"conversations.retry\")); classify and migrate to the approved shared DS contract under APF-75"
+    },
+    {
+      "file": "apple/TaisaApp/Conversations/ConversationsView.swift",
+      "constructor": "Button",
+      "line": 342,
+      "column": 13,
+      "sourceHash": "f729500618a00ce37a6bb1c84b14ad1fffb34282a096745684974cac22bd39eb",
+      "owner": "APF-75",
+      "reason": "Existing raw Button (Button { resume(draft) } label: { DraftRow(draft: draft) }); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/Conversations/ConversationsView.swift",
       "constructor": "Button",
       "line": 345,
       "column": 21,
-      "sourceHash": "294af10dab31e5008df274c0cb8de5c65e422980ab5a68c158d0b347523a4c67",
+      "sourceHash": "f729500618a00ce37a6bb1c84b14ad1fffb34282a096745684974cac22bd39eb",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Discard\", role: .destructive) { discard(draft) }); classify and migrate to the approved shared DS contract under APF-75"
+    },
+    {
+      "file": "apple/TaisaApp/Home/HomeSectionViews.swift",
+      "constructor": "Button",
+      "line": 16,
+      "column": 9,
+      "sourceHash": "88118b6cfe358b3ceb3adbbe17dbe7a077d9d5264d364e2e7f9c323d9f11fe76",
+      "owner": "APF-75",
+      "reason": "Existing raw Button (Button { send(.milestone(goalID: milestone.goalID)) } label: {); classify and migrate to the approved shared DS contract under APF-75"
+    },
+    {
+      "file": "apple/TaisaApp/Home/HomeSectionViews.swift",
+      "constructor": "Button",
+      "line": 37,
+      "column": 9,
+      "sourceHash": "88118b6cfe358b3ceb3adbbe17dbe7a077d9d5264d364e2e7f9c323d9f11fe76",
+      "owner": "APF-75",
+      "reason": "Existing raw Button (Button { send(.conversation(conversation.id)) } label: {); classify and migrate to the approved shared DS contract under APF-75"
+    },
+    {
+      "file": "apple/TaisaApp/Home/HomeSectionViews.swift",
+      "constructor": "Button",
+      "line": 48,
+      "column": 9,
+      "sourceHash": "88118b6cfe358b3ceb3adbbe17dbe7a077d9d5264d364e2e7f9c323d9f11fe76",
+      "owner": "APF-75",
+      "reason": "Existing raw Button (Button { send(.goal(goal.id)) } label: {); classify and migrate to the approved shared DS contract under APF-75"
+    },
+    {
+      "file": "apple/TaisaApp/Home/HomeSectionViews.swift",
+      "constructor": "Button",
+      "line": 62,
+      "column": 9,
+      "sourceHash": "88118b6cfe358b3ceb3adbbe17dbe7a077d9d5264d364e2e7f9c323d9f11fe76",
+      "owner": "APF-75",
+      "reason": "Existing raw Button (Button { send(.action(action.id)) } label: {); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/Home/HomeView.swift",
       "constructor": "Button",
       "line": 55,
       "column": 21,
-      "sourceHash": "f11dba5306a819b96bd11727c796aabcaddd5beb0a9ca9f29fba8813a5018cf3",
+      "sourceHash": "5584b7c57c5aa9d1d970416324989fbffe43618d900fa27b3654c37fed988c94",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Refresh\", systemImage: \"arrow.clockwise\") { Task { await model.load() } }); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/Home/HomeView.swift",
       "constructor": "Button",
       "line": 58,
       "column": 21,
-      "sourceHash": "04f77ff4f606ea6b19ddd8cfdf9bcc26c591abcd559937f3eb443c801c2968b2",
+      "sourceHash": "5584b7c57c5aa9d1d970416324989fbffe43618d900fa27b3654c37fed988c94",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Backup and recovery\", systemImage: \"lock.shield\", action: openRecovery)); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/Home/HomeView.swift",
       "constructor": "Button",
       "line": 63,
       "column": 25,
-      "sourceHash": "be3d69060cc45754789671f9a95b61fa278f4ac3fae724f2a32352effde96408",
+      "sourceHash": "5584b7c57c5aa9d1d970416324989fbffe43618d900fa27b3654c37fed988c94",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Personal device QA\", action: openPersonalQA)); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/Home/HomeView.swift",
       "constructor": "Button",
       "line": 95,
       "column": 21,
-      "sourceHash": "14139f756005d496e2609e94110e315ae2515fee30ae230b7361b31dd4498a1f",
+      "sourceHash": "5584b7c57c5aa9d1d970416324989fbffe43618d900fa27b3654c37fed988c94",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"View insights\", systemImage: \"lightbulb\", action: openInsights)); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/Home/HomeView.swift",
       "constructor": "Button",
       "line": 135,
       "column": 21,
-      "sourceHash": "c02c4fac1a56f0326315698554470b847614e0c4ab1688db70dd8ce402c0ad3d",
+      "sourceHash": "5584b7c57c5aa9d1d970416324989fbffe43618d900fa27b3654c37fed988c94",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Open recovery\", action: openRecovery)); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/Home/HomeView.swift",
       "constructor": "Button",
       "line": 138,
       "column": 21,
-      "sourceHash": "e3b86ec887cf2ecbd465f8144400abfb704d0f2b61d0d644ea7c5e3fddc57928",
+      "sourceHash": "5584b7c57c5aa9d1d970416324989fbffe43618d900fa27b3654c37fed988c94",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Try again\") { Task { await model.load() } }); classify and migrate to the approved shared DS contract under APF-75"
+    },
+    {
+      "file": "apple/TaisaApp/Home/HomeView.swift",
+      "constructor": "Button",
+      "line": 147,
+      "column": 9,
+      "sourceHash": "5584b7c57c5aa9d1d970416324989fbffe43618d900fa27b3654c37fed988c94",
+      "owner": "APF-75",
+      "reason": "Existing raw Button (Button {); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/Home/InsightDetailView.swift",
       "constructor": "Button",
       "line": 74,
       "column": 17,
-      "sourceHash": "e94ef966b30e853640cfbbe9f1f38cf3b047e2b188f3d5db61b9c66d909c4dec",
+      "sourceHash": "7009554a43aafe38545e9565399faa45e970753585c187637f32063a9481aecd",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Try again\") { Task { await model.loadDetail(insight: insight) } }); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/Home/InsightsView.swift",
       "constructor": "Button",
       "line": 42,
       "column": 17,
-      "sourceHash": "e3b86ec887cf2ecbd465f8144400abfb704d0f2b61d0d644ea7c5e3fddc57928",
+      "sourceHash": "a20816fb957bf30472079f6daf732301e05ff2eea405369782dcf528d6d705df",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Try again\") { Task { await model.load() } }); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/Home/LeadInsightSection.swift",
       "constructor": "Button",
       "line": 10,
       "column": 13,
-      "sourceHash": "3ee3403ff252351638969b3c7c608d31e0655a05fadd49f079df30debbd343cc",
+      "sourceHash": "c94aefdaa231814aef466a079da71e6a5cc231ff2735247fc8fe06e443b5272b",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(action: openInsights) {); classify and migrate to the approved shared DS contract under APF-75"
+    },
+    {
+      "file": "apple/TaisaApp/Home/ThisWeekSection.swift",
+      "constructor": "Button",
+      "line": 15,
+      "column": 17,
+      "sourceHash": "f1a2335b0a98a784c10845b3ea341c8ec62fb5630093e101fa5e554969ebfae4",
+      "owner": "APF-75",
+      "reason": "Existing raw Button (Button {); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/Home/ThisWeekSection.swift",
       "constructor": "Button",
       "line": 39,
       "column": 17,
-      "sourceHash": "f318881c0bbfbe9f6c0409d5a07f7c8e4fb7eac8c314f946e3795d10487302b9",
+      "sourceHash": "f1a2335b0a98a784c10845b3ea341c8ec62fb5630093e101fa5e554969ebfae4",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Undo completion\", systemImage: \"arrow.uturn.backward\") {); classify and migrate to the approved shared DS contract under APF-75"
+    },
+    {
+      "file": "apple/TaisaApp/Home/ThisWeekSection.swift",
+      "constructor": "Button",
+      "line": 52,
+      "column": 13,
+      "sourceHash": "f1a2335b0a98a784c10845b3ea341c8ec62fb5630093e101fa5e554969ebfae4",
+      "owner": "APF-75",
+      "reason": "Existing raw Button (Button {); classify and migrate to the approved shared DS contract under APF-75"
+    },
+    {
+      "file": "apple/TaisaApp/Home/ThisWeekSection.swift",
+      "constructor": "Button",
+      "line": 62,
+      "column": 13,
+      "sourceHash": "f1a2335b0a98a784c10845b3ea341c8ec62fb5630093e101fa5e554969ebfae4",
+      "owner": "APF-75",
+      "reason": "Existing raw Button (Button {); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/Home/ThisWeekSection.swift",
       "constructor": "Button",
       "line": 109,
       "column": 21,
-      "sourceHash": "6dc9cf56fa59c612d1b9f4e8195d9c957f26a3a402e5d394fd5fbbaa438ca8d2",
+      "sourceHash": "f1a2335b0a98a784c10845b3ea341c8ec62fb5630093e101fa5e554969ebfae4",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Plan for today\") { move(to: Date()) }); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/Home/ThisWeekSection.swift",
       "constructor": "Button",
       "line": 110,
       "column": 21,
-      "sourceHash": "450ab00f1539edfddb64a96c1ed766c1e37788c87c3e481c80b95587a24c29ce",
+      "sourceHash": "f1a2335b0a98a784c10845b3ea341c8ec62fb5630093e101fa5e554969ebfae4",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Keep flexible\") { move(to: nil) }); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/Home/ThisWeekSection.swift",
       "constructor": "Button",
       "line": 117,
       "column": 63,
-      "sourceHash": "18d481e1028b26a10cfadc9b8baf05cac66a91f7aaccc8b5018fb362a9c007ee",
+      "sourceHash": "f1a2335b0a98a784c10845b3ea341c8ec62fb5630093e101fa5e554969ebfae4",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (ToolbarItem(placement: .cancellationAction) { Button(\"Cancel\") { dismiss() } }); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/Home/ThisWeekSection.swift",
       "constructor": "Button",
       "line": 143,
       "column": 63,
-      "sourceHash": "0510c1c623d6beed3935993980c049de09840d7c615e227aaea2f5a73875c451",
+      "sourceHash": "f1a2335b0a98a784c10845b3ea341c8ec62fb5630093e101fa5e554969ebfae4",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (ToolbarItem(placement: .confirmationAction) { Button(\"Done\") { dismiss() } }); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/Recovery/RecoveryView.swift",
       "constructor": "Button",
       "line": 62,
       "column": 21,
-      "sourceHash": "555a3cbb52770c0a5159ab10fab6066d47198f51a2ec3e31bbf9e78e6f61eb9f",
+      "sourceHash": "dcd2831b77fada0426a8bbada795dde7f9d31c7fd8b6fe0b281c891bacf050b1",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(action: dismissRuntimeRecovery) {); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/Voice/PersonalVoiceSessionView.swift",
       "constructor": "Button",
       "line": 47,
       "column": 17,
-      "sourceHash": "6377928d60754a12bcce0d9d0a4763830935113f43d1b4e4c743795872fc3cdb",
+      "sourceHash": "0c1fed672d40c8dc71d990f0dbeaf9e761f475683d92591ff80bd7a626098172",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Connect this device\") {); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/You/YouView.swift",
       "constructor": "Button",
       "line": 24,
       "column": 25,
-      "sourceHash": "b65b93af41c679e9b1f99625cfb631eca0c53b42584ec41a9534d6a783ea11d7",
+      "sourceHash": "30590091502010839391c6dcee0dca0cd42e51df571324f0871cedb2556f482a",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Open backup and recovery\", action: openRecovery)); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/You/YouView.swift",
       "constructor": "Button",
       "line": 26,
       "column": 25,
-      "sourceHash": "9dbac012052ae96179606fd3fe5ce37854e99f197085e92722d4224590f34a15",
+      "sourceHash": "30590091502010839391c6dcee0dca0cd42e51df571324f0871cedb2556f482a",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Try again\") { Task { await model.retry() } }); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/You/YouView.swift",
       "constructor": "Button",
       "line": 80,
       "column": 24,
-      "sourceHash": "ac91c00362e5fd427e57311739433a3bdda3c8914c452fd451f56d9013c2efdd",
+      "sourceHash": "30590091502010839391c6dcee0dca0cd42e51df571324f0871cedb2556f482a",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (List { Button(\"Open backup and recovery\", action: openRecovery) }); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/You/YouView.swift",
       "constructor": "Button",
       "line": 127,
       "column": 17,
-      "sourceHash": "7e2a284ed9a33129eb6f66304dd6e83e3ee55c78504e39896063c7a6781e2206",
+      "sourceHash": "30590091502010839391c6dcee0dca0cd42e51df571324f0871cedb2556f482a",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Save\") { Task { await model.saveProfile(); editing = model.profileDraft != nil } }); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/You/YouView.swift",
       "constructor": "Button",
       "line": 128,
       "column": 17,
-      "sourceHash": "8eac3cc34bd363ab2ab73e8158c28895159d8abfc9358772b158074a17478ef6",
+      "sourceHash": "30590091502010839391c6dcee0dca0cd42e51df571324f0871cedb2556f482a",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Cancel\", role: .cancel) { model.cancelProfileEdit(); editing = false }); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/TaisaApp/You/YouView.swift",
       "constructor": "Button",
       "line": 133,
       "column": 17,
-      "sourceHash": "ac9a90699a8e8542a02acf4915c46827fcbbb9bff9f7f6d22adcd3051fe3ff02",
+      "sourceHash": "30590091502010839391c6dcee0dca0cd42e51df571324f0871cedb2556f482a",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Edit career profile\") { model.beginProfileEdit(); editing = true }); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/Packages/TaisaFoundation/Sources/TaisaDesignSystem/ConversationActionBar.swift",
       "constructor": "Button",
       "line": 78,
       "column": 9,
-      "sourceHash": "adc64c3d109fe2eb80dd428f1d73f4fa245f67d6e6772d453bce2fd6de9a8e20",
+      "sourceHash": "5d28475c1ec31db1882ef581ef77468d87b018489d5780f66145d1857435abbd",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(action: onSend) {); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/Packages/TaisaFoundation/Sources/TaisaDesignSystem/ConversationEntryDock.swift",
       "constructor": "Button",
       "line": 37,
       "column": 9,
-      "sourceHash": "068f92ff2561e836975d2f4f975dc8b78f1145a8605cf5f2a5aab8ffb8ecfd35",
+      "sourceHash": "73e72c6cdf1b4192382eb97e0719bcedf8654f225e5161b293c1fbac3c9384a0",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(action: onVoice) {); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/Packages/TaisaFoundation/Sources/TaisaDesignSystem/ConversationStatusViews.swift",
       "constructor": "Button",
       "line": 22,
       "column": 33,
-      "sourceHash": "4baf1dd0a9f1b8d7f1d59b159854882fa109996d1fd5c3a5384497d19313d5f1",
+      "sourceHash": "23221fac9d99c2268a408dc3d3abd012ea27d799ccc9be1bb081f300f2ac3d3e",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (VStack { Text(message); Button(Contract.retryable.retryLabel, action: onRetry); Button(\"Save draft\",); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/Packages/TaisaFoundation/Sources/TaisaDesignSystem/ConversationStatusViews.swift",
       "constructor": "Button",
       "line": 22,
       "column": 89,
-      "sourceHash": "4baf1dd0a9f1b8d7f1d59b159854882fa109996d1fd5c3a5384497d19313d5f1",
+      "sourceHash": "23221fac9d99c2268a408dc3d3abd012ea27d799ccc9be1bb081f300f2ac3d3e",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (VStack { Text(message); Button(Contract.retryable.retryLabel, action: onRetry); Button(\"Save draft\",); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/Packages/TaisaFoundation/Sources/TaisaDesignSystem/ConversationStatusViews.swift",
       "constructor": "Button",
       "line": 22,
       "column": 127,
-      "sourceHash": "4baf1dd0a9f1b8d7f1d59b159854882fa109996d1fd5c3a5384497d19313d5f1",
+      "sourceHash": "23221fac9d99c2268a408dc3d3abd012ea27d799ccc9be1bb081f300f2ac3d3e",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (VStack { Text(message); Button(Contract.retryable.retryLabel, action: onRetry); Button(\"Save draft\",); classify and migrate to the approved shared DS contract under APF-75"
+    },
+    {
+      "file": "apple/Packages/TaisaFoundation/Sources/TaisaDesignSystem/PrimaryNavigation.swift",
+      "constructor": "Button",
+      "line": 46,
+      "column": 17,
+      "sourceHash": "9fd546657f1f39b420d80cf51eb31c9537d32c0ee2ca05692d6cb2d99d52cd35",
+      "owner": "APF-75",
+      "reason": "Existing raw Button (Button { select(item) } label: {); classify and migrate to the approved shared DS contract under APF-75"
+    },
+    {
+      "file": "apple/Packages/TaisaFoundation/Sources/TaisaDesignSystem/ResponseActionControls.swift",
+      "constructor": "Button",
+      "line": 28,
+      "column": 9,
+      "sourceHash": "9a4ba752fdfb633afc0f9ec5d32fdf113fe84095ff7fe8300276272ae16de657",
+      "owner": "APF-75",
+      "reason": "Existing raw Button (Button(action: action) {); classify and migrate to the approved shared DS contract under APF-75"
+    },
+    {
+      "file": "apple/Packages/TaisaFoundation/Sources/TaisaDesignSystem/ResponseActionControls.swift",
+      "constructor": "Button",
+      "line": 57,
+      "column": 9,
+      "sourceHash": "9a4ba752fdfb633afc0f9ec5d32fdf113fe84095ff7fe8300276272ae16de657",
+      "owner": "APF-75",
+      "reason": "Existing raw Button (Button(action: action) {); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/Packages/TaisaFoundation/Sources/TaisaDesignSystem/TaisaPageChrome.swift",
       "constructor": "Button",
       "line": 171,
       "column": 22,
-      "sourceHash": "f446f7048f48f04c3b11929d36f231ddc9a4520a0882b3a14486ae183ced2c41",
+      "sourceHash": "141e6a4ddf64dd36cbda3cfa67ebb6956296ca3f5fced3e38732dc235fc84b70",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (let button = Button(action: action) {); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/Packages/TaisaFoundation/Sources/TaisaDesignSystem/TaisaPageChrome.swift",
       "constructor": "Button",
       "line": 218,
       "column": 22,
-      "sourceHash": "f446f7048f48f04c3b11929d36f231ddc9a4520a0882b3a14486ae183ced2c41",
+      "sourceHash": "141e6a4ddf64dd36cbda3cfa67ebb6956296ca3f5fced3e38732dc235fc84b70",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (let button = Button(action: action) {); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/Packages/TaisaFoundation/Sources/TaisaDesignSystem/TaisaToast.swift",
       "constructor": "Button",
       "line": 52,
       "column": 17,
-      "sourceHash": "0256d11a94e9a61fb1fd502f20eabd1a21b49a36205dbf5241d3205fab23ee9a",
+      "sourceHash": "4e0fc1eb21463df075b682706ba11fec82cd7e243e1aa581bcdf709d43c4f712",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(actionLabel, action: action)); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/Packages/TaisaFoundation/Sources/TaisaDesignSystem/TextComposer.swift",
       "constructor": "Button",
       "line": 34,
       "column": 13,
-      "sourceHash": "3e9d5b475d225b9fc296232dcedb6eb0354215afdc0882a17ca46af1dc1dc68f",
+      "sourceHash": "88ad99b01c55ae17111ca9fc4c9e89bf91e0544520297b3eac872ce7b8a4307e",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(action: { isEmpty ? onVoice() : onSend() }) {); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/Packages/TaisaFoundation/Sources/TaisaDesignSystem/VoiceComposerControls.swift",
       "constructor": "Button",
       "line": 26,
       "column": 17,
-      "sourceHash": "f2aa7536d1692cfeeda4946afcdc963bb60007b4f1929d1cc4fd74dfa7f46a3c",
+      "sourceHash": "422ec9b37d1e026b0b3c94760cca613f6bb1160041d811b91183f002027f8180",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(\"Keyboard\", systemImage: \"keyboard\", action: onKeyboard)); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/Packages/TaisaFoundation/Sources/TaisaDesignSystem/VoiceComposerControls.swift",
       "constructor": "Button",
       "line": 30,
       "column": 17,
-      "sourceHash": "4b2ba9261d5e28a3110bcf9eb4f50ee0929d4a07a89bcb6bc419f1addcec3a26",
+      "sourceHash": "422ec9b37d1e026b0b3c94760cca613f6bb1160041d811b91183f002027f8180",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (Button(primaryLabel, action: onPrimary).accessibilityLabel(primaryLabel)); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
       "file": "apple/Packages/TaisaFoundation/Sources/TaisaDesignSystem/VoiceComposerControls.swift",
       "constructor": "Button",
       "line": 33,
       "column": 44,
-      "sourceHash": "ad2d283af07ca4de62a9b8d695d016d3c724d912e48d97f3158c4baf3d8e2dcb",
+      "sourceHash": "422ec9b37d1e026b0b3c94760cca613f6bb1160041d811b91183f002027f8180",
       "owner": "APF-75",
-      "reason": "Existing native DS adoption migration debt"
+      "reason": "Existing raw Button (if phase != .waitingForReply { Button(\"Send\", action: onSend) }); classify and migrate to the approved shared DS contract under APF-75"
     }
   ]
 }

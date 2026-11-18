@@ -32,8 +32,8 @@ permission to bypass the shared contract.
 ## Invariant
 
 If a shared design-system component covers an interaction, its use is mandatory. Raw platform
-interactive controls may appear only inside explicitly designated primitive implementation
-files. A required interaction that no existing component or coherent variant covers terminates
+interactive controls covered by a shared DS component may appear only inside explicitly
+designated primitive implementation files. A required interaction that no existing component or coherent variant covers terminates
 Product work as a design-system gap until Baah approves reuse, extension, addition, or a narrow
 system-owned exception.
 
