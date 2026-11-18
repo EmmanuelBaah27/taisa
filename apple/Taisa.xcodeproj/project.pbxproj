@@ -107,6 +107,7 @@
 		7236186363DA6E89483D248C /* TaisaStorage in Frameworks */ = {isa = PBXBuildFile; productRef = B6433508F77896BF3BB8142E /* TaisaStorage */; };
 		734700F50209E01B99893BD1 /* ScoutieSans-VariableFont_wght.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 87E084C5623DF3EBD9C215F5 /* ScoutieSans-VariableFont_wght.ttf */; };
 		735261FA7E7C99694A4BADF2 /* TaisaYou in Frameworks */ = {isa = PBXBuildFile; productRef = B0873295A277A4F397D7D3E2 /* TaisaYou */; };
+		753C00FBC89B0DCED8ECA0F6 /* TypographyRuntimeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09CF4F7AE6AE1AF8473ACE7B /* TypographyRuntimeTests.swift */; };
 		753F597C11D6E06916123006 /* PersonalRecoveryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 163DACBEE83EA3467C0A3AE7 /* PersonalRecoveryUITests.swift */; };
 		75C41727467C062CC7EA09D4 /* PersonalIsolationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5A6963E5BEC4FF073F86F31 /* PersonalIsolationTests.swift */; };
 		79815773A345577758E50B26 /* InsightDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97B1116C9FFEDAF680AF43A5 /* InsightDetailView.swift */; };
@@ -249,6 +250,7 @@
 /* Begin PBXFileReference section */
 		022B79237BF857BBC39C4E77 /* VoiceSessionScenarios.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceSessionScenarios.swift; sourceTree = "<group>"; };
 		0410D10BD12CA11BFC1FA6C0 /* TaisaPersonalTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = TaisaPersonalTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		09CF4F7AE6AE1AF8473ACE7B /* TypographyRuntimeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TypographyRuntimeTests.swift; sourceTree = "<group>"; };
 		09FF4AF48190A145ED9F8694 /* InsightsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsView.swift; sourceTree = "<group>"; };
 		1436FAD8AE09F2E408377FE1 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
 		15559F553404687F14A6B460 /* PrimaryDestination.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrimaryDestination.swift; sourceTree = "<group>"; };
@@ -547,6 +549,7 @@
 				66D126C7392BE051E45EF386 /* HomeViewContractTests.swift */,
 				1800CA5B1C503275F9EAE770 /* PrimaryAppShellTests.swift */,
 				F5B97AC1D5F21A3BF7F7BFA3 /* RecoveryViewModelTests.swift */,
+				09CF4F7AE6AE1AF8473ACE7B /* TypographyRuntimeTests.swift */,
 				9AB82F356059A4761E465BC9 /* VoiceSessionDiagnosticsViewModelTests.swift */,
 			);
 			path = TaisaUnitTests;
@@ -1124,6 +1127,7 @@
 				5424D4851C6A34AD682A1992 /* HomeViewContractTests.swift in Sources */,
 				4E7E86167BB1E06EF18592B2 /* PrimaryAppShellTests.swift in Sources */,
 				B1093913D5665590CA1953EE /* RecoveryViewModelTests.swift in Sources */,
+				753C00FBC89B0DCED8ECA0F6 /* TypographyRuntimeTests.swift in Sources */,
 				0E0F162C7E603373770D80EA /* VoiceSessionDiagnosticsViewModelTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

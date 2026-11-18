@@ -13,50 +13,68 @@ public enum TaisaTypography: String, CaseIterable, Sendable {
     case taskTitle
     case taskSupporting
 
+    public var familyName: String {
+        switch self {
+        case .display, .datedPageTitle: "Scoutie Sans"
+        default: "Inter"
+        }
+    }
+
+    public var fontName: String {
+        switch self {
+        case .display, .datedPageTitle: "ScoutieSans-ExtraLight"
+        default: "InterVariable"
+        }
+    }
+
     public var pointSize: CGFloat {
         switch self {
+        case .display: 34
+        case .heading: 22
+        case .body: 17
+        case .label: 15
+        case .metadata: 12
         case .navigationLabel, .taskTitle: 16
         case .supporting, .taskSupporting: 14
+        case .childHeaderTitle: 17
         case .datedPageTitle: 28
-        case .childHeaderTitle: 0
-        default: 0
         }
     }
 
     public var lineHeight: CGFloat {
         switch self {
+        case .display: 41
+        case .heading: 28
+        case .body, .childHeaderTitle: 22
+        case .label, .supporting, .taskSupporting: 20
+        case .metadata: 16
         case .navigationLabel, .taskTitle: 24
-        case .supporting, .taskSupporting: 20
         case .datedPageTitle: 36
-        default: 0
+        }
+    }
+
+    public var relativeTextStyle: Font.TextStyle {
+        switch self {
+        case .display: .largeTitle
+        case .heading: .title2
+        case .body, .navigationLabel, .taskTitle: .body
+        case .label, .supporting, .taskSupporting: .subheadline
+        case .metadata: .caption
+        case .childHeaderTitle: .headline
+        case .datedPageTitle: .title
+        }
+    }
+
+    public var weight: Font.Weight {
+        switch self {
+        case .display, .heading, .label, .childHeaderTitle, .datedPageTitle: .semibold
+        case .navigationLabel, .taskTitle: .medium
+        case .body, .metadata, .supporting, .taskSupporting: .regular
         }
     }
 
     public var font: Font {
-        switch self {
-        case .display:
-            .system(.largeTitle, design: .rounded, weight: .semibold)
-        case .heading:
-            .system(.title2, design: .rounded, weight: .semibold)
-        case .body:
-            .system(.body, design: .rounded, weight: .regular)
-        case .label:
-            .system(.subheadline, design: .rounded, weight: .semibold)
-        case .metadata:
-            .system(.caption, design: .rounded, weight: .regular)
-        case .navigationLabel:
-            .system(size: pointSize, weight: .medium, design: .default)
-        case .supporting:
-            .system(size: pointSize, weight: .regular, design: .default)
-        case .childHeaderTitle:
-            .system(.headline, weight: .semibold)
-        case .datedPageTitle:
-            .custom("Scoutie Sans", size: pointSize, relativeTo: .title)
-                .weight(.semibold)
-        case .taskTitle:
-            .custom("Inter", size: pointSize, relativeTo: .body).weight(.medium)
-        case .taskSupporting:
-            .custom("Inter", size: pointSize, relativeTo: .subheadline)
-        }
+        .custom(fontName, size: pointSize, relativeTo: relativeTextStyle)
+            .weight(weight)
     }
 }
