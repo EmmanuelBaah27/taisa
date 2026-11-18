@@ -7,7 +7,8 @@ struct YouView: View {
     @Bindable var model: YouModel
     let openRecovery: () -> Void
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @State private var selectedDestination: YouDestination? = .careerProfile
+    @State private var selectedDestination: YouDestination?
+    @State private var showsProfile = false
 
     var body: some View {
         Group {
@@ -15,70 +16,83 @@ struct YouView: View {
             case .idle, .loading:
                 ProgressView("Loading You")
             case let .failure(issue):
-                ContentUnavailableView {
-                    Label(issue == .recoveryRequired ? "Recovery required" : "You is unavailable", systemImage: "person.crop.circle.badge.exclamationmark")
-                } description: {
-                    Text(issue.guidance)
-                } actions: {
-                    if issue == .recoveryRequired {
-                        Button("Open backup and recovery", action: openRecovery)
-                    } else {
-                        Button("Try again") { Task { await model.retry() } }
+                VStack(spacing: TaisaSpacing.standard.rawValue) {
+                    TaisaText(role: .profileBody, content: issue.guidance)
+                    TaisaButton(role: .secondary, label: issue == .recoveryRequired ? "Open backup and recovery" : "Try again") {
+                        if issue == .recoveryRequired { openRecovery() }
+                        else { Task { await model.retry() } }
                     }
                 }
+                .padding(TaisaSpacing.content.rawValue)
             case let .content(snapshot, issue):
-                content(snapshot: snapshot, issue: issue)
+                if horizontalSizeClass == .regular {
+                    NavigationSplitView {
+                        overview(snapshot, issue: issue)
+                    } detail: {
+                        if let selectedDestination {
+                            destinationView(selectedDestination, snapshot: snapshot)
+                        } else {
+                            TaisaText(role: .profileSupporting, color: .mutedForeground, content: "Choose a setting to view its details.")
+                        }
+                    }
+                } else {
+                    overview(snapshot, issue: issue)
+                        .navigationDestination(item: $selectedDestination) { destination in
+                            destinationView(destination, snapshot: snapshot)
+                        }
+                }
             }
         }
-        .navigationTitle("You")
+        .toolbar(.hidden, for: .navigationBar)
+        .background(TaisaColor.background.color.ignoresSafeArea())
         .accessibilityIdentifier("you.root")
         .task { if model.state == .idle { await model.load() } }
-    }
-
-    @ViewBuilder private func content(snapshot: YouSnapshot, issue: YouIssue?) -> some View {
-        if horizontalSizeClass == .regular {
-            NavigationSplitView {
-                destinationList(issue: issue, selection: $selectedDestination)
-                    .navigationTitle("You")
-            } detail: {
-                if let selectedDestination {
-                    destinationView(selectedDestination, snapshot: snapshot)
-                }
-            }
-        } else {
-            destinationList(issue: issue)
-                .navigationDestination(for: YouDestination.self) { destination in
-                    destinationView(destination, snapshot: snapshot)
-                }
+        .fullScreenCover(isPresented: $showsProfile) {
+            CareerProfileEditor(model: model) { showsProfile = false }
         }
     }
 
-    private func destinationList(issue: YouIssue?, selection: Binding<YouDestination?>? = nil) -> some View {
-        List(selection: selection) {
-            if issue != nil { Label("Some local information could not be refreshed.", systemImage: "exclamationmark.triangle") }
-            ForEach(YouDestination.allCases, id: \.self) { destination in
-                if selection != nil {
-                    Label(destination.title, systemImage: destination.systemImage)
-                        .tag(destination)
-                        .accessibilityIdentifier("you.destination.\(destination.stableID)")
-                } else {
-                    NavigationLink(value: destination) {
-                        Label(destination.title, systemImage: destination.systemImage)
-                    }
-                    .accessibilityIdentifier("you.destination.\(destination.stableID)")
+    private func overview(_ snapshot: YouSnapshot, issue: YouIssue?) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: TaisaSpacing.control.rawValue) {
+                TaisaProfileSummary(name: snapshot.profile?.displayName ?? "", bio: snapshot.profile?.biography ?? "") {
+                    model.beginProfileEdit()
+                    showsProfile = true
+                }
+                if let issue {
+                    TaisaText(role: .profileSupporting, color: .destructive, content: issue.guidance)
+                }
+                TaisaSettingsGroup {
+                    destinationRow(.privacyPermissions, icon: .profileShield)
+                    destinationRow(.backupRecovery, icon: .profileCloud)
+                    destinationRow(.diagnostics, icon: .profileDiagnostics)
                 }
             }
+            .padding(.horizontal, TaisaSpacing.content.rawValue)
         }
+    }
+
+    private func destinationRow(_ destination: YouDestination, icon: CentralIconName) -> some View {
+        TaisaSettingsNavigationRow(destination.title, icon: icon) { selectedDestination = destination }
+            .accessibilityIdentifier("you.destination.\(destination.stableID)")
     }
 
     @ViewBuilder private func destinationView(_ destination: YouDestination, snapshot: YouSnapshot) -> some View {
         YouDestinationPage(destination: destination) {
             switch destination {
-            case .careerProfile: CareerProfileView(model: model, profile: snapshot.profile, issue: model.state.issue)
-            case .privacyPermissions: PrivacyPermissionsView(facts: snapshot.diagnostics)
+            case .careerProfile:
+                CareerProfileEditor(model: model) { selectedDestination = nil }
+            case .privacyPermissions:
+                PrivacyPermissionsView(facts: snapshot.diagnostics)
             case .backupRecovery:
-                List { Button("Open backup and recovery", action: openRecovery) }
-            case .diagnostics: DiagnosticsSummaryView(facts: snapshot.diagnostics)
+                VStack(alignment: .leading, spacing: TaisaSpacing.section.rawValue) {
+                    TaisaProfileSection("Backup & recovery") {
+                        TaisaText(role: .profileSupporting, color: .mutedForeground, content: YouPrivacyCopy.recoveryBoundary)
+                        TaisaButton(role: .secondary, label: "Open backup and recovery", action: openRecovery)
+                    }
+                }
+            case .diagnostics:
+                DiagnosticsSummaryView(facts: snapshot.diagnostics)
             }
         }
     }
@@ -89,47 +103,72 @@ private struct YouDestinationPage<Content: View>: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     let destination: YouDestination
     private let content: Content
-
     init(destination: YouDestination, @ViewBuilder content: () -> Content) {
-        self.destination = destination
-        self.content = content()
+        self.destination = destination; self.content = content()
     }
-
     var body: some View {
-        content
-            .safeAreaInset(edge: .top, spacing: 0) {
-                TaisaChildPageHeader(destination.title,
-                    mode: horizontalSizeClass == .regular ? .detail : .back,
-                    back: { dismiss() }
-                )
-            }
-            .toolbar(.hidden, for: .navigationBar)
-            .background(TaisaColor.background.color.ignoresSafeArea())
+        ScrollView {
+            content
+                .padding(TaisaSpacing.content.rawValue)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .safeAreaInset(edge: .top, spacing: 0) {
+            TaisaChildPageHeader(destination.title,
+                mode: horizontalSizeClass == .regular ? .detail : .back,
+                back: { dismiss() })
+        }
+        .toolbar(.hidden, for: .navigationBar)
+        .background(TaisaColor.background.color.ignoresSafeArea())
     }
 }
 
-private struct CareerProfileView: View {
+private struct CareerProfileEditor: View {
     @Bindable var model: YouModel
-    let profile: ProfileRecord?
-    let issue: YouIssue?
-    @State private var editing = false
+    let close: () -> Void
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var closing = false
 
     var body: some View {
-        Form {
-            if let issue {
-                Label(issue.guidance, systemImage: "exclamationmark.triangle")
-                    .accessibilityIdentifier("you.profile.issue")
+        ScrollView {
+            VStack(alignment: .leading, spacing: TaisaSpacing.content.rawValue) {
+                HStack(alignment: .top) {
+                    TaisaProfileAvatar(name: model.profileDraft?.displayName ?? "", size: TaisaProfileMetric.editorAvatar)
+                    Spacer()
+                    TaisaProfileIconButton(icon: .profileClose, label: "Close profile editor") {
+                        closing = true
+                        Task {
+                            if await model.finishProfileEditing() { close() }
+                            closing = false
+                        }
+                    }
+                    .disabled(closing)
+                    .accessibilityIdentifier("you.profile.close")
+                }
+                TaisaField("Display name", text: binding(\.displayName), appearance: .profile)
+                    .accessibilityIdentifier("you.profile.name")
+                TaisaField("Bio", text: binding(\.biography), kind: .multiline, appearance: .profile)
+                    .accessibilityIdentifier("you.profile.bio")
+                if model.profileSaveState == .failed {
+                    TaisaText(role: .profileSupporting, color: .destructive,
+                        content: "Your changes haven’t been saved. They’re still here. Try again.")
+                    TaisaButton(role: .secondary, label: "Try again") {
+                        Task { _ = await model.flushProfileChanges() }
+                    }
+                    .accessibilityIdentifier("you.profile.retry")
+                } else if model.profileSaveState == .saving || closing {
+                    ProgressView("Saving changes")
+                        .accessibilityIdentifier("you.profile.saving")
+                }
             }
-            if editing, model.profileDraft != nil {
-                TextField("Display name", text: binding(\.displayName))
-                TextField("Bio", text: binding(\.biography), axis: .vertical)
-                Button("Save") { Task { await model.saveProfile(); editing = model.profileDraft != nil } }
-                Button("Cancel", role: .cancel) { model.cancelProfileEdit(); editing = false }
-            } else {
-                LabeledContent("Display name", value: profile?.displayName.isEmpty == false ? profile!.displayName : "Not set")
-                LabeledContent("Bio", value: profile?.biography.isEmpty == false ? profile!.biography : "Not set")
-                Button("Edit career profile") { model.beginProfileEdit(); editing = true }
-            }
+            .padding(.horizontal, TaisaSpacing.content.rawValue)
+            .padding(.top, TaisaSpacing.control.rawValue)
+            .disabled(closing)
+        }
+        .background(TaisaColor.background.color.ignoresSafeArea())
+        .interactiveDismissDisabled()
+        .task { model.beginProfileEdit() }
+        .onChange(of: scenePhase) { _, phase in
+            if phase != .active { Task { _ = await model.flushProfileChanges() } }
         }
     }
 
@@ -137,7 +176,7 @@ private struct CareerProfileView: View {
         Binding(get: { model.profileDraft?[keyPath: keyPath] ?? "" }, set: { value in
             guard var draft = model.profileDraft else { return }
             draft[keyPath: keyPath] = value
-            model.updateProfile(displayName: draft.displayName, headline: draft.headline, biography: draft.biography)
+            model.updateProfileBio(displayName: draft.displayName, biography: draft.biography)
         })
     }
 }
@@ -146,22 +185,20 @@ private struct PrivacyPermissionsView: View {
     let facts: YouOperationalFacts
     private var microphone: YouPermissionGuidance { .microphone(facts.microphone) }
     var body: some View {
-        List {
-            Section("Readable data") {
-                LabeledContent("Stored", value: YouPrivacyCopy.readableData)
-                LabeledContent("Protection", value: YouPrivacyCopy.encryptedLocation)
-                Text(YouPrivacyCopy.retentionBoundary).foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: TaisaSpacing.section.rawValue) {
+            TaisaProfileSection("On this device") {
+                TaisaText(role: .profileBody, content: YouPrivacyCopy.encryptedLocation)
+                TaisaText(role: .profileSupporting, color: .mutedForeground, content: YouPrivacyCopy.retentionBoundary)
             }
-            Section("Network boundary") {
-                Text(YouPrivacyCopy.networkBoundary)
+            TaisaProfileSection("When information leaves your device") {
+                TaisaText(role: .profileSupporting, color: .mutedForeground, content: YouPrivacyCopy.networkBoundary)
             }
-            Section("Recovery boundary") {
-                Text(YouPrivacyCopy.recoveryBoundary)
+            TaisaProfileSection("Microphone") {
+                TaisaText(role: .profileBody, content: microphone.status.displayName)
+                TaisaText(role: .profileSupporting, color: .mutedForeground, content: microphone.guidance)
             }
-            Section("Permissions") {
-                LabeledContent("Microphone", value: microphone.status.displayName)
-                Text(microphone.guidance)
-                    .foregroundStyle(.secondary)
+            TaisaProfileSection("Recovery") {
+                TaisaText(role: .profileSupporting, color: .mutedForeground, content: YouPrivacyCopy.recoveryBoundary)
             }
         }
     }
@@ -170,8 +207,12 @@ private struct PrivacyPermissionsView: View {
 private struct DiagnosticsSummaryView: View {
     let facts: YouOperationalFacts
     var body: some View {
-        List(YouDiagnostics.rows(for: facts)) { row in
-            LabeledContent(row.label, value: row.value)
+        VStack(alignment: .leading, spacing: TaisaSpacing.section.rawValue) {
+            ForEach(YouDiagnostics.rows(for: facts)) { row in
+                TaisaProfileSection(row.label) {
+                    TaisaText(role: .profileSupporting, color: .mutedForeground, content: row.value)
+                }
+            }
         }
     }
 }
