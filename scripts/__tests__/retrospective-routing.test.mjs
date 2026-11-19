@@ -43,6 +43,17 @@ for (const area of [
   });
 }
 
+test("an autonomous category cannot bypass a protected area", () => {
+  assert.deepEqual(
+    routeRetrospectiveFinding({ finding: "duplicated process", area: "ship" }),
+    {
+      owner: "Baah",
+      gate: "stop-for-explicit-decision",
+      evidence: "material-redesign-proposal",
+    },
+  );
+});
+
 test("an unclassified retrospective finding fails closed", () => {
   assert.throws(
     () => routeRetrospectiveFinding({ finding: "something else" }),

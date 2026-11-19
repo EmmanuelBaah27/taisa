@@ -16,7 +16,8 @@ function allowedRemoval(publication, candidate) {
   }
 
   if (publication.action === "replace") {
-    return Boolean(publication.replacements?.[candidate]);
+    const replacement = publication.replacements?.[candidate];
+    return Boolean(replacement && publication.includedCandidates?.includes(replacement));
   }
 
   return false;

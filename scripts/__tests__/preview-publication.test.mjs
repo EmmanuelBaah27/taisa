@@ -62,6 +62,30 @@ test("a broken candidate requires an explicit revert or replacement", () => {
   );
 });
 
+test("a replacement must be included in the cumulative publication", () => {
+  assert.throws(
+    () => validatePreviewPublication({
+      ...validPublication,
+      action: "replace",
+      brokenCandidates: ["candidate-a"],
+      replacements: { "candidate-a": "candidate-b" },
+      includedCandidates: [],
+    }),
+    /silently remove candidate-a/,
+  );
+
+  assert.equal(
+    validatePreviewPublication({
+      ...validPublication,
+      action: "replace",
+      brokenCandidates: ["candidate-a"],
+      replacements: { "candidate-a": "candidate-b" },
+      includedCandidates: ["candidate-b"],
+    }).ready,
+    true,
+  );
+});
+
 test("publication requires exact revisions and focused integration proof", () => {
   for (const field of ["previewRevision", "specRevision", "tracerRevision"]) {
     assert.throws(

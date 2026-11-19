@@ -17,17 +17,17 @@ const MATERIAL_AREAS = new Set([
 ]);
 
 export function routeRetrospectiveFinding({ finding, area } = {}) {
-  const evidence = AUTONOMOUS_FINDINGS.get(finding);
-  if (evidence) {
-    return { owner: "agent", gate: "continue", evidence };
-  }
-
-  if (finding === "material redesign" && MATERIAL_AREAS.has(area)) {
+  if (MATERIAL_AREAS.has(area)) {
     return {
       owner: "Baah",
       gate: "stop-for-explicit-decision",
       evidence: "material-redesign-proposal",
     };
+  }
+
+  const evidence = AUTONOMOUS_FINDINGS.get(finding);
+  if (evidence) {
+    return { owner: "agent", gate: "continue", evidence };
   }
 
   throw new Error(
