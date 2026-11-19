@@ -349,13 +349,18 @@ test('native CI risk classification fails closed for sensitive production paths'
   for (const path of [
     '.github/workflows/native-apple.yml',
     'railway.json',
+    'package.json',
+    'apple/Config/Personal.xcconfig',
+    'apple/Config/TaisaPersonal.entitlements',
     'apple/Packages/TaisaFoundation/Sources/TaisaStorage/TaisaMigrator.swift',
     'apple/Packages/TaisaFoundation/Sources/TaisaSecurity/RecoveryKey.swift',
     'apple/Packages/TaisaFoundation/Sources/TaisaRecovery/RestoreCoordinator.swift',
     'apple/TaisaApp/Recovery/PersonalRecoveryBackend.swift',
     'backend/src/db/schema.sql',
     'backend/src/auth/deviceCredentials.ts',
+    'backend/src/config/production.ts',
     'mobile/src/db/migrations.ts',
+    'scripts/verify-branch-topology.sh',
   ]) {
     assert.match(classify([path]), /native_required=true/, path);
     assert.match(classify([path]), /high_risk_required=true/, path);
