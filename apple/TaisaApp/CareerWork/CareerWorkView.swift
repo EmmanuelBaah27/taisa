@@ -130,14 +130,11 @@ private struct TaskDetailSheetView: View {
                         CentralIcon(.calendar)
                             .frame(width: TaisaControlMetric.taskDueIcon, height: TaisaControlMetric.taskDueIcon)
                         TaisaText(
-                            role: .supporting,
+                            role: .body,
                             color: dueText == "Due" ? .mutedForeground : .foreground,
                             content: dueText
                         )
                     }
-                    .padding(.horizontal, TaisaSpacing.tight.rawValue)
-                    .padding(.vertical, TaisaSpacing.tight.rawValue / 2)
-                    .background(TaisaColor.subtleSurface.color, in: RoundedRectangle(cornerRadius: TaisaRadius.taskDue))
 
                     if !snapshot.checklist.isEmpty {
                         VStack(alignment: .leading, spacing: TaisaSpacing.compact.rawValue) {
@@ -201,14 +198,16 @@ private struct TaskDetailSheetView: View {
                             }
                         }
                     } else {
-                        TaisaButton(
-                            role: .ghost,
-                            label: "Add sub-task",
-                            icon: .add,
-                            size: .small,
-                            layout: .intrinsic
-                        ) {
-                            isAddingSubtask = true
+                        TaisaPressable(action: { isAddingSubtask = true }) {
+                            HStack(spacing: TaisaSpacing.compact.rawValue) {
+                                CentralIcon(.add)
+                                    .frame(
+                                        width: TaisaControlMetric.compactActionIcon,
+                                        height: TaisaControlMetric.compactActionIcon
+                                    )
+                                TaisaText(role: .buttonLabel, content: "Add sub-task")
+                            }
+                            .frame(minHeight: TaisaControlMetric.taskControl)
                         }
                     }
 
@@ -220,6 +219,7 @@ private struct TaskDetailSheetView: View {
                         )
                     }
                 }
+                .padding(.top, TaisaSpacing.control.rawValue)
             }
 
             HStack(spacing: TaisaSpacing.standard.rawValue) {
@@ -256,15 +256,10 @@ private struct TaskDetailSheetView: View {
 
     @ViewBuilder private var completionButton: some View {
         if snapshot.action.status == ActionStatus.completed.rawValue {
-            TaisaButton(
-                role: .secondary,
-                shape: .capsule,
-                label: "Reopen",
-                icon: .undo,
-                size: .small,
-                layout: .intrinsic
-            ) {
+            TaisaSecondaryCapsuleButton {
                 Task { await model.reopenSelectedAction() }
+            } label: {
+                secondaryActionLabel("Reopen", icon: .undo)
             }
         } else if isCompleting {
             TaisaButton(
@@ -282,18 +277,25 @@ private struct TaskDetailSheetView: View {
                 Task { await model.completeSelectedAction(evidenceTitle: evidence) }
             }
         } else {
-            TaisaButton(
-                role: .secondary,
-                shape: .capsule,
-                label: "Mark as Done",
-                icon: .completed,
-                iconColor: .completed,
-                size: .small,
-                layout: .intrinsic
-            ) {
+            TaisaSecondaryCapsuleButton {
                 isCompleting = true
+            } label: {
+                secondaryActionLabel("Mark as Done", icon: .completed, iconColor: .completed)
             }
         }
+    }
+
+    private func secondaryActionLabel(
+        _ label: String,
+        icon: CentralIconName,
+        iconColor: TaisaColor = .foreground
+    ) -> some View {
+        HStack(spacing: TaisaSpacing.compact.rawValue) {
+            CentralIcon(icon, color: iconColor)
+                .frame(width: TaisaControlMetric.compactActionIcon, height: TaisaControlMetric.compactActionIcon)
+            TaisaText(role: .buttonLabel, content: label)
+        }
+        .padding(.horizontal, TaisaSpacing.standard.rawValue)
     }
 
     private var dueText: String {

@@ -69,8 +69,26 @@ struct ActionComponentTests {
         #expect(TaisaGroupedIconActionsContract.actionCount == 2)
         #expect(TaisaGroupedIconActionsContract.iconSize == 24)
         #expect(TaisaGroupedIconActionsContract.minimumHitSize == 44)
-        #expect(TaisaGroupedIconActionsContract.usesSharedCapsuleSurface)
+        #expect(TaisaGroupedIconActionsContract.controlHeight == TaisaControlMetric.headerActionHeight)
+        #expect(TaisaGroupedIconActionsContract.usesSharedSecondaryIconButtons)
         #expect(TaisaGroupedIconActionRole.neutral != .destructive)
+    }
+
+    @Test func groupedTaskActionsReuseClearGlassSecondaryButtons() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let source = try String(
+            contentsOf: root.appendingPathComponent("Sources/TaisaDesignSystem/TaisaGroupedIconActions.swift"),
+            encoding: .utf8
+        )
+
+        #expect(source.contains("TaisaSecondaryIconButton("))
+        #expect(source.contains("size: TaisaGroupedIconActionsContract.controlHeight"))
+        #expect(!source.contains(".background(TaisaColor.background.color"))
+        #expect(!source.contains("Capsule().stroke"))
+        #expect(!source.contains(".shadow("))
     }
 
     @Test func rowsAndStatusesNameActionMeaningWithoutRawPresentation() {

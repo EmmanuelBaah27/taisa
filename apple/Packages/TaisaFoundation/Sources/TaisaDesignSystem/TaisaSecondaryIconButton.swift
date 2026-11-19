@@ -5,6 +5,7 @@ public struct TaisaSecondaryIconButton: View {
     private let icon: CentralIconName
     private let accessibilityLabel: String
     private let accessibilityHint: String?
+    private let iconColor: TaisaColor
     private let size: CGFloat
     private let action: @MainActor () -> Void
 
@@ -12,12 +13,14 @@ public struct TaisaSecondaryIconButton: View {
         icon: CentralIconName,
         accessibilityLabel: String,
         accessibilityHint: String? = nil,
+        iconColor: TaisaColor = .foreground,
         size: CGFloat = TaisaControlMetric.headerActionHeight,
         action: @escaping @MainActor () -> Void
     ) {
         self.icon = icon
         self.accessibilityLabel = accessibilityLabel
         self.accessibilityHint = accessibilityHint
+        self.iconColor = iconColor
         self.size = size
         self.action = action
     }
@@ -31,6 +34,7 @@ public struct TaisaSecondaryIconButton: View {
     @ViewBuilder private var secondaryGlassButton: some View {
         let button = Button(action: action) {
             CentralIcon(icon)
+                .foregroundStyle(iconColor.color)
                 .frame(width: TaisaControlMetric.standardIcon, height: TaisaControlMetric.standardIcon)
                 .frame(width: size, height: size)
         }

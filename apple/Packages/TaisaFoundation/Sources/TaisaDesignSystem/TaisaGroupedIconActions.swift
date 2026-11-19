@@ -28,7 +28,8 @@ public enum TaisaGroupedIconActionsContract {
     public static let actionCount = 2
     public static let iconSize: CGFloat = TaisaControlMetric.standardIcon
     public static let minimumHitSize: CGFloat = TaisaControlMetric.headerActionHeight
-    public static let usesSharedCapsuleSurface = true
+    public static let controlHeight: CGFloat = TaisaControlMetric.headerActionHeight
+    public static let usesSharedSecondaryIconButtons = true
 }
 
 public struct TaisaGroupedIconActions: View {
@@ -42,32 +43,18 @@ public struct TaisaGroupedIconActions: View {
     public var body: some View {
         HStack(spacing: TaisaControlMetric.groupedActionGap) {
             ForEach(Array(actions.enumerated()), id: \.offset) { _, item in
-                TaisaPressable(action: item.action) {
-                    CentralIcon(item.icon)
-                        .foregroundStyle(iconColor(for: item.role))
-                        .frame(
-                            width: TaisaGroupedIconActionsContract.iconSize,
-                            height: TaisaGroupedIconActionsContract.iconSize
-                        )
-                        .frame(
-                            minWidth: TaisaGroupedIconActionsContract.minimumHitSize,
-                            minHeight: TaisaGroupedIconActionsContract.minimumHitSize
-                        )
-                }
-                .accessibilityLabel(item.accessibilityLabel)
+                TaisaSecondaryIconButton(
+                    icon: item.icon,
+                    accessibilityLabel: item.accessibilityLabel,
+                    iconColor: iconColor(for: item.role),
+                    size: TaisaGroupedIconActionsContract.controlHeight,
+                    action: item.action
+                )
             }
         }
-        .padding(.horizontal, TaisaControlMetric.groupedActionHorizontalInset)
-        .background(TaisaColor.background.color, in: Capsule())
-        .overlay { Capsule().stroke(TaisaColor.border.color) }
-        .shadow(
-            color: TaisaColor.foreground.color.opacity(TaisaEffect.groupedActionShadowOpacity),
-            radius: TaisaEffect.groupedActionShadowRadius,
-            y: TaisaEffect.groupedActionShadowY
-        )
     }
 
-    private func iconColor(for role: TaisaGroupedIconActionRole) -> Color {
-        role == .destructive ? TaisaColor.destructive.color : TaisaColor.foreground.color
+    private func iconColor(for role: TaisaGroupedIconActionRole) -> TaisaColor {
+        role == .destructive ? .destructive : .foreground
     }
 }
