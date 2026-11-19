@@ -8,7 +8,7 @@
 
 ## What is it?
 
-Rebuild Taisa's iPhone and iPad client as a native-first SwiftUI application targeting iOS/iPadOS 26 or later. The native client uses accepted product decisions, portable behavior contracts, the existing Node/Express gateway, and the current React Native experience as non-blocking reference evidence.
+Rebuild Taisa's iPhone client as a native-first SwiftUI application targeting iOS 26 or later. The native client uses accepted product decisions, portable behavior contracts, the existing Node/Express gateway, and the current React Native experience as non-blocking reference evidence.
 
 The rebuild proceeds as functionality-first vertical slices. Pages use standard SwiftUI behavior and minimal temporary styling, then receive deliberate page-level redesign after their functionality is complete. Swift previews, fixtures, tests, and signed device builds are the implementation authority; React Native remains recoverable reference material only through Git history and frozen migration evidence.
 
@@ -19,7 +19,7 @@ Taisa's current Apple experience depends on a large cross-platform runtime for n
 ## Acceptance criteria
 
 - [ ] Accepted behavior is captured in platform-neutral contracts covering required screens, states, flows, copy, accessibility, API revision, fixtures, known defects, and deliberate platform adaptations.
-- [ ] The native app runs on iPhone and iPad with a minimum deployment target of iOS/iPadOS 26 and implements accepted contracts with native platform behavior.
+- [ ] The native app runs on iPhone with a minimum deployment target of iOS 26 and implements accepted contracts with native platform behavior.
 - [ ] The native app continues to use the existing stateless coaching and transcription gateway contracts; the backend is not rewritten in Swift.
 - [ ] New installs begin with a fresh native local store. The native app does not import React Native SQLite, Keychain, recording, settings, or history data.
 - [ ] Taisa's local-first boundary remains intact: private capture stays on device until deliberate Send, readable user history remains device-authoritative, and the gateway stores no readable coaching content.
@@ -32,14 +32,14 @@ Taisa's current Apple experience depends on a large cross-platform runtime for n
 - [ ] Signed preview builds identify their exact Git revision, environment, and fixture version so device feedback can be traced to the code under review.
 - [ ] Native work is delivered as a migration program with a separately reviewable and approvable implementation plan for each major slice; approval of one slice does not authorize later slices.
 - [ ] Apple signing, entitlements, App Store Connect/TestFlight access, device registration, CI secrets, and development/production bundle identifiers are proven before Product migration begins.
-- [ ] The production cutover passes clean-install, low-storage, permission-denied, offline, background/foreground, audio-interruption, notification, biometric, export/restore, and iPhone/iPad regression scenarios.
+- [ ] The production cutover passes clean-install, low-storage, permission-denied, offline, background/foreground, audio-interruption, notification, biometric, export/restore, and iPhone regression scenarios.
 - [ ] The React Native client is not retired or removed until the native Ship gate passes and its frozen behavior remains recoverable from Git.
 
 ## Platform dependencies
 
 - [ ] Preserve current React Native worktrees and evidence without requiring further React Native implementation for native progress.
 - [ ] Create platform-neutral behavior contracts and native deterministic fixtures alongside each accepted slice.
-- [ ] Establish signed native development/TestFlight distribution and exact-build identification for iPhone and iPad QA.
+- [ ] Establish signed native development/TestFlight distribution and exact-build identification for iPhone QA.
 - [ ] Prove the native encrypted SQLite, Keychain, audio, streaming transcription, notification, biometric/privacy, export/restore, shader, glass, and avatar approaches through bounded foundation work before dependent Product slices enter Build.
 - [ ] Generate or validate Swift `Codable` contracts against the existing shared TypeScript schemas and backend fixtures.
 - [ ] Prove the native preview channel and signing prerequisites before relying on physical-device QA.

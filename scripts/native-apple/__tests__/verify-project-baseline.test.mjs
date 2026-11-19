@@ -11,12 +11,16 @@ test('native Product baseline is iOS 26 and functionality-first', async () => {
   ]);
 
   assert.match(baseConfig, /IPHONEOS_DEPLOYMENT_TARGET = 26\.0/);
+  assert.match(baseConfig, /^TARGETED_DEVICE_FAMILY = 1$/m);
   assert.match(project, /iOS: "26\.0"/);
+  assert.match(project, /^    TARGETED_DEVICE_FAMILY: "1"$/m);
+  assert.doesNotMatch(project, /UISupportedInterfaceOrientations_iPad|TaisaCloudKit|TaisaSync|remote-notification/);
   assert.match(packageManifest, /\/\/ swift-tools-version: 6\.0/);
   assert.match(packageManifest, /\.iOS\("26\.0"\)/);
   assert.match(scope, /native-first/i);
   assert.match(scope, /functionality-first/i);
-  assert.match(scope, /iOS\/iPadOS 26/);
+  assert.match(scope, /iOS 26/);
+  assert.doesNotMatch(scope, /iPadOS|iPhone\/iPad/);
   assert.doesNotMatch(scope, /visual parity review/i);
   assert.doesNotMatch(scope, /baseline freeze.*prerequisite/i);
 });
@@ -51,12 +55,7 @@ test('preview target compiles every shared conversation response source', async 
   assert.match(previewTarget, /- path: TaisaApp\/Conversation\/AssistantResponseActions\.swift/);
 });
 
-test('sync tests declare the conversation module used by integrated response fixtures', async () => {
+test('package manifest excludes dormant multi-device sync products', async () => {
   const packageManifest = await readFile('apple/Packages/TaisaFoundation/Package.swift', 'utf8');
-  const syncTests = packageManifest.match(
-    /\.testTarget\(name: "TaisaSyncTests", dependencies: \[([^\]]*)\]\)/,
-  )?.[1];
-
-  assert.ok(syncTests, 'TaisaSyncTests target is missing');
-  assert.match(syncTests, /"TaisaConversations"/);
+  assert.doesNotMatch(packageManifest, /TaisaSync|TaisaCloudKit/);
 });

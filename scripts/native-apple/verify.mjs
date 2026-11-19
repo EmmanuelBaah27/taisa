@@ -264,28 +264,28 @@ export async function verifyNativeProject(repositoryRoot, productionBundle, pers
     errors.push('Personal voice gateway configuration mismatch');
   }
   const isolation = inspected.cloudKitIsolation;
-  if (isolation.developmentContainer !== 'iCloud.com.taisa.app.dev'
-      || isolation.productionContainer !== 'iCloud.com.taisa.app'
-      || JSON.stringify(isolation.developmentContainers) !== '["iCloud.com.taisa.app.dev"]'
-      || JSON.stringify(isolation.productionContainers) !== '["iCloud.com.taisa.app"]'
-      || isolation.developmentCloudEnvironment !== 'Development'
-      || isolation.productionCloudEnvironment !== 'Production'
+  if (isolation.developmentContainer !== null
+      || isolation.productionContainer !== null
+      || isolation.developmentContainers.length !== 0
+      || isolation.productionContainers.length !== 0
+      || isolation.developmentCloudEnvironment !== null
+      || isolation.productionCloudEnvironment !== null
       || isolation.previewContainers.length !== 0
       || isolation.previewServices.length !== 0
       || isolation.previewPushEnvironment !== null
       || isolation.previewLinksLiveTransport
-      || isolation.developmentPushEnvironment !== 'development'
-      || isolation.productionPushEnvironment !== 'production'
-      || JSON.stringify(isolation.developmentServices) !== '["CloudKit"]'
-      || JSON.stringify(isolation.productionServices) !== '["CloudKit"]'
+      || isolation.developmentPushEnvironment !== null
+      || isolation.productionPushEnvironment !== null
+      || isolation.developmentServices.length !== 0
+      || isolation.productionServices.length !== 0
       || isolation.associatedDomains
       || Object.values(isolation.projectEntitlementBindings).some((bound) => !bound)) {
-    errors.push('CloudKit capability or entitlement isolation mismatch');
+    errors.push('Shipping targets must not contain CloudKit or push capability');
   }
   const background = inspected.backgroundNotificationIsolation;
-  if (JSON.stringify(background.liveModes) !== '["remote-notification"]'
+  if (background.liveModes.length !== 0
       || !background.liveInfoBound || background.previewConfiguresBackgroundMode) {
-    errors.push('Remote-notification background mode must belong only to live app targets');
+    errors.push('Shipping targets must not contain remote-notification background mode');
   }
   return errors;
 }
