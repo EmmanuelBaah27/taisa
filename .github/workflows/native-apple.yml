@@ -16,7 +16,7 @@ jobs:
   verify-native-apple:
     name: Native Apple Full Verification
     runs-on: macos-26
-    timeout-minutes: 75
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

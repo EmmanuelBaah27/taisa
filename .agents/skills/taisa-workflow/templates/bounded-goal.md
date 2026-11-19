@@ -20,7 +20,13 @@ evidence without copying those rules.
 - Canonical Preview baseline and publication evidence:
 - Browser simulator evidence or inapplicable reason:
 - Product design-system inventory and audit, or inapplicable reason:
+- Design-system registry mapping by foundation, asset, behavior, style, component, or platform adapter:
+- Treatment for each requirement: reuse, extend, create, or approved exception:
+- Compatibility, migration, supported-context, and installed design-system skill evidence:
 - Approved design-system gaps or exceptions:
+- Exact designated primitive files and Linear approval, or none:
+- Primitive creation rationale and legacy raw-control debt owner, or none:
+- Confirmation that no directory or module exemption is used:
 - Repair evidence and quarantine state, or not a repair:
 - Next Baah gate:
 
