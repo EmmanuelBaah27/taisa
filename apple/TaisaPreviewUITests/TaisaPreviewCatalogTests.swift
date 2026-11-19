@@ -91,6 +91,47 @@ final class TaisaPreviewCatalogTests: XCTestCase {
         retainScreenshot(of: app, name: "career-action-detail")
     }
 
+    func testRedesignedYouContentKeepsCatalogBackNavigation() {
+        let app = XCUIApplication()
+        app.launch()
+
+        let search = app.searchFields["Search scenarios"]
+        XCTAssertTrue(search.waitForExistence(timeout: 5))
+        search.tap()
+        search.typeText("you.content")
+
+        let row = app.buttons.matching(
+            NSPredicate(format: "label BEGINSWITH %@", "You content")
+        ).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 5))
+        row.tap()
+
+        XCTAssertTrue(app.staticTexts["Baah"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Product designer at Oyster"].exists)
+        XCTAssertTrue(element("you.profile.edit", in: app).exists)
+
+        let back = app.buttons["Taisa Preview"]
+        XCTAssertTrue(back.waitForExistence(timeout: 5))
+        back.tap()
+        XCTAssertTrue(search.waitForExistence(timeout: 5))
+    }
+
+    func testYouScenarioReusesCatalogNavigationOwner() throws {
+        let testFile = URL(fileURLWithPath: #filePath)
+        let root = testFile
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let source = try String(
+            contentsOf: root.appendingPathComponent("TaisaPreview/YouScenarioView.swift"),
+            encoding: .utf8
+        )
+
+        XCTAssertFalse(
+            source.contains("NavigationStack {\n            YouView("),
+            "The You preview scenario must reuse PreviewCatalogView navigation."
+        )
+    }
+
     private func element(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
         app.descendants(matching: .any)[identifier]
     }
