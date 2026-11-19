@@ -29,6 +29,7 @@ public struct TaisaTaskEmptyStateCard: View {
                 layout: .intrinsic,
                 action: action
             )
+            .accessibilityLabel("Add task")
         }
         .frame(maxWidth: .infinity)
         .padding(.horizontal, TaisaSpacing.standard.rawValue)
