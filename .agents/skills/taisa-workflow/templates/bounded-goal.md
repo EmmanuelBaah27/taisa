@@ -1,133 +1,43 @@
-# Taisa bounded delivery Goal
+# Taisa bounded delivery run
 
-Fill every field before creating a Goal. Replace angle-bracket guidance with exact evidence.
+Fill each field before a BUILD, REPAIR, or SHIP run. `docs/workflow.md` is authoritative for
+candidate freeze, Preview, repair quarantine, QA, Ship, and cleanup. This template records run
+evidence without copying those rules.
 
-- Primary Linear issue: `<APF-ID and URL>`
-- Milestone context: `<name and URL>`
-- Run type: `<BUILD | REPAIR | SHIP>`
-- Entry state and evidence: `<state plus approval/comment URL>`
-- Terminal outcome: `<one allowed outcome for this run>`
-- Approved kickoff or Scope/Plan evidence: `<URLs>`
-- Work slices: `<each task owned by Platform | Product | Integration>`
-- Branch/worktree: `<branch and absolute path>`
-- Canonical preview baseline: `<SHA or not-device-facing>`
-- DS inventory and mapping evidence: `<Linear URL covering every Product component, style, token, and icon, or not-Product with reason>`
-- Design-system registry mapping: `<each requirement mapped to a registered foundation, asset, behavior, style, component, or platform adapter>`
-- Design-system treatment decision: `<exactly one of reuse, extend, create, or approved exception for each requirement>`
-- Compatibility and migration evidence: `<additive default preservation, system-wide consumer review, breaking migration/deprecation/removal, or none with reason>`
-- Supported context evidence: `<appearance, accessibility, device/input, locale/content coverage and gaps>`
-- Installed design-system skill evidence: `<design:design-system and design-system-patterns outputs or not-Product with reason>`
-- Approved DS gaps: `<Linear approval URLs for each reuse, extension, addition, or none>`
-- Central Icons mapping: `<Linear URL mapping every Product icon, or not-Product with reason>`
-- Approved system-owned exceptions: `<narrow exception plus Linear approval URL, or none>`
-- Designated primitive files: `<exact files plus Linear approval URL, or none>`
-- Primitive creation rationale: `<coherent-variant, reusable behavior/accessibility, and extension-fit evidence, or none>`
-- Legacy raw-control debt: `<exact policy entries and owning migration issue, or none>`
-- No broad DS module exemption: `<confirmed; exact primitive files are the only raw-control boundary>`
-- No unresolved DS gap: `<confirmed with evidence; Product Build cannot start otherwise>`
-- Pre-merge DS audit evidence: `<complete changed Product surface, available DS replacements, and Linear URL, or not-Product with reason>`
-- Remaining unavailable DS items: `<each item, affected surface, recommendation, and Baah approval URL, or none>`
-- Acceptance criteria: `<Linear checklist>`
-- Verification matrix: `<exact commands and checks>`
-- Verification readiness: `<dependencies, runtimes, signing, simulator/device, repository links, and generated inputs confirmed>`
-- Candidate-freeze evidence: `<focused checks → clean whole-candidate review → frozen exact revision → complete matrix once>`
-- Evidence invalidators: `<code, dependencies, toolchain, signing, configuration, or covered inputs that would reopen proof>`
-- Permitted mutations: `<bounded list>`
-- Prohibited actions: `<bounded list>`
-- Repair evidence: `<attempts and quarantine state, or not-a-repair>`
-- Next Baah gate: `<one gate>`
+- Primary Linear issue and milestone:
+- Run type and terminal outcome:
+- Approved product or high-risk decisions:
+- Agent-owned technical Plan:
+- Branch, worktree, base, and remote relation:
+- Direct blockers and dependencies:
+- Permitted mutations:
+- Prohibited actions:
+- Acceptance criteria:
+- Focused verification:
+- Complete applicable matrix:
+- Verification readiness:
+- Candidate-freeze revision and invalidators:
+- Canonical Preview baseline and publication evidence:
+- Browser simulator evidence or inapplicable reason:
+- Product design-system inventory and audit, or inapplicable reason:
+- Design-system registry mapping by foundation, asset, behavior, style, component, or platform adapter:
+- Treatment for each requirement: reuse, extend, create, or approved exception:
+- Compatibility, migration, supported-context, and installed design-system skill evidence:
+- Approved design-system gaps or exceptions:
+- Exact designated primitive files and Linear approval, or none:
+- Primitive creation rationale and legacy raw-control debt owner, or none:
+- Confirmation that no directory or module exemption is used:
+- Repair evidence and quarantine state, or not a repair:
+- Next Baah gate:
 
 ## Objective
 
-Advance only the primary Linear issue from the recorded entry state to the named terminal
-outcome. Use incremental orientation after the initial reconciliation. Own routine Git,
-GitHub, Linear, verification, documentation, canonical-preview, and repair work permitted
-above without asking Baah to say “continue.”
-
-## Runtime rules
-
-- One primary issue, one conductor, and one active Goal run.
-- Every task belongs exclusively to Platform, Product, or Integration when cross-stack.
-- Every Product build is design-system-first. Its approved component, interaction style, token,
-  and icon inventory must reuse shared contracts and Central Icons. If an item is unavailable,
-  stop before screen or Product code, tell Baah, and do not proceed until the exact treatment is
-  approved and recorded in Linear. Never create a silent feature-local substitute or exception.
-- Using an existing DS component is mandatory whenever it covers the interaction. Raw platform
-  interactive controls covered by a shared DS component may appear only inside explicitly
-  designated primitive implementation files; Product files and composite DS files compose
-  those primitives. A missing component or
-  variant is a blocking design-system gap. There is no directory or module exemption or
-  allowlist: record exact primitive files, legacy raw-control debt, and Linear authority above.
-- Create a primitive only when no existing component supports a coherent variant, its behavior
-  and accessibility contract are reusable, and extending an existing API would be contradictory.
-  Copy, callbacks, one-screen styling, width, or size alone do not qualify; prefer extension.
-- Apply the same rule to Product work already built before the workflow change or discovered in
-  code review. Before merge or Ship approval, replace every eligible feature-local component,
-  style, token, and icon with the available DS contract or Central icon. Tell Baah every remaining
-  unavailable item and do not request approval until the audit, replacements, and gap evidence are
-  recorded in Linear.
-- Update Linear only for approval, Build start, blocker change, stable candidate, preview/QA,
-  defect/replacement, Ship/merge, and Closeout evidence.
-- Every repair attempt must produce new evidence, a changed hypothesis or implementation,
-  or a more discriminating test.
-- A Baah defect observation enters `REPAIR_QUARANTINE`. When agent-owned checks cannot prove
-  a device-only failure, a bounded repair candidate may run focused regression and the fast native gate.
-  Preserve device data during an exact signed over-install for one named broken interaction.
-- A repair candidate is not canonical. It is not `QA_READY`, Ship-ready, shippable, or merge-ready. If
-  the interaction fails, keep looping with new evidence and no full matrix. After it passes, run
-  fresh whole-candidate review, resolve blockers and re-prove if changed, then run the full native
-  matrix once on the reviewed, proven, exact unchanged candidate before final repair-release.
-- Each repair-release gate item must pass or be explicitly marked inapplicable with evidence;
-  an omitted item does not pass the gate.
-- Device-facing QA requires the exact verified commit on canonical `preview/taisa`, confirmed
-  served or installed, plus agent-owned simulator/accessibility/preview smoke checks.
-- Execute the authoritative candidate-freeze contract in `docs/workflow.md` under
-  **Review + QA**, using the readiness, freeze, and invalidator fields above as run evidence.
-  The fixed order is focused checks → whole-candidate review and blocker re-review → frozen
-  exact revision → complete matrix once → focused canonical-preview topology, exact-revision,
-  and build/smoke proof. Candidate-content changes reopen review; any named invalidator reopens
-  only its affected proof.
-- Never infer approval, start a successor issue, expand Scope, resume another chat, perform
-  destructive cleanup, or merge without the named authority.
-- Prohibit unchanged polling. Prefer an event-capable wait or the longest practical bounded wait
-  whose output can change the next decision. If none exists, record
-  `EXTERNAL_WAIT_RECORDED`, complete this Goal, and schedule or request one later check near
-  the normal terminal window.
-- Do not emit user or Linear updates for unchanged state.
-
-## Allowed terminal outcomes
-
-### BUILD
-
-- `QA_READY`
-- `UNRESOLVED_ESCALATION`
-- `MATERIAL_REAPPROVAL_REQUIRED`
-- `NON_DEVICE_SHIP_READY`
-- `EXTERNAL_WAIT_RECORDED`
-
-### REPAIR
-
-- `QA_READY`
-- `UNRESOLVED_ESCALATION`
-- `MATERIAL_REAPPROVAL_REQUIRED`
-- `EXTERNAL_WAIT_RECORDED`
-
-### SHIP
-
-- Verified merge, safe cleanup, Linear Closeout, and exactly one next-outcome recommendation
-  completed.
+Advance only the primary issue to the named terminal outcome. Keep one accountable conductor.
+Update Linear only at a decision or stable checkpoint. Do not infer approval, start successor
+work, merge, publish, or perform destructive cleanup outside the recorded authority.
 
 ## Completion report
 
-Report the terminal outcome, exact branch and commit, PR/CI state, canonical preview revision
-or non-device path, checks and results, unresolved risk, Linear evidence, and next Baah gate.
-For Ship, reconcile current Linear priorities, blockers, dependencies, and approval readiness,
-then output exactly one **Recommended next outcome** or exactly one **No next outcome recommended** result. Each form includes its reason and next Baah gate:
-
-- **Recommended next outcome:** `<one outcome>` — **Reason:** `<evidence>` — **Next Baah gate:** `<explicit gate>`
-- **No next outcome recommended:** `<blocking condition>` — **Reason:** `<evidence>` — **Next Baah gate:** `<explicit gate>`
-
-Never output both forms. Never provide an alternatives list. A recommendation is advisory.
-Never reopen or start the successor issue. Never create the successor branch or Goal.
-Never change the successor status. Never begin the successor work without Baah explicitly approving the successor kickoff. Complete the Goal after reporting.
-Do not remain active solely for waiting on Baah or external state.
+Report the outcome, exact branch and commit, PR and CI state, Preview revision or non-device path,
+checks, unresolved risk, Linear evidence, and next Baah gate. A SHIP run also records verified
+merge and safe cleanup evidence before Closeout.
