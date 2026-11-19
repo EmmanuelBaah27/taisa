@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 import Testing
 @testable import TaisaDesignSystem
 
@@ -31,6 +32,15 @@ struct ActionComponentTests {
         #expect(TaisaStatusRole.active != .completed)
         #expect(TaisaStatusRole.dropped != .overdue)
         #expect(TaisaStatusRole.reopened != .warning)
+    }
+
+    @Test @MainActor func sharedPressableSupportsCustomLabelsAndInteractiveRows() {
+        _ = TaisaPressable(role: .destructive, action: {}) {
+            TaisaText(role: .body, content: "Remove")
+        }
+        _ = TaisaRow(title: "Open action", supporting: "Due today", metadata: "Origin: manual", icon: .action, action: {})
+        #expect(TaisaNavigationRow.trailingIconRotationDegrees(.chevronLeft) == 180)
+        #expect(TaisaNavigationRow.trailingIconRotationDegrees(.profileChevron) == 0)
     }
 
     @Test func centralCatalogCoversApprovedActionConcepts() {

@@ -17,16 +17,14 @@ struct MilestoneRow: View {
     let send: (HomeIntent) -> Void
 
     var body: some View {
-        Button { send(.milestone(goalID: milestone.goalID)) } label: {
-            TaisaRow(
-                title: milestone.title,
-                supporting: milestone.targetAtMS.map {
-                    Date(timeIntervalSince1970: Double($0) / 1_000).formatted(.dateTime.day().month())
-                },
-                icon: .milestone
-            )
-        }
-        .buttonStyle(.plain)
+        TaisaRow(
+            title: milestone.title,
+            supporting: milestone.targetAtMS.map {
+                Date(timeIntervalSince1970: Double($0) / 1_000).formatted(.dateTime.day().month())
+            },
+            icon: .milestone,
+            action: { send(.milestone(goalID: milestone.goalID)) }
+        )
     }
 }
 
@@ -35,10 +33,9 @@ struct ConversationRow: View {
     let send: (HomeIntent) -> Void
 
     var body: some View {
-        Button { send(.conversation(conversation.id)) } label: {
-            TaisaRow(title: conversation.title, icon: .chatBubbles)
+        TaisaRow(title: conversation.title, icon: .chatBubbles) {
+            send(.conversation(conversation.id))
         }
-        .buttonStyle(.plain)
     }
 }
 
@@ -47,10 +44,9 @@ struct GoalRow: View {
     let send: (HomeIntent) -> Void
 
     var body: some View {
-        Button { send(.goal(goal.id)) } label: {
-            TaisaRow(title: goal.title, supporting: goal.detail.isEmpty ? nil : goal.detail, icon: .goal)
+        TaisaRow(title: goal.title, supporting: goal.detail.isEmpty ? nil : goal.detail, icon: .goal) {
+            send(.goal(goal.id))
         }
-        .buttonStyle(.plain)
     }
 }
 
@@ -59,9 +55,8 @@ struct ActionRow: View {
     let send: (HomeIntent) -> Void
 
     var body: some View {
-        Button { send(.action(action.id)) } label: {
-            TaisaRow(title: action.title, supporting: action.dueDay.map { "Due \($0.rawValue)" }, icon: .action)
+        TaisaRow(title: action.title, supporting: action.dueDay.map { "Due \($0.rawValue)" }, icon: .action) {
+            send(.action(action.id))
         }
-        .buttonStyle(.plain)
     }
 }

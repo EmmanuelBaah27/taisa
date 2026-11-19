@@ -296,6 +296,18 @@ clipboard item. The system document exporter uses the verified file URL through
 in-memory `FileDocument`. Its transfer lifetime stays owned until the platform
 reports completion or cancellation; scene changes shield the underlying content.
 
+## Native interaction boundary
+
+`TaisaPressable` is the package-internal native raw `Button` primitive for shared components that
+need custom label content. It owns only platform activation and an optional native button
+role. It does not define layout, color, typography, spacing, or shape. Standard text and
+icon actions continue to use `TaisaButton`. List-style interactions use `TaisaRow` with its
+optional action, and disclosure rows use `TaisaNavigationRow` with its optional action.
+Display-only initializers remain source-compatible. `TaisaButton`, `TaisaRow`,
+`TaisaToolbarAction`, `TaisaMenu`, and `TaisaConfirmationDialog` compose
+`TaisaPressable`; Product screens cannot call the primitive and never create a raw platform button or reproduce these
+components locally.
+
 ## Native You profile presentation
 
 The approved Figma You overview and editor (146:1336 and 146:1721) use shared
@@ -311,9 +323,9 @@ Profile validation reuses the field's existing `.invalid(message:)` state. It
 does not add a feature-local field, visual variant, token, or error component.
 The generic `TaisaNavigationRow` owns disclosure layout, activation, and an
 optional Central Icons trailing asset. Its interactive form composes the
-registered `TaisaButton` primitive with the existing subtle surface, spacing,
-typography, radius, and touch-target contracts. Product screens do not wrap the
-row in a raw platform button. `TaisaToolbarAction` owns the profile edit and
+package-internal `TaisaPressable` primitive around the same disclosure row content,
+so interactive and display-only icon direction and layout stay identical. Product
+screens do not wrap the row in a raw platform button. `TaisaToolbarAction` owns the profile edit and
 close icon-button behavior.
 
 Profile-only typography roles use Scoutie Sans semibold for the name and Inter

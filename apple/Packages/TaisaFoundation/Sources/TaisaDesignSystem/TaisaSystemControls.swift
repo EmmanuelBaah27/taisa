@@ -40,7 +40,9 @@ public struct TaisaMenu: View {
     public var body: some View {
         Menu(label) {
             ForEach(Array(actions.enumerated()), id: \.offset) { _, item in
-                Button(item.0, role: item.1 == .destructive ? .destructive : nil, action: item.2)
+                TaisaPressable(role: item.1 == .destructive ? .destructive : nil, action: { item.2() }) {
+                    Text(item.0)
+                }
             }
         }
         .tint(TaisaColor.foreground.color)
@@ -68,13 +70,8 @@ public struct TaisaNavigationRow: View {
     @ViewBuilder
     public var body: some View {
         if let action {
-            TaisaButton(
-                role: .navigation,
-                label: label,
-                icon: icon,
-                trailingIcon: trailingIcon,
-                action: action
-            )
+            TaisaPressable(action: { action() }) { rowContent }
+                .buttonStyle(.plain)
         } else {
             rowContent
         }
@@ -86,27 +83,31 @@ public struct TaisaNavigationRow: View {
             TaisaText(role: .body, content: label)
             Spacer()
             CentralIcon(trailingIcon)
-                .rotationEffect(.degrees(trailingIcon == .chevronLeft ? 180 : 0))
+                .rotationEffect(.degrees(Self.trailingIconRotationDegrees(trailingIcon)))
                 .frame(width: 20, height: 20)
         }
         .frame(minHeight: 48)
         .contentShape(Rectangle())
+    }
+
+    static func trailingIconRotationDegrees(_ icon: CentralIconName) -> Double {
+        icon == .chevronLeft ? 180 : 0
     }
 }
 
 public struct TaisaToolbarAction: View {
     private let label: String
     private let icon: CentralIconName
-    private let action: () -> Void
+    private let action: @MainActor () -> Void
 
-    public init(label: String, icon: CentralIconName, action: @escaping () -> Void) {
+    public init(label: String, icon: CentralIconName, action: @escaping @MainActor () -> Void) {
         self.label = label
         self.icon = icon
         self.action = action
     }
 
     public var body: some View {
-        Button(action: action) { CentralIcon(icon).frame(width: 24, height: 24) }
+        TaisaPressable(action: { action() }) { CentralIcon(icon).frame(width: 24, height: 24) }
             .buttonStyle(.plain)
             .frame(minWidth: 44, minHeight: 44)
             .accessibilityLabel(label)
@@ -132,8 +133,12 @@ public struct TaisaConfirmationDialog: ViewModifier {
 
     public func body(content: Content) -> some View {
         content.confirmationDialog(title, isPresented: $isPresented) {
-            Button(confirmLabel, role: role == .destructive ? .destructive : nil, action: confirm)
-            Button(cancelLabel, role: .cancel) {}
+            TaisaPressable(role: role == .destructive ? .destructive : nil, action: { confirm() }) {
+                Text(confirmLabel)
+            }
+            TaisaPressable(role: .cancel, action: {}) {
+                Text(cancelLabel)
+            }
         }
     }
 }

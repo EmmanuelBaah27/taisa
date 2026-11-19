@@ -73,7 +73,7 @@ public struct TaisaButton: View {
     }
 
     public var body: some View {
-        Button(action: action) {
+        TaisaPressable(action: { action() }) {
             ZStack {
                 HStack(spacing: TaisaSpacing.compact.rawValue) {
                     if let icon {

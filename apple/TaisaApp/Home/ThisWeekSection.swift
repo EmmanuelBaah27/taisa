@@ -30,10 +30,9 @@ struct ThisWeekSection: View {
     }
 
     private func weeklyRow(_ item: WeeklyWorkItem) -> some View {
-        Button { send(.action(item.action.id)) } label: {
-            TaisaRow(title: item.action.title, supporting: supportingText(for: item), icon: .action)
+        TaisaRow(title: item.action.title, supporting: supportingText(for: item), icon: .action) {
+            send(.action(item.action.id))
         }
-        .buttonStyle(.plain)
         .accessibilityHint("Open this action")
     }
 
@@ -63,13 +62,12 @@ struct HomeActionsPreviewSection: View {
                 TaisaRow(title: "No actions need attention", supporting: "Open Actions when you want to add or review work.", icon: .action)
             } else {
                 ForEach(Array(prompts.enumerated()), id: \.element.action.id) { _, prompt in
-                    Button { send(.action(prompt.action.id)) } label: {
-                        TaisaRow(title: prompt.action.title, supporting: label(prompt.reason), icon: icon(prompt.reason), emphasis: prompt.reason == .overdue || prompt.reason == .blocked ? .attention : .standard)
+                    TaisaRow(title: prompt.action.title, supporting: label(prompt.reason), icon: icon(prompt.reason), emphasis: prompt.reason == .overdue || prompt.reason == .blocked ? .attention : .standard) {
+                        send(.action(prompt.action.id))
                     }
                 }
             }
-            Button { send(.actions) } label: { TaisaNavigationRow(label: "View all actions", icon: .action) }
-                .buttonStyle(.plain)
+            TaisaNavigationRow(label: "View all actions", icon: .action) { send(.actions) }
                 .accessibilityIdentifier("home.actions.view-all")
         }
         .accessibilityIdentifier("home.actions.preview")
@@ -105,8 +103,7 @@ struct HomeGoalsSummarySection: View {
             } else {
                 ForEach(goals.prefix(3), id: \.id) { GoalRow(goal: $0, send: send) }
             }
-            Button { send(.goals) } label: { TaisaNavigationRow(label: "View all goals", icon: .goal) }
-                .buttonStyle(.plain)
+            TaisaNavigationRow(label: "View all goals", icon: .goal) { send(.goals) }
                 .accessibilityIdentifier("home.goals.view-all")
         }
         .accessibilityIdentifier("home.goals.summary")
@@ -119,8 +116,8 @@ struct HomeReviewSection: View {
 
     var body: some View {
         Section("Review") {
-            Button { open(unresolvedCount) } label: {
-                TaisaRow(title: "Review \(unresolvedCount) unfinished \(unresolvedCount == 1 ? "item" : "items")", icon: .history, emphasis: .attention)
+            TaisaRow(title: "Review \(unresolvedCount) unfinished \(unresolvedCount == 1 ? "item" : "items")", icon: .history, emphasis: .attention) {
+                open(unresolvedCount)
             }
             .accessibilityIdentifier("home.prior-week.review")
         }

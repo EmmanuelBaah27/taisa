@@ -54,12 +54,12 @@ struct HomeView: View {
                     TaisaToolbarAction(label: "Refresh", icon: .refresh) { Task { await model.load() } }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    TaisaToolbarAction(label: "Backup and recovery", icon: .recovery, action: openRecovery)
+                    TaisaToolbarAction(label: "Backup and recovery", icon: .recovery) { openRecovery() }
                         .accessibilityIdentifier("foundation.recovery.action")
                 }
                 if let openPersonalQA {
                     ToolbarItem(placement: .topBarTrailing) {
-                        TaisaToolbarAction(label: "Personal device QA", icon: .testflight, action: openPersonalQA)
+                        TaisaToolbarAction(label: "Personal device QA", icon: .testflight) { openPersonalQA() }
                             .accessibilityIdentifier("foundation.personal-qa.action")
                     }
                 }
@@ -129,17 +129,14 @@ struct HomeView: View {
     }
 
     private func issueRow(_ issue: HomeIssue) -> some View {
-        Button {
+        TaisaRow(
+            title: issue == .recoveryRequired ? "Open recovery" : "Try refresh again",
+            icon: .warning,
+            emphasis: .attention
+        ) {
             if issue == .recoveryRequired { openRecovery() }
             else { Task { await model.load() } }
-        } label: {
-            TaisaRow(
-                title: issue == .recoveryRequired ? "Open recovery" : "Try refresh again",
-                icon: .warning,
-                emphasis: .attention
-            )
         }
-        .buttonStyle(.plain)
         .accessibilityIdentifier(issue == .recoveryRequired ? "home.recovery" : "home.retry")
     }
 }

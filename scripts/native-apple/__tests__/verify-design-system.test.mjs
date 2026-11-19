@@ -73,6 +73,19 @@ test('allows a designated primitive wrapper to use the platform control', async 
   );
 });
 
+test('allows a dedicated package-internal primitive wrapper', async () => {
+  const file = 'apple/Packages/TaisaFoundation/Sources/TaisaDesignSystem/TaisaPressable.swift';
+  await withControlFixture(
+    { [file]: 'struct TaisaPressable { var body: some View { Button("Continue") {} } }\n' },
+    { ...emptyControlPolicy, primitiveFiles: [file] },
+    async ({ repositoryRoot, policyPath }) => {
+      assert.deepEqual(await rawInteractiveControlViolations({
+        roots: ['apple/Packages/TaisaFoundation/Sources/TaisaDesignSystem'], policyPath, repositoryRoot,
+      }), []);
+    },
+  );
+});
+
 test('allows only the exact approved legacy occurrence', async () => {
   const file = 'apple/TaisaApp/LegacyView.swift';
   const policy = {

@@ -280,10 +280,12 @@ export async function rawInteractiveControlViolations({
       throw new Error(`Primitive file must be a canonical regular Swift file inside the canonical design-system source root: ${primitiveFile}`);
     }
     const source = await readFile(absoluteFile, 'utf8');
-    const publicStructs = [...source.matchAll(/\bpublic\s+struct\s+([A-Za-z_][A-Za-z0-9_]*)/g)].map((match) => match[1]);
+    const structs = [...source.matchAll(/\b(?:(public|package|internal|fileprivate|private)\s+)?struct\s+([A-Za-z_][A-Za-z0-9_]*)/g)]
+      .map((match) => ({ access: match[1] ?? 'internal', name: match[2] }));
     const expectedType = path.basename(absoluteFile, '.swift');
-    if (publicStructs.length !== 1 || publicStructs[0] !== expectedType) {
-      throw new Error(`Primitive file must be dedicated to public struct ${expectedType}: ${primitiveFile}`);
+    if (structs.length !== 1 || structs[0].name !== expectedType
+        || structs[0].access === 'private' || structs[0].access === 'fileprivate') {
+      throw new Error(`Primitive file must be dedicated to module-accessible struct ${expectedType}: ${primitiveFile}`);
     }
   }
 
