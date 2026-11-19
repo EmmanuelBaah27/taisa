@@ -128,6 +128,10 @@ tokens; any explicit styling layered on top of them still follows this rule.
 
 ## Typography
 
+### Native Swift scale
+
+The shipping SwiftUI product uses semantic `TaisaTypography` roles. Base UI and button labels use 16/24. Supporting text and small labels use 14/20. Captions use 12/18. Primary dated page titles use Scoutie Sans at 28/36. Sheet titles use Inter Medium at 20/28. `TaisaText` applies these roles, including their line spacing. Product views do not set raw fonts, weights, or line heights.
+
 Never use raw `text-sm font-semibold` combinations — use the composite utilities:
 
 | Semantic weight | Inter registration |

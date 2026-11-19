@@ -58,6 +58,8 @@ public enum TaisaControlMetric {
     public static let conversationEmptyVoiceIcon: CGFloat = 24
     public static let messageEditorMinimumHeight: CGFloat = 120
     public static let disabledControlOpacity: CGFloat = 0.38
+    public static let groupedActionGap: CGFloat = 6
+    public static let groupedActionHorizontalInset: CGFloat = 4
 }
 
 public enum TaisaEffect {
@@ -78,6 +80,9 @@ public enum TaisaEffect {
     public static let placeholderHighlightWidthFraction: CGFloat = 0.55
     public static let placeholderTravelStart: CGFloat = -1
     public static let placeholderTravelEnd: CGFloat = 1.5
+    public static let groupedActionShadowOpacity: Double = 0.08
+    public static let groupedActionShadowRadius: CGFloat = 8
+    public static let groupedActionShadowY: CGFloat = 2
 }
 
 public enum TaisaRadius: CGFloat, CaseIterable, Sendable {

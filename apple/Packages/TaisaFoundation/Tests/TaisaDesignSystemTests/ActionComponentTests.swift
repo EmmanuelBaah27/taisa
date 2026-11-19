@@ -18,6 +18,7 @@ struct ActionComponentTests {
         #expect(TaisaButton.Contract.supportsIntrinsicLayout)
         #expect(TaisaButton.Contract.supportsIconOnlyContent)
         #expect(TaisaButton.Contract.supportsGhostRole)
+        #expect(TaisaButton.Contract.supportsSemanticIconColor)
         #expect(TaisaButtonRole.ghost != .secondary)
         #expect(TaisaButtonLayout.fill != .intrinsic)
         #expect(TaisaButtonShape.circle != .capsule)
@@ -61,6 +62,15 @@ struct ActionComponentTests {
         #expect(TaisaExpandableSheetContract.initialPosition == .medium)
         #expect(TaisaExpandableSheetContract.positions == [.medium, .large])
         #expect(TaisaExpandableSheetContract.showsDragIndicator)
+    }
+
+    @Test func taskDetailActionsUseSharedSemanticContracts() {
+        #expect(TaisaColor.completed.hex == "#04851A")
+        #expect(TaisaGroupedIconActionsContract.actionCount == 2)
+        #expect(TaisaGroupedIconActionsContract.iconSize == 24)
+        #expect(TaisaGroupedIconActionsContract.minimumHitSize == 44)
+        #expect(TaisaGroupedIconActionsContract.usesSharedCapsuleSurface)
+        #expect(TaisaGroupedIconActionRole.neutral != .destructive)
     }
 
     @Test func rowsAndStatusesNameActionMeaningWithoutRawPresentation() {

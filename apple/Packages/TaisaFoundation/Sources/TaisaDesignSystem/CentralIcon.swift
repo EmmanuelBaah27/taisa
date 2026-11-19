@@ -46,9 +46,11 @@ public enum CentralIconName: Sendable, Equatable {
 /// Native rendering of the Central Icons paths used by Taisa's primary navigation.
 public struct CentralIcon: View {
     private let name: CentralIconName
+    private let color: TaisaColor
 
-    public init(_ name: CentralIconName) {
+    public init(_ name: CentralIconName, color: TaisaColor = .foreground) {
         self.name = name
+        self.color = color
     }
 
     public var body: some View {
@@ -67,6 +69,7 @@ public struct CentralIcon: View {
                 context.fill(filledPath.applying(transform), with: .foreground)
             }
         }
+        .foregroundStyle(color.color)
         .accessibilityHidden(true)
     }
 

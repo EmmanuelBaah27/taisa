@@ -13,6 +13,8 @@ public enum TaisaTypography: String, CaseIterable, Sendable {
     case datedPageTitle
     case taskTitle
     case taskSupporting
+    case sheetTitle
+    case sectionLabel
 
     public var familyName: String {
         switch self {
@@ -32,13 +34,11 @@ public enum TaisaTypography: String, CaseIterable, Sendable {
         switch self {
         case .display: 34
         case .heading: 22
-        case .body: 17
-        case .label, .buttonLabel: 15
+        case .body, .buttonLabel, .navigationLabel, .childHeaderTitle, .taskTitle: 16
+        case .label, .supporting, .taskSupporting, .sectionLabel: 14
         case .metadata: 12
-        case .navigationLabel, .taskTitle: 16
-        case .supporting, .taskSupporting: 14
-        case .childHeaderTitle: 17
         case .datedPageTitle: 28
+        case .sheetTitle: 20
         }
     }
 
@@ -46,11 +46,11 @@ public enum TaisaTypography: String, CaseIterable, Sendable {
         switch self {
         case .display: 41
         case .heading: 28
-        case .body, .childHeaderTitle: 22
-        case .label, .buttonLabel, .supporting, .taskSupporting: 20
-        case .metadata: 16
-        case .navigationLabel, .taskTitle: 24
+        case .body, .buttonLabel, .navigationLabel, .childHeaderTitle, .taskTitle: 24
+        case .label, .supporting, .taskSupporting, .sectionLabel: 20
+        case .metadata: 18
         case .datedPageTitle: 36
+        case .sheetTitle: 28
         }
     }
 
@@ -58,18 +58,22 @@ public enum TaisaTypography: String, CaseIterable, Sendable {
         switch self {
         case .display: .largeTitle
         case .heading: .title2
-        case .body, .navigationLabel, .taskTitle: .body
-        case .label, .buttonLabel, .supporting, .taskSupporting: .subheadline
+        case .body, .buttonLabel, .navigationLabel, .childHeaderTitle, .taskTitle: .body
+        case .label, .supporting, .taskSupporting, .sectionLabel: .subheadline
         case .metadata: .caption
-        case .childHeaderTitle: .headline
         case .datedPageTitle: .title
+        case .sheetTitle: .title3
         }
+    }
+
+    public var lineSpacing: CGFloat {
+        max(0, lineHeight - pointSize)
     }
 
     public var weight: Font.Weight {
         switch self {
         case .display, .heading, .label, .childHeaderTitle, .datedPageTitle: .semibold
-        case .buttonLabel, .navigationLabel, .taskTitle: .medium
+        case .buttonLabel, .navigationLabel, .taskTitle, .sheetTitle, .sectionLabel: .medium
         case .body, .metadata, .supporting, .taskSupporting: .regular
         }
     }

@@ -48,12 +48,14 @@ public struct TaisaButton: View {
         public static let supportsIntrinsicLayout = true
         public static let supportsIconOnlyContent = true
         public static let supportsGhostRole = true
+        public static let supportsSemanticIconColor = true
     }
 
     private let role: TaisaButtonRole
     private let shape: TaisaButtonShape
     private let label: String
     private let icon: CentralIconName?
+    private let iconColor: TaisaColor?
     private let size: TaisaButtonSize
     private let layout: TaisaButtonLayout
     private let isSelected: Bool
@@ -68,6 +70,7 @@ public struct TaisaButton: View {
         shape: TaisaButtonShape = .roundedRectangle,
         label: String,
         icon: CentralIconName? = nil,
+        iconColor: TaisaColor? = nil,
         size: TaisaButtonSize = .standard,
         layout: TaisaButtonLayout = .fill,
         isSelected: Bool = false,
@@ -81,6 +84,7 @@ public struct TaisaButton: View {
         self.shape = shape
         self.label = label
         self.icon = icon
+        self.iconColor = iconColor
         self.size = size
         self.layout = layout
         self.isSelected = isSelected
@@ -97,6 +101,7 @@ public struct TaisaButton: View {
                 HStack(spacing: TaisaSpacing.compact.rawValue) {
                     if let icon {
                         CentralIcon(icon)
+                            .foregroundStyle((iconColor ?? labelColor).color)
                             .frame(width: size.iconSize, height: size.iconSize)
                     }
                     if !label.isEmpty {

@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Open the same expandable task-detail sheet from Home and the Tasks page while keeping “View all tasks” as the only route from Home to the Tasks page.
+**Goal:** Open the same Figma-faithful expandable task-detail sheet from Home and the Tasks page while keeping “View all tasks” as the only route from Home to the Tasks page.
 
 **Architecture:** Add a shared design-system sheet presentation contract. Extract the existing task detail into one reusable presentation view, then let the app shell and Tasks page present it with the shared `CareerWorkModel`.
 
@@ -18,6 +18,8 @@
 - Keep “View all tasks” as the only Home route to the Tasks page.
 - Start the detail sheet at medium height and allow expansion to large height.
 - Preserve existing task storage, lifecycle, and imported data.
+- Use 20/28 Inter Medium for the sheet title, 16/24 for base UI and button labels, 14/20 for supporting text, and 12/18 for captions.
+- Implement Figma node `169:5268` without raw Product typography, color, spacing, radius, or control styling.
 
 ## Review Focus
 
@@ -28,6 +30,83 @@
 - Dismissing and reopening the sheet must not leave the shared model on a stale route.
 
 ---
+
+### Task 0: Detail-sheet design-system contracts
+
+**Files:**
+- Modify: `apple/Packages/TaisaFoundation/Sources/TaisaDesignSystem/TypographyToken.swift`
+- Modify: `apple/Packages/TaisaFoundation/Sources/TaisaDesignSystem/ColorToken.swift`
+- Create: `apple/Packages/TaisaFoundation/Sources/TaisaDesignSystem/TaisaGroupedIconActions.swift`
+- Test: `apple/Packages/TaisaFoundation/Tests/TaisaDesignSystemTests/TypographyTokenTests.swift`
+- Test: `apple/Packages/TaisaFoundation/Tests/TaisaDesignSystemTests/ActionComponentTests.swift`
+
+**Interfaces:**
+- Consumes: the approved native type scale and Central Icons.
+- Produces: semantic 20/28 sheet-title, 16/24 base/button, 14/20 supporting, and 12/18 caption roles; a completed/success color; and `TaisaGroupedIconActions` for neutral and destructive icon actions.
+
+- [ ] **Step 1: Write failing typography and component tests**
+
+Assert the exact approved font sizes, line heights, weights, and families. Assert that the grouped action contract exposes two icon actions, semantic neutral/destructive treatment, a shared capsule surface, and 44-point minimum hit targets.
+
+- [ ] **Step 2: Run focused tests and verify the expected failures**
+
+Run: `swift test --package-path apple/Packages/TaisaFoundation --filter TypographyTokenTests && swift test --package-path apple/Packages/TaisaFoundation --filter ActionComponentTests`
+
+Expected: FAIL because the approved roles, success color, and grouped action component do not exist.
+
+- [ ] **Step 3: Implement the shared contracts**
+
+Update semantic typography values, add only the missing semantic roles and color, and implement the grouped action capsule with `TaisaPressable` ownership and Central Icons.
+
+- [ ] **Step 4: Run the focused design-system tests**
+
+Run the Step 2 commands.
+
+Expected: PASS.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add apple/Packages/TaisaFoundation/Sources/TaisaDesignSystem apple/Packages/TaisaFoundation/Tests/TaisaDesignSystemTests docs/superpowers/specs/2026-11-19-task-detail-sheet-design.md docs/superpowers/plans/2026-11-19-task-detail-sheet.md
+git commit -m "feat(design-system): add task detail contracts"
+```
+
+### Task 0.1: Figma task-detail presentation
+
+**Files:**
+- Modify: `apple/TaisaApp/CareerWork/CareerWorkView.swift`
+- Test: `apple/TaisaUnitTests/CareerWorkViewContractTests.swift`
+
+**Interfaces:**
+- Consumes: Task 0 design-system contracts, `ActionDetailSnapshot`, and existing `CareerWorkModel` mutations.
+- Produces: one shared Figma-faithful task-detail view used by both existing sheet presenters.
+
+- [ ] **Step 1: Write failing view contract tests**
+
+Assert one shared view renders the title, optional due date, optional sub-task section, add-sub-task action, completion action, archive action, and delete action through DS components. Assert it has no raw `Button`, `Text`, `Color`, `Font`, or SF Symbol use.
+
+- [ ] **Step 2: Run the focused tests and verify failure**
+
+Run: `xcodebuild test -project apple/Taisa.xcodeproj -scheme Taisa -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -only-testing:TaisaUnitTests/CareerWorkViewContractTests`
+
+Expected: FAIL because the Figma task-detail presentation does not exist.
+
+- [ ] **Step 3: Implement the shared presentation**
+
+Render Figma node `169:5268` with the approved DS contracts. Keep both presenters on this single view. Preserve model-backed completion, archive, deletion, sub-task completion, sub-task creation, and swipe deletion.
+
+- [ ] **Step 4: Run focused tests**
+
+Run the Step 2 command.
+
+Expected: PASS.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add apple/TaisaApp/CareerWork/CareerWorkView.swift apple/TaisaUnitTests/CareerWorkViewContractTests.swift
+git commit -m "feat(tasks): match task detail Figma sheet"
+```
 
 ### Task 1: Shared expandable-sheet contract
 

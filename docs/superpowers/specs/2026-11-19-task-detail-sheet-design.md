@@ -14,6 +14,8 @@ Keep task inspection close to the list where the user found the task. A task tap
 - Editing, checklist work, completion, reopening, and deletion use the existing task model.
 - A successful deletion closes the sheet and refreshes the presenting page.
 - Other task changes refresh the sheet and the presenting page.
+- The detail surface follows Figma node `169:5268` for its title, due date, sub-task list, add action, completion action, archive action, and delete action.
+- Sub-tasks can be completed from the row and deleted with a swipe action.
 
 ## Non-goals
 
@@ -27,7 +29,13 @@ Keep task inspection close to the list where the user found the task. A task tap
 | Element | Verdict | File or component |
 |---|---|---|
 | Expandable sheet presentation | New shared contract | `TaisaExpandableSheet` in `TaisaDesignSystem` |
-| Task detail content | Reuse and expose | Existing `CareerActionDetail` in `CareerWorkView.swift` |
+| Task detail content | Replace presentation, reuse model | Shared compact task-detail presentation backed by `CareerWorkModel` |
+| Sheet title | Extend shared typography | 20/28 Inter Medium semantic role |
+| Base UI and button label | Reconcile shared typography | 16/24 Inter Regular or Medium semantic roles |
+| Supporting text | Reconcile shared typography | 14/20 Inter Regular or Medium semantic roles |
+| Caption | Reconcile shared typography | 12/18 Inter Regular or Medium semantic roles |
+| Completion affordance | Extend semantic color | Shared completed/success color |
+| Archive and delete group | New shared component | DS-owned grouped icon action capsule |
 | Home task row | Modify interaction | `HomeActionsPreviewSection` |
 | Tasks collection row | Modify interaction | `CareerWorkView` task collection |
 | “View all tasks” row | Reuse | Existing `TaisaTaskSummaryRow` and `.actions` intent |
@@ -40,7 +48,7 @@ flowchart TD
     T[Tasks page task row] --> S
     V[View all tasks] --> T
     S --> M[Existing CareerWorkModel]
-    M --> U[Edit, checklist, complete, reopen]
+    M --> U[Due date, sub-tasks, complete, archive]
     M --> D[Delete task]
     U --> S
     D --> X[Dismiss sheet and refresh presenter]
@@ -50,12 +58,14 @@ The app shell owns Home sheet presentation because it already owns the shared `C
 
 ## Design-system treatment
 
-Add one shared expandable-sheet contract. It owns medium and large presentation positions, a visible drag indicator, semantic background treatment, and standard dismissal behavior. Product views provide content and selection state. No raw color, spacing, radius, material, or motion value is added.
+Keep the shared expandable-sheet contract. It owns medium and large presentation positions, a visible drag indicator, semantic background treatment, and standard dismissal behavior. Product views provide content and selection state.
+
+Reconcile native typography with the approved type guide: base UI and buttons use 16/24, supporting text uses 14/20, and captions use 12/18. Add a 20/28 Inter Medium sheet-title role. Add a semantic completed/success color and one grouped icon action capsule for the archive and delete actions. The Product view consumes these contracts without raw visual values or feature-local substitutes.
 
 ## Accessibility
 
 - The task row keeps its visible title as its activation label.
-- The sheet announces the task title through its existing detail header.
+- The sheet announces the visible task title as its heading.
 - The drag indicator remains visible.
 - Dismissal restores focus to the task row when the system can restore it.
 - Existing detail actions keep their current labels and touch targets.
@@ -79,4 +89,4 @@ None. The local encrypted task model already loads and mutates task detail.
 
 ## Status
 
-Approved by Baah on 2026-11-19.
+Behavior approved by Baah on 2026-11-19. Figma visual treatment and the 16/24, 14/20, and 12/18 typography reconciliation approved by Baah on 2026-11-19.
