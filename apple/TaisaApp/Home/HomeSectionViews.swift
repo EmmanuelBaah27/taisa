@@ -17,7 +17,7 @@ struct MilestoneRow: View {
     let send: (HomeIntent) -> Void
 
     var body: some View {
-        Button { send(.milestone(goalID: milestone.goalID)) } label: {
+        TaisaPressable(action: { send(.milestone(goalID: milestone.goalID)) }) {
             TaisaRow(
                 title: milestone.title,
                 supporting: milestone.targetAtMS.map {
@@ -26,7 +26,6 @@ struct MilestoneRow: View {
                 icon: .milestone
             )
         }
-        .buttonStyle(.plain)
     }
 }
 
@@ -35,10 +34,9 @@ struct ConversationRow: View {
     let send: (HomeIntent) -> Void
 
     var body: some View {
-        Button { send(.conversation(conversation.id)) } label: {
+        TaisaPressable(action: { send(.conversation(conversation.id)) }) {
             TaisaRow(title: conversation.title, icon: .chatBubbles)
         }
-        .buttonStyle(.plain)
     }
 }
 
@@ -47,10 +45,9 @@ struct GoalRow: View {
     let send: (HomeIntent) -> Void
 
     var body: some View {
-        Button { send(.goal(goal.id)) } label: {
+        TaisaPressable(action: { send(.goal(goal.id)) }) {
             TaisaRow(title: goal.title, supporting: goal.detail.isEmpty ? nil : goal.detail, icon: .goal)
         }
-        .buttonStyle(.plain)
     }
 }
 
@@ -59,9 +56,8 @@ struct ActionRow: View {
     let send: (HomeIntent) -> Void
 
     var body: some View {
-        Button { send(.action(action.id)) } label: {
+        TaisaPressable(action: { send(.action(action.id)) }) {
             TaisaRow(title: action.title, supporting: action.dueDay.map { "Due \($0.rawValue)" }, icon: .action)
         }
-        .buttonStyle(.plain)
     }
 }

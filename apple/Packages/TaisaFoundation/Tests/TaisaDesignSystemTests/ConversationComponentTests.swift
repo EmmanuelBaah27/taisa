@@ -70,6 +70,20 @@ struct ConversationComponentTests {
         #expect(TaisaRadius.historyGroup.rawValue == 20)
     }
 
+    @Test func taskJourneyTokensMatchApprovedFigmaFrames() {
+        #expect(TaisaTypography.datedPageTitle.pointSize == 28)
+        #expect(TaisaTypography.taskTitle.pointSize == 16)
+        #expect(TaisaTypography.taskSupporting.pointSize == 14)
+        #expect(TaisaControlMetric.taskHeaderHeight == 82)
+        #expect(TaisaControlMetric.taskComposerHeight == 124)
+        #expect(TaisaControlMetric.taskComposerCardHeight == 100)
+        #expect(TaisaControlMetric.taskControl == 40)
+        #expect(TaisaRadius.taskGroup == 20)
+        #expect(TaisaRadius.taskComposer == 28)
+        #expect(CentralIconName.calendar != .incomplete)
+        #expect(CentralIconName.chevronRight != .chevronLeft)
+    }
+
     @Test func streamingTextPreservesWhitespaceAndUsesPerWordResolution() {
         #expect(TaisaStreamingText.chunks(in: "One  two\nthree") == ["One  ", "two\n", "three"])
         #expect(TaisaStreamingText.revealDuration(wordCount: 0) == 0)
@@ -223,7 +237,7 @@ struct ConversationComponentTests {
         #expect(InlineRecoveryAlert.Contract.actionSpacing == 12)
     }
 
-    @Test func secondaryControlsUseClearRefractiveGlassAnatomyWithATintedCircularSendControl() throws {
+    @Test func secondaryAndFloatingControlsShareTheNativeButtonFoundation() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .deletingLastPathComponent()
@@ -232,26 +246,29 @@ struct ConversationComponentTests {
             contentsOf: root.appendingPathComponent("Sources/TaisaDesignSystem/ConversationActionBar.swift"),
             encoding: .utf8
         )
-        let chrome = try String(
-            contentsOf: root.appendingPathComponent("Sources/TaisaDesignSystem/TaisaPageChrome.swift"),
-            encoding: .utf8
-        )
+        let secondaryControls = try ["TaisaSecondaryIconButton.swift", "TaisaSecondaryCapsuleButton.swift"]
+            .map {
+                try String(
+                    contentsOf: root.appendingPathComponent("Sources/TaisaDesignSystem/\($0)"),
+                    encoding: .utf8
+                )
+            }
+            .joined(separator: "\n")
         let tokens = try String(
             contentsOf: root.appendingPathComponent("Sources/TaisaDesignSystem/SpacingToken.swift"),
             encoding: .utf8
         )
 
-        #expect(!chrome.contains("public enum TaisaGlassStyle"))
-        #expect(chrome.contains(".glassEffect(.clear.interactive(), in: Circle())"))
-        #expect(chrome.contains(".glassEffect(.clear.interactive(), in: Capsule())"))
-        #expect(!chrome.contains(".glassEffect(.regular.interactive()"))
-        #expect(!chrome.contains("Circle().stroke(TaisaColor.border.color)"))
-        #expect(!chrome.contains("Capsule().stroke(TaisaColor.border.color)"))
-        #expect(!chrome.contains("TaisaEffect.clearGlassShadow"))
-        #expect(!tokens.contains("public static let clearGlassShadow"))
+        #expect(!secondaryControls.contains("public enum TaisaGlassStyle"))
+        #expect(secondaryControls.contains("TaisaButtonStyle(shape: .circle)"))
+        #expect(secondaryControls.contains("TaisaButtonStyle()"))
+        #expect(!secondaryControls.contains(".glassEffect("))
+        #expect(!secondaryControls.contains(".taisaSecondaryButtonSurface("))
+        #expect(secondaryControls.contains("elevation: TaisaSecondaryButtonElevation"))
+        #expect(tokens.contains("public static let secondaryButtonShadowOpacity"))
         #expect(!actionBar.contains("glassStyle: .clear"))
         #expect(actionBar.contains("TaisaSecondaryIconButton(icon: icon, accessibilityLabel: label, action: action)"))
-        #expect(actionBar.contains(".glassEffect(.clear.tint(TaisaColor.primaryAction.color).interactive(), in: Circle())"))
+        #expect(actionBar.contains("TaisaButtonControl(style: TaisaButtonStyle(role: .primary, shape: .circle)"))
         #expect(!actionBar.contains(".buttonStyle(.glassProminent)"))
     }
 

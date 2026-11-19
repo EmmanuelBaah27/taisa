@@ -1,6 +1,7 @@
 import SwiftUI
 
 public enum CentralIconName: Sendable, Equatable {
+    case profileShield, profileCloud, profileDiagnostics, profileChevron, profileEdit, profileClose
     case homeLine
     case chatBubbles
     case peopleCircle
@@ -13,7 +14,9 @@ public enum CentralIconName: Sendable, Equatable {
     case pause
     case play
     case chevronLeft
+    case chevronRight
     case chevronDown
+    case calendar
     case exclamationCircle
     case circleInfo
     case thumbsUp
@@ -22,6 +25,7 @@ public enum CentralIconName: Sendable, Equatable {
     case edit
     case action
     case checklist
+    case planning
     case add
     case incomplete
     case completeAction
@@ -43,12 +47,39 @@ public enum CentralIconName: Sendable, Equatable {
 /// Native rendering of the Central Icons paths used by Taisa's primary navigation.
 public struct CentralIcon: View {
     private let name: CentralIconName
+    private let color: TaisaColor
 
-    public init(_ name: CentralIconName) {
+    public init(_ name: CentralIconName, color: TaisaColor = .foreground) {
         self.name = name
+        self.color = color
+    }
+
+    private var profileAsset: String? {
+        switch name {
+        case .profileShield: "ProfileShield"
+        case .profileCloud: "ProfileCloud"
+        case .profileDiagnostics: "ProfileDiagnostics"
+        case .profileChevron: "ProfileChevron"
+        case .profileEdit: "ProfileEdit"
+        case .profileClose: "ProfileClose"
+        default: nil
+        }
     }
 
     public var body: some View {
+        Group {
+            if let profileAsset {
+                Image(profileAsset, bundle: .module)
+                    .resizable()
+                    .scaledToFit()
+                    .accessibilityHidden(true)
+            } else {
+                drawnIcon
+            }
+        }
+    }
+
+    private var drawnIcon: some View {
         Canvas { context, size in
             let scale = min(size.width, size.height) / 24
             let transform = CGAffineTransform(
@@ -58,17 +89,19 @@ public struct CentralIcon: View {
             context.stroke(
                 path.applying(transform),
                 with: .foreground,
-                style: StrokeStyle(lineWidth: 2 * scale, lineCap: .round, lineJoin: .round)
+                style: StrokeStyle(lineWidth: strokeWidth * scale, lineCap: .round, lineJoin: .round)
             )
             if let filledPath {
                 context.fill(filledPath.applying(transform), with: .foreground)
             }
         }
+        .foregroundStyle(color.color)
         .accessibilityHidden(true)
     }
 
     private var path: Path {
         switch name {
+        case .profileShield, .profileCloud, .profileDiagnostics, .profileChevron, .profileEdit, .profileClose: Path()
         case .homeLine: homeLine
         case .chatBubbles: chatBubbles
         case .peopleCircle: peopleCircle
@@ -81,7 +114,9 @@ public struct CentralIcon: View {
         case .pause: pause
         case .play: play
         case .chevronLeft: chevronLeft
+        case .chevronRight: chevronRight
         case .chevronDown: chevronDown
+        case .calendar: calendar
         case .exclamationCircle: exclamationCircle
         case .circleInfo: circleInfo
         case .thumbsUp: thumbsUp
@@ -89,6 +124,7 @@ public struct CentralIcon: View {
         case .copy: copy
         case .edit: edit
         case .action, .checklist: checklist
+        case .planning: planning
         case .add: add
         case .incomplete: incomplete
         case .completeAction: completeAction
@@ -196,6 +232,19 @@ public struct CentralIcon: View {
         p.move(to: .init(x: 4, y: 9)); p.addLine(to: .init(x: 5.5, y: 10)); p.addLine(to: .init(x: 8.5, y: 6))
         p.move(to: .init(x: 4, y: 17)); p.addLine(to: .init(x: 5.5, y: 18)); p.addLine(to: .init(x: 8.5, y: 14))
         return p
+    }
+
+    private var planning: Path {
+        var p = Path()
+        p.move(to: .init(x: 11.75, y: 7.75)); p.addLine(to: .init(x: 20.25, y: 7.75))
+        p.addEllipse(in: .init(x: 3.75, y: 14.25, width: 4, height: 4))
+        p.move(to: .init(x: 11.75, y: 16.25)); p.addLine(to: .init(x: 20.25, y: 16.25))
+        p.move(to: .init(x: 3.75, y: 8.25)); p.addLine(to: .init(x: 5.4167, y: 9.75)); p.addLine(to: .init(x: 8.75, y: 5.25))
+        return p
+    }
+
+    private var strokeWidth: CGFloat {
+        name == .planning ? 1.5 : 2
     }
 
     private var add: Path {
@@ -366,6 +415,19 @@ public struct CentralIcon: View {
 
     private var chevronLeft: Path {
         var path = Path(); path.move(to: .init(x: 15, y: 5)); path.addLine(to: .init(x: 8, y: 12)); path.addLine(to: .init(x: 15, y: 19)); return path
+    }
+
+    private var chevronRight: Path {
+        var p = Path(); p.move(to: .init(x: 9, y: 5)); p.addLine(to: .init(x: 16, y: 12)); p.addLine(to: .init(x: 9, y: 19)); return p
+    }
+
+    private var calendar: Path {
+        var p = Path()
+        p.addRoundedRect(in: .init(x: 3, y: 5, width: 18, height: 16), cornerSize: .init(width: 2, height: 2))
+        p.move(to: .init(x: 3, y: 10)); p.addLine(to: .init(x: 21, y: 10))
+        p.move(to: .init(x: 8, y: 3)); p.addLine(to: .init(x: 8, y: 7))
+        p.move(to: .init(x: 16, y: 3)); p.addLine(to: .init(x: 16, y: 7))
+        return p
     }
 
     private var exclamationCircle: Path {

@@ -13,7 +13,11 @@ final class ConversationPreviewTests: XCTestCase {
         XCTAssertTrue(latest.isHittable)
 
         let timeline = app.scrollViews["conversation.root"]
-        timeline.swipeDown()
+        XCTAssertTrue(timeline.waitForExistence(timeout: 3))
+        for _ in 0..<4 where latest.isHittable {
+            timeline.swipeDown()
+        }
+        XCTAssertFalse(latest.isHittable, "The test must actually leave the latest message before testing the return action")
         let jump = app.buttons["Jump to latest response"]
         XCTAssertTrue(jump.waitForExistence(timeout: 3))
         jump.tap()

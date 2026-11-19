@@ -1,4 +1,5 @@
 import SwiftUI
+import TaisaDesignSystem
 import TaisaStorage
 
 struct LeadInsightSection: View {
@@ -6,18 +7,15 @@ struct LeadInsightSection: View {
     let openInsights: () -> Void
 
     var body: some View {
-        Section("Worth your attention") {
-            Button(action: openInsights) {
+        TaisaSection("Worth your attention") {
+            TaisaPressable(action: { openInsights() }) {
                 VStack(alignment: .leading, spacing: 8) {
-                    Label("Insight", systemImage: "lightbulb.fill")
-                        .font(.caption.weight(.semibold))
+                    TaisaIconLabel("Insight", icon: .insights)
+                        .font(TaisaTypography.label.font)
                         .foregroundStyle(.secondary)
-                    Text(insight.body)
-                        .font(.headline)
-                        .foregroundStyle(.primary)
+                    TaisaText(role: .childHeaderTitle, color: .foreground, content: insight.body)
                         .multilineTextAlignment(.leading)
-                    Text("View insight")
-                        .font(.subheadline.weight(.semibold))
+                    TaisaText(role: .label, content: "View insight")
                 }
                 .padding(.vertical, 4)
             }

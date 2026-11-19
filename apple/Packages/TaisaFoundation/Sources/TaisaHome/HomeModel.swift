@@ -81,6 +81,23 @@ public final class HomeModel {
         }
     }
 
+    public func createTask(title: String, dueDay: ActionDueDay?) async -> Bool {
+        let title = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !title.isEmpty else { return false }
+        mutationGeneration += 1
+        let active = mutationGeneration
+        do {
+            _ = try await client.create(title, dueDay)
+            guard mutationGeneration == active else { return false }
+            await load()
+            return true
+        } catch {
+            guard mutationGeneration == active else { return false }
+            publishMutationFailure(error)
+            return false
+        }
+    }
+
     public func undoCompletion() async {
         guard let correction = completionCorrection else { return }
         mutationGeneration += 1

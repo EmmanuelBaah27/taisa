@@ -12,7 +12,10 @@ description: >
 
 Receives a design from Baah, interprets it against the existing codebase and
 design system, and produces a structured brief ready to hand directly to
-`superpowers:writing-plans`.
+`superpowers:writing-plans`. Use `design:design-system` to audit and extend the
+system. Use `design-system-patterns` for contract architecture, styles,
+foundations, compatibility, and migration. This skill supplies Taisa paths,
+authority, approval gates, and native review requirements.
 
 ---
 
@@ -41,46 +44,57 @@ In all paths: DS tokens carry the precision the design source doesn't provide.
 ```
 1. READ  → approved Scope in the matching Linear issue/document
 2. READ  → Work Map and Product Discussion decisions
-3. READ  → design system tokens                         [TAISA: docs/design-system.md]
-4. SCAN  → existing components                          [TAISA: mobile/src/components/]
-5. MAP   → every design element to: reuse / modify / new
-           (this output becomes the DS layer of the implementation plan)
-6. CHECK → token coverage — does the design use tokens that exist?
-7. FLAG  → backend implications the design reveals
-8. DRAW  → Product architecture/state diagram with layman-first labels
-9. ASK   → max 3 questions, only genuine ambiguities
-10. OUTPUT → structured handoff brief (format below)
-11. CHAIN → after Baah confirms brief, invoke writing-plans automatically
+3. ROUTE → invoke `design:design-system` in audit or extend mode
+4. ROUTE → invoke `design-system-patterns` for architecture and lifecycle
+5. SCAN  → the platform registry, contracts, styles, consumers, and foundations
+6. MAP   → each requirement to reuse / extend / create / exception
+7. CHECK → compatibility, contexts, accessibility, and migration
+8. FLAG  → Product, Platform, and backend implications
+9. DRAW  → Product architecture/state diagram with layman-first labels
+10. ASK  → max 3 questions, only genuine ambiguities
+11. OUTPUT → structured handoff brief (format below)
+12. CHAIN → after Baah confirms brief, invoke writing-plans automatically
 ```
 
----
+## Contract taxonomy
 
-## Component mapping
+Classify each design-system contract at one level:
+
+- **Foundations:** atomic semantic values with no structure or behavior.
+- **Assets:** renderable resources with no interaction or layout ownership.
+- **Behaviors:** reusable interaction, state, accessibility, and adaptation rules.
+- **Styles:** presentation recipes with no view hierarchy or interaction ownership.
+- **Components:** reusable UI structures that compose approved lower-level contracts.
+- **Platform adapters:** the only approved translation boundary to raw platform APIs.
+
+Styles compose foundations and assets. Existing or new components consume approved styles and
+behaviors. Product surfaces consume registered contracts and own business logic. Product code
+must not restyle a component locally; extend or create the shared style or component contract.
+
+## Contract mapping
 
 For every distinct UI element in the design:
 
-| Design element | Verdict | Notes |
+| Treatment | Use when | Required evidence |
 |---|---|---|
-| Matches existing component exactly | **Reuse** | Name the file |
-| Mostly matches but needs a prop or variant | **Modify** | Name the file, name the change |
-| No match — new build needed | **New** | Name it, note which `ui/` or `features/` bucket |
+| **Reuse** | One registered contract covers the requirement | Contract, supported capability, and consumers |
+| **Extend** | An existing contract remains coherent with one added capability | Missing capability, affected consumers, compatibility |
+| **Create** | Extension would make every existing contract contradictory | Compared contracts, reusable purpose, owner, lifecycle |
+| **Exception** | A system-owned boundary cannot use a coherent registered contract | Narrow scope, owner, reason, expiry, removal issue |
 
-**Extraction rule:** if a pattern appears in two or more screens, it becomes a `ui/` component. Don't propose extraction speculatively — only when the second use exists or is confirmed in this design.
+Use exactly one treatment. Missing coverage stops before Product code until Baah approves the
+treatment in Linear. Do not create a component because of copy, callback, size, width, or one
+screen. Do not create a style for a local visual override.
 
----
+## Compatibility and contexts
 
-## Token coverage check
+Classify a change as additive, intentional system-wide restyle, or breaking. Additive changes
+preserve current defaults. System-wide restyles list and review every dependent consumer.
+Breaking changes require a replacement contract, migration, deprecation, and removal condition.
+Compatibility aliases stay inside shared contracts and cannot become new Product dependencies.
 
-Cross-reference every color, spacing, and radius value in the design against the token list.
-
-| Token type | Where to check | Flag condition |
-|---|---|---|
-| Colors | `tailwind.config.js` + `docs/design-system.md` | Design uses hex not in the token set |
-| Spacing | spacing scale in `docs/design-system.md` | Design uses value not on the scale |
-| Border radius | radius scale in `docs/design-system.md` | Design uses value not on the scale |
-| Typography | type scale in `docs/design-system.md` | Design uses size/weight not defined |
-
-Flag gaps to Baah before the plan is written — the plan should never introduce raw hex values or magic numbers.
+Review appearance, accessibility settings, device class and input method, and locale and content
+length. Record unsupported contexts as gaps, not implied support.
 
 ---
 
@@ -109,20 +123,18 @@ List any gaps. These go into the plan as platform prerequisites if not already c
 
 ---
 
-## Component inventory
+## Design-system contract inventory
 
-| Element | Verdict | File / Name |
-|---|---|---|
-| [element] | Reuse | mobile/src/components/... |
-| [element] | Modify | mobile/src/components/... — add [prop] |
-| [element] | New | mobile/src/components/ui/[Name].tsx |
+| Requirement | Contract type | Treatment | Registered contract | Capability evidence | Compatibility / migration |
+|---|---|---|---|---|---|
+| [requirement] | [taxonomy] | [reuse/extend/create/exception] | [file/name] | [states/behavior/contexts] | [evidence] |
 
 ## Product architecture and states
 [Mermaid diagram showing the user-visible flow and real screens, components, Platform
 contract, states, and failure boundaries.]
 
-## Token gaps
-- [List any design values not covered by existing tokens, or "None — all values covered"]
+## Design-system gaps and exceptions
+- [List each unavailable contract and approval, or "None"]
 
 ## Backend implications
 - [List any API gaps revealed by the design, or "None — all data already available"]
@@ -173,14 +185,20 @@ section from it.
 After Baah confirms the brief, the agent invokes `writing-plans` automatically.
 Baah does not need to say "ready to plan."
 
-### Design system
+### Platform routing
 
-- **Theme:** Light first. No dark tokens in new components.
-- **Styling:** NativeWind only — no `StyleSheet.create()`.
-- **Token file:** `docs/design-system.md` + `mobile/tailwind.config.js`
-- **Token naming in classes:** `bg-background`, `bg-surface`, `text-text-primary`, `text-accent`, etc.
+Choose the shipping surface first. Do not use legacy paths for native work.
 
-### Component locations
+| Surface | Shared contracts | Product consumers | Verification |
+|---|---|---|---|
+| SwiftUI iPhone/iPad | `apple/Packages/TaisaFoundation/Sources/TaisaDesignSystem/` | `apple/TaisaApp/` | Native DS, package/Xcode, browser simulator, accessibility |
+| Legacy React Native | `mobile/src/components/` and `mobile/tailwind.config.js` | `mobile/src/` | NativeWind, legacy tests, legacy preview |
+
+For SwiftUI, inspect the shared package, Central Icons, existing consumers, and semantic roles.
+For legacy work, use NativeWind and the documented legacy design system. Never infer that a
+contract on one platform exists on the other.
+
+### Legacy component locations
 
 | Bucket | Path | Contains |
 |---|---|---|

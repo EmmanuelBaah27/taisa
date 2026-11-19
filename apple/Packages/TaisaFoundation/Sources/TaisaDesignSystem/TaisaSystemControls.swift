@@ -1,12 +1,5 @@
 import SwiftUI
 
-public enum TaisaSystemActionRole: Sendable, Equatable {
-    case standard
-    case destructive
-    case cancel
-    case confirmation
-}
-
 public struct TaisaPicker<Option: Hashable>: View {
     private let title: String
     private let options: [Option]
@@ -22,31 +15,11 @@ public struct TaisaPicker<Option: Hashable>: View {
 
     public var body: some View {
         Picker(title, selection: $selection) {
-            ForEach(options, id: \.self) { option in Text(label(option)).tag(option) }
+            ForEach(options, id: \.self) { option in TaisaText(role: .body, content: label(option)).tag(option) }
         }
         .tint(TaisaColor.foreground.color)
     }
 }
-
-public struct TaisaMenu: View {
-    private let label: String
-    private let actions: [(String, TaisaSystemActionRole, () -> Void)]
-
-    public init(label: String, actions: [(String, TaisaSystemActionRole, () -> Void)]) {
-        self.label = label
-        self.actions = actions
-    }
-
-    public var body: some View {
-        Menu(label) {
-            ForEach(Array(actions.enumerated()), id: \.offset) { _, item in
-                Button(item.0, role: item.1 == .destructive ? .destructive : nil, action: item.2)
-            }
-        }
-        .tint(TaisaColor.foreground.color)
-    }
-}
-
 public struct TaisaNavigationRow: View {
     private let label: String
     private let icon: CentralIconName?
@@ -68,46 +41,50 @@ public struct TaisaNavigationRow: View {
     }
 }
 
-public struct TaisaToolbarAction: View {
-    private let label: String
-    private let icon: CentralIconName
-    private let action: () -> Void
-
-    public init(label: String, icon: CentralIconName, action: @escaping () -> Void) {
-        self.label = label
-        self.icon = icon
-        self.action = action
+public struct TaisaSection<Content: View>: View {
+    private let title: String
+    private let content: Content
+    public init(_ title: String, @ViewBuilder content: () -> Content) {
+        self.title = title
+        self.content = content()
     }
-
     public var body: some View {
-        Button(action: action) { CentralIcon(icon).frame(width: 24, height: 24) }
-            .buttonStyle(.plain)
-            .frame(minWidth: 44, minHeight: 44)
-            .accessibilityLabel(label)
+        Section { content } header: { TaisaText(role: .label, content: title) }
     }
 }
 
-public struct TaisaConfirmationDialog: ViewModifier {
+public struct TaisaLabeledContent: View {
     private let title: String
-    @Binding private var isPresented: Bool
-    private let confirmLabel: String
-    private let cancelLabel: String
-    private let role: TaisaSystemActionRole
-    private let confirm: () -> Void
-
-    public init(title: String, isPresented: Binding<Bool>, confirmLabel: String, cancelLabel: String, role: TaisaSystemActionRole = .confirmation, confirm: @escaping () -> Void) {
-        self.title = title
-        _isPresented = isPresented
-        self.confirmLabel = confirmLabel
-        self.cancelLabel = cancelLabel
-        self.role = role
-        self.confirm = confirm
+    private let value: String
+    public init(_ title: String, value: String) { self.title = title; self.value = value }
+    public var body: some View {
+        HStack {
+            TaisaText(role: .label, content: title)
+            Spacer()
+            TaisaText(role: .body, color: .mutedForeground, content: value)
+        }
     }
+}
 
-    public func body(content: Content) -> some View {
-        content.confirmationDialog(title, isPresented: $isPresented) {
-            Button(confirmLabel, role: role == .destructive ? .destructive : nil, action: confirm)
-            Button(cancelLabel, role: .cancel) {}
+public struct TaisaProgressView: View {
+    private let title: String
+    public init(_ title: String) { self.title = title }
+    public var body: some View {
+        ProgressView { TaisaText(role: .supporting, content: title) }
+    }
+}
+
+public struct TaisaIconLabel: View {
+    private let title: String
+    private let icon: CentralIconName
+    private let role: TaisaTypography
+    public init(_ title: String, icon: CentralIconName, role: TaisaTypography = .label) {
+        self.title = title; self.icon = icon; self.role = role
+    }
+    public var body: some View {
+        HStack(spacing: TaisaSpacing.compact.rawValue) {
+            CentralIcon(icon).frame(width: TaisaControlMetric.standardIcon, height: TaisaControlMetric.standardIcon)
+            TaisaText(role: role, content: title)
         }
     }
 }

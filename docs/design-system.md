@@ -1,5 +1,8 @@
 # Taisa Design System
 
+**Status:** Active
+**Last updated:** 2026-11-19
+
 Living reference for all UI work. Update when a new component is added or a token changes.
 Full token definitions and decision rules: `foundations.md` (root of repo).
 
@@ -22,7 +25,7 @@ The approved native conversation experience adds business-free SwiftUI surfaces 
 - `TaisaChildPageHeader` owns child-page title and header-fade geometry. Compact pushed pages use `.back` with a required caller-owned navigation action and the 48pt Central `chevronLeft` control; regular split-view detail panes use `.detail`, which preserves the title and fade without presenting a false back action.
 - `ConversationComposerChrome` owns the open conversation's composer padding, minimum dock height, semantic backdrop, and bottom safe-area coverage for every voice, text, progress, reply, and recovery state. Its default backdrop is the navigation fade; recording states use a transparent composer backdrop while the shared recording field is bottom-anchored at the conversation root, allowing one continuous field to paint beneath the controls and through the Home-indicator safe area. Composer children do not add their own edge fade or safe-area reservation.
 - `ConversationPageHeader` fixes its single-line title region at 220pt and truncates at the tail; its chevron dismisses the page and never doubles as an input-cancellation control.
-- `ConversationActionBar` owns the 56pt discard, keyboard, pause/resume, and Send surfaces for empty, short, sendable, paused, saved, and processing voice states. Every recording secondary control uses the exact shared secondary-button anatomy as the conversation-header chevron: clear interactive Liquid Glass with system-owned refraction and interaction rendering, without an authored fill, outline, frost, or shadow; only the recording-specific circle/capsule geometry and size vary. Send preserves its 48pt circular geometry with clear interactive glass tinted by the semantic primary action colour. Destructive disposition remains product-owned.
+- `ConversationActionBar` owns the 56pt discard, keyboard, pause/resume, and Send surfaces for empty, short, sendable, paused, saved, and processing voice states. Every recording secondary control and the conversation-header chevron use the shared native TaisaButtonStyle foundation; only the circle/capsule geometry and size vary. Send uses its primary circular variant with the semantic primary action colour. No recording control authors its own glass effect, fill, outline or shadow. Destructive disposition remains product-owned.
 - `TextComposer` owns one trailing action slot: an empty field shows the secondary glass voice action, and non-whitespace text replaces it with the primary lime Send action. Its first line is vertically centred with the action while multiline text expands upward.
 - `ConversationActivityIndicator` follows the approved two-second recording cycle, freezes while paused or interrupted, and renders a static frame under Reduce Motion.
 - `InlineRecoveryAlert` presents content-free recovery context and explicit Cancel/Try again actions without owning retry policy.
@@ -43,7 +46,7 @@ Conversation-specific control metrics are package-owned: context-menu icons are 
 
 `TaisaToast` is the shared transient-feedback surface. It is a compact, content-width dark capsule that docks to the lower edge of top page chrome, supports one optional action, dismisses automatically after four seconds, can be swiped upward, announces its message through the accessibility system, and uses an opacity-only transition under Reduce Motion. Feature screens own error mapping and FIFO queueing; the component contains no business logic.
 
-Primary navigation uses the default system face (SF Pro), not the rounded system variant. Its semantic `navigationLabel` role is 16pt medium on a 24pt line height. Every destination owns a minimum 56×48pt capsule hit region and uses the shared 24pt Central icon metric; spacing between destinations is visual spacing, never dead touch space. The record control is 104×48pt with a 24pt Central icon. Its semantic recording glow is a bounded layer using primary lime at 35% opacity, 4pt spread, and a 10pt Core Graphics blur radius (the rendering equivalent of Figma's 20px blur); the glow never changes the control's layout or hit frame.
+Primary navigation uses the shared bundled typography through `navigationLabel`, a 16pt medium role on a 24pt line height. Every destination owns a minimum 56×48pt capsule hit region and uses the shared 24pt Central icon metric; spacing between destinations is visual spacing, never dead touch space. The record control is 104×48pt with a 24pt Central icon. Its semantic recording glow is a bounded layer using primary lime at 35% opacity, 4pt spread, and a 10pt Core Graphics blur radius (the rendering equivalent of Figma's 20px blur); the glow never changes the control's layout or hit frame.
 
 The primary pager always keeps Home, Chats, and You mounted in one native page container. Career Work is a Home sub-surface and must never replace or become an untagged state of the primary pager. Horizontal gestures advance one adjacent destination, clamp at the first and last destination, and provide a guarded shell-level fallback only when native paging did not update the selection.
 
@@ -127,6 +130,10 @@ tokens; any explicit styling layered on top of them still follows this rule.
 ---
 
 ## Typography
+
+### Native Swift scale
+
+The shipping SwiftUI product uses semantic `TaisaTypography` roles. Base UI and button labels use 16/24. Supporting text and small labels use 14/20. Captions use 12/18. Primary dated page titles use Scoutie Sans at 28/36. Sheet titles use Inter Medium at 20/28. `TaisaText` applies these roles, including their line spacing. Product views do not set raw fonts, weights, or line heights.
 
 Never use raw `text-sm font-semibold` combinations — use the composite utilities:
 
@@ -295,3 +302,33 @@ clipboard item. The system document exporter uses the verified file URL through
 `UIDocumentPickerViewController` (iOS 14+, within the iOS 17 baseline), not an
 in-memory `FileDocument`. Its transfer lifetime stays owned until the platform
 reports completion or cancellation; scene changes shield the underlying content.
+
+## Native You profile presentation
+
+The approved Figma You overview and editor (146:1336 and 146:1721) use shared
+`TaisaProfileSummary`, `TaisaProfileAvatar`, `TaisaProfileIconButton`,
+`TaisaSettingsNavigationRow`, `TaisaSettingsGroup`, and `TaisaProfileSection`.
+These contracts contain no persistence or navigation state. The avatar currently
+uses name-derived initials; photo editing and photo persistence are deferred.
+
+The existing `TaisaField` contract from the Actions foundation is reused with a
+backward-compatible `.profile` appearance: a muted label, subtle filled input,
+semantic control radius and insets. `.outlined` retains the existing default.
+Profile validation reuses the field's existing `.invalid(message:)` state. It
+does not add a feature-local field, visual variant, token, or error component.
+The generic Actions `TaisaRow` was inspected but has no disclosure/action slot
+and wraps each row in its own shape. The settings navigation row is an approved
+interactive disclosure contract with its exact trailing chevron and group-owned
+shape; it does not replace that generic display-row contract.
+
+Profile-only typography roles use Scoutie Sans semibold for the name and Inter
+for field labels, inputs and settings rows. Fonts register from package-owned
+resources; other screens retain their current typography. Inter carries its OFL
+licence. Scoutie Sans is the font supplied by the local design environment.
+Profile metrics and exact Figma SVGs live once in TaisaDesignSystem; CentralIcon
+provides typed profile shield, cloud, diagnostics, chevron, edit and close assets.
+The provided portrait is not bundled as a default identity for every user.
+
+You's app-shell navigation and voice entry are reused, not recreated by the page.
+The editor owns only Display name and Bio. Auto-save and the compatibility move
+from headline into empty Bio remain in TaisaYou and existing encrypted storage.

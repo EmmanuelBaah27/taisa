@@ -3,6 +3,7 @@ import TaisaStorage
 
 public struct HomeClient: Sendable {
     public var load: @Sendable () async throws -> HomeSnapshot
+    public var create: @Sendable (String, ActionDueDay?) async throws -> ActionRecord
     public var complete: @Sendable (String, String) async throws -> ActionCompletionResult
     public var correctCompletion: @Sendable (String, String) async throws -> ActionRecord
     public var drop: @Sendable (String) async throws -> ActionRecord
@@ -14,6 +15,7 @@ public struct HomeClient: Sendable {
 
     public init(
         load: @escaping @Sendable () async throws -> HomeSnapshot,
+        create: @escaping @Sendable (String, ActionDueDay?) async throws -> ActionRecord = { _, _ in throw HomeClientError.mutationUnavailable },
         complete: @escaping @Sendable (String, String) async throws -> ActionCompletionResult = { _, _ in throw HomeClientError.mutationUnavailable },
         correctCompletion: @escaping @Sendable (String, String) async throws -> ActionRecord = { _, _ in throw HomeClientError.mutationUnavailable },
         drop: @escaping @Sendable (String) async throws -> ActionRecord = { _ in throw HomeClientError.mutationUnavailable },
@@ -24,6 +26,7 @@ public struct HomeClient: Sendable {
         move: @escaping @Sendable (String, Date, Date?) async throws -> Void = { _, _, _ in throw HomeClientError.mutationUnavailable }
     ) {
         self.load = load
+        self.create = create
         self.complete = complete
         self.correctCompletion = correctCompletion
         self.drop = drop
@@ -53,6 +56,16 @@ public extension HomeClient {
             load: {
                 let date = now()
                 return try await HomeQuery(store: store).load(weekContaining: date, timeZone: timeZone())
+            },
+            create: {
+                try await actions.createAction(
+                    goalID: nil,
+                    milestoneID: nil,
+                    title: $0,
+                    detail: "",
+                    dueDay: $1,
+                    context: context()
+                )
             },
             complete: { try await actions.completeAction(id: $0, evidenceTitle: $1, context: context()) },
             correctCompletion: { try await actions.undoMistakenCompletion(id: $0, completionEventID: $1, context: context()) },

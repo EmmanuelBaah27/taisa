@@ -1,0 +1,10 @@
+{
+  "controlledConstructors": [
+    "Button"
+  ],
+  "primitiveFiles": [
+    "apple/Packages/TaisaFoundation/Sources/TaisaDesignSystem/TaisaButtonControl.swift",
+    "apple/Packages/TaisaFoundation/Sources/TaisaDesignSystem/TaisaButtonStyle.swift"
+  ],
+  "legacyOccurrences": []
+}

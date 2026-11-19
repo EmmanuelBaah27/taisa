@@ -30,11 +30,10 @@ struct ThisWeekSection: View {
     }
 
     private func weeklyRow(_ item: WeeklyWorkItem) -> some View {
-        Button { send(.action(item.action.id)) } label: {
+        TaisaPressable(action: { send(.action(item.action.id)) }) {
             TaisaRow(title: item.action.title, supporting: supportingText(for: item), icon: .action)
         }
-        .buttonStyle(.plain)
-        .accessibilityHint("Open this action")
+        .accessibilityHint("Open this task")
     }
 
     private func supportingText(for item: WeeklyWorkItem) -> String? {
@@ -54,44 +53,48 @@ enum ThisWeekSheet: Identifiable {
 }
 
 struct HomeActionsPreviewSection: View {
-    let prompts: [HomeActionPrompt]
+    let actions: [ActionRecord]
+    let totalCount: Int
     let send: (HomeIntent) -> Void
+    let add: @MainActor @Sendable () -> Void
 
     var body: some View {
-        Section("Actions") {
-            if prompts.isEmpty {
-                TaisaRow(title: "No actions need attention", supporting: "Open Actions when you want to add or review work.", icon: .action)
-            } else {
-                ForEach(Array(prompts.enumerated()), id: \.element.action.id) { _, prompt in
-                    Button { send(.action(prompt.action.id)) } label: {
-                        TaisaRow(title: prompt.action.title, supporting: label(prompt.reason), icon: icon(prompt.reason), emphasis: prompt.reason == .overdue || prompt.reason == .blocked ? .attention : .standard)
-                    }
+        VStack(spacing: TaisaSpacing.tight.rawValue) {
+            HStack(spacing: TaisaSpacing.compact.rawValue) {
+                TaisaText(role: .taskSupporting, color: .mutedForeground, content: "Tasks this week")
+                Spacer()
+                if !actions.isEmpty {
+                    TaisaSecondaryIconButton(icon: .add, accessibilityLabel: "Add task", size: TaisaControlMetric.taskControl, action: add)
                 }
             }
-            Button { send(.actions) } label: { TaisaNavigationRow(label: "View all actions", icon: .action) }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("home.actions.view-all")
+            .padding(.vertical, TaisaSpacing.compact.rawValue)
+            if actions.isEmpty {
+                TaisaTaskEmptyStateCard(action: add)
+            } else {
+                VStack(spacing: TaisaSpacing.tight.rawValue) {
+                    ForEach(actions.prefix(3), id: \.id) { action in
+                        TaisaPressable(action: { send(.action(action.id)) }) {
+                            TaisaTaskRow(title: action.title, dueLabel: dueLabel(for: action))
+                        }
+                    }
+                }
+                .clipShape(RoundedRectangle(cornerRadius: TaisaRadius.taskGroup))
+                TaisaPressable(action: { send(.actions) }) { TaisaTaskSummaryRow(count: totalCount) }
+                    .accessibilityIdentifier("home.actions.view-all")
+            }
         }
         .accessibilityIdentifier("home.actions.preview")
     }
 
-    private func label(_ reason: HomeActionPromptReason) -> String {
-        switch reason {
-        case .overdue: "Overdue"
-        case .dueSoon: "Due soon"
-        case .blocked: "Blocked"
-        case .recentlyReopened: "Recently reopened"
-        case .thisWeek: "This week"
-        }
+    private func dueLabel(for action: ActionRecord) -> String? {
+        guard let raw = action.dueDay?.rawValue else { return nil }
+        let formatter = DateFormatter()
+        formatter.locale = .current
+        formatter.dateFormat = "yyyy-MM-dd"
+        guard let date = formatter.date(from: raw) else { return nil }
+        return date.formatted(.dateTime.weekday(.abbreviated))
     }
 
-    private func icon(_ reason: HomeActionPromptReason) -> CentralIconName {
-        switch reason {
-        case .overdue, .blocked: .warning
-        case .recentlyReopened: .undo
-        case .dueSoon, .thisWeek: .action
-        }
-    }
 }
 
 struct HomeGoalsSummarySection: View {
@@ -99,14 +102,13 @@ struct HomeGoalsSummarySection: View {
     let send: (HomeIntent) -> Void
 
     var body: some View {
-        Section("Goals") {
+        TaisaSection("Goals") {
             if goals.isEmpty {
-                TaisaRow(title: "No active goals", supporting: "Create a goal when an outcome needs more than one action.", icon: .goal)
+                TaisaRow(title: "No active goals", supporting: "Create a goal when an outcome needs more than one task.", icon: .goal)
             } else {
                 ForEach(goals.prefix(3), id: \.id) { GoalRow(goal: $0, send: send) }
             }
-            Button { send(.goals) } label: { TaisaNavigationRow(label: "View all goals", icon: .goal) }
-                .buttonStyle(.plain)
+            TaisaPressable(action: { send(.goals) }) { TaisaNavigationRow(label: "View all goals", icon: .goal) }
                 .accessibilityIdentifier("home.goals.view-all")
         }
         .accessibilityIdentifier("home.goals.summary")
@@ -118,8 +120,8 @@ struct HomeReviewSection: View {
     let open: (Int) -> Void
 
     var body: some View {
-        Section("Review") {
-            Button { open(unresolvedCount) } label: {
+        TaisaSection("Review") {
+            TaisaPressable(action: { open(unresolvedCount) }) {
                 TaisaRow(title: "Review \(unresolvedCount) unfinished \(unresolvedCount == 1 ? "item" : "items")", icon: .history, emphasis: .attention)
             }
             .accessibilityIdentifier("home.prior-week.review")
@@ -141,7 +143,7 @@ struct PriorWeekReviewSheet: View {
             } description: {
                 TaisaText(role: .body, color: .mutedForeground, content: "You have \(unresolvedCount) unfinished \(unresolvedCount == 1 ? "item" : "items") from an earlier week. Decide what still belongs before planning more work.")
             }
-            .navigationTitle("Review prior week")
+            .taisaNavigationTitle("Review prior week")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     TaisaToolbarAction(label: "Done", icon: .completed) { dismiss() }

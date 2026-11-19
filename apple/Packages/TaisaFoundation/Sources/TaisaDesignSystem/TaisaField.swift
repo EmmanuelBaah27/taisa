@@ -1,5 +1,14 @@
 import SwiftUI
 
+public func TaisaSystemTextField(_ title: String, text: Binding<String>) -> TextField<Text> {
+    TextField(title, text: text)
+}
+
+public func TaisaSystemSecureField(_ title: String, text: Binding<String>) -> SecureField<Text> {
+    SecureField(title, text: text)
+}
+
+
 public enum TaisaFieldKind: Sendable, Equatable {
     case text
     case secure
@@ -14,10 +23,23 @@ public enum TaisaFieldState: Sendable, Equatable {
     case loading
 }
 
+public enum TaisaFieldLabelPresentation: Sendable, Equatable {
+    case visible
+    case placeholderOnly
+}
+
+public enum TaisaFieldContract {
+    public static let background = TaisaColor.subtleSurface
+}
+
+public enum TaisaFieldAppearance: Sendable { case outlined, profile }
+
 public struct TaisaField: View {
     private let title: String
     private let placeholder: String
     private let kind: TaisaFieldKind
+    private let appearance: TaisaFieldAppearance
+    private let labelPresentation: TaisaFieldLabelPresentation
     private let state: TaisaFieldState
     @Binding private var text: String
 
@@ -26,23 +48,32 @@ public struct TaisaField: View {
         text: Binding<String>,
         placeholder: String = "",
         kind: TaisaFieldKind = .text,
-        state: TaisaFieldState = .enabled
+        state: TaisaFieldState = .enabled,
+        appearance: TaisaFieldAppearance = .outlined,
+        labelPresentation: TaisaFieldLabelPresentation = .visible
     ) {
         self.title = title
         _text = text
         self.placeholder = placeholder
         self.kind = kind
         self.state = state
+        self.appearance = appearance
+        self.labelPresentation = labelPresentation
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: TaisaSpacing.compact.rawValue) {
-            TaisaText(role: .label, content: title)
+        VStack(alignment: .leading, spacing: appearance == .profile ? TaisaSpacing.tight.rawValue : TaisaSpacing.compact.rawValue) {
+            if labelPresentation == .visible {
+                TaisaText(role: appearance == .profile ? .profileSupporting : .label, color: appearance == .profile ? .mutedForeground : .foreground, content: title)
+                    .frame(minHeight: appearance == .profile ? TaisaTypography.supporting.lineHeight : nil, alignment: .leading)
+            }
             field
-                .font(TaisaTypography.body.font)
+                .font(appearance == .profile ? TaisaTypography.profileBody.font : TaisaTypography.body.font)
                 .accessibilityLabel(title)
-                .padding(TaisaSpacing.control.rawValue)
-                .background(TaisaColor.background.color)
+                .padding(.horizontal, appearance == .profile ? TaisaSpacing.standard.rawValue : TaisaSpacing.control.rawValue)
+                .padding(.vertical, TaisaSpacing.control.rawValue)
+                .frame(minHeight: appearance == .profile ? TaisaControlMetric.primaryNavigationItemHeight : nil)
+                .background(appearance == .profile ? TaisaColor.subtleSurface.color : TaisaFieldContract.background.color, in: RoundedRectangle(cornerRadius: TaisaRadius.control.rawValue))
                 .overlay {
                     RoundedRectangle(cornerRadius: TaisaRadius.control.rawValue)
                         .stroke(borderColor)
@@ -61,7 +92,7 @@ public struct TaisaField: View {
             SecureField(placeholder, text: $text)
         case .multiline:
             TextField(placeholder, text: $text, axis: .vertical)
-                .lineLimit(3...8)
+                .lineLimit((appearance == .profile ? 1 : 3)...8)
         case .text, .readOnly:
             TextField(placeholder, text: $text)
         }
@@ -69,7 +100,7 @@ public struct TaisaField: View {
 
     private var borderColor: Color {
         if case .invalid = state { return TaisaColor.destructive.color }
-        return TaisaColor.border.color
+        return appearance == .profile ? .clear : TaisaColor.border.color
     }
 }
 

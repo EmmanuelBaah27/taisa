@@ -793,17 +793,15 @@ struct ConversationHostView: View {
             else if failed {
                 VStack {
                     ContentUnavailableView {
-                        Label("Conversation couldn’t open", systemImage: "exclamationmark.triangle")
+                        TaisaIconLabel("Conversation couldn’t open", icon: .warning)
                     } description: {
-                        Text("Taisa couldn’t access it securely.")
+                        TaisaText(role: .body, content: "Taisa couldn’t access it securely.")
                     } actions: {
-                        Button("Close", action: dismiss)
+                        TaisaSystemButton("Close", action: { dismiss() })
                             .accessibilityIdentifier("conversation.unavailable.close")
                     }
 #if DEBUG || TAISA_PERSONAL
-                    Text("Diagnostic: \((failureStage ?? .unknown).rawValue)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    TaisaText(role: .metadata, color: .mutedForeground, content: "Diagnostic: \((failureStage ?? .unknown).rawValue)")
                         .accessibilityIdentifier("conversation.unavailable.diagnostic")
 #endif
                 }
