@@ -302,7 +302,7 @@ schemes:
     test:
       config: Preview
       targets:
-        - TaisaUnitTests
+        # Unit tests use the development host in Taisa-Dev. Keep this graph Preview-only.
         - TaisaPreviewUITests
   Taisa-Personal:
     build:

@@ -12,8 +12,7 @@ public struct TaisaToolbarAction: View {
     }
 
     public var body: some View {
-        Button(action: action) { CentralIcon(icon).frame(width: 24, height: 24) }
-            .buttonStyle(.plain)
+        TaisaButtonControl(style: TaisaButtonStyle(shape: .circle), action: action) { CentralIcon(icon).frame(width: 24, height: 24) }
             .frame(minWidth: TaisaControlMetric.headerActionHeight, minHeight: TaisaControlMetric.headerActionHeight)
             .accessibilityLabel(label)
     }

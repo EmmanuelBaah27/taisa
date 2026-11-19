@@ -441,8 +441,8 @@ struct ConversationTimeline: View {
     }
 
     private func messageText(_ message: MessageRecord) -> Text {
-        if message.role == "assistant", let markdown = try? AttributedString(markdown: message.body) { return Text(markdown) }
-        return Text(message.body)
+        if message.role == "assistant", let markdown = try? AttributedString(markdown: message.body) { return TaisaText.native(markdown) }
+        return TaisaText.native(message.body)
     }
 
     private func toggleExpansion(for messageID: String) {
@@ -458,35 +458,16 @@ struct ConversationTimeline: View {
     }
 
     @ViewBuilder private func messageActions(for message: MessageRecord) -> some View {
-        Button {
+        TaisaSystemIconButton("Copy", icon: .copy) {
             UIPasteboard.general.string = message.body
             copiedConfirmationVisible = true
-        } label: {
-            Label {
-                Text("Copy")
-            } icon: {
-                CentralIcon(.copy)
-                    .frame(
-                        width: TaisaControlMetric.contextMenuIcon,
-                        height: TaisaControlMetric.contextMenuIcon
-                    )
-            }
         }
         if message.role == "user" {
-            Button { correct(message) } label: {
-                Label {
-                    Text("Edit")
-                } icon: {
-                    CentralIcon(.edit)
-                        .frame(
-                            width: TaisaControlMetric.contextMenuIcon,
-                            height: TaisaControlMetric.contextMenuIcon
-                        )
-                }
-            }
+            TaisaSystemIconButton("Edit", icon: .edit) { correct(message) }
                 .accessibilityIdentifier("conversation.correct-transcript")
         }
     }
+
 }
 
 private struct ThinkingIndicator: View {
@@ -494,9 +475,7 @@ private struct ThinkingIndicator: View {
     @State private var shimmerOffset: CGFloat = -1
 
     var body: some View {
-        Text("Thinking")
-            .font(TaisaTypography.body.font)
-            .foregroundStyle(TaisaColor.mutedForeground.color)
+        TaisaText(role: .body, color: .mutedForeground, content: "Thinking")
             .overlay {
                 if !reduceMotion {
                     GeometryReader { geometry in
@@ -512,7 +491,7 @@ private struct ThinkingIndicator: View {
                         .frame(width: geometry.size.width * 0.55)
                         .offset(x: shimmerOffset * geometry.size.width)
                     }
-                    .mask(Text("Thinking").font(TaisaTypography.body.font))
+                    .mask(TaisaText(role: .body, content: "Thinking"))
                     .allowsHitTesting(false)
                 }
             }
@@ -541,7 +520,7 @@ private struct ExpandableUserMessage: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: TaisaSpacing.compact.rawValue) {
-            Text(message.body)
+            TaisaText(role: .body, content: message.body)
                 .lineLimit(isExpanded ? nil : ConversationTimeline.userPreviewLineLimit)
                 .background { measuredFullText }
                 .background {
@@ -551,7 +530,7 @@ private struct ExpandableUserMessage: View {
                 }
 
             if isExpanded || isTruncated {
-                Button(isExpanded ? "Show less" : "Show more", action: toggleExpansion)
+                TaisaButtonControl(isExpanded ? "Show less" : "Show more", style: TaisaButtonStyle(presentation: .content), action: { toggleExpansion() })
                     .font(TaisaTypography.metadata.font)
                     .foregroundStyle(TaisaColor.mutedForeground.color)
                     .accessibilityIdentifier("conversation.message.\(message.id).expansion")
@@ -564,7 +543,7 @@ private struct ExpandableUserMessage: View {
     }
 
     private var measuredFullText: some View {
-        Text(message.body)
+        TaisaText(role: .body, content: message.body)
             .fixedSize(horizontal: false, vertical: true)
             .hidden()
             .background {

@@ -184,9 +184,7 @@ struct PersonalCombinedHomeQAView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Text("Isolated QA fixtures — your Personal data is not changed")
-                .font(TaisaTypography.metadata.font)
-                .foregroundStyle(.secondary)
+            TaisaText(role: .metadata, color: .mutedForeground, content: "Isolated QA fixtures — your Personal data is not changed")
                 .padding(.horizontal)
                 .padding(.top, 8)
                 .accessibilityIdentifier("personal-qa.combined-home.notice")

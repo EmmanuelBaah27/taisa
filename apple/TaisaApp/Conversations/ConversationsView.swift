@@ -75,26 +75,26 @@ struct ConversationsView: View {
                 if let confirmation {
                     switch confirmation {
                 case .discard(let draft):
-                    Button("Discard draft", role: .destructive) { Task { await model.discardDraft(id: draft.id) } }
+                    TaisaSystemButton("Discard draft", role: .destructive) { Task { await model.discardDraft(id: draft.id) } }
                 case .delete(let conversation):
-                    Button("Delete conversation", role: .destructive) { Task { await model.deleteConversation(id: conversation.id) } }
+                    TaisaSystemButton("Delete conversation", role: .destructive) { Task { await model.deleteConversation(id: conversation.id) } }
                         .accessibilityIdentifier("conversation.delete-confirmation")
                     }
                 }
-                Button("Cancel", role: .cancel) {}
+                TaisaSystemButton("Cancel", role: .cancel) {}
             }
         .alert("Rename conversation", isPresented: Binding(
                 get: { renameTarget != nil },
                 set: { if !$0 { renameTarget = nil } }
             )) {
-                TextField("Title", text: $renameText)
-                Button("Rename") {
+                TaisaSystemTextField("Title", text: $renameText)
+                TaisaSystemButton("Rename") {
                     guard let target = renameTarget else { return }
                     Task { await model.renameConversation(id: target.id, title: renameText) }
                     renameTarget = nil
                 }
                 .accessibilityIdentifier("conversation.rename")
-                Button("Cancel", role: .cancel) { renameTarget = nil }
+                TaisaSystemButton("Cancel", role: .cancel) { renameTarget = nil }
             }
     }
 
@@ -110,14 +110,17 @@ struct ConversationsView: View {
     @ViewBuilder private var content: some View {
         switch model.state {
         case .idle, .loading:
-            ProgressView("Loading chats…")
+            ProgressView { TaisaText(role: .body, content: "Loading chats…") }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         case .empty:
-            ContentUnavailableView(
-                "No chats yet",
-                systemImage: "bubble.left.and.bubble.right",
-                description: Text("Completed chats and saved drafts will appear here.")
-            )
+            ContentUnavailableView {
+                VStack {
+                    Image(systemName: "bubble.left.and.bubble.right")
+                    TaisaText(role: .heading, content: "No chats yet")
+                }
+            } description: {
+                TaisaText(role: .supporting, color: .mutedForeground, content: "Completed chats and saved drafts will appear here.")
+            }
             .accessibilityIdentifier("conversations.empty")
         case let .content(snapshot, isRefreshing, _):
             List {
@@ -128,20 +131,19 @@ struct ConversationsView: View {
                                 .listRowBackground(Color.clear)
                                 .listRowSeparator(.hidden)
                             ForEach(Array(group.conversations.enumerated()), id: \.element.id) { index, conversation in
-                            Button { open(conversation) } label: {
+                            TaisaButtonControl(style: TaisaButtonStyle(presentation: .content), action: { open(conversation) }) {
                                 ConversationHistoryRow(
                                     conversation: conversation,
                                     preview: snapshot.lastMessagePreview(for: conversation.id)
                                 )
                             }
-                                .buttonStyle(.plain)
                                 .listRowInsets(EdgeInsets())
                                 .listRowBackground(historyRowBackground(index: index, count: group.conversations.count))
                                 .listRowSeparatorTint(TaisaColor.background.color)
                                 .listRowSeparator(.hidden)
                                 .contextMenu {
-                                    Button("Rename") { beginRename(conversation) }
-                                    Button("Delete", role: .destructive) { confirmation = .delete(conversation) }
+                                    TaisaSystemButton("Rename") { beginRename(conversation) }
+                                    TaisaSystemButton("Delete", role: .destructive) { confirmation = .delete(conversation) }
                                 }
                             }
                         }
@@ -164,14 +166,14 @@ struct ConversationsView: View {
             .id(resetID)
         case let .failure(issue):
             ContentUnavailableView {
-                Label(issueTitle(issue, retainedContent: false), systemImage: "exclamationmark.triangle")
+                VStack { Image(systemName: "exclamationmark.triangle"); TaisaText(role: .heading, content: issueTitle(issue, retainedContent: false)) }
             } description: {
-                Text(issueMessage(issue, retainedContent: false))
+                TaisaText(role: .supporting, color: .mutedForeground, content: issueMessage(issue, retainedContent: false))
             } actions: {
                 if case .recoveryRequired = issue {
-                    Button("Open recovery", action: openRecovery).accessibilityIdentifier("conversations.recovery")
+                    TaisaButtonControl("Open recovery", action: { openRecovery() }).accessibilityIdentifier("conversations.recovery")
                 } else {
-                    Button("Try again") { Task { await model.load() } }.accessibilityIdentifier("conversations.retry")
+                    TaisaButtonControl("Try again") { Task { await model.load() } }.accessibilityIdentifier("conversations.retry")
                 }
             }
         }
@@ -191,7 +193,7 @@ struct ConversationsView: View {
     private var draftsButton: some View {
         TaisaSecondaryCapsuleButton(action: { showsDrafts = true }) {
             HStack(spacing: 6) {
-                Text("Drafts").font(TaisaTypography.navigationLabel.font)
+                TaisaText(role: .navigationLabel, content: "Drafts")
                 Circle()
                     .fill(TaisaColor.destructive.color)
                     .frame(width: 8, height: 8)
@@ -202,9 +204,7 @@ struct ConversationsView: View {
     }
 
     private func monthHeader(_ month: String) -> some View {
-        Text(month)
-            .font(TaisaTypography.label.font)
-            .foregroundStyle(TaisaColor.mutedForeground.color)
+        TaisaText(role: .label, color: .mutedForeground, content: month)
             .textCase(nil)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.bottom, TaisaSpacing.compact.rawValue)
@@ -339,10 +339,9 @@ private struct DraftsView: View {
 
     var body: some View {
         List(drafts) { draft in
-            Button { resume(draft) } label: { DraftRow(draft: draft) }
-                .buttonStyle(.plain)
+            TaisaButtonControl(style: TaisaButtonStyle(presentation: .content), action: { resume(draft) }) { DraftRow(draft: draft) }
                 .contextMenu {
-                    Button("Discard", role: .destructive) { discard(draft) }
+                    TaisaSystemButton("Discard", role: .destructive) { discard(draft) }
                 }
         }
         .listStyle(.plain)

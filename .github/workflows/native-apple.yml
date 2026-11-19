@@ -18,6 +18,9 @@ concurrency:
   group: native-full-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.event_name == 'schedule' && 'nightly' || github.event_name == 'workflow_dispatch' && format('manual-{0}', github.run_id) || format('release-{0}', github.ref) }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+env:
+  TAISA_DS_BASE_REF: ${{ github.event.pull_request.base.sha || 'origin/main' }}
+
 jobs:
   classify-native-impact:
     name: Classify native impact
@@ -63,6 +66,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -74,7 +78,10 @@ jobs:
       - name: Install pinned iOS platform
         run: |
           for attempt in 1 2 3; do
-            if xcodebuild -downloadPlatform iOS; then
+            # Prime CoreSimulator before downloading after switching Xcode.
+            # See actions/runner-images#13459.
+            if xcrun simctl list >/dev/null &&
+              xcodebuild -downloadPlatform iOS -buildVersion 26.1 -architectureVariant universal; then
               exit 0
             fi
             test "${attempt}" -lt 3 || exit 1

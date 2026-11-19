@@ -51,7 +51,7 @@ struct TaskDetailSheetContent: View {
         Group {
             switch TaskDetailPresentation.resolve(model.state, actionID: actionID) {
             case .loading:
-                ProgressView("Loading task…")
+                TaisaProgressView("Loading task…")
             case .unavailable:
                 unavailableTask
             case let .failure(issue):
@@ -507,7 +507,7 @@ struct CareerWorkView: View {
     @ViewBuilder private var collection: some View {
         switch model.state {
         case .idle, .loading:
-            ProgressView("Loading Career Work…")
+            TaisaProgressView("Loading Career Work…")
         case .empty:
             ContentUnavailableView {
                 VStack {
@@ -617,7 +617,7 @@ struct CareerWorkView: View {
     }
 
     private func goalSection(_ title: String, goals: [GoalRecord]) -> some View {
-        Section(title) {
+        TaisaSection(title) {
             ForEach(goals, id: \.id) { goal in
                 TaisaPressable(action: {
                     selectedRoute = .goal(id: goal.id)
@@ -764,14 +764,14 @@ private struct CareerGoalDetail: View {
 
     var body: some View {
         List {
-            Section("Progress") { TaisaRow(title: snapshot.progress.summary, icon: .goal) }
-            Section("Add work") {
+            TaisaSection("Progress") { TaisaRow(title: snapshot.progress.summary, icon: .goal) }
+            TaisaSection("Add work") {
                 TaisaButton(role: .secondary, label: "Add milestone", icon: .milestone) { add(.milestone) }
                 TaisaButton(role: .secondary, label: "Add task", icon: .action) { addAction() }
                 TaisaButton(role: .secondary, label: "Add evidence", icon: .evidence) { add(.evidence(actions: snapshot.actions)) }
             }
             if !snapshot.milestones.isEmpty {
-                Section("Milestones") {
+                TaisaSection("Milestones") {
                     ForEach(snapshot.milestones, id: \.id) { milestone in
                         TaisaRow(title: milestone.title, supporting: milestone.status, icon: milestone.status == "completed" ? .completed : .incomplete)
                             .accessibilityLabel("Milestone \(milestone.title), \(milestone.status)")
@@ -779,7 +779,7 @@ private struct CareerGoalDetail: View {
                 }
             }
             if !snapshot.actions.isEmpty {
-                Section("Tasks") {
+                TaisaSection("Tasks") {
                     ForEach(snapshot.actions, id: \.id) { action in
                         TaisaPressable(action: { open(.action(id: action.id)) }) {
                             TaisaRow(title: action.title, supporting: action.status, icon: action.status == "completed" ? .completed : .incomplete)
@@ -789,7 +789,7 @@ private struct CareerGoalDetail: View {
                 }
             }
             if !snapshot.evidence.isEmpty {
-                Section("Evidence") {
+                TaisaSection("Evidence") {
                     ForEach(snapshot.evidence, id: \.id) { evidence in
                         TaisaPressable(action: { open(.evidence(id: evidence.id)) }) {
                             VStack(alignment: .leading) {
@@ -803,7 +803,7 @@ private struct CareerGoalDetail: View {
                     }
                 }
             }
-            Section("Status") {
+            TaisaSection("Status") {
                 lifecycleButtons
                 if isArchived {
                     TaisaButton(role: .secondary, label: "Restore goal", icon: .undo) { Task { await model.restoreSelectedGoal() } }
@@ -891,12 +891,12 @@ struct CareerWorkProposalReviewView: View {
 
     var body: some View {
         Form {
-            Section("Proposed change") {
+            TaisaSection("Proposed change") {
                 TaisaText(role: .childHeaderTitle, content: title)
                 TaisaText(role: .body, content: exactChange)
                 TaisaRow(title: "Source", supporting: source, icon: .evidence)
             }
-            Section("Review") {
+            TaisaSection("Review") {
                 TaisaButton(role: .primary, label: "Accept change", icon: .completed) { accept() }
                 TaisaButton(role: .secondary, label: "Correct before accepting", icon: .edit) { correct() }
                 TaisaButton(role: .destructive, label: "Reject change", icon: .cross) { reject() }
@@ -923,7 +923,7 @@ private struct CareerActionDetail: View {
 
     var body: some View {
         List {
-            Section("Task") {
+            TaisaSection("Task") {
                 TaisaStatusSurface(statusRole, label: snapshot.action.status.capitalized)
                 if !snapshot.action.detail.isEmpty { TaisaRow(title: snapshot.action.detail) }
                 if let due = actionDueText(snapshot.action) {
@@ -942,7 +942,7 @@ private struct CareerActionDetail: View {
                         .accessibilityIdentifier("career-work.action.parent-milestone")
                 }
             }
-            Section("Checklist") {
+            TaisaSection("Checklist") {
                 ForEach(snapshot.checklist, id: \.id) { item in
                     HStack {
                         TaisaPressable(action: {
@@ -972,7 +972,7 @@ private struct CareerActionDetail: View {
             }
             .accessibilityIdentifier("career-work.action.checklist")
             if !snapshot.currentEvidence.isEmpty || !snapshot.supersededEvidence.isEmpty {
-                Section("Evidence") {
+                TaisaSection("Evidence") {
                     ForEach(snapshot.currentEvidence, id: \.id) { evidence in
                         TaisaPressable(action: { open(.evidence(id: evidence.id)) }) {
                             TaisaRow(title: evidence.title, supporting: evidence.detail, icon: .evidence)
@@ -994,10 +994,10 @@ private struct CareerActionDetail: View {
                             TaisaRow(title: event.kind.rawValue.replacingOccurrences(of: "_", with: " ").capitalized, supporting: event.detail)
                         }
                     }
-                } header: { Text("History") }
+                } header: { TaisaText(role: .body, content: "History") }
                     .accessibilityIdentifier("career-work.action.history")
             }
-            Section("Manage") { lifecycleControls }
+            TaisaSection("Manage") { lifecycleControls }
         }
         .accessibilityIdentifier("career-work.action.detail")
         .modifier(TaisaConfirmationDialog(title: "Complete this task?", isPresented: $showsComplete, confirmLabel: "Complete task", cancelLabel: "Keep working") {
@@ -1247,10 +1247,10 @@ private struct ActionDuplicateReviewSheet: View {
     var body: some View {
         NavigationStack {
             List {
-                Section("Possible duplicates") {
+                TaisaSection("Possible duplicates") {
                     ForEach(review?.candidates ?? [], id: \.id) { TaisaRow(title: $0.title, supporting: $0.detail, icon: .warning, emphasis: .attention) }
                 }
-                Section("Choose") {
+                TaisaSection("Choose") {
                     TaisaButton(role: .secondary, label: "Open existing task", icon: .action) { Task { await decide(.openExisting) } }
                     TaisaButton(role: .primary, label: "Create separate task", icon: .add) { Task { await decide(.createSeparate) } }
                     TaisaButton(role: .secondary, label: "Cancel") { cancel() }
@@ -1274,7 +1274,7 @@ private struct CareerEvidenceDetail: View {
     var body: some View {
         Form {
             TaisaRow(title: "Occurred", supporting: Date(timeIntervalSince1970: Double(evidence.occurredAtMS) / 1_000).formatted(date: .abbreviated, time: .omitted), icon: .evidence)
-            if !evidence.detail.isEmpty { Section("Details") { TaisaText(role: .body, content: evidence.detail) } }
+            if !evidence.detail.isEmpty { TaisaSection("Details") { TaisaText(role: .body, content: evidence.detail) } }
         }
         .accessibilityIdentifier("career-work.evidence.detail")
     }

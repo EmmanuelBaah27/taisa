@@ -237,7 +237,7 @@ struct ConversationComponentTests {
         #expect(InlineRecoveryAlert.Contract.actionSpacing == 12)
     }
 
-    @Test func secondaryControlsUseClearRefractiveGlassAnatomyWithATintedCircularSendControl() throws {
+    @Test func secondaryAndFloatingControlsShareTheNativeButtonFoundation() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .deletingLastPathComponent()
@@ -268,7 +268,7 @@ struct ConversationComponentTests {
         #expect(tokens.contains("public static let secondaryButtonShadowOpacity"))
         #expect(!actionBar.contains("glassStyle: .clear"))
         #expect(actionBar.contains("TaisaSecondaryIconButton(icon: icon, accessibilityLabel: label, action: action)"))
-        #expect(actionBar.contains(".glassEffect(.clear.tint(TaisaColor.primaryAction.color).interactive(), in: Circle())"))
+        #expect(actionBar.contains("TaisaButtonControl(style: TaisaButtonStyle(role: .primary, shape: .circle)"))
         #expect(!actionBar.contains(".buttonStyle(.glassProminent)"))
     }
 

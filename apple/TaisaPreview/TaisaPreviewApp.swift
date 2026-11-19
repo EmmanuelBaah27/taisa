@@ -7,6 +7,7 @@ struct TaisaPreviewApp: App {
         WindowGroup {
             PreviewCatalogView()
                 .font(TaisaTypography.body.font)
+                .buttonStyle(TaisaButtonStyle())
         }
     }
 }

@@ -67,7 +67,7 @@ public struct TaisaButton: View {
 
     public init(
         role: TaisaButtonRole,
-        shape: TaisaButtonShape = .roundedRectangle,
+        shape: TaisaButtonShape = .capsule,
         label: String,
         icon: CentralIconName? = nil,
         iconColor: TaisaColor? = nil,
@@ -96,7 +96,7 @@ public struct TaisaButton: View {
     }
 
     public var body: some View {
-        Button(action: action) {
+        TaisaButtonControl(style: TaisaButtonStyle(role: isSelected && role != .destructive ? .primary : role, shape: shape), action: action) {
             ZStack {
                 HStack(spacing: TaisaSpacing.compact.rawValue) {
                     if let icon {
@@ -120,11 +120,7 @@ public struct TaisaButton: View {
                     minHeight: size.minimumHeight
                 )
                 .padding(.horizontal, shape == .circle ? 0 : TaisaSpacing.standard.rawValue)
-                .background(background, in: buttonShape)
-                .overlay { buttonShape.stroke(borderColor) }
-                .clipShape(buttonShape)
         }
-        .buttonStyle(.plain)
         .fixedSize(horizontal: layout == .intrinsic, vertical: false)
         .frame(minWidth: size.minimumHitHeight, minHeight: size.minimumHitHeight)
         .contentShape(Rectangle())
@@ -134,37 +130,11 @@ public struct TaisaButton: View {
         .accessibilityLabel(isProcessing ? processingAccessibilityLabel : accessibilityLabel)
     }
 
-    private var buttonShape: AnyShape {
-        switch shape {
-        case .roundedRectangle: AnyShape(RoundedRectangle(cornerRadius: TaisaRadius.control.rawValue))
-        case .capsule: AnyShape(Capsule())
-        case .circle: AnyShape(Circle())
-        }
-    }
-
-    private var background: Color {
-        switch role {
-        case .primary:
-            TaisaColor.primaryAction.color
-        case .secondary, .ghost, .destructive:
-            if isSelected { TaisaColor.primaryAction.color }
-            else if role == .ghost { Color.clear }
-            else { TaisaColor.background.color }
-        }
-    }
-
     private var labelColor: TaisaColor {
         role == .destructive ? .destructive : .foreground
     }
 
-    private var borderColor: Color {
-        switch role {
-        case .primary: .clear
-        case .secondary: isSelected ? .clear : TaisaColor.border.color
-        case .ghost: .clear
-        case .destructive: TaisaColor.destructive.color
-        }
-    }
+
 }
 
 #Preview("Buttons") {

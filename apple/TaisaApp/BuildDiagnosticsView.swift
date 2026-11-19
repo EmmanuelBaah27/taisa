@@ -35,7 +35,7 @@ struct BuildDiagnosticsView: View {
     }
 
     private func diagnosticRow(_ label: String, value: String) -> some View {
-        LabeledContent(label, value: value)
+        TaisaLabeledContent(label, value: value)
             .textSelection(.enabled)
             .accessibilityElement(children: .combine)
             .accessibilityLabel("\(label): \(value)")

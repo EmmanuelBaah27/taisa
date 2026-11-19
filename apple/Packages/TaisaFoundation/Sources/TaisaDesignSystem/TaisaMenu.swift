@@ -12,7 +12,7 @@ public struct TaisaMenu: View {
     public var body: some View {
         Menu(label) {
             ForEach(Array(actions.enumerated()), id: \.offset) { _, item in
-                Button(item.0, role: item.1 == .destructive ? .destructive : nil, action: item.2)
+                TaisaSystemButton(item.0, role: item.1 == .destructive ? .destructive : nil, action: { item.2() })
             }
         }
         .tint(TaisaColor.foreground.color)

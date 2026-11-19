@@ -1,5 +1,14 @@
 import SwiftUI
 
+public func TaisaSystemTextField(_ title: String, text: Binding<String>) -> TextField<Text> {
+    TextField(title, text: text)
+}
+
+public func TaisaSystemSecureField(_ title: String, text: Binding<String>) -> SecureField<Text> {
+    SecureField(title, text: text)
+}
+
+
 public enum TaisaFieldKind: Sendable, Equatable {
     case text
     case secure

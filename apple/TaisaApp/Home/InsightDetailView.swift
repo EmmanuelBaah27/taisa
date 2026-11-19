@@ -21,42 +21,35 @@ struct InsightDetailView: View {
     @ViewBuilder private var content: some View {
         switch model.detailState {
         case .idle, .loading:
-            ProgressView("Loading evidence…")
+            TaisaProgressView("Loading evidence…")
         case let .content(detail) where detail.insight.id == insight.id:
             List {
                 Section {
-                    Text(detail.insight.body)
-                        .font(TaisaTypography.heading.font)
+                    TaisaText(role: .heading, content: detail.insight.body)
                 }
-                Section("Sources") {
+                TaisaSection("Sources") {
                     if detail.sources.isEmpty {
-                        Text("No available sources")
-                            .foregroundStyle(.secondary)
+                        TaisaText(role: .body, color: .mutedForeground, content: "No available sources")
                     } else {
                         ForEach(detail.sources, id: \.id) { source in
                             VStack(alignment: .leading, spacing: 4) {
-                                Text(source.sourceType.capitalized)
-                                    .font(TaisaTypography.label.font)
+                                TaisaText(role: .label, content: source.sourceType.capitalized)
                                 if !source.excerpt.isEmpty {
-                                    Text(source.excerpt)
-                                        .foregroundStyle(.secondary)
+                                    TaisaText(role: .body, color: .mutedForeground, content: source.excerpt)
                                 }
                             }
                         }
                     }
                 }
                 .accessibilityIdentifier("insight.detail.sources")
-                Section("Revisions") {
+                TaisaSection("Revisions") {
                     if detail.revisions.isEmpty {
-                        Text("No revisions")
-                            .foregroundStyle(.secondary)
+                        TaisaText(role: .body, color: .mutedForeground, content: "No revisions")
                     } else {
                         ForEach(detail.revisions, id: \.id) { revision in
                             VStack(alignment: .leading, spacing: 4) {
-                                Text(revision.proposedBody)
-                                Text(revision.status.label)
-                                    .font(TaisaTypography.metadata.font)
-                                    .foregroundStyle(.secondary)
+                                TaisaText(role: .body, content: revision.proposedBody)
+                                TaisaText(role: .metadata, color: .mutedForeground, content: revision.status.label)
                             }
                         }
                     }
@@ -64,17 +57,17 @@ struct InsightDetailView: View {
                 .accessibilityIdentifier("insight.detail.revisions")
             }
         case .content:
-            ProgressView("Loading evidence…")
+            TaisaProgressView("Loading evidence…")
         case let .failure(failedInsight) where failedInsight.id == insight.id:
             ContentUnavailableView {
-                Label("Evidence unavailable", systemImage: "exclamationmark.triangle")
+                TaisaIconLabel("Evidence unavailable", icon: .warning)
             } description: {
-                Text("Taisa couldn’t read the grounding for this insight.")
+                TaisaText(role: .body, content: "Taisa couldn’t read the grounding for this insight.")
             } actions: {
-                Button("Try again") { Task { await model.loadDetail(insight: insight) } }
+                TaisaButtonControl("Try again") { Task { await model.loadDetail(insight: insight) } }
             }
         case .failure:
-            ProgressView("Loading evidence…")
+            TaisaProgressView("Loading evidence…")
         }
     }
 }

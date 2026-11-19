@@ -86,7 +86,7 @@ struct HomeView: View {
     @ViewBuilder private var content: some View {
         switch model.state {
         case .idle, .loading:
-            ProgressView("Loading Home…")
+            TaisaProgressView("Loading Home…")
         case .empty:
             ScrollView {
                 HomeActionsPreviewSection(actions: [], totalCount: 0, send: send, add: { showsTaskComposer = true })

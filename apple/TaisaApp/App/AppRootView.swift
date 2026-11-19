@@ -34,7 +34,7 @@ struct AppRootView: View {
             } else {
                 switch runtime.state {
                 case .startup:
-                    ProgressView("Opening Taisa…")
+                    TaisaProgressView("Opening Taisa…")
                 case .ready:
                     if let model = runtime.homeModel, let careerWorkModel = runtime.careerWorkModel, let conversationsModel = runtime.conversationsModel {
                         PrimaryAppShell(
@@ -104,17 +104,17 @@ struct AppRootView: View {
 
     private var recoveryUnavailable: some View {
         ContentUnavailableView {
-            Label("Secure data unavailable", systemImage: "lock.trianglebadge.exclamationmark")
+            TaisaIconLabel("Secure data unavailable", icon: .warning)
         } description: {
-            Text("Taisa could not open the encrypted data on this device. Your data has not been replaced.")
+            TaisaText(role: .body, content: "Taisa could not open the encrypted data on this device. Your data has not been replaced.")
         } actions: {
-            Button("Try Again") {
+            TaisaButtonControl("Try Again") {
                 Task {
                     let state = await runtime.retryRecovery()
                     if state == .recoveryRequired { showsRuntimeRecovery = false }
                 }
             }
-            Button("Open backup and recovery") { showsRuntimeRecovery = true }
+            TaisaButtonControl("Open backup and recovery") { showsRuntimeRecovery = true }
         }
         .accessibilityIdentifier("recovery.unavailable")
     }

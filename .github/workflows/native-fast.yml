@@ -9,6 +9,9 @@ concurrency:
   group: native-fast-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
+env:
+  TAISA_DS_BASE_REF: ${{ github.event.pull_request.base.sha || 'origin/main' }}
+
 jobs:
   native-fast:
     name: Native Fast Checks
@@ -16,6 +19,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 24

@@ -9,6 +9,7 @@ struct TaisaApp: App {
         WindowGroup {
             AppRootView(runtime: runtime)
                 .font(TaisaTypography.body.font)
+                .buttonStyle(TaisaButtonStyle())
                 .preferredColorScheme(.light)
         }
     }

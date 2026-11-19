@@ -7,11 +7,9 @@ struct DraftRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Label(title, systemImage: draft.inputMode == .voice ? "waveform" : "keyboard")
+            TaisaIconLabel(title, icon: draft.inputMode == .voice ? .voiceMid : .keyboard, role: .childHeaderTitle)
                 .font(TaisaTypography.childHeaderTitle.font)
-            Text(status)
-                .font(TaisaTypography.supporting.font)
-                .foregroundStyle(.secondary)
+            TaisaText(role: .supporting, color: .mutedForeground, content: status)
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(draft.inputMode == .voice ? "Voice" : "Text") draft, \(status)")

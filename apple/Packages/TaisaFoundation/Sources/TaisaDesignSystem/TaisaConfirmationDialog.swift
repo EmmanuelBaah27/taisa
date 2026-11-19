@@ -19,8 +19,8 @@ public struct TaisaConfirmationDialog: ViewModifier {
 
     public func body(content: Content) -> some View {
         content.confirmationDialog(title, isPresented: $isPresented) {
-            Button(confirmLabel, role: role == .destructive ? .destructive : nil, action: confirm)
-            Button(cancelLabel, role: .cancel) {}
+            TaisaSystemButton(confirmLabel, role: role == .destructive ? .destructive : nil, action: { confirm() })
+            TaisaSystemButton(cancelLabel, role: .cancel) {}
         }
     }
 }

@@ -15,6 +15,19 @@ public struct TaisaText: View {
         self.content = content
     }
 
+    /// Text-valued primitive for platform text renderers and attributed messages.
+    public static func native(_ content: String, role: TaisaTypography = .body) -> Text {
+        Text(content).font(role.font)
+    }
+
+    public static func native(_ content: AttributedString, role: TaisaTypography = .body) -> Text {
+        Text(content).font(role.font)
+    }
+
+    public static func joining(_ first: Text, _ second: Text) -> Text {
+        Text("\(first)\(second)")
+    }
+
     public var body: some View {
         Text(content)
             .font(role.font)

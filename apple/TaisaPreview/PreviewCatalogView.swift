@@ -84,6 +84,8 @@ private struct PreviewScenarioView: View {
                     .accessibilityIdentifier("preview.ready.\(scenario.identifier)")
             }
         }
+        .toolbar(scenario.identifier.hasPrefix("you.") ? .hidden : .automatic, for: .navigationBar)
+        .navigationBarBackButtonHidden(scenario.identifier.hasPrefix("you."))
         .navigationTitle(scenario.title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(scenario.identifier.hasPrefix("home.") ? .hidden : .visible, for: .navigationBar)

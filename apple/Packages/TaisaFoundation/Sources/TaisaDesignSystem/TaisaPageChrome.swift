@@ -41,9 +41,7 @@ public struct TaisaPageHeader<Actions: View>: View {
 
     public var body: some View {
         HStack(spacing: TaisaSpacing.standard.rawValue) {
-            Text(title)
-                .font(TaisaTypography.datedPageTitle.font)
-                .foregroundStyle(TaisaColor.foreground.color)
+            TaisaText(role: .datedPageTitle, color: .foreground, content: title)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .accessibilityIdentifier("taisa.page-title")
 
@@ -107,9 +105,7 @@ public struct TaisaChildPageHeader: View {
 
     public var body: some View {
         ZStack {
-            Text(title)
-                .font(TaisaTypography.childHeaderTitle.font)
-                .foregroundStyle(TaisaColor.foreground.color)
+            TaisaText(role: .childHeaderTitle, content: title)
                 .lineLimit(1)
                 .accessibilityIdentifier("taisa.child-page-title")
 
@@ -145,9 +141,7 @@ private struct TaisaNavigationTitleModifier: ViewModifier {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .principal) {
-                    Text(title)
-                        .font(TaisaTypography.childHeaderTitle.font)
-                        .foregroundStyle(TaisaColor.foreground.color)
+                    TaisaText(role: .childHeaderTitle, color: .foreground, content: title)
                         .lineLimit(1)
                         .accessibilityHidden(true)
                         .accessibilityRepresentation {

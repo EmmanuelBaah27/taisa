@@ -18,8 +18,7 @@ public struct TaisaPressable<Label: View>: View {
     }
 
     public var body: some View {
-        Button(action: action) { label }
-            .buttonStyle(.plain)
+        TaisaButtonControl(style: TaisaButtonStyle(presentation: .content), action: action) { label }
             .frame(minHeight: TaisaControlMetric.headerActionHeight)
             .contentShape(Rectangle())
     }

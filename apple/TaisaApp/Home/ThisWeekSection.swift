@@ -102,7 +102,7 @@ struct HomeGoalsSummarySection: View {
     let send: (HomeIntent) -> Void
 
     var body: some View {
-        Section("Goals") {
+        TaisaSection("Goals") {
             if goals.isEmpty {
                 TaisaRow(title: "No active goals", supporting: "Create a goal when an outcome needs more than one task.", icon: .goal)
             } else {
@@ -120,7 +120,7 @@ struct HomeReviewSection: View {
     let open: (Int) -> Void
 
     var body: some View {
-        Section("Review") {
+        TaisaSection("Review") {
             TaisaPressable(action: { open(unresolvedCount) }) {
                 TaisaRow(title: "Review \(unresolvedCount) unfinished \(unresolvedCount == 1 ? "item" : "items")", icon: .history, emphasis: .attention)
             }

@@ -51,16 +51,12 @@ public struct TaisaToast: View {
                 CentralIcon(.completed)
                     .frame(width: TaisaControlMetric.compactActionIcon, height: TaisaControlMetric.compactActionIcon)
             }
-            Text(message)
-                .font(TaisaTypography.navigationLabel.font)
-                .foregroundStyle(style == .light ? TaisaColor.foreground.color : TaisaColor.background.color)
+            TaisaText(role: .navigationLabel, color: style == .light ? .foreground : .background, content: message)
                 .lineLimit(1)
 
             if let actionLabel, let action {
                 TaisaPressable(action: action) {
-                    Text(actionLabel)
-                        .font(TaisaTypography.navigationLabel.font)
-                        .foregroundStyle(style == .light ? TaisaColor.foreground.color : TaisaColor.background.color)
+                    TaisaText(role: .navigationLabel, color: style == .light ? .foreground : .background, content: actionLabel)
                         .frame(minHeight: TaisaControlMetric.toastMinimumHeight)
                         .padding(.horizontal, TaisaSpacing.compact.rawValue)
                 }

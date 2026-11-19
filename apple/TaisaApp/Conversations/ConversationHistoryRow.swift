@@ -8,19 +8,13 @@ struct ConversationHistoryRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(formattedDate)
-                .font(TaisaTypography.metadata.font)
-                .foregroundStyle(TaisaColor.mutedForeground.color)
-            Text(conversation.title)
-                .font(TaisaTypography.taskTitle.font)
-                .foregroundStyle(TaisaColor.foreground.color)
+            TaisaText(role: .metadata, color: .mutedForeground, content: formattedDate)
+            TaisaText(role: .taskTitle, color: .foreground, content: conversation.title)
                 .lineLimit(1)
                 .truncationMode(.tail)
                 .frame(maxWidth: .infinity, alignment: .leading)
             if let preview, !preview.isEmpty {
-                Text(preview)
-                    .font(TaisaTypography.taskSupporting.font)
-                    .foregroundStyle(TaisaColor.mutedForeground.color)
+                TaisaText(role: .taskSupporting, color: .mutedForeground, content: preview)
                     .lineLimit(1)
                     .frame(height: TaisaControlMetric.chatPreviewLineHeight, alignment: .topLeading)
                     .clipped()

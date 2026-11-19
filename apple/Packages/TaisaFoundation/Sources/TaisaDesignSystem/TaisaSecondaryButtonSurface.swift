@@ -11,19 +11,4 @@ public enum TaisaSecondaryButtonContract {
     public static let floatingShadowRadius = TaisaEffect.secondaryButtonShadowRadius
 }
 
-struct TaisaSecondaryButtonSurface<Surface: Shape>: ViewModifier {
-    let shape: Surface
-    let elevation: TaisaSecondaryButtonElevation
-
-    func body(content: Content) -> some View {
-        content
-            .overlay { shape.stroke(TaisaSecondaryButtonContract.borderColor.color) }
-            .shadow(
-                color: TaisaColor.foreground.color.opacity(
-                    elevation == .floating ? TaisaSecondaryButtonContract.floatingShadowOpacity : 0
-                ),
-                radius: elevation == .floating ? TaisaSecondaryButtonContract.floatingShadowRadius : 0,
-                y: elevation == .floating ? TaisaEffect.secondaryButtonShadowY : 0
-            )
-    }
-}
+// Button depth and border rendering belong to TaisaButtonStyle.

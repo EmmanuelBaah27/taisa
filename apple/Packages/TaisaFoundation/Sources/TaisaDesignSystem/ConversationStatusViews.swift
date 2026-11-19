@@ -3,7 +3,7 @@ import SwiftUI
 public struct ConversationProgressState: View {
     public let label: String
     public init(label: String) { self.label = label }
-    public var body: some View { HStack { ProgressView(); Text(label) }.accessibilityElement(children: .combine) }
+    public var body: some View { HStack { ProgressView(); TaisaText(role: .label, content: label) }.accessibilityElement(children: .combine) }
 }
 
 public struct ConversationFailureActions: View {
@@ -19,6 +19,11 @@ public struct ConversationFailureActions: View {
         self.message = message; self.onRetry = onRetry; self.onSave = onSave; self.onDiscard = onDiscard
     }
     public var body: some View {
-        VStack { Text(message); Button(Contract.retryable.retryLabel, action: onRetry); Button("Save draft", action: onSave); Button("Discard", role: .destructive, action: onDiscard) }
+        VStack {
+            TaisaText(role: .body, content: message)
+            TaisaButtonControl(Contract.retryable.retryLabel, action: onRetry)
+            TaisaButtonControl("Save draft", action: onSave)
+            TaisaButtonControl("Discard", role: .destructive, action: onDiscard)
+        }
     }
 }

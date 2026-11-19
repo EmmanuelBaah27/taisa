@@ -249,7 +249,7 @@ struct PrimaryAppShell: View {
             )
         case .you:
             if let youModel {
-                YouView(model: youModel, openRecovery: openRecovery)
+                YouView(model: youModel, openRecovery: { openRecovery() })
             } else {
                 ContentUnavailableView {
                     VStack {
