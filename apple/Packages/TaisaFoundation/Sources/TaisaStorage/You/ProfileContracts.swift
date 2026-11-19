@@ -15,7 +15,31 @@ public struct ProfileInputValidation: Sendable, Equatable {
     }
 }
 
+public struct ValidatedProfileInput: Sendable, Equatable {
+    public let displayName: String
+    public let headline: String
+    public let biography: String
+}
+
 public enum ProfileInputValidator {
+    public static func validatedFields(
+        displayName: String,
+        headline: String,
+        biography: String
+    ) -> ValidatedProfileInput? {
+        let fields = normalized(displayName: displayName, headline: headline, biography: biography)
+        guard validate(
+            displayName: fields.displayName,
+            headline: fields.headline,
+            biography: fields.biography
+        ).isValid else { return nil }
+        return .init(
+            displayName: fields.displayName,
+            headline: fields.headline,
+            biography: fields.biography
+        )
+    }
+
     public static func validate(
         displayName: String,
         headline: String,
@@ -89,16 +113,11 @@ public struct ProfileCommandRepository: Sendable {
         biography: String,
         context: MutationContext
     ) async throws -> ProfileRecord {
-        let fields = ProfileInputValidator.normalized(
+        guard let fields = ProfileInputValidator.validatedFields(
             displayName: displayName,
             headline: headline,
             biography: biography
-        )
-        guard ProfileInputValidator.validate(
-            displayName: fields.displayName,
-            headline: fields.headline,
-            biography: fields.biography
-        ).isValid else { throw YouContractError.invalidProfile }
+        ) else { throw YouContractError.invalidProfile }
         let record = ProfileRecord(
             id: id,
             displayName: fields.displayName,

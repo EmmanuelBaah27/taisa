@@ -52,15 +52,15 @@ private actor YouPreviewProfileStore {
     init(snapshot: YouSnapshot) { self.snapshot = snapshot }
     func load() -> YouSnapshot { snapshot }
     func save(_ draft: ProfileDraft) throws -> YouSnapshot {
-        guard ProfileInputValidator.validate(
+        guard let fields = ProfileInputValidator.validatedFields(
             displayName: draft.displayName,
             headline: draft.headline,
             biography: draft.biography
-        ).isValid else { throw YouContractError.invalidProfile }
+        ) else { throw YouContractError.invalidProfile }
         snapshot = .init(profile: .init(
             id: snapshot.profile?.id ?? "10000000-0000-4000-8000-000000000049",
-            displayName: draft.displayName, headline: draft.headline,
-            biography: draft.biography, updatedAtMS: 1), diagnostics: snapshot.diagnostics)
+            displayName: fields.displayName, headline: fields.headline,
+            biography: fields.biography, updatedAtMS: 1), diagnostics: snapshot.diagnostics)
         return snapshot
     }
 }

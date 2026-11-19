@@ -299,20 +299,20 @@ reports completion or cancellation; scene changes shield the underlying content.
 ## Native You profile presentation
 
 The approved Figma You overview and editor (146:1336 and 146:1721) use shared
-`TaisaProfileSummary`, `TaisaProfileAvatar`, `TaisaProfileIconButton`,
-`TaisaSettingsNavigationRow`, `TaisaSettingsGroup`, and `TaisaProfileSection`.
+`TaisaProfileSummary`, `TaisaProfileAvatar`, `TaisaToolbarAction`,
+`TaisaNavigationRow`, `TaisaSettingsGroup`, and `TaisaProfileSection`.
 These contracts contain no persistence or navigation state. The avatar currently
 uses name-derived initials; photo editing and photo persistence are deferred.
 
 The existing `TaisaField` contract from the Actions foundation is reused with a
-backward-compatible `.profile` appearance: a muted label, subtle filled input,
+backward-compatible `.filled` appearance: a muted label, subtle filled input,
 semantic control radius and insets. `.outlined` retains the existing default.
 Profile validation reuses the field's existing `.invalid(message:)` state. It
 does not add a feature-local field, visual variant, token, or error component.
-The generic Actions `TaisaRow` was inspected but has no disclosure/action slot
-and wraps each row in its own shape. The settings navigation row is an approved
-interactive disclosure contract with its exact trailing chevron and group-owned
-shape; it does not replace that generic display-row contract.
+The generic `TaisaNavigationRow` owns disclosure layout and accepts a Central
+Icons trailing asset. The You surface wraps that shared row in a plain native
+button and applies the existing grouped surface token. `TaisaToolbarAction`
+owns the profile edit and close icon-button behavior.
 
 Profile-only typography roles use Scoutie Sans semibold for the name and Inter
 for field labels, inputs and settings rows. Fonts register from package-owned

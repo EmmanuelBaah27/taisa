@@ -73,8 +73,15 @@ struct YouView: View {
     }
 
     private func destinationRow(_ destination: YouDestination, icon: CentralIconName) -> some View {
-        TaisaSettingsNavigationRow(destination.title, icon: icon) { selectedDestination = destination }
-            .accessibilityIdentifier("you.destination.\(destination.stableID)")
+        Button { selectedDestination = destination } label: {
+            TaisaNavigationRow(label: destination.title, icon: icon, trailingIcon: .profileChevron)
+                .padding(.horizontal, TaisaSpacing.standard.rawValue)
+                .background(TaisaColor.subtleSurface.color)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(destination.title)
+        .accessibilityHint("Opens \(destination.title)")
+        .accessibilityIdentifier("you.destination.\(destination.stableID)")
     }
 
     @ViewBuilder private func destinationView(_ destination: YouDestination, snapshot: YouSnapshot) -> some View {
@@ -134,7 +141,7 @@ private struct CareerProfileEditor: View {
                 HStack(alignment: .top) {
                     TaisaProfileAvatar(name: model.profileDraft?.displayName ?? "", size: TaisaProfileMetric.editorAvatar)
                     Spacer()
-                    TaisaProfileIconButton(icon: .profileClose, label: "Close profile editor") {
+                    TaisaToolbarAction(label: "Close profile editor", icon: .profileClose) {
                         closing = true
                         Task {
                             if !model.profileValidation.isValid {
@@ -149,10 +156,10 @@ private struct CareerProfileEditor: View {
                     .accessibilityIdentifier("you.profile.close")
                 }
                 TaisaField("Display name", text: binding(\.displayName),
-                    state: fieldState(model.profileValidation.displayNameMessage), appearance: .profile)
+                    state: fieldState(model.profileValidation.displayNameMessage), appearance: .filled)
                     .accessibilityIdentifier("you.profile.name")
                 TaisaField("Bio", text: binding(\.biography), kind: .multiline,
-                    state: fieldState(model.profileValidation.biographyMessage), appearance: .profile)
+                    state: fieldState(model.profileValidation.biographyMessage), appearance: .filled)
                     .accessibilityIdentifier("you.profile.bio")
                 if model.profileSaveState == .failed {
                     TaisaText(role: .profileSupporting, color: .destructive,

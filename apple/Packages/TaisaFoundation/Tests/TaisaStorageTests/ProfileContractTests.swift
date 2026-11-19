@@ -3,6 +3,20 @@ import Testing
 @testable import TaisaStorage
 
 @Suite(.serialized) struct ProfileContractTests {
+    @Test func sharedValidationReturnsNormalizedFieldsForEveryConsumer() {
+        let fields = ProfileInputValidator.validatedFields(
+            displayName: "  Baah  ",
+            headline: "  Product designer  ",
+            biography: "  First line\nSecond line  "
+        )
+
+        #expect(fields == .init(
+            displayName: "Baah",
+            headline: "Product designer",
+            biography: "First line\nSecond line"
+        ))
+    }
+
     @Test func profileCommandsTrimApprovedFieldsAndRejectOversizedInputAtomically() async throws {
         let fixture = try await YouStorageFixture()
         defer { fixture.remove() }

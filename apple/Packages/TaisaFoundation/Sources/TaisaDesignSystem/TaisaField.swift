@@ -14,7 +14,7 @@ public enum TaisaFieldState: Sendable, Equatable {
     case loading
 }
 
-public enum TaisaFieldAppearance: Sendable { case outlined, profile }
+public enum TaisaFieldAppearance: Sendable { case outlined, filled }
 public struct TaisaField: View {
     private let title: String
     private let placeholder: String
@@ -40,16 +40,16 @@ public struct TaisaField: View {
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: appearance == .profile ? TaisaSpacing.tight.rawValue : TaisaSpacing.compact.rawValue) {
-            TaisaText(role: appearance == .profile ? .profileSupporting : .label, color: appearance == .profile ? .mutedForeground : .foreground, content: title)
-                .frame(minHeight: appearance == .profile ? TaisaTypography.supporting.lineHeight : nil, alignment: .leading)
+        VStack(alignment: .leading, spacing: appearance == .filled ? TaisaSpacing.tight.rawValue : TaisaSpacing.compact.rawValue) {
+            TaisaText(role: appearance == .filled ? .supporting : .label, color: appearance == .filled ? .mutedForeground : .foreground, content: title)
+                .frame(minHeight: appearance == .filled ? TaisaTypography.supporting.lineHeight : nil, alignment: .leading)
             field
-                .font(appearance == .profile ? TaisaTypography.profileBody.font : TaisaTypography.body.font)
+                .font(TaisaTypography.body.font)
                 .accessibilityLabel(title)
-                .padding(.horizontal, appearance == .profile ? TaisaSpacing.standard.rawValue : TaisaSpacing.control.rawValue)
+                .padding(.horizontal, appearance == .filled ? TaisaSpacing.standard.rawValue : TaisaSpacing.control.rawValue)
                 .padding(.vertical, TaisaSpacing.control.rawValue)
-                .frame(minHeight: appearance == .profile ? TaisaControlMetric.primaryNavigationItemHeight : nil)
-                .background(appearance == .profile ? TaisaColor.subtleSurface.color : TaisaColor.background.color, in: RoundedRectangle(cornerRadius: TaisaRadius.control.rawValue))
+                .frame(minHeight: appearance == .filled ? TaisaControlMetric.primaryNavigationItemHeight : nil)
+                .background(appearance == .filled ? TaisaColor.subtleSurface.color : TaisaColor.background.color, in: RoundedRectangle(cornerRadius: TaisaRadius.control.rawValue))
                 .overlay {
                     RoundedRectangle(cornerRadius: TaisaRadius.control.rawValue)
                         .stroke(borderColor)
@@ -68,7 +68,7 @@ public struct TaisaField: View {
             SecureField(placeholder, text: $text)
         case .multiline:
             TextField(placeholder, text: $text, axis: .vertical)
-                .lineLimit((appearance == .profile ? 1 : 3)...8)
+                .lineLimit((appearance == .filled ? 1 : 3)...8)
         case .text, .readOnly:
             TextField(placeholder, text: $text)
         }
@@ -76,7 +76,7 @@ public struct TaisaField: View {
 
     private var borderColor: Color {
         if case .invalid = state { return TaisaColor.destructive.color }
-        return appearance == .profile ? .clear : TaisaColor.border.color
+        return appearance == .filled ? .clear : TaisaColor.border.color
     }
 }
 

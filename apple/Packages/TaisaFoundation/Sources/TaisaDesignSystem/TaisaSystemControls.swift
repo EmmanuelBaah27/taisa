@@ -50,10 +50,12 @@ public struct TaisaMenu: View {
 public struct TaisaNavigationRow: View {
     private let label: String
     private let icon: CentralIconName?
+    private let trailingIcon: CentralIconName
 
-    public init(label: String, icon: CentralIconName? = nil) {
+    public init(label: String, icon: CentralIconName? = nil, trailingIcon: CentralIconName = .chevronLeft) {
         self.label = label
         self.icon = icon
+        self.trailingIcon = trailingIcon
     }
 
     public var body: some View {
@@ -61,7 +63,9 @@ public struct TaisaNavigationRow: View {
             if let icon { CentralIcon(icon).frame(width: 24, height: 24) }
             TaisaText(role: .body, content: label)
             Spacer()
-            CentralIcon(.chevronLeft).rotationEffect(.degrees(180)).frame(width: 20, height: 20)
+            CentralIcon(trailingIcon)
+                .rotationEffect(.degrees(trailingIcon == .chevronLeft ? 180 : 0))
+                .frame(width: 20, height: 20)
         }
         .frame(minHeight: 48)
         .contentShape(Rectangle())
