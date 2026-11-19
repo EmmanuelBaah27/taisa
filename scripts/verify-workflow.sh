@@ -31,6 +31,7 @@ test_suites=(
   scripts/__tests__/retrospective-routing.test.mjs
   scripts/__tests__/preview-publication.test.mjs
   scripts/__tests__/workflow-contraction.test.mjs
+  scripts/__tests__/matt-workflow-e2e.test.mjs
   scripts/__tests__/verify-branch-topology.test.mjs
 )
 
