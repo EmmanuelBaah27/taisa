@@ -21,6 +21,8 @@ node --test scripts/__tests__/matt-workflow-routing.test.mjs ||
   fail "representative Matt workflow routing fixtures failed"
 node --test scripts/__tests__/tracer-delivery.test.mjs ||
   fail "multi-session tracer delivery fixtures failed"
+node --test scripts/__tests__/authority-routing.test.mjs ||
+  fail "Baah and agent authority routing fixtures failed"
 
 active_skills=(
   taisa-workflow
