@@ -498,6 +498,8 @@ test('tiered native CI uses focused pull-request checks and reserves full verifi
   assert.match(fastWorkflow, /npm test --workspace=backend -- --runInBand/);
 
   assert.match(selectedScript, /scheme Taisa-Personal/);
+  assert.match(selectedScript, /test "\$1" = workflow/);
+  assert.match(selectedScript, /No Product app compile is required for a workflow-only change/);
   assert.match(selectedScript, /generic\/platform=iOS Simulator/);
   assert.match(selectedScript, /\*,ui,\*/);
   assert.match(selectedScript, /scheme Taisa-Preview/);

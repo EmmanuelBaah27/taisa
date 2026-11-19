@@ -14,6 +14,11 @@ mkdir -p "${artifact_root}"
 
 cd "${repository_root}"
 
+if test "$1" = workflow; then
+  echo "No Product app compile is required for a workflow-only change."
+  exit 0
+fi
+
 # Every production change must compile the app that Baah uses for device QA.
 xcodebuild build -quiet \
   -project apple/Taisa.xcodeproj \
