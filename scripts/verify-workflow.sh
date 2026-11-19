@@ -166,6 +166,41 @@ for ds_authority_file in \
     'reusable primitive-creation criteria'
 done
 
+design_handoff=.agents/skills/design-handoff/SKILL.md
+for invariant in \
+  'design:design-system' \
+  'design-system-patterns' \
+  'apple/Packages/TaisaFoundation/Sources/TaisaDesignSystem' \
+  'mobile/src/components' \
+  'reuse.*extend.*create.*exception' \
+  'foundation.*asset.*behavior.*style.*component.*platform.{0,20}adapter' \
+  'additive' \
+  'breaking' \
+  'deprecat' \
+  'migrat' \
+  'appearance.*accessibility.*device.*locale'; do
+  require_workflow_multiline_pattern "$design_handoff" "$invariant" \
+    "platform-aware design-system handoff invariant: $invariant"
+done
+
+for contract_authority_file in \
+  docs/workflow.md \
+  .agents/skills/taisa-workflow/SKILL.md; do
+  require_workflow_multiline_pattern "$contract_authority_file" \
+    'design:design-system.{0,160}design-system-patterns|design-system-patterns.{0,160}design:design-system' \
+    'required installed design-system skill routing'
+  require_workflow_multiline_pattern "$contract_authority_file" \
+    'foundations.{0,160}assets.{0,160}behaviors.{0,160}styles.{0,160}components.{0,160}platform.{0,20}adapters' \
+    'contract-agnostic design-system taxonomy'
+  require_workflow_multiline_pattern "$contract_authority_file" \
+    'reuse.{0,80}extend.{0,80}create.{0,80}exception' \
+    'exclusive design-system treatment decision'
+  for lifecycle_pattern in additive breaking deprecat migrat; do
+    require_workflow_pattern "$contract_authority_file" "$lifecycle_pattern" \
+      "design-system compatibility lifecycle: $lifecycle_pattern"
+  done
+done
+
 for invariant in \
   'active Goal.*solely.*wait|no active Goal.*wait' \
   'QA_READY' \
@@ -188,6 +223,11 @@ for invariant in \
   'Branch/worktree' \
   'Canonical preview baseline' \
   'DS inventory and mapping evidence' \
+  'Design-system registry mapping' \
+  'Design-system treatment decision' \
+  'Compatibility and migration evidence' \
+  'Supported context evidence' \
+  'Installed design-system skill evidence' \
   'Approved DS gaps' \
   'Central Icons mapping' \
   'Approved system-owned exceptions' \

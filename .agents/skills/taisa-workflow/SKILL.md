@@ -144,6 +144,21 @@ approved Visual Companion result. Record layout intent, key states, components/t
 interactions, accessibility, and device-QA evidence in Linear. Material differences return
 to Scope.
 
+The handoff must invoke the installed `design:design-system` skill for system audit or extension
+and `design-system-patterns` for architecture, semantic styles, compatibility, and migration.
+Taisa supplies platform paths and approval gates; it does not duplicate those general methods.
+
+Classify registered contracts as foundations, assets, behaviors, styles, components, or platform
+adapters. Map every Product requirement to exactly one treatment: reuse, extend, create, or an
+approved exception. Styles may create or restyle shared components through registered contracts;
+Product consumers cannot apply local restyling. Review appearance, accessibility settings,
+device and input contexts, locale, and content length.
+
+Classify contract changes as additive, intentional system-wide restyle, or breaking. Preserve
+defaults for additive work. A system-wide restyle reviews every dependent consumer. Breaking
+work requires a replacement contract, compatibility and migration evidence, deprecation, and a
+removal condition. Exceptions require an owner, narrow reason, expiry condition, and removal issue.
+
 Every Product build is design-system-first. Before Product Scope or Plan approval, inventory
 every visible component, interaction style, token, and icon and map each to an existing shared
 component, semantic style/token, and Central Icons asset. If anything required is unavailable,

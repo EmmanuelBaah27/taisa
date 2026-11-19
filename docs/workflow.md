@@ -1,7 +1,7 @@
 # Taisa Build Workflow
 
 **Status:** Active
-**Last updated:** 2026-11-18
+**Last updated:** 2026-11-19
 
 How Taisa work moves from intake to shipped. Linear is the sole live authority.
 Linear project `Taisa`
@@ -207,6 +207,21 @@ After Product Scope approval, use `design-handoff` for Figma/screenshots, sketch
 Visual Companion result. Record layout intent, key states, token/component mapping,
 interaction evidence, accessibility, and device-QA expectations in Linear. Material
 differences return to Scope.
+
+The handoff invokes the installed `design:design-system` skill for audit or extension and
+`design-system-patterns` for architecture, semantic styles, compatibility, and migration.
+Taisa owns platform routing and approval evidence; it does not replace those general methods.
+
+The registry classifies foundations, assets, behaviors, styles, components, and platform
+adapters. Every Product requirement receives exactly one treatment: reuse, extend, create, or
+approved exception. Styles create or restyle shared components through registered contracts.
+Product code does not apply local restyling or depend on compatibility aliases.
+
+Review appearance, accessibility settings, device and input contexts, locale, and content length.
+Classify changes as additive, intentional system-wide restyle, or breaking. Additive changes
+preserve defaults. A system-wide restyle reviews every dependent consumer. Breaking changes need
+a replacement contract, compatibility and migration evidence, deprecation, and removal condition.
+An exception needs a narrow scope, owner, reason, expiry condition, and removal issue.
 
 Every Product build is design-system-first. Before Product Scope or Plan approval, inventory
 every visible component, interaction style, token, and icon and map each one to an existing

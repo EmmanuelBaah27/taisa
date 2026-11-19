@@ -12,6 +12,11 @@ Fill every field before creating a Goal. Replace angle-bracket guidance with exa
 - Branch/worktree: `<branch and absolute path>`
 - Canonical preview baseline: `<SHA or not-device-facing>`
 - DS inventory and mapping evidence: `<Linear URL covering every Product component, style, token, and icon, or not-Product with reason>`
+- Design-system registry mapping: `<each requirement mapped to a registered foundation, asset, behavior, style, component, or platform adapter>`
+- Design-system treatment decision: `<exactly one of reuse, extend, create, or approved exception for each requirement>`
+- Compatibility and migration evidence: `<additive default preservation, system-wide consumer review, breaking migration/deprecation/removal, or none with reason>`
+- Supported context evidence: `<appearance, accessibility, device/input, locale/content coverage and gaps>`
+- Installed design-system skill evidence: `<design:design-system and design-system-patterns outputs or not-Product with reason>`
 - Approved DS gaps: `<Linear approval URLs for each reuse, extension, addition, or none>`
 - Central Icons mapping: `<Linear URL mapping every Product icon, or not-Product with reason>`
 - Approved system-owned exceptions: `<narrow exception plus Linear approval URL, or none>`
