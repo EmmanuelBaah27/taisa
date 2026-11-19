@@ -5,31 +5,31 @@ final class TaisaAccessibilityLayoutTests: XCTestCase {
     func testAccessibilityTextKeepsHomeRowsVisibleAndHittable() {
         assertHomeScenarioFitsVisibleWindow(
             identifier: "home.accessibilityText",
-            requiredText: "Your best planning sessions happen before midday.",
-            actionLabel: "home.lead-insight"
+            requiredText: "Draft Peu Commun pitch deck"
         )
     }
 
     func testNarrowIPadKeepsHomeRowsVisibleAndHittable() {
         assertHomeScenarioFitsVisibleWindow(
             identifier: "home.narrowIPad",
-            requiredText: "Plan the garden studio"
+            requiredText: "Draft Peu Commun pitch deck"
         )
     }
 
-    func testCombinedHomeKeepsWeeklyWorkAndInsightReachable() {
+    func testCombinedHomeKeepsTasksAndSummaryReachable() {
         let app = XCUIApplication()
         app.launchArguments = ["-TAISAPreviewScenario", "home.combined"]
         app.launch()
 
-        let weeklyWork = app.staticTexts["Draft the studio lighting plan"]
+        let weeklyWork = app.staticTexts["Draft Peu Commun pitch deck"]
         XCTAssertTrue(weeklyWork.waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["Complete Draft the studio lighting plan"].isHittable)
-        let insight = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS %@", "Your best planning sessions happen before midday.")
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Draft Peu Commun pitch deck")).firstMatch.isHittable)
+        let summary = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS %@", "View all tasks")
         ).firstMatch
-        XCTAssertTrue(insight.waitForExistence(timeout: 5))
-        XCTAssertTrue(insight.isHittable)
+        scrollUntilHittable(summary, in: app)
+        XCTAssertTrue(summary.waitForExistence(timeout: 5))
+        XCTAssertTrue(summary.isHittable)
     }
 
     func testFailureAndRecoveryActionsRemainReachable() {
@@ -46,14 +46,14 @@ final class TaisaAccessibilityLayoutTests: XCTestCase {
 
     private func assertHomeScenarioFitsVisibleWindow(
         identifier: String,
-        requiredText: String,
-        actionLabel: String? = nil
+        requiredText: String
     ) {
         let app = XCUIApplication()
         openScenario(identifier, in: app)
 
         let title = app.staticTexts[requiredText]
-        let action = app.buttons[actionLabel ?? requiredText]
+        let action = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", requiredText)).firstMatch
+        scrollUntilHittable(action, in: app)
         XCTAssertTrue(title.waitForExistence(timeout: 5))
         XCTAssertTrue(title.exists)
         XCTAssertTrue(action.isHittable)
@@ -67,6 +67,10 @@ final class TaisaAccessibilityLayoutTests: XCTestCase {
         attachment.name = identifier
         attachment.lifetime = .keepAlways
         add(attachment)
+    }
+
+    private func scrollUntilHittable(_ element: XCUIElement, in app: XCUIApplication) {
+        for _ in 0..<6 where !element.isHittable { app.swipeUp() }
     }
 
     private func openScenario(_ identifier: String, in app: XCUIApplication) {

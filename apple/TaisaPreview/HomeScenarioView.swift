@@ -10,13 +10,14 @@ struct HomeScenarioView: View {
 
     init(mode: HomeScenarioMode) {
         self.mode = mode
+        let taskStore = PreviewTaskStore(snapshot: mode == .empty ? .previewEmpty : .previewCombined)
         let state: HomeState
         switch mode {
         case .loading:
             state = .loading
         case .empty:
             state = .empty
-        case .content:
+        case .content, .taskComposer:
             state = .content(.previewContent, isRefreshing: false, issue: nil)
         case .combined, .insights:
             state = .content(.previewCombined, isRefreshing: false, issue: nil)
@@ -27,7 +28,10 @@ struct HomeScenarioView: View {
         case .recovery:
             state = .failure(.recoveryRequired)
         }
-        _model = State(initialValue: HomeModel(client: HomeClient { .previewEmpty }, initialState: state))
+        _model = State(initialValue: HomeModel(client: HomeClient(
+            load: { await taskStore.load() },
+            create: { try await taskStore.create(title: $0, dueDay: $1) }
+        ), initialState: state))
         _insightsModel = State(initialValue: InsightsModel(client: InsightsClient(
             load: { .previewContent },
             detail: { insight in
@@ -68,7 +72,8 @@ struct HomeScenarioView: View {
                 HomeView(
                     model: model,
                     openInsights: { showsInsights = true },
-                    ownsNavigation: false
+                    ownsNavigation: false,
+                    initiallyShowsTaskComposer: mode == .taskComposer
                 )
                 .sheet(isPresented: $showsInsights) {
                     NavigationStack { InsightsView(model: insightsModel) }
@@ -76,5 +81,47 @@ struct HomeScenarioView: View {
             }
         }
         .frame(minHeight: 700)
+    }
+}
+
+private actor PreviewTaskStore {
+    private let snapshot: HomeSnapshot
+    private var createdActions: [ActionRecord] = []
+
+    init(snapshot: HomeSnapshot) {
+        self.snapshot = snapshot
+    }
+
+    func load() -> HomeSnapshot {
+        HomeSnapshot(
+            conversations: snapshot.conversations,
+            goals: snapshot.goals,
+            milestones: snapshot.milestones,
+            actions: createdActions + snapshot.actions,
+            actionPrompts: snapshot.actionPrompts,
+            thisWeek: snapshot.thisWeek,
+            unresolvedPriorWeekCount: snapshot.unresolvedPriorWeekCount,
+            overdueActions: snapshot.overdueActions,
+            recentlyReopenedActions: snapshot.recentlyReopenedActions,
+            actionReviewFacts: snapshot.actionReviewFacts,
+            leadInsight: snapshot.leadInsight,
+            hasConfirmedInsightHistory: snapshot.hasConfirmedInsightHistory
+        )
+    }
+
+    func create(title: String, dueDay: ActionDueDay?) throws -> ActionRecord {
+        let action = ActionRecord(
+            id: UUID().uuidString,
+            goalID: nil,
+            title: title,
+            detail: "",
+            status: ActionStatus.active.rawValue,
+            dueAtMS: nil,
+            createdAtMS: 1_800_000_000_000,
+            updatedAtMS: 1_800_000_000_000,
+            dueDay: dueDay
+        )
+        createdActions.insert(action, at: 0)
+        return action
     }
 }

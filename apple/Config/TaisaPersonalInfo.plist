@@ -41,6 +41,11 @@
 	<string>$(TAISA_ENVIRONMENT)</string>
 	<key>TaisaVoiceGatewayURL</key>
 	<string>$(TAISA_VOICE_GATEWAY_URL)</string>
+	<key>UIAppFonts</key>
+	<array>
+		<string>ScoutieSans-VariableFont_wght.ttf</string>
+		<string>InterVariable.ttf</string>
+	</array>
 	<key>UTExportedTypeDeclarations</key>
 	<array>
 		<dict>

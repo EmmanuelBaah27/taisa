@@ -21,9 +21,16 @@ struct YouView: View {
                     Text(issue.guidance)
                 } actions: {
                     if issue == .recoveryRequired {
-                        Button("Open backup and recovery", action: openRecovery)
+                        TaisaButton(
+                            role: .primary,
+                            label: "Open backup and recovery",
+                            icon: .recovery,
+                            action: openRecovery
+                        )
                     } else {
-                        Button("Try again") { Task { await model.retry() } }
+                        TaisaButton(role: .primary, label: "Try again", icon: .refresh) {
+                            Task { await model.retry() }
+                        }
                     }
                 }
             case let .content(snapshot, issue):
@@ -77,7 +84,14 @@ struct YouView: View {
             case .careerProfile: CareerProfileView(model: model, profile: snapshot.profile, issue: model.state.issue)
             case .privacyPermissions: PrivacyPermissionsView(facts: snapshot.diagnostics)
             case .backupRecovery:
-                List { Button("Open backup and recovery", action: openRecovery) }
+                List {
+                    TaisaButton(
+                        role: .primary,
+                        label: "Open backup and recovery",
+                        icon: .recovery,
+                        action: openRecovery
+                    )
+                }
             case .diagnostics: DiagnosticsSummaryView(facts: snapshot.diagnostics)
             }
         }
@@ -117,20 +131,51 @@ private struct CareerProfileView: View {
     var body: some View {
         Form {
             if let issue {
-                Label(issue.guidance, systemImage: "exclamationmark.triangle")
+                HStack(spacing: TaisaSpacing.compact.rawValue) {
+                    CentralIcon(.warning, color: .warning)
+                        .frame(
+                            width: TaisaControlMetric.standardIcon,
+                            height: TaisaControlMetric.standardIcon
+                        )
+                    TaisaText(role: .supporting, color: .warning, content: issue.guidance)
+                }
                     .accessibilityIdentifier("you.profile.issue")
             }
             if editing, model.profileDraft != nil {
-                TextField("Display name", text: binding(\.displayName))
-                TextField("Headline", text: binding(\.headline))
-                TextField("Biography", text: binding(\.biography), axis: .vertical)
-                Button("Save") { Task { await model.saveProfile(); editing = model.profileDraft != nil } }
-                Button("Cancel", role: .cancel) { model.cancelProfileEdit(); editing = false }
+                TaisaField(
+                    "Display name",
+                    text: binding(\.displayName),
+                    placeholder: "Display name",
+                    labelPresentation: .placeholderOnly
+                )
+                TaisaField(
+                    "Headline",
+                    text: binding(\.headline),
+                    placeholder: "Headline",
+                    labelPresentation: .placeholderOnly
+                )
+                TaisaField(
+                    "Biography",
+                    text: binding(\.biography),
+                    placeholder: "Biography",
+                    kind: .multiline,
+                    labelPresentation: .placeholderOnly
+                )
+                TaisaButton(role: .primary, label: "Save") {
+                    Task { await model.saveProfile(); editing = model.profileDraft != nil }
+                }
+                TaisaButton(role: .secondary, label: "Cancel") {
+                    model.cancelProfileEdit()
+                    editing = false
+                }
             } else {
                 LabeledContent("Display name", value: profile?.displayName.isEmpty == false ? profile!.displayName : "Not set")
                 LabeledContent("Headline", value: profile?.headline.isEmpty == false ? profile!.headline : "Not set")
                 if let biography = profile?.biography, !biography.isEmpty { Text(biography) }
-                Button("Edit career profile") { model.beginProfileEdit(); editing = true }
+                TaisaButton(role: .secondary, label: "Edit career profile", icon: .edit) {
+                    model.beginProfileEdit()
+                    editing = true
+                }
             }
         }
     }

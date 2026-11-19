@@ -20,6 +20,11 @@
 	<string>1</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Taisa uses the microphone only when you choose to record a conversation.</string>
+	<key>UIAppFonts</key>
+	<array>
+		<string>ScoutieSans-VariableFont_wght.ttf</string>
+		<string>InterVariable.ttf</string>
+	</array>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>

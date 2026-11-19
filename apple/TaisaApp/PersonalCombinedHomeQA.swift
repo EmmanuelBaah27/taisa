@@ -15,8 +15,8 @@ enum PersonalCombinedHomeQA {
         let store = PersonalCombinedHomeQAStore()
         let home = HomeModel(client: HomeClient(
             load: { await store.homeSnapshot() },
-            complete: { try await store.complete(actionID: $0) },
-            restore: { await store.restore($0) },
+            complete: { try await store.complete(actionID: $0, evidenceTitle: $1) },
+            correctCompletion: { try await store.correctCompletion(actionID: $0, eventID: $1) },
             place: { await store.move(actionID: $0, weekContaining: $1, plannedDay: $2) },
             move: { await store.move(actionID: $0, weekContaining: $1, plannedDay: $2) }
         ))
@@ -30,6 +30,7 @@ enum PersonalCombinedHomeQA {
 
 private actor PersonalCombinedHomeQAStore {
     private var item: WeeklyWorkItem? = PersonalCombinedHomeQAFixtures.weeklyItem
+    private var completionEventID: String?
 
     func homeSnapshot() -> HomeSnapshot {
         HomeSnapshot(
@@ -43,17 +44,39 @@ private actor PersonalCombinedHomeQAStore {
         )
     }
 
-    func complete(actionID: String) throws -> WeeklyWorkUndoToken {
+    func complete(actionID: String, evidenceTitle: String) throws -> ActionCompletionResult {
         guard let current = item, current.action.id == actionID else {
             throw HomeClientError.mutationUnavailable
         }
+        let title = evidenceTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !title.isEmpty else { throw HomeClientError.mutationUnavailable }
         item = nil
-        return WeeklyWorkUndoToken(action: current.action)
+        let completed = PersonalCombinedHomeQAFixtures.action(status: .completed)
+        let event = ActionEventRecord(
+            id: "80000000-0000-4000-8000-000000000001",
+            actionID: actionID,
+            kind: .completed,
+            fromStatus: .active,
+            toStatus: .completed,
+            detail: nil,
+            source: .user,
+            sourceID: nil,
+            occurredAtMS: PersonalCombinedHomeQAFixtures.nowMS
+        )
+        completionEventID = event.id
+        return ActionCompletionResult(
+            action: completed,
+            evidence: EvidenceRecord(id: "90000000-0000-4000-8000-000000000001", goalID: completed.goalID, actionID: actionID, title: title, detail: "", occurredAtMS: PersonalCombinedHomeQAFixtures.nowMS, createdAtMS: PersonalCombinedHomeQAFixtures.nowMS),
+            event: event
+        )
     }
 
-    func restore(_ token: WeeklyWorkUndoToken) {
-        guard token.action.id == PersonalCombinedHomeQAFixtures.weeklyItem.action.id else { return }
-        item = PersonalCombinedHomeQAFixtures.weeklyItem
+    func correctCompletion(actionID: String, eventID: String) throws -> ActionRecord {
+        guard actionID == PersonalCombinedHomeQAFixtures.actionID, eventID == completionEventID else {
+            throw HomeClientError.mutationUnavailable
+        }
+        completionEventID = nil
+        return PersonalCombinedHomeQAFixtures.action(status: .active)
     }
 
     func move(actionID: String, weekContaining: Date, plannedDay: Date?) {
@@ -88,11 +111,14 @@ private enum PersonalCombinedHomeQAFixtures {
         id: goalID, title: "QA fixture — finish the studio", detail: "Isolated sample data",
         status: "active", createdAtMS: nowMS - 10_000, updatedAtMS: nowMS
     )]
-    static let actions = [ActionRecord(
-        id: actionID, goalID: goalID, title: "QA fixture — draft the lighting plan",
-        detail: "Tap to change the planned day", status: "open", dueAtMS: nil,
-        createdAtMS: nowMS - 10_000, updatedAtMS: nowMS
-    )]
+    static let actions = [action(status: .active)]
+    static func action(status: ActionStatus) -> ActionRecord {
+        ActionRecord(
+            id: actionID, goalID: goalID, title: "QA fixture — draft the lighting plan",
+            detail: "Tap to change the planned day", status: status.rawValue, dueAtMS: nil,
+            createdAtMS: nowMS - 10_000, updatedAtMS: nowMS
+        )
+    }
     static let weeklyItem = WeeklyWorkItem(
         action: actions[0],
         placement: WeeklyPlacementRecord(

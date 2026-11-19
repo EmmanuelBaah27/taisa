@@ -18,6 +18,7 @@ public struct TaisaText: View {
     public var body: some View {
         Text(content)
             .font(role.font)
+            .lineSpacing(role.lineSpacing)
             .foregroundStyle(color.color)
     }
 }

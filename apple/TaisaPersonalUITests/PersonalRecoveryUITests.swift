@@ -86,7 +86,9 @@ import XCTest
         combinedHome.tap()
 
         let review = app.buttons["Review 2 unfinished items"]
+        for _ in 0..<6 where !review.isHittable { app.swipeUp() }
         XCTAssertTrue(review.waitForExistence(timeout: 10))
+        XCTAssertTrue(review.isHittable)
         review.tap()
 
         let done = app.buttons["Done"]
