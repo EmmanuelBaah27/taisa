@@ -571,45 +571,19 @@ test('tiered native CI uses focused pull-request checks and reserves full verifi
   assert.match(fastWorkflow, /cancel-in-progress: true/);
 
   assert.match(fullWorkflow, /name: Native Apple Full Verification/);
-  assert.match(fullWorkflow, /types: \[opened, reopened, synchronize, labeled, unlabeled\]/);
-  assert.doesNotMatch(fullWorkflow, /ready_for_review/);
+  assert.doesNotMatch(fullWorkflow, /pull_request:/);
   assert.doesNotMatch(fullWorkflow, /schedule:/);
   assert.match(fullWorkflow, /workflow_dispatch:/);
   assert.doesNotMatch(fullWorkflow, /branches: \[main\]/);
   assert.match(fullWorkflow, /tags: \['v\*'\]/);
   assert.doesNotMatch(fullWorkflow, /merge-ready/);
-  assert.match(fullWorkflow, /release/);
-  assert.match(fullWorkflow, /name: Native Merge Gate/);
-  assert.match(fullWorkflow, /name: Classify native impact and risk/);
-  assert.match(fullWorkflow, /native_required/);
-  assert.match(fullWorkflow, /high_risk_required/);
-  assert.match(fullWorkflow, /normal-risk pull request does not require the full native matrix/i);
-  assert.match(fullWorkflow, /github\.event\.pull_request\.base\.sha/);
-  assert.match(fullWorkflow, /github\.event\.pull_request\.head\.sha/);
-  assert.match(fullWorkflow, /scripts\/native-apple\/classify-ci-risk\.sh/);
-  assert.match(fullWorkflow, /github\.event\.action == 'labeled'/);
-  assert.match(
-    fullWorkflow,
-    /high_risk_required == 'true' && github\.event\.action == 'labeled'/,
-  );
-  assert.doesNotMatch(
-    fullWorkflow,
-    /high_risk_required == 'true'[^\n]+github\.event\.action == 'synchronize'/,
-  );
-  assert.match(fullWorkflow, /github\.event\.action == 'unlabeled'/);
-  assert.match(fullWorkflow, /github\.event\.label\.name == 'high-risk'/);
-  assert.match(fullWorkflow, /github\.event\.label\.name == 'release'/);
-  assert.match(fullWorkflow, /needs\.verify-native-apple\.result/);
-  assert.match(fullWorkflow, /github\.event\.pull_request\.head\.sha/);
-  assert.match(fullWorkflow, /checks: read/);
-  assert.match(fullWorkflow, /actions\/github-script@v7/);
-  assert.match(fullWorkflow, /const checkName = 'Native Apple Full Verification'/);
-  assert.match(fullWorkflow, /check_name: checkName/);
-  assert.match(fullWorkflow, /filter: 'all'/);
-  assert.match(fullWorkflow, /check\.head_sha === headSha/);
-  assert.match(fullWorkflow, /check\.conclusion === 'success'/);
-  assert.match(fullWorkflow, /needs\.verify-native-apple\.result == 'skipped'/);
-  assert.match(fullWorkflow, /steps\.find-prior-full\.outputs\.exact_head_success/);
+  assert.doesNotMatch(fullWorkflow, /name: Native Merge Gate/);
+  assert.doesNotMatch(fullWorkflow, /name: Classify native impact and risk/);
+  assert.doesNotMatch(fullWorkflow, /native_required/);
+  assert.doesNotMatch(fullWorkflow, /high_risk_required/);
+  assert.doesNotMatch(fullWorkflow, /github\.event\.pull_request/);
+  assert.doesNotMatch(fullWorkflow, /scripts\/native-apple\/classify-ci-risk\.sh/);
+  assert.doesNotMatch(fullWorkflow, /actions\/github-script@v7/);
   assert.equal(
     fullWorkflow.match(/^concurrency:/gm)?.length,
     1,

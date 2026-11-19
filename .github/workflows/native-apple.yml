@@ -1,67 +1,24 @@
 name: Native Apple Full Verification
 
 on:
-  pull_request:
-    types: [opened, reopened, synchronize, labeled, unlabeled]
   push:
     tags: ['v*']
   workflow_dispatch:
 
 permissions:
   contents: read
-  pull-requests: read
-  checks: read
 
 concurrency:
-  group: native-full-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.event_name == 'workflow_dispatch' && format('manual-{0}', github.run_id) || startsWith(github.ref, 'refs/tags/') && format('release-{0}', github.ref) || 'main' }}
+  group: native-full-${{ github.event_name == 'workflow_dispatch' && format('manual-{0}', github.run_id) || format('release-{0}', github.ref) }}
   cancel-in-progress: true
 
 jobs:
-  classify-native-impact:
-    name: Classify native impact and risk
-    runs-on: ubuntu-latest
-    outputs:
-      native_required: ${{ steps.classify.outputs.native_required }}
-      high_risk_required: ${{ steps.classify.outputs.high_risk_required }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - id: classify
-        name: Detect product-native changes
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          HAS_HIGH_RISK_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'high-risk') }}
-          HAS_RELEASE_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'release') }}
-        run: |
-          if test "${EVENT_NAME}" != "pull_request"; then
-            echo "native_required=true" >> "${GITHUB_OUTPUT}"
-            echo "high_risk_required=true" >> "${GITHUB_OUTPUT}"
-            exit 0
-          fi
-
-          classification="$(bash scripts/native-apple/classify-ci-risk.sh "${BASE_SHA}" "${HEAD_SHA}")"
-          native_required="$(printf '%s\n' "${classification}" | sed -n 's/^native_required=//p')"
-          high_risk_required="$(printf '%s\n' "${classification}" | sed -n 's/^high_risk_required=//p')"
-          if test "${HAS_HIGH_RISK_LABEL}" = "true" || test "${HAS_RELEASE_LABEL}" = "true"; then
-            native_required=true
-            high_risk_required=true
-          fi
-          echo "native_required=${native_required}" >> "${GITHUB_OUTPUT}"
-          echo "high_risk_required=${high_risk_required}" >> "${GITHUB_OUTPUT}"
-
   verify-native-apple:
     name: Native Apple Full Verification
-    needs: [classify-native-impact]
-    if: github.event_name != 'pull_request' || (needs.classify-native-impact.outputs.native_required == 'true' && needs.classify-native-impact.outputs.high_risk_required == 'true' && github.event.action == 'labeled' && (github.event.label.name == 'high-risk' || github.event.label.name == 'release'))
     runs-on: macos-26
     timeout-minutes: 75
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -104,64 +61,3 @@ jobs:
             ${{ runner.temp }}/native-apple-artifacts/*.xcresult
             ${{ runner.temp }}/native-apple-artifacts/**/*.png
           if-no-files-found: warn
-
-  native-merge-gate:
-    name: Native Merge Gate
-    if: always() && github.event_name == 'pull_request'
-    needs: [classify-native-impact, verify-native-apple]
-    runs-on: ubuntu-latest
-    env:
-      FULL_RESULT: ${{ needs.verify-native-apple.result }}
-      NATIVE_REQUIRED: ${{ needs.classify-native-impact.outputs.native_required }}
-      HIGH_RISK_REQUIRED: ${{ needs.classify-native-impact.outputs.high_risk_required }}
-      REMOVED_RISK_LABEL: ${{ github.event.action == 'unlabeled' && (github.event.label.name == 'high-risk' || github.event.label.name == 'release') }}
-      PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-    steps:
-      - id: find-prior-full
-        name: Find successful full verification for this exact head
-        if: needs.classify-native-impact.outputs.native_required == 'true' && needs.classify-native-impact.outputs.high_risk_required == 'true' && needs.verify-native-apple.result == 'skipped'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const headSha = context.payload.pull_request.head.sha;
-            const checkName = 'Native Apple Full Verification';
-            const response = await github.rest.checks.listForRef({
-              ...context.repo,
-              ref: headSha,
-              check_name: checkName,
-              filter: 'all',
-              per_page: 100,
-            });
-            const exactHeadSuccess = response.data.check_runs.some((check) =>
-              check.name === checkName &&
-              check.head_sha === headSha &&
-              check.conclusion === 'success'
-            );
-            core.setOutput('exact_head_success', exactHeadSuccess ? 'true' : 'false');
-      - name: Require full verification for this pull request head
-        if: always()
-        env:
-          EXACT_HEAD_SUCCESS: ${{ steps.find-prior-full.outputs.exact_head_success }}
-        run: |
-          echo "Evaluating native verification for ${PR_HEAD_SHA}"
-          if test "${REMOVED_RISK_LABEL}" = "true"; then
-            echo "Removing a high-risk or release label invalidates merge readiness." >&2
-            exit 1
-          fi
-          if test "${NATIVE_REQUIRED}" != "true"; then
-            echo "This normal-risk pull request does not require the full native matrix."
-            exit 0
-          fi
-          if test "${HIGH_RISK_REQUIRED}" != "true"; then
-            echo "This normal-risk pull request does not require the full native matrix."
-            exit 0
-          fi
-          if test "${FULL_RESULT}" = "success"; then
-            exit 0
-          fi
-          if test "${FULL_RESULT}" = "skipped" && test "${EXACT_HEAD_SUCCESS}" = "true"; then
-            echo "Reusing successful full native verification for ${PR_HEAD_SHA}."
-            exit 0
-          fi
-          echo "Full native verification result: ${FULL_RESULT}; exact-head success: ${EXACT_HEAD_SUCCESS:-false}" >&2
-          exit 1

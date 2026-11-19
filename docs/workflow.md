@@ -76,9 +76,10 @@ applicable additive risks. Repository classification can raise risk but cannot l
 Linear classification. Unknown or uncertain sensitive changes fail closed for review.
 
 Pull requests use fast and focused checks selected from logic, UI, network, device, data,
-security, and workflow risks. Device-sensitive changes require exact-revision physical QA
-evidence when the affected behavior cannot be proven in the simulator. Release candidates
-require the complete applicable matrix on the exact candidate revision. Exact-revision evidence
+security, and workflow risks. No pull-request event runs or requires the complete matrix.
+Device-sensitive changes require exact-revision physical QA evidence when the affected behavior
+cannot be proven in the simulator. Release candidates require the complete applicable matrix on
+the exact candidate revision through release-tag or manual execution. Exact-revision evidence
 remains reusable while code, dependencies, toolchain, signing, configuration, and covered inputs
 remain unchanged.
 
@@ -95,13 +96,12 @@ The risk-to-proof contract is:
 | Workflow | Workflow contracts and candidate-safe policy checks | Protected-base classification |
 | Release | Complete matrix and Release build | Final physical QA and Ship approval |
 
-During calibration, the protected-base policy reports contract mismatches while the existing
-safety gate remains required. After five historical backtests and three live pull requests show
-no missed required risk and no unnecessary full run, change the protected-base policy to strict
-enforcement and reconcile branch protection. Until then, do not claim strict enforcement is live.
-For a calibration PR that changes safety rules, apply its `high-risk` or `release` label only after
-the final candidate passes focused checks. A new commit invalidates exact-head evidence and closes
-the merge gate, but it does not start another full matrix during repair.
+During calibration, the protected-base policy reports contract mismatches. After five historical
+backtests and three live pull requests show no missed required risk, change the protected-base
+policy to strict metadata enforcement. Pull-request branch protection requires stable fast and
+focused checks only. A `high-risk` or `release` label records classification. It does not start or
+require the complete matrix. Until calibration ends, do not claim strict metadata enforcement is
+live.
 
 Use the smallest applicable verification that can falsify the current change first, then
 expand only after focused checks pass or the risk boundary requires it. Reuse fresh evidence
