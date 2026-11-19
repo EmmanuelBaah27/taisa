@@ -525,6 +525,7 @@ test('tiered native CI uses focused pull-request checks and reserves full verifi
   assert.doesNotMatch(fastScript, /xcodebuild (test|build|build-for-testing)/);
 
   assert.match(fastWorkflow, /name: Native Fast Checks/);
+  assert.match(fastWorkflow, /timeout-minutes: 35/);
   assert.match(fastWorkflow, /pull_request:/);
   assert.match(fastWorkflow, /types: \[opened, reopened, synchronize, edited\]/);
   assert.doesNotMatch(fastWorkflow, /edited, labeled/);
