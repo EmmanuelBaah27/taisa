@@ -93,8 +93,8 @@ export function validateVoiceEvidence(evidence = {}, { expectedCommit } = {}) {
       continue;
     }
     errors.push(...unsupportedFields(row, rowFields, `rows[${index}]`));
-    requireFact(['iPhone', 'iPad'].includes(row.deviceFamily),
-      `row ${index} deviceFamily must be iPhone or iPad`);
+    requireFact(row.deviceFamily === 'iPhone',
+      `row ${index} deviceFamily must be iPhone`);
     requireFact(text(row.deviceName), `row ${index} deviceName is required`);
     requireFact(text(row.deviceIdentifier), `row ${index} deviceIdentifier is required`);
     requireFact(text(row.operatingSystem), `row ${index} operatingSystem is required`);
@@ -115,18 +115,16 @@ export function validateVoiceEvidence(evidence = {}, { expectedCommit } = {}) {
     }
   }
 
-  for (const family of ['iPhone', 'iPad']) {
-    for (const caseID of requiredVoiceCases) {
-      requireFact(seen.has(`${family}:${caseID}`), `missing ${family} evidence for ${caseID}`);
-    }
+  for (const caseID of requiredVoiceCases) {
+    requireFact(seen.has(`iPhone:${caseID}`), `missing iPhone evidence for ${caseID}`);
   }
   return errors;
 }
 
 export function validateSignedBuildBindings(evidence, records = [], inspectionOptions = {}) {
   const errors = [];
-  if (!Array.isArray(records) || records.length !== 2) {
-    return ['exactly two signed-build records are required'];
+  if (!Array.isArray(records) || records.length !== 1) {
+    return ['exactly one iPhone signed-build record is required'];
   }
   const rows = Array.isArray(evidence?.rows) ? evidence.rows : [];
   const seenDevices = new Set();
@@ -162,12 +160,10 @@ export function validateSignedBuildBindings(evidence, records = [], inspectionOp
       errors.push('signed-build signer differs from voice evidence');
     }
   }
-  for (const family of ['iPhone', 'iPad']) {
-    const identifiers = new Set(rows.filter((row) => row.deviceFamily === family)
-      .map((row) => row.deviceIdentifier));
-    if (identifiers.size !== 1 || !seenDevices.has([...identifiers][0])) {
-      errors.push(`${family} evidence is not bound to one signed-build device record`);
-    }
+  const identifiers = new Set(rows.filter((row) => row.deviceFamily === 'iPhone')
+    .map((row) => row.deviceIdentifier));
+  if (identifiers.size !== 1 || !seenDevices.has([...identifiers][0])) {
+    errors.push('iPhone evidence is not bound to one signed-build device record');
   }
   return errors;
 }
@@ -180,14 +176,14 @@ export function parseVoiceEvidence(document) {
 }
 
 async function main() {
-  const [inputPath, iphoneRecordPath, ipadRecordPath] = process.argv.slice(2);
-  if (!inputPath || !iphoneRecordPath || !ipadRecordPath) {
-    throw new Error('usage: verify-voice-evidence.mjs <device-matrix.md> <iphone-signed-build.json> <ipad-signed-build.json>');
+  const [inputPath, iphoneRecordPath] = process.argv.slice(2);
+  if (!inputPath || !iphoneRecordPath) {
+    throw new Error('usage: verify-voice-evidence.mjs <device-matrix.md> <iphone-signed-build.json>');
   }
   const document = await readFile(inputPath, 'utf8');
   const evidence = parseVoiceEvidence(document);
   const expectedCommit = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
-  const records = await Promise.all([iphoneRecordPath, ipadRecordPath]
+  const records = await Promise.all([iphoneRecordPath]
     .map(async (recordPath) => JSON.parse(await readFile(recordPath, 'utf8'))));
   const errors = [
     ...validateVoiceEvidence(evidence, { expectedCommit }),

@@ -7,8 +7,8 @@ import TaisaStorage
 enum CareerWorkScenarios {
     static let scenarios: [PreviewScenario] = [
         scenario("actions.empty", "Actions empty", .phone, root: .actions, state: .empty),
-        scenario("goals.content", "Goals content", .adaptive, root: .goals, state: .content(.preview, isRefreshing: false, issue: nil)),
-        scenario("actions.action", "Action detail", .adaptive, root: .actions, state: .content(.actionPreview, isRefreshing: false, issue: nil), route: .action(id: ActionRecord.preview.id)),
+        scenario("goals.content", "Goals content", .phone, root: .goals, state: .content(.preview, isRefreshing: false, issue: nil)),
+        scenario("actions.action", "Action detail", .phone, root: .actions, state: .content(.actionPreview, isRefreshing: false, issue: nil), route: .action(id: ActionRecord.preview.id)),
         scenario("actions.failure", "Actions denied network", .phone, root: .actions, state: .failure(.storageUnavailable)),
         scenario("actions.recovery", "Actions recovery", .phone, root: .actions, state: .failure(.recoveryRequired)),
         scenario(
@@ -28,7 +28,6 @@ enum CareerWorkScenarios {
             state: .content(.actionPreview, isRefreshing: false, issue: nil),
             route: .action(id: ActionRecord.preview.id)
         ),
-        scenario("goals.narrowIPad", "Goals narrow iPad", .tablet, root: .goals, state: .content(.preview, isRefreshing: false, issue: nil)),
         PreviewScenario(identifier: "goals.proposal", title: "Goal proposal", deviceFamily: .phone, accessibility: .default, readiness: .ready) {
             AnyView(NavigationStack {
                 CareerWorkProposalReviewView(

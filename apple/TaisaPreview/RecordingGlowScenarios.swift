@@ -15,7 +15,7 @@ enum RecordingGlowScenarios {
         PreviewScenario(
             identifier: "recording-glow.tuner",
             title: "Recording glow · tuning lab",
-            deviceFamily: .adaptive,
+            deviceFamily: .phone,
             accessibility: .default,
             readiness: .ready
         ) { AnyView(RecordingGlowTuningView()) },
@@ -31,7 +31,7 @@ enum RecordingGlowScenarios {
         PreviewScenario(
             identifier: "recording-glow.\(suffix)",
             title: title,
-            deviceFamily: .adaptive,
+            deviceFamily: .phone,
             accessibility: .init(reducedMotion: reducedMotion),
             readiness: .ready
         ) {

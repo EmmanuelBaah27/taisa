@@ -6,14 +6,15 @@ import TaisaStorage
 @MainActor
 enum HomeScenarios {
     static let scenarios: [PreviewScenario] = [
-        scenario("home.loading", "Home loading", .adaptive, mode: .loading),
-        scenario("home.empty", "Home empty", .adaptive, mode: .empty),
-        scenario("home.content", "Home content", .adaptive, mode: .content),
-        scenario("home.combined", "Home combined", .adaptive, mode: .combined),
-        scenario("home.insights", "Home insights", .adaptive, mode: .insights),
-        scenario("home.refreshing", "Home refreshing", .adaptive, mode: .refreshing),
-        scenario("home.failure", "Home failure", .adaptive, mode: .failure),
-        scenario("home.recovery", "Home recovery", .adaptive, mode: .recovery),
+        scenario("home.loading", "Home loading", .phone, mode: .loading),
+        scenario("home.empty", "Home empty", .phone, mode: .empty),
+        scenario("home.content", "Home content", .phone, mode: .content),
+        scenario("home.combined", "Home combined", .phone, mode: .combined),
+        scenario("home.insights", "Home insights", .phone, mode: .insights),
+        scenario("home.refreshing", "Home refreshing", .phone, mode: .refreshing),
+        scenario("home.failure", "Home failure", .phone, mode: .failure),
+        scenario("home.recovery", "Home recovery", .phone, mode: .recovery),
+        scenario("home.compactPhone", "Home compact iPhone", .phone, mode: .content),
         scenario(
             "home.accessibilityText",
             "Home accessibility text",
@@ -21,7 +22,6 @@ enum HomeScenarios {
             accessibility: .init(contentSize: .accessibilityExtraExtraExtraLarge),
             mode: .combined
         ),
-        scenario("home.narrowIPad", "Home narrow iPad", .tablet, mode: .content),
     ]
 
     private static func scenario(
