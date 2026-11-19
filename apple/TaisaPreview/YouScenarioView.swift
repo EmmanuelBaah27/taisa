@@ -38,7 +38,6 @@ struct YouScenarioView: View {
             profile: .init(
                 id: "10000000-0000-4000-8000-000000000049",
                 displayName: "Baah",
-                headline: "",
                 biography: "Product designer at Oyster",
                 updatedAtMS: 1
             ),
@@ -54,12 +53,11 @@ private actor YouPreviewProfileStore {
     func save(_ draft: ProfileDraft) throws -> YouSnapshot {
         guard ProfileInputValidator.validate(
             displayName: draft.displayName,
-            headline: draft.headline,
             biography: draft.biography
         ).isValid else { throw YouContractError.invalidProfile }
         snapshot = .init(profile: .init(
             id: snapshot.profile?.id ?? "10000000-0000-4000-8000-000000000049",
-            displayName: draft.displayName, headline: draft.headline,
+            displayName: draft.displayName,
             biography: draft.biography, updatedAtMS: 1), diagnostics: snapshot.diagnostics)
         return snapshot
     }

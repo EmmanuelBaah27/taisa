@@ -1,22 +1,18 @@
 # Profile Bio compatibility
 
-The profile UI exposes Display name and Bio. Bio uses the existing encrypted
-`biography` field; `headline` remains an internal historical schema field.
+The profile UI and active Product contracts expose Display name and Bio. Bio uses
+the existing encrypted `biography` field. The active query, draft, validation,
+Preview fixture, and command API do not expose `headline`.
 
-When the local You client loads an existing profile with blank biography and a
-nonblank headline, it moves the headline into biography using the normal
-ProfileCommandRepository mutation path. The source headline is cleared after
-being copied so intentionally clearing Bio later cannot resurrect it. Existing
-nonblank biography is never overwritten. A conflicting historical headline is
-retained until the user edits the visible profile, then retired so it cannot
-later repopulate a cleared Bio. Empty first-build stores do not create a profile
-merely because You opens. No schema version or archive shape changes.
+The encrypted database and archive contracts retain `headline` for backward
+compatibility. Existing values remain stored but inactive. Opening or editing You
+does not copy, display, validate, overwrite, or delete them. New active profile
+records store an empty compatibility value. No schema version or archive shape
+changes.
 
-The compatibility write participates in the existing encrypted mutation and
-recovery mechanisms. Failure follows the existing content-free You load error
-path and must not be reported as a successful move. Regression cases cover a
-legacy headline, repeated loads, deliberate Bio clearing, an existing biography,
-and an empty store.
+Regression tests prove that an old stored headline does not populate Bio. The
+tests also prove that active profile edits preserve the stored compatibility
+value. Empty first-build stores do not create a profile merely because You opens.
 
 ## Auto-save editor
 

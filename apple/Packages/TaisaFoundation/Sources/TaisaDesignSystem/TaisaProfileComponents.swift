@@ -2,21 +2,29 @@ import SwiftUI
 
 /// A data-derived fallback while photo editing and persistence remain deferred.
 public struct TaisaProfileAvatar: View {
-    private let name: String
+    public enum Contract {
+        public static let fallbackAsset = "ProfileAvatarFallback"
+    }
+
     private let size: CGFloat
-    public init(name: String, size: CGFloat = TaisaProfileMetric.avatar) {
-        self.name = name; self.size = size
+    public init(size: CGFloat = TaisaProfileMetric.avatar) {
+        self.size = size
     }
     public var body: some View {
-        let initials = name.split(whereSeparator: \.isWhitespace).prefix(2).compactMap(\.first).map(String.init).joined().uppercased()
-        TaisaText(role: .profileBody, content: initials)
+        Image(Contract.fallbackAsset, bundle: .module)
+            .resizable()
+            .scaledToFill()
             .frame(width: size, height: size)
-            .background(TaisaColor.subtleSurface.color, in: Circle())
+            .clipShape(Circle())
             .accessibilityHidden(true)
     }
 }
 
 public struct TaisaProfileIconButton: View {
+    public enum Contract {
+        public static let minimumTarget = TaisaControlMetric.headerActionHeight
+    }
+
     private let icon: CentralIconName
     private let label: String
     private let action: @MainActor () -> Void
@@ -33,6 +41,14 @@ public struct TaisaProfileIconButton: View {
 }
 
 public struct TaisaProfileSummary: View {
+    public enum Contract {
+        public static func displayName(for name: String) -> String {
+            name.isEmpty ? "Your profile" : name
+        }
+
+        public static func displaysBio(_ bio: String) -> Bool { !bio.isEmpty }
+    }
+
     private let name: String
     private let bio: String
     private let edit: @MainActor () -> Void
@@ -42,16 +58,16 @@ public struct TaisaProfileSummary: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: TaisaProfileMetric.headerGap) {
             HStack(alignment: .top) {
-                TaisaProfileAvatar(name: name)
+                TaisaProfileAvatar()
                 Spacer()
                 TaisaProfileIconButton(icon: .profileEdit, label: "Edit profile", action: edit)
                     .frame(height: TaisaProfileMetric.avatar)
                     .accessibilityIdentifier("you.profile.edit")
             }
-            TaisaText(role: .profileName, content: name.isEmpty ? "Your profile" : name)
+            TaisaText(role: .profileName, content: Contract.displayName(for: name))
                 .frame(minHeight: TaisaProfileMetric.nameLineHeight, alignment: .leading)
                 .accessibilityAddTraits(.isHeader)
-            if !bio.isEmpty {
+            if Contract.displaysBio(bio) {
                 TaisaText(role: .profileSupporting, color: .mutedForeground, content: bio)
                     .frame(minHeight: TaisaTypography.supporting.lineHeight, alignment: .leading)
             }
@@ -62,6 +78,11 @@ public struct TaisaProfileSummary: View {
 }
 
 public struct TaisaSettingsNavigationRow: View {
+    public enum Contract {
+        public static let chevron = CentralIconName.profileChevron
+        public static func hint(for title: String) -> String { "Opens \(title)" }
+    }
+
     private let title: String
     private let icon: CentralIconName
     private let action: @MainActor () -> Void
@@ -77,7 +98,7 @@ public struct TaisaSettingsNavigationRow: View {
                 TaisaText(role: .profileLabel, content: title)
                     .frame(minHeight: TaisaTypography.navigationLabel.lineHeight, alignment: .leading)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                CentralIcon(.profileChevron)
+                CentralIcon(Contract.chevron)
                     .frame(width: TaisaProfileMetric.chevron, height: TaisaProfileMetric.chevron)
                     .foregroundStyle(TaisaColor.mutedForeground.color)
             }
@@ -88,21 +109,29 @@ public struct TaisaSettingsNavigationRow: View {
             .contentShape(Rectangle())
         }
         .accessibilityLabel(title)
-        .accessibilityHint("Opens \(title)")
+        .accessibilityHint(Contract.hint(for: title))
     }
 }
 
 public struct TaisaSettingsGroup<Content: View>: View {
+    public enum Contract {
+        public static var radius: CGFloat { TaisaRadius.historyGroup.rawValue }
+    }
+
     private let content: Content
     public init(@ViewBuilder content: () -> Content) { self.content = content() }
     public var body: some View {
         VStack(spacing: TaisaProfileMetric.rowGap) { content }
             .background(TaisaColor.background.color)
-            .clipShape(RoundedRectangle(cornerRadius: TaisaRadius.historyGroup.rawValue))
+            .clipShape(RoundedRectangle(cornerRadius: Contract.radius))
     }
 }
 
 public struct TaisaProfileSection<Content: View>: View {
+    public enum Contract {
+        public static var radius: CGFloat { TaisaRadius.historyGroup.rawValue }
+    }
+
     private let title: String
     private let content: Content
     public init(_ title: String, @ViewBuilder content: () -> Content) {
@@ -115,6 +144,6 @@ public struct TaisaProfileSection<Content: View>: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(TaisaSpacing.standard.rawValue)
-        .background(TaisaColor.subtleSurface.color, in: RoundedRectangle(cornerRadius: TaisaRadius.historyGroup.rawValue))
+        .background(TaisaColor.subtleSurface.color, in: RoundedRectangle(cornerRadius: Contract.radius))
     }
 }

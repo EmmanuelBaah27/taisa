@@ -3,10 +3,9 @@ import TaisaStorage
 
 public struct ProfileDraft: Sendable, Equatable {
     public var displayName: String
-    public var headline: String
     public var biography: String
-    public init(displayName: String = "", headline: String = "", biography: String = "") {
-        self.displayName = displayName; self.headline = headline; self.biography = biography
+    public init(displayName: String = "", biography: String = "") {
+        self.displayName = displayName; self.biography = biography
     }
 }
 
@@ -41,30 +40,12 @@ public extension YouClient {
             .init(id: UUID().uuidString, deviceID: deviceID, timestamp: nowMS())
         }
         return .init(
-            load: {
-                let snapshot = try await query.load()
-                guard let profile = snapshot.profile,
-                      profile.biography.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-                      !profile.headline.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                else { return snapshot }
-                // Compatibility move through the existing encrypted mutation path.
-                // Clearing the moved source prevents an intentionally cleared Bio
-                // from resurrecting the old headline on the next launch.
-                _ = try await profiles.save(
-                    id: profile.id,
-                    displayName: profile.displayName,
-                    headline: "",
-                    biography: profile.headline,
-                    context: context()
-                )
-                return try await query.load()
-            },
+            load: { try await query.load() },
             saveProfile: { draft in
                 let profileID = try await query.load().profile?.id ?? deviceID
                 _ = try await profiles.save(
                     id: profileID,
                     displayName: draft.displayName,
-                    headline: draft.headline,
                     biography: draft.biography,
                     context: context()
                 )

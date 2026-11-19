@@ -7,21 +7,19 @@ public enum YouContractError: Error, Sendable, Equatable, CaseIterable {
 
 public struct ProfileInputValidation: Sendable, Equatable {
     public let displayNameMessage: String?
-    public let headlineMessage: String?
     public let biographyMessage: String?
 
     public var isValid: Bool {
-        displayNameMessage == nil && headlineMessage == nil && biographyMessage == nil
+        displayNameMessage == nil && biographyMessage == nil
     }
 }
 
 public enum ProfileInputValidator {
     public static func validate(
         displayName: String,
-        headline: String,
         biography: String
     ) -> ProfileInputValidation {
-        let fields = normalized(displayName: displayName, headline: headline, biography: biography)
+        let fields = normalized(displayName: displayName, biography: biography)
         return .init(
             displayNameMessage: message(
                 for: fields.displayName,
@@ -29,13 +27,6 @@ public enum ProfileInputValidator {
                 oversized: "Display name must be 80 characters or fewer.",
                 allowsLineBreaks: false,
                 unsupported: "Display name cannot contain line breaks or control characters."
-            ),
-            headlineMessage: message(
-                for: fields.headline,
-                limit: 160,
-                oversized: "Headline must be 160 characters or fewer.",
-                allowsLineBreaks: false,
-                unsupported: "Headline cannot contain line breaks or control characters."
             ),
             biographyMessage: message(
                 for: fields.biography,
@@ -49,12 +40,10 @@ public enum ProfileInputValidator {
 
     static func normalized(
         displayName: String,
-        headline: String,
         biography: String
-    ) -> (displayName: String, headline: String, biography: String) {
+    ) -> (displayName: String, biography: String) {
         (
             displayName.trimmingCharacters(in: .whitespacesAndNewlines),
-            headline.trimmingCharacters(in: .whitespacesAndNewlines),
             biography.trimmingCharacters(in: .whitespacesAndNewlines)
         )
     }
@@ -79,40 +68,40 @@ public struct ProfileCommandRepository: Sendable {
 
     public init(store: TaisaStore) { repository = ProfileRepository(store: store) }
 
-    public func get(id: String) async throws -> ProfileRecord? { try await repository.get(id: id) }
+    public func get(id: String) async throws -> CareerProfile? {
+        try await repository.get(id: id).map {
+            CareerProfile(id: $0.id, displayName: $0.displayName, biography: $0.biography, updatedAtMS: $0.updatedAtMS)
+        }
+    }
 
     @discardableResult
     public func save(
         id: String,
         displayName: String,
-        headline: String,
         biography: String,
         context: MutationContext
-    ) async throws -> ProfileRecord {
+    ) async throws -> CareerProfile {
         let fields = ProfileInputValidator.normalized(
             displayName: displayName,
-            headline: headline,
             biography: biography
         )
         guard ProfileInputValidator.validate(
             displayName: fields.displayName,
-            headline: fields.headline,
             biography: fields.biography
         ).isValid else { throw YouContractError.invalidProfile }
-        let record = ProfileRecord(
-            id: id,
-            displayName: fields.displayName,
-            headline: fields.headline,
-            biography: fields.biography,
-            updatedAtMS: context.timestamp
-        )
         do {
-            if try await repository.get(id: id) == nil {
-                try await repository.create(record, context: context)
-            } else {
-                try await repository.update(record, context: context)
-            }
-            return record
+            let record = try await repository.saveActiveProfile(
+                id: id,
+                displayName: fields.displayName,
+                biography: fields.biography,
+                context: context
+            )
+            return CareerProfile(
+                id: record.id,
+                displayName: record.displayName,
+                biography: record.biography,
+                updatedAtMS: record.updatedAtMS
+            )
         } catch let error as YouContractError {
             throw error
         } catch {

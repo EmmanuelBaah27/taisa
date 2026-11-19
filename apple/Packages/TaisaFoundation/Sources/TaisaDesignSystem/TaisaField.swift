@@ -14,7 +14,53 @@ public enum TaisaFieldState: Sendable, Equatable {
     case loading
 }
 
-public enum TaisaFieldAppearance: Sendable { case outlined, profile }
+public struct TaisaFieldStyle: Sendable, Equatable {
+    public let spacing: CGFloat
+    public let titleRole: TaisaTypography
+    public let titleColor: TaisaColor
+    public let titleLineHeight: CGFloat?
+    public let fieldTypography: TaisaTypography
+    public let horizontalPadding: CGFloat
+    public let minimumHeight: CGFloat?
+    public let background: TaisaColor
+    public let border: TaisaColor?
+    public let multilineMinimumLines: Int
+}
+
+public enum TaisaFieldAppearance: Sendable {
+    case outlined, profile
+
+    public var style: TaisaFieldStyle {
+        switch self {
+        case .outlined:
+            .init(
+                spacing: TaisaSpacing.compact.rawValue,
+                titleRole: .label,
+                titleColor: .foreground,
+                titleLineHeight: nil,
+                fieldTypography: .body,
+                horizontalPadding: TaisaSpacing.control.rawValue,
+                minimumHeight: nil,
+                background: .background,
+                border: .border,
+                multilineMinimumLines: 3
+            )
+        case .profile:
+            .init(
+                spacing: TaisaSpacing.tight.rawValue,
+                titleRole: .profileSupporting,
+                titleColor: .mutedForeground,
+                titleLineHeight: TaisaTypography.supporting.lineHeight,
+                fieldTypography: .profileBody,
+                horizontalPadding: TaisaSpacing.standard.rawValue,
+                minimumHeight: TaisaControlMetric.primaryNavigationItemHeight,
+                background: .subtleSurface,
+                border: nil,
+                multilineMinimumLines: 1
+            )
+        }
+    }
+}
 
 public struct TaisaField: View {
     private let title: String
@@ -41,16 +87,17 @@ public struct TaisaField: View {
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: appearance == .profile ? TaisaSpacing.tight.rawValue : TaisaSpacing.compact.rawValue) {
-            TaisaText(role: appearance == .profile ? .profileSupporting : .label, color: appearance == .profile ? .mutedForeground : .foreground, content: title)
-                .frame(minHeight: appearance == .profile ? TaisaTypography.supporting.lineHeight : nil, alignment: .leading)
+        let style = appearance.style
+        VStack(alignment: .leading, spacing: style.spacing) {
+            TaisaText(role: style.titleRole, color: style.titleColor, content: title)
+                .frame(minHeight: style.titleLineHeight, alignment: .leading)
             field
-                .font(appearance == .profile ? TaisaTypography.profileBody.font : TaisaTypography.body.font)
+                .font(style.fieldTypography.font)
                 .accessibilityLabel(title)
-                .padding(.horizontal, appearance == .profile ? TaisaSpacing.standard.rawValue : TaisaSpacing.control.rawValue)
+                .padding(.horizontal, style.horizontalPadding)
                 .padding(.vertical, TaisaSpacing.control.rawValue)
-                .frame(minHeight: appearance == .profile ? TaisaControlMetric.primaryNavigationItemHeight : nil)
-                .background(appearance == .profile ? TaisaColor.subtleSurface.color : TaisaColor.background.color, in: RoundedRectangle(cornerRadius: TaisaRadius.control.rawValue))
+                .frame(minHeight: style.minimumHeight)
+                .background(style.background.color, in: RoundedRectangle(cornerRadius: TaisaRadius.control.rawValue))
                 .overlay {
                     RoundedRectangle(cornerRadius: TaisaRadius.control.rawValue)
                         .stroke(borderColor)
@@ -69,7 +116,7 @@ public struct TaisaField: View {
             SecureField(placeholder, text: $text)
         case .multiline:
             TextField(placeholder, text: $text, axis: .vertical)
-                .lineLimit((appearance == .profile ? 1 : 3)...8)
+                .lineLimit(appearance.style.multilineMinimumLines...8)
         case .text, .readOnly:
             TextField(placeholder, text: $text)
         }
@@ -77,7 +124,7 @@ public struct TaisaField: View {
 
     private var borderColor: Color {
         if case .invalid = state { return TaisaColor.destructive.color }
-        return appearance == .profile ? .clear : TaisaColor.border.color
+        return appearance.style.border?.color ?? .clear
     }
 }
 

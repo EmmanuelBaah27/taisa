@@ -30,11 +30,10 @@ public enum ProfileSaveState: Sendable, Equatable {
     public private(set) var profileSaveState: ProfileSaveState = .idle
     public var profileValidation: ProfileInputValidation {
         guard let draft = profileDraft else {
-            return ProfileInputValidator.validate(displayName: "", headline: "", biography: "")
+            return ProfileInputValidator.validate(displayName: "", biography: "")
         }
         return ProfileInputValidator.validate(
             displayName: draft.displayName,
-            headline: draft.headline,
             biography: draft.biography
         )
     }
@@ -60,19 +59,18 @@ public enum ProfileSaveState: Sendable, Equatable {
         editSession = UUID()
         profileSaveState = .idle
         let profile = state.snapshot?.profile
-        profileDraft = .init(displayName: profile?.displayName ?? "", headline: profile?.headline ?? "", biography: profile?.biography ?? "")
+        profileDraft = .init(displayName: profile?.displayName ?? "", biography: profile?.biography ?? "")
         savedDraft = profileDraft
     }
 
-    public func updateProfile(displayName: String, headline: String, biography: String) {
+    public func updateProfile(displayName: String, biography: String) {
         guard profileDraft != nil else { return }
-        profileDraft = .init(displayName: displayName, headline: headline, biography: biography)
+        profileDraft = .init(displayName: displayName, biography: biography)
     }
 
-    /// The editor exposes only name and Bio; any visible edit retires the hidden historical headline.
     public func updateProfileBio(displayName: String, biography: String) {
         guard profileDraft != nil else { return }
-        updateProfile(displayName: displayName, headline: "", biography: biography)
+        updateProfile(displayName: displayName, biography: biography)
         debounceTask?.cancel()
         guard profileValidation.isValid else {
             profileSaveState = .invalid

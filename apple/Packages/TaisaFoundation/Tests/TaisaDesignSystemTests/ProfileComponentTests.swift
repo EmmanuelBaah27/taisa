@@ -22,4 +22,41 @@ struct ProfileComponentTests {
         #expect(TaisaControlMetric.headerActionHeight >= 44)
         #expect(TaisaButtonControl<EmptyView>.Contract.supportsCustomContent)
     }
+
+    @Test func profileComponentsExposeTheirUserVisibleContracts() {
+        #expect(TaisaProfileAvatar.Contract.fallbackAsset == "ProfileAvatarFallback")
+        #expect(TaisaProfileIconButton.Contract.minimumTarget == 44)
+        #expect(TaisaProfileSummary.Contract.displayName(for: "") == "Your profile")
+        #expect(TaisaProfileSummary.Contract.displaysBio("Product designer"))
+        #expect(!TaisaProfileSummary.Contract.displaysBio(""))
+        #expect(TaisaSettingsNavigationRow.Contract.chevron == .profileChevron)
+        #expect(TaisaSettingsNavigationRow.Contract.hint(for: "Diagnostics") == "Opens Diagnostics")
+        #expect(TaisaSettingsGroup<EmptyView>.Contract.radius == TaisaRadius.historyGroup.rawValue)
+        #expect(TaisaProfileSection<EmptyView>.Contract.radius == TaisaRadius.historyGroup.rawValue)
+    }
+
+    @Test func profileFieldAppearanceKeepsOneSemanticStyleContract() {
+        let style = TaisaFieldAppearance.profile.style
+        #expect(style.titleRole == .profileSupporting)
+        #expect(style.titleColor == .mutedForeground)
+        #expect(style.fieldTypography == .profileBody)
+        #expect(style.background == .subtleSurface)
+        #expect(style.minimumHeight == TaisaControlMetric.primaryNavigationItemHeight)
+        #expect(style.border == nil)
+    }
+
+    @Test func profileCentralIconsResolveToPackageAssets() {
+        let expected: [(CentralIconName, String)] = [
+            (.profileShield, "ProfileShield"),
+            (.profileCloud, "ProfileCloud"),
+            (.profileDiagnostics, "ProfileDiagnostics"),
+            (.profileChevron, "ProfileChevron"),
+            (.profileEdit, "ProfileEdit"),
+            (.profileClose, "ProfileClose"),
+        ]
+        for (icon, asset) in expected {
+            #expect(icon.rendering == .asset(asset))
+        }
+        #expect(CentralIconName.homeLine.rendering == .drawn)
+    }
 }

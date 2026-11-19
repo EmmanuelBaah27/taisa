@@ -300,8 +300,9 @@ reports completion or cancellation; scene changes shield the underlying content.
 The approved Figma You overview and editor (146:1336 and 146:1721) use shared
 `TaisaProfileSummary`, `TaisaProfileAvatar`, `TaisaProfileIconButton`,
 `TaisaSettingsNavigationRow`, `TaisaSettingsGroup`, and `TaisaProfileSection`.
-These contracts contain no persistence or navigation state. The avatar currently
-uses name-derived initials; photo editing and photo persistence are deferred.
+These contracts contain no persistence or navigation state. The avatar uses the
+package-owned `ProfileAvatarFallback` image supplied by Baah. Photo editing and
+photo persistence are deferred.
 
 The existing `TaisaField` contract from the Actions foundation is reused with a
 backward-compatible `.profile` appearance: a muted label, subtle filled input,
@@ -319,8 +320,10 @@ resources; other screens retain their current typography. Inter carries its OFL
 licence. Scoutie Sans is the font supplied by the local design environment.
 Profile metrics and exact Figma SVGs live once in TaisaDesignSystem; CentralIcon
 provides typed profile shield, cloud, diagnostics, chevron, edit and close assets.
-The provided portrait is not bundled as a default identity for every user.
+The package-owned `ProfileAvatarFallback` image is the default identity image.
 
 You's app-shell navigation and voice entry are reused, not recreated by the page.
-The editor owns only Display name and Bio. Auto-save and the compatibility move
-from headline into empty Bio remain in TaisaYou and existing encrypted storage.
+The editor owns only Display name and Bio. Auto-save remains in TaisaYou and the
+existing encrypted storage. The historical `headline` field stays stored for
+archive compatibility. Active Product code does not query, validate, display,
+migrate, or overwrite it.

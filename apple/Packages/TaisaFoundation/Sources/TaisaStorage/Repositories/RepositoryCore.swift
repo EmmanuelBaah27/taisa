@@ -178,6 +178,40 @@ struct RepositoryCore<Record: DomainRecord>: Sendable {
         try ChangeJournal.insert(db: db, context: context, entity: spec.entity, entityID: record.id, operation: "update", record: record, causality: causality)
     }
 
+    func upsert(
+        id: String,
+        context: MutationContext,
+        transform: @escaping @Sendable (Record?) -> Record
+    ) async throws -> Record {
+        do {
+            return try await store.write { db in
+                let canonical = try canonicalID(id)
+                let matches = try Int.fetchOne(
+                    db,
+                    sql: "SELECT COUNT(*) FROM \(spec.table) WHERE \(spec.identityColumn) = ? COLLATE NOCASE",
+                    arguments: [canonical]
+                ) ?? 0
+                guard matches <= 1 else { throw RepositoryError.persistenceFailed }
+                let existing = try Row.fetchOne(
+                    db,
+                    sql: "SELECT * FROM \(spec.table) WHERE \(spec.identityColumn) = ? COLLATE NOCASE",
+                    arguments: [canonical]
+                ).map { try decode($0) }
+                let record = transform(existing)
+                if existing == nil {
+                    try create(record, context: context, db: db)
+                } else {
+                    try update(record, context: context, db: db)
+                }
+                return record
+            }
+        } catch let error as RepositoryError {
+            throw error
+        } catch {
+            throw RepositoryError.persistenceFailed
+        }
+    }
+
     func delete(
         id: String,
         context: MutationContext,
