@@ -1,5 +1,9 @@
 import SwiftUI
 
+public enum TaisaTaskRowContract {
+    public static let titleLineLimit = 2
+}
+
 public struct TaisaTaskRow: View {
     private let title: String
     private let dueLabel: String?
@@ -14,7 +18,11 @@ public struct TaisaTaskRow: View {
             CentralIcon(.incomplete)
                 .frame(width: TaisaControlMetric.standardIcon, height: TaisaControlMetric.standardIcon)
             VStack(alignment: .leading, spacing: TaisaTaskSpacing.headerGap) {
-                TaisaText(role: .taskTitle, content: title).frame(maxWidth: .infinity, alignment: .leading)
+                TaisaText(role: .taskTitle, content: title)
+                    .lineLimit(TaisaTaskRowContract.titleLineLimit)
+                    .truncationMode(.tail)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityLabel(title)
                 if let dueLabel {
                     HStack(spacing: TaisaTaskSpacing.dueGap) {
                         CentralIcon(.calendar)

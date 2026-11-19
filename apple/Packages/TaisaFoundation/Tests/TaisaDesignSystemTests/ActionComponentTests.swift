@@ -50,11 +50,19 @@ struct ActionComponentTests {
         #expect(TaisaSystemActionRole.cancel != .confirmation)
     }
 
+    @Test func taskTitleFieldStopsInputAtTheSuppliedCharacterLimit() {
+        let overlongTitle = String(repeating: "a", count: 121)
+
+        #expect(TaisaTaskTitleFieldContract.limited(overlongTitle).count == 120)
+        #expect(TaisaTaskTitleFieldContract.limited("Plan launch") == "Plan launch")
+    }
+
     @Test func rowsAndStatusesNameActionMeaningWithoutRawPresentation() {
         #expect(TaisaRowEmphasis.standard != .attention)
         #expect(TaisaStatusRole.active != .completed)
         #expect(TaisaStatusRole.dropped != .overdue)
         #expect(TaisaStatusRole.reopened != .warning)
+        #expect(TaisaTaskRowContract.titleLineLimit == 2)
     }
 
     @Test func centralCatalogCoversApprovedActionConcepts() {

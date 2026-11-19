@@ -1,5 +1,13 @@
 import SwiftUI
 
+public enum TaisaTaskTitleFieldContract {
+    public static let characterLimit = 120
+
+    public static func limited(_ value: String) -> String {
+        String(value.prefix(characterLimit))
+    }
+}
+
 public struct TaisaTaskTitleField: View {
     @Binding private var text: String
     private let focus: FocusState<Bool>.Binding
@@ -10,7 +18,14 @@ public struct TaisaTaskTitleField: View {
     }
 
     public var body: some View {
-        TextField("Add task…", text: $text, axis: .vertical)
+        TextField(
+            "Add task…",
+            text: Binding(
+                get: { text },
+                set: { text = TaisaTaskTitleFieldContract.limited($0) }
+            ),
+            axis: .vertical
+        )
             .font(TaisaTypography.taskTitle.font)
             .tint(TaisaColor.foreground.color)
             .lineLimit(1...3)
