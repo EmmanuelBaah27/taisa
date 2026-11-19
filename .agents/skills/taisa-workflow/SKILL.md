@@ -57,10 +57,13 @@ relations. Do not narrate commands, polling, unchanged waits, or repeated eviden
 
 ## Stable Taisa invariants
 
-- Normal-risk pull requests use fast and focused checks. High-risk and release pull requests
-  require the complete applicable matrix on the exact candidate revision. Exact-revision evidence
-  remains reusable while code, dependencies, toolchain, signing, configuration, and covered
-  inputs remain unchanged. If classification is uncertain, classify the pull request as high risk.
+- Every pull request links one Linear tracer, declares one reviewable outcome, and declares all
+  applicable additive risks. Repository rules can raise risk but cannot lower approved Linear
+  classification. Unknown or uncertain sensitive changes fail closed for review.
+- Pull requests use fast and focused checks selected by risk. Release candidates require the
+  complete applicable matrix on the exact candidate revision. Exact-revision evidence remains
+  reusable while code, dependencies, toolchain, signing, configuration, and covered inputs remain
+  unchanged.
 - Readable personal data stays encrypted and device-authoritative.
 - The device UUID remains the v1 user identifier unless approved product intent changes it.
 - SwiftUI and iOS/iPadOS 26+ remain the shipping direction. React Native is migration evidence.

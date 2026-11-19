@@ -6,8 +6,6 @@ on:
   push:
     branches: [main]
     tags: ['v*']
-  schedule:
-    - cron: '23 2 * * *'
   workflow_dispatch:
 
 permissions:
@@ -16,7 +14,7 @@ permissions:
   checks: read
 
 concurrency:
-  group: native-full-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.event_name == 'schedule' && 'nightly' || github.event_name == 'workflow_dispatch' && format('manual-{0}', github.run_id) || startsWith(github.ref, 'refs/tags/') && format('release-{0}', github.ref) || 'main' }}
+  group: native-full-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.event_name == 'workflow_dispatch' && format('manual-{0}', github.run_id) || startsWith(github.ref, 'refs/tags/') && format('release-{0}', github.ref) || 'main' }}
   cancel-in-progress: true
 
 jobs:

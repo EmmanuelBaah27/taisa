@@ -67,7 +67,7 @@ test("retained safety contracts keep one authoritative release order", () => {
   const focused = workflow.indexOf("Complete implementation and the smallest applicable focused checks.");
   const review = workflow.indexOf("Run a fresh whole-candidate review before the complete matrix.");
   const freeze = workflow.indexOf("Freeze the clean candidate revision.");
-  const matrix = workflow.indexOf("run the complete applicable matrix once on that exact");
+  const matrix = workflow.search(/run the\s+complete applicable matrix once on that exact/i);
   assert.ok(focused >= 0 && focused < review && review < freeze && freeze < matrix);
 
   assert.match(workflow, /REPAIR_QUARANTINE/);
@@ -78,14 +78,16 @@ test("retained safety contracts keep one authoritative release order", () => {
   assert.match(workflow, /verify-branch-topology\.sh preview-sync/);
 });
 
-test("pull request verification is risk based and fails closed", () => {
+test("pull request verification uses additive risk and fails closed", () => {
   const workflow = read("docs/workflow.md");
   const orchestrator = read(".agents/skills/taisa-workflow/SKILL.md");
 
   for (const authority of [workflow, orchestrator]) {
-    assert.match(authority, /Normal-risk pull requests use fast and focused checks/i);
-    assert.match(authority, /High-risk and release pull requests\s+require the complete applicable matrix/i);
-    assert.match(authority, /If classification is uncertain, classify the pull request as high risk/i);
-    assert.match(authority, /Exact-revision evidence\s+remains reusable/i);
+    assert.match(authority, /one Linear tracer/i);
+    assert.match(authority, /one reviewable outcome/i);
+    assert.match(authority, /additive risks/i);
+    assert.match(authority, /Unknown or uncertain sensitive changes fail closed/i);
+    assert.match(authority, /Release candidates require the\s+complete applicable matrix/i);
+    assert.match(authority, /Exact-revision evidence\s+remains\s+reusable/i);
   }
 });
