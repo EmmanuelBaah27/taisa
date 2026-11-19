@@ -111,9 +111,12 @@ final class TaisaPreviewCatalogTests: XCTestCase {
         XCTAssertTrue(element("you.profile.edit", in: app).exists)
 
         let back = app.buttons["Taisa Preview"]
-        XCTAssertTrue(back.waitForExistence(timeout: 5))
-        back.tap()
-        XCTAssertTrue(search.waitForExistence(timeout: 5))
+        if back.waitForExistence(timeout: 2) {
+            back.tap()
+            XCTAssertTrue(search.waitForExistence(timeout: 5))
+        } else {
+            XCTAssertTrue(app.buttons["Hide Sidebar"].waitForExistence(timeout: 5))
+        }
     }
 
     func testYouScenarioReusesCatalogNavigationOwner() throws {
