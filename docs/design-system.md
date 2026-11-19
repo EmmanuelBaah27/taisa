@@ -5,7 +5,7 @@ Full token definitions and decision rules: `foundations.md` (root of repo).
 
 ## Native SwiftUI product boundary
 
-The native client targets iOS/iPadOS 26+ and defaults to standard SwiftUI controls, interactions, accessibility behavior, and Apple visual language. Product pages own composition so functionality can move quickly and remain adaptable while Baah redesigns each page in context.
+The native client targets iOS 26+ on iPhone and defaults to standard SwiftUI controls, interactions, accessibility behavior, and Apple visual language. Product pages own composition so functionality can move quickly and remain adaptable while Baah redesigns each page in context.
 
 Current shipped native Home presentation uses feature-local `ConversationRow`, `GoalRow`, and `ActionRow` views plus standard `NavigationStack`, `List`, `Section`, `ContentUnavailableView`, `Button`, `Label`, `ProgressView`, `.task`, and `.refreshable`. These rows are not design-system components yet. Extract a native shared component only after a redesigned pattern is proven reusable; update this document, its previews, and tests in the same change that implements it.
 
@@ -55,7 +55,7 @@ Every native page consumes these package-owned tokens and components rather than
 
 Primary pages use a native horizontal page-style `TabView`: direct swipes remain finger-driven, settle into the same route selection used by taps, and update the `PrimaryNavigation` selection capsule. The capsule uses the shared fast motion token when selection changes; Reduce Motion makes that response immediate.
 
-The native preview catalog registers deterministic, network-free conversation fixtures for list, draft, history, recording, paused, typing, transcription, coaching, Reply, permission, retry, correction, Accessibility XXXL, and iPad-width states. Preview composition uses injected local clients only; it never constructs `ConversationRuntimeFactory`, audio capture, or gateway transports. These fixtures are the inspectable visual baseline before an exact revision is integrated into `preview/taisa` for signed-device QA.
+The native preview catalog registers deterministic, network-free conversation fixtures for list, draft, history, recording, paused, typing, transcription, coaching, Reply, permission, retry, correction, Accessibility XXXL, and compact-iPhone states. Preview composition uses injected local clients only; it never constructs `ConversationRuntimeFactory`, audio capture, or gateway transports. These fixtures are the inspectable visual baseline before an exact revision is integrated into `preview/taisa` for signed-device QA.
 
 The React Native inventory below remains authoritative for the existing mobile client during the controlled migration. It is not a specification for recreating React Native visuals in SwiftUI.
 
@@ -288,7 +288,7 @@ masked input), `Toggle` (saved-copy confirmation), navigation, and system docume
 presentations. The input uses DS typography/color; toggle labels and surrounding
 spacing use DS components/tokens. These retain platform security and accessibility
 behavior without introducing business logic into the DS. Coverage includes a
-375-point iPad layout, largest Dynamic Type, and simulator accessibility audits.
+375-point compact-iPhone layout, largest Dynamic Type, and simulator accessibility audits.
 Recovery-key text disables native selection; its content-free accessibility label
 directs users to the explicit Copy Recovery Key action with a local-only, expiring
 clipboard item. The system document exporter uses the verified file URL through

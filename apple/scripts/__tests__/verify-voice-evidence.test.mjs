@@ -24,21 +24,21 @@ function validEvidence() {
     databaseSchemaVersion: '2',
     signer: 'Apple Development',
     provisioningProfile: 'iOS Team Provisioning Profile',
-    rows: ['iPhone', 'iPad'].flatMap((deviceFamily) => requiredVoiceCases.map((caseID) => ({
-      deviceFamily,
-      deviceName: `${deviceFamily} synthetic physical device`,
-      deviceIdentifier: `${deviceFamily.toLowerCase()}-registered-id`,
+    rows: requiredVoiceCases.map((caseID) => ({
+      deviceFamily: 'iPhone',
+      deviceName: 'iPhone synthetic physical device',
+      deviceIdentifier: 'iphone-registered-id',
       operatingSystem: 'iOS 26.0',
       physicalDevice: true,
       caseID,
       result: 'pass',
       durationMS: caseID.startsWith('performance.') ? 1_000 : null,
       peakMemoryMB: caseID.startsWith('performance.') ? 128 : null,
-    }))),
+    })),
   };
 }
 
-test('accepts complete content-free physical iPhone and iPad evidence', () => {
+test('accepts complete content-free physical iPhone evidence', () => {
   assert.deepEqual(validateVoiceEvidence(validEvidence()), []);
 });
 
@@ -61,10 +61,13 @@ test('parses the single machine-readable Markdown evidence block', () => {
   assert.throws(() => parseVoiceEvidence('no evidence'), /block is missing/);
 });
 
-test('rejects missing iPhone or iPad evidence', () => {
+test('rejects missing iPhone evidence and unsupported iPad evidence', () => {
   const evidence = validEvidence();
-  evidence.rows = evidence.rows.filter((row) => row.deviceFamily !== 'iPad');
-  assert.match(validateVoiceEvidence(evidence).join('\n'), /iPad/);
+  evidence.rows = [];
+  assert.match(validateVoiceEvidence(evidence).join('\n'), /missing iPhone evidence/);
+  evidence.rows = validEvidence().rows;
+  evidence.rows[0].deviceFamily = 'iPad';
+  assert.match(validateVoiceEvidence(evidence).join('\n'), /must be iPhone/);
 });
 
 test('rejects absent interruption, route, connectivity, and cancellation cases', () => {
@@ -104,7 +107,7 @@ for (const [field, value] of [
   });
 }
 
-test('requires bounded numeric performance evidence on both devices', () => {
+test('requires bounded numeric performance evidence on iPhone', () => {
   const evidence = validEvidence();
   const row = evidence.rows.find((item) => item.caseID === 'performance.streaming');
   row.durationMS = null;
@@ -114,9 +117,9 @@ test('requires bounded numeric performance evidence on both devices', () => {
 
 test('rejects voice evidence that is not bound to signed Personal artifacts', () => {
   const evidence = validEvidence();
-  const records = ['iphone', 'ipad'].map((family) => JSON.parse(readFileSync(
-    new URL(`../../../docs/migration/swiftui/native-build-records/2026-10-06-${family}-personal.json`, import.meta.url),
-  )));
+  const records = [JSON.parse(readFileSync(
+    new URL('../../../docs/migration/swiftui/native-build-records/2026-10-06-iphone-personal.json', import.meta.url),
+  ))];
   for (const [index, record] of records.entries()) {
     record.appPath = `/nonexistent/retained-personal-${index}/TaisaPersonal.app`;
     record.profilePath = `${record.appPath}/embedded.mobileprovision`;
@@ -130,13 +133,13 @@ test('rejects voice evidence that is not bound to signed Personal artifacts', ()
   evidence.signer = records[0].artifactEvidence.signerCertificateSHA256;
   evidence.provisioningProfile = records[0].artifactEvidence.profileUUID;
   evidence.rows = records.flatMap((record, index) => requiredVoiceCases.map((caseID) => ({
-    deviceFamily: index === 0 ? 'iPhone' : 'iPad',
+    deviceFamily: 'iPhone',
     deviceName: record.deviceName, deviceIdentifier: record.deviceIdentifier,
     operatingSystem: record.operatingSystem, physicalDevice: true, caseID, result: 'pass',
     durationMS: caseID.startsWith('performance.') ? 1_000 : null,
     peakMemoryMB: caseID.startsWith('performance.') ? 128 : null,
   })));
   assert.deepEqual(validateSignedBuildBindings(evidence, records, { preferRetainedEvidence: true }), []);
-  records[1].installedCommit = 'abcdefabcdefabcdefabcdefabcdefabcdefabcd';
+  records[0].installedCommit = 'abcdefabcdefabcdefabcdefabcdefabcdefabcd';
   assert.match(validateSignedBuildBindings(evidence, records).join('\n'), /commit|installed/i);
 });

@@ -44,7 +44,6 @@ const PRODUCTION_PREVIEW_PATTERNS = [
   'foundation.default',
   'foundation.diagnostics',
   'foundation.increased-contrast',
-  'foundation.narrow-ipad',
   'foundation.reduced-motion',
 ];
 
@@ -105,8 +104,18 @@ export function unresolvedBuildIdentityPlaceholders(contents) {
 
 export async function inspectNativeProject(repositoryRoot) {
   const appleRoot = resolve(repositoryRoot, 'apple');
-  const [project, debugConfig, previewConfig, releaseConfig, personalConfig] = await Promise.all([
+  const [
+    project,
+    baseConfig,
+    generatedProject,
+    debugConfig,
+    previewConfig,
+    releaseConfig,
+    personalConfig,
+  ] = await Promise.all([
     readFile(resolve(appleRoot, 'project.yml'), 'utf8'),
+    readFile(resolve(appleRoot, 'Config/Base.xcconfig'), 'utf8'),
+    readFile(resolve(appleRoot, 'Taisa.xcodeproj/project.pbxproj'), 'utf8'),
     readFile(resolve(appleRoot, 'Config/Debug.xcconfig'), 'utf8'),
     readFile(resolve(appleRoot, 'Config/Preview.xcconfig'), 'utf8'),
     readFile(resolve(appleRoot, 'Config/Release.xcconfig'), 'utf8'),
@@ -214,6 +223,15 @@ export async function inspectNativeProject(repositoryRoot) {
       liveInfoBound: /info:\s*\n\s*path:\s*Config\/TaisaInfo\.plist/.test(productionBlock),
       previewConfiguresBackgroundMode: /UIBackgroundModes|remote-notification/.test(previewTargetBlock),
     },
+    iphoneOnlySupport: {
+      projectDeviceFamily: /^\s*TARGETED_DEVICE_FAMILY:\s*["']?1["']?\s*$/m.test(project),
+      baseDeviceFamily: /^\s*TARGETED_DEVICE_FAMILY\s*=\s*1\s*$/m.test(baseConfig),
+      generatedDeviceFamily: /TARGETED_DEVICE_FAMILY = 1;/.test(generatedProject)
+        && !/TARGETED_DEVICE_FAMILY = (?!1;)[^;]+;/.test(generatedProject),
+      hasIPadOrientation: /UISupportedInterfaceOrientations_iPad/.test(
+        `${project}\n${baseConfig}\n${generatedProject}`,
+      ),
+    },
   };
 }
 
@@ -264,28 +282,33 @@ export async function verifyNativeProject(repositoryRoot, productionBundle, pers
     errors.push('Personal voice gateway configuration mismatch');
   }
   const isolation = inspected.cloudKitIsolation;
-  if (isolation.developmentContainer !== 'iCloud.com.taisa.app.dev'
-      || isolation.productionContainer !== 'iCloud.com.taisa.app'
-      || JSON.stringify(isolation.developmentContainers) !== '["iCloud.com.taisa.app.dev"]'
-      || JSON.stringify(isolation.productionContainers) !== '["iCloud.com.taisa.app"]'
-      || isolation.developmentCloudEnvironment !== 'Development'
-      || isolation.productionCloudEnvironment !== 'Production'
+  if (isolation.developmentContainer !== null
+      || isolation.productionContainer !== null
+      || isolation.developmentContainers.length !== 0
+      || isolation.productionContainers.length !== 0
+      || isolation.developmentCloudEnvironment !== null
+      || isolation.productionCloudEnvironment !== null
       || isolation.previewContainers.length !== 0
       || isolation.previewServices.length !== 0
       || isolation.previewPushEnvironment !== null
       || isolation.previewLinksLiveTransport
-      || isolation.developmentPushEnvironment !== 'development'
-      || isolation.productionPushEnvironment !== 'production'
-      || JSON.stringify(isolation.developmentServices) !== '["CloudKit"]'
-      || JSON.stringify(isolation.productionServices) !== '["CloudKit"]'
+      || isolation.developmentPushEnvironment !== null
+      || isolation.productionPushEnvironment !== null
+      || isolation.developmentServices.length !== 0
+      || isolation.productionServices.length !== 0
       || isolation.associatedDomains
       || Object.values(isolation.projectEntitlementBindings).some((bound) => !bound)) {
-    errors.push('CloudKit capability or entitlement isolation mismatch');
+    errors.push('Shipping targets must not contain CloudKit or push capability');
   }
   const background = inspected.backgroundNotificationIsolation;
-  if (JSON.stringify(background.liveModes) !== '["remote-notification"]'
+  if (background.liveModes.length !== 0
       || !background.liveInfoBound || background.previewConfiguresBackgroundMode) {
-    errors.push('Remote-notification background mode must belong only to live app targets');
+    errors.push('Shipping targets must not contain remote-notification background mode');
+  }
+  const iphoneOnly = inspected.iphoneOnlySupport;
+  if (!iphoneOnly.projectDeviceFamily || !iphoneOnly.baseDeviceFamily
+      || !iphoneOnly.generatedDeviceFamily || iphoneOnly.hasIPadOrientation) {
+    errors.push('Native Apple project is not iPhone-only');
   }
   return errors;
 }
