@@ -4,6 +4,7 @@ public enum TaisaButtonRole: Sendable, Equatable {
     case primary
     case secondary
     case destructive
+    case navigation
 }
 
 public enum TaisaButtonShape: Sendable, Equatable {
@@ -37,6 +38,7 @@ public struct TaisaButton: View {
     private let shape: TaisaButtonShape
     private let label: String
     private let icon: CentralIconName?
+    private let trailingIcon: CentralIconName?
     private let size: TaisaButtonSize
     private let isSelected: Bool
     private let isEnabled: Bool
@@ -49,6 +51,7 @@ public struct TaisaButton: View {
         shape: TaisaButtonShape = .roundedRectangle,
         label: String,
         icon: CentralIconName? = nil,
+        trailingIcon: CentralIconName? = nil,
         size: TaisaButtonSize = .standard,
         isSelected: Bool = false,
         isEnabled: Bool = true,
@@ -60,6 +63,7 @@ public struct TaisaButton: View {
         self.shape = shape
         self.label = label
         self.icon = icon
+        self.trailingIcon = trailingIcon
         self.size = size
         self.isSelected = isSelected
         self.isEnabled = isEnabled
@@ -77,7 +81,12 @@ public struct TaisaButton: View {
                             .frame(width: size.iconSize, height: size.iconSize)
                     }
                     if !label.isEmpty {
-                        TaisaText(role: .label, color: labelColor, content: label)
+                        TaisaText(role: labelRole, color: labelColor, content: label)
+                            .frame(maxWidth: role == .navigation ? .infinity : nil, alignment: .leading)
+                    }
+                    if let trailingIcon {
+                        CentralIcon(trailingIcon)
+                            .frame(width: TaisaControlMetric.compactActionIcon, height: TaisaControlMetric.compactActionIcon)
                     }
                 }
                     .opacity(isProcessing ? 0 : 1)
@@ -113,7 +122,13 @@ public struct TaisaButton: View {
             TaisaColor.primaryAction.color
         case .secondary, .destructive:
             isSelected ? TaisaColor.selectedSurface.color : TaisaColor.background.color
+        case .navigation:
+            TaisaColor.subtleSurface.color
         }
+    }
+
+    private var labelRole: TaisaTypography {
+        role == .navigation ? .body : .label
     }
 
     private var labelColor: TaisaColor {
@@ -125,6 +140,7 @@ public struct TaisaButton: View {
         case .primary: .clear
         case .secondary: TaisaColor.border.color
         case .destructive: TaisaColor.destructive.color
+        case .navigation: .clear
         }
     }
 }

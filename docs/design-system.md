@@ -309,15 +309,18 @@ backward-compatible `.filled` appearance: a muted label, subtle filled input,
 semantic control radius and insets. `.outlined` retains the existing default.
 Profile validation reuses the field's existing `.invalid(message:)` state. It
 does not add a feature-local field, visual variant, token, or error component.
-The generic `TaisaNavigationRow` owns disclosure layout and accepts a Central
-Icons trailing asset. The You surface wraps that shared row in a plain native
-button and applies the existing grouped surface token. `TaisaToolbarAction`
-owns the profile edit and close icon-button behavior.
+The generic `TaisaNavigationRow` owns disclosure layout, activation, and an
+optional Central Icons trailing asset. Its interactive form composes the
+registered `TaisaButton` primitive with the existing subtle surface, spacing,
+typography, radius, and touch-target contracts. Product screens do not wrap the
+row in a raw platform button. `TaisaToolbarAction` owns the profile edit and
+close icon-button behavior.
 
 Profile-only typography roles use Scoutie Sans semibold for the name and Inter
 for field labels, inputs and settings rows. Fonts register from package-owned
-resources; other screens retain their current typography. Inter carries its OFL
-licence. Scoutie Sans is the font supplied by the local design environment.
+resources; other screens retain their current typography. Both fonts carry
+their SIL Open Font License in the package. Scoutie Sans comes from the upstream
+Scoutie Sans project at `https://github.com/sursly/scoutie`.
 Profile metrics and exact Figma SVGs live once in TaisaDesignSystem; CentralIcon
 provides typed profile shield, cloud, diagnostics, chevron, edit and close assets.
 The provided portrait is not bundled as a default identity for every user.

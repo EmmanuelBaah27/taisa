@@ -51,14 +51,36 @@ public struct TaisaNavigationRow: View {
     private let label: String
     private let icon: CentralIconName?
     private let trailingIcon: CentralIconName
+    private let action: (@MainActor () -> Void)?
 
-    public init(label: String, icon: CentralIconName? = nil, trailingIcon: CentralIconName = .chevronLeft) {
+    public init(
+        label: String,
+        icon: CentralIconName? = nil,
+        trailingIcon: CentralIconName = .chevronLeft,
+        action: (@MainActor () -> Void)? = nil
+    ) {
         self.label = label
         self.icon = icon
         self.trailingIcon = trailingIcon
+        self.action = action
     }
 
+    @ViewBuilder
     public var body: some View {
+        if let action {
+            TaisaButton(
+                role: .navigation,
+                label: label,
+                icon: icon,
+                trailingIcon: trailingIcon,
+                action: action
+            )
+        } else {
+            rowContent
+        }
+    }
+
+    private var rowContent: some View {
         HStack(spacing: TaisaSpacing.control.rawValue) {
             if let icon { CentralIcon(icon).frame(width: 24, height: 24) }
             TaisaText(role: .body, content: label)

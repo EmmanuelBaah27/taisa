@@ -73,13 +73,12 @@ struct YouView: View {
     }
 
     private func destinationRow(_ destination: YouDestination, icon: CentralIconName) -> some View {
-        Button { selectedDestination = destination } label: {
-            TaisaNavigationRow(label: destination.title, icon: icon, trailingIcon: .profileChevron)
-                .padding(.horizontal, TaisaSpacing.standard.rawValue)
-                .background(TaisaColor.subtleSurface.color)
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(destination.title)
+        TaisaNavigationRow(
+            label: destination.title,
+            icon: icon,
+            trailingIcon: .profileChevron,
+            action: { selectedDestination = destination }
+        )
         .accessibilityHint("Opens \(destination.title)")
         .accessibilityIdentifier("you.destination.\(destination.stableID)")
     }
