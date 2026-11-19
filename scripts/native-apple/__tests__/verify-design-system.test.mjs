@@ -212,6 +212,46 @@ test('detects controls after escaped delimiters in multiline Swift strings', asy
   );
 });
 
+test('detects controls after nested strings inside Swift interpolation', async () => {
+  const source = [
+    String.raw`let text = "The quote is \(String(repeating: "\"", count: 1))"`,
+    'Button("Save") {}',
+  ].join('\n');
+  await withControlFixture(
+    { 'apple/TaisaApp/FeatureView.swift': `${source}\n` },
+    emptyControlPolicy,
+    async ({ repositoryRoot, policyPath }) => {
+      const violations = await rawInteractiveControlViolations({
+        roots: ['apple/TaisaApp'], policyPath, repositoryRoot,
+      });
+      assert.deepEqual(
+        violations.map(({ kind, line }) => ({ kind, line })),
+        [{ kind: 'unclassified-control', line: 2 }],
+      );
+    },
+  );
+});
+
+test('detects controls after quotes inside Swift regex literals', async () => {
+  const source = [
+    'let quote = #/"/#',
+    'Button("Save") {}',
+  ].join('\n');
+  await withControlFixture(
+    { 'apple/TaisaApp/FeatureView.swift': `${source}\n` },
+    emptyControlPolicy,
+    async ({ repositoryRoot, policyPath }) => {
+      const violations = await rawInteractiveControlViolations({
+        roots: ['apple/TaisaApp'], policyPath, repositoryRoot,
+      });
+      assert.deepEqual(
+        violations.map(({ kind, line }) => ({ kind, line })),
+        [{ kind: 'unclassified-control', line: 2 }],
+      );
+    },
+  );
+});
+
 test('changing a multiline legacy invocation invalidates its whole-source fingerprint', async () => {
   const file = 'apple/TaisaApp/LegacyView.swift';
   const original = 'Button(\n    action: { save() },\n    label: { Text("Save") }\n)\n';

@@ -23,6 +23,105 @@ async function swiftFiles(root) {
 function sanitizeSwift(source) {
   const masked = source.split('');
   const blank = (index) => { if (masked[index] !== '\n' && masked[index] !== '\r') masked[index] = ' '; };
+  const blankRange = (start, length) => {
+    for (let offset = 0; offset < length; offset += 1) blank(start + offset);
+  };
+
+  const consumeRegex = (start, hashes) => {
+    const openingLength = hashes + 1;
+    blankRange(start, openingLength);
+    let cursor = start + openingLength;
+    let escaped = false;
+    const closing = `/${'#'.repeat(hashes)}`;
+    while (cursor < source.length) {
+      if (!escaped && source.startsWith(closing, cursor)) {
+        blankRange(cursor, closing.length);
+        return cursor + closing.length;
+      }
+      const character = source[cursor];
+      blank(cursor);
+      if (escaped) escaped = false;
+      else if (character === '\\') escaped = true;
+      cursor += 1;
+    }
+    return cursor;
+  };
+
+  let consumeString;
+  const consumeInterpolation = (start) => {
+    let cursor = start;
+    let depth = 1;
+    while (cursor < source.length && depth > 0) {
+      if (source.startsWith('//', cursor)) {
+        while (cursor < source.length && source[cursor] !== '\n') { blank(cursor); cursor += 1; }
+        continue;
+      }
+      if (source.startsWith('/*', cursor)) {
+        let commentDepth = 1;
+        blankRange(cursor, 2);
+        cursor += 2;
+        while (cursor < source.length && commentDepth > 0) {
+          if (source.startsWith('/*', cursor)) {
+            blankRange(cursor, 2); commentDepth += 1; cursor += 2;
+          } else if (source.startsWith('*/', cursor)) {
+            blankRange(cursor, 2); commentDepth -= 1; cursor += 2;
+          } else {
+            blank(cursor); cursor += 1;
+          }
+        }
+        continue;
+      }
+
+      let hashes = 0;
+      while (source[cursor + hashes] === '#') hashes += 1;
+      const delimiterIndex = cursor + hashes;
+      if (hashes > 0 && source[delimiterIndex] === '/') {
+        cursor = consumeRegex(cursor, hashes);
+        continue;
+      }
+      if (source[delimiterIndex] === '"') {
+        cursor = consumeString(cursor, hashes);
+        continue;
+      }
+      if (source[cursor] === '(') depth += 1;
+      else if (source[cursor] === ')') depth -= 1;
+      blank(cursor);
+      cursor += 1;
+    }
+    return cursor;
+  };
+
+  consumeString = (start, hashes) => {
+    const quoteIndex = start + hashes;
+    const quoteCount = source.startsWith('"""', quoteIndex) ? 3 : 1;
+    const openingLength = hashes + quoteCount;
+    blankRange(start, openingLength);
+    let cursor = start + openingLength;
+    const closing = `${'"'.repeat(quoteCount)}${'#'.repeat(hashes)}`;
+    const interpolation = `\\${'#'.repeat(hashes)}(`;
+    let escaped = false;
+    while (cursor < source.length) {
+      if (!escaped && source.startsWith(closing, cursor)) {
+        blankRange(cursor, closing.length);
+        return cursor + closing.length;
+      }
+      if (!escaped && source.startsWith(interpolation, cursor)) {
+        blankRange(cursor, interpolation.length);
+        cursor = consumeInterpolation(cursor + interpolation.length);
+        escaped = false;
+        continue;
+      }
+      const character = source[cursor];
+      blank(cursor);
+      if (hashes === 0) {
+        if (escaped) escaped = false;
+        else if (character === '\\') escaped = true;
+      }
+      cursor += 1;
+    }
+    return cursor;
+  };
+
   let index = 0;
   let blockDepth = 0;
 
@@ -47,28 +146,13 @@ function sanitizeSwift(source) {
 
     let hashes = 0;
     while (source[index + hashes] === '#') hashes += 1;
-    const quoteIndex = index + hashes;
-    if (source[quoteIndex] === '"') {
-      const quoteCount = source.startsWith('"""', quoteIndex) ? 3 : 1;
-      const openingLength = hashes + quoteCount;
-      for (let offset = 0; offset < openingLength; offset += 1) blank(index + offset);
-      index += openingLength;
-      const closing = `${'"'.repeat(quoteCount)}${'#'.repeat(hashes)}`;
-      let escaped = false;
-      while (index < source.length) {
-        if (!escaped && source.startsWith(closing, index)) {
-          for (let offset = 0; offset < closing.length; offset += 1) blank(index + offset);
-          index += closing.length;
-          break;
-        }
-        const character = source[index];
-        blank(index);
-        if (hashes === 0) {
-          if (escaped) escaped = false;
-          else if (character === '\\') escaped = true;
-        }
-        index += 1;
-      }
+    const delimiterIndex = index + hashes;
+    if (hashes > 0 && source[delimiterIndex] === '/') {
+      index = consumeRegex(index, hashes);
+      continue;
+    }
+    if (source[delimiterIndex] === '"') {
+      index = consumeString(index, hashes);
       continue;
     }
     index += 1;
