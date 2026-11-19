@@ -14,7 +14,7 @@ struct SharedTypographyRegressionTests {
 
     @Test func bundledFamiliesResolveWithoutSystemFallback() {
         TaisaProfileFonts.register()
-        for (name, family) in [("InterVariable", "Inter"), ("ScoutieSans-SemiBold", "Scoutie Sans")] {
+        for (name, family) in [("InterVariable", "Inter Variable"), ("ScoutieSans-SemiBold", "Scoutie Sans")] {
             let font = CTFontCreateWithName(name as CFString, 16, nil)
             #expect(CTFontCopyPostScriptName(font) as String == name)
             #expect(CTFontCopyFamilyName(font) as String == family)
