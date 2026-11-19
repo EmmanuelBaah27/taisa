@@ -64,6 +64,23 @@ final class TaisaPreviewCatalogTests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-TAISAPreviewScenario", "you.content"]
         app.launch()
+        assertRecoveryEntry(in: app)
+    }
+
+    func testCatalogYouRecoveryActionUsesOneNavigationHeaderAndRemainsReachable() {
+        let app = XCUIApplication()
+        app.launch()
+        let search = app.searchFields["Search scenarios"]
+        XCTAssertTrue(search.waitForExistence(timeout: 5))
+        search.tap()
+        search.typeText("you.content")
+        let scenario = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "You content")).firstMatch
+        XCTAssertTrue(scenario.waitForExistence(timeout: 5))
+        scenario.tap()
+        assertRecoveryEntry(in: app)
+    }
+
+    private func assertRecoveryEntry(in app: XCUIApplication) {
         let destination = app.buttons["you.destination.backupRecovery"]
         XCTAssertTrue(destination.waitForExistence(timeout: 5))
         destination.tap()
@@ -72,7 +89,8 @@ final class TaisaPreviewCatalogTests: XCTestCase {
         XCTAssertTrue(action.isHittable)
         // Accessibility coordinate conversion can report 48 as 47.99999999999997.
         XCTAssertGreaterThanOrEqual(action.frame.height, 48 - 0.001)
-        XCTAssertLessThanOrEqual(app.buttons.matching(NSPredicate(format: "label == %@", "Back")).count, 1)
+        XCTAssertEqual(app.buttons.matching(NSPredicate(format: "label == %@", "Back")).count, 1)
+        XCTAssertEqual(app.navigationBars.buttons.count, 0, "The catalog must not add a native back control above the DS header")
         retainScreenshot(of: app, name: "you-recovery-glass-action")
         action.tap()
         XCTAssertTrue(app.staticTexts["This preview route composes the existing secure recovery flow."].waitForExistence(timeout: 5))

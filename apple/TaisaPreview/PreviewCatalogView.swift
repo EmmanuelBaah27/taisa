@@ -85,6 +85,7 @@ private struct PreviewScenarioView: View {
             }
         }
         .toolbar(scenario.identifier.hasPrefix("you.") ? .hidden : .automatic, for: .navigationBar)
+        .navigationBarBackButtonHidden(scenario.identifier.hasPrefix("you."))
         .navigationTitle(scenario.title)
         .navigationBarTitleDisplayMode(.inline)
         .environment(\.dynamicTypeSize, dynamicTypeSize)

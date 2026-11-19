@@ -21,9 +21,8 @@ struct YouScenarioView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            YouView(model: model, openRecovery: { showsRecovery = true })
-        }
+        // PreviewCatalogView supplies the navigation stack for both entry paths.
+        YouView(model: model, openRecovery: { showsRecovery = true })
         .sheet(isPresented: $showsRecovery) {
             NavigationStack {
                 ContentUnavailableView("Backup and recovery", systemImage: "lock.shield", description: Text("This preview route composes the existing secure recovery flow."))
