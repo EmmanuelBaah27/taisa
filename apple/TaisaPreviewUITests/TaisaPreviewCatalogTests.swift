@@ -16,8 +16,18 @@ final class TaisaPreviewCatalogTests: XCTestCase {
         XCTAssertEqual(app.staticTexts["buttons.counts"].label, "Record 1, actions 3, floating 1, confirmed 0")
         retainScreenshot(of: app, name: "shared-native-button-foundation")
         app.buttons["buttons.destructive"].tap()
-        XCTAssertTrue(app.buttons["Cancel"].waitForExistence(timeout: 5))
-        app.buttons["Cancel"].tap()
+        let confirm = app.buttons["Confirm preview action"]
+        XCTAssertTrue(confirm.waitForExistence(timeout: 5))
+        if app.popovers.firstMatch.exists {
+            // iPad presents a native popover without a Cancel row. Dismissing
+            // outside it must cancel without invoking the destructive action.
+            XCTAssertFalse(app.buttons["Cancel"].exists)
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.9)).tap()
+        } else {
+            XCTAssertTrue(app.buttons["Cancel"].waitForExistence(timeout: 5))
+            app.buttons["Cancel"].tap()
+        }
+        XCTAssertFalse(confirm.waitForExistence(timeout: 1))
         XCTAssertEqual(app.staticTexts["buttons.counts"].label, "Record 1, actions 3, floating 1, confirmed 0")
         app.buttons["buttons.destructive"].tap()
         XCTAssertTrue(app.buttons["Confirm preview action"].waitForExistence(timeout: 5))
@@ -229,8 +239,14 @@ final class TaisaPreviewCatalogTests: XCTestCase {
         XCTAssertTrue(action.isHittable)
         // Accessibility coordinate conversion can report 48 as 47.99999999999997.
         XCTAssertGreaterThanOrEqual(action.frame.height, 48 - 0.001)
-        XCTAssertEqual(app.buttons.matching(NSPredicate(format: "label == %@", "Back")).count, 1)
-        XCTAssertEqual(app.navigationBars.buttons.count, 0, "The catalog must not add a native back control above the DS header")
+        let backs = app.buttons.matching(NSPredicate(format: "label == %@", "Back"))
+        if app.buttons["Hide Sidebar"].exists {
+            XCTAssertEqual(backs.count, 0, "A split detail retains the settings sidebar rather than pushing a phone page")
+            XCTAssertEqual(app.navigationBars.buttons.count, 1, "Only the native sidebar toggle belongs above the split detail")
+        } else {
+            XCTAssertEqual(backs.count, 1)
+            XCTAssertEqual(app.navigationBars.buttons.count, 0, "The catalog must not add a native back control above the DS header")
+        }
         retainScreenshot(of: app, name: "you-recovery-glass-action")
         action.tap()
         XCTAssertTrue(app.staticTexts["This preview route composes the existing secure recovery flow."].waitForExistence(timeout: 5))

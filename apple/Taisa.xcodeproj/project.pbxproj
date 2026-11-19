@@ -106,9 +106,9 @@
 		71030842694FB9DD28001127 /* CareerWorkView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46A8FEB0D11F6C9B75B6E2B3 /* CareerWorkView.swift */; };
 		7123CE009420812A33170858 /* TaisaCareerWork in Frameworks */ = {isa = PBXBuildFile; productRef = B287C5869C13C1DC6D300D79 /* TaisaCareerWork */; };
 		7140D458E177D716DDF995ED /* TaisaYou in Frameworks */ = {isa = PBXBuildFile; productRef = BE6250A9F4E93CA86FEBE3D5 /* TaisaYou */; };
-		7236186363DA6E89483D248C /* TaisaStorage in Frameworks */ = {isa = PBXBuildFile; productRef = B6433508F77896BF3BB8142E /* TaisaStorage */; };
+		7236186363DA6E89483D248C /* TaisaDesignSystem in Frameworks */ = {isa = PBXBuildFile; productRef = CEC2387D330CBD01CFB97803 /* TaisaDesignSystem */; };
 		734700F50209E01B99893BD1 /* ScoutieSans-VariableFont_wght.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 87E084C5623DF3EBD9C215F5 /* ScoutieSans-VariableFont_wght.ttf */; };
-		735261FA7E7C99694A4BADF2 /* TaisaYou in Frameworks */ = {isa = PBXBuildFile; productRef = B0873295A277A4F397D7D3E2 /* TaisaYou */; };
+		735261FA7E7C99694A4BADF2 /* TaisaCareerWork in Frameworks */ = {isa = PBXBuildFile; productRef = 49C7FC5FD3E7F6628BC4FC4B /* TaisaCareerWork */; };
 		753C00FBC89B0DCED8ECA0F6 /* TypographyRuntimeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09CF4F7AE6AE1AF8473ACE7B /* TypographyRuntimeTests.swift */; };
 		753F597C11D6E06916123006 /* PersonalRecoveryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 163DACBEE83EA3467C0A3AE7 /* PersonalRecoveryUITests.swift */; };
 		75C41727467C062CC7EA09D4 /* PersonalIsolationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5A6963E5BEC4FF073F86F31 /* PersonalIsolationTests.swift */; };
@@ -184,7 +184,7 @@
 		D61E4D7DF074DA029E9D00BB /* ScoutieSans-VariableFont_wght.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 87E084C5623DF3EBD9C215F5 /* ScoutieSans-VariableFont_wght.ttf */; };
 		D65CD3C640F6A696D18DD9A9 /* VoiceSessionDiagnosticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37D6181795E1F88B04691E7E /* VoiceSessionDiagnosticsView.swift */; };
 		D73EE6668A589AFD53F447CF /* TaskComposerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DBE412C6EB2E819680A9ECB /* TaskComposerView.swift */; };
-		D78923F4CFD4918C2BC107BC /* TaisaCareerWork in Frameworks */ = {isa = PBXBuildFile; productRef = 49C7FC5FD3E7F6628BC4FC4B /* TaisaCareerWork */; };
+		D78923F4CFD4918C2BC107BC /* TaisaHome in Frameworks */ = {isa = PBXBuildFile; productRef = DFFC76E82692D72BB95B98A3 /* TaisaHome */; };
 		DBA10E146CE606FED896C76D /* PersonalVoiceSessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68CC4A35117BE0C1981CF4E2 /* PersonalVoiceSessionView.swift */; };
 		DD6B47B21CF4B13D44BD9089 /* RecordingGlowConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = F65A9A36CF0A4C988B0CCD6C /* RecordingGlowConfiguration.swift */; };
 		DF8C3E5BCC13F767A50E6CA6 /* TaisaYou in Frameworks */ = {isa = PBXBuildFile; productRef = DD85796C803F570823F79311 /* TaisaYou */; };
@@ -252,6 +252,7 @@
 /* Begin PBXFileReference section */
 		022B79237BF857BBC39C4E77 /* VoiceSessionScenarios.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceSessionScenarios.swift; sourceTree = "<group>"; };
 		0410D10BD12CA11BFC1FA6C0 /* TaisaPersonalTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = TaisaPersonalTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		0532F8A496B4BB04B2967224 /* NavigationTypographyContractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationTypographyContractTests.swift; sourceTree = "<group>"; };
 		09CF4F7AE6AE1AF8473ACE7B /* TypographyRuntimeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TypographyRuntimeTests.swift; sourceTree = "<group>"; };
 		09FF4AF48190A145ED9F8694 /* InsightsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsView.swift; sourceTree = "<group>"; };
 		1436FAD8AE09F2E408377FE1 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };

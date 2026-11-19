@@ -1,6 +1,6 @@
 # Swift Native Audio and Conversation Streaming
 
-**Last updated:** 2026-11-18
+**Last updated:** 2026-11-19
 **Tier:** Full
 **Track:** Platform
 **Status:** Review — automated matrix passed; exact signed iPhone/iPad QA pending

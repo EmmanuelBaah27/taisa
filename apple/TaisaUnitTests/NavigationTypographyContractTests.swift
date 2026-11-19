@@ -12,7 +12,7 @@ final class NavigationTypographyContractTests: XCTestCase {
         XCTAssertTrue(chrome.contains("func taisaNavigationTitle"))
         XCTAssertTrue(chrome.contains(".navigationTitle(title)"), "Keep native route and Back semantics")
         XCTAssertTrue(chrome.contains("ToolbarItem(placement: .principal)"))
-        XCTAssertTrue(chrome.contains("TaisaTypography.childHeaderTitle.font"))
+        XCTAssertTrue(chrome.contains("TaisaText(role: .childHeaderTitle"))
         XCTAssertTrue(chrome.contains(".navigationBarTitleDisplayMode(.inline)"))
         XCTAssertTrue(chrome.contains(".accessibilityHidden(true)"), "The visible principal title must not duplicate the native navigation title in accessibility")
         XCTAssertTrue(chrome.contains(".accessibilityRepresentation"), "Toolbar bridging must replace the decorative title's accessibility representation")
