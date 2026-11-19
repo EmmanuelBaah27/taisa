@@ -62,6 +62,18 @@ test("a broken candidate requires an explicit revert or replacement", () => {
   );
 });
 
+test("an obsolete candidate may be explicitly reverted", () => {
+  const publication = {
+    ...validPublication,
+    existingCandidates: ["candidate-a", "candidate-b"],
+    obsoleteCandidates: ["candidate-a"],
+    includedCandidates: ["candidate-b"],
+    action: "revert",
+  };
+
+  assert.equal(validatePreviewPublication(publication).ready, true);
+});
+
 test("a replacement must be included in the cumulative publication", () => {
   assert.throws(
     () => validatePreviewPublication({
@@ -71,7 +83,7 @@ test("a replacement must be included in the cumulative publication", () => {
       replacements: { "candidate-a": "candidate-b" },
       includedCandidates: [],
     }),
-    /silently remove candidate-a/,
+    /included replacement for broken candidate-a/,
   );
 
   assert.equal(
@@ -83,6 +95,30 @@ test("a replacement must be included in the cumulative publication", () => {
       includedCandidates: ["candidate-b"],
     }).ready,
     true,
+  );
+});
+
+test("a broken candidate cannot remain in the cumulative publication", () => {
+  assert.throws(
+    () => validatePreviewPublication({
+      ...validPublication,
+      action: "replace",
+      brokenCandidates: ["candidate-a"],
+      replacements: { "candidate-a": "candidate-b" },
+      includedCandidates: ["candidate-a", "candidate-b"],
+    }),
+    /broken candidate-a remains included/,
+  );
+
+  assert.throws(
+    () => validatePreviewPublication({
+      ...validPublication,
+      action: "replace",
+      brokenCandidates: ["candidate-a"],
+      replacements: { "other-candidate": "candidate-b" },
+      includedCandidates: ["candidate-b"],
+    }),
+    /replacement for broken candidate-a/,
   );
 });
 

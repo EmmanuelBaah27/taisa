@@ -31,6 +31,7 @@ test_suites=(
   scripts/__tests__/retrospective-routing.test.mjs
   scripts/__tests__/preview-publication.test.mjs
   scripts/__tests__/workflow-contraction.test.mjs
+  scripts/__tests__/workflow-safety-contracts.test.mjs
   scripts/__tests__/matt-workflow-e2e.test.mjs
   scripts/__tests__/verify-branch-topology.test.mjs
 )
@@ -39,7 +40,7 @@ for suite in "${test_suites[@]}"; do
   node --test "$suite" || fail "$suite failed"
 done
 
-for file in AGENTS.md docs/workflow.md .agents/skills/taisa-workflow/SKILL.md; do
+for file in AGENTS.md docs/agents/issue-tracker.md .agents/skills/taisa-workflow/SKILL.md; do
   rg -qi 'Linear.*sole live authority|sole live authority.*Linear' "$file" ||
     fail "$file does not preserve Linear authority"
   rg -qi 'Linear.*unavailable|offline fallback' "$file" ||

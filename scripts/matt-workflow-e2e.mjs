@@ -2,13 +2,25 @@ import { selectDecisionOwner } from "./authority-router.mjs";
 import { selectMattRoute } from "./matt-workflow-router.mjs";
 import { validatePreviewPublication } from "./preview-publication.mjs";
 import { routeRetrospectiveFinding } from "./retrospective-router.mjs";
-import { hasWholeSpecReviewPrerequisite } from "./tracer-delivery.mjs";
+import {
+  hasSatisfiedTracerExperienceReview,
+  hasWholeSpecReviewPrerequisite,
+} from "./tracer-delivery.mjs";
 
 export function proveMattWorkflow(input = {}) {
   const candidate = input.candidate ?? {};
+  const tracers = input.tracers ?? [];
+  if (
+    tracers.length === 0 ||
+    !tracers.every((tracer) => hasSatisfiedTracerExperienceReview(tracer.evidence))
+  ) {
+    throw new Error(
+      "Each tracer requires Baah experience approval or a reasoned not-applicable state.",
+    );
+  }
   if (
     !hasWholeSpecReviewPrerequisite({
-      tickets: input.tracers ?? [],
+      tickets: tracers,
       wholeSpecReview: input.wholeSpecReview,
     }) ||
     candidate.wholeSpecReview !== "pass"
@@ -32,8 +44,16 @@ export function proveMattWorkflow(input = {}) {
     throw new Error("Ship requires explicit approval.");
   }
 
-  const preview = validatePreviewPublication(input.preview);
+  const preview = validatePreviewPublication(input.preview, {
+    requiredCandidates: tracers
+      .filter((tracer) => tracer.evidence?.previewCheckpoint?.status === "published")
+      .map((tracer) => tracer.id),
+  });
   const decision = selectDecisionOwner(input.materialDecision);
+  const tracerReview = selectDecisionOwner({ decision: "tracer-experience-review" });
+  if (tracerReview.owner !== "Baah") {
+    throw new Error("Tracer experience review must remain Baah-owned.");
+  }
   const retrospective = routeRetrospectiveFinding(input.retrospective);
 
   return {
@@ -41,7 +61,7 @@ export function proveMattWorkflow(input = {}) {
       oneSession: selectMattRoute(input.oneSession),
       multiSession: selectMattRoute(input.multiSession),
       materialDecision: decision.gate,
-      tracerReview: "pass",
+      tracerReview: "satisfied",
       preview: preview.ready ? "publish-cumulative" : "blocked",
       retrospective: retrospective.evidence,
       qa: candidate.baahQa,

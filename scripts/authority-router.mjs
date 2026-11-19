@@ -13,6 +13,7 @@ const BAAH_DECISIONS = new Set([
   "destructive-data",
   "paid-service",
   "difficult-to-reverse",
+  "tracer-experience-review",
   "physical-qa",
   "perceptual-qa",
   "ship",

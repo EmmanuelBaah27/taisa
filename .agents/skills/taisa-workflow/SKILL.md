@@ -28,9 +28,11 @@ issue is the exception. Preserve dirty worktrees and user changes. Never develop
 ## Authority adapter
 
 Baah owns product intent, materially different experiences, security, privacy, destructive data,
-paid services, difficult-to-reverse choices, tracer experience review, physical or perceptual QA,
-and Ship. The agent owns ordinary technical plans, tickets, branches, implementation, tests,
-review, verification, pull requests, and delivery mechanics inside those decisions.
+paid services, difficult-to-reverse choices, every reviewable tracer experience, physical or
+perceptual QA, and Ship. A tracer with no reviewable product experience requires a non-empty reason
+instead of invented approval. The agent owns ordinary technical plans, tickets, branches,
+implementation, tests, review, verification, pull requests, and delivery mechanics inside those
+decisions.
 
 Record only decisions and stable delivery checkpoints in Linear. Use native blocker and parent
 relations. Do not narrate commands, polling, unchanged waits, or repeated evidence.

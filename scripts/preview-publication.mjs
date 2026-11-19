@@ -11,8 +11,14 @@ function requireExactRevisions(publication) {
 }
 
 function allowedRemoval(publication, candidate) {
+  const removable = new Set([
+    ...(publication.brokenCandidates ?? []),
+    ...(publication.obsoleteCandidates ?? []),
+  ]);
+  if (!removable.has(candidate)) return false;
+
   if (publication.action === "revert") {
-    return publication.brokenCandidates?.includes(candidate);
+    return true;
   }
 
   if (publication.action === "replace") {
@@ -23,7 +29,7 @@ function allowedRemoval(publication, candidate) {
   return false;
 }
 
-export function validatePreviewPublication(publication = {}) {
+export function validatePreviewPublication(publication = {}, { requiredCandidates = [] } = {}) {
   if (publication.source !== "reviewed-integration-checkpoint") {
     throw new Error("Canonical publication requires a reviewed integration checkpoint.");
   }
@@ -31,18 +37,36 @@ export function validatePreviewPublication(publication = {}) {
   requireExactRevisions(publication);
 
   const included = new Set(publication.includedCandidates ?? []);
+  const removals = [
+    ...(publication.brokenCandidates ?? []).map((candidate) => ({ candidate, kind: "broken" })),
+    ...(publication.obsoleteCandidates ?? []).map((candidate) => ({ candidate, kind: "obsolete" })),
+  ];
+  for (const candidate of requiredCandidates) {
+    if (!included.has(candidate) && !allowedRemoval(publication, candidate)) {
+      throw new Error(`Publication is missing reviewed candidate ${candidate}.`);
+    }
+  }
+  if (
+    removals.length &&
+    publication.action !== "revert" &&
+    publication.action !== "replace"
+  ) {
+    throw new Error("A broken or obsolete candidate requires an explicit revert or replacement.");
+  }
+
+  for (const { candidate, kind } of removals) {
+    if (included.has(candidate)) {
+      throw new Error(`The ${kind} ${candidate} remains included.`);
+    }
+    if (publication.action === "replace" && !allowedRemoval(publication, candidate)) {
+      throw new Error(`Publication requires an included replacement for ${kind} ${candidate}.`);
+    }
+  }
+
   for (const candidate of publication.existingCandidates ?? []) {
     if (!included.has(candidate) && !allowedRemoval(publication, candidate)) {
       throw new Error(`Publication would silently remove ${candidate}.`);
     }
-  }
-
-  if (
-    publication.brokenCandidates?.length &&
-    publication.action !== "revert" &&
-    publication.action !== "replace"
-  ) {
-    throw new Error("A broken candidate requires an explicit revert or replacement.");
   }
 
   const proof = publication.proof ?? {};

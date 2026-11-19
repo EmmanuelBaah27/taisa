@@ -28,6 +28,7 @@ const baahFixtures = [
   ["destructive data", { decision: "destructive-data" }],
   ["paid service", { decision: "paid-service" }],
   ["difficult to reverse", { decision: "difficult-to-reverse" }],
+  ["tracer experience review", { decision: "tracer-experience-review" }],
   ["physical QA", { decision: "physical-qa" }],
   ["perceptual QA", { decision: "perceptual-qa" }],
   ["Ship", { decision: "ship" }],
@@ -51,7 +52,7 @@ test("unknown decisions fail closed", () => {
 
 test("the Linear adapter keeps ordinary plans agent-owned", () => {
   const adapter = readFileSync("docs/agents/issue-tracker.md", "utf8");
-  assert.match(adapter, /ordinary technical Plan[^.]*agent-owned/i);
+  assert.match(adapter, /ordinary technical planning[^.]*agent-owned/i);
   assert.match(adapter, /Baah[^.]*product intent[^.]*material[^.]*Ship/i);
 });
 

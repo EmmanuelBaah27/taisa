@@ -20,14 +20,16 @@ exactly one primary Matt route in this precedence order:
 5. Approved multi-session work routes to `to-spec`, then `to-tickets`, then per-ticket
    `implement`. Tickets are vertical tracer slices with native Linear blocker relationships;
    each tracer contains its creative and functional loops, TDD, Standards review, Spec review,
-   focused verification, and a meaningful cumulative Preview checkpoint.
+   focused verification, and either a published cumulative Preview checkpoint or a non-empty
+   reason why Preview is not meaningful.
 6. Delivery closeout and process waste route to `retro`. Apply small reversible improvements
    autonomously; return material authority, safety, Preview, cost, or Ship changes to Baah.
 
 Ordinary technical Plan approval is not a Baah gate. Baah decides product intent, priorities,
 exclusions, materially different or difficult-to-reverse experience choices, security,
-privacy, destructive-data and paid-service choices, tracer experience reviews, physical and
-perceptual QA, and Ship. The agent owns specification, tracer decomposition, blockers,
+privacy, destructive-data and paid-service choices, every reviewable tracer experience, physical
+and perceptual QA, and Ship. A tracer with no reviewable product experience requires a non-empty
+reason instead of invented approval. The agent owns specification, tracer decomposition, blockers,
 branches and worktrees, routine product and engineering judgment, tests, review, verification,
 pull requests, and delivery mechanics within those decisions.
 
@@ -70,15 +72,12 @@ Load only the adapter triggered by the work:
   `ios-simulator-browser` skill. It must show a live frame before agent review passes. This
   gate supports, but never replaces, Baah's physical and perceptual QA.
 - Canonical Preview, QA, repair quarantine, and Ship: the applicable sections of
-  `docs/workflow.md` and `.agents/skills/taisa-workflow/SKILL.md` until thin adapters replace
-  the legacy source. These sources retain safety contracts but do not restore ordinary Plan
-  approval or override the Matt-first route.
+  `docs/workflow.md`. The thin Taisa skill points to that single release-safety authority and
+  does not restore ordinary Plan approval or override the Matt-first route.
 - Triage classification only: `docs/agents/triage-labels.md`.
 
 A Taisa extension must name the unmet need, use the smallest mechanism, and state when it can
-be removed. During APF-80's expand phase, the legacy workflow remains reachable for retained
-safety contracts. APF-86 removes its duplicated process only after the tracer workflow is
-proven.
+be removed.
 
 `CLAUDE.md` is a compatibility pointer for consumers that discover that filename. It must not
 carry an independently editable copy of these instructions.
