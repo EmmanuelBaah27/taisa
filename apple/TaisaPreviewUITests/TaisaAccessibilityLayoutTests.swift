@@ -10,9 +10,9 @@ final class TaisaAccessibilityLayoutTests: XCTestCase {
         )
     }
 
-    func testNarrowIPadKeepsHomeRowsVisibleAndHittable() {
+    func testCompactIPhoneKeepsHomeRowsVisibleAndHittable() {
         assertHomeScenarioFitsVisibleWindow(
-            identifier: "home.narrowIPad",
+            identifier: "home.compactPhone",
             requiredText: "Plan the garden studio"
         )
     }
@@ -78,7 +78,7 @@ final class TaisaAccessibilityLayoutTests: XCTestCase {
         let title: String
         switch identifier {
         case "home.accessibilityText": title = "Home accessibility text"
-        case "home.narrowIPad": title = "Home narrow iPad"
+        case "home.compactPhone": title = "Home compact iPhone"
         default: title = identifier.replacingOccurrences(of: "home.", with: "Home ")
         }
         let row = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", title)).firstMatch

@@ -7,7 +7,7 @@ import TaisaStorage
 enum CareerWorkScenarios {
     static let scenarios: [PreviewScenario] = [
         scenario("career.empty", "Career Work empty", .phone, state: .empty),
-        scenario("career.content", "Career Work content", .adaptive, state: .content(.preview, isRefreshing: false, issue: nil)),
+        scenario("career.content", "Career Work content", .phone, state: .content(.preview, isRefreshing: false, issue: nil)),
         scenario("career.failure", "Career Work denied network", .phone, state: .failure(.storageUnavailable)),
         scenario("career.recovery", "Career Work recovery", .phone, state: .failure(.recoveryRequired)),
         scenario(
@@ -17,7 +17,6 @@ enum CareerWorkScenarios {
             accessibility: .init(contentSize: .accessibilityExtraExtraExtraLarge),
             state: .content(.preview, isRefreshing: false, issue: nil)
         ),
-        scenario("career.narrowIPad", "Career Work narrow iPad", .tablet, state: .content(.preview, isRefreshing: false, issue: nil)),
         PreviewScenario(identifier: "career.proposal", title: "Career Work proposal", deviceFamily: .phone, accessibility: .default, readiness: .ready) {
             AnyView(NavigationStack {
                 CareerWorkProposalReviewView(

@@ -9,7 +9,7 @@ struct PreviewRegistryTests {
         let fixture = PreviewScenario(
             identifier: "foundation.default",
             title: "Foundation default",
-            deviceFamily: .adaptive,
+            deviceFamily: .phone,
             accessibility: .default,
             readiness: .ready
         ) {
@@ -25,7 +25,7 @@ struct PreviewRegistryTests {
         let fixture = PreviewScenario(
             identifier: "foundation.default",
             title: "Foundation default",
-            deviceFamily: .adaptive,
+            deviceFamily: .phone,
             accessibility: .default,
             readiness: .ready
         ) {

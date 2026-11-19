@@ -49,7 +49,7 @@ pull requests, and delivery mechanics within those decisions.
   proceeds. At code review and before merge approval, audit Product work already built. Replace every eligible
   feature-local presentation with the available design-system contract. If an
   item is unavailable, tell Baah which surface is affected and keep the gate closed.
-- Preserve SwiftUI and iOS/iPadOS 26+ as the shipping direction. React Native is a legacy
+- Preserve SwiftUI and iOS 26+ on iPhone as the shipping direction. React Native is a legacy
   migration source. Never run `npx expo run:ios` or `npx expo eject` without explicit approval.
 - The legacy backend remains Node/Express with SQLite and no migration framework; schema
   changes need an approved migration path. Install `mobile/` dependencies from `mobile/`;
