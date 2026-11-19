@@ -35,6 +35,7 @@ jobs:
             echo "native_required=true" >> "${GITHUB_OUTPUT}"
             echo "high_risk_required=false" >> "${GITHUB_OUTPUT}"
             echo "backend_required=false" >> "${GITHUB_OUTPUT}"
+            echo "app_compile_required=true" >> "${GITHUB_OUTPUT}"
             echo "detected_risks=logic" >> "${GITHUB_OUTPUT}"
           fi
       - name: Validate pull request contract during calibration
@@ -74,7 +75,7 @@ jobs:
         if: github.event_name != 'pull_request' || steps.classify.outputs.native_required == 'true'
         run: npm run verify:native-apple:fast
       - name: Compile risk-selected app surfaces
-        if: github.event_name != 'pull_request' || steps.classify.outputs.native_required == 'true'
+        if: github.event_name != 'pull_request' || steps.classify.outputs.app_compile_required == 'true'
         env:
           TAISA_NATIVE_ARTIFACTS: ${{ runner.temp }}/native-selected-artifacts
         run: bash scripts/native-apple/verify-selected.sh "${{ steps.classify.outputs.detected_risks }}"

@@ -13,6 +13,7 @@ fi
 native_required=false
 high_risk_required=false
 backend_required=false
+app_compile_required=false
 risk_logic=false
 risk_ui=false
 risk_network=false
@@ -62,6 +63,7 @@ while IFS= read -r changed_path; do
       high_risk_required=true
       risk_data=true
       path_risk_detected=true
+      case "${changed_path}" in apple/*) app_compile_required=true ;; esac
       ;;
   esac
 
@@ -71,6 +73,7 @@ while IFS= read -r changed_path; do
       high_risk_required=true
       risk_security=true
       path_risk_detected=true
+      case "${changed_path}" in apple/*) app_compile_required=true ;; esac
       ;;
   esac
 
@@ -80,6 +83,7 @@ while IFS= read -r changed_path; do
       high_risk_required=true
       risk_device=true
       path_risk_detected=true
+      app_compile_required=true
       ;;
   esac
 
@@ -88,6 +92,7 @@ while IFS= read -r changed_path; do
       native_required=true
       risk_network=true
       path_risk_detected=true
+      case "${changed_path}" in apple/*) app_compile_required=true ;; esac
       ;;
   esac
 
@@ -102,12 +107,14 @@ while IFS= read -r changed_path; do
       native_required=true
       risk_ui=true
       path_risk_detected=true
+      app_compile_required=true
       ;;
   esac
 
   case "${changed_path}" in
     apple/*|scripts/native-apple/*)
       native_required=true
+      case "${changed_path}" in apple/*) app_compile_required=true ;; esac
       if test "${path_risk_detected}" = false; then
         risk_logic=true
       fi
@@ -130,4 +137,5 @@ done
 echo "native_required=${native_required}"
 echo "high_risk_required=${high_risk_required}"
 echo "backend_required=${backend_required}"
+echo "app_compile_required=${app_compile_required}"
 echo "detected_risks=${detected_risks}"

@@ -348,6 +348,12 @@ test('native CI risk classification fails closed for sensitive production paths'
   assert.match(classify(['apple/TaisaApp/Home/HomeView.swift']), /native_required=true/);
   assert.match(classify(['apple/TaisaApp/Home/HomeView.swift']), /high_risk_required=false/);
   assert.match(classify(['apple/TaisaApp/Home/HomeView.swift']), /detected_risks=ui/);
+  assert.match(classify(['apple/TaisaApp/Home/HomeView.swift']), /app_compile_required=true/);
+  assert.match(classify(['.github/workflows/native-fast.yml']), /app_compile_required=false/);
+  assert.match(
+    classify(['scripts/native-apple/__tests__/verify.test.mjs']),
+    /app_compile_required=false/,
+  );
   assert.match(
     classify([
       'apple/Packages/TaisaFoundation/Sources/TaisaAudio/AudioCaptureService.swift',
@@ -494,6 +500,7 @@ test('tiered native CI uses focused pull-request checks and reserves full verifi
   assert.match(fastWorkflow, /detected_risks/);
   assert.match(fastWorkflow, /verify-selected\.sh/);
   assert.match(fastWorkflow, /backend_required/);
+  assert.match(fastWorkflow, /app_compile_required/);
   assert.match(fastWorkflow, /npm run build --workspace=backend/);
   assert.match(fastWorkflow, /npm test --workspace=backend -- --runInBand/);
 
