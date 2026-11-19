@@ -152,6 +152,26 @@ import TaisaStorage
         #expect(existing.profile?.headline == "Older title")
     }
 
+    @Test func visibleProfileEditRetiresHiddenHeadlineBeforeBioCanBeCleared() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let deviceID = UUID().uuidString
+        let store = try await TaisaStore.open(at: directory.appendingPathComponent("store.sqlite"), keyStore: YouClientTestKeys())
+        let client = YouClient.local(store: store, deviceID: deviceID, operational: .unknown, nowMS: { 10 })
+        _ = try await client.saveProfile(.init(displayName: "Baah", headline: "Old title", biography: "Current bio"))
+        let model = YouModel(client: client)
+
+        await model.load()
+        model.beginProfileEdit()
+        model.updateProfileBio(displayName: "Baah", biography: "")
+        #expect(await model.finishProfileEditing())
+
+        let reopened = try await client.load()
+        #expect(reopened.profile?.biography == "")
+        #expect(reopened.profile?.headline == "")
+    }
+
     @Test func localClientPersistsProfileWithoutTransport() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
