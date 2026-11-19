@@ -552,7 +552,7 @@ private struct ExpandableUserMessage: View {
 
             if isExpanded || isTruncated {
                 Button(isExpanded ? "Show less" : "Show more", action: toggleExpansion)
-                    .font(TaisaTypography.metadata.font.weight(.medium))
+                    .font(TaisaTypography.metadata.font)
                     .foregroundStyle(TaisaColor.mutedForeground.color)
                     .accessibilityIdentifier("conversation.message.\(message.id).expansion")
             }

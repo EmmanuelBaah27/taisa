@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const RAW_COLOR_PATTERN = /#[0-9A-Fa-f]{6}(?:[0-9A-Fa-f]{2})?/g;
+const RAW_TYPOGRAPHY_CALLS = ['.font(', '.fontWeight(', '.bold('];
 export const nativeControlRoots = [
   'apple/TaisaApp',
   'apple/Packages/TaisaFoundation/Sources',
@@ -230,8 +231,61 @@ export async function rawVisualValues(root) {
   return violations;
 }
 
+function balancedCall(source, start) {
+  const open = source.indexOf('(', start);
+  if (open === -1) return null;
+  let depth = 0;
+  let quote = null;
+  let escaped = false;
+  for (let index = open; index < source.length; index += 1) {
+    const character = source[index];
+    if (quote) {
+      if (escaped) escaped = false;
+      else if (character === '\\') escaped = true;
+      else if (character === quote) quote = null;
+      continue;
+    }
+    if (character === '"' || character === "'") {
+      quote = character;
+      continue;
+    }
+    if (character === '(') depth += 1;
+    if (character === ')' && --depth === 0) return source.slice(start, index + 1);
+  }
+  return source.slice(start);
+}
+
+function typographyCalls(source) {
+  const calls = [];
+  for (const prefix of RAW_TYPOGRAPHY_CALLS) {
+    let start = source.indexOf(prefix);
+    while (start !== -1) {
+      const value = balancedCall(source, start);
+      if (value) calls.push({ index: start, value });
+      start = source.indexOf(prefix, start + prefix.length);
+    }
+  }
+  return calls.sort((left, right) => left.index - right.index);
+}
+
+export async function rawTypographyValues(root) {
+  const violations = [];
+  for (const file of await swiftFiles(root)) {
+    const source = await readFile(file, 'utf8');
+    for (const call of typographyCalls(source)) {
+      if (/^\.font\(\s*TaisaTypography\.\w+\.font\s*\)$/s.test(call.value)) continue;
+      violations.push({
+        file,
+        line: source.slice(0, call.index).split('\n').length,
+        value: call.value,
+      });
+    }
+  }
+  return violations;
+}
+
 async function main() {
-  const visualViolations = await rawVisualValues('apple/TaisaApp');
+  const visualViolations = [...await rawVisualValues('apple/TaisaApp'), ...await rawTypographyValues('apple/TaisaApp')];
   if (visualViolations.length > 0) {
     console.error('Raw color values found in app views:');
     for (const violation of visualViolations) {

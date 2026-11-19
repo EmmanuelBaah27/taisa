@@ -1,4 +1,5 @@
 import SwiftUI
+import TaisaDesignSystem
 import TaisaHome
 import TaisaStorage
 
@@ -11,7 +12,7 @@ struct InsightsView: View {
 
     var body: some View {
         content
-            .navigationTitle("Insights")
+            .taisaNavigationTitle("Insights")
             .accessibilityIdentifier("insights.root")
             .task { if model.state == .idle { await model.load() } }
             .refreshable { await model.load() }
@@ -63,7 +64,7 @@ struct InsightsView: View {
                                 .foregroundStyle(.primary)
                                 .multilineTextAlignment(.leading)
                             Text(insight.updatedAt, format: .dateTime.day().month().year())
-                                .font(.caption)
+                                .font(TaisaTypography.metadata.font)
                                 .foregroundStyle(.secondary)
                         }
                     }

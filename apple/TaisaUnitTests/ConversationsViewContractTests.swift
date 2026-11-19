@@ -20,12 +20,14 @@ final class ConversationsViewContractTests: XCTestCase {
         XCTAssertTrue(source.contains(".background(TaisaColor.background.color.ignoresSafeArea())"))
     }
 
-    func testChatsVisualRepairUsesDefaultTypographyAndWhiteSeparators() throws {
+    func testChatsVisualRepairUsesSemanticTypographyAndWhiteSeparators() throws {
         let source = try conversationsSource()
 
         XCTAssertFalse(source.contains("design: .rounded"))
         XCTAssertTrue(source.contains("monthHeader(group.month)"))
-        XCTAssertTrue(source.contains(".system(size: 14, weight: .medium)"))
+        XCTAssertTrue(source.contains(".font(TaisaTypography.label.font)"))
+        XCTAssertTrue(source.contains(".font(TaisaTypography.taskTitle.font)"))
+        XCTAssertFalse(source.contains(".font(.system"))
         XCTAssertTrue(source.contains(".listRowSeparatorTint(TaisaColor.background.color)"))
         XCTAssertFalse(source.contains(".lineLimit(2)"))
         XCTAssertTrue(source.contains("preview: snapshot.lastMessagePreview"))

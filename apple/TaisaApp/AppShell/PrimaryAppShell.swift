@@ -259,7 +259,7 @@ struct PrimaryAppShell: View {
                 } description: {
                     TaisaText(role: .body, color: .mutedForeground, content: "Your local profile could not be opened.")
                 }
-                    .navigationTitle("You")
+                    .taisaNavigationTitle("You")
                     .accessibilityIdentifier("you.unavailable")
             }
         }

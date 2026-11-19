@@ -430,13 +430,13 @@ struct CareerWorkView: View {
             if horizontalSizeClass == .regular {
                 NavigationSplitView {
                     collection
-                        .navigationTitle(root.title)
+                        .taisaNavigationTitle(root.title)
                 } detail: {
                     detail
                 }
             } else {
                 collection
-                    .navigationTitle(root.title)
+                    .taisaNavigationTitle(root.title)
                     .navigationBarTitleDisplayMode(.inline)
                     .navigationDestination(item: $selectedRoute) { _ in detail }
             }
@@ -872,7 +872,7 @@ private struct CareerWorkEditorSheet: View {
                 .accessibilityLabel("Save career \(name)")
                 TaisaButton(role: .secondary, label: "Cancel") { dismiss() }
             }
-            .navigationTitle("New \(name)")
+            .taisaNavigationTitle("New \(name)")
         }
     }
 
@@ -902,7 +902,7 @@ struct CareerWorkProposalReviewView: View {
                 TaisaButton(role: .destructive, label: "Reject change", icon: .cross) { reject() }
             }
         }
-        .navigationTitle("Review proposal")
+        .taisaNavigationTitle("Review proposal")
         .accessibilityIdentifier("career-work.proposal.review")
     }
 }
@@ -1122,7 +1122,7 @@ private struct ActionFilterSheet: View {
                 TaisaButton(role: .primary, label: "Apply filters") { Task { await apply(filter) } }
                 TaisaButton(role: .secondary, label: "Cancel") { dismiss() }
             }
-            .navigationTitle("Filter tasks")
+            .taisaNavigationTitle("Filter tasks")
             .accessibilityIdentifier("career-work.action.filter-sheet")
         }
     }
@@ -1199,7 +1199,7 @@ private struct ActionEditorSheet: View {
                         }
                     }
                 }
-            .navigationTitle(isEditing ? "Edit task" : "New task")
+            .taisaNavigationTitle(isEditing ? "Edit task" : "New task")
             .accessibilityIdentifier("tasks.editor")
         }
     }
@@ -1256,7 +1256,7 @@ private struct ActionDuplicateReviewSheet: View {
                     TaisaButton(role: .secondary, label: "Cancel") { cancel() }
                 }
             }
-            .navigationTitle("Similar task found")
+            .taisaNavigationTitle("Similar task found")
             .accessibilityIdentifier("career-work.action.duplicate-review")
         }
     }
@@ -1297,7 +1297,7 @@ private struct GoalEditorSheet: View {
                 .accessibilityLabel("Save career goal")
                 TaisaButton(role: .secondary, label: "Cancel") { dismiss() }
             }
-            .navigationTitle("New goal")
+            .taisaNavigationTitle("New goal")
         }
     }
 }

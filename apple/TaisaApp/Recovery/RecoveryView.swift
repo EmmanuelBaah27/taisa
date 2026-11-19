@@ -54,8 +54,7 @@ struct RecoveryView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .background(TaisaColor.background.color)
-        .navigationTitle("Backup and recovery")
-        .navigationBarTitleDisplayMode(.inline)
+        .taisaNavigationTitle("Backup and recovery")
         .toolbar {
             if let dismissRuntimeRecovery {
                 ToolbarItem(placement: .cancellationAction) {

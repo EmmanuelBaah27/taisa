@@ -1,6 +1,7 @@
 #if TAISA_PERSONAL
 import Foundation
 import SwiftUI
+import TaisaDesignSystem
 import TaisaHome
 import TaisaStorage
 
@@ -184,15 +185,14 @@ struct PersonalCombinedHomeQAView: View {
     var body: some View {
         VStack(spacing: 0) {
             Text("Isolated QA fixtures — your Personal data is not changed")
-                .font(.caption)
+                .font(TaisaTypography.metadata.font)
                 .foregroundStyle(.secondary)
                 .padding(.horizontal)
                 .padding(.top, 8)
                 .accessibilityIdentifier("personal-qa.combined-home.notice")
             HomeView(model: home, openInsights: { showsInsights = true }, ownsNavigation: false)
         }
-        .navigationTitle("Home and Insights QA")
-        .navigationBarTitleDisplayMode(.inline)
+        .taisaNavigationTitle("Home and Insights QA")
         .sheet(isPresented: $showsInsights) {
             NavigationStack { InsightsView(model: insights) }
         }

@@ -26,7 +26,7 @@ struct InsightDetailView: View {
             List {
                 Section {
                     Text(detail.insight.body)
-                        .font(.title3.weight(.semibold))
+                        .font(TaisaTypography.heading.font)
                 }
                 Section("Sources") {
                     if detail.sources.isEmpty {
@@ -36,7 +36,7 @@ struct InsightDetailView: View {
                         ForEach(detail.sources, id: \.id) { source in
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(source.sourceType.capitalized)
-                                    .font(.subheadline.weight(.semibold))
+                                    .font(TaisaTypography.label.font)
                                 if !source.excerpt.isEmpty {
                                     Text(source.excerpt)
                                         .foregroundStyle(.secondary)
@@ -55,7 +55,7 @@ struct InsightDetailView: View {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(revision.proposedBody)
                                 Text(revision.status.label)
-                                    .font(.caption)
+                                    .font(TaisaTypography.metadata.font)
                                     .foregroundStyle(.secondary)
                             }
                         }

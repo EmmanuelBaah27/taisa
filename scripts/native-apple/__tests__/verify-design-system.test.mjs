@@ -8,6 +8,7 @@ import {
   nativeControlRoots,
   rawInteractiveControlViolations,
   rawVisualValues,
+  rawTypographyValues,
 } from '../verify-design-system.mjs';
 
 async function withControlFixture(files, policy, assertion) {
@@ -260,6 +261,37 @@ test('default roots include shipping feature package sources', async () => {
 
 test('feature views contain no raw color literals', async () => {
   assert.deepEqual(await rawVisualValues('apple/TaisaApp'), []);
+});
+
+test('typography verifier rejects raw Product font ownership with line diagnostics', async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'taisa-typography-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await writeFile(path.join(root, 'RawFonts.swift'), `
+Text("System").font(.system(size: 17, weight: .semibold))
+Text("Shortcut").font(.headline)
+Text("Custom").font(.custom("Other Family", size: 16))
+Text("Weighted").font(Font.system(.body).weight(.medium))
+Text("Role override").font(TaisaTypography.metadata.font.weight(.medium))
+`);
+
+  assert.deepEqual(await rawTypographyValues(root), [
+    { file: path.join(root, 'RawFonts.swift'), line: 2, value: '.font(.system(size: 17, weight: .semibold))' },
+    { file: path.join(root, 'RawFonts.swift'), line: 3, value: '.font(.headline)' },
+    { file: path.join(root, 'RawFonts.swift'), line: 4, value: '.font(.custom("Other Family", size: 16))' },
+    { file: path.join(root, 'RawFonts.swift'), line: 5, value: '.font(Font.system(.body).weight(.medium))' },
+    { file: path.join(root, 'RawFonts.swift'), line: 6, value: '.font(TaisaTypography.metadata.font.weight(.medium))' },
+  ]);
+});
+
+test('typography verifier allows design-system semantic roles', async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'taisa-typography-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await writeFile(path.join(root, 'SemanticFonts.swift'), `
+TaisaText(role: .heading, content: "Tasks")
+Text("Task").font(TaisaTypography.taskTitle.font)
+`);
+
+  assert.deepEqual(await rawTypographyValues(root), []);
 });
 
 test('recording glow uses one linked stitchable shader with anchored procedural grain', async () => {

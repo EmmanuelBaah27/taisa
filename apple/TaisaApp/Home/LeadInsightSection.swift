@@ -1,4 +1,5 @@
 import SwiftUI
+import TaisaDesignSystem
 import TaisaStorage
 
 struct LeadInsightSection: View {
@@ -10,14 +11,14 @@ struct LeadInsightSection: View {
             Button(action: openInsights) {
                 VStack(alignment: .leading, spacing: 8) {
                     Label("Insight", systemImage: "lightbulb.fill")
-                        .font(.caption.weight(.semibold))
+                        .font(TaisaTypography.label.font)
                         .foregroundStyle(.secondary)
                     Text(insight.body)
-                        .font(.headline)
+                        .font(TaisaTypography.childHeaderTitle.font)
                         .foregroundStyle(.primary)
                         .multilineTextAlignment(.leading)
                     Text("View insight")
-                        .font(.subheadline.weight(.semibold))
+                        .font(TaisaTypography.label.font)
                 }
                 .padding(.vertical, 4)
             }

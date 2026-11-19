@@ -239,6 +239,8 @@ targets:
     dependencies:
       - target: Taisa
       - package: TaisaFoundation
+        product: TaisaDesignSystem
+      - package: TaisaFoundation
         product: TaisaStorage
       - package: TaisaFoundation
         product: TaisaHome

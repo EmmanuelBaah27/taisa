@@ -1,4 +1,5 @@
 import SwiftUI
+import TaisaDesignSystem
 import TaisaStorage
 
 struct DraftRow: View {
@@ -7,9 +8,9 @@ struct DraftRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Label(title, systemImage: draft.inputMode == .voice ? "waveform" : "keyboard")
-                .font(.headline)
+                .font(TaisaTypography.childHeaderTitle.font)
             Text(status)
-                .font(.subheadline)
+                .font(TaisaTypography.supporting.font)
                 .foregroundStyle(.secondary)
         }
         .accessibilityElement(children: .ignore)

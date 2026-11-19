@@ -191,7 +191,7 @@ struct ConversationsView: View {
     private var draftsButton: some View {
         TaisaSecondaryCapsuleButton(action: { showsDrafts = true }) {
             HStack(spacing: 6) {
-                Text("Drafts").font(.system(size: 16, weight: .medium))
+                Text("Drafts").font(TaisaTypography.navigationLabel.font)
                 Circle()
                     .fill(TaisaColor.destructive.color)
                     .frame(width: 8, height: 8)
@@ -203,7 +203,7 @@ struct ConversationsView: View {
 
     private func monthHeader(_ month: String) -> some View {
         Text(month)
-            .font(.system(size: 14, weight: .medium))
+            .font(TaisaTypography.label.font)
             .foregroundStyle(TaisaColor.mutedForeground.color)
             .textCase(nil)
             .frame(maxWidth: .infinity, alignment: .leading)

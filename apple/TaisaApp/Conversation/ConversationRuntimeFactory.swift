@@ -802,7 +802,7 @@ struct ConversationHostView: View {
                     }
 #if DEBUG || TAISA_PERSONAL
                     Text("Diagnostic: \((failureStage ?? .unknown).rawValue)")
-                        .font(.caption)
+                        .font(TaisaTypography.metadata.font)
                         .foregroundStyle(.secondary)
                         .accessibilityIdentifier("conversation.unavailable.diagnostic")
 #endif

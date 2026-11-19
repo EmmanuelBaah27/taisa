@@ -9,17 +9,17 @@ struct ConversationHistoryRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(formattedDate)
-                .font(.system(size: 12, weight: .regular))
+                .font(TaisaTypography.metadata.font)
                 .foregroundStyle(TaisaColor.mutedForeground.color)
             Text(conversation.title)
-                .font(.system(size: 16, weight: .medium))
+                .font(TaisaTypography.taskTitle.font)
                 .foregroundStyle(TaisaColor.foreground.color)
                 .lineLimit(1)
                 .truncationMode(.tail)
                 .frame(maxWidth: .infinity, alignment: .leading)
             if let preview, !preview.isEmpty {
                 Text(preview)
-                    .font(.system(size: 14, weight: .regular))
+                    .font(TaisaTypography.taskSupporting.font)
                     .foregroundStyle(TaisaColor.mutedForeground.color)
                     .lineLimit(1)
                     .frame(height: TaisaControlMetric.chatPreviewLineHeight, alignment: .topLeading)

@@ -23,6 +23,7 @@ final class TaisaLaunchTests: XCTestCase {
         let chats = element("conversations.root", in: app)
         XCTAssertTrue(chats.waitForExistence(timeout: 5))
         XCTAssertTrue(waitForSelection("Chats", in: app))
+        XCTAssertEqual(element("taisa.page-title", in: app).label, "Chats")
 
         swipeRight(in: app)
         XCTAssertTrue(waitForSelection("Home", in: app))

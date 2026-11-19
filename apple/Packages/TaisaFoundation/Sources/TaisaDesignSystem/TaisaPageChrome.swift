@@ -42,9 +42,10 @@ public struct TaisaPageHeader<Actions: View>: View {
     public var body: some View {
         HStack(spacing: TaisaSpacing.standard.rawValue) {
             Text(title)
-                .font(.system(.title, weight: .semibold))
+                .font(TaisaTypography.datedPageTitle.font)
                 .foregroundStyle(TaisaColor.foreground.color)
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityIdentifier("taisa.page-title")
 
             actions
         }
@@ -110,6 +111,7 @@ public struct TaisaChildPageHeader: View {
                 .font(TaisaTypography.childHeaderTitle.font)
                 .foregroundStyle(TaisaColor.foreground.color)
                 .lineLimit(1)
+                .accessibilityIdentifier("taisa.child-page-title")
 
             HStack {
                 if mode == .back {
@@ -129,6 +131,41 @@ public struct TaisaChildPageHeader: View {
             PageEdgeFade(.header)
                 .ignoresSafeArea(edges: [.top, .horizontal])
         }
+    }
+}
+
+private struct TaisaNavigationTitleModifier: ViewModifier {
+    let title: String
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+#if os(iOS)
+        content
+            .navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text(title)
+                        .font(TaisaTypography.childHeaderTitle.font)
+                        .foregroundStyle(TaisaColor.foreground.color)
+                        .lineLimit(1)
+                        .accessibilityHidden(true)
+                        .accessibilityRepresentation {
+                            EmptyView()
+                        }
+                }
+            }
+#else
+        content.navigationTitle(title)
+#endif
+    }
+}
+
+public extension View {
+    /// Keeps native navigation metadata and Back behavior while rendering the
+    /// visible title through Taisa's semantic typography contract.
+    func taisaNavigationTitle(_ title: String) -> some View {
+        modifier(TaisaNavigationTitleModifier(title: title))
     }
 }
 

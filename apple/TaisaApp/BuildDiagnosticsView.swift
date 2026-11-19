@@ -1,5 +1,6 @@
 import SwiftUI
 import TaisaCore
+import TaisaDesignSystem
 
 #if DEBUG || TAISA_PREVIEW
 struct BuildDiagnosticsView: View {
@@ -29,7 +30,7 @@ struct BuildDiagnosticsView: View {
             diagnosticRow("Environment", value: identity.environment.rawValue)
             diagnosticRow("Contracts", value: identity.contractRevision)
         }
-        .navigationTitle("Build diagnostics")
+        .taisaNavigationTitle("Build diagnostics")
         .accessibilityIdentifier("foundation.diagnostics")
     }
 

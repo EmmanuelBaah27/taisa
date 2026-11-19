@@ -69,7 +69,7 @@ struct AssistantResponseActions: View {
                         }
                     }
                 }
-                .navigationTitle("About this response")
+                .taisaNavigationTitle("About this response")
                 .toolbar {
                     ToolbarItem(placement: .confirmationAction) {
                         Button("Done") { showsExplanation = false }
@@ -94,7 +94,7 @@ struct AssistantResponseActions: View {
                     }
                 }
                 .scrollDismissesKeyboard(.interactively)
-                .navigationTitle("Response feedback")
+                .taisaNavigationTitle("Response feedback")
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
                         Button("Close") {

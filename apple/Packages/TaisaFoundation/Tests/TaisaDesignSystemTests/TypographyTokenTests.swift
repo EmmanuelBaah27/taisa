@@ -7,6 +7,10 @@ struct TypographyTokenTests {
     @Test func everySemanticRoleMapsToTheApprovedBundledFamilyAndScale() {
         let expected: [TaisaTypography: ExpectedTypography] = [
             .display: .init(family: "Scoutie Sans", fontName: "ScoutieSans-ExtraLight", size: 34, style: .largeTitle, weight: .semibold),
+            .profileName: .init(family: "Scoutie Sans", fontName: "ScoutieSans-SemiBold", size: TaisaProfileMetric.nameSize, style: .title, weight: .semibold),
+            .profileBody: .init(family: "Inter", fontName: "InterVariable", size: 16, style: .body, weight: .regular),
+            .profileLabel: .init(family: "Inter", fontName: "InterVariable", size: 16, style: .body, weight: .medium),
+            .profileSupporting: .init(family: "Inter", fontName: "InterVariable", size: 14, style: .subheadline, weight: .regular),
             .heading: .init(family: "Inter", fontName: "InterVariable", size: 22, style: .title2, weight: .semibold),
             .body: .init(family: "Inter", fontName: "InterVariable", size: 16, style: .body, weight: .regular),
             .label: .init(family: "Inter", fontName: "InterVariable", size: 14, style: .subheadline, weight: .semibold),
@@ -52,6 +56,10 @@ struct TypographyTokenTests {
     private var approvedLineHeight: [TaisaTypography: CGFloat] {
         [
             .display: 41,
+            .profileName: TaisaProfileMetric.nameLineHeight,
+            .profileBody: 24,
+            .profileLabel: 24,
+            .profileSupporting: 20,
             .heading: 28,
             .body: 24,
             .label: 20,
