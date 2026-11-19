@@ -78,7 +78,10 @@ jobs:
       - name: Install pinned iOS platform
         run: |
           for attempt in 1 2 3; do
-            if xcodebuild -downloadPlatform iOS; then
+            # Prime CoreSimulator before downloading after switching Xcode.
+            # See actions/runner-images#13459.
+            if xcrun simctl list >/dev/null &&
+              xcodebuild -downloadPlatform iOS -buildVersion 26.1; then
               exit 0
             fi
             test "${attempt}" -lt 3 || exit 1
