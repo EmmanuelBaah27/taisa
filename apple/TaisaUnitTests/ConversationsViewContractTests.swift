@@ -58,7 +58,9 @@ final class ConversationsViewContractTests: XCTestCase {
 
     func testChatsControlsUseCentralIconsLiquidGlassAndHeaderFade() throws {
         let source = try conversationsSource()
-        let pageChrome = try designSystemSource(named: "TaisaPageChrome.swift")
+        let pageChrome = try [
+            "TaisaPageChrome.swift", "TaisaSecondaryIconButton.swift", "TaisaSecondaryCapsuleButton.swift"
+        ].map { try designSystemSource(named: $0) }.joined(separator: "\n")
 
         XCTAssertTrue(source.contains("TaisaSecondaryIconButton("))
         XCTAssertTrue(source.contains("icon: .magnifyingGlass"))

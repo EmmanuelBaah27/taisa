@@ -81,7 +81,7 @@ jobs:
             # Prime CoreSimulator before downloading after switching Xcode.
             # See actions/runner-images#13459.
             if xcrun simctl list >/dev/null &&
-              xcodebuild -downloadPlatform iOS -buildVersion 26.1; then
+              xcodebuild -downloadPlatform iOS -buildVersion 26.1 -architectureVariant universal; then
               exit 0
             fi
             test "${attempt}" -lt 3 || exit 1
