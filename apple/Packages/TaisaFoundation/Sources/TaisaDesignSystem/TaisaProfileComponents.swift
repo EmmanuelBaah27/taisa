@@ -24,15 +24,11 @@ public struct TaisaProfileIconButton: View {
         self.icon = icon; self.label = label; self.action = action
     }
     public var body: some View {
-        Button(action: action) {
-            CentralIcon(icon)
-                .frame(width: TaisaControlMetric.standardIcon, height: TaisaControlMetric.standardIcon)
-                .foregroundStyle(TaisaColor.mutedForeground.color)
-                .frame(minWidth: TaisaControlMetric.headerActionHeight, minHeight: TaisaControlMetric.headerActionHeight)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(label)
+        TaisaSecondaryIconButton(
+            icon: icon,
+            accessibilityLabel: label,
+            action: action
+        )
     }
 }
 
@@ -73,7 +69,7 @@ public struct TaisaSettingsNavigationRow: View {
         self.title = title; self.icon = icon; self.action = action
     }
     public var body: some View {
-        Button(action: action) {
+        TaisaButtonControl(action: action) {
             HStack(spacing: TaisaSpacing.control.rawValue) {
                 CentralIcon(icon)
                     .frame(width: TaisaControlMetric.standardIcon, height: TaisaControlMetric.standardIcon)
@@ -91,7 +87,6 @@ public struct TaisaSettingsNavigationRow: View {
             .background(TaisaColor.subtleSurface.color)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
         .accessibilityLabel(title)
         .accessibilityHint("Opens \(title)")
     }

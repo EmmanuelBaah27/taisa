@@ -1,4 +1,5 @@
 import CoreText
+import SwiftUI
 import Testing
 @testable import TaisaDesignSystem
 
@@ -19,5 +20,6 @@ struct ProfileComponentTests {
         #expect(TaisaTypography.allCases.contains(.profileBody))
         #expect(TaisaTypography.allCases.contains(.profileSupporting))
         #expect(TaisaControlMetric.headerActionHeight >= 44)
+        #expect(TaisaButtonControl<EmptyView>.Contract.supportsCustomContent)
     }
 }

@@ -11,6 +11,29 @@ public enum TaisaButtonShape: Sendable, Equatable {
     case capsule
 }
 
+/// The internal custom-content entry point for shared interactive controls.
+struct TaisaButtonControl<Label: View>: View {
+    enum Contract {
+        static var supportsCustomContent: Bool { true }
+    }
+
+    private let action: @MainActor () -> Void
+    private let label: Label
+
+    init(
+        action: @escaping @MainActor () -> Void,
+        @ViewBuilder label: () -> Label
+    ) {
+        self.action = action
+        self.label = label()
+    }
+
+    var body: some View {
+        Button(action: action) { label }
+            .buttonStyle(.plain)
+    }
+}
+
 public struct TaisaButton: View {
     public enum Contract {
         public static let supportsInPlaceProgress = true
@@ -40,7 +63,7 @@ public struct TaisaButton: View {
     }
 
     public var body: some View {
-        Button(action: action) {
+        TaisaButtonControl(action: action) {
             ZStack {
                 TaisaText(role: .label, color: labelColor, content: label)
                     .opacity(isProcessing ? 0 : 1)
@@ -56,7 +79,6 @@ public struct TaisaButton: View {
                 .clipShape(buttonShape)
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
         .disabled(isProcessing)
         .accessibilityLabel(isProcessing ? processingAccessibilityLabel : label)
     }
