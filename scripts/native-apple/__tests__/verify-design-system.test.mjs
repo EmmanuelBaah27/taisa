@@ -404,4 +404,3 @@ Text("Task").font(TaisaTypography.taskTitle.font)
 
   assert.deepEqual(await rawTypographyValues(root), []);
 });
-

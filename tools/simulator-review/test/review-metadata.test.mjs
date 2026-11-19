@@ -22,4 +22,3 @@ test("normalizes simulator review metadata", () => {
     capturedAt: "2026-11-19T09:30:00.000Z",
   });
 });
-

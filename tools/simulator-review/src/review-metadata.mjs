@@ -10,4 +10,3 @@ export function createReviewMetadata(input) {
     capturedAt: input.capturedAt || new Date().toISOString(),
   };
 }
-
