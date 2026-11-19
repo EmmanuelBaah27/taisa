@@ -63,7 +63,7 @@ function sanitizeSwift(source) {
         }
         const character = source[index];
         blank(index);
-        if (hashes === 0 && quoteCount === 1) {
+        if (hashes === 0) {
           if (escaped) escaped = false;
           else if (character === '\\') escaped = true;
         }
@@ -105,11 +105,28 @@ export async function rawInteractiveControlOccurrences({ roots, repositoryRoot =
       for (const constructor of constructors) {
         const name = escapeRegExp(constructor);
         const pattern = new RegExp(
-          `(?<![A-Za-z0-9_])(?:SwiftUI\\s*\\.\\s*)?\\x60?${name}\\x60?`
-          + '(?:\\s*<[^>{}\\n]+>)?(?:\\s*\\.\\s*init)?\\s*(?=[({])',
+          `(?<![A-Za-z0-9_])(?:SwiftUI\\s*\\.\\s*)?\\x60?${name}\\x60?`,
           'g',
         );
         for (const match of sanitized.matchAll(pattern)) {
+          let cursor = match.index + match[0].length;
+          while (/\s/.test(sanitized[cursor] ?? '')) cursor += 1;
+          if (sanitized[cursor] === '<') {
+            let depth = 0;
+            do {
+              if (sanitized[cursor] === '<') depth += 1;
+              else if (sanitized[cursor] === '>') depth -= 1;
+              cursor += 1;
+            } while (cursor < sanitized.length && depth > 0);
+            if (depth !== 0) continue;
+            while (/\s/.test(sanitized[cursor] ?? '')) cursor += 1;
+          }
+          const initializer = sanitized.slice(cursor).match(/^\.\s*init\b/);
+          if (initializer) {
+            cursor += initializer[0].length;
+            while (/\s/.test(sanitized[cursor] ?? '')) cursor += 1;
+          }
+          if (sanitized[cursor] !== '(' && sanitized[cursor] !== '{') continue;
           const prefix = source.slice(0, match.index);
           const line = prefix.split('\n').length;
           const lineStart = prefix.lastIndexOf('\n') + 1;
