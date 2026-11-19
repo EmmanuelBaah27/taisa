@@ -3,7 +3,7 @@
 **Track:** Platform + Product
 **Tier:** Full
 **Status:** Build — Plan approved
-**Last updated:** 2026-10-07
+**Last updated:** 2026-11-19
 **Work Map:** `docs/features/native-conversation-experience-work-map.md`
 
 **Scope approved by Baah:** 2026-10-07

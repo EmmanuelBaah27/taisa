@@ -3,6 +3,7 @@
 **Tier:** Full
 **Track:** Platform
 **Status:** Review — automated matrix passed; exact signed iPhone QA pending
+**Last updated:** 2026-11-19
 **Depends on:** shipped Swift native foundation and encrypted local persistence/recovery
 
 ---

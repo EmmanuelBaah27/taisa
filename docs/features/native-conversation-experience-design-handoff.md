@@ -4,7 +4,7 @@
 **Design source:** Visual Companion `Persistent dock` direction plus Baah's approved interaction decisions from 2026-10-07
 **Precision:** Directional. Implementation latitude applies to exact SwiftUI spacing, materials, and motion. Device QA is the visual and interaction sign-off.
 **Status:** Approved by Baah — 2026-10-07
-**Last updated:** 2026-10-07
+**Last updated:** 2026-11-19
 
 ## Experience intent
 

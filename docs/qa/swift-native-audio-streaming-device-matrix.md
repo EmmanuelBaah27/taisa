@@ -1,6 +1,7 @@
 # Swift native audio streaming — physical-device matrix
 
 **Status:** Pending exact-build iPhone QA
+**Last updated:** 2026-11-19
 **Privacy rule:** Record only the enumerated identifiers, pass/fail state, and bounded performance numbers. Never add audio, transcript, coaching, private-context, or filesystem-path fields.
 
 ## Procedure

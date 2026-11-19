@@ -1,5 +1,7 @@
 # Design Handoff — SwiftUI Functional Home
 
+**Status:** Approved iPhone design reference
+**Last updated:** 2026-11-19
 **Scope doc:** `docs/features/swiftui-functional-home.md`
 **Design source:** Baah's approved native-first direction in conversation
 **Precision:** Directional. Functionality and native interaction fidelity are the sign-off target; final visual design is deferred.

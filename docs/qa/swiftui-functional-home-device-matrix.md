@@ -1,6 +1,7 @@
 # SwiftUI Functional Home — Device Matrix
 
 **Status:** Pending exact signed candidate
+**Last updated:** 2026-11-19
 **Required gate:** Baah device approval before Ship
 
 Record the candidate SHA, signed-build record, device model, OS version, result, and notes for every applicable row. Do not reuse evidence from another revision.

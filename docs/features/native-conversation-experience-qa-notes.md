@@ -1,6 +1,7 @@
 # Native Conversation Experience QA Notes
 
-**Last updated:** 2026-10-08
+**Status:** Active iPhone QA reference
+**Last updated:** 2026-11-19
 
 ## Verified revision
 

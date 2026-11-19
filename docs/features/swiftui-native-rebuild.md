@@ -3,6 +3,7 @@
 **Track:** Platform + Product
 **Tier:** Full
 **Status:** Foundation Plan; React Native retained as non-blocking reference
+**Last updated:** 2026-11-19
 
 ---
 
