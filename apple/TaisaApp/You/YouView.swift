@@ -88,7 +88,7 @@ struct YouView: View {
                 VStack(alignment: .leading, spacing: TaisaSpacing.section.rawValue) {
                     TaisaProfileSection("Backup & recovery") {
                         TaisaText(role: .profileSupporting, color: .mutedForeground, content: YouPrivacyCopy.recoveryBoundary)
-                        TaisaButton(role: .secondary, label: "Open backup and recovery", action: openRecovery)
+                        TaisaButton(role: .secondary, label: "Open backup and recovery") { openRecovery() }
                     }
                 }
             case .diagnostics:
