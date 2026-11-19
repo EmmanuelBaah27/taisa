@@ -31,8 +31,9 @@ or release gate. Other workflow surfaces reference this contract; they do not re
 2. Complete implementation and the smallest applicable focused checks.
 3. Run a fresh whole-candidate review before the complete matrix. Resolve every blocking
    finding with focused checks, then review the resulting candidate again.
-4. Freeze the clean candidate revision. Run the complete applicable matrix once on that exact
-   revision, concurrently where checks do not share mutable state.
+4. Freeze the clean candidate revision. For a release or final repair-release gate, run the
+   complete applicable matrix once on that exact revision. Other pull requests keep their fast,
+   focused, risk-selected exact-revision evidence instead.
 5. Preserve that exact-revision evidence through PR and Ship while code, dependencies,
    toolchain, signing, configuration, and covered inputs remain unchanged. Any change to one
    of those invalidators reopens only the affected proof, plus review when candidate content
@@ -70,13 +71,45 @@ passed.
 
 ### Verification economy
 
+Every pull request links one Linear tracer, declares one reviewable outcome, and declares all
+applicable additive risks. Repository classification can raise risk but cannot lower approved
+Linear classification. Unknown or uncertain sensitive changes fail closed for review.
+
+Pull requests use fast and focused checks selected from logic, UI, network, device, data,
+security, and workflow risks. No pull-request event runs or requires the complete matrix.
+Device-sensitive changes require exact-revision physical QA evidence when the affected behavior
+cannot be proven in the simulator. Release candidates require the complete applicable matrix on
+the exact candidate revision through release-tag or manual execution. Exact-revision evidence
+remains reusable while code, dependencies, toolchain, signing, configuration, and covered inputs
+remain unchanged.
+
+The risk-to-proof contract is:
+
+| Risk | Required automated proof | Additional evidence |
+| --- | --- | --- |
+| Logic | Contract tests, package tests, and one Personal app compile | None |
+| UI | Logic proof plus design-system checks and one Preview compile | Browser simulator review when visible |
+| Network | Contract tests, affected backend tests, package tests, and one Personal app compile | Focused failure and retry review |
+| Device | Logic proof plus one generic device compile | Exact-revision physical QA |
+| Data | Storage, migration, recovery, affected backend tests, and package tests plus one Personal app compile | Recovery or migration evidence when affected |
+| Security | Security contracts, affected backend tests, and package tests plus one Personal app compile | Baah approval for material security changes |
+| Workflow | Workflow contracts and candidate-safe policy checks | Protected-base classification |
+| Release | Complete matrix and Release build | Final physical QA and Ship approval |
+
+During calibration, the protected-base policy reports contract mismatches. After five historical
+backtests and three live pull requests show no missed required risk, change the protected-base
+policy to strict metadata enforcement. Pull-request branch protection requires stable fast and
+focused checks only. A `high-risk` or `release` label records classification. It does not start or
+require the complete matrix. Until calibration ends, do not claim strict metadata enforcement is
+live.
+
 Use the smallest applicable verification that can falsify the current change first, then
 expand only after focused checks pass or the risk boundary requires it. Reuse fresh evidence
 when code, dependencies, toolchain, signing, configuration, and covered inputs are unchanged
 for the exact covered revision; do not rerun an
 identical expensive command merely to produce another transcript. Run independent checks concurrently
-when they do not share mutable state. The complete release matrix remains mandatory at its
-named merge, release, final repair-release, or high-risk gate. During repair quarantine, do
+when they do not share mutable state. The complete release matrix remains mandatory at a
+release or final repair-release gate. During repair quarantine, do
 not spend the complete matrix before the named broken interaction is proven fixed.
 
 Before an expensive gate, run a readiness preflight that can fail cheaply. For long-running
@@ -344,10 +377,11 @@ After Ship approval:
 1. Confirm clean branch/worktree and correct PR base, then run the conflict-free Ship gate:
    `bash scripts/verify-branch-topology.sh ship --pr-base main --main-ref origin/main --preview-ref origin/preview/taisa`.
 2. Fetch and reconcile with `origin/main` safely.
-3. Confirm the complete verification matrix and final review for the exact revision. At Ship,
-   reuse fresh exact-revision evidence from the final repair-release or high-risk gate when
-   code, dependencies, toolchain, signing, configuration, and covered inputs are unchanged; otherwise run
-   the invalidated checks before merge.
+3. Confirm the final review and risk-required verification for the exact revision. Release and
+   final repair-release candidates require the complete applicable matrix. Other pull requests
+   require fast and focused checks selected by their additive risks. Reuse fresh exact-revision evidence while
+   code, dependencies, toolchain, signing, configuration, and covered inputs are unchanged;
+   otherwise run the invalidated checks before merge.
 4. Confirm required device QA and exact preview evidence.
 5. Push branch and create/update the PR.
 6. Squash-merge to `main`.
