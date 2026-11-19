@@ -1,5 +1,8 @@
 import Foundation
 import Testing
+#if os(macOS)
+import Darwin
+#endif
 @testable import TaisaAudio
 
 @Suite("Recoverable audio capture")
@@ -197,6 +200,10 @@ struct AudioCaptureServiceTests {
         let pending = try await store.allocate(turnID: UUID())
         try Data("audio".utf8).write(to: pending.url)
 
+        #if os(macOS)
+        // An inherited directory exclusion must not satisfy the file's explicit marker check.
+        #expect(try !isExplicitlyExcludedFromBackup(pending.url))
+        #endif
         let finalized = try await store.finalize(pending, duration: 1.5)
 
         #expect(finalized.byteCount == 5)
@@ -206,8 +213,8 @@ struct AudioCaptureServiceTests {
             turnID: pending.turnID, fileID: pending.fileID, duration: finalized.duration
         )
         #expect(relaunched == finalized)
-        #expect(try pending.url.resourceValues(forKeys: [.isExcludedFromBackupKey]).isExcludedFromBackup == true)
-        #expect(try directory.resourceValues(forKeys: [.isExcludedFromBackupKey]).isExcludedFromBackup == true)
+        #expect(try isExplicitlyExcludedFromBackup(pending.url))
+        #expect(try isExplicitlyExcludedFromBackup(directory))
     }
 
     @Test("audio session notifications map to content-free lifecycle events")
@@ -227,6 +234,30 @@ struct AudioCaptureServiceTests {
         #expect(mapper.event(for: .init(name: route, userInfo: ["reason": 1])) == nil)
         #expect(mapper.event(for: .init(name: reset)) == .mediaServicesReset)
     }
+}
+
+/// Verify the persisted exclusion request, not an inherited directory status.
+/// On this macOS host Foundation reports false even after its own setter writes
+/// the valid backupd marker. iOS continues to exercise its public resource getter.
+private func isExplicitlyExcludedFromBackup(_ url: URL) throws -> Bool {
+    #if os(macOS)
+    let key = "com.apple.metadata:com_apple_backup_excludeItem"
+    let size = getxattr(url.path, key, nil, 0, 0, 0)
+    if size < 0 {
+        if errno == ENOATTR { return false }
+        throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
+    }
+    var data = Data(count: size)
+    let read = data.withUnsafeMutableBytes { buffer in
+        getxattr(url.path, key, buffer.baseAddress, buffer.count, 0, 0)
+    }
+    guard read >= 0 else { throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO) }
+    guard read == size else { return false }
+    let marker = try PropertyListSerialization.propertyList(from: data, format: nil)
+    return marker as? String == "com.apple.backupd"
+    #else
+    return try url.resourceValues(forKeys: [.isExcludedFromBackupKey]).isExcludedFromBackup == true
+    #endif
 }
 
 private actor SessionSpy: AudioSessionAdapting {
