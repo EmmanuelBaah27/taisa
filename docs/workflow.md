@@ -574,6 +574,14 @@ history unless Baah explicitly approves deletion.
 
 ### Freshness and Closeout
 
+Delivery closeout and repeated delivery waste route through Matt's `retro` process. A small,
+reversible environment improvement is agent-owned. Mechanical failure produces a check or
+automation; repeated navigation cost produces a pointer or tool; a judgment failure produces a
+review standard; duplicated process is consolidated or removed. Retrospective evidence names the
+resulting check, pointer, review standard, tool, process removal, or explicit no-change conclusion.
+A retrospective change to authority, privacy, security, verification coverage, Preview, meaningful cost, or Ship
+stops for Baah's explicit decision before implementation.
+
 Run `scripts/verify-doc-freshness.sh` for affected repository artifacts that require Status
 and Last updated metadata. At Review, perform a **Closeout** in Linear: actual outcome,
 deviations, decisions/learnings, exact evidence, remaining debt, canonical docs changed,

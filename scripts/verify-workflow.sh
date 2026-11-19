@@ -23,6 +23,8 @@ node --test scripts/__tests__/tracer-delivery.test.mjs ||
   fail "multi-session tracer delivery fixtures failed"
 node --test scripts/__tests__/authority-routing.test.mjs ||
   fail "Baah and agent authority routing fixtures failed"
+node --test scripts/__tests__/retrospective-routing.test.mjs ||
+  fail "retrospective improvement routing fixtures failed"
 
 active_skills=(
   taisa-workflow
