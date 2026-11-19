@@ -31,17 +31,11 @@ public struct TextComposer: View {
                 .frame(minHeight: 40, alignment: .center)
                 .disabled(!mode.acceptsInput)
                 .focused($isFocused)
-            Button(action: { isEmpty ? onVoice() : onSend() }) {
+            TaisaButtonControl(style: TaisaButtonStyle(role: isEmpty ? .secondary : .primary, shape: .circle), action: { isEmpty ? onVoice() : onSend() }) {
                 Image(systemName: isEmpty ? "waveform" : "arrow.up")
                     .frame(width: 20, height: 20)
                     .frame(width: 40, height: 40)
-                    .background {
-                        if !isEmpty {
-                            TaisaColor.primaryAction.color.clipShape(Circle())
-                        }
-                    }
             }
-            .modifier(ComposerActionStyle(isEmpty: isEmpty))
             .accessibilityLabel(isEmpty ? Contract.empty.voiceLabel : "Send message")
             .disabled(!mode.acceptsInput)
         }
@@ -51,26 +45,6 @@ public struct TextComposer: View {
         .frame(minHeight: Contract.minimumHeight)
         .modifier(LiquidTextInputSurface(cornerRadius: TaisaRadius.composer.rawValue))
         .onAppear { isFocused = mode.acceptsInput }
-    }
-}
-
-private struct ComposerActionStyle: ViewModifier {
-    let isEmpty: Bool
-
-    @ViewBuilder func body(content: Content) -> some View {
-        if isEmpty, #available(iOS 26.0, macOS 26.0, *) {
-            content
-                .buttonStyle(.plain)
-                .glassEffect(.regular.interactive(), in: Circle())
-                .contentShape(Circle())
-        } else if isEmpty {
-            content
-                .buttonStyle(.plain)
-                .background(.regularMaterial, in: Circle())
-                .contentShape(Circle())
-        } else {
-            content.buttonStyle(.plain)
-        }
     }
 }
 

@@ -5,12 +5,17 @@ on:
   push:
     branches: [main]
 
+env:
+  TAISA_DS_BASE_REF: ${{ github.event.pull_request.base.sha || 'origin/main' }}
+
 jobs:
   verify-design-system:
     name: Design System Compliance
     runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 20

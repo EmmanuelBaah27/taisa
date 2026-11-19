@@ -203,9 +203,16 @@ struct PrimaryAppShell: View {
             )
         case .you:
             if let youModel {
-                YouView(model: youModel, openRecovery: openRecovery)
+                YouView(model: youModel, openRecovery: { openRecovery() })
             } else {
-                ContentUnavailableView("You is unavailable", systemImage: "person.crop.circle.badge.exclamationmark", description: Text("Your local profile could not be opened."))
+                ContentUnavailableView {
+                    VStack {
+                        Image(systemName: "person.crop.circle.badge.exclamationmark")
+                        TaisaText(role: .heading, content: "You is unavailable")
+                    }
+                } description: {
+                    TaisaText(role: .supporting, color: .mutedForeground, content: "Your local profile could not be opened.")
+                }
                     .navigationTitle("You")
                     .accessibilityIdentifier("you.unavailable")
             }

@@ -28,6 +28,16 @@ public enum TaisaMotion {
     )
 }
 
+public enum TaisaProfileMetric {
+    public static let avatar: CGFloat = 32
+    public static let editorAvatar: CGFloat = 56
+    public static let chevron: CGFloat = 20
+    public static let rowGap: CGFloat = 2
+    public static let headerGap: CGFloat = 2
+    public static let nameSize: CGFloat = 28
+    public static let nameLineHeight: CGFloat = 36
+}
+
 public enum TaisaControlMetric {
     /// The canonical canvas height used by both the recording glow lab and product surface.
     public static let recordingGlowSurfaceHeight: CGFloat = 240
@@ -35,6 +45,8 @@ public enum TaisaControlMetric {
     public static let standardIcon: CGFloat = 24
     public static let appBarHeight: CGFloat = 64
     public static let headerActionHeight: CGFloat = 44
+    /// Approved standard authored in-page action height; header hit metrics remain separate.
+    public static let actionButtonHeight: CGFloat = 48
     public static let childNavigationControlHeight: CGFloat = 48
     public static let primaryNavigationItemWidth: CGFloat = 56
     public static let primaryNavigationItemHeight: CGFloat = 48

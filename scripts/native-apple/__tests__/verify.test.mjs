@@ -15,6 +15,29 @@ import {
 
 const repositoryRoot = resolve(import.meta.dirname, '../../..');
 
+test('CI provides fetched PR base history for every native DS audit', async () => {
+  for (const name of ['design-system.yml', 'native-fast.yml', 'native-apple.yml']) {
+    const workflow = await readFile(join(repositoryRoot, '.github/workflows', name), 'utf8');
+    const checkouts = [...workflow.matchAll(/- uses: actions\/checkout@v4([\s\S]*?)(?=\n      - |\n  \S|$)/g)];
+    assert.ok(checkouts.length > 0, name);
+    for (const checkout of checkouts) {
+      assert.match(checkout[1], /fetch-depth: 0/, `${name} must fetch the base, not only a detached PR commit`);
+    }
+    assert.match(workflow, /TAISA_DS_BASE_REF: \$\{\{ github\.event\.pull_request\.base\.sha \|\| 'origin\/main' \}\}/, name);
+  }
+});
+
+test('Preview UI tests build only their Preview host while development retains unit coverage', async () => {
+  const specification = JSON.parse(execFileSync('xcodegen', [
+    'dump', '--no-env', '--type', 'json', '--spec', join(repositoryRoot, 'apple/project.yml'),
+  ], { encoding: 'utf8' }));
+  assert.deepEqual(specification.schemes['Taisa-Preview'].test.targets, ['TaisaPreviewUITests']);
+  assert.ok(specification.schemes['Taisa-Dev'].test.targets.includes('TaisaUnitTests'));
+  const fullVerification = await readFile(join(repositoryRoot, 'scripts/native-apple/verify-all.sh'), 'utf8');
+  assert.match(fullVerification, /xcodebuild test[^\n]+-scheme Taisa-Dev/);
+  assert.match(fullVerification, /xcodebuild test[^\n]+-scheme Taisa-Preview/);
+});
+
 // Security regression requested by Task 5 review: native selection bypasses
 // the explicit local-only/expiring clipboard boundary.
 test('recovery secret has no unrestricted native selection or clipboard route', async () => {
@@ -67,7 +90,7 @@ test('personal capability mutations are rejected without changing live entitleme
   const fixture = await mkdtemp(join(tmpdir(), 'taisa-personal-project-'));
   await cp(resolve(repositoryRoot, 'apple'), join(fixture, 'apple'), {
     recursive: true,
-    filter: (source) => !source.includes('/Packages/') && !source.includes('/Taisa.xcodeproj/'),
+    filter: (source) => !source.includes('/Packages/') && !source.includes('/Taisa.xcodeproj/') && !source.split('/').includes('DerivedData'),
   });
   const liveNames = ['TaisaDev', 'Taisa', 'TaisaPreview'];
   const before = await Promise.all(liveNames.map((name) => readFile(join(fixture, `apple/Config/${name}.entitlements`))));
@@ -110,7 +133,7 @@ test('personal builds cannot silently drop the approved voice gateway', async ()
   const fixture = await mkdtemp(join(tmpdir(), 'taisa-personal-gateway-'));
   await cp(resolve(repositoryRoot, 'apple'), join(fixture, 'apple'), {
     recursive: true,
-    filter: (source) => !source.includes('/Packages/') && !source.includes('/Taisa.xcodeproj/'),
+    filter: (source) => !source.includes('/Packages/') && !source.includes('/Taisa.xcodeproj/') && !source.split('/').includes('DerivedData'),
   });
   assert.deepEqual(await verifyNativeProject(fixture), []);
 

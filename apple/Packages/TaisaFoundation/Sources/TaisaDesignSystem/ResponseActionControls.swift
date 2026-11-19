@@ -25,13 +25,12 @@ public struct ResponseActionIconButton: View {
     }
 
     public var body: some View {
-        Button(action: action) {
+        TaisaButtonControl(style: TaisaButtonStyle(shape: .circle), action: action) {
             CentralIcon(icon)
                 .frame(width: Contract.iconSize, height: Contract.iconSize)
                 .frame(width: Contract.visualWidth)
                 .frame(minHeight: Contract.minimumHitHeight)
         }
-        .buttonStyle(.plain)
         .foregroundStyle(isSelected ? TaisaColor.foreground.color : TaisaColor.mutedForeground.color)
         .accessibilityLabel(accessibilityLabel)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
@@ -54,17 +53,11 @@ public struct SelectableChip: View {
     }
 
     public var body: some View {
-        Button(action: action) {
+        TaisaButtonControl(style: TaisaButtonStyle(role: isSelected ? .primary : .secondary), action: action) {
             TaisaText(role: .label, content: label)
                 .padding(.horizontal, TaisaSpacing.control.rawValue)
                 .frame(minHeight: Contract.minimumHeight)
-                .background(
-                    isSelected ? TaisaColor.raisedSurface.color : TaisaColor.background.color,
-                    in: Capsule()
-                )
-                .overlay { Capsule().stroke(TaisaColor.border.color) }
         }
-        .buttonStyle(.plain)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }

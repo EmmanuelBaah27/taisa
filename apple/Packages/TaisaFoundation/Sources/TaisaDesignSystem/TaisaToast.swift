@@ -43,18 +43,16 @@ public struct TaisaToast: View {
 
     public var body: some View {
         HStack(spacing: TaisaSpacing.control.rawValue) {
-            Text(message)
-                .font(TaisaTypography.navigationLabel.font)
+            TaisaText(role: .navigationLabel, color: .background, content: message)
                 .foregroundStyle(TaisaColor.background.color)
                 .lineLimit(1)
 
             if let actionLabel, let action {
-                Button(actionLabel, action: action)
+                TaisaButtonControl(actionLabel, style: TaisaButtonStyle(presentation: .content), textRole: .navigationLabel, textColor: .background, action: action)
                     .font(TaisaTypography.navigationLabel.font)
                     .foregroundStyle(TaisaColor.background.color)
                     .frame(minHeight: 44)
                     .padding(.horizontal, TaisaSpacing.compact.rawValue)
-                    .buttonStyle(.plain)
                     .layoutPriority(1)
             }
         }

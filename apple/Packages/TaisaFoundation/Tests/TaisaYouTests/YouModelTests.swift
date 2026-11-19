@@ -69,6 +69,89 @@ import TaisaStorage
         #expect(rows.allSatisfy { !$0.value.contains("/") && !$0.value.contains("http") })
     }
 
+    @Test(.timeLimit(.minutes(1))) func typingPauseAutosavesWithoutClosingTheEditor() async {
+        let saver = ProfileSaveProbe()
+        let model = YouModel(client: .init(load: { snapshot(profile: nil) }, saveProfile: { try await saver.save($0) }))
+        await model.load()
+        model.beginProfileEdit()
+        model.updateProfileBio(displayName: "Baah", biography: "Product designer")
+        await saver.waitForFirstWrite()
+        #expect(await model.flushProfileChanges())
+        #expect(model.profileDraft != nil)
+        #expect(model.state.snapshot?.profile?.biography == "Product designer")
+    }
+
+    @Test func autosaveDrainsEditsMadeDuringAnEarlierWriteBeforeClosing() async {
+        let saver = ProfileSaveProbe(holdFirst: true)
+        let model = YouModel(client: .init(load: { snapshot(profile: nil) }, saveProfile: { try await saver.save($0) }))
+        await model.load()
+        model.beginProfileEdit()
+        model.updateProfile(displayName: "First", headline: "", biography: "First bio")
+        let closing = Task { await model.finishProfileEditing() }
+        await saver.waitForFirstWrite()
+        model.updateProfile(displayName: "Newest", headline: "", biography: "Newest bio")
+        await saver.releaseFirstWrite()
+        #expect(await closing.value)
+        let writes = await saver.writes
+        #expect(writes.map(\.displayName) == ["First", "Newest"])
+        #expect(model.state.snapshot?.profile?.biography == "Newest bio")
+        #expect(model.profileDraft == nil)
+    }
+
+    @Test func failedAutosaveKeepsDraftOpenAndRetryPersistsIt() async {
+        let saver = ProfileSaveProbe(failNext: true)
+        let model = YouModel(client: .init(load: { snapshot(profile: nil) }, saveProfile: { try await saver.save($0) }))
+        await model.load()
+        model.beginProfileEdit()
+        model.updateProfileBio(displayName: "Baah", biography: "Working offline")
+        #expect(await model.finishProfileEditing() == false)
+        #expect(model.profileDraft?.biography == "Working offline")
+        #expect(model.profileSaveState == .failed)
+        #expect(await model.finishProfileEditing())
+        #expect(model.profileDraft == nil)
+        #expect(model.state.snapshot?.profile?.biography == "Working offline")
+    }
+
+    @Test func closingUnchangedEditorPerformsNoWrite() async {
+        let saver = ProfileSaveProbe()
+        let model = YouModel(client: .init(load: { snapshot(profile: nil) }, saveProfile: { try await saver.save($0) }))
+        await model.load()
+        model.beginProfileEdit()
+        #expect(await model.finishProfileEditing())
+        #expect(await saver.writes.isEmpty)
+    }
+
+    @Test func legacyHeadlineMovesToEmptyBioOnceAndNeverReturnsAfterClearing() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let deviceID = UUID().uuidString
+        let store = try await TaisaStore.open(at: directory.appendingPathComponent("store.sqlite"), keyStore: YouClientTestKeys())
+        let client = YouClient.local(store: store, deviceID: deviceID, operational: .unknown, nowMS: { 10 })
+        _ = try await client.saveProfile(.init(displayName: "Baah", headline: "Product designer", biography: ""))
+
+        let migrated = try await client.load()
+        #expect(migrated.profile?.biography == "Product designer")
+        #expect(migrated.profile?.headline == "")
+        #expect(try await client.load() == migrated)
+        _ = try await client.saveProfile(.init(displayName: "Baah", biography: ""))
+        #expect(try await client.load().profile?.biography == "")
+    }
+
+    @Test func existingBioIsNeverOverwrittenAndEmptyFirstBuildCreatesNoProfile() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let deviceID = UUID().uuidString
+        let store = try await TaisaStore.open(at: directory.appendingPathComponent("store.sqlite"), keyStore: YouClientTestKeys())
+        let client = YouClient.local(store: store, deviceID: deviceID, operational: .unknown, nowMS: { 10 })
+        #expect(try await client.load().profile == nil)
+        _ = try await client.saveProfile(.init(displayName: "Baah", headline: "Older title", biography: "Existing bio"))
+        let existing = try await client.load()
+        #expect(existing.profile?.biography == "Existing bio")
+        #expect(existing.profile?.headline == "Older title")
+    }
+
     @Test func localClientPersistsProfileWithoutTransport() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -91,4 +174,33 @@ private actor YouClientTestKeys: DatabaseKeyStore {
     private var key: Data?
     func loadKey() async throws -> Data? { key }
     func saveKey(_ key: Data) async throws { self.key = key }
+}
+
+private actor ProfileSaveProbe {
+    private(set) var writes: [ProfileDraft] = []
+    private let holdFirst: Bool
+    private var failNext: Bool
+    private var release: CheckedContinuation<Void, Never>?
+    private var firstWaiter: CheckedContinuation<Void, Never>?
+
+    init(holdFirst: Bool = false, failNext: Bool = false) {
+        self.holdFirst = holdFirst
+        self.failNext = failNext
+    }
+    func waitForFirstWrite() async {
+        if !writes.isEmpty { return }
+        await withCheckedContinuation { firstWaiter = $0 }
+    }
+    func releaseFirstWrite() { release?.resume(); release = nil }
+    func save(_ draft: ProfileDraft) async throws -> YouSnapshot {
+        writes.append(draft)
+        firstWaiter?.resume(); firstWaiter = nil
+        if holdFirst && writes.count == 1 {
+            await withCheckedContinuation { release = $0 }
+        }
+        if failNext { failNext = false; throw YouContractError.persistenceFailed }
+        return .init(profile: .init(id: "11111111-1111-4111-8111-111111111111",
+            displayName: draft.displayName, headline: draft.headline, biography: draft.biography,
+            updatedAtMS: Int64(writes.count)), diagnostics: .unknown)
+    }
 }

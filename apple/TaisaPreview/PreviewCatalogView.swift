@@ -70,7 +70,8 @@ private struct PreviewScenarioView: View {
     var body: some View {
         Group {
             if scenario.identifier == "recording-glow.tuner"
-                || scenario.identifier.hasPrefix("conversation.") {
+                || scenario.identifier.hasPrefix("conversation.")
+                || scenario.identifier.hasPrefix("you.") {
                 VStack(spacing: 0) { scenario.makeRootView() }
                     .overlay(alignment: .topLeading) {
                         Text("Preview ready")
@@ -83,6 +84,8 @@ private struct PreviewScenarioView: View {
                     .accessibilityIdentifier("preview.ready.\(scenario.identifier)")
             }
         }
+        .toolbar(scenario.identifier.hasPrefix("you.") ? .hidden : .automatic, for: .navigationBar)
+        .navigationBarBackButtonHidden(scenario.identifier.hasPrefix("you."))
         .navigationTitle(scenario.title)
         .navigationBarTitleDisplayMode(.inline)
         .environment(\.dynamicTypeSize, dynamicTypeSize)

@@ -9,6 +9,7 @@ public enum TaisaButtonRole: Sendable, Equatable {
 public enum TaisaButtonShape: Sendable, Equatable {
     case roundedRectangle
     case capsule
+    case circle
 }
 
 public struct TaisaButton: View {
@@ -25,7 +26,7 @@ public struct TaisaButton: View {
 
     public init(
         role: TaisaButtonRole,
-        shape: TaisaButtonShape = .roundedRectangle,
+        shape: TaisaButtonShape = .capsule,
         label: String,
         isProcessing: Bool = false,
         processingAccessibilityLabel: String = "Working",
@@ -40,53 +41,28 @@ public struct TaisaButton: View {
     }
 
     public var body: some View {
-        Button(action: action) {
-            ZStack {
-                TaisaText(role: .label, color: labelColor, content: label)
-                    .opacity(isProcessing ? 0 : 1)
-                if isProcessing {
-                    ProgressView()
-                        .tint(TaisaColor.foreground.color)
-                }
-            }
-                .frame(maxWidth: .infinity, minHeight: TaisaControlMetric.headerActionHeight)
-                .padding(.horizontal, TaisaSpacing.standard.rawValue)
-                .background(background, in: buttonShape)
-                .overlay { buttonShape.stroke(borderColor) }
-                .clipShape(buttonShape)
-                .contentShape(Rectangle())
+        TaisaButtonControl(style: TaisaButtonStyle(role: role, shape: shape), action: action) {
+            buttonSurface
         }
-        .buttonStyle(.plain)
         .disabled(isProcessing)
         .accessibilityLabel(isProcessing ? processingAccessibilityLabel : label)
     }
 
-    private var buttonShape: AnyShape {
-        switch shape {
-        case .roundedRectangle: AnyShape(RoundedRectangle(cornerRadius: TaisaRadius.control.rawValue))
-        case .capsule: AnyShape(Capsule())
+    private var buttonSurface: some View {
+        ZStack {
+            TaisaText(role: .label, color: labelColor, content: label)
+                .opacity(isProcessing ? 0 : 1)
+            if isProcessing {
+                ProgressView()
+                    .tint(TaisaColor.foreground.color)
+            }
         }
-    }
-
-    private var background: Color {
-        switch role {
-        case .primary:
-            TaisaColor.primaryAction.color
-        case .secondary, .destructive:
-            TaisaColor.background.color
-        }
+        .frame(maxWidth: .infinity, minHeight: TaisaControlMetric.actionButtonHeight)
+        .padding(.horizontal, TaisaSpacing.standard.rawValue)
     }
 
     private var labelColor: TaisaColor {
         role == .destructive ? .destructive : .foreground
-    }
-
-    private var borderColor: Color {
-        switch role {
-        case .primary: .clear
-        case .secondary: TaisaColor.border.color
-        case .destructive: TaisaColor.destructive.color
-        }
     }
 }
 
