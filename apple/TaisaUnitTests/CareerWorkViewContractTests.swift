@@ -107,17 +107,32 @@ final class CareerWorkViewContractTests: XCTestCase {
         XCTAssertNil(source.range(of: #"(?<!Taisa)Picker\("#, options: .regularExpression))
     }
 
-    func testTaskDetailSheetReusesActionDetailAndDismissesOnlyAfterDeletion() throws {
+    func testTaskDetailSheetUsesSharedFigmaDetailAndDismissesOnlyAfterDeletion() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let source = try String(contentsOf: root.appendingPathComponent("TaisaApp/CareerWork/CareerWorkView.swift"), encoding: .utf8)
+        let detail = source
 
         XCTAssertTrue(source.contains("struct TaskDetailSheetContent"))
         XCTAssertTrue(source.contains(".task(id: actionID)"))
         XCTAssertTrue(source.contains("await model.select(.action(id: actionID))"))
-        XCTAssertTrue(source.contains("CareerActionDetail("))
-        XCTAssertTrue(source.contains("if await model.deleteSelectedAction()"))
-        XCTAssertTrue(source.contains("dismiss()"))
+        XCTAssertTrue(source.contains("TaskDetailSheetView("))
+        XCTAssertTrue(detail.contains("TaisaText(role: .sheetTitle"))
+        XCTAssertTrue(detail.contains("TaisaText(role: .sectionLabel"))
+        XCTAssertTrue(detail.contains("TaisaButton(role: .ghost"))
+        XCTAssertTrue(detail.contains("TaisaGroupedIconActions"))
+        XCTAssertTrue(detail.contains("item.state == .completed ? .completed : .incomplete"))
+        XCTAssertTrue(detail.contains("await model.setChecklistItemCompleted"))
+        XCTAssertTrue(detail.contains("await model.removeChecklistItem"))
+        XCTAssertTrue(detail.contains("await model.addChecklistItem"))
+        XCTAssertTrue(detail.contains("await model.completeSelectedAction"))
+        XCTAssertTrue(detail.contains("await model.dropSelectedAction"))
+        XCTAssertTrue(detail.contains("if await model.deleteSelectedAction()"))
+        XCTAssertTrue(detail.contains("dismiss()"))
         XCTAssertTrue(source.contains("openRecovery()"))
+        XCTAssertNil(detail.range(of: #"(?<!Taisa)Button\("#, options: .regularExpression))
+        XCTAssertFalse(detail.contains("Image(systemName:"))
+        XCTAssertFalse(detail.contains("Color("))
+        XCTAssertFalse(detail.contains(".font("))
     }
 
     func testTasksCollectionPresentsTheSharedExpandableDetailSheet() throws {

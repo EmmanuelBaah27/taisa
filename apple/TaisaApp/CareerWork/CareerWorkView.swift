@@ -56,18 +56,12 @@ struct TaskDetailSheetContent: View {
                 unavailableTask
             case let .failure(issue):
                 failure(issue)
-            case let .detail(detail, snapshot):
-                CareerActionDetail(
+            case let .detail(detail, _):
+                TaskDetailSheetView(
                     snapshot: detail,
-                    goals: snapshot.overview.active + snapshot.overview.paused + snapshot.overview.completed,
-                    milestones: snapshot.milestones,
                     model: model,
-                    open: open,
-                    deleted: dismiss
+                    dismiss: dismiss
                 )
-                .safeAreaInset(edge: .top, spacing: 0) {
-                    TaisaChildPageHeader(detail.action.title, mode: .detail, back: {})
-                }
                 .background(TaisaColor.background.color.ignoresSafeArea())
             }
         }
@@ -110,6 +104,208 @@ struct TaskDetailSheetContent: View {
                 }
             }
         }
+    }
+}
+
+private struct TaskDetailSheetView: View {
+    let snapshot: ActionDetailSnapshot
+    let model: CareerWorkModel
+    let dismiss: () -> Void
+
+    @State private var checklistTitle = ""
+    @State private var completionEvidence = ""
+    @State private var isAddingSubtask = false
+    @State private var isCompleting = false
+    @State private var showsArchive = false
+    @State private var showsDelete = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: TaisaSpacing.standard.rawValue) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: TaisaSpacing.standard.rawValue) {
+                    TaisaText(role: .sheetTitle, content: snapshot.action.title)
+                        .accessibilityAddTraits(.isHeader)
+
+                    HStack(spacing: TaisaTaskSpacing.dueGap) {
+                        CentralIcon(.calendar)
+                            .frame(width: TaisaControlMetric.taskDueIcon, height: TaisaControlMetric.taskDueIcon)
+                        TaisaText(
+                            role: .supporting,
+                            color: dueText == "Due" ? .mutedForeground : .foreground,
+                            content: dueText
+                        )
+                    }
+                    .padding(.horizontal, TaisaSpacing.tight.rawValue)
+                    .padding(.vertical, TaisaSpacing.tight.rawValue / 2)
+                    .background(TaisaColor.subtleSurface.color, in: RoundedRectangle(cornerRadius: TaisaRadius.taskDue))
+
+                    if !snapshot.checklist.isEmpty {
+                        VStack(alignment: .leading, spacing: TaisaSpacing.compact.rawValue) {
+                            TaisaText(role: .sectionLabel, color: .mutedForeground, content: "Sub-tasks")
+                            ForEach(snapshot.checklist, id: \.id) { item in
+                                TaisaPressable(action: {
+                                    Task {
+                                        await model.setChecklistItemCompleted(
+                                            id: item.id,
+                                            completed: item.state != .completed
+                                        )
+                                    }
+                                }) {
+                                    HStack(spacing: TaisaSpacing.control.rawValue) {
+                                        CentralIcon(
+                                            item.state == .completed ? .completed : .incomplete,
+                                            color: item.state == .completed ? .completed : .foreground
+                                        )
+                                            .frame(width: TaisaControlMetric.standardIcon, height: TaisaControlMetric.standardIcon)
+                                        TaisaText(role: .taskTitle, content: item.title)
+                                            .strikethrough(item.state == .completed)
+                                        Spacer()
+                                    }
+                                    .frame(minHeight: TaisaControlMetric.taskControl)
+                                    .contentShape(Rectangle())
+                                }
+                                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                    TaisaButton(
+                                        role: .destructive,
+                                        label: "Delete",
+                                        icon: .delete,
+                                        size: .small,
+                                        layout: .intrinsic
+                                    ) {
+                                        Task { await model.removeChecklistItem(id: item.id) }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if isAddingSubtask {
+                        TaisaField("Sub-task title", text: $checklistTitle, placeholder: "Add a sub-task")
+                        HStack(spacing: TaisaSpacing.compact.rawValue) {
+                            TaisaButton(role: .ghost, label: "Cancel", size: .small, layout: .intrinsic) {
+                                checklistTitle = ""
+                                isAddingSubtask = false
+                            }
+                            TaisaButton(
+                                role: .primary,
+                                label: "Add",
+                                icon: .add,
+                                size: .small,
+                                layout: .intrinsic,
+                                isEnabled: !trimmedChecklistTitle.isEmpty
+                            ) {
+                                let title = trimmedChecklistTitle
+                                checklistTitle = ""
+                                isAddingSubtask = false
+                                Task { await model.addChecklistItem(title: title) }
+                            }
+                        }
+                    } else {
+                        TaisaButton(
+                            role: .ghost,
+                            label: "Add sub-task",
+                            icon: .add,
+                            size: .small,
+                            layout: .intrinsic
+                        ) {
+                            isAddingSubtask = true
+                        }
+                    }
+
+                    if isCompleting {
+                        TaisaField(
+                            "Completion evidence",
+                            text: $completionEvidence,
+                            placeholder: "What shows this is complete?"
+                        )
+                    }
+                }
+            }
+
+            HStack(spacing: TaisaSpacing.standard.rawValue) {
+                completionButton
+                Spacer()
+                TaisaGroupedIconActions([
+                    .init(icon: .drop, accessibilityLabel: "Archive task") { showsArchive = true },
+                    .init(icon: .delete, role: .destructive, accessibilityLabel: "Delete task") { showsDelete = true },
+                ])
+            }
+        }
+        .padding(TaisaSpacing.standard.rawValue)
+        .accessibilityIdentifier("career-work.task-detail")
+        .modifier(TaisaConfirmationDialog(
+            title: "Archive this task?",
+            isPresented: $showsArchive,
+            confirmLabel: "Archive task",
+            cancelLabel: "Keep task"
+        ) {
+            Task { await model.dropSelectedAction() }
+        })
+        .modifier(TaisaConfirmationDialog(
+            title: "Delete this task?",
+            isPresented: $showsDelete,
+            confirmLabel: "Delete task",
+            cancelLabel: "Keep task",
+            role: .destructive
+        ) {
+            Task {
+                if await model.deleteSelectedAction() { dismiss() }
+            }
+        })
+    }
+
+    @ViewBuilder private var completionButton: some View {
+        if snapshot.action.status == ActionStatus.completed.rawValue {
+            TaisaButton(
+                role: .secondary,
+                shape: .capsule,
+                label: "Reopen",
+                icon: .undo,
+                size: .small,
+                layout: .intrinsic
+            ) {
+                Task { await model.reopenSelectedAction() }
+            }
+        } else if isCompleting {
+            TaisaButton(
+                role: .primary,
+                shape: .capsule,
+                label: "Save completion",
+                icon: .completed,
+                size: .small,
+                layout: .intrinsic,
+                isEnabled: !trimmedCompletionEvidence.isEmpty
+            ) {
+                let evidence = trimmedCompletionEvidence
+                completionEvidence = ""
+                isCompleting = false
+                Task { await model.completeSelectedAction(evidenceTitle: evidence) }
+            }
+        } else {
+            TaisaButton(
+                role: .secondary,
+                shape: .capsule,
+                label: "Mark as Done",
+                icon: .completed,
+                iconColor: .completed,
+                size: .small,
+                layout: .intrinsic
+            ) {
+                isCompleting = true
+            }
+        }
+    }
+
+    private var dueText: String {
+        actionDueText(snapshot.action)?.replacingOccurrences(of: "Due ", with: "") ?? "Due"
+    }
+
+    private var trimmedChecklistTitle: String {
+        checklistTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var trimmedCompletionEvidence: String {
+        completionEvidence.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }
 
