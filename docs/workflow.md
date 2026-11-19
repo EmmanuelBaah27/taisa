@@ -251,6 +251,28 @@ only the previously recorded broken interaction before final verification and pu
 - DS breaking changes always require Baah confirmation with affected usages; global behavior
   changes require confirmation; backward-compatible variants may proceed autonomously.
 
+Every Product build resolves each requirement through the registered design system before
+Product code. Use `design:design-system` for system audit or extension and
+`design-system-patterns` for contract architecture and migration. Classify the contract as a
+foundation, asset, behavior, style, component, or platform adapter. Assign exactly one treatment:
+reuse, extend, create, or approved exception. Record appearance, accessibility, device and input,
+locale, and content-length support.
+
+An existing design-system component is mandatory when it covers the interaction. Raw platform
+interactive controls may appear only in exact, explicitly designated primitive files. Product
+and composite design-system files must compose those primitives. A missing component variant is
+a blocking design-system gap. It does not permit bypassing the shared contract. No directory or
+module exemption is allowed. Existing classified legacy debt may only shrink under its owning
+migration issue; new, moved, or changed raw-control debt is blocking.
+
+Create a primitive only when no existing component supports a coherent variant, the behavior and
+accessibility contract are reusable, and extending an existing component would make its API
+contradictory. Copy, callbacks, one-screen styling, width, or size alone do not qualify. Classify
+contract changes as additive, intentional system-wide restyle, or breaking. Additive changes
+preserve defaults. System-wide changes review every consumer. Breaking changes require a
+replacement, migration, deprecation, and removal condition. Exceptions require a narrow reason,
+owner, expiry condition, and removal issue, with Baah approval recorded in Linear.
+
 ## AI and data quality
 
 - The phone remains authoritative for readable personal data unless Baah approves otherwise.
