@@ -21,13 +21,23 @@ public enum YouState: Sendable, Equatable {
 }
 
 public enum ProfileSaveState: Sendable, Equatable {
-    case idle, waiting, saving, saved, failed
+    case idle, waiting, saving, saved, invalid, failed
 }
 
 @MainActor @Observable public final class YouModel {
     public private(set) var state: YouState = .idle
     public private(set) var profileDraft: ProfileDraft?
     public private(set) var profileSaveState: ProfileSaveState = .idle
+    public var profileValidation: ProfileInputValidation {
+        guard let draft = profileDraft else {
+            return ProfileInputValidator.validate(displayName: "", headline: "", biography: "")
+        }
+        return ProfileInputValidator.validate(
+            displayName: draft.displayName,
+            headline: draft.headline,
+            biography: draft.biography
+        )
+    }
     @ObservationIgnored private let client: YouClient
     @ObservationIgnored private var savedDraft: ProfileDraft?
     @ObservationIgnored private var debounceTask: Task<Void, Never>?
@@ -59,11 +69,15 @@ public enum ProfileSaveState: Sendable, Equatable {
         profileDraft = .init(displayName: displayName, headline: headline, biography: biography)
     }
 
-    /// The editor exposes only name and Bio; preserve any historical headline.
+    /// The editor exposes only name and Bio; any visible edit retires the hidden historical headline.
     public func updateProfileBio(displayName: String, biography: String) {
-        guard let draft = profileDraft else { return }
-        updateProfile(displayName: displayName, headline: draft.headline, biography: biography)
+        guard profileDraft != nil else { return }
+        updateProfile(displayName: displayName, headline: "", biography: biography)
         debounceTask?.cancel()
+        guard profileValidation.isValid else {
+            profileSaveState = .invalid
+            return
+        }
         profileSaveState = .waiting
         debounceTask = Task { [weak self] in
             do { try await Task.sleep(for: .milliseconds(500)) }
@@ -88,6 +102,10 @@ public enum ProfileSaveState: Sendable, Equatable {
     @discardableResult public func flushProfileChanges() async -> Bool {
         debounceTask?.cancel()
         debounceTask = nil
+        guard profileValidation.isValid else {
+            profileSaveState = .invalid
+            return false
+        }
         if let saveTask {
             guard await saveTask.value else { return false }
             // Another edit may arrive between the writer finishing and this waiter resuming.
@@ -124,6 +142,10 @@ public enum ProfileSaveState: Sendable, Equatable {
     }
 
     @discardableResult public func finishProfileEditing() async -> Bool {
+        guard profileValidation.isValid else {
+            profileSaveState = .invalid
+            return false
+        }
         guard await flushProfileChanges() else { return false }
         while profileDraft != savedDraft {
             guard await flushProfileChanges() else { return false }

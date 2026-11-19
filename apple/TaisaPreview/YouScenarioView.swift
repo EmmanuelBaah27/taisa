@@ -15,7 +15,7 @@ struct YouScenarioView: View {
             client = .init(load: { throw YouContractError.persistenceFailed })
         case .content, .permissionDenied, .gatewayUnavailable:
             let store = YouPreviewProfileStore(snapshot: Self.snapshot(mode: mode))
-            client = .init(load: { await store.load() }, saveProfile: { await store.save($0) })
+            client = .init(load: { await store.load() }, saveProfile: { try await store.save($0) })
         }
         _model = State(initialValue: YouModel(client: client))
     }
@@ -51,7 +51,12 @@ private actor YouPreviewProfileStore {
     private var snapshot: YouSnapshot
     init(snapshot: YouSnapshot) { self.snapshot = snapshot }
     func load() -> YouSnapshot { snapshot }
-    func save(_ draft: ProfileDraft) -> YouSnapshot {
+    func save(_ draft: ProfileDraft) throws -> YouSnapshot {
+        guard ProfileInputValidator.validate(
+            displayName: draft.displayName,
+            headline: draft.headline,
+            biography: draft.biography
+        ).isValid else { throw YouContractError.invalidProfile }
         snapshot = .init(profile: .init(
             id: snapshot.profile?.id ?? "10000000-0000-4000-8000-000000000049",
             displayName: draft.displayName, headline: draft.headline,

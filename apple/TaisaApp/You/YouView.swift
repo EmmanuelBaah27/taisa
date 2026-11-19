@@ -137,16 +137,22 @@ private struct CareerProfileEditor: View {
                     TaisaProfileIconButton(icon: .profileClose, label: "Close profile editor") {
                         closing = true
                         Task {
-                            if await model.finishProfileEditing() { close() }
+                            if !model.profileValidation.isValid {
+                                close()
+                            } else if await model.finishProfileEditing() {
+                                close()
+                            }
                             closing = false
                         }
                     }
                     .disabled(closing)
                     .accessibilityIdentifier("you.profile.close")
                 }
-                TaisaField("Display name", text: binding(\.displayName), appearance: .profile)
+                TaisaField("Display name", text: binding(\.displayName),
+                    state: fieldState(model.profileValidation.displayNameMessage), appearance: .profile)
                     .accessibilityIdentifier("you.profile.name")
-                TaisaField("Bio", text: binding(\.biography), kind: .multiline, appearance: .profile)
+                TaisaField("Bio", text: binding(\.biography), kind: .multiline,
+                    state: fieldState(model.profileValidation.biographyMessage), appearance: .profile)
                     .accessibilityIdentifier("you.profile.bio")
                 if model.profileSaveState == .failed {
                     TaisaText(role: .profileSupporting, color: .destructive,
@@ -178,6 +184,10 @@ private struct CareerProfileEditor: View {
             draft[keyPath: keyPath] = value
             model.updateProfileBio(displayName: draft.displayName, biography: draft.biography)
         })
+    }
+
+    private func fieldState(_ message: String?) -> TaisaFieldState {
+        message.map(TaisaFieldState.invalid(message:)) ?? .enabled
     }
 }
 

@@ -307,6 +307,8 @@ uses name-derived initials; photo editing and photo persistence are deferred.
 The existing `TaisaField` contract from the Actions foundation is reused with a
 backward-compatible `.profile` appearance: a muted label, subtle filled input,
 semantic control radius and insets. `.outlined` retains the existing default.
+Profile validation reuses the field's existing `.invalid(message:)` state. It
+does not add a feature-local field, visual variant, token, or error component.
 The generic Actions `TaisaRow` was inspected but has no disclosure/action slot
 and wraps each row in its own shape. The settings navigation row is an approved
 interactive disclosure contract with its exact trailing chevron and group-owned

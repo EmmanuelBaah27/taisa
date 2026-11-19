@@ -135,6 +135,27 @@ final class TaisaPreviewCatalogTests: XCTestCase {
         )
     }
 
+    func testYouEditorExplainsInvalidNameAndCanCloseWithoutLosingDraft() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-TAISAPreviewScenario", "you.content"]
+        app.launch()
+
+        let edit = element("you.profile.edit", in: app)
+        XCTAssertTrue(edit.waitForExistence(timeout: 5))
+        edit.tap()
+
+        let name = app.textFields["Display name"]
+        XCTAssertTrue(name.waitForExistence(timeout: 5))
+        name.tap()
+        name.typeText(String(repeating: "x", count: 81))
+        XCTAssertTrue(app.staticTexts["Display name must be 80 characters or fewer."].waitForExistence(timeout: 5))
+
+        element("you.profile.close", in: app).tap()
+        XCTAssertTrue(edit.waitForExistence(timeout: 5))
+        edit.tap()
+        XCTAssertEqual(app.textFields["Display name"].value as? String, "Baah" + String(repeating: "x", count: 81))
+    }
+
     private func element(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
         app.descendants(matching: .any)[identifier]
     }

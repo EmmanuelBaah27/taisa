@@ -5,6 +5,75 @@ public enum YouContractError: Error, Sendable, Equatable, CaseIterable {
     case persistenceFailed
 }
 
+public struct ProfileInputValidation: Sendable, Equatable {
+    public let displayNameMessage: String?
+    public let headlineMessage: String?
+    public let biographyMessage: String?
+
+    public var isValid: Bool {
+        displayNameMessage == nil && headlineMessage == nil && biographyMessage == nil
+    }
+}
+
+public enum ProfileInputValidator {
+    public static func validate(
+        displayName: String,
+        headline: String,
+        biography: String
+    ) -> ProfileInputValidation {
+        let fields = normalized(displayName: displayName, headline: headline, biography: biography)
+        return .init(
+            displayNameMessage: message(
+                for: fields.displayName,
+                limit: 80,
+                oversized: "Display name must be 80 characters or fewer.",
+                allowsLineBreaks: false,
+                unsupported: "Display name cannot contain line breaks or control characters."
+            ),
+            headlineMessage: message(
+                for: fields.headline,
+                limit: 160,
+                oversized: "Headline must be 160 characters or fewer.",
+                allowsLineBreaks: false,
+                unsupported: "Headline cannot contain line breaks or control characters."
+            ),
+            biographyMessage: message(
+                for: fields.biography,
+                limit: 2_000,
+                oversized: "Bio must be 2,000 characters or fewer.",
+                allowsLineBreaks: true,
+                unsupported: "Bio contains unsupported control characters."
+            )
+        )
+    }
+
+    static func normalized(
+        displayName: String,
+        headline: String,
+        biography: String
+    ) -> (displayName: String, headline: String, biography: String) {
+        (
+            displayName.trimmingCharacters(in: .whitespacesAndNewlines),
+            headline.trimmingCharacters(in: .whitespacesAndNewlines),
+            biography.trimmingCharacters(in: .whitespacesAndNewlines)
+        )
+    }
+
+    private static func message(
+        for value: String,
+        limit: Int,
+        oversized: String,
+        allowsLineBreaks: Bool,
+        unsupported: String
+    ) -> String? {
+        if value.count > limit { return oversized }
+        let hasUnsupportedControl = value.unicodeScalars.contains { scalar in
+            CharacterSet.controlCharacters.contains(scalar) && !(allowsLineBreaks && scalar.value == 10)
+        }
+        return hasUnsupportedControl ? unsupported : nil
+    }
+}
+
 public struct ProfileCommandRepository: Sendable {
     private let repository: ProfileRepository
 
@@ -20,15 +89,21 @@ public struct ProfileCommandRepository: Sendable {
         biography: String,
         context: MutationContext
     ) async throws -> ProfileRecord {
-        let fields = [displayName, headline, biography].map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-        guard fields[0].count <= 80, fields[1].count <= 160, fields[2].count <= 2_000,
-              fields.allSatisfy({ !$0.unicodeScalars.contains(where: { CharacterSet.controlCharacters.contains($0) }) })
-        else { throw YouContractError.invalidProfile }
+        let fields = ProfileInputValidator.normalized(
+            displayName: displayName,
+            headline: headline,
+            biography: biography
+        )
+        guard ProfileInputValidator.validate(
+            displayName: fields.displayName,
+            headline: fields.headline,
+            biography: fields.biography
+        ).isValid else { throw YouContractError.invalidProfile }
         let record = ProfileRecord(
             id: id,
-            displayName: fields[0],
-            headline: fields[1],
-            biography: fields[2],
+            displayName: fields.displayName,
+            headline: fields.headline,
+            biography: fields.biography,
             updatedAtMS: context.timestamp
         )
         do {
