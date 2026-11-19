@@ -43,6 +43,44 @@ final class TaisaPreviewCatalogTests: XCTestCase {
         }
     }
 
+    func testYouContentKeepsCatalogBackNavigation() {
+        let app = XCUIApplication()
+        app.launch()
+
+        let search = app.searchFields["Search scenarios"]
+        XCTAssertTrue(search.waitForExistence(timeout: 5))
+        search.tap()
+        search.typeText("you.content")
+
+        let row = app.buttons.matching(
+            NSPredicate(format: "label BEGINSWITH %@", "You content")
+        ).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 5))
+        row.tap()
+
+        let scenarioBar = app.navigationBars.firstMatch
+        XCTAssertTrue(scenarioBar.waitForExistence(timeout: 5))
+        let back = scenarioBar.buttons["Taisa Preview"]
+        XCTAssertTrue(back.waitForExistence(timeout: 2))
+        back.tap()
+        XCTAssertTrue(search.waitForExistence(timeout: 5))
+    }
+
+    func testYouScenarioReusesCatalogNavigationOwner() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let source = try String(
+            contentsOf: root.appendingPathComponent("TaisaPreview/YouScenarioView.swift"),
+            encoding: .utf8
+        )
+
+        XCTAssertFalse(
+            source.contains("NavigationStack {\n            YouView("),
+            "You scenarios must reuse PreviewCatalogView's navigation stack so its back control stays visible."
+        )
+    }
+
     func testCombinedHomeOpensNestedInsights() {
         let app = XCUIApplication()
         app.launchArguments = ["-TAISAPreviewScenario", "home.combined"]
