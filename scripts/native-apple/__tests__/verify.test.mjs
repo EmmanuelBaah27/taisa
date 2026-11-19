@@ -328,9 +328,10 @@ test('combined native verification and CI pin every required gate', async () => 
   }
   assert.match(combinedScript, /reset_simulator_app\(\)/);
   assert.equal(
-    [...combinedScript.matchAll(/reset_simulator_app "\$\{(?:iphone|ipad)_name\}" com\.taisa\.app\.(?:dev|preview|personal)/g)].length,
+    [...combinedScript.matchAll(/reset_simulator_app "\$\{iphone_name\}" com\.taisa\.app\.(?:dev|preview|personal)/g)].length,
     3,
   );
+  assert.doesNotMatch(combinedScript, /iPad|TAISA_IPAD|ipad_name/);
   const resetBody = combinedScript.match(/reset_simulator_app\(\) \{([\s\S]*?)\n\}/)?.[1] ?? '';
   assert.match(resetBody, /simctl boot /);
   assert.match(resetBody, /simctl bootstatus .* -b/);
