@@ -54,4 +54,3 @@ public struct TaisaSecondaryIconButton: View {
         }
     }
 }
-
