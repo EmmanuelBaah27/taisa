@@ -5,7 +5,7 @@ import TaisaYou
 
 struct YouView: View {
     @Bindable var model: YouModel
-    let openRecovery: () -> Void
+    let openRecovery: @MainActor () -> Void
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var selectedDestination: YouDestination?
     @State private var showsProfile = false
