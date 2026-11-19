@@ -111,6 +111,9 @@ require_workflow_multiline_pattern AGENTS.md \
   'Canonical Preview, QA, repair quarantine, and Ship:[^\n]*\n[^\n]*docs/workflow\.md.*taisa-workflow/SKILL\.md' \
   'Preview, QA, repair, and Ship adapter pointer'
 require_workflow_multiline_pattern AGENTS.md \
+  'native Product review.*Codex browser simulator.*live frame.*physical.*perceptual QA' \
+  'native Product browser-simulator review boundary'
+require_workflow_multiline_pattern AGENTS.md \
   'readable personal data encrypted and device-authoritative.*device UUID is the user identifier.*authentication middleware' \
   'privacy, data-authority, and identity invariants'
 require_workflow_multiline_pattern AGENTS.md \
@@ -169,6 +172,18 @@ fi
 require_workflow_pattern docs/workflow.md \
   'reuse fresh exact-revision evidence' \
   'reuse of unchanged exact-revision evidence at Ship'
+require_workflow_multiline_pattern docs/workflow.md \
+  'Browser simulator review.*explicit.*Simulator UDID.*serve-sim.*Codex.*in-app browser.*live simulator frame' \
+  'authoritative native Product browser-simulator review gate'
+require_workflow_multiline_pattern docs/workflow.md \
+  'exact candidate revision.*simulator model.*OS version.*affected interaction.*accessibility.*browser-visible screenshot' \
+  'browser-simulator review evidence fields'
+require_workflow_multiline_pattern docs/workflow.md \
+  'does not replace.*physical-device.*hardware-specific.*perceptual.*Baah' \
+  'browser simulator does not replace Baah physical QA'
+require_workflow_multiline_pattern .agents/skills/taisa-workflow/SKILL.md \
+  'native Product tracer.*final native Product candidate.*browser simulator.*live frame' \
+  'browser-simulator gate in Taisa QA adapter'
 
 for ds_authority_file in \
   AGENTS.md \

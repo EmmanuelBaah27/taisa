@@ -66,6 +66,9 @@ Load only the adapter triggered by the work:
 - Domain, privacy, data, identity, and architecture: `docs/project-memory.md`, then only the
   relevant canonical documents it routes to.
 - Product UI: `docs/design-system.md` plus `design-handoff`.
+- Native Product review uses the Codex browser simulator through the Build iOS Apps
+  `ios-simulator-browser` skill. It must show a live frame before agent review passes. This
+  gate supports, but never replaces, Baah's physical and perceptual QA.
 - Canonical Preview, QA, repair quarantine, and Ship: the applicable sections of
   `docs/workflow.md` and `.agents/skills/taisa-workflow/SKILL.md` until thin adapters replace
   the legacy source. These sources retain safety contracts but do not restore ordinary Plan

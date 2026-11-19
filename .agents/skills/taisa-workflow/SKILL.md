@@ -199,10 +199,18 @@ with available DS contracts and Central Icons, and every remaining unavailable i
 exception. Missing evidence or an available-but-unused DS contract is blocking and prevents a
 Ship approval request.
 
+Every reviewable native Product tracer and final native Product candidate must use the Build iOS
+Apps `ios-simulator-browser` skill. The browser simulator must show a live frame of the affected
+interaction. Record the exact candidate revision, simulator model, OS version, accessibility
+checks, and browser screenshot required by the authoritative contract in `docs/workflow.md`.
+This agent-owned review gate does not replace Baah's physical-device, hardware-specific, or
+perceptual QA.
+
 Before initial QA, require mapped acceptance evidence, applicable narrow/full verification,
 resolved blocking review, complete required slices, exact canonical preview, confirmed
-served/installed revision, agent-owned simulator/accessibility/preview smoke checks, explicit
-limitations, and a Linear evidence summary. Failure returns to autonomous Build.
+served/installed revision, browser simulator live-frame and accessibility evidence for visible
+or interactive native Product work, preview smoke checks, explicit limitations, and a Linear
+evidence summary. Failure returns to autonomous Build.
 
 One Baah defect observation enters `REPAIR_QUARANTINE`. A repair Goal stays on the same issue.
 When a device-only or perceptual failure cannot be proven by agent-owned checks, use the

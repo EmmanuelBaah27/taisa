@@ -299,6 +299,24 @@ with available DS contracts and Central Icons, and the complete list of remainin
 items or approved exceptions. Missing evidence or an available-but-unused DS contract blocks
 Ship approval.
 
+### Browser simulator review
+
+Every reviewable native Product tracer and final native Product candidate must pass agent-owned
+browser simulator review. Use the Build iOS Apps `ios-simulator-browser` skill with an explicit
+Simulator UDID. Start a `serve-sim` helper scoped to that UDID, open its printed URL in the Codex
+in-app browser, and prove that the page renders a live simulator frame. A loaded page, a running
+helper, or a connection status without a rendered frame is not evidence. Keep the helper alive
+while review continues. On exit, clean up only the helper for that explicit UDID.
+
+Review the affected interaction and relevant accessibility state in the live frame. Record the
+exact candidate revision, simulator model, OS version, affected interaction, accessibility
+checks, and a browser-visible screenshot. If a native change has no visible or interactive
+Product effect, record the browser review as inapplicable with the reason.
+
+Browser simulator review does not replace physical-device, hardware-specific, or perceptual
+judgment owned by Baah. It is the agent gate before Baah QA, not evidence that physical QA
+passed.
+
 ### Verification economy
 
 Use the smallest applicable verification that can falsify the current change first, then
@@ -343,7 +361,9 @@ Before the first Baah QA request, all applicable requirements must pass:
 4. Required vertical tracers and their cross-cutting acceptance constraints are complete.
 5. Device-facing work is committed, integrated, and pushed to canonical preview.
 6. The served or installed build is confirmed as that exact revision.
-7. Agent-owned simulator, accessibility, preview, and smoke checks pass.
+7. Every visible or interactive native Product change has passed browser simulator review with
+   a live-frame screenshot and the required revision, simulator, interaction, and accessibility
+   evidence.
 8. Known limitations and inapplicable checks are explicit and do not contradict acceptance.
 9. Linear records the candidate revision, evidence, remaining risk, and exact requested
    observation.
