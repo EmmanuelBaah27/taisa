@@ -65,9 +65,9 @@ public struct TaisaButton: View {
         if #available(iOS 26.0, macOS 26.0, *), !reduceTransparency {
             switch role {
             case .primary:
-                content.glassEffect(.clear.tint(TaisaColor.primaryAction.color).interactive(), in: buttonShape)
+                content.glassEffect(.regular.tint(TaisaColor.primaryAction.color).interactive(), in: buttonShape)
             case .secondary, .destructive:
-                content.glassEffect(.clear.interactive(), in: buttonShape)
+                content.glassEffect(.regular.interactive(), in: buttonShape)
             }
         } else {
             content.background(fallbackColor, in: buttonShape)
