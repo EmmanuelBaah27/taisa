@@ -1,6 +1,7 @@
 import SwiftUI
 
 public enum CentralIconName: Sendable, Equatable {
+    case profileShield, profileCloud, profileDiagnostics, profileChevron, profileEdit, profileClose
     case homeLine
     case chatBubbles
     case peopleCircle
@@ -53,7 +54,32 @@ public struct CentralIcon: View {
         self.color = color
     }
 
+    private var profileAsset: String? {
+        switch name {
+        case .profileShield: "ProfileShield"
+        case .profileCloud: "ProfileCloud"
+        case .profileDiagnostics: "ProfileDiagnostics"
+        case .profileChevron: "ProfileChevron"
+        case .profileEdit: "ProfileEdit"
+        case .profileClose: "ProfileClose"
+        default: nil
+        }
+    }
+
     public var body: some View {
+        Group {
+            if let profileAsset {
+                Image(profileAsset, bundle: .module)
+                    .resizable()
+                    .scaledToFit()
+                    .accessibilityHidden(true)
+            } else {
+                drawnIcon
+            }
+        }
+    }
+
+    private var drawnIcon: some View {
         Canvas { context, size in
             let scale = min(size.width, size.height) / 24
             let transform = CGAffineTransform(
@@ -75,6 +101,7 @@ public struct CentralIcon: View {
 
     private var path: Path {
         switch name {
+        case .profileShield, .profileCloud, .profileDiagnostics, .profileChevron, .profileEdit, .profileClose: Path()
         case .homeLine: homeLine
         case .chatBubbles: chatBubbles
         case .peopleCircle: peopleCircle

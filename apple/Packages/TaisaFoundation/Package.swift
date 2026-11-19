@@ -34,7 +34,7 @@ let package = Package(
         .target(name: "TaisaContracts"),
         .target(
             name: "TaisaDesignSystem",
-            resources: [.process("RecordingGlow.metal")]
+            resources: [.process("RecordingGlow.metal"), .process("Resources")]
         ),
         .target(name: "TaisaPreviewSupport", dependencies: ["TaisaCore"]),
         .target(name: "TaisaHome", dependencies: ["TaisaStorage"]),

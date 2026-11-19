@@ -28,6 +28,16 @@ public enum TaisaMotion {
     )
 }
 
+public enum TaisaProfileMetric {
+    public static let avatar: CGFloat = 32
+    public static let editorAvatar: CGFloat = 56
+    public static let chevron: CGFloat = 20
+    public static let rowGap: CGFloat = 2
+    public static let headerGap: CGFloat = 2
+    public static let nameSize: CGFloat = 28
+    public static let nameLineHeight: CGFloat = 36
+}
+
 public enum TaisaControlMetric {
     public static let taskHeaderHeight: CGFloat = 82
     public static let taskComposerHeight: CGFloat = 124

@@ -2,6 +2,7 @@ import SwiftUI
 
 public enum TaisaTypography: String, CaseIterable, Sendable {
     case display
+    case profileName, profileBody, profileLabel, profileSupporting
     case heading
     case body
     case label
@@ -18,7 +19,7 @@ public enum TaisaTypography: String, CaseIterable, Sendable {
 
     public var familyName: String {
         switch self {
-        case .display, .datedPageTitle: "Scoutie Sans"
+        case .display, .datedPageTitle, .profileName: "Scoutie Sans"
         default: "Inter"
         }
     }
@@ -26,6 +27,7 @@ public enum TaisaTypography: String, CaseIterable, Sendable {
     public var fontName: String {
         switch self {
         case .display, .datedPageTitle: "ScoutieSans-ExtraLight"
+        case .profileName: "ScoutieSans-SemiBold"
         default: "InterVariable"
         }
     }
@@ -33,6 +35,9 @@ public enum TaisaTypography: String, CaseIterable, Sendable {
     public var pointSize: CGFloat {
         switch self {
         case .display: 34
+        case .profileName: TaisaProfileMetric.nameSize
+        case .profileBody, .profileLabel: 16
+        case .profileSupporting: 14
         case .heading: 22
         case .body, .buttonLabel, .navigationLabel, .childHeaderTitle, .taskTitle: 16
         case .label, .supporting, .taskSupporting, .sectionLabel: 14
@@ -45,6 +50,9 @@ public enum TaisaTypography: String, CaseIterable, Sendable {
     public var lineHeight: CGFloat {
         switch self {
         case .display: 41
+        case .profileName: TaisaProfileMetric.nameLineHeight
+        case .profileBody, .profileLabel: 24
+        case .profileSupporting: 20
         case .heading: 28
         case .body, .buttonLabel, .navigationLabel, .childHeaderTitle, .taskTitle: 24
         case .label, .supporting, .taskSupporting, .sectionLabel: 20
@@ -57,6 +65,9 @@ public enum TaisaTypography: String, CaseIterable, Sendable {
     public var relativeTextStyle: Font.TextStyle {
         switch self {
         case .display: .largeTitle
+        case .profileName: .title
+        case .profileBody, .profileLabel: .body
+        case .profileSupporting: .subheadline
         case .heading: .title2
         case .body, .buttonLabel, .navigationLabel, .childHeaderTitle, .taskTitle: .body
         case .label, .supporting, .taskSupporting, .sectionLabel: .subheadline
@@ -72,14 +83,15 @@ public enum TaisaTypography: String, CaseIterable, Sendable {
 
     public var weight: Font.Weight {
         switch self {
-        case .display, .heading, .label, .childHeaderTitle, .datedPageTitle: .semibold
-        case .buttonLabel, .navigationLabel, .taskTitle, .sheetTitle, .sectionLabel: .medium
-        case .body, .metadata, .supporting, .taskSupporting: .regular
+        case .display, .heading, .label, .childHeaderTitle, .datedPageTitle, .profileName: .semibold
+        case .buttonLabel, .navigationLabel, .taskTitle, .sheetTitle, .sectionLabel, .profileLabel: .medium
+        case .body, .metadata, .supporting, .taskSupporting, .profileBody, .profileSupporting: .regular
         }
     }
 
     public var font: Font {
-        .custom(fontName, size: pointSize, relativeTo: relativeTextStyle)
+        TaisaProfileFonts.register()
+        return .custom(fontName, size: pointSize, relativeTo: relativeTextStyle)
             .weight(weight)
     }
 }
