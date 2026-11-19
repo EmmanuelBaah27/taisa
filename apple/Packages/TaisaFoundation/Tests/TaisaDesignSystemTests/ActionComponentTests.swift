@@ -57,6 +57,12 @@ struct ActionComponentTests {
         #expect(TaisaTaskTitleFieldContract.limited("Plan launch") == "Plan launch")
     }
 
+    @Test func expandableSheetOwnsApprovedTaskDetailPresentation() {
+        #expect(TaisaExpandableSheetContract.initialPosition == .medium)
+        #expect(TaisaExpandableSheetContract.positions == [.medium, .large])
+        #expect(TaisaExpandableSheetContract.showsDragIndicator)
+    }
+
     @Test func rowsAndStatusesNameActionMeaningWithoutRawPresentation() {
         #expect(TaisaRowEmphasis.standard != .attention)
         #expect(TaisaStatusRole.active != .completed)
