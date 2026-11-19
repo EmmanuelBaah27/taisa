@@ -348,6 +348,7 @@ test('native CI risk classification fails closed for sensitive production paths'
   assert.match(classify(['apple/TaisaApp/Home/HomeView.swift']), /high_risk_required=false/);
   for (const path of [
     '.github/workflows/native-apple.yml',
+    '.github/workflows/native-apple.test.yml',
     'railway.json',
     'package.json',
     'apple/Config/Personal.xcconfig',
