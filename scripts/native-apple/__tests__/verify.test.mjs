@@ -525,6 +525,7 @@ test('tiered native CI uses focused pull-request checks and reserves full verifi
   assert.doesNotMatch(fastScript, /xcodebuild (test|build|build-for-testing)/);
 
   assert.match(fastWorkflow, /name: Native Fast Checks/);
+  assert.match(fastWorkflow, /timeout-minutes: 35/);
   assert.match(fastWorkflow, /pull_request:/);
   assert.match(fastWorkflow, /types: \[opened, reopened, synchronize, edited\]/);
   assert.doesNotMatch(fastWorkflow, /edited, labeled/);
@@ -538,6 +539,9 @@ test('tiered native CI uses focused pull-request checks and reserves full verifi
   assert.match(fastWorkflow, /app_compile_required/);
   assert.match(fastWorkflow, /xcode_test_targets/);
   assert.match(fastWorkflow, /verify-xcode-selected\.sh/);
+  assert.match(fastWorkflow, /name: Install pinned iOS platform/);
+  assert.match(fastWorkflow, /xcodebuild -downloadPlatform iOS/);
+  assert.match(fastWorkflow, /for attempt in 1 2 3/);
   assert.match(fastWorkflow, /npm run build --workspace=backend/);
   assert.match(fastWorkflow, /npm test --workspace=backend -- --runInBand/);
 

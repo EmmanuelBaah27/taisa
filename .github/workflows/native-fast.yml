@@ -18,7 +18,7 @@ jobs:
   native-fast:
     name: Native Fast Checks
     runs-on: macos-26
-    timeout-minutes: 20
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
         with:
@@ -54,6 +54,15 @@ jobs:
         run: |
           sudo xcode-select -s /Applications/Xcode_26.1.1.app
           xcodebuild -version | grep 'Build version 17B100'
+      - name: Install pinned iOS platform
+        run: |
+          for attempt in 1 2 3; do
+            if xcodebuild -downloadPlatform iOS; then
+              exit 0
+            fi
+            test "${attempt}" -lt 3 || exit 1
+            sleep 15
+          done
       - name: Install pinned XcodeGen
         run: |
           brew install xcodegen
