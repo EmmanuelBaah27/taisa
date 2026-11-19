@@ -23,5 +23,3 @@ test("preserves non-HTML responses unchanged", () => {
   const body = Buffer.from([0, 1, 2, 3]);
   assert.equal(transformPreviewResponse(body, "image/jpeg", tag), body);
 });
-
-

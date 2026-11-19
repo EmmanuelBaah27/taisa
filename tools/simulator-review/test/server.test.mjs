@@ -39,4 +39,3 @@ test("injects review scripts when middleware sets HTML headers with writeHead", 
   assert.match(output, /window\.__TAISA_REVIEW__/);
   assert.match(output, /\/__taisa-review\/agentation\.js/);
 });
-

@@ -38,4 +38,3 @@ test("stops the selected helper when the review server fails to start", async ()
   );
   assert.equal(stopped, true);
 });
-

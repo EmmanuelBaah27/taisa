@@ -14,4 +14,3 @@ export function transformPreviewResponse(body, contentType, scriptTag) {
   const html = Buffer.isBuffer(body) ? body.toString("utf8") : String(body);
   return Buffer.from(injectAgentation(html, scriptTag));
 }
-
