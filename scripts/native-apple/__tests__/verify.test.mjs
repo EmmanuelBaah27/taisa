@@ -15,6 +15,18 @@ import {
 
 const repositoryRoot = resolve(import.meta.dirname, '../../..');
 
+test('CI provides fetched PR base history for every native DS audit', async () => {
+  for (const name of ['design-system.yml', 'native-fast.yml', 'native-apple.yml']) {
+    const workflow = await readFile(join(repositoryRoot, '.github/workflows', name), 'utf8');
+    const checkouts = [...workflow.matchAll(/- uses: actions\/checkout@v4([\s\S]*?)(?=\n      - |\n  \S|$)/g)];
+    assert.ok(checkouts.length > 0, name);
+    for (const checkout of checkouts) {
+      assert.match(checkout[1], /fetch-depth: 0/, `${name} must fetch the base, not only a detached PR commit`);
+    }
+    assert.match(workflow, /TAISA_DS_BASE_REF: \$\{\{ github\.event\.pull_request\.base\.sha \|\| 'origin\/main' \}\}/, name);
+  }
+});
+
 test('Preview UI tests build only their Preview host while development retains unit coverage', async () => {
   const specification = JSON.parse(execFileSync('xcodegen', [
     'dump', '--no-env', '--type', 'json', '--spec', join(repositoryRoot, 'apple/project.yml'),
