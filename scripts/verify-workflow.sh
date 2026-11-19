@@ -70,6 +70,31 @@ rg -q 'verify-branch-topology.sh build' docs/workflow.md || fail "build topology
 rg -q 'verify-branch-topology.sh ship' docs/workflow.md || fail "Ship topology gate is missing"
 rg -q 'preview-sync' docs/workflow.md || fail "Preview synchronization gate is missing"
 
+for file in AGENTS.md docs/workflow.md .agents/skills/taisa-workflow/SKILL.md; do
+  rg -Uqi --multiline-dotall \
+    'existing design-system component.{0,120}mandatory|mandatory.{0,120}existing design-system component' \
+    "$file" || fail "$file does not require existing design-system components"
+  rg -Uqi --multiline-dotall \
+    'raw platform.{0,180}only.{0,100}(exact|designated).{0,80}primitive' \
+    "$file" || fail "$file does not restrict raw platform controls to designated primitives"
+  rg -Uqi --multiline-dotall \
+    'missing component variant.{0,100}blocking design-system gap' \
+    "$file" || fail "$file does not fail closed on missing component variants"
+  rg -Uqi --multiline-dotall \
+    'no directory or.{0,40}module exemption' \
+    "$file" || fail "$file permits a broad design-system exemption"
+  rg -Uqi --multiline-dotall \
+    'primitive.{0,180}no existing component.{0,180}coherent variant.{0,180}accessibility' \
+    "$file" || fail "$file lacks primitive creation criteria"
+done
+
+rg -q 'design:design-system' .agents/skills/taisa-workflow/SKILL.md ||
+  fail "Taisa workflow does not route design-system audits"
+rg -q 'design-system-patterns' .agents/skills/taisa-workflow/SKILL.md ||
+  fail "Taisa workflow does not route design-system architecture"
+rg -Uqi --multiline-dotall 'reuse.{0,40}extend.{0,40}create.{0,40}approved exception' \
+  docs/workflow.md || fail "design-system treatment taxonomy is missing"
+
 test ! -e docs/roadmap.md || fail "repository roadmap duplicates Linear"
 test ! -e docs/backlog.md || fail "repository backlog duplicates Linear"
 
