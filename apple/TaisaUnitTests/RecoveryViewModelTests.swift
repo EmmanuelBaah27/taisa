@@ -286,14 +286,14 @@ final class RecoveryViewModelTests: XCTestCase {
         XCTAssertTrue(model.canStart)
     }
 
-    func testNarrowIPadLargestTypeRender() async throws {
+    func testCompactIPhoneLargestTypeRender() async throws {
         let fixture = try await RecoveryFixture()
         defer { fixture.remove() }
         let model = fixture.model()
         let host = UIHostingController(rootView: RecoveryView(model: model, restoreSucceeded: { true })
             .environment(\.dynamicTypeSize, .accessibility5)
             .environment(\.scenePhase, .active))
-        host.traitOverrides.userInterfaceIdiom = .pad
+        host.traitOverrides.userInterfaceIdiom = .phone
         let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 375, height: 720))
         window.rootViewController = host
         window.makeKeyAndVisible()
@@ -304,7 +304,7 @@ final class RecoveryViewModelTests: XCTestCase {
             host.view.layer.render(in: context.cgContext)
         }
         let attachment = XCTAttachment(image: image)
-        attachment.name = "recovery-narrow-ipad-accessibility5"
+        attachment.name = "recovery-compact-iphone-accessibility5"
         attachment.lifetime = .keepAlways
         add(attachment)
         window.isHidden = true

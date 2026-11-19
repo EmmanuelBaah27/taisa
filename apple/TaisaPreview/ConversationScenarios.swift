@@ -28,14 +28,13 @@ enum ConversationScenarios {
             "conversation.accessibility-xxxl", "Conversation Accessibility XXXL", .paused,
             accessibility: .init(contentSize: .accessibilityExtraExtraExtraLarge)
         ),
-        composer("conversation.ipad", "Conversation iPad", .waitingForReply, family: .tablet, messages: messages),
     ]
 
     private static func composer(
         _ identifier: String,
         _ title: String,
         _ state: ComposerState,
-        family: PreviewDeviceFamily = .adaptive,
+        family: PreviewDeviceFamily = .phone,
         accessibility: PreviewAccessibilitySettings = .default,
         messages: [MessageRecord] = [],
         assistantResponses: [String: AssistantResponseRecord] = [:]
@@ -104,7 +103,7 @@ enum ConversationScenarios {
         PreviewScenario(
             identifier: "conversation.sent-turn-anchor",
             title: "Sent turn anchor",
-            deviceFamily: .adaptive,
+            deviceFamily: .phone,
             accessibility: .default,
             readiness: .ready
         ) {
@@ -140,7 +139,7 @@ enum ConversationScenarios {
         state: ConversationsState
     ) -> PreviewScenario {
         PreviewScenario(
-            identifier: identifier, title: title, deviceFamily: .adaptive,
+            identifier: identifier, title: title, deviceFamily: .phone,
             accessibility: .default, readiness: .ready
         ) {
             AnyView(
@@ -160,7 +159,7 @@ enum ConversationScenarios {
     private static var correction: PreviewScenario {
         PreviewScenario(
             identifier: "conversation.correction", title: "Conversation correction",
-            deviceFamily: .adaptive, accessibility: .default, readiness: .ready
+            deviceFamily: .phone, accessibility: .default, readiness: .ready
         ) {
             let model = ConversationViewModel.preview(composer: .waitingForReply, messages: messages)
             model.requestCorrection(messages[0])

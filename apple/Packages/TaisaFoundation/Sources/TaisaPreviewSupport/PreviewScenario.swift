@@ -2,15 +2,9 @@ import SwiftUI
 
 public enum PreviewDeviceFamily: String, CaseIterable, Sendable {
     case phone
-    case tablet
-    case adaptive
 
     public var title: String {
-        switch self {
-        case .phone: "iPhone"
-        case .tablet: "iPad"
-        case .adaptive: "iPhone and iPad"
-        }
+        "iPhone"
     }
 }
 

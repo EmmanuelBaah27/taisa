@@ -140,7 +140,7 @@ final class ConversationPreviewTests: XCTestCase {
             "conversation.existing-history",
             "conversation.permission-denied", "conversation.retry-transcription",
             "conversation.retry-coaching", "conversation.correction",
-            "conversation.accessibility-xxxl", "conversation.ipad",
+            "conversation.accessibility-xxxl",
         ]
 
         for identifier in identifiers {
