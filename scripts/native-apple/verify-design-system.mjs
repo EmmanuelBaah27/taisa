@@ -95,6 +95,14 @@ function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+function constructorPattern(constructor) {
+  return new RegExp(
+    `(?<![A-Za-z0-9_])(?:SwiftUI\\s*\\.\\s*)?\\x60?${escapeRegExp(constructor)}\\x60?`
+      + '(?:\\s*<[^>{}\\n]+>)?(?:\\s*\\.\\s*init)?\\s*(?=[({])',
+    'g',
+  );
+}
+
 export async function rawInteractiveControlOccurrences({ roots, repositoryRoot = process.cwd(), constructors }) {
   const occurrences = [];
   for (const relativeRoot of roots) {
@@ -104,12 +112,7 @@ export async function rawInteractiveControlOccurrences({ roots, repositoryRoot =
       const sanitized = sanitizeSwift(source);
       const relativeFile = path.relative(repositoryRoot, absoluteFile);
       for (const constructor of constructors) {
-        const name = escapeRegExp(constructor);
-        const pattern = new RegExp(
-          `(?<![A-Za-z0-9_])(?:SwiftUI\\s*\\.\\s*)?\\x60?${name}\\x60?`
-          + '(?:\\s*<[^>{}\\n]+>)?(?:\\s*\\.\\s*init)?\\s*(?=[({])',
-          'g',
-        );
+        const pattern = constructorPattern(constructor);
         for (const match of sanitized.matchAll(pattern)) {
           const prefix = source.slice(0, match.index);
           const line = prefix.split('\n').length;
@@ -266,9 +269,21 @@ export async function surfaceAdoptionViolations({ repositoryRoot = process.cwd()
     }
     const product = productFiles.includes(file);
     if (product) {
-      for (const match of code.matchAll(/\b(ProgressView|Section|Toggle|Picker|DatePicker|ContentUnavailableView|NavigationLink)\s*\(/g)) {
-        if (/^\w+\s*\(\s*#*"/.test(source.slice(match.index))) {
-          violations.push({ kind: 'implicit-product-presentation', file, constructor: match[1] });
+      for (const constructor of ['ProgressView', 'Section', 'Toggle', 'Picker', 'DatePicker', 'ContentUnavailableView', 'NavigationLink']) {
+        for (const match of code.matchAll(constructorPattern(constructor))) {
+          const opening = match.index + match[0].length;
+          if (code[opening] !== '(') continue;
+          const argumentsCode = code.slice(opening + 1).trimStart();
+          // Positional labels may be literals, variables, or expressions. Named
+          // value/selection arguments and explicit label closures do not select
+          // the implicit system-label overload. Sanitized literals are blank,
+          // so inspect the original argument before accepting an empty call.
+          const argumentsSource = source.slice(opening + 1).trimStart();
+          const emptyCall = argumentsSource.startsWith(')');
+          const namedArgument = /^[A-Za-z_]\w*\s*:/.test(argumentsCode);
+          if (!emptyCall && !namedArgument) {
+            violations.push({ kind: 'implicit-product-presentation', file, constructor });
+          }
         }
       }
       const occurrences = await rawInteractiveControlOccurrences({

@@ -130,3 +130,18 @@ test('generated system headers and unavailable states must declare their DS trea
   });
   assert.equal((await audit(root)).filter(v => v.kind === 'implicit-product-presentation').length, 2);
 });
+
+test('system labels passed through variables or qualified initializers cannot bypass adoption', async (t) => {
+  const root = await fixture(t, {
+    [product]: 'struct YouView: View { let title = "Loading"; var body: some View { ProgressView(title); SwiftUI.`Section`.init(title) { EmptyView() } } }',
+  });
+  const violations = (await audit(root)).filter(v => v.kind === 'implicit-product-presentation');
+  assert.deepEqual(violations.map(v => v.constructor).sort(), ['ProgressView', 'Section']);
+});
+
+test('unlabelled progress and explicit semantic label closures remain available', async (t) => {
+  const root = await fixture(t, {
+    [product]: 'struct YouView: View { var body: some View { ProgressView(); ProgressView(value: 0.5); Section { EmptyView() } header: { TaisaText(content: "Recovery") }; Toggle(isOn: $enabled) { TaisaText(content: "Enabled") } } }',
+  });
+  assert.deepEqual(await audit(root), []);
+});
