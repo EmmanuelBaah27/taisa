@@ -419,6 +419,19 @@ Baah-controlled decision or action.
 
 ## Canonical preview and feedback authority
 
+Local worktree previews are non-canonical. Only a reviewed integration-branch checkpoint can
+publish to the cumulative canonical Preview. Publication is additive and must preserve every
+existing included candidate. A broken or obsolete candidate must be explicitly reverted or replaced.
+Record the exact Preview, spec, and tracer revisions for each publication.
+
+A clean integration checkpoint needs topology proof, a build, and an affected-interaction smoke
+check. Reuse the tracer's unchanged exact-revision evidence and do not repeat unaffected broad
+verification. Preview-only history cannot enter a feature branch, spec branch, or `main`.
+
+This extension exists because Baah needs one stable cumulative product while several branches move
+independently. When main can provide the same stable cumulative product without bypassing QA or
+Ship, the canonical Preview extension can be removed.
+
 Baah’s UI/mobile feedback is assumed to come from canonical `preview/taisa`. Before using it
 as evidence:
 
