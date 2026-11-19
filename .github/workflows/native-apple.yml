@@ -58,7 +58,7 @@ jobs:
     needs: [classify-native-impact]
     if: github.event_name != 'pull_request' || (needs.classify-native-impact.outputs.native_required == 'true' && contains(github.event.pull_request.labels.*.name, 'merge-ready') && (github.event.action == 'synchronize' || (github.event.action == 'labeled' && github.event.label.name == 'merge-ready')))
     runs-on: macos-26
-    timeout-minutes: 75
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
         with:
