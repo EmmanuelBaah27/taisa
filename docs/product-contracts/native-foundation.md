@@ -45,6 +45,8 @@ Preview code is compiled only into the preview target. Preview networking is den
 
 The preview app lists searchable, named scenarios and can open a scenario directly for automated tests. The foundation catalog includes default, accessibility text, narrow iPad, reduced motion, increased contrast, and build-diagnostics states. Each scenario declares its intended device family and accessibility settings and uses stable accessibility identifiers.
 
+The `Taisa-Preview` test action runs `TaisaPreviewUITests` against the Preview host. Unit tests run through `Taisa-Dev`; the complete native verification script runs both schemes. Keeping the Preview test graph separate avoids mixing app hosts and conflicting SQLCipher module artifacts in a single test build.
+
 ## Adaptive requirements
 
 - Support iPhone and iPad from iOS 17 onward.

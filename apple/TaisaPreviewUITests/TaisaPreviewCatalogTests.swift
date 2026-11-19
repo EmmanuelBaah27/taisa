@@ -70,7 +70,8 @@ final class TaisaPreviewCatalogTests: XCTestCase {
         let action = app.buttons["Open backup and recovery"]
         XCTAssertTrue(action.waitForExistence(timeout: 5))
         XCTAssertTrue(action.isHittable)
-        XCTAssertGreaterThanOrEqual(action.frame.height, 48)
+        // Accessibility coordinate conversion can report 48 as 47.99999999999997.
+        XCTAssertGreaterThanOrEqual(action.frame.height, 48 - 0.001)
         XCTAssertLessThanOrEqual(app.buttons.matching(NSPredicate(format: "label == %@", "Back")).count, 1)
         retainScreenshot(of: app, name: "you-recovery-glass-action")
         action.tap()
