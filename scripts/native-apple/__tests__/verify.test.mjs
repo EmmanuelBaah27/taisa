@@ -373,6 +373,11 @@ test('native CI risk classification fails closed for sensitive production paths'
     '.github/workflows/native-apple.test.yml',
     'railway.json',
     'package.json',
+    'apple/Packages/TaisaFoundation/Package.swift',
+    'apple/Packages/TaisaFoundation/Package.resolved',
+    'apple/project.yml',
+    'scripts/native-apple/verify-selected.sh',
+    'scripts/native-apple/verify-xcode-selected.sh',
     'apple/Config/Personal.xcconfig',
     'apple/Config/TaisaPersonal.entitlements',
     'apple/Packages/TaisaFoundation/Sources/TaisaStorage/TaisaMigrator.swift',
@@ -403,6 +408,30 @@ test('native CI risk classification fails closed for sensitive production paths'
   );
   assert.match(classify(['backend/src/__tests__/coaching.streaming.test.ts']), /backend_required=true/);
   assert.match(classify(['backend/src/routes/coaching.ts']), /backend_required=true/);
+  for (const path of [
+    'shared/fixtures/transcription/completed.valid.json',
+    'shared/fixtures/coaching-stream/completed.valid.json',
+    'scripts/native-contracts/verify-transcription-fixtures.mjs',
+  ]) {
+    assert.match(classify([path]), /native_required=true/, path);
+  }
+  for (const path of [
+    'docs/agents/issue-tracker.md',
+    '.agents/skills/taisa-workflow/templates/bounded-goal.md',
+    'docs/project-memory.md',
+    'CLAUDE.md',
+  ]) {
+    assert.match(classify([path]), /detected_risks=workflow/, path);
+  }
+  for (const [path, target] of [
+    ['apple/TaisaPersonalTests/PersonalIsolationTests.swift', 'TaisaPersonalTests'],
+    ['apple/TaisaPersonalUITests/PersonalRecoveryUITests.swift', 'TaisaPersonalUITests'],
+    ['apple/TaisaUnitTests/AppRuntimeTests.swift', 'TaisaUnitTests'],
+    ['apple/TaisaUITests/TaisaLaunchTests.swift', 'TaisaUITests'],
+    ['apple/TaisaPreviewUITests/TaisaPreviewCatalogTests.swift', 'TaisaPreviewUITests'],
+  ]) {
+    assert.match(classify([path]), new RegExp(`xcode_test_targets=${target}`), path);
+  }
 });
 
 test('pull request contract requires one tracer, one outcome, additive risks, and exact device evidence', () => {
@@ -479,6 +508,10 @@ test('tiered native CI uses focused pull-request checks and reserves full verifi
     resolve(repositoryRoot, 'scripts/native-apple/verify-selected.sh'),
     'utf8',
   );
+  const selectedXcodeTests = await readFile(
+    resolve(repositoryRoot, 'scripts/native-apple/verify-xcode-selected.sh'),
+    'utf8',
+  );
 
   assert.match(packageJSON.scripts['verify:native-apple:fast'], /verify-fast\.sh/);
   for (const required of [
@@ -503,6 +536,8 @@ test('tiered native CI uses focused pull-request checks and reserves full verifi
   assert.match(fastWorkflow, /verify-selected\.sh/);
   assert.match(fastWorkflow, /backend_required/);
   assert.match(fastWorkflow, /app_compile_required/);
+  assert.match(fastWorkflow, /xcode_test_targets/);
+  assert.match(fastWorkflow, /verify-xcode-selected\.sh/);
   assert.match(fastWorkflow, /npm run build --workspace=backend/);
   assert.match(fastWorkflow, /npm test --workspace=backend -- --runInBand/);
 
@@ -514,6 +549,16 @@ test('tiered native CI uses focused pull-request checks and reserves full verifi
   assert.match(selectedScript, /scheme Taisa-Preview/);
   assert.match(selectedScript, /\*,device,\*/);
   assert.match(selectedScript, /generic\/platform=iOS'/);
+
+  for (const target of [
+    'TaisaPersonalTests',
+    'TaisaPersonalUITests',
+    'TaisaUnitTests',
+    'TaisaUITests',
+    'TaisaPreviewUITests',
+  ]) assert.match(selectedXcodeTests, new RegExp(target));
+  assert.match(selectedXcodeTests, /xcodebuild test/);
+  assert.match(selectedXcodeTests, /-only-testing:/);
 
   assert.match(trustedPolicy, /pull_request_target:/);
   assert.match(trustedPolicy, /types: \[opened, reopened, synchronize, edited\]/);

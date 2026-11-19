@@ -74,6 +74,11 @@ jobs:
       - name: Verify native Apple contracts and packages
         if: github.event_name != 'pull_request' || steps.classify.outputs.native_required == 'true'
         run: npm run verify:native-apple:fast
+      - name: Run affected Xcode tests
+        if: github.event_name == 'pull_request' && steps.classify.outputs.xcode_test_targets != ''
+        env:
+          TAISA_NATIVE_ARTIFACTS: ${{ runner.temp }}/native-selected-test-artifacts
+        run: bash scripts/native-apple/verify-xcode-selected.sh "${{ steps.classify.outputs.xcode_test_targets }}"
       - name: Compile risk-selected app surfaces
         if: github.event_name != 'pull_request' || steps.classify.outputs.app_compile_required == 'true'
         env:

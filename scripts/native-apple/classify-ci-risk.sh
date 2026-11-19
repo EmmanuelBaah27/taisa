@@ -14,6 +14,7 @@ native_required=false
 high_risk_required=false
 backend_required=false
 app_compile_required=false
+xcode_test_targets=""
 risk_logic=false
 risk_ui=false
 risk_network=false
@@ -22,12 +23,26 @@ risk_data=false
 risk_security=false
 risk_workflow=false
 
+append_csv_value() {
+  local variable_name="$1"
+  local value="$2"
+  local current_value="${!variable_name}"
+  case ",${current_value}," in
+    *",${value},"*) return ;;
+  esac
+  if test -n "${current_value}"; then
+    printf -v "${variable_name}" '%s,%s' "${current_value}" "${value}"
+  else
+    printf -v "${variable_name}" '%s' "${value}"
+  fi
+}
+
 while IFS= read -r changed_path; do
   test -n "${changed_path}" || continue
   path_risk_detected=false
 
   case "${changed_path}" in
-    .github/*|AGENTS.md|docs/workflow.md|.agents/skills/taisa-workflow/SKILL.md|scripts/verify-workflow.sh|scripts/verify-branch-topology.sh|scripts/native-apple/classify-ci-risk.sh|scripts/native-apple/validate-pr-contract.mjs|scripts/native-apple/verify-all.sh|package.json|package-lock.json)
+    .github/*|AGENTS.md|CLAUDE.md|docs/workflow.md|docs/project-memory.md|docs/agents/issue-tracker.md|.agents/skills/taisa-workflow/*|scripts/__tests__/*|scripts/canonical-origin.mjs|scripts/verify-workflow.sh|scripts/verify-branch-topology.sh|scripts/native-apple/classify-ci-risk.sh|scripts/native-apple/validate-pr-contract.mjs|scripts/native-apple/verify-all.sh|scripts/native-apple/verify-selected.sh|scripts/native-apple/verify-xcode-selected.sh|package.json|package-lock.json)
       native_required=true
       high_risk_required=true
       risk_workflow=true
@@ -36,7 +51,32 @@ while IFS= read -r changed_path; do
   esac
 
   case "${changed_path}" in
+    apple/Packages/TaisaFoundation/Package.swift|apple/Packages/TaisaFoundation/Package.resolved|apple/project.yml)
+      native_required=true
+      high_risk_required=true
+      app_compile_required=true
+      risk_workflow=true
+      path_risk_detected=true
+      ;;
+  esac
+
+  case "${changed_path}" in
+    scripts/native-contracts/*|shared/fixtures/transcription/*|shared/fixtures/coaching-stream/*)
+      native_required=true
+      risk_network=true
+      path_risk_detected=true
+      ;;
+  esac
+
+  case "${changed_path}" in
     */Tests/*|*/__tests__/*|*.test.*|*Tests.swift)
+      case "${changed_path}" in
+        apple/TaisaPersonalTests/*) append_csv_value xcode_test_targets TaisaPersonalTests ;;
+        apple/TaisaPersonalUITests/*) append_csv_value xcode_test_targets TaisaPersonalUITests ;;
+        apple/TaisaUnitTests/*) append_csv_value xcode_test_targets TaisaUnitTests ;;
+        apple/TaisaUITests/*) append_csv_value xcode_test_targets TaisaUITests ;;
+        apple/TaisaPreviewUITests/*) append_csv_value xcode_test_targets TaisaPreviewUITests ;;
+      esac
       case "${changed_path}" in
         apple/*|scripts/native-apple/*)
           native_required=true
@@ -52,7 +92,7 @@ while IFS= read -r changed_path; do
   esac
 
   case "${changed_path}" in
-    backend/*|shared/*)
+    backend/*|shared/*.ts|shared/types/*)
       backend_required=true
       ;;
   esac
@@ -138,4 +178,5 @@ echo "native_required=${native_required}"
 echo "high_risk_required=${high_risk_required}"
 echo "backend_required=${backend_required}"
 echo "app_compile_required=${app_compile_required}"
+echo "xcode_test_targets=${xcode_test_targets}"
 echo "detected_risks=${detected_risks}"
