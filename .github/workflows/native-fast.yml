@@ -2,7 +2,7 @@ name: Native Fast Checks
 
 on:
   pull_request:
-    types: [opened, reopened, synchronize, edited, labeled, unlabeled]
+    types: [opened, reopened, synchronize, edited]
   push:
     branches: [main]
 

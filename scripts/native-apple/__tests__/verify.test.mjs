@@ -493,6 +493,8 @@ test('tiered native CI uses focused pull-request checks and reserves full verifi
 
   assert.match(fastWorkflow, /name: Native Fast Checks/);
   assert.match(fastWorkflow, /pull_request:/);
+  assert.match(fastWorkflow, /types: \[opened, reopened, synchronize, edited\]/);
+  assert.doesNotMatch(fastWorkflow, /edited, labeled/);
   assert.match(fastWorkflow, /branches: \[main\]/);
   assert.match(fastWorkflow, /verify:native-apple:fast/);
   assert.match(fastWorkflow, /validate-pr-contract\.mjs/);
@@ -514,6 +516,7 @@ test('tiered native CI uses focused pull-request checks and reserves full verifi
   assert.match(selectedScript, /generic\/platform=iOS'/);
 
   assert.match(trustedPolicy, /pull_request_target:/);
+  assert.match(trustedPolicy, /types: \[opened, reopened, synchronize, edited\]/);
   assert.match(trustedPolicy, /ref: \$\{\{ github\.event\.pull_request\.base\.sha \}\}/);
   assert.doesNotMatch(trustedPolicy, /ref:.*head\.sha/);
   assert.match(trustedPolicy, /Never check out or execute candidate code/);
