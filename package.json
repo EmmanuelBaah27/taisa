@@ -11,6 +11,7 @@
     "capture:swiftui-baseline": "node scripts/swiftui-baseline/capture.mjs",
     "generate:native-apple": "cd apple && ./scripts/generate-project.sh",
     "mobile": "cd mobile && npx expo start",
+    "review:native-apple": "node scripts/native-apple/review-simulator.mjs",
     "verify:design-system": "node scripts/design-system/verify.mjs",
     "verify:native-apple": "node scripts/native-apple/verify.mjs && bash apple/scripts/verify-project.sh",
     "verify:native-apple:all": "bash scripts/native-apple/verify-all.sh # verify-generated-project.sh verify:native-contracts swift test verify:native-design-system Taisa-Dev Taisa-Preview Taisa-Personal Release verify:workflow",
