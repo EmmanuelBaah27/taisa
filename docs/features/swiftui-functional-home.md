@@ -24,11 +24,11 @@ The native app foundation and encrypted local storage/recovery are already merge
 - [x] When local data exists, Home presents recent conversations, active goals, and open actions in deterministic order and exposes typed navigation intents for later destinations.
 - [x] Loading, empty, populated, refreshing, retryable failure, and recovery-required states are distinguishable and testable without exposing private content.
 - [x] A failed store read preserves the local database and offers a safe retry or recovery route.
-- [x] Automated simulator coverage exercises iPhone launch, Accessibility XXXL, iPad layout, retry, and recovery reachability.
+- [x] Automated simulator coverage exercises iPhone launch, Accessibility XXXL, compact iPhone layout, retry, and recovery reachability.
 - [x] Standard SwiftUI navigation and interactions supply the platform behavior; page composition owns the temporary layout.
-- [x] The native target and package baseline are iOS/iPadOS 26 or later.
+- [x] The native target and package baseline are iOS 26 or later.
 - [x] The React Native client remains intact; this slice does not cut over production or import its on-device data.
-- [ ] The exact signed candidate passes the applicable iPhone and iPad device matrix before Ship.
+- [ ] The exact signed candidate passes the applicable iPhone device matrix before Ship.
 
 ## Platform dependencies
 
@@ -47,10 +47,10 @@ The native app foundation and encrypted local storage/recovery are already merge
 - Activating CloudKit, completing automatic cross-device synchronization, or requiring paid Apple Developer capabilities.
 - Importing React Native SQLite, Keychain, settings, recordings, or history into the native store.
 - Retiring or deleting the React Native client, its worktrees, or its recoverable Git history.
-- Bespoke iPad information architecture; the slice must remain adaptable and usable in an iPad window.
+- Bespoke alternate information architecture. The slice must remain adaptable across supported iPhone widths.
 
 ## Closeout
 
 Implemented boundary: `HomeView → HomeModel → HomeClient → HomeQuery → TaisaStore`. Home presentation rows remain feature-local because their redesign and reuse have not yet been proven. Temporary visuals are standard SwiftUI `NavigationStack`, `List`, `Section`, `ContentUnavailableView`, toolbar, refresh, button, label, and progress controls.
 
-Ship remains blocked on review, exact signed-build integration into `preview/taisa`, and Baah's iPhone/iPad device-matrix approval.
+Ship remains blocked on review, exact signed-build integration into `preview/taisa`, and Baah's iPhone device-matrix approval.

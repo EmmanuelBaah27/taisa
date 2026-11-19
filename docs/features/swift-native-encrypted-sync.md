@@ -2,7 +2,8 @@
 
 **Tier:** Full
 **Track:** Platform
-**Stage:** Shipped — Personal device lane merged in `8c22c7b`; automatic CloudKit remains deferred
+**Stage:** Superseded for active multi-device support by APF-74. The Personal device lane history remains in `8c22c7b`.
+**Superseded by:** [APF-74](https://linear.app/a-playing-field/issue/APF-74/make-the-native-apple-product-iphone-only)
 **Depends on:** accepted Swift native foundation
 
 ## What is it?

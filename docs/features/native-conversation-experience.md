@@ -75,7 +75,7 @@ The canonical preview now proves the native Home page and the native foundation 
 - [ ] Completed conversations open with their existing history and support rename and confirmed delete. Drafts support resume and confirmed discard.
 - [ ] Opening Home or Conversations renders from encrypted local state without an AI or network request.
 - [ ] Duplicate taps, overlapping actions, and ambiguous network completion cannot create duplicate recordings, messages, conversations, or paid requests.
-- [ ] Microphone denial offers Settings and keyboard paths; large text, VoiceOver, reduced motion, keyboard avoidance, and minimum touch targets remain usable across the agreed iPhone and iPad matrix.
+- [ ] Microphone denial offers Settings and keyboard paths; large text, VoiceOver, reduced motion, keyboard avoidance, and minimum touch targets remain usable across the agreed iPhone matrix.
 - [ ] The exact verified revision is integrated into `preview/taisa`, pushed, confirmed as the served preview revision, and passes Baah's device QA before Ship.
 
 ## Platform dependencies
@@ -83,7 +83,7 @@ The canonical preview now proves the native Home page and the native foundation 
 - [ ] SwiftUI functional Home completes Review + QA and its accepted revision is accounted for in the conversation implementation branch.
 - [ ] Native encrypted storage and recovery provide production-ready local repositories for conversations, messages, drafts, turn checkpoints, cleanup, and export/restore coverage.
 - [ ] Native audio, transcription streaming, coaching streaming, connectivity, retry reconciliation, and audio cleanup foundations reach Build exit with their public contracts verified.
-- [ ] The Product design handoff defines the navigation shell, global dock, Conversations states, conversation composer states, confirmations, failure states, transcript correction, and iPhone/iPad behavior before Product planning.
+- [ ] The Product design handoff defines the navigation shell, global dock, Conversations states, conversation composer states, confirmations, failure states, transcript correction, and iPhone behavior before Product planning.
 
 ## Out of scope
 

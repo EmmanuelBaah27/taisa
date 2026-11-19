@@ -2,14 +2,14 @@
 
 **Tier:** Full
 **Track:** Platform
-**Status:** Review — automated matrix passed; exact signed iPhone/iPad QA pending
+**Status:** Review — automated matrix passed; exact signed iPhone QA pending
 **Depends on:** shipped Swift native foundation and encrypted local persistence/recovery
 
 ---
 
 ## What is it?
 
-A native Apple audio and streaming foundation for multi-turn Taisa coaching conversations on iPhone and iPad. It keeps voice private and local while the user records, supports deliberate pause and resume within a turn, and begins network work only after Send.
+A native Apple audio and streaming foundation for multi-turn Taisa coaching conversations on iPhone. It keeps voice private and local while the user records, supports deliberate pause and resume within a turn, and begins network work only after Send.
 
 After Send, Taisa streams transcription and then the coaching response through two independently recoverable stages coordinated by one durable conversation-session engine. The foundation exposes stable state, recovery, accessibility, and fixture contracts for later SwiftUI voice-conversation screens without defining their final visual design.
 
@@ -40,11 +40,11 @@ The gateway already exposes strict ordered NDJSON transcription events and a val
 - [x] VoiceOver, Dynamic Type, Reduce Motion, non-colour status communication, and accessible pause/resume/cancel/retry actions work throughout recording and streaming.
 - [x] Logs, metrics, crash diagnostics, previews, automated artifacts, and signed-build evidence contain no raw audio, transcript text, coaching text, or private context.
 - [x] Deterministic automated fixtures cover clear, uncertain, no-speech, offline queueing, reconnection, interruption, cancellation, relaunch, retry, completion, cleanup, and the next turn in the same conversation.
-- [ ] Exact signed builds pass physical-device audio, interruption, route, lifecycle, connectivity, privacy, accessibility, and performance QA on the registered iPhone and iPad.
+- [ ] Exact signed builds pass physical-device audio, interruption, route, lifecycle, connectivity, privacy, accessibility, and performance QA on the registered iPhone.
 
 ## Prerequisites
 
-- The native Swift/SwiftUI shell, build identities, deterministic fixtures, CI, signed-build evidence, and iPhone/iPad installation are shipped.
+- The native Swift/SwiftUI shell, build identities, deterministic fixtures, CI, signed-build evidence, and iPhone installation are shipped.
 - Encrypted repositories and recovery can durably checkpoint conversation and turn state without including audio in backup or synchronization.
 - Canonical TypeScript transcription and coaching schemas remain the cross-language authority.
 - The gateway retains provider credentials, cost enforcement, validation, fallback, and content-free operational diagnostics.

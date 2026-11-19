@@ -142,7 +142,7 @@ Exact token values are a Plan-stage DS foundation task derived from the directio
 - Draft type, recovered status, and retry-needed status are communicated with text, not color alone.
 - Dynamic Type preserves message content and destructive-action comprehension without hiding Send or close actions.
 - Reduced Motion replaces spatial morphs with immediate presentation or restrained opacity while preserving state ordering.
-- iPad uses adaptable readable width and native presentation rather than a separate information architecture.
+- Compact iPhone widths use adaptable readable width and native presentation rather than a separate information architecture.
 
 ## Open questions
 

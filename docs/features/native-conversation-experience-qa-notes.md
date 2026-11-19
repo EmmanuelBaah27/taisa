@@ -7,8 +7,8 @@
 - Integrated product revision: `e8cc7a6`
 - Reviewed feature revision: `306123a`
 - Branch: `integration/apf-35-preview`
-- Toolchain: Xcode 26.1.1 (`17B100`), iOS/iPadOS Simulator 26.1
-- Simulator matrix: iPhone 17 Pro and iPad Pro 13-inch (M5)
+- Toolchain: Xcode 26.1.1 (`17B100`), iOS Simulator 26.1
+- Simulator matrix: iPhone 17 Pro and iPhone 17 Pro
 
 ## Automated verification
 
@@ -27,13 +27,13 @@ Backend verification also passed before the native matrix: 399 tests in 24 suite
 | Offline and retry behavior | Retry scheduler, connectivity, reconciliation, transcription, and coaching fixtures passed | Pending |
 | Duplicate and overlapping actions | Conversation coordinator, idempotency, and UI interaction tests passed | Pending |
 | Successful audio cleanup | Voice audio cleanup and durable-send coverage passed | Pending |
-| Dynamic Type | Accessibility XXXL conversation preview passed on iPad simulator | Pending |
+| Dynamic Type | Accessibility XXXL conversation preview passed on iPhone simulator | Pending |
 | VoiceOver semantics | Contract and UI accessibility identifiers passed; no private live amplitude is announced | Pending human judgment |
 | Reduced Motion | Static/reduced-motion preview coverage passed | Pending human judgment |
-| iPad layout | All deterministic conversation scenarios passed on iPad Pro 13-inch (M5), iPadOS 26.1 simulator | Pending human judgment |
+| compact iPhone layout | All deterministic conversation scenarios passed on iPhone 17 Pro, iOS 26.1 simulator | Pending human judgment |
 
 ## Remaining release evidence
 
 - Integrate the exact verified revision into `preview/taisa`, push it, and confirm the canonical preview runtime serves that revision.
-- Complete signed physical-device QA on supported iPhone and iPad hardware. No physical-device result is claimed by this document.
+- Complete signed physical-device QA on supported iPhone hardware. No physical-device result is claimed by this document.
 - Resolve any device findings, repeat the complete verification and preview-publication loop, then obtain Baah's Ship approval.
