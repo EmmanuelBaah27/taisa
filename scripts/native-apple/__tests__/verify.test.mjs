@@ -67,7 +67,7 @@ test('personal capability mutations are rejected without changing live entitleme
   const fixture = await mkdtemp(join(tmpdir(), 'taisa-personal-project-'));
   await cp(resolve(repositoryRoot, 'apple'), join(fixture, 'apple'), {
     recursive: true,
-    filter: (source) => !source.includes('/Packages/') && !source.includes('/Taisa.xcodeproj/'),
+    filter: (source) => !source.includes('/Packages/'),
   });
   const liveNames = ['TaisaDev', 'Taisa', 'TaisaPreview'];
   const before = await Promise.all(liveNames.map((name) => readFile(join(fixture, `apple/Config/${name}.entitlements`))));
@@ -110,7 +110,7 @@ test('personal builds cannot silently drop the approved voice gateway', async ()
   const fixture = await mkdtemp(join(tmpdir(), 'taisa-personal-gateway-'));
   await cp(resolve(repositoryRoot, 'apple'), join(fixture, 'apple'), {
     recursive: true,
-    filter: (source) => !source.includes('/Packages/') && !source.includes('/Taisa.xcodeproj/'),
+    filter: (source) => !source.includes('/Packages/'),
   });
   assert.deepEqual(await verifyNativeProject(fixture), []);
 
@@ -220,6 +220,16 @@ test('shipping targets contain no remote-notification background mode', async ()
     liveModes: [],
     liveInfoBound: true,
     previewConfiguresBackgroundMode: false,
+  });
+});
+
+test('generated project and source configuration enforce iPhone-only support', async () => {
+  const result = await inspectNativeProject(repositoryRoot);
+  assert.deepEqual(result.iphoneOnlySupport, {
+    projectDeviceFamily: true,
+    baseDeviceFamily: true,
+    generatedDeviceFamily: true,
+    hasIPadOrientation: false,
   });
 });
 
