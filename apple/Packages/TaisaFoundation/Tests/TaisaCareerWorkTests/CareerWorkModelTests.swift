@@ -178,6 +178,18 @@ import TaisaStorage
         #expect(model.state.issue == .storageUnavailable)
     }
 
+    @Test func returningToOverviewClearsAStaleTaskRouteWithoutLoading() {
+        let model = CareerWorkModel(
+            client: .init(loadOverview: { .init(active: [], paused: [], completed: [], archived: []) }),
+            route: .action(id: "task-a")
+        )
+
+        model.returnToOverview()
+
+        #expect(model.route == .overview)
+        #expect(model.state == .idle)
+    }
+
     @Test func filteredEmptyActionsRemainContentWhenDurableActionsExist() async {
         let model = CareerWorkModel(client: .init(
             loadOverview: { .init(active: [], paused: [], completed: [], archived: []) },

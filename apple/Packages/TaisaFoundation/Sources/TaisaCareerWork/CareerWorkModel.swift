@@ -86,6 +86,10 @@ public final class CareerWorkModel {
         await load()
     }
 
+    public func returnToOverview() {
+        route = .overview
+    }
+
     public func setActionFilter(_ filter: ActionCollectionFilter) async {
         actionFilter = filter
         await load()

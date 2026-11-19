@@ -122,6 +122,8 @@ final class PrimaryAppShellTests: XCTestCase {
         XCTAssertFalse(source.contains(".background {\n                    PageEdgeFade(.navigation)"))
         XCTAssertTrue(source.contains("TaisaExpandableSheet"))
         XCTAssertTrue(source.contains("TaskDetailSheetContent("))
+        XCTAssertTrue(source.contains("taskChanged: { Task { await homeModel.load() } }"))
+        XCTAssertTrue(source.contains("careerWorkModel.returnToOverview()"))
         XCTAssertTrue(source.contains("case let .action(id): model.presentTask(id: id)"))
         XCTAssertTrue(source.contains("case .actions:"))
         XCTAssertTrue(source.contains("model.showWork(.tasks(route: nil))"))

@@ -28,6 +28,7 @@ struct TaskDetailSheetContent: View {
     let actionID: String
     var openRecovery: () -> Void = {}
     var open: (CareerWorkRoute) -> Void = { _ in }
+    var taskChanged: () -> Void = {}
     var dismiss: () -> Void = {}
 
     init(
@@ -35,47 +36,46 @@ struct TaskDetailSheetContent: View {
         actionID: String,
         openRecovery: @escaping () -> Void = {},
         open: @escaping (CareerWorkRoute) -> Void = { _ in },
+        taskChanged: @escaping () -> Void = {},
         dismiss: @escaping () -> Void = {}
     ) {
         _model = State(initialValue: model)
         self.actionID = actionID
         self.openRecovery = openRecovery
         self.open = open
+        self.taskChanged = taskChanged
         self.dismiss = dismiss
     }
 
     var body: some View {
         Group {
-            switch model.state {
-            case .idle, .loading:
+            switch TaskDetailPresentation.resolve(model.state, actionID: actionID) {
+            case .loading:
                 ProgressView("Loading task…")
-            case .empty:
+            case .unavailable:
                 unavailableTask
             case let .failure(issue):
                 failure(issue)
-            case let .content(snapshot, _, issue):
-                if let detail = snapshot.selectedActionDetail {
-                    CareerActionDetail(
-                        snapshot: detail,
-                        goals: snapshot.overview.active + snapshot.overview.paused + snapshot.overview.completed,
-                        milestones: snapshot.milestones,
-                        model: model,
-                        open: open,
-                        deleted: dismiss
-                    )
-                    .safeAreaInset(edge: .top, spacing: 0) {
-                        TaisaChildPageHeader(detail.action.title, mode: .detail, back: {})
-                    }
-                    .background(TaisaColor.background.color.ignoresSafeArea())
-                } else if let issue {
-                    failure(issue)
-                } else {
-                    unavailableTask
+            case let .detail(detail, snapshot):
+                CareerActionDetail(
+                    snapshot: detail,
+                    goals: snapshot.overview.active + snapshot.overview.paused + snapshot.overview.completed,
+                    milestones: snapshot.milestones,
+                    model: model,
+                    open: open,
+                    deleted: dismiss
+                )
+                .safeAreaInset(edge: .top, spacing: 0) {
+                    TaisaChildPageHeader(detail.action.title, mode: .detail, back: {})
                 }
+                .background(TaisaColor.background.color.ignoresSafeArea())
             }
         }
         .task(id: actionID) {
             await model.select(.action(id: actionID))
+        }
+        .onChange(of: model.state.snapshot?.selectedActionDetail) { oldDetail, newDetail in
+            if let oldDetail, let newDetail, oldDetail != newDetail { taskChanged() }
         }
         .accessibilityIdentifier("tasks.detail.sheet")
     }
@@ -109,6 +109,30 @@ struct TaskDetailSheetContent: View {
                     Task { await model.select(.action(id: actionID)) }
                 }
             }
+        }
+    }
+}
+
+enum TaskDetailPresentation: Equatable {
+    case loading
+    case unavailable
+    case failure(CareerWorkIssue)
+    case detail(ActionDetailSnapshot, CareerWorkProductSnapshot)
+
+    static func resolve(_ state: CareerWorkState, actionID: String) -> Self {
+        switch state {
+        case .idle, .loading:
+            return .loading
+        case .empty:
+            return .unavailable
+        case let .failure(issue):
+            return .failure(issue)
+        case let .content(snapshot, isRefreshing, issue):
+            if let issue { return .failure(issue) }
+            if let detail = snapshot.selectedActionDetail, detail.action.id == actionID {
+                return .detail(detail, snapshot)
+            }
+            return isRefreshing ? .loading : .unavailable
         }
     }
 }
@@ -422,6 +446,7 @@ struct CareerWorkView: View {
     }
 
     private func refreshTasksAfterTaskDetail() {
+        model.returnToOverview()
         Task { await model.load() }
     }
 

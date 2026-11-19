@@ -1,5 +1,49 @@
 import Foundation
 import XCTest
+import TaisaCareerWork
+import TaisaStorage
+@testable import Taisa
+
+@MainActor
+final class TaskDetailPresentationTests: XCTestCase {
+    func testRetainedDetailForAnotherTaskStaysLoading() {
+        let detail = taskDetail(id: "task-a")
+        let state = CareerWorkState.content(snapshot(detail: detail), isRefreshing: true, issue: nil)
+
+        XCTAssertEqual(TaskDetailPresentation.resolve(state, actionID: "task-b"), .loading)
+    }
+
+    func testCurrentFailureWinsOverRetainedDetail() {
+        let detail = taskDetail(id: "task-a")
+        let state = CareerWorkState.content(snapshot(detail: detail), isRefreshing: false, issue: .recoveryRequired)
+
+        XCTAssertEqual(TaskDetailPresentation.resolve(state, actionID: "task-b"), .failure(.recoveryRequired))
+    }
+
+    func testMatchingDetailIsPresentedAfterSuccessfulLoad() {
+        let detail = taskDetail(id: "task-b")
+        let state = CareerWorkState.content(snapshot(detail: detail), isRefreshing: false, issue: nil)
+
+        guard case let .detail(resolved, _) = TaskDetailPresentation.resolve(state, actionID: "task-b") else {
+            return XCTFail("Expected matching task detail")
+        }
+        XCTAssertEqual(resolved, detail)
+    }
+
+    private func taskDetail(id: String) -> ActionDetailSnapshot {
+        let action = ActionRecord(id: id, goalID: nil, title: id, detail: "", status: "active", dueAtMS: nil, createdAtMS: 1, updatedAtMS: 1)
+        return ActionDetailSnapshot(action: action, goal: nil, milestone: nil, checklist: [], events: [], currentEvidence: [], supersededEvidence: [], placement: nil)
+    }
+
+    private func snapshot(detail: ActionDetailSnapshot) -> CareerWorkProductSnapshot {
+        CareerWorkProductSnapshot(
+            overview: .init(active: [], paused: [], completed: [], archived: []),
+            selectedGoal: nil,
+            selectedAction: detail.action,
+            selectedActionDetail: detail
+        )
+    }
+}
 
 final class CareerWorkViewContractTests: XCTestCase {
     func testJourneyUsesAdaptiveNativeNavigationAndExplicitStates() throws {
@@ -86,6 +130,8 @@ final class CareerWorkViewContractTests: XCTestCase {
         XCTAssertTrue(source.contains("TaisaExpandableSheet"))
         XCTAssertTrue(source.contains("TaskDetailSheetContent("))
         XCTAssertTrue(source.contains("onDismiss: refreshTasksAfterTaskDetail"))
+        XCTAssertTrue(source.contains("model.returnToOverview()"))
         XCTAssertTrue(source.contains(".task(id: actionID)"), "Changing task identifiers must reload exact detail")
+        XCTAssertTrue(source.contains("TaskDetailPresentation.resolve(model.state, actionID: actionID)"))
     }
 }

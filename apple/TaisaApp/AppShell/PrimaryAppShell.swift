@@ -168,6 +168,7 @@ struct PrimaryAppShell: View {
                         actionID: actionID,
                         openRecovery: openRecovery,
                         open: openTaskDetailRoute,
+                        taskChanged: { Task { await homeModel.load() } },
                         dismiss: { model.dismissTask() }
                     )
                 }
@@ -200,6 +201,7 @@ struct PrimaryAppShell: View {
     }
 
     private func refreshHomeAfterTaskDetail() {
+        careerWorkModel.returnToOverview()
         Task { await homeModel.load() }
     }
 
