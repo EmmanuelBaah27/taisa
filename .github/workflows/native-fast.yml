@@ -34,6 +34,7 @@ jobs:
           else
             echo "native_required=true" >> "${GITHUB_OUTPUT}"
             echo "high_risk_required=false" >> "${GITHUB_OUTPUT}"
+            echo "backend_required=false" >> "${GITHUB_OUTPUT}"
             echo "detected_risks=logic" >> "${GITHUB_OUTPUT}"
           fi
       - name: Validate pull request contract during calibration
@@ -64,6 +65,11 @@ jobs:
           key: native-fast-swift-${{ runner.os }}-${{ hashFiles('apple/Packages/TaisaFoundation/Package.resolved') }}
           restore-keys: native-fast-swift-${{ runner.os }}-
       - run: npm ci
+      - name: Verify affected backend
+        if: github.event_name == 'pull_request' && steps.classify.outputs.backend_required == 'true'
+        run: |
+          npm run build --workspace=backend
+          npm test --workspace=backend -- --runInBand
       - name: Verify native Apple contracts and packages
         if: github.event_name != 'pull_request' || steps.classify.outputs.native_required == 'true'
         run: npm run verify:native-apple:fast

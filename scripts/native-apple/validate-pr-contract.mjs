@@ -11,8 +11,9 @@ const allowedRisks = new Set([
 
 export function validatePullRequestContract({ body, detectedRisks = [], headSha = '' }) {
   const errors = [];
-  const tracer = body.match(/\bAPF-\d+\b/)?.[0] ?? null;
-  if (!tracer) errors.push('Pull request must link one APF Linear tracer.');
+  const tracers = [...new Set(body.match(/\bAPF-\d+\b/g) ?? [])];
+  const tracer = tracers.length === 1 ? tracers[0] : null;
+  if (tracers.length !== 1) errors.push('Pull request must link exactly one APF Linear tracer.');
 
   const outcome = body.match(/## Reviewable outcome\s+([\s\S]*?)(?=\n## |$)/i)?.[1]?.trim() ?? '';
   if (!outcome || /Describe the one result/i.test(outcome)) {

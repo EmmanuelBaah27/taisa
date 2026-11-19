@@ -12,6 +12,7 @@ fi
 
 native_required=false
 high_risk_required=false
+backend_required=false
 risk_logic=false
 risk_ui=false
 risk_network=false
@@ -35,7 +36,23 @@ while IFS= read -r changed_path; do
 
   case "${changed_path}" in
     */Tests/*|*/__tests__/*|*.test.*|*Tests.swift)
+      case "${changed_path}" in
+        apple/*|scripts/native-apple/*)
+          native_required=true
+          risk_logic=true
+          ;;
+        backend/*|shared/*)
+          backend_required=true
+          risk_logic=true
+          ;;
+      esac
       continue
+      ;;
+  esac
+
+  case "${changed_path}" in
+    backend/*|shared/*)
+      backend_required=true
       ;;
   esac
 
@@ -112,4 +129,5 @@ done
 
 echo "native_required=${native_required}"
 echo "high_risk_required=${high_risk_required}"
+echo "backend_required=${backend_required}"
 echo "detected_risks=${detected_risks}"

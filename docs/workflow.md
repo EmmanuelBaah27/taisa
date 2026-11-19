@@ -88,10 +88,10 @@ The risk-to-proof contract is:
 | --- | --- | --- |
 | Logic | Contract tests, package tests, and one Personal app compile | None |
 | UI | Logic proof plus design-system checks and one Preview compile | Browser simulator review when visible |
-| Network | Contract tests, package tests, and one Personal app compile | Focused failure and retry review |
+| Network | Contract tests, affected backend tests, package tests, and one Personal app compile | Focused failure and retry review |
 | Device | Logic proof plus one generic device compile | Exact-revision physical QA |
-| Data | Storage, migration, recovery, and package tests plus one Personal app compile | Recovery or migration evidence when affected |
-| Security | Security contracts and package tests plus one Personal app compile | Baah approval for material security changes |
+| Data | Storage, migration, recovery, affected backend tests, and package tests plus one Personal app compile | Recovery or migration evidence when affected |
+| Security | Security contracts, affected backend tests, and package tests plus one Personal app compile | Baah approval for material security changes |
 | Workflow | Workflow contracts and candidate-safe policy checks | Protected-base classification |
 | Release | Complete matrix and Release build | Final physical QA and Ship approval |
 

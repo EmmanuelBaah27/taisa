@@ -4,7 +4,6 @@ on:
   pull_request:
     types: [opened, reopened, synchronize, labeled, unlabeled]
   push:
-    branches: [main]
     tags: ['v*']
   workflow_dispatch:
 

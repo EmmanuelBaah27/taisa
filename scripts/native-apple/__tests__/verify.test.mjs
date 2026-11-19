@@ -391,6 +391,12 @@ test('native CI risk classification fails closed for sensitive production paths'
     classify(['scripts/native-apple/__tests__/verify.test.mjs']),
     /high_risk_required=false/,
   );
+  assert.match(
+    classify(['apple/Packages/TaisaFoundation/Tests/TaisaStorageTests/TaisaMigratorTests.swift']),
+    /native_required=true/,
+  );
+  assert.match(classify(['backend/src/__tests__/coaching.streaming.test.ts']), /backend_required=true/);
+  assert.match(classify(['backend/src/routes/coaching.ts']), /backend_required=true/);
 });
 
 test('pull request contract requires one tracer, one outcome, additive risks, and exact device evidence', () => {
@@ -436,6 +442,13 @@ None.`;
   assert.match(invalid.errors.join('\n'), /Linear tracer/);
   assert.match(invalid.errors.join('\n'), /reviewable outcome/);
   assert.match(invalid.errors.join('\n'), /security/);
+
+  const multipleTracers = validatePullRequestContract({
+    body: validBody.replace('APF-96', 'APF-96 and APF-97'),
+    detectedRisks: ['device', 'workflow'],
+    headSha: 'abc123',
+  });
+  assert.match(multipleTracers.errors.join('\n'), /exactly one APF Linear tracer/);
 });
 
 test('tiered native CI uses focused pull-request checks and reserves full verification for release or manual runs', async () => {
@@ -480,6 +493,9 @@ test('tiered native CI uses focused pull-request checks and reserves full verifi
   assert.match(fastWorkflow, /PR_CONTRACT_MODE: report/);
   assert.match(fastWorkflow, /detected_risks/);
   assert.match(fastWorkflow, /verify-selected\.sh/);
+  assert.match(fastWorkflow, /backend_required/);
+  assert.match(fastWorkflow, /npm run build --workspace=backend/);
+  assert.match(fastWorkflow, /npm test --workspace=backend -- --runInBand/);
 
   assert.match(selectedScript, /scheme Taisa-Personal/);
   assert.match(selectedScript, /generic\/platform=iOS Simulator/);
@@ -502,7 +518,7 @@ test('tiered native CI uses focused pull-request checks and reserves full verifi
   assert.doesNotMatch(fullWorkflow, /ready_for_review/);
   assert.doesNotMatch(fullWorkflow, /schedule:/);
   assert.match(fullWorkflow, /workflow_dispatch:/);
-  assert.match(fullWorkflow, /branches: \[main\]/);
+  assert.doesNotMatch(fullWorkflow, /branches: \[main\]/);
   assert.match(fullWorkflow, /tags: \['v\*'\]/);
   assert.doesNotMatch(fullWorkflow, /merge-ready/);
   assert.match(fullWorkflow, /release/);
