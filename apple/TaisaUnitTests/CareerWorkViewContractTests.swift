@@ -75,4 +75,17 @@ final class CareerWorkViewContractTests: XCTestCase {
         XCTAssertTrue(source.contains("dismiss()"))
         XCTAssertTrue(source.contains("openRecovery()"))
     }
+
+    func testTasksCollectionPresentsTheSharedExpandableDetailSheet() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let source = try String(contentsOf: root.appendingPathComponent("TaisaApp/CareerWork/CareerWorkView.swift"), encoding: .utf8)
+
+        XCTAssertTrue(source.contains("@State private var selectedTaskID: String?"))
+        XCTAssertTrue(source.contains("selectedTaskID = action.id"))
+        XCTAssertFalse(source.contains("TaisaPressable(action: { selectedRoute = .action(id: action.id) })"))
+        XCTAssertTrue(source.contains("TaisaExpandableSheet"))
+        XCTAssertTrue(source.contains("TaskDetailSheetContent("))
+        XCTAssertTrue(source.contains("onDismiss: refreshTasksAfterTaskDetail"))
+        XCTAssertTrue(source.contains(".task(id: actionID)"), "Changing task identifiers must reload exact detail")
+    }
 }

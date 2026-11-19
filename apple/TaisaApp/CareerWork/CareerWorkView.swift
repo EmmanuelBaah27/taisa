@@ -129,6 +129,7 @@ struct CareerWorkView: View {
     @State private var actionEditorInitial: ActionDraft?
     @State private var showsActionFilters = false
     @State private var editor: CareerWorkEditor?
+    @State private var selectedTaskID: String?
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     var openRecovery: () -> Void = {}
 
@@ -139,6 +140,7 @@ struct CareerWorkView: View {
     fileprivate init(model: CareerWorkModel, root: CareerWorkRoot, initialRoute: CareerWorkRoute?, openRecovery: @escaping () -> Void) {
         _model = State(initialValue: model)
         _selectedRoute = State(initialValue: initialRoute ?? (model.route == .overview ? nil : model.route))
+        _selectedTaskID = State(initialValue: nil)
         self.root = root
         self.openRecovery = openRecovery
     }
@@ -205,6 +207,19 @@ struct CareerWorkView: View {
                 selectedRoute = decision == .openExisting ? model.route : nil
             } cancel: {
                 model.cancelDuplicateReview()
+            }
+        }
+        .sheet(isPresented: taskDetailPresented, onDismiss: refreshTasksAfterTaskDetail) {
+            if let actionID = selectedTaskID {
+                TaisaExpandableSheet {
+                    TaskDetailSheetContent(
+                        model: model,
+                        actionID: actionID,
+                        openRecovery: openRecovery,
+                        open: openTaskDetailRoute,
+                        dismiss: { selectedTaskID = nil }
+                    )
+                }
             }
         }
     }
@@ -301,7 +316,7 @@ struct CareerWorkView: View {
             }
             .scrollIndicators(.hidden)
             ForEach(actions, id: \.id) { action in
-                TaisaPressable(action: { selectedRoute = .action(id: action.id) }) {
+                TaisaPressable(action: { selectedTaskID = action.id }) {
                     TaisaTaskRow(title: action.title, dueLabel: actionDueText(action)?.replacingOccurrences(of: "Due ", with: ""))
                 }
                 .accessibilityLabel("Task \(action.title), \(action.status)")
@@ -397,6 +412,29 @@ struct CareerWorkView: View {
             get: { model.duplicateGate != nil },
             set: { if !$0 { model.cancelDuplicateReview() } }
         )
+    }
+
+    private var taskDetailPresented: Binding<Bool> {
+        Binding(
+            get: { selectedTaskID != nil },
+            set: { if !$0 { selectedTaskID = nil } }
+        )
+    }
+
+    private func refreshTasksAfterTaskDetail() {
+        Task { await model.load() }
+    }
+
+    private func openTaskDetailRoute(_ route: CareerWorkRoute) {
+        switch route {
+        case let .action(id):
+            selectedTaskID = id
+        case .goal, .evidence:
+            selectedTaskID = nil
+            selectedRoute = route
+        case .overview:
+            selectedTaskID = nil
+        }
     }
 
     private var detailTitle: String? {
