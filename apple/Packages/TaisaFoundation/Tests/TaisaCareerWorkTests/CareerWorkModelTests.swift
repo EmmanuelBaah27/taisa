@@ -149,6 +149,35 @@ import TaisaStorage
         #expect(model.state.snapshot?.selectedActionDetail == detail)
     }
 
+    @Test func deleteSelectedActionReportsSuccessAndReturnsToOverview() async {
+        let action = ActionRecord(id: UUID().uuidString, goalID: nil, title: "Delete me", detail: "", status: "active", dueAtMS: nil, createdAtMS: 1, updatedAtMS: 2)
+        let recorder = CareerMutationRecorder()
+        let model = CareerWorkModel(client: .init(
+            loadOverview: { .init(active: [], paused: [], completed: [], archived: []) },
+            deleteAction: { id in await recorder.record("delete:\(id)") }
+        ), route: .action(id: action.id))
+
+        let deleted = await model.deleteSelectedAction()
+
+        #expect(deleted)
+        #expect(await recorder.values == ["delete:\(action.id)"])
+        #expect(model.route == .overview)
+    }
+
+    @Test func deleteSelectedActionReportsFailureAndKeepsSelection() async {
+        let action = ActionRecord(id: UUID().uuidString, goalID: nil, title: "Keep me", detail: "", status: "active", dueAtMS: nil, createdAtMS: 1, updatedAtMS: 2)
+        let model = CareerWorkModel(client: .init(
+            loadOverview: { .init(active: [], paused: [], completed: [], archived: []) },
+            deleteAction: { _ in throw StorageError.openFailed }
+        ), route: .action(id: action.id))
+
+        let deleted = await model.deleteSelectedAction()
+
+        #expect(!deleted)
+        #expect(model.route == .action(id: action.id))
+        #expect(model.state.issue == .storageUnavailable)
+    }
+
     @Test func filteredEmptyActionsRemainContentWhenDurableActionsExist() async {
         let model = CareerWorkModel(client: .init(
             loadOverview: { .init(active: [], paused: [], completed: [], archived: []) },

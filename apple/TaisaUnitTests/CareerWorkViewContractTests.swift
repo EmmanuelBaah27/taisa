@@ -62,4 +62,17 @@ final class CareerWorkViewContractTests: XCTestCase {
         XCTAssertNil(source.range(of: #"(?<!Taisa)DatePicker\("#, options: .regularExpression))
         XCTAssertNil(source.range(of: #"(?<!Taisa)Picker\("#, options: .regularExpression))
     }
+
+    func testTaskDetailSheetReusesActionDetailAndDismissesOnlyAfterDeletion() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let source = try String(contentsOf: root.appendingPathComponent("TaisaApp/CareerWork/CareerWorkView.swift"), encoding: .utf8)
+
+        XCTAssertTrue(source.contains("struct TaskDetailSheetContent"))
+        XCTAssertTrue(source.contains(".task(id: actionID)"))
+        XCTAssertTrue(source.contains("await model.select(.action(id: actionID))"))
+        XCTAssertTrue(source.contains("CareerActionDetail("))
+        XCTAssertTrue(source.contains("if await model.deleteSelectedAction()"))
+        XCTAssertTrue(source.contains("dismiss()"))
+        XCTAssertTrue(source.contains("openRecovery()"))
+    }
 }

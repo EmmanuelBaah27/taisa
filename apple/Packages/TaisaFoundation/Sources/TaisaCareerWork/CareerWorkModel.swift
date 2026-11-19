@@ -198,9 +198,9 @@ public final class CareerWorkModel {
         await mutate { _ = try await client.undoMistakenCompletion(id, eventID) }
     }
 
-    public func deleteSelectedAction() async {
-        guard case let .action(id) = route else { return }
-        await mutate {
+    public func deleteSelectedAction() async -> Bool {
+        guard case let .action(id) = route else { return false }
+        return await mutate {
             try await client.deleteAction(id)
             route = .overview
         }

@@ -23,6 +23,96 @@ struct GoalsView: View {
     }
 }
 
+struct TaskDetailSheetContent: View {
+    @State private var model: CareerWorkModel
+    let actionID: String
+    var openRecovery: () -> Void = {}
+    var open: (CareerWorkRoute) -> Void = { _ in }
+    var dismiss: () -> Void = {}
+
+    init(
+        model: CareerWorkModel,
+        actionID: String,
+        openRecovery: @escaping () -> Void = {},
+        open: @escaping (CareerWorkRoute) -> Void = { _ in },
+        dismiss: @escaping () -> Void = {}
+    ) {
+        _model = State(initialValue: model)
+        self.actionID = actionID
+        self.openRecovery = openRecovery
+        self.open = open
+        self.dismiss = dismiss
+    }
+
+    var body: some View {
+        Group {
+            switch model.state {
+            case .idle, .loading:
+                ProgressView("Loading task…")
+            case .empty:
+                unavailableTask
+            case let .failure(issue):
+                failure(issue)
+            case let .content(snapshot, _, issue):
+                if let detail = snapshot.selectedActionDetail {
+                    CareerActionDetail(
+                        snapshot: detail,
+                        goals: snapshot.overview.active + snapshot.overview.paused + snapshot.overview.completed,
+                        milestones: snapshot.milestones,
+                        model: model,
+                        open: open,
+                        deleted: dismiss
+                    )
+                    .safeAreaInset(edge: .top, spacing: 0) {
+                        TaisaChildPageHeader(detail.action.title, mode: .detail, back: {})
+                    }
+                    .background(TaisaColor.background.color.ignoresSafeArea())
+                } else if let issue {
+                    failure(issue)
+                } else {
+                    unavailableTask
+                }
+            }
+        }
+        .task(id: actionID) {
+            await model.select(.action(id: actionID))
+        }
+        .accessibilityIdentifier("tasks.detail.sheet")
+    }
+
+    private var unavailableTask: some View {
+        ContentUnavailableView {
+            TaisaText(role: .heading, content: "Task unavailable")
+        } description: {
+            TaisaText(role: .body, color: .mutedForeground, content: "This task could not be loaded.")
+        } actions: {
+            TaisaButton(role: .primary, label: "Try again", icon: .refresh) {
+                Task { await model.select(.action(id: actionID)) }
+            }
+        }
+    }
+
+    @ViewBuilder private func failure(_ issue: CareerWorkIssue) -> some View {
+        ContentUnavailableView {
+            TaisaText(role: .heading, content: issue == .recoveryRequired ? "Recovery required" : "Task unavailable")
+        } description: {
+            TaisaText(
+                role: .body,
+                color: .mutedForeground,
+                content: issue == .recoveryRequired ? "Open recovery to restore secure access." : "Taisa couldn’t read this task securely."
+            )
+        } actions: {
+            if issue == .recoveryRequired {
+                TaisaButton(role: .primary, label: "Open recovery", icon: .recovery) { openRecovery() }
+            } else {
+                TaisaButton(role: .primary, label: "Try again", icon: .refresh) {
+                    Task { await model.select(.action(id: actionID)) }
+                }
+            }
+        }
+    }
+}
+
 fileprivate enum CareerWorkRoot {
     case actions
     case goals
@@ -598,7 +688,9 @@ private struct CareerActionDetail: View {
             Task { await model.dropSelectedAction() }
         })
         .modifier(TaisaConfirmationDialog(title: "Delete this task?", isPresented: $showsDelete, confirmLabel: "Delete task", cancelLabel: "Keep task", role: .destructive) {
-            Task { await model.deleteSelectedAction(); deleted() }
+            Task {
+                if await model.deleteSelectedAction() { deleted() }
+            }
         })
         .sheet(isPresented: $showsEdit) {
             ActionEditorSheet(goals: goals, milestones: milestones, initial: currentDraft, editing: true) { draft in
