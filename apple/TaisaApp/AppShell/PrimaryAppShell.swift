@@ -12,6 +12,7 @@ import TaisaYou
 final class PrimaryAppShellModel {
     private(set) var selection: PrimaryDestination
     private(set) var workDestination: WorkDestination?
+    private(set) var selectedTaskID: String?
     private(set) var conversationRoute: ConversationRoute?
     private(set) var conversationReturnGeneration = 0
     @ObservationIgnored private var pendingEntryIntent: ConversationEntryIntent?
@@ -22,6 +23,7 @@ final class PrimaryAppShellModel {
         makeConversationID: @escaping () -> String = { UUID().uuidString }
     ) {
         self.selection = selection
+        selectedTaskID = nil
         self.makeConversationID = makeConversationID
     }
 
@@ -38,6 +40,14 @@ final class PrimaryAppShellModel {
     }
 
     func dismissWork() { workDestination = nil }
+
+    func presentTask(id: String) {
+        selectedTaskID = id
+    }
+
+    func dismissTask() {
+        selectedTaskID = nil
+    }
 
     func selectAdjacent(offset: Int) {
         let destinations = PrimaryDestination.allCases
@@ -150,6 +160,19 @@ struct PrimaryAppShell: View {
                 dismiss: dismissConversationAndRefresh
             )
         }
+        .sheet(isPresented: taskDetailPresented, onDismiss: refreshHomeAfterTaskDetail) {
+            if let actionID = model.selectedTaskID {
+                TaisaExpandableSheet {
+                    TaskDetailSheetContent(
+                        model: careerWorkModel,
+                        actionID: actionID,
+                        openRecovery: openRecovery,
+                        open: openTaskDetailRoute,
+                        dismiss: { model.dismissTask() }
+                    )
+                }
+            }
+        }
     }
 
     private var primaryPageCompletionGesture: some Gesture {
@@ -167,6 +190,29 @@ struct PrimaryAppShell: View {
                 else { return }
                 model.selectAdjacent(offset: value.translation.width < 0 ? 1 : -1)
             }
+    }
+
+    private var taskDetailPresented: Binding<Bool> {
+        Binding(
+            get: { model.selectedTaskID != nil },
+            set: { if !$0 { model.dismissTask() } }
+        )
+    }
+
+    private func refreshHomeAfterTaskDetail() {
+        Task { await homeModel.load() }
+    }
+
+    private func openTaskDetailRoute(_ route: CareerWorkRoute) {
+        switch route {
+        case let .action(id):
+            model.presentTask(id: id)
+        case .goal, .evidence:
+            model.dismissTask()
+            model.showWork(.goals(route: route))
+        case .overview:
+            model.dismissTask()
+        }
     }
 
     @MainActor
@@ -232,8 +278,7 @@ struct PrimaryAppShell: View {
         case let .conversation(id): model.openConversation(id: id, title: "Conversation")
         case let .goal(id):
             model.showWork(.goals(route: .goal(id: id)))
-        case let .action(id):
-            model.showWork(.tasks(route: .action(id: id)))
+        case let .action(id): model.presentTask(id: id)
         case let .milestone(goalID):
             model.showWork(.goals(route: .goal(id: goalID)))
         case .actions:

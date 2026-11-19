@@ -53,6 +53,8 @@ final class HomeViewContractTests: XCTestCase {
         XCTAssertTrue(thisWeek.contains("TaisaRow("))
         XCTAssertFalse(thisWeek.contains("systemImage:"), "Touched Home Action UI must use Central Icons")
         XCTAssertTrue(leadInsight.contains("home.lead-insight"), "Nested Insights remains implemented even though Home does not expose it in this iteration")
+        XCTAssertTrue(thisWeek.contains("send(.action(action.id))"))
+        XCTAssertTrue(thisWeek.contains("send(.actions)"))
     }
 
     func testTouchedHomeSurfaceUsesSharedDesignSystemContracts() throws {

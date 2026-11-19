@@ -41,6 +41,18 @@ final class PrimaryAppShellTests: XCTestCase {
         XCTAssertEqual(model.workDestination, .goals(route: .goal(id: "goal-1")))
     }
 
+    func testHomeTaskPresentationStaysSeparateFromWorkNavigation() {
+        let model = PrimaryAppShellModel()
+
+        model.presentTask(id: "task-1")
+
+        XCTAssertEqual(model.selectedTaskID, "task-1")
+        XCTAssertNil(model.workDestination)
+
+        model.dismissTask()
+        XCTAssertNil(model.selectedTaskID)
+    }
+
     func testLegacyCareerWorkRestorationRedirectsByIntent() {
         XCTAssertEqual(WorkDestination.restoringLegacyCareerWork(routeStableID: "action:a1"), .tasks(route: .action(id: "a1")))
         XCTAssertEqual(WorkDestination.restoringLegacyCareerWork(routeStableID: "goal:g1"), .goals(route: .goal(id: "g1")))
@@ -108,6 +120,11 @@ final class PrimaryAppShellTests: XCTestCase {
         XCTAssertFalse(source.contains("primaryPageBottomReservation"))
         XCTAssertFalse(source.contains("selection == .conversations ? 0"))
         XCTAssertFalse(source.contains(".background {\n                    PageEdgeFade(.navigation)"))
+        XCTAssertTrue(source.contains("TaisaExpandableSheet"))
+        XCTAssertTrue(source.contains("TaskDetailSheetContent("))
+        XCTAssertTrue(source.contains("case let .action(id): model.presentTask(id: id)"))
+        XCTAssertTrue(source.contains("case .actions:"))
+        XCTAssertTrue(source.contains("model.showWork(.tasks(route: nil))"))
     }
 
     func testVoiceEntryIntentIsConsumedOnlyOnce() {
