@@ -9,6 +9,7 @@ public enum TaisaButtonRole: Sendable, Equatable {
 public enum TaisaButtonShape: Sendable, Equatable {
     case roundedRectangle
     case capsule
+    case circle
 }
 
 public struct TaisaButton: View {
@@ -16,7 +17,6 @@ public struct TaisaButton: View {
         public static let supportsInPlaceProgress = true
     }
 
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     private let role: TaisaButtonRole
     private let shape: TaisaButtonShape
     private let label: String
@@ -26,7 +26,7 @@ public struct TaisaButton: View {
 
     public init(
         role: TaisaButtonRole,
-        shape: TaisaButtonShape = .roundedRectangle,
+        shape: TaisaButtonShape = .capsule,
         label: String,
         isProcessing: Bool = false,
         processingAccessibilityLabel: String = "Working",
@@ -41,16 +41,15 @@ public struct TaisaButton: View {
     }
 
     public var body: some View {
-        Button(action: action) {
+        TaisaButtonControl(style: TaisaButtonStyle(role: role, shape: shape), action: action) {
             buttonSurface
         }
-        .buttonStyle(.plain)
         .disabled(isProcessing)
         .accessibilityLabel(isProcessing ? processingAccessibilityLabel : label)
     }
 
-    @ViewBuilder private var buttonSurface: some View {
-        let content = ZStack {
+    private var buttonSurface: some View {
+        ZStack {
             TaisaText(role: .label, color: labelColor, content: label)
                 .opacity(isProcessing ? 0 : 1)
             if isProcessing {
@@ -60,29 +59,6 @@ public struct TaisaButton: View {
         }
         .frame(maxWidth: .infinity, minHeight: TaisaControlMetric.actionButtonHeight)
         .padding(.horizontal, TaisaSpacing.standard.rawValue)
-        .contentShape(buttonShape)
-
-        if #available(iOS 26.0, macOS 26.0, *), !reduceTransparency {
-            switch role {
-            case .primary:
-                content.glassEffect(.regular.tint(TaisaColor.primaryAction.color).interactive(), in: buttonShape)
-            case .secondary, .destructive:
-                content.glassEffect(.regular.interactive(), in: buttonShape)
-            }
-        } else {
-            content.background(fallbackColor, in: buttonShape)
-        }
-    }
-
-    private var buttonShape: AnyShape {
-        switch shape {
-        case .roundedRectangle: AnyShape(RoundedRectangle(cornerRadius: TaisaRadius.control.rawValue))
-        case .capsule: AnyShape(Capsule())
-        }
-    }
-
-    private var fallbackColor: Color {
-        role == .primary ? TaisaColor.primaryAction.color : TaisaColor.raisedSurface.color
     }
 
     private var labelColor: TaisaColor {

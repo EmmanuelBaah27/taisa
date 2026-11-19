@@ -223,7 +223,7 @@ struct ConversationComponentTests {
         #expect(InlineRecoveryAlert.Contract.actionSpacing == 12)
     }
 
-    @Test func secondaryControlsUseClearRefractiveGlassAnatomyWithATintedCircularSendControl() throws {
+    @Test func secondaryAndFloatingControlsShareTheNativeButtonFoundation() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .deletingLastPathComponent()
@@ -241,16 +241,16 @@ struct ConversationComponentTests {
         )
 
         #expect(!chrome.contains("public enum TaisaGlassStyle"))
-        #expect(chrome.contains(".glassEffect(.clear.interactive(), in: Circle())"))
-        #expect(chrome.contains(".glassEffect(.clear.interactive(), in: Capsule())"))
-        #expect(!chrome.contains(".glassEffect(.regular.interactive()"))
+        #expect(chrome.contains("TaisaButtonControl(style: TaisaButtonStyle(shape: .circle)"))
+        #expect(chrome.contains(".buttonStyle(") == false)
+        #expect(!chrome.contains(".glassEffect("))
         #expect(!chrome.contains("Circle().stroke(TaisaColor.border.color)"))
         #expect(!chrome.contains("Capsule().stroke(TaisaColor.border.color)"))
         #expect(!chrome.contains("TaisaEffect.clearGlassShadow"))
         #expect(!tokens.contains("public static let clearGlassShadow"))
         #expect(!actionBar.contains("glassStyle: .clear"))
         #expect(actionBar.contains("TaisaSecondaryIconButton(icon: icon, accessibilityLabel: label, action: action)"))
-        #expect(actionBar.contains(".glassEffect(.clear.tint(TaisaColor.primaryAction.color).interactive(), in: Circle())"))
+        #expect(actionBar.contains("TaisaButtonControl(style: TaisaButtonStyle(role: .primary, shape: .circle)"))
         #expect(!actionBar.contains(".buttonStyle(.glassProminent)"))
     }
 

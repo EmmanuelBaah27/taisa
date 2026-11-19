@@ -18,23 +18,13 @@ public struct ConversationEntryDock: View {
         self.disabled = disabled; self.onVoice = onVoice; self.onKeyboard = onKeyboard
     }
 
-    @ViewBuilder public var body: some View {
-        if #available(iOS 26.0, macOS 26.0, *) {
-            voiceButton
-                .buttonStyle(.glassProminent)
-                .buttonBorderShape(.capsule)
-                .tint(TaisaColor.primaryAction.color)
-                .recordingGlow(enabled: !disabled)
-        } else {
-            voiceButton
-                .buttonStyle(.plain)
-                .background(TaisaColor.primaryAction.color, in: Capsule())
-                .recordingGlow(enabled: !disabled)
-        }
+    public var body: some View {
+        voiceButton
+            .recordingGlow(enabled: !disabled)
     }
 
     private var voiceButton: some View {
-        Button(action: onVoice) {
+        TaisaButtonControl(style: TaisaButtonStyle(role: .primary), action: onVoice) {
             CentralIcon(.voiceMid)
                 .foregroundStyle(TaisaColor.foreground.color)
                 .frame(width: TaisaControlMetric.standardIcon, height: TaisaControlMetric.standardIcon)

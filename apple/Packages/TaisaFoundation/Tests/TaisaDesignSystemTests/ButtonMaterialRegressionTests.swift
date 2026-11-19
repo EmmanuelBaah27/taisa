@@ -2,17 +2,22 @@ import Foundation
 import Testing
 @testable import TaisaDesignSystem
 
-@Suite("Authored button material")
+@Suite("Shared native button foundation")
 struct ButtonMaterialRegressionTests {
-    @Test func secondaryRecoveryButtonUsesApprovedGlassInsteadOfTheRetiredOutline() throws {
+    @Test func allRolesUseTheRecordButtonsNativeFoundation() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
         let source = try String(contentsOf: root.appendingPathComponent("Sources/TaisaDesignSystem/TaisaButton.swift"), encoding: .utf8)
-        #expect(source.contains(".glassEffect(.regular.interactive(), in: buttonShape)"))
-        #expect(source.contains(".glassEffect(.regular.tint(TaisaColor.primaryAction.color).interactive(), in: buttonShape)"))
-        #expect(!source.contains(".glassEffect(.clear"))
+        let style = try String(contentsOf: root.appendingPathComponent("Sources/TaisaDesignSystem/TaisaButtonStyle.swift"), encoding: .utf8)
+        #expect(source.contains("TaisaButtonControl(style: TaisaButtonStyle(role: role, shape: shape)"))
+        #expect(source.contains("shape: TaisaButtonShape = .capsule"))
+        #expect(style.contains(".buttonStyle(.glassProminent)"))
+        #expect(style.contains(".buttonStyle(.glass)"))
+        #expect(style.contains(".tint(TaisaColor.primaryAction.color)"))
+        #expect(!source.contains(".glassEffect("))
+        #expect(!style.contains(".glassEffect("))
         #expect(source.contains("TaisaControlMetric.actionButtonHeight"))
         #expect(!source.contains("buttonShape.stroke"))
         #expect(!source.contains(".background(background, in: buttonShape)"))
-        #expect(source.contains("accessibilityReduceTransparency"))
+        #expect(style.contains("accessibilityReduceTransparency"))
     }
 }

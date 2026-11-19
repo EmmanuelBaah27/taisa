@@ -1,4 +1,5 @@
 import SwiftUI
+import TaisaDesignSystem
 
 @main
 struct TaisaApp: App {
@@ -7,6 +8,7 @@ struct TaisaApp: App {
     var body: some Scene {
         WindowGroup {
             AppRootView(runtime: runtime)
+                .buttonStyle(TaisaButtonStyle())
                 .preferredColorScheme(.light)
         }
     }

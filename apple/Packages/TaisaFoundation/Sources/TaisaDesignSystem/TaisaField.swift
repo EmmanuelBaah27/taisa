@@ -1,5 +1,11 @@
 import SwiftUI
 
+/// Native alert field adapter. Alert extraction requires the native field value;
+/// form and page fields continue to use TaisaField.
+public func TaisaSystemTextField(_ title: String, text: Binding<String>) -> TextField<Text> {
+    TextField(title, text: text)
+}
+
 public enum TaisaFieldKind: Sendable, Equatable {
     case text
     case secure

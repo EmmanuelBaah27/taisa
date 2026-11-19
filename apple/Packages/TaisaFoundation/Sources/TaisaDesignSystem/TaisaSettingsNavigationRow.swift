@@ -8,7 +8,7 @@ public struct TaisaSettingsNavigationRow: View {
         self.title = title; self.icon = icon; self.action = action
     }
     public var body: some View {
-        Button(action: action) {
+        TaisaButtonControl(style: TaisaButtonStyle(presentation: .content), action: action) {
             HStack(spacing: TaisaSpacing.control.rawValue) {
                 CentralIcon(icon)
                     .frame(width: TaisaControlMetric.standardIcon, height: TaisaControlMetric.standardIcon)
@@ -26,7 +26,6 @@ public struct TaisaSettingsNavigationRow: View {
             .background(TaisaColor.subtleSurface.color)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
         .accessibilityLabel(title)
         .accessibilityHint("Opens \(title)")
     }

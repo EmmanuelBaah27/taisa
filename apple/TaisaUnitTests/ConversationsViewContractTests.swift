@@ -20,12 +20,12 @@ final class ConversationsViewContractTests: XCTestCase {
         XCTAssertTrue(source.contains(".background(TaisaColor.background.color.ignoresSafeArea())"))
     }
 
-    func testChatsVisualRepairUsesDefaultTypographyAndWhiteSeparators() throws {
+    func testChatsVisualRepairUsesSharedTypographyAndWhiteSeparators() throws {
         let source = try conversationsSource()
 
         XCTAssertFalse(source.contains("design: .rounded"))
         XCTAssertTrue(source.contains("monthHeader(group.month)"))
-        XCTAssertTrue(source.contains(".system(size: 14, weight: .medium)"))
+        XCTAssertTrue(source.contains("TaisaText(role: .supporting, color: .mutedForeground, content: month)"))
         XCTAssertTrue(source.contains(".listRowSeparatorTint(TaisaColor.background.color)"))
         XCTAssertFalse(source.contains(".lineLimit(2)"))
         XCTAssertTrue(source.contains("preview: snapshot.lastMessagePreview"))
@@ -67,8 +67,9 @@ final class ConversationsViewContractTests: XCTestCase {
         XCTAssertTrue(source.contains("TaisaSecondaryCapsuleButton("))
         XCTAssertTrue(pageChrome.contains("CentralIcon(icon)"))
         XCTAssertTrue(pageChrome.contains("TaisaControlMetric.standardIcon"))
-        XCTAssertTrue(pageChrome.contains(".glassEffect(.clear.interactive()"))
-        XCTAssertFalse(pageChrome.contains(".glassEffect(.regular.interactive()"))
+        XCTAssertTrue(pageChrome.contains("TaisaButtonControl(style: TaisaButtonStyle(shape: .circle)"))
+        XCTAssertTrue(pageChrome.contains("TaisaButtonControl(style: TaisaButtonStyle()"))
+        XCTAssertFalse(pageChrome.contains(".glassEffect("))
         XCTAssertTrue(pageChrome.contains("PageEdgeFade(.header)"))
         XCTAssertTrue(pageChrome.contains(".ignoresSafeArea(edges: [.top, .horizontal])"))
         XCTAssertTrue(pageChrome.contains("TaisaControlMetric.appBarHeight"))

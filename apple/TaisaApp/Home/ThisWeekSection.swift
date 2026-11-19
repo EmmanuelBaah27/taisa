@@ -1,4 +1,5 @@
 import SwiftUI
+import TaisaDesignSystem
 import TaisaHome
 import TaisaStorage
 
@@ -12,23 +13,21 @@ struct ThisWeekSection: View {
     var body: some View {
         Section {
             if unresolvedPriorWeekCount > 0 {
-                Button {
-                    openPriorWeekReview(unresolvedPriorWeekCount)
-                } label: {
-                    Label(
-                        "Review \(unresolvedPriorWeekCount) unfinished \(unresolvedPriorWeekCount == 1 ? "item" : "items")",
-                        systemImage: "clock.arrow.circlepath"
-                    )
+                TaisaButtonControl(action: { openPriorWeekReview(unresolvedPriorWeekCount) }) {
+                    HStack {
+                        Image(systemName: "clock.arrow.circlepath")
+                        TaisaText(role: .label, content: "Review \(unresolvedPriorWeekCount) unfinished \(unresolvedPriorWeekCount == 1 ? "item" : "items")")
+                    }
                 }
                 .accessibilityIdentifier("home.prior-week.review")
             }
 
             if items.isEmpty {
-                ContentUnavailableView(
-                    "A clear week",
-                    systemImage: "checkmark.circle",
-                    description: Text("Add work when you decide what matters next.")
-                )
+                ContentUnavailableView {
+                    VStack { Image(systemName: "checkmark.circle"); TaisaText(role: .heading, content: "A clear week") }
+                } description: {
+                    TaisaText(role: .supporting, color: .mutedForeground, content: "Add work when you decide what matters next.")
+                }
             } else {
                 ForEach(items, id: \.action.id) { item in
                     weeklyRow(item)
@@ -36,50 +35,45 @@ struct ThisWeekSection: View {
             }
 
             if model.canUndoCompletion {
-                Button("Undo completion", systemImage: "arrow.uturn.backward") {
-                    Task { await model.undoCompletion() }
+                TaisaButtonControl(action: { Task { await model.undoCompletion() } }) {
+                    HStack { Image(systemName: "arrow.uturn.backward"); TaisaText(role: .label, content: "Undo completion") }
                 }
                 .accessibilityIdentifier("home.this-week.undo")
             }
         } header: {
-            Text("This Week")
+            TaisaText(role: .heading, content: "This Week")
         }
         .accessibilityIdentifier("home.this-week")
     }
 
     private func weeklyRow(_ item: WeeklyWorkItem) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
-            Button {
+            TaisaButtonControl(style: TaisaButtonStyle(shape: .circle), action: {
                 Task { await model.complete(actionID: item.action.id) }
-            } label: {
+            }) {
                 Image(systemName: "circle")
-                    .font(.title3)
+                    .font(TaisaTypography.heading.font)
+                    .frame(minWidth: TaisaControlMetric.headerActionHeight, minHeight: TaisaControlMetric.headerActionHeight)
             }
-            .buttonStyle(.plain)
             .accessibilityLabel("Complete \(item.action.title)")
             .accessibilityIdentifier("home.this-week.complete")
 
-            Button {
-                openPlanning(item)
-            } label: {
+            TaisaButtonControl(style: TaisaButtonStyle(presentation: .content), action: { openPlanning(item) }) {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(item.action.title)
+                    TaisaText(role: .body, content: item.action.title)
                         .foregroundStyle(.primary)
                     if !item.action.detail.isEmpty {
-                        Text(item.action.detail)
-                            .font(.subheadline)
+                        TaisaText(role: .supporting, color: .mutedForeground, content: item.action.detail)
                             .foregroundStyle(.secondary)
                             .lineLimit(2)
                     }
                     if let plannedDayMS = item.placement.plannedDayMS {
-                        Text(Date(timeIntervalSince1970: Double(plannedDayMS) / 1_000), format: .dateTime.weekday(.wide))
-                            .font(.caption)
+                        TaisaText(role: .metadata, color: .mutedForeground, content: Date(timeIntervalSince1970: Double(plannedDayMS) / 1_000).formatted(.dateTime.weekday(.wide)))
                             .foregroundStyle(.secondary)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .buttonStyle(.plain)
             .accessibilityHint("Change when this is planned")
         }
     }
@@ -106,15 +100,15 @@ struct WeeklyPlanningSheet: View {
         NavigationStack {
             List {
                 Section {
-                    Button("Plan for today") { move(to: Date()) }
-                    Button("Keep flexible") { move(to: nil) }
+                    TaisaButtonControl("Plan for today") { move(to: Date()) }
+                    TaisaButtonControl("Keep flexible") { move(to: nil) }
                 } footer: {
-                    Text("Choose deliberately. You can change this again at any time.")
+                    TaisaText(role: .supporting, color: .mutedForeground, content: "Choose deliberately. You can change this again at any time.")
                 }
             }
             .navigationTitle(item.action.title)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { TaisaButtonControl("Cancel") { dismiss() } }
             }
         }
     }
@@ -134,13 +128,13 @@ struct PriorWeekReviewSheet: View {
     var body: some View {
         NavigationStack {
             ContentUnavailableView {
-                Label("Unfinished work", systemImage: "clock.arrow.circlepath")
+                VStack { Image(systemName: "clock.arrow.circlepath"); TaisaText(role: .heading, content: "Unfinished work") }
             } description: {
-                Text("You have \(unresolvedCount) unfinished \(unresolvedCount == 1 ? "item" : "items") from an earlier week. Decide what still belongs before planning more work.")
+                TaisaText(role: .supporting, color: .mutedForeground, content: "You have \(unresolvedCount) unfinished \(unresolvedCount == 1 ? "item" : "items") from an earlier week. Decide what still belongs before planning more work.")
             }
             .navigationTitle("Review prior week")
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) { TaisaButtonControl("Done") { dismiss() } }
             }
         }
         .presentationDetents([.medium])

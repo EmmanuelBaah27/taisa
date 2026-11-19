@@ -28,8 +28,8 @@ public struct TaisaSecondaryIconButton: View {
             .accessibilityHint(accessibilityHint ?? "")
     }
 
-    @ViewBuilder private var secondaryGlassButton: some View {
-        let button = Button(action: action) {
+    private var secondaryGlassButton: some View {
+        TaisaButtonControl(style: TaisaButtonStyle(shape: .circle), action: action) {
             CentralIcon(icon)
                 .frame(
                     width: TaisaControlMetric.standardIcon,
@@ -39,18 +39,6 @@ public struct TaisaSecondaryIconButton: View {
                     width: size,
                     height: size
                 )
-        }
-
-        if #available(iOS 26.0, macOS 26.0, *) {
-            button
-                .buttonStyle(.plain)
-                .glassEffect(.clear.interactive(), in: Circle())
-                .contentShape(Circle())
-        } else {
-            button
-                .buttonStyle(.plain)
-                .background(.regularMaterial, in: Circle())
-                .contentShape(Circle())
         }
     }
 }

@@ -2,6 +2,29 @@ import XCTest
 
 @MainActor
 final class TaisaPreviewCatalogTests: XCTestCase {
+    func testSharedButtonFoundationPreservesRecordFloatingAndDialogActions() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-TAISAPreviewScenario", "foundation.buttons"]
+        app.launch()
+        XCTAssertTrue(app.buttons["buttons.record"].waitForExistence(timeout: 10))
+        app.buttons["buttons.record"].tap()
+        app.buttons["buttons.primary"].tap()
+        app.buttons["buttons.secondary"].tap()
+        app.buttons["buttons.header"].tap()
+        app.buttons["buttons.floating"].tap()
+        XCTAssertFalse(app.buttons["buttons.processing"].isEnabled)
+        XCTAssertEqual(app.staticTexts["buttons.counts"].label, "Record 1, actions 3, floating 1, confirmed 0")
+        retainScreenshot(of: app, name: "shared-native-button-foundation")
+        app.buttons["buttons.destructive"].tap()
+        XCTAssertTrue(app.buttons["Cancel"].waitForExistence(timeout: 5))
+        app.buttons["Cancel"].tap()
+        XCTAssertEqual(app.staticTexts["buttons.counts"].label, "Record 1, actions 3, floating 1, confirmed 0")
+        app.buttons["buttons.destructive"].tap()
+        XCTAssertTrue(app.buttons["Confirm preview action"].waitForExistence(timeout: 5))
+        app.buttons["Confirm preview action"].tap()
+        XCTAssertEqual(app.staticTexts["buttons.counts"].label, "Record 1, actions 3, floating 1, confirmed 1")
+    }
+
     func testCatalogLaunchesWithNoProductionShell() {
         let app = XCUIApplication()
         app.launch()
