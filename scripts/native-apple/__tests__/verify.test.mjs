@@ -533,6 +533,14 @@ test('tiered native CI uses focused pull-request checks and reserves full verifi
   assert.match(fullWorkflow, /github\.event\.pull_request\.head\.sha/);
   assert.match(fullWorkflow, /scripts\/native-apple\/classify-ci-risk\.sh/);
   assert.match(fullWorkflow, /github\.event\.action == 'labeled'/);
+  assert.match(
+    fullWorkflow,
+    /high_risk_required == 'true' && github\.event\.action == 'labeled'/,
+  );
+  assert.doesNotMatch(
+    fullWorkflow,
+    /high_risk_required == 'true'[^\n]+github\.event\.action == 'synchronize'/,
+  );
   assert.match(fullWorkflow, /github\.event\.action == 'unlabeled'/);
   assert.match(fullWorkflow, /github\.event\.label\.name == 'high-risk'/);
   assert.match(fullWorkflow, /github\.event\.label\.name == 'release'/);

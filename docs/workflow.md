@@ -99,6 +99,9 @@ During calibration, the protected-base policy reports contract mismatches while 
 safety gate remains required. After five historical backtests and three live pull requests show
 no missed required risk and no unnecessary full run, change the protected-base policy to strict
 enforcement and reconcile branch protection. Until then, do not claim strict enforcement is live.
+For a calibration PR that changes safety rules, apply its `high-risk` or `release` label only after
+the final candidate passes focused checks. A new commit invalidates exact-head evidence and closes
+the merge gate, but it does not start another full matrix during repair.
 
 Use the smallest applicable verification that can falsify the current change first, then
 expand only after focused checks pass or the risk boundary requires it. Reuse fresh evidence

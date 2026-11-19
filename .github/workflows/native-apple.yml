@@ -55,7 +55,7 @@ jobs:
   verify-native-apple:
     name: Native Apple Full Verification
     needs: [classify-native-impact]
-    if: github.event_name != 'pull_request' || (needs.classify-native-impact.outputs.native_required == 'true' && needs.classify-native-impact.outputs.high_risk_required == 'true' && (github.event.action == 'opened' || github.event.action == 'reopened' || github.event.action == 'synchronize' || (github.event.action == 'labeled' && (github.event.label.name == 'high-risk' || github.event.label.name == 'release'))))
+    if: github.event_name != 'pull_request' || (needs.classify-native-impact.outputs.native_required == 'true' && needs.classify-native-impact.outputs.high_risk_required == 'true' && github.event.action == 'labeled' && (github.event.label.name == 'high-risk' || github.event.label.name == 'release'))
     runs-on: macos-26
     timeout-minutes: 75
     steps:
