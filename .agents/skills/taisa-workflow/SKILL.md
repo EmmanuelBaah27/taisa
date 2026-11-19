@@ -40,9 +40,15 @@ relations. Do not narrate commands, polling, unchanged waits, or repeated eviden
 ## Conditional adapters
 
 - Linear operations: read `docs/agents/issue-tracker.md`.
-- Product UI: read `docs/design-system.md` and use `design-handoff`. Inventory shared components,
-  semantic styles and tokens, and Central Icons before Product code. An unavailable item stops
-  Product work until Baah approves its exact shared-system treatment in Linear.
+- Product UI: read `docs/design-system.md` and use `design-handoff`, `design:design-system`, and
+  `design-system-patterns`. Inventory foundations, assets, behaviors, styles, components,
+  platform adapters, semantic tokens, and Central Icons before Product code. Map each requirement
+  to exactly one treatment: reuse, extend, create, or approved exception. An unavailable item or
+  missing component variant is a blocking design-system gap. Product work stops until Baah
+  approves its exact shared-system treatment in Linear. Existing design-system components are mandatory when they cover the
+  interaction. Raw platform controls may appear only in exact designated primitive files.
+  No directory or module exemption is allowed. A new primitive is allowed only when no existing component
+  supports a coherent variant and its behavior and accessibility are reusable.
 - Preview, QA, repair, or Ship: read the applicable section of `docs/workflow.md`. It is the single
   detailed authority for candidate freeze, browser simulator review, canonical Preview,
   `REPAIR_QUARANTINE`, physical QA, topology, merge, and cleanup.
@@ -57,6 +63,13 @@ relations. Do not narrate commands, polling, unchanged waits, or repeated eviden
 
 ## Stable Taisa invariants
 
+- Every pull request links one Linear tracer, declares one reviewable outcome, and declares all
+  applicable additive risks. Repository rules can raise risk but cannot lower approved Linear
+  classification. Unknown or uncertain sensitive changes fail closed for review.
+- Pull requests use fast and focused checks selected by risk. Release candidates require the
+  complete applicable matrix on the exact candidate revision. Exact-revision evidence remains
+  reusable while code, dependencies, toolchain, signing, configuration, and covered inputs remain
+  unchanged.
 - Readable personal data stays encrypted and device-authoritative.
 - The device UUID remains the v1 user identifier unless approved product intent changes it.
 - SwiftUI and iOS/iPadOS 26+ remain the shipping direction. React Native is migration evidence.
