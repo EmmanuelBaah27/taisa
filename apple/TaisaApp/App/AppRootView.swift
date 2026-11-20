@@ -61,6 +61,7 @@ struct AppRootView: View {
         }
         .task {
             await runtime.start()
+            openPersonalQAIfRequested()
             await openPreservedDraftProbeIfRequested()
         }
 #if TAISA_PERSONAL
@@ -243,6 +244,14 @@ struct AppRootView: View {
         return { showsPersonalQA = true }
 #else
         return nil
+#endif
+    }
+
+    private func openPersonalQAIfRequested() {
+#if TAISA_PERSONAL
+        if ProcessInfo.processInfo.arguments.contains(PersonalDeviceQA.launchArgument) {
+            showsPersonalQA = true
+        }
 #endif
     }
 

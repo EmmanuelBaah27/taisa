@@ -64,38 +64,27 @@ import XCTest
         app.launchArguments = ["--taisa-personal-device-qa"]
         app.launch()
 
-        let qa = app.buttons["foundation.personal-qa.action"]
-        XCTAssertTrue(qa.waitForExistence(timeout: 10))
-        qa.tap()
         XCTAssertTrue(
             app.buttons["personal-qa.voice"].waitForExistence(timeout: 10)
         )
     }
 
-    func testPriorWeekReviewStaysPresented() {
+    func testPersonalQAHomeUsesTasksOnlySurface() {
         let app = XCUIApplication()
         app.launchArguments = ["--taisa-personal-device-qa"]
         app.launch()
-
-        let qa = app.buttons["foundation.personal-qa.action"]
-        XCTAssertTrue(qa.waitForExistence(timeout: 10))
-        qa.tap()
 
         let combinedHome = app.buttons["personal-qa.combined-home.action"]
         XCTAssertTrue(combinedHome.waitForExistence(timeout: 10))
         combinedHome.tap()
 
-        let review = app.buttons["Review 2 unfinished items"]
-        for _ in 0..<6 where !review.isHittable { app.swipeUp() }
-        XCTAssertTrue(review.waitForExistence(timeout: 10))
-        XCTAssertTrue(review.isHittable)
-        review.tap()
-
-        let done = app.buttons["Done"]
-        XCTAssertTrue(done.waitForExistence(timeout: 2))
-        _ = XCTWaiter.wait(for: [XCTestExpectation(description: "presentation stability interval")], timeout: 2)
-        XCTAssertTrue(done.exists)
-        XCTAssertTrue(done.isHittable)
+        let task = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS %@", "QA fixture — draft the lighting plan")
+        ).firstMatch
+        XCTAssertTrue(task.waitForExistence(timeout: 10))
+        XCTAssertTrue(task.isHittable)
+        XCTAssertFalse(app.buttons["Review 2 unfinished items"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["home.lead-insight"].exists)
     }
 
     func testExplicitQALaunchOpensTheProductConversationForVoiceAcceptance() {
@@ -105,10 +94,6 @@ import XCTest
             "--taisa-conversation-route-qa-fixture",
         ]
         app.launch()
-
-        let qa = app.buttons["foundation.personal-qa.action"]
-        XCTAssertTrue(qa.waitForExistence(timeout: 10))
-        qa.tap()
 
         let productVoice = app.buttons["personal-qa.product-voice"]
         XCTAssertTrue(productVoice.waitForExistence(timeout: 10))
@@ -133,10 +118,6 @@ import XCTest
         let app = XCUIApplication()
         app.launchArguments = ["--taisa-personal-device-qa"]
         app.launch()
-        let qa = app.buttons["foundation.personal-qa.action"]
-        XCTAssertTrue(qa.waitForExistence(timeout: 10))
-        guard qa.exists else { return }
-        qa.tap()
         let presence = app.staticTexts["personal-qa.presence"]
         XCTAssertTrue(presence.waitForExistence(timeout: 10))
         app.buttons["personal-qa.create"].tap()
@@ -149,7 +130,6 @@ import XCTest
         XCTAssertEqual(app.staticTexts["personal-qa.hash"].label, hash)
         app.terminate()
         app.launch()
-        app.buttons["foundation.personal-qa.action"].tap()
         XCTAssertTrue(presence.waitForExistence(timeout: 10))
         XCTAssertEqual(presence.label, "Canary: present and verified")
         XCTAssertEqual(app.staticTexts["personal-qa.hash"].label, hash)
@@ -157,17 +137,15 @@ import XCTest
         app.terminate()
         app.launchArguments = []
         app.launch()
-        XCTAssertTrue(app.buttons["foundation.recovery.action"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.descendants(matching: .any)["home.root"].waitForExistence(timeout: 10))
         XCTAssertFalse(app.buttons["foundation.personal-qa.action"].exists)
         XCTAssertFalse(app.staticTexts["personal-qa.presence"].exists)
     }
 
     func testRecoveryActionsAndCancelledFileSelection() throws {
         let app = XCUIApplication()
+        app.launchArguments = ["--taisa-recovery-route-qa"]
         app.launch()
-        let action = app.buttons["foundation.recovery.action"]
-        XCTAssertTrue(action.waitForExistence(timeout: 10))
-        action.tap()
         XCTAssertTrue(app.staticTexts["Stored securely on this device"].exists)
         XCTAssertTrue(app.buttons["Back Up Now"].isHittable)
         XCTAssertTrue(app.buttons["Restore Backup"].isHittable)
@@ -184,9 +162,12 @@ import XCTest
 
     func testLargestTypeAndBackgroundReturn() {
         let app = XCUIApplication()
-        app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+        app.launchArguments += [
+            "--taisa-recovery-route-qa",
+            "-UIPreferredContentSizeCategoryName",
+            "UICTContentSizeCategoryAccessibilityXXXL",
+        ]
         app.launch()
-        app.buttons["foundation.recovery.action"].tap()
         for _ in 0..<6 where !app.buttons["Restore Backup"].isHittable { app.swipeUp() }
         XCTAssertTrue(app.buttons["Restore Backup"].isHittable)
         let attachment = XCTAttachment(screenshot: app.screenshot())
@@ -202,7 +183,6 @@ import XCTest
         app.launchArguments = ["--taisa-personal-device-qa", "--taisa-voice-gateway-unenrolled"]
         app.launchEnvironment["TAISA_UI_TEST_VOICE_GATEWAY_URL"] = "https://voice.example.com"
         app.launch()
-        app.buttons["foundation.personal-qa.action"].tap()
         app.buttons["personal-qa.voice"].tap()
 
         XCTAssertTrue(app.secureTextFields["Enrollment code"].waitForExistence(timeout: 10))
@@ -212,7 +192,6 @@ import XCTest
         app.terminate()
         app.launchArguments = ["--taisa-personal-device-qa", "--taisa-voice-gateway-ready"]
         app.launch()
-        app.buttons["foundation.personal-qa.action"].tap()
         app.buttons["personal-qa.voice"].tap()
         XCTAssertTrue(app.buttons["Record"].waitForExistence(timeout: 10))
         XCTAssertFalse(app.secureTextFields["Enrollment code"].exists)
