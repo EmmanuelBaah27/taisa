@@ -29,6 +29,7 @@ struct ActionComponentTests {
 
     @Test func rowsAndStatusesNameActionMeaningWithoutRawPresentation() {
         #expect(TaisaRowEmphasis.standard != .attention)
+        #expect(TaisaRadius.listInterior.rawValue == 2)
         #expect(TaisaStatusRole.active != .completed)
         #expect(TaisaStatusRole.dropped != .overdue)
         #expect(TaisaStatusRole.reopened != .warning)
@@ -90,6 +91,8 @@ struct ActionComponentTests {
             controls.contains(".background(TaisaColor.subtleSurface.color, in: rowShape)"),
             "Navigation rows must retain the shared neutral surface when their interaction wrapper changes."
         )
+        #expect(controls.contains("RoundedRectangle(cornerRadius: TaisaRadius.listInterior.rawValue)"))
+        #expect(controls.contains(".foregroundStyle(TaisaColor.inactiveForeground.color)"))
         #expect(controls.contains("public struct TaisaToolbarAction"))
         #expect(controls.contains("public struct TaisaConfirmationDialog"))
         #expect(row.contains("public struct TaisaRow"))

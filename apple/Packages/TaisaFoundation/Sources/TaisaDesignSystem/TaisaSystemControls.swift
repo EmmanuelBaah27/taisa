@@ -79,10 +79,15 @@ public struct TaisaNavigationRow: View {
 
     private var rowContent: some View {
         HStack(spacing: TaisaSpacing.control.rawValue) {
-            if let icon { CentralIcon(icon).frame(width: 24, height: 24) }
+            if let icon {
+                CentralIcon(icon)
+                    .foregroundStyle(TaisaColor.inactiveForeground.color)
+                    .frame(width: 24, height: 24)
+            }
             TaisaText(role: .body, content: label)
             Spacer()
             CentralIcon(trailingIcon)
+                .foregroundStyle(TaisaColor.inactiveForeground.color)
                 .rotationEffect(.degrees(Self.trailingIconRotationDegrees(trailingIcon)))
                 .frame(width: 20, height: 20)
         }
@@ -93,7 +98,7 @@ public struct TaisaNavigationRow: View {
     }
 
     private var rowShape: RoundedRectangle {
-        RoundedRectangle(cornerRadius: TaisaRadius.control.rawValue)
+        RoundedRectangle(cornerRadius: TaisaRadius.listInterior.rawValue)
     }
 
     static func trailingIconRotationDegrees(_ icon: CentralIconName) -> Double {

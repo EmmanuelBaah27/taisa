@@ -79,6 +79,7 @@ public enum TaisaEffect {
 }
 
 public enum TaisaRadius: CGFloat, CaseIterable, Sendable {
+    case listInterior = 2
     case control = 12
     case panel = 16
     case historyGroup = 20
