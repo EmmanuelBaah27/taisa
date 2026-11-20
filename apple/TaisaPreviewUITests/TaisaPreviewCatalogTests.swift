@@ -135,6 +135,33 @@ final class TaisaPreviewCatalogTests: XCTestCase {
         )
     }
 
+    func testYouDestinationReturnRestoresCatalogNavigation() {
+        let app = XCUIApplication()
+        app.launch()
+
+        let search = app.searchFields["Search scenarios"]
+        XCTAssertTrue(search.waitForExistence(timeout: 5))
+        search.tap()
+        search.typeText("you.content")
+
+        let row = app.buttons.matching(
+            NSPredicate(format: "label BEGINSWITH %@", "You content")
+        ).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 5))
+        row.tap()
+
+        let privacy = element("you.destination.privacyPermissions", in: app)
+        XCTAssertTrue(privacy.waitForExistence(timeout: 5))
+        privacy.tap()
+
+        let destinationBack = app.buttons["Back"]
+        XCTAssertTrue(destinationBack.waitForExistence(timeout: 5))
+        destinationBack.tap()
+
+        XCTAssertTrue(app.buttons["Taisa Preview"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.navigationBars["You content"].exists)
+    }
+
     func testYouEditorExplainsInvalidNameAndCanCloseWithoutLosingDraft() {
         let app = XCUIApplication()
         app.launchArguments = ["-TAISAPreviewScenario", "you.content"]

@@ -85,6 +85,7 @@ private struct PreviewScenarioView: View {
         }
         .navigationTitle(scenario.title)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar(.visible, for: .navigationBar)
         .environment(\.dynamicTypeSize, dynamicTypeSize)
     }
 
