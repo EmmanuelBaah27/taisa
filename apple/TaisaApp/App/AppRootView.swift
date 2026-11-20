@@ -3,6 +3,7 @@ import SwiftUI
 import TaisaConversations
 import TaisaHome
 import TaisaStorage
+import TaisaYou
 
 @MainActor
 @Observable
@@ -27,6 +28,8 @@ struct AppRootView: View {
 #if TAISA_PERSONAL
                 PersonalVoiceSessionView()
 #endif
+            } else if showsYouVisualQA {
+                youVisualQAShell
             } else if showsChatsVisualQA {
                 chatsVisualQAShell
             } else if showsConversationOverflowQA {
@@ -142,6 +145,56 @@ struct AppRootView: View {
         false
 #endif
     }
+
+    private var showsYouVisualQA: Bool {
+#if DEBUG || TAISA_PERSONAL
+        ProcessInfo.processInfo.arguments.contains("--taisa-you-visual-qa")
+#else
+        false
+#endif
+    }
+
+    private var youVisualQAShell: some View {
+        let snapshot = Self.youVisualQASnapshot
+        return PrimaryAppShell(
+            model: PrimaryAppShellModel(selection: .you),
+            homeModel: HomeModel(client: HomeClient { .init(conversations: [], goals: [], actions: []) }),
+            conversationsModel: ConversationsModel(client: ConversationsClient(load: { .init(drafts: [], conversations: []) })),
+            conversationFactory: nil,
+            youModel: YouModel(client: YouClient(
+                load: { snapshot },
+                saveProfile: { draft in
+                    .init(
+                        profile: .init(
+                            id: "00000000-0000-4000-8000-000000000821",
+                            displayName: draft.displayName,
+                            headline: draft.headline,
+                            biography: draft.biography,
+                            updatedAtMS: 1_800_000_000_000
+                        ),
+                        diagnostics: snapshot.diagnostics
+                    )
+                }
+            ))
+        )
+    }
+
+    private static let youVisualQASnapshot = YouSnapshot(
+        profile: ProfileRecord(
+            id: "00000000-0000-4000-8000-000000000821",
+            displayName: "Baah",
+            headline: "",
+            biography: "Building a clearer record of meaningful work.",
+            updatedAtMS: 1_800_000_000_000
+        ),
+        diagnostics: .init(
+            store: .healthy,
+            recovery: .ready,
+            microphone: .granted,
+            gateway: .healthy,
+            appProtection: .enabled
+        )
+    )
 
     private var chatsVisualQAShell: some View {
         let snapshot = Self.chatsVisualQASnapshot

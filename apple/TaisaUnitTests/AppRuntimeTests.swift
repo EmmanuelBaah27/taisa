@@ -501,6 +501,18 @@ final class AppRuntimeTests: XCTestCase {
         XCTAssertTrue(source.contains("PersonalVoiceSessionView()"))
     }
 
+    func testPersonalBuildCanOpenYouVisualQAInTheRealAppShell() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let source = try String(
+            contentsOf: root.appendingPathComponent("TaisaApp/App/AppRootView.swift"),
+            encoding: .utf8
+        )
+
+        XCTAssertTrue(source.contains("--taisa-you-visual-qa"))
+        XCTAssertTrue(source.contains("PrimaryAppShellModel(selection: .you)"))
+        XCTAssertTrue(source.contains("youVisualQASnapshot"))
+    }
+
     func testOperationalFactsRemainHonestWithoutLiveHealthProof() {
         let facts = AppRuntime.operationalFacts(
             hasGatewayConfiguration: true,
