@@ -23,7 +23,8 @@ public struct TaisaSecondaryCapsuleButton<Label: View>: View {
 
     private var secondaryGlassButton: some View {
         TaisaButtonControl(style: TaisaButtonStyle(), action: action) {
-            label.frame(height: height)
+            label
         }
+        .frame(minHeight: height)
     }
 }

@@ -33,8 +33,8 @@ public struct TaisaButtonStyle: PrimitiveButtonStyle {
         let destructive = role == .destructive || configuration.role == .destructive
         if presentation == .content || role == .ghost {
             button.buttonStyle(.plain)
-        } else if #available(iOS 26.0, macOS 26.0, *), !reduceTransparency {
-            if role == .primary {
+        } else if role == .primary {
+            if #available(iOS 26.0, macOS 26.0, *), !reduceTransparency {
                 button
                     .buttonStyle(.glassProminent)
                     .tint(TaisaColor.primaryAction.color)
@@ -42,17 +42,23 @@ public struct TaisaButtonStyle: PrimitiveButtonStyle {
             } else {
                 button
                     .buttonStyle(.plain)
-                    .glassEffect(.clear.interactive(), in: buttonShape)
-                    .foregroundStyle(destructive ? TaisaColor.destructive.color : TaisaColor.foreground.color)
+                    .foregroundStyle(TaisaColor.foreground.color)
+                    .background(TaisaColor.primaryAction.color, in: buttonShape)
             }
+        } else if #available(iOS 26.0, macOS 26.0, *), !reduceTransparency {
+            button
+                .buttonStyle(.glass)
+                .foregroundStyle(destructive ? TaisaColor.destructive.color : TaisaColor.foreground.color)
+        } else if reduceTransparency {
+            button
+                .buttonStyle(.plain)
+                .foregroundStyle(destructive ? TaisaColor.destructive.color : TaisaColor.foreground.color)
+                .background(TaisaColor.raisedSurface.color, in: buttonShape)
         } else {
             button
                 .buttonStyle(.plain)
                 .foregroundStyle(destructive ? TaisaColor.destructive.color : TaisaColor.foreground.color)
-                .background(
-                    role == .primary ? TaisaColor.primaryAction.color : TaisaColor.raisedSurface.color,
-                    in: buttonShape
-                )
+                .background(.regularMaterial, in: buttonShape)
         }
     }
 

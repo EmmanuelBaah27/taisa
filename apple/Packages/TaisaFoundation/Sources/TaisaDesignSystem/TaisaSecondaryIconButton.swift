@@ -39,7 +39,7 @@ public struct TaisaSecondaryIconButton: View {
             CentralIcon(icon)
                 .foregroundStyle(iconColor.color)
                 .frame(width: TaisaControlMetric.standardIcon, height: TaisaControlMetric.standardIcon)
-                .frame(width: size, height: size)
         }
+        .frame(minWidth: size, minHeight: size)
     }
 }
