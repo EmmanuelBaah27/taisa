@@ -165,31 +165,6 @@ import TaisaStorage
         #expect(model.state.issue == .storageUnavailable)
     }
 
-    @Test func selectedActionCanSetEditAndClearItsBlocker() async {
-        let action = ActionRecord(id: UUID().uuidString, goalID: nil, title: "Blocked", detail: "", status: "active", dueAtMS: nil, createdAtMS: 1, updatedAtMS: 2)
-        let recorder = CareerMutationRecorder()
-        let model = CareerWorkModel(client: .init(
-            loadOverview: { .init(active: [], paused: [], completed: [], archived: []) },
-            setActionBlocked: { id, note in
-                await recorder.record("block:\(id):\(note ?? "")")
-                return action
-            },
-            clearActionBlocked: { id in
-                await recorder.record("clear:\(id)")
-                return action
-            }
-        ), route: .action(id: action.id))
-
-        #expect(await model.setSelectedActionBlocked(note: "Waiting on approval"))
-        #expect(await model.setSelectedActionBlocked(note: "Updated blocker"))
-        #expect(await model.clearSelectedActionBlocked())
-        #expect(await recorder.values == [
-            "block:\(action.id):Waiting on approval",
-            "block:\(action.id):Updated blocker",
-            "clear:\(action.id)",
-        ])
-    }
-
     @Test func deleteSelectedActionReportsSuccessAndReturnsToOverview() async {
         let action = ActionRecord(id: UUID().uuidString, goalID: nil, title: "Delete me", detail: "", status: "active", dueAtMS: nil, createdAtMS: 1, updatedAtMS: 2)
         let recorder = CareerMutationRecorder()

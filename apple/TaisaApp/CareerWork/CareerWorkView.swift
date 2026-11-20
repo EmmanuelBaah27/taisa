@@ -120,15 +120,6 @@ private struct TaskDetailSheetView: View {
     @State private var showsDelete = false
     @State private var showsDueDatePicker = false
     @State private var draftDueDate = Date()
-    @State private var blockerNote: String
-    @State private var isEditingBlocker = false
-
-    init(snapshot: ActionDetailSnapshot, model: CareerWorkModel, dismiss: @escaping () -> Void) {
-        self.snapshot = snapshot
-        self.model = model
-        self.dismiss = dismiss
-        _blockerNote = State(initialValue: snapshot.action.blockerNote ?? "")
-    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: TaisaSpacing.standard.rawValue) {
@@ -148,10 +139,6 @@ private struct TaskDetailSheetView: View {
                     ) {
                         draftDueDate = currentDueDate ?? Date()
                         showsDueDatePicker = true
-                    }
-
-                    if snapshot.action.status == ActionStatus.active.rawValue {
-                        blockerControls
                     }
 
                     if !snapshot.checklist.isEmpty {
@@ -324,57 +311,6 @@ private struct TaskDetailSheetView: View {
                 isCompleting = true
             } label: {
                 secondaryActionLabel("Mark as Done", icon: .completed, iconColor: .completed)
-            }
-        }
-    }
-
-    @ViewBuilder private var blockerControls: some View {
-        if isEditingBlocker {
-            TaisaField(
-                "Blocker note",
-                text: $blockerNote,
-                placeholder: "What is blocking this task?",
-                labelPresentation: .placeholderOnly
-            )
-            HStack(spacing: TaisaSpacing.compact.rawValue) {
-                TaisaButton(
-                    role: .primary,
-                    label: snapshot.action.blockedAtMS == nil ? "Mark as blocked" : "Save blocker",
-                    icon: .warning,
-                    size: .small,
-                    layout: .intrinsic
-                ) {
-                    Task {
-                        if await model.setSelectedActionBlocked(note: blockerNote) {
-                            isEditingBlocker = false
-                        }
-                    }
-                }
-                TaisaButton(role: .ghost, label: "Cancel", size: .small, layout: .intrinsic) {
-                    blockerNote = snapshot.action.blockerNote ?? ""
-                    isEditingBlocker = false
-                }
-            }
-        } else if snapshot.action.blockedAtMS != nil {
-            TaisaStatusSurface(.warning, label: "Blocked")
-            if let note = snapshot.action.blockerNote {
-                TaisaText(role: .supporting, color: .mutedForeground, content: note)
-            }
-            HStack(spacing: TaisaSpacing.compact.rawValue) {
-                TaisaButton(role: .secondary, label: "Edit blocker", icon: .edit, size: .small, layout: .intrinsic) {
-                    isEditingBlocker = true
-                }
-                TaisaButton(role: .ghost, label: "Clear blocker", icon: .undo, size: .small, layout: .intrinsic) {
-                    Task {
-                        if await model.clearSelectedActionBlocked() {
-                            blockerNote = ""
-                        }
-                    }
-                }
-            }
-        } else {
-            TaisaButton(role: .secondary, label: "Mark as blocked", icon: .warning, size: .small, layout: .intrinsic) {
-                isEditingBlocker = true
             }
         }
     }

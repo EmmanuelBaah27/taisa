@@ -183,16 +183,6 @@ public final class CareerWorkModel {
         await mutate { _ = try await client.promoteChecklistItem(id) }
     }
 
-    public func setSelectedActionBlocked(note: String?) async -> Bool {
-        guard case let .action(id) = route else { return false }
-        return await mutate { _ = try await client.setActionBlocked(id, note) }
-    }
-
-    public func clearSelectedActionBlocked() async -> Bool {
-        guard case let .action(id) = route else { return false }
-        return await mutate { _ = try await client.clearActionBlocked(id) }
-    }
-
     public func completeSelectedAction(evidenceTitle: String) async {
         guard case let .action(id) = route else { return }
         await mutate { _ = try await client.completeAction(id, evidenceTitle) }
