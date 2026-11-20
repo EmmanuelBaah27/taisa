@@ -4,10 +4,13 @@ Source cutoff: 2026-11-19. This document records source selection, not QA or Shi
 
 ## Post-cutoff review on 2026-11-20
 
+- Repository audit at Preview revision `cf8e00a4963dd0caecc89f9f301045d3d8c9064c` inspected all 65 live worktrees and found no uncommitted files. Five `/private/tmp` worktree records are prunable because their directories no longer exist; they contain no uncommitted filesystem state. No branch was merged, deleted or rewritten during the audit.
+- Exact Preview and PR candidate refs are both published at `cf8e00a4963dd0caecc89f9f301045d3d8c9064c`: `preview/taisa` and `fix/apf-93-native-reconciliation`.
 - Profile branch `codex/apf-49-profile-redesign-preview-repair` retained the approved `ProfileAvatarFallback` behavior. The candidate uses Baah's replacement `avatar.png` at the shared 48-point default button size. Its later CI-only commits stay on their CI branch.
 - Tasks branch `codex/apf-69-tasks-ui` retained the task composer overlay and Tasks-only Home behavior. The candidate keeps newer Profile and design-system contracts instead of the branch's older raw controls.
 - Button branches `feature/apf-75-native-ds-adoption` and `fix/glass-elevation-keyboard-surfaces` remain source records. The candidate owns the later 48-point default, 36-point small, shared glass surface, and keyboard overlay repair.
-- Navigation repair branches `fix/nav-haptic-microphone-recovery` and `integration/recent-experience-preview` are patch-equivalent to the candidate. The candidate keeps inactive navigation icons at the approved foreground color.
+- Navigation repair branches `fix/nav-haptic-microphone-recovery` and `integration/recent-experience-preview` remain source records. The candidate keeps active navigation icons black and inactive navigation icons at approved Grey 400.
+- Audio verification `codex/apf-90-backup-exclusion-verification` remains represented by the selected audio regression source. APF-92 is still superseded by the Profile redesign. APF-96, APF-97 and the later APF-49 workflow commits are CI-only and do not add Preview Product behavior.
 - Search stays hidden until APF-52 implements native local search. The candidate keeps conditional Drafts access.
 
 ## Selected sources
