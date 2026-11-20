@@ -62,7 +62,7 @@ final class TaisaPreviewCatalogTests: XCTestCase {
         let action = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Measure the north wall")).firstMatch
         XCTAssertTrue(action.waitForExistence(timeout: 5))
         XCTAssertTrue(action.isHittable)
-        XCTAssertFalse(app.buttons["Complete Draft the studio lighting plan"].exists)
+        XCTAssertFalse(app.buttons["Complete Measure the north wall"].exists)
         XCTAssertFalse(element("home.this-week.completion-evidence", in: app).exists)
     }
 
