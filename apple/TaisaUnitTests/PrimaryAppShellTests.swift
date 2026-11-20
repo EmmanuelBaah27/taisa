@@ -19,16 +19,46 @@ final class PrimaryAppShellTests: XCTestCase {
         XCTAssertEqual(PrimaryDestination.conversations.title, "Chats")
     }
 
-    func testCareerWorkStaysInsideHomeWithoutLeavingThePrimaryPager() {
+    func testWorkDestinationsStayInsideHomeWithoutLeavingThePrimaryPager() {
         let model = PrimaryAppShellModel(selection: .conversations)
 
-        model.showCareerWork()
+        model.showWork(.tasks(route: nil))
 
         XCTAssertEqual(model.selection, .home)
-        XCTAssertTrue(model.showsCareerWork)
+        XCTAssertEqual(model.workDestination, .tasks(route: nil))
 
         model.select(.conversations)
-        XCTAssertFalse(model.showsCareerWork)
+        XCTAssertNil(model.workDestination)
+    }
+
+    func testWorkDestinationsPreserveExactActionAndGoalIntent() {
+        let model = PrimaryAppShellModel()
+
+        model.showWork(.tasks(route: .action(id: "action-1")))
+        XCTAssertEqual(model.workDestination, .tasks(route: .action(id: "action-1")))
+
+        model.showWork(.goals(route: .goal(id: "goal-1")))
+        XCTAssertEqual(model.workDestination, .goals(route: .goal(id: "goal-1")))
+    }
+
+    func testHomeTaskPresentationStaysSeparateFromWorkNavigation() {
+        let model = PrimaryAppShellModel()
+
+        model.presentTask(id: "task-1")
+
+        XCTAssertEqual(model.selectedTaskID, "task-1")
+        XCTAssertNil(model.workDestination)
+
+        model.dismissTask()
+        XCTAssertNil(model.selectedTaskID)
+    }
+
+    func testLegacyCareerWorkRestorationRedirectsByIntent() {
+        XCTAssertEqual(WorkDestination.restoringLegacyCareerWork(routeStableID: "action:a1"), .tasks(route: .action(id: "a1")))
+        XCTAssertEqual(WorkDestination.restoringLegacyCareerWork(routeStableID: "goal:g1"), .goals(route: .goal(id: "g1")))
+        XCTAssertEqual(WorkDestination.restoringLegacyCareerWork(routeStableID: "milestone:g1"), .goals(route: .goal(id: "g1")))
+        XCTAssertEqual(WorkDestination.restoringLegacyCareerWork(routeStableID: "evidence:e1"), .goals(route: .evidence(id: "e1")))
+        XCTAssertEqual(WorkDestination.restoringLegacyCareerWork(routeStableID: nil), .tasks(route: nil))
     }
 
     func testPrimaryNavigationMatchesTheThreeDestinationProductArchitecture() {
@@ -78,7 +108,11 @@ final class PrimaryAppShellTests: XCTestCase {
         XCTAssertTrue(source.contains(".tabViewStyle(.page(indexDisplayMode: .never))"))
         XCTAssertTrue(source.contains(".simultaneousGesture(primaryPageCompletionGesture)"))
         XCTAssertFalse(source.contains("if model.selection == .careerWork"))
-        XCTAssertTrue(source.contains("model.showsCareerWork"))
+        XCTAssertTrue(source.contains("model.workDestination"))
+        XCTAssertTrue(source.contains("TasksView("))
+        XCTAssertFalse(source.contains("ActionsView("))
+        XCTAssertTrue(source.contains("GoalsView("))
+        XCTAssertFalse(source.contains("CareerWorkView("))
         XCTAssertTrue(source.contains(".safeAreaInset(edge: .bottom, spacing: 0)"))
         XCTAssertTrue(source.contains("TaisaBottomChrome"))
         XCTAssertFalse(source.contains("PageEdgeFade(.navigation)"))
@@ -86,6 +120,33 @@ final class PrimaryAppShellTests: XCTestCase {
         XCTAssertFalse(source.contains("primaryPageBottomReservation"))
         XCTAssertFalse(source.contains("selection == .conversations ? 0"))
         XCTAssertFalse(source.contains(".background {\n                    PageEdgeFade(.navigation)"))
+        XCTAssertTrue(source.contains("TaisaExpandableSheet"))
+        XCTAssertTrue(source.contains("TaskDetailSheetContent("))
+        XCTAssertTrue(source.contains("taskChanged: { Task { await homeModel.load() } }"))
+        XCTAssertTrue(source.contains("careerWorkModel.returnToOverview()"))
+        XCTAssertTrue(source.contains("case let .action(id): model.presentTask(id: id)"))
+        XCTAssertTrue(source.contains("case .actions:"))
+        XCTAssertTrue(source.contains("model.showWork(.tasks(route: nil))"))
+    }
+
+    func testAppWideOverlayHostStaysGenericAndAboveShellChrome() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let shell = try String(contentsOf: root.appendingPathComponent("TaisaApp/AppShell/PrimaryAppShell.swift"), encoding: .utf8)
+        let host = try String(contentsOf: root.appendingPathComponent("TaisaApp/AppShell/AppOverlayHost.swift"), encoding: .utf8)
+
+        XCTAssertTrue(shell.contains("AppOverlayHost"))
+        XCTAssertTrue(host.contains("struct AppOverlayHost<Content: View>"))
+        XCTAssertTrue(host.contains(".environment("))
+        XCTAssertTrue(host.contains("\\.appOverlayActions,"))
+        XCTAssertTrue(host.contains("presentation.content"))
+        XCTAssertTrue(host.contains("@Environment(\\.accessibilityReduceMotion)"))
+        XCTAssertTrue(host.contains("TaisaMotion.overlayEaseOut"))
+        XCTAssertTrue(host.contains("presentation.backdrop"))
+        XCTAssertTrue(host.contains(".move(edge: .bottom)"))
+        XCTAssertTrue(host.contains(".transition(.opacity)"))
+        XCTAssertTrue(host.contains("reduceMotion ? .opacity"))
+        XCTAssertFalse(host.contains("TaskComposerView"))
+        XCTAssertFalse(host.contains("Task"))
     }
 
     func testVoiceEntryIntentIsConsumedOnlyOnce() {

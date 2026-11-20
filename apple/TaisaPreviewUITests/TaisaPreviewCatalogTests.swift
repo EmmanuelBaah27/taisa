@@ -43,21 +43,89 @@ final class TaisaPreviewCatalogTests: XCTestCase {
         }
     }
 
-    func testCombinedHomeOpensNestedInsights() {
+    func testInsightsScenarioShowsNestedInsightHierarchy() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-TAISAPreviewScenario", "home.insights"]
+        app.launch()
+
+        XCTAssertTrue(app.navigationBars["Insights"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Needs review"].exists)
+        XCTAssertTrue(app.staticTexts["History"].exists)
+    }
+
+    func testCombinedHomeRoutesCurrentFocusWithoutCompletionManagement() {
         let app = XCUIApplication()
         app.launchArguments = ["-TAISAPreviewScenario", "home.combined"]
         app.launch()
 
-        let weeklyWork = app.staticTexts["Draft the studio lighting plan"]
-        XCTAssertTrue(weeklyWork.waitForExistence(timeout: 5))
-        let insight = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS %@", "Your best planning sessions happen before midday.")
+        let action = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Draft Peu Commun pitch deck")).firstMatch
+        XCTAssertTrue(action.waitForExistence(timeout: 5))
+        XCTAssertTrue(action.isHittable)
+        XCTAssertFalse(app.buttons["Complete Draft Peu Commun pitch deck"].exists)
+        XCTAssertFalse(element("home.this-week.completion-evidence", in: app).exists)
+    }
+
+    func testTaskComposerCreatesAndRevealsTaskOnHome() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-TAISAPreviewScenario", "home.taskComposer"]
+        app.launch()
+
+        XCTAssertTrue(element("preview.ready.home.taskComposer", in: app).waitForExistence(timeout: 5))
+        let due = app.buttons["Due"]
+        XCTAssertTrue(due.waitForExistence(timeout: 5))
+        due.tap()
+        let done = app.buttons["Done"]
+        XCTAssertTrue(done.waitForExistence(timeout: 5))
+        done.tap()
+        let selectedDueDate = app.buttons.matching(
+            NSPredicate(format: "label BEGINSWITH %@", "Due date,")
         ).firstMatch
-        XCTAssertTrue(insight.waitForExistence(timeout: 5))
-        insight.tap()
-        XCTAssertTrue(app.navigationBars["Insights"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Needs review"].exists)
-        XCTAssertTrue(app.staticTexts["History"].exists)
+        XCTAssertTrue(selectedDueDate.waitForExistence(timeout: 5))
+        XCTAssertNotEqual(selectedDueDate.label, "Due")
+        let title = app.textFields["Task title"]
+        XCTAssertTrue(title.waitForExistence(timeout: 5))
+        title.tap()
+        title.typeText("Book electrician")
+        let submit = app.buttons["Save task"]
+        XCTAssertTrue(submit.waitForExistence(timeout: 5))
+        submit.tap()
+
+        XCTAssertTrue(app.staticTexts["Task added"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Book electrician"].waitForExistence(timeout: 5))
+        XCTAssertFalse(element("home.tasks.composer", in: app).exists)
+    }
+
+    func testTaskComposerDismissesWhenBackdropIsTapped() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-TAISAPreviewScenario", "home.taskComposer"]
+        app.launch()
+
+        XCTAssertTrue(element("preview.ready.home.taskComposer", in: app).waitForExistence(timeout: 5))
+        let composer = element("home.tasks.composer", in: app)
+        XCTAssertTrue(composer.waitForExistence(timeout: 5))
+
+        app.windows.firstMatch
+            .coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.25))
+            .tap()
+
+        XCTAssertTrue(composer.waitForNonExistence(timeout: 2))
+    }
+
+    func testCareerActionScenarioShowsCanonicalDetailHierarchy() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-TAISAPreviewScenario", "actions.action"]
+        app.launch()
+
+        let detail = element("career-work.action.detail", in: app)
+        XCTAssertTrue(detail.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Outline first case study"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Checklist"].exists)
+        let evidence = element("career-work.action.evidence", in: app)
+        let history = element("career-work.action.history", in: app)
+        for _ in 0..<4 where !evidence.exists || !history.exists { detail.swipeUp() }
+        XCTAssertTrue(evidence.waitForExistence(timeout: 5))
+        XCTAssertTrue(history.waitForExistence(timeout: 5))
+        retainScreenshot(of: app, name: "career-action-detail")
     }
 
     private func element(_ identifier: String, in app: XCUIApplication) -> XCUIElement {

@@ -4,7 +4,6 @@ public enum TaisaBottomChromeContract {
     public static let fadeHeight = TaisaControlMetric.primaryNavigationReservedHeight
     public static let coversBottomSafeArea = true
 }
-
 /// Shared bottom chrome for primary destinations.
 ///
 /// Place this component in a root `safeAreaInset(edge: .bottom)` so its fade
@@ -27,7 +26,6 @@ public struct TaisaBottomChrome<Content: View>: View {
             }
     }
 }
-
 /// Shared top chrome for the primary Home, Chats, and You destinations.
 public struct TaisaPageHeader<Actions: View>: View {
     private let title: String
@@ -56,6 +54,32 @@ public struct TaisaPageHeader<Actions: View>: View {
             PageEdgeFade(.header)
                 .ignoresSafeArea(edges: [.top, .horizontal])
         }
+    }
+}
+public struct TaisaDatedPageHeader<Actions: View>: View {
+    private let date: String
+    private let title: String
+    private let actions: Actions
+
+    public init(date: String, title: String, @ViewBuilder actions: () -> Actions) {
+        self.date = date
+        self.title = title
+        self.actions = actions()
+    }
+
+    public var body: some View {
+        HStack(alignment: .bottom, spacing: TaisaSpacing.standard.rawValue) {
+            VStack(alignment: .leading, spacing: TaisaTaskSpacing.headerGap) {
+                TaisaText(role: .taskSupporting, color: .mutedForeground, content: date)
+                TaisaText(role: .datedPageTitle, content: title)
+            }
+            Spacer(minLength: 0)
+            actions
+        }
+        .padding(.horizontal, TaisaSpacing.content.rawValue)
+        .padding(.vertical, TaisaSpacing.control.rawValue)
+        .frame(height: TaisaControlMetric.taskHeaderHeight)
+        .background(TaisaColor.background.color)
     }
 }
 
@@ -136,100 +160,5 @@ public struct ConversationComposerChrome<Content: View, Backdrop: View>: View {
                     .ignoresSafeArea(edges: [.horizontal, .bottom])
                     .allowsHitTesting(false)
             }
-    }
-}
-
-/// The shared circular secondary action used in primary page headers.
-public struct TaisaSecondaryIconButton: View {
-    private let icon: CentralIconName
-    private let accessibilityLabel: String
-    private let accessibilityHint: String?
-    private let size: CGFloat
-    private let action: @MainActor () -> Void
-
-    public init(
-        icon: CentralIconName,
-        accessibilityLabel: String,
-        accessibilityHint: String? = nil,
-        size: CGFloat = TaisaControlMetric.headerActionHeight,
-        action: @escaping @MainActor () -> Void
-    ) {
-        self.icon = icon
-        self.accessibilityLabel = accessibilityLabel
-        self.accessibilityHint = accessibilityHint
-        self.size = size
-        self.action = action
-    }
-
-    public var body: some View {
-        secondaryGlassButton
-            .accessibilityLabel(accessibilityLabel)
-            .accessibilityHint(accessibilityHint ?? "")
-    }
-
-    @ViewBuilder private var secondaryGlassButton: some View {
-        let button = Button(action: action) {
-            CentralIcon(icon)
-                .frame(
-                    width: TaisaControlMetric.standardIcon,
-                    height: TaisaControlMetric.standardIcon
-                )
-                .frame(
-                    width: size,
-                    height: size
-                )
-        }
-
-        if #available(iOS 26.0, macOS 26.0, *) {
-            button
-                .buttonStyle(.plain)
-                .glassEffect(.clear.interactive(), in: Circle())
-                .contentShape(Circle())
-        } else {
-            button
-                .buttonStyle(.plain)
-                .background(.regularMaterial, in: Circle())
-                .contentShape(Circle())
-        }
-    }
-}
-
-/// The shared capsule secondary action used in primary page headers.
-public struct TaisaSecondaryCapsuleButton<Label: View>: View {
-    private let action: @MainActor () -> Void
-    private let label: Label
-    private let height: CGFloat
-
-    public init(
-        height: CGFloat = TaisaControlMetric.headerActionHeight,
-        action: @escaping @MainActor () -> Void,
-        @ViewBuilder label: () -> Label
-    ) {
-        self.height = height
-        self.action = action
-        self.label = label()
-    }
-
-    public var body: some View {
-        secondaryGlassButton
-    }
-
-    @ViewBuilder private var secondaryGlassButton: some View {
-        let button = Button(action: action) {
-            label
-                .frame(height: height)
-        }
-
-        if #available(iOS 26.0, macOS 26.0, *) {
-            button
-                .buttonStyle(.plain)
-                .glassEffect(.clear.interactive(), in: Capsule())
-                .contentShape(Capsule())
-        } else {
-            button
-                .buttonStyle(.plain)
-                .background(.regularMaterial, in: Capsule())
-                .contentShape(Capsule())
-        }
     }
 }

@@ -18,6 +18,22 @@ import Testing
         #expect(ActionStatus.open.canTransition(to: .completed))
         #expect(ActionStatus.completed.canTransition(to: .open))
         #expect(!ActionStatus.completed.canTransition(to: .completed))
+        #expect(ActionStatus.active.canTransition(to: .dropped))
+        #expect(ActionStatus.dropped.canTransition(to: .active))
+        #expect(ActionStatus.open == .active)
+    }
+
+    @Test func canonicalActionTypesOwnLocalDayOriginChecklistHistoryAndDuplicateDecisions() throws {
+        #expect(try ActionDueDay(validating: "2026-10-23").rawValue == "2026-10-23")
+        #expect(throws: CareerWorkContractError.invalidDueDay) { try ActionDueDay(validating: "2026-02-30") }
+        #expect(throws: CareerWorkContractError.invalidDueDay) { try ActionDueDay(validating: "23-10-2026") }
+        #expect(ActionOrigin.allCases == [.manual])
+        #expect(ActionChecklistState.allCases == [.pending, .completed, .promoted])
+        #expect(ActionEventKind.allCases.contains(.completionCorrected))
+        #expect(ActionParentContext.milestone(goalID: "goal", milestoneID: "milestone") != .goal(id: "goal"))
+        #expect(ActionLifecycleFilter.allCases == [.active, .completed, .dropped])
+        #expect(ActionDueFilter.allCases == [.all, .overdue, .due, .noDueDay])
+        #expect(ActionDuplicateDecision.allCases == [.openExisting, .createSeparate])
     }
 
     @Test func titlesAreTrimmedAndEmptyTitlesFailWithoutEchoingContent() throws {

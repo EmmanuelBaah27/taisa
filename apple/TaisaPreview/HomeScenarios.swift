@@ -9,6 +9,7 @@ enum HomeScenarios {
         scenario("home.loading", "Home loading", .adaptive, mode: .loading),
         scenario("home.empty", "Home empty", .adaptive, mode: .empty),
         scenario("home.content", "Home content", .adaptive, mode: .content),
+        scenario("home.taskComposer", "Home task composer", .phone, mode: .taskComposer),
         scenario("home.combined", "Home combined", .adaptive, mode: .combined),
         scenario("home.insights", "Home insights", .adaptive, mode: .insights),
         scenario("home.refreshing", "Home refreshing", .adaptive, mode: .refreshing),
@@ -47,6 +48,7 @@ enum HomeScenarioMode: Sendable, Equatable {
     case loading
     case empty
     case content
+    case taskComposer
     case combined
     case insights
     case refreshing
@@ -65,7 +67,9 @@ extension HomeSnapshot {
             GoalRecord(id: "20000000-0000-0000-0000-000000000001", title: "Finish the studio", detail: "A fictional preview goal", status: "active", createdAtMS: 1, updatedAtMS: 3)
         ],
         actions: [
-            ActionRecord(id: "30000000-0000-0000-0000-000000000001", goalID: nil, title: "Measure the north wall", detail: "", status: "open", dueAtMS: 1_800_000_000_000, createdAtMS: 1, updatedAtMS: 2)
+            ActionRecord(id: "30000000-0000-0000-0000-000000000001", goalID: nil, title: "Draft Peu Commun pitch deck", detail: "", status: "open", dueAtMS: nil, createdAtMS: 1, updatedAtMS: 2, dueDay: ActionDueDay(rawValue: "2026-11-18")),
+            ActionRecord(id: "30000000-0000-0000-0000-000000000006", goalID: nil, title: "Luuknow website strategy", detail: "", status: "open", dueAtMS: nil, createdAtMS: 1, updatedAtMS: 2),
+            ActionRecord(id: "30000000-0000-0000-0000-000000000007", goalID: nil, title: "Follow up with Erica on pitch deck", detail: "", status: "open", dueAtMS: nil, createdAtMS: 1, updatedAtMS: 2, dueDay: ActionDueDay(rawValue: "2026-11-20"))
         ]
     )
 
@@ -73,6 +77,11 @@ extension HomeSnapshot {
         conversations: previewContent.conversations,
         goals: previewContent.goals,
         actions: previewContent.actions,
+        actionPrompts: [
+            HomeActionPrompt(action: ActionRecord(id: "30000000-0000-0000-0000-000000000003", goalID: nil, title: "Send the overdue lighting brief", detail: "", status: ActionStatus.active.rawValue, dueAtMS: nil, createdAtMS: 1, updatedAtMS: 3, dueDay: ActionDueDay(rawValue: "2027-01-10")), reason: .overdue),
+            HomeActionPrompt(action: ActionRecord(id: "30000000-0000-0000-0000-000000000005", goalID: nil, title: "Confirm the electrician schedule", detail: "", status: ActionStatus.active.rawValue, dueAtMS: nil, createdAtMS: 1, updatedAtMS: 5, blockedAtMS: 5, blockerNote: "Waiting for the electrician"), reason: .blocked),
+            HomeActionPrompt(action: ActionRecord(id: "30000000-0000-0000-0000-000000000004", goalID: nil, title: "Revisit the supplier shortlist", detail: "", status: ActionStatus.active.rawValue, dueAtMS: nil, createdAtMS: 1, updatedAtMS: 4), reason: .recentlyReopened),
+        ],
         thisWeek: [
             WeeklyWorkItem(
                 action: ActionRecord(
@@ -96,6 +105,13 @@ extension HomeSnapshot {
             )
         ],
         unresolvedPriorWeekCount: 2,
+        overdueActions: [
+            ActionRecord(id: "30000000-0000-0000-0000-000000000003", goalID: nil, title: "Send the overdue lighting brief", detail: "", status: ActionStatus.active.rawValue, dueAtMS: nil, createdAtMS: 1, updatedAtMS: 3, dueDay: ActionDueDay(rawValue: "2027-01-10"))
+        ],
+        recentlyReopenedActions: [
+            ActionRecord(id: "30000000-0000-0000-0000-000000000004", goalID: nil, title: "Revisit the supplier shortlist", detail: "", status: ActionStatus.active.rawValue, dueAtMS: nil, createdAtMS: 1, updatedAtMS: 4)
+        ],
+        actionReviewFacts: .init(active: 4, completed: 2, dropped: 1, reopened: 1),
         leadInsight: .previewCurrent,
         hasConfirmedInsightHistory: true
     )

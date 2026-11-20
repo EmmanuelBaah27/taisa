@@ -16,6 +16,18 @@ import { validatePullRequestContract } from '../validate-pr-contract.mjs';
 
 const repositoryRoot = resolve(import.meta.dirname, '../../..');
 
+const shouldCopyAppleFixture = (source) =>
+  !source.includes('/Packages/')
+  && !source.includes('/Taisa.xcodeproj/')
+  && !source.includes('/DerivedData/');
+
+test('native project fixtures exclude generated and build artifacts', () => {
+  assert.equal(shouldCopyAppleFixture('/repo/apple/TaisaApp/Home/HomeView.swift'), true);
+  assert.equal(shouldCopyAppleFixture('/repo/apple/Packages/TaisaFoundation/Package.swift'), false);
+  assert.equal(shouldCopyAppleFixture('/repo/apple/Taisa.xcodeproj/project.pbxproj'), false);
+  assert.equal(shouldCopyAppleFixture('/repo/apple/DerivedData/device/Build/Taisa.app'), false);
+});
+
 // Security regression requested by Task 5 review: native selection bypasses
 // the explicit local-only/expiring clipboard boundary.
 test('recovery secret has no unrestricted native selection or clipboard route', async () => {
@@ -68,7 +80,7 @@ test('personal capability mutations are rejected without changing live entitleme
   const fixture = await mkdtemp(join(tmpdir(), 'taisa-personal-project-'));
   await cp(resolve(repositoryRoot, 'apple'), join(fixture, 'apple'), {
     recursive: true,
-    filter: (source) => !source.includes('/Packages/') && !source.includes('/Taisa.xcodeproj/'),
+    filter: shouldCopyAppleFixture,
   });
   const liveNames = ['TaisaDev', 'Taisa', 'TaisaPreview'];
   const before = await Promise.all(liveNames.map((name) => readFile(join(fixture, `apple/Config/${name}.entitlements`))));
@@ -111,7 +123,7 @@ test('personal builds cannot silently drop the approved voice gateway', async ()
   const fixture = await mkdtemp(join(tmpdir(), 'taisa-personal-gateway-'));
   await cp(resolve(repositoryRoot, 'apple'), join(fixture, 'apple'), {
     recursive: true,
-    filter: (source) => !source.includes('/Packages/') && !source.includes('/Taisa.xcodeproj/'),
+    filter: shouldCopyAppleFixture,
   });
   assert.deepEqual(await verifyNativeProject(fixture), []);
 
@@ -332,7 +344,8 @@ test('combined native verification and CI pin every required gate', async () => 
   }
   assert.match(combinedScript, /reset_simulator_app\(\)/);
   assert.match(combinedScript, /apple\/DerivedData/);
-  assert.doesNotMatch(combinedScript, /TMPDIR|\/private\/tmp/);
+  assert.match(combinedScript, /export TMPDIR="\$\{repository_root\}\/\.native-tmp"/);
+  assert.doesNotMatch(combinedScript, /\/private\/tmp/);
   assert.equal(
     [...combinedScript.matchAll(/reset_simulator_app "\$\{(?:iphone|ipad)_name\}" com\.taisa\.app\.(?:dev|preview|personal)/g)].length,
     3,

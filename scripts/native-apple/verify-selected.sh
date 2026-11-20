@@ -9,8 +9,12 @@ fi
 risks=",$1,"
 script_directory="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repository_root="$(cd "${script_directory}/../.." && pwd)"
-artifact_root="${TAISA_NATIVE_ARTIFACTS:-$(mktemp -d "${TMPDIR:-/tmp}/taisa-native-selected.XXXXXX")}"
+default_artifact_parent="${repository_root}/apple/DerivedData"
+mkdir -p "${default_artifact_parent}"
+artifact_root="${TAISA_NATIVE_ARTIFACTS:-$(mktemp -d "${default_artifact_parent}/taisa-native-selected.XXXXXX")}"
 mkdir -p "${artifact_root}"
+export TMPDIR="${repository_root}/.native-tmp"
+mkdir -p "${TMPDIR}"
 
 cd "${repository_root}"
 
