@@ -127,6 +127,8 @@ final class ConversationViewContractTests: XCTestCase {
         }
         XCTAssertTrue(source.contains("interactiveDismissDisabled"))
         XCTAssertTrue(source.contains("confirmationDialog"))
+        XCTAssertTrue(source.contains("model.presentationPhase.keepsContentVisible"))
+        XCTAssertFalse(source.contains(".opacity(model.isClosing ? 0 : 1)"))
         XCTAssertTrue(source.contains(".task(id: messages.last?.id)"))
         XCTAssertTrue(source.contains("conversation.timeline-bottom"))
         XCTAssertTrue(source.contains("hasPositionedInitialMessages"))

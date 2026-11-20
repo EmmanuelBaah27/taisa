@@ -77,7 +77,7 @@ struct ConversationView: View {
             }
             .toolbar(.hidden, for: .navigationBar)
         }
-        .opacity(model.isClosing ? 0 : 1)
+        .opacity(model.presentationPhase.keepsContentVisible ? 1 : 0)
         .background(TaisaColor.background.color.ignoresSafeArea())
         .accessibilityIdentifier("conversation.root")
         .interactiveDismissDisabled(true)

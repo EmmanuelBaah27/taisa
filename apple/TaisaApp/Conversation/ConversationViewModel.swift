@@ -108,6 +108,9 @@ final class ConversationViewModel {
     private(set) var title: String
     private(set) var composer: ComposerState
     private(set) var isClosing = false
+    var presentationPhase: TaisaImmersivePresentationPhase {
+        isClosing ? .committing : .active
+    }
     private(set) var messages: [MessageRecord] = []
     private(set) var assistantResponses: [String: AssistantResponseRecord] = [:]
     private(set) var confirmation: Confirmation?
