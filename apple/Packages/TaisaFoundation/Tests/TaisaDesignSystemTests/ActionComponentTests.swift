@@ -86,6 +86,10 @@ struct ActionComponentTests {
         #expect(controls.contains("public struct TaisaPicker"))
         #expect(controls.contains("public struct TaisaMenu"))
         #expect(controls.contains("public struct TaisaNavigationRow"))
+        #expect(
+            controls.contains(".background(TaisaColor.subtleSurface.color, in: rowShape)"),
+            "Navigation rows must retain the shared neutral surface when their interaction wrapper changes."
+        )
         #expect(controls.contains("public struct TaisaToolbarAction"))
         #expect(controls.contains("public struct TaisaConfirmationDialog"))
         #expect(row.contains("public struct TaisaRow"))

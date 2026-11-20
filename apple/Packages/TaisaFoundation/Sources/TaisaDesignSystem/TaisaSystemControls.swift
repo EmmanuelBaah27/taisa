@@ -86,8 +86,14 @@ public struct TaisaNavigationRow: View {
                 .rotationEffect(.degrees(Self.trailingIconRotationDegrees(trailingIcon)))
                 .frame(width: 20, height: 20)
         }
-        .frame(minHeight: 48)
+        .frame(maxWidth: .infinity, minHeight: TaisaButtonSize.standard.minimumHeight)
+        .padding(.horizontal, TaisaSpacing.standard.rawValue)
+        .background(TaisaColor.subtleSurface.color, in: rowShape)
         .contentShape(Rectangle())
+    }
+
+    private var rowShape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: TaisaRadius.control.rawValue)
     }
 
     static func trailingIconRotationDegrees(_ icon: CentralIconName) -> Double {
