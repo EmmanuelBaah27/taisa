@@ -143,7 +143,11 @@ private struct CareerProfileEditor: View {
                         size: TaisaProfileMetric.editorAvatar
                     )
                     Spacer()
-                    TaisaSecondaryIconButton(icon: .profileClose, accessibilityLabel: "Close profile editor") {
+                    TaisaSecondaryIconButton(
+                        icon: .profileClose,
+                        accessibilityLabel: "Close profile editor",
+                        elevation: .floating
+                    ) {
                         closing = true
                         Task {
                             if !model.profileValidation.isValid {

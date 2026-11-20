@@ -440,9 +440,13 @@ struct ConversationTimeline: View {
         }
     }
 
-    private func messageText(_ message: MessageRecord) -> Text {
-        if message.role == "assistant", let markdown = try? AttributedString(markdown: message.body) { return TaisaText.native(markdown) }
-        return TaisaText.native(message.body)
+    @ViewBuilder private func messageText(_ message: MessageRecord) -> some View {
+        if message.role == "assistant", let markdown = try? AttributedString(markdown: message.body) {
+            TaisaText.native(markdown, role: .body)
+                .lineSpacing(TaisaTypography.body.lineSpacing)
+        } else {
+            TaisaText(role: .body, content: message.body)
+        }
     }
 
     private func toggleExpansion(for messageID: String) {

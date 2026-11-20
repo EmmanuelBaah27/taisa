@@ -150,7 +150,7 @@ struct PrimaryAppShell: View {
                 }
             }
         }
-        .fullScreenCover(item: Binding(
+        .sheet(item: Binding(
             get: { model.conversationRoute },
             set: { if $0 == nil { model.dismissConversation() } }
         )) { route in
@@ -160,7 +160,7 @@ struct PrimaryAppShell: View {
                 factory: conversationFactory,
                 dismiss: dismissConversationAndRefresh
             )
-            .presentationBackground(.clear)
+            .presentationDetents([.large])
         }
             .sheet(isPresented: taskDetailPresented, onDismiss: refreshHomeAfterTaskDetail) {
                 if let actionID = model.selectedTaskID {
@@ -223,11 +223,7 @@ struct PrimaryAppShell: View {
     @MainActor
     private func dismissConversationAndRefresh() {
         Task {
-            var transaction = Transaction(animation: nil)
-            transaction.disablesAnimations = true
-            withTransaction(transaction) {
-                model.dismissConversation()
-            }
+            model.dismissConversation()
             await conversationsModel.load()
         }
     }

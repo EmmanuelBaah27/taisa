@@ -194,7 +194,7 @@ final class ConversationViewModelTests: XCTestCase {
         XCTAssertEqual(model.confirmation, .saveDiscardOrCancel)
     }
 
-    func testSaveStartsPresentationExitBeforeDismissingConversation() async {
+    func testSaveDismissesConversationAfterDurableSave() async {
         var dismissed = 0
         let client = ConversationScreenClient(
             beginVoice: {}, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
@@ -216,10 +216,6 @@ final class ConversationViewModelTests: XCTestCase {
         for _ in 0..<100 where model.confirmation != nil { await Task.yield() }
 
         XCTAssertNil(model.confirmation)
-        XCTAssertEqual(model.presentationPhase, .committing)
-        XCTAssertEqual(dismissed, 0)
-        model.completePresentationExit()
-        XCTAssertEqual(model.presentationPhase, .dismissed)
         await save.value
         XCTAssertEqual(dismissed, 1)
     }
@@ -252,8 +248,6 @@ final class ConversationViewModelTests: XCTestCase {
         model.requestClose()
         await Task.yield()
 
-        XCTAssertEqual(model.presentationPhase, .committing)
-        model.completePresentationExit()
         XCTAssertEqual(dismissed, 1)
         XCTAssertNil(model.confirmation)
     }
@@ -1094,8 +1088,6 @@ final class ConversationViewModelTests: XCTestCase {
 
         let recordedEvents = await events.values()
         XCTAssertEqual(recordedEvents, ["discard-draft", "discard-conversation"])
-        XCTAssertEqual(model.presentationPhase, .committing)
-        model.completePresentationExit()
         XCTAssertEqual(dismissed, 1)
     }
 
@@ -1126,8 +1118,6 @@ final class ConversationViewModelTests: XCTestCase {
 
         await finishPreparation.open()
         try? await preparation.value
-        XCTAssertEqual(model.presentationPhase, .committing)
-        model.completePresentationExit()
         XCTAssertEqual(dismissed, 1)
     }
 
@@ -1158,8 +1148,6 @@ final class ConversationViewModelTests: XCTestCase {
 
         await finishCleanup.open()
         await discard.value
-        XCTAssertEqual(model.presentationPhase, .committing)
-        model.completePresentationExit()
         XCTAssertEqual(dismissed, 1)
     }
 
@@ -1262,8 +1250,6 @@ final class ConversationViewModelTests: XCTestCase {
         await durableCallback.wait()
         XCTAssertFalse(model.closeActionDisabled)
         model.requestClose()
-        XCTAssertEqual(model.presentationPhase, .committing)
-        model.completePresentationExit()
         XCTAssertEqual(dismissed, 1)
         await finishGate.open()
         await send.value
@@ -1353,8 +1339,6 @@ final class ConversationViewModelTests: XCTestCase {
         model.cancelRecoveryAndClose()
         let counts = await client.discardCounts()
         XCTAssertEqual(counts, [0, 0])
-        XCTAssertEqual(model.presentationPhase, .committing)
-        model.completePresentationExit()
         XCTAssertEqual(dismissed, 1)
     }
 

@@ -109,7 +109,6 @@ final class ConversationViewModel {
     private(set) var title: String
     private(set) var composer: ComposerState
     private(set) var isClosing = false
-    private(set) var presentationPhase: TaisaImmersivePresentationPhase = .active
     private(set) var messages: [MessageRecord] = []
     private(set) var assistantResponses: [String: AssistantResponseRecord] = [:]
     private(set) var confirmation: Confirmation?
@@ -746,20 +745,13 @@ final class ConversationViewModel {
 
     private func closeConversation() {
         isClosing = true
-        guard presentationPhase == .active else { return }
-        presentationPhase = .committing
+        dismiss()
     }
 
     func completeRecorderExit() {
         guard recorderExitInFlight else { return }
         composer = .waitingForReply
         recorderExitInFlight = false
-    }
-
-    func completePresentationExit() {
-        guard presentationPhase == .committing else { return }
-        presentationPhase = .dismissed
-        dismiss()
     }
 
     func requestCorrection(_ message: MessageRecord) {

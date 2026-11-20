@@ -8,7 +8,6 @@ import UIKit
 struct ConversationView: View {
     @State var model: ConversationViewModel
     @State private var recorderExitProgress = false
-    @State private var presentationVisible = true
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
@@ -84,7 +83,6 @@ struct ConversationView: View {
             .toolbar(.hidden, for: .navigationBar)
         }
         .background(TaisaColor.background.color.ignoresSafeArea())
-        .opacity(presentationVisible ? 1 : 0)
         .accessibilityIdentifier("conversation.root")
         .interactiveDismissDisabled(true)
         .task { await model.start() }
@@ -102,19 +100,6 @@ struct ConversationView: View {
             } completion: {
                 model.completeRecorderExit()
                 recorderExitProgress = false
-            }
-        }
-        .onChange(of: model.presentationPhase) { _, phase in
-            guard phase == .committing else { return }
-            guard !reduceMotion else {
-                presentationVisible = false
-                model.completePresentationExit()
-                return
-            }
-            withAnimation(TaisaMotion.overlayEaseOut, completionCriteria: .logicallyComplete) {
-                presentationVisible = false
-            } completion: {
-                model.completePresentationExit()
             }
         }
         .sheet(isPresented: Binding(

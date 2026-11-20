@@ -293,7 +293,8 @@ struct ConversationComponentTests {
         #expect(secondaryControls.contains(".contentShape(.interaction, Capsule().inset(by: -size.hitSlop))"))
         #expect(secondaryControls.contains("elevation: TaisaSecondaryButtonElevation"))
         #expect(secondaryControls.contains("self.elevation = elevation"))
-        #expect(secondaryControls.contains("role: elevation == .floating ? .secondary : .ghost"))
+        #expect(secondaryControls.contains("role: .ghost"))
+        #expect(!secondaryControls.contains("elevation == .floating ? .secondary"))
         #expect(tokens.contains("public static let secondaryButtonShadowOpacity"))
         #expect(!actionBar.contains("glassStyle: .clear"))
         #expect(actionBar.contains("TaisaSecondaryIconButton(icon: icon, accessibilityLabel: label, action: action)"))
@@ -344,7 +345,15 @@ struct ConversationComponentTests {
         #expect(CentralIconName.play != .chevronDown)
     }
 
-    @Test func responseActionsUseSharedSemanticControls() {
+    @Test func responseActionsUseSharedSemanticControls() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let source = try String(
+            contentsOf: root.appendingPathComponent("Sources/TaisaDesignSystem/ResponseActionControls.swift"),
+            encoding: .utf8
+        )
         #expect(ResponseActionIconButton.Contract.iconSize == 16)
         #expect(ResponseActionIconButton.Contract.visualWidth == 24)
         #expect(ResponseActionIconButton.Contract.minimumHitHeight == 44)
@@ -352,6 +361,8 @@ struct ConversationComponentTests {
         #expect(FeedbackTextEditor.Contract.minimumHeight == 112)
         #expect(ActionPanelContract.usesRaisedSurface)
         #expect(TaisaButtonRole.destructive != .secondary)
+        #expect(source.contains("TaisaButtonStyle(role: .ghost, shape: .circle)"))
+        #expect(source.contains(".frame(minHeight: Contract.minimumHitHeight, alignment: .top)"))
     }
 
     @Test func toastContractIsTopPlacedAndAccessible() {

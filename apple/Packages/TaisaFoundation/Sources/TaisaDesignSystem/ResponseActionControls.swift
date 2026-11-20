@@ -25,11 +25,11 @@ public struct ResponseActionIconButton: View {
     }
 
     public var body: some View {
-        TaisaButtonControl(style: TaisaButtonStyle(shape: .circle), action: action) {
+        TaisaButtonControl(style: TaisaButtonStyle(role: .ghost, shape: .circle), action: action) {
             CentralIcon(icon)
                 .frame(width: Contract.iconSize, height: Contract.iconSize)
                 .frame(width: Contract.visualWidth)
-                .frame(minHeight: Contract.minimumHitHeight)
+                .frame(minHeight: Contract.minimumHitHeight, alignment: .top)
         }
         .foregroundStyle(isSelected ? TaisaColor.foreground.color : TaisaColor.mutedForeground.color)
         .accessibilityLabel(accessibilityLabel)

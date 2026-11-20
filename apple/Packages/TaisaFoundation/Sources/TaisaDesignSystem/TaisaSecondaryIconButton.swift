@@ -37,7 +37,7 @@ public struct TaisaSecondaryIconButton: View {
     private var secondaryGlassButton: some View {
         TaisaButtonControl(
             style: TaisaButtonStyle(
-                role: elevation == .floating ? .secondary : .ghost,
+                role: .ghost,
                 shape: .circle,
                 size: size
             ),
