@@ -26,10 +26,9 @@ final class PrimaryAppShellTests: XCTestCase {
                 .components(separatedBy: "private struct PrivacyPermissionsView").first
         )
 
-        XCTAssertTrue(profileEditor.contains("\"Display name\",\n                    text: binding(\\.displayName)"))
-        XCTAssertTrue(profileEditor.contains("\"Headline\",\n                    text: binding(\\.headline)"))
-        XCTAssertTrue(profileEditor.contains("\"Biography\",\n                    text: binding(\\.biography)"))
-        XCTAssertTrue(profileEditor.contains("labelPresentation: .placeholderOnly"))
+        XCTAssertTrue(profileEditor.contains("TaisaField(\"Display name\", text: binding(\\.displayName)"))
+        XCTAssertTrue(profileEditor.contains("TaisaField(\"Bio\", text: binding(\\.biography), kind: .multiline"))
+        XCTAssertTrue(profileEditor.contains("appearance: .profile"))
         XCTAssertNil(profileEditor.range(of: #"(?m)^\s*TextField\("#, options: .regularExpression))
         XCTAssertNil(profileEditor.range(of: #"(?m)^\s*Button\("#, options: .regularExpression))
     }

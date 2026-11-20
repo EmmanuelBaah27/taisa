@@ -149,7 +149,7 @@ struct PriorWeekReviewSheet: View {
             } description: {
                 TaisaText(role: .body, color: .mutedForeground, content: "You have \(unresolvedCount) unfinished \(unresolvedCount == 1 ? "item" : "items") from an earlier week. Decide what still belongs before planning more work.")
             }
-            .navigationTitle("Review prior week")
+            .taisaNavigationTitle("Review prior week")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     TaisaToolbarAction(label: "Done", icon: .completed) { dismiss() }

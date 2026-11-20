@@ -7,7 +7,7 @@ final class TaisaLaunchTests: XCTestCase {
         app.launch()
 
         XCTAssertTrue(element("home.root", in: app).waitForExistence(timeout: 5))
-        XCTAssertTrue(app.navigationBars["Home"].exists)
+        XCTAssertTrue(app.staticTexts["Home"].exists)
         XCTAssertTrue(element("app-shell.primary-navigation", in: app).exists)
         XCTAssertTrue(element("app-shell.conversation-dock", in: app).exists)
         XCTAssertFalse(element("preview.catalog", in: app).exists)
@@ -80,6 +80,7 @@ final class TaisaLaunchTests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
+        createTaskFromHome("Navigation seed", in: app)
         let viewAll = app.buttons.matching(NSPredicate(format: "label CONTAINS 'View all tasks'")).firstMatch
         XCTAssertTrue(viewAll.waitForExistence(timeout: 5))
         viewAll.tap()
@@ -96,6 +97,7 @@ final class TaisaLaunchTests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
+        createTaskFromHome("Shared form seed", in: app)
         let viewAll = app.buttons.matching(NSPredicate(format: "label CONTAINS 'View all tasks'")).firstMatch
         XCTAssertTrue(viewAll.waitForExistence(timeout: 5))
         viewAll.tap()
@@ -141,6 +143,18 @@ final class TaisaLaunchTests: XCTestCase {
 
     private func element(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
         app.descendants(matching: .any)[identifier]
+    }
+
+    private func createTaskFromHome(_ title: String, in app: XCUIApplication) {
+        let addTask = app.buttons["Add task"]
+        XCTAssertTrue(addTask.waitForExistence(timeout: 5))
+        addTask.tap()
+
+        let titleField = app.textFields["Task title"]
+        XCTAssertTrue(titleField.waitForExistence(timeout: 2))
+        titleField.typeText(title)
+        app.buttons["Save task"].tap()
+        XCTAssertTrue(app.staticTexts[title].waitForExistence(timeout: 3))
     }
 
     private func waitForSelection(_ label: String, in app: XCUIApplication) -> Bool {
