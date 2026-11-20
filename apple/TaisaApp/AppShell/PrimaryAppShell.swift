@@ -150,7 +150,7 @@ struct PrimaryAppShell: View {
                 }
             }
         }
-        .sheet(item: Binding(
+        .fullScreenCover(item: Binding(
             get: { model.conversationRoute },
             set: { if $0 == nil { model.dismissConversation() } }
         )) { route in
@@ -160,7 +160,6 @@ struct PrimaryAppShell: View {
                 factory: conversationFactory,
                 dismiss: dismissConversationAndRefresh
             )
-            .presentationDetents([.large])
         }
             .sheet(isPresented: taskDetailPresented, onDismiss: refreshHomeAfterTaskDetail) {
                 if let actionID = model.selectedTaskID {
