@@ -138,7 +138,10 @@ private struct CareerProfileEditor: View {
         ScrollView {
             VStack(alignment: .leading, spacing: TaisaSpacing.content.rawValue) {
                 HStack(alignment: .top) {
-                    TaisaProfileAvatar(size: TaisaProfileMetric.editorAvatar)
+                    TaisaProfileAvatar(
+                        name: model.profileDraft?.displayName ?? "",
+                        size: TaisaProfileMetric.editorAvatar
+                    )
                     Spacer()
                     TaisaSecondaryIconButton(icon: .profileClose, accessibilityLabel: "Close profile editor") {
                         closing = true
