@@ -51,9 +51,10 @@ struct TypographyTokenTests {
 
         #expect(source.contains(".lineSpacing(role.lineSpacing)"))
         #expect(source.contains(".tracking(role.tracking)"))
-        #expect(TaisaTypography.buttonLabel.lineSpacing == 8)
-        #expect(TaisaTypography.supporting.lineSpacing == 6)
-        #expect(TaisaTypography.metadata.lineSpacing == 6)
+        #expect(abs(TaisaTypography.buttonLabel.lineSpacing - 4.640625) < 0.001)
+        #expect(abs(TaisaTypography.supporting.lineSpacing - 3.060546875) < 0.001)
+        #expect(abs(TaisaTypography.metadata.lineSpacing - 3.48046875) < 0.001)
+        #expect(abs(TaisaTypography.heading.lineSpacing) < 0.001)
     }
 
     @Test func sharedTypographyModifierAppliesFontLeadingAndTrackingTogether() throws {

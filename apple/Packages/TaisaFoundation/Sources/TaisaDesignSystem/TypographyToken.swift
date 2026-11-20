@@ -1,3 +1,4 @@
+import CoreText
 import SwiftUI
 
 public enum TaisaTypography: String, CaseIterable, Sendable {
@@ -82,7 +83,13 @@ public enum TaisaTypography: String, CaseIterable, Sendable {
     }
 
     public var lineSpacing: CGFloat {
-        max(0, lineHeight - pointSize)
+        max(0, lineHeight - naturalLineHeight)
+    }
+
+    private var naturalLineHeight: CGFloat {
+        TaisaProfileFonts.register()
+        let font = CTFontCreateWithName(fontName as CFString, pointSize, nil)
+        return CTFontGetAscent(font) + CTFontGetDescent(font) + CTFontGetLeading(font)
     }
 
     public var tracking: CGFloat {

@@ -45,7 +45,8 @@ struct ActionComponentTests {
         #expect(surface.contains("case .secondary:"))
         #expect(surface.contains("case .ghost:"))
         #expect(surface.contains("case .destructive:"))
-        #expect(surface.contains(".glassEffect(.clear.interactive(), in: surfaceShape)"))
+        #expect(surface.contains("private struct TaisaFloatingButtonSurface"))
+        #expect(surface.contains(".clear.tint(floatingTint).interactive()"))
         #expect(surface.contains(".tint(TaisaColor.primaryAction.color)"))
     }
 

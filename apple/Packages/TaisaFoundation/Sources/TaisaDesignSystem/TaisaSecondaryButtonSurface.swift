@@ -19,6 +19,30 @@ public enum TaisaSecondaryButtonContract {
     public static let floatingShadowRadius = TaisaEffect.secondaryButtonShadowRadius
 }
 
+/// The Actions back button is the reference surface for every floating control.
+/// Shape and size may vary, but material, tint, fallback and interaction stay here.
+private struct TaisaFloatingButtonSurface: ViewModifier {
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    let shape: AnyShape
+
+    private var floatingTint: Color {
+        TaisaColor.foreground.color.opacity(TaisaEffect.floatingButtonNeutralTintOpacity)
+    }
+
+    @ViewBuilder func body(content: Content) -> some View {
+        if #available(iOS 26.0, macOS 26.0, *), !reduceTransparency {
+            content.glassEffect(
+                .clear.tint(floatingTint).interactive(),
+                in: shape
+            )
+        } else if reduceTransparency {
+            content.background(TaisaColor.raisedSurface.color, in: shape)
+        } else {
+            content.background(.regularMaterial, in: shape)
+        }
+    }
+}
+
 private struct TaisaButtonSurfaceModifier: ViewModifier {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     let role: TaisaButtonRole
@@ -37,7 +61,7 @@ private struct TaisaButtonSurfaceModifier: ViewModifier {
                         in: surfaceShape
                     )
             case .secondary:
-                exactSurface.glassEffect(.clear.interactive(), in: surfaceShape)
+                exactSurface.modifier(TaisaFloatingButtonSurface(shape: surfaceShape))
             case .ghost:
                 exactSurface
             case .destructive:
