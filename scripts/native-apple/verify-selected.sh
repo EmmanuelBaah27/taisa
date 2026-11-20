@@ -28,7 +28,7 @@ xcodebuild build -quiet \
   -derivedDataPath "${artifact_root}/DerivedData-Personal" \
   CODE_SIGNING_ALLOWED=NO
 
-if [[ "${risks}" == *,ui,* ]]; then
+if [[ "${risks}" == *,ui,* ]] && test "${TAISA_PREVIEW_ALREADY_TESTED:-false}" != true; then
   xcodebuild build -quiet \
     -project apple/Taisa.xcodeproj \
     -scheme Taisa-Preview \
