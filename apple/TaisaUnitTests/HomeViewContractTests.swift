@@ -2,6 +2,19 @@ import Foundation
 import XCTest
 
 final class HomeViewContractTests: XCTestCase {
+    func testTaskComposerDueDateUsesTheSharedInlineContentAction() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let source = try String(
+            contentsOf: root.appendingPathComponent("TaisaApp/Home/TaskComposerView.swift"),
+            encoding: .utf8
+        )
+
+        XCTAssertTrue(source.contains("TaisaInlineAction("))
+        XCTAssertTrue(source.contains("style: .muted"))
+        XCTAssertTrue(source.contains("isSelected: dueDate != nil"))
+        XCTAssertFalse(source.contains("role: .ghost"))
+    }
+
     func testHomeRoutesDirectlyToActionsAndGoalsWithoutCareerWorkSections() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let home = root.appendingPathComponent("TaisaApp/Home")

@@ -19,13 +19,11 @@ struct TaskComposerView: View {
         VStack(alignment: .leading, spacing: TaisaSpacing.control.rawValue) {
             TaisaTaskTitleField(text: $title, focus: $titleIsFocused)
             HStack {
-                TaisaButton(
-                    role: .ghost,
-                    shape: .capsule,
+                TaisaInlineAction(
                     label: dueDate?.taskComposerLabel ?? "Due",
                     icon: .calendar,
-                    size: .small,
-                    layout: .intrinsic,
+                    style: .muted,
+                    isSelected: dueDate != nil,
                     accessibilityLabel: dueDate.map { "Due date, \($0.taskComposerLabel)" } ?? "Due"
                 ) {
                     draftDueDate = dueDate ?? Date()

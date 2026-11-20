@@ -168,13 +168,11 @@ private struct TaskDetailSheetView: View {
                         .accessibilityIdentifier("tasks.detail.edit-title")
                     }
 
-                    TaisaButton(
-                        role: .ghost,
-                        shape: .capsule,
+                    TaisaInlineAction(
                         label: dueText,
                         icon: .calendar,
-                        size: .small,
-                        layout: .intrinsic,
+                        style: .muted,
+                        isSelected: currentDueDate != nil,
                         accessibilityLabel: dueText == "Due" ? "Set due date" : "Change due date, \(dueText)"
                     ) {
                         draftDueDate = currentDueDate ?? Date()

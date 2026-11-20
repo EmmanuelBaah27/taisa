@@ -46,6 +46,25 @@ final class TaskDetailPresentationTests: XCTestCase {
 }
 
 final class CareerWorkViewContractTests: XCTestCase {
+    func testTaskDueDateUsesTheSharedInlineContentAction() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let source = try String(
+            contentsOf: root.appendingPathComponent("TaisaApp/CareerWork/CareerWorkView.swift"),
+            encoding: .utf8
+        )
+        let detail = try XCTUnwrap(
+            source.components(separatedBy: "private struct TaskDetailSheetContent").last?
+                .components(separatedBy: "private struct ActionsView").first
+        )
+
+        XCTAssertTrue(detail.contains("TaisaInlineAction("))
+        XCTAssertTrue(detail.contains("label: dueText"))
+        XCTAssertTrue(detail.contains("icon: .calendar"))
+        XCTAssertTrue(detail.contains("style: .muted"))
+        XCTAssertTrue(detail.contains("isSelected: currentDueDate != nil"))
+        XCTAssertFalse(detail.contains("role: .ghost,\n                        shape: .capsule,\n                        label: dueText"))
+    }
+
     func testJourneyUsesAdaptiveNativeNavigationAndExplicitStates() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let source = try String(contentsOf: root.appendingPathComponent("TaisaApp/CareerWork/CareerWorkView.swift"), encoding: .utf8)
