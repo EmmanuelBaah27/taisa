@@ -16,7 +16,7 @@ enum FoundationScenarios {
         PreviewScenario(
             identifier: "foundation.buttons",
             title: "Shared button foundation",
-            deviceFamily: .adaptive,
+            deviceFamily: .phone,
             accessibility: .default,
             readiness: .ready
         ) { AnyView(ButtonFoundationScenario()) },
