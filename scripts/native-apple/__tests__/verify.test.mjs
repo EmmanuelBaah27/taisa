@@ -16,6 +16,14 @@ import { validatePullRequestContract } from '../validate-pr-contract.mjs';
 
 const repositoryRoot = resolve(import.meta.dirname, '../../..');
 
+async function copyAppleFixture(fixture) {
+  await cp(resolve(repositoryRoot, 'apple'), join(fixture, 'apple'), {
+    recursive: true,
+    filter: (source) => !source.includes('/Packages/') && !source.includes('/DerivedData'),
+  });
+  await assert.rejects(access(join(fixture, 'apple/DerivedData')), { code: 'ENOENT' });
+}
+
 // Security regression requested by Task 5 review: native selection bypasses
 // the explicit local-only/expiring clipboard boundary.
 test('recovery secret has no unrestricted native selection or clipboard route', async () => {
@@ -66,11 +74,7 @@ test('personal identity has no paid capabilities, live transport, background mod
 
 test('personal capability mutations are rejected without changing live entitlements', async () => {
   const fixture = await mkdtemp(join(tmpdir(), 'taisa-personal-project-'));
-  await cp(resolve(repositoryRoot, 'apple'), join(fixture, 'apple'), {
-    recursive: true,
-    filter: (source) => !source.includes('/Packages/') && !source.includes('/DerivedData'),
-  });
-  await assert.rejects(access(join(fixture, 'apple/DerivedData')), { code: 'ENOENT' });
+  await copyAppleFixture(fixture);
   const liveNames = ['TaisaDev', 'Taisa', 'TaisaPreview'];
   const before = await Promise.all(liveNames.map((name) => readFile(join(fixture, `apple/Config/${name}.entitlements`))));
   const rightsPath = join(fixture, 'apple/Config/TaisaPersonal.entitlements');
@@ -110,10 +114,7 @@ test('personal capability mutations are rejected without changing live entitleme
 
 test('personal builds cannot silently drop the approved voice gateway', async () => {
   const fixture = await mkdtemp(join(tmpdir(), 'taisa-personal-gateway-'));
-  await cp(resolve(repositoryRoot, 'apple'), join(fixture, 'apple'), {
-    recursive: true,
-    filter: (source) => !source.includes('/Packages/'),
-  });
+  await copyAppleFixture(fixture);
   assert.deepEqual(await verifyNativeProject(fixture), []);
 
   const configPath = join(fixture, 'apple/Config/Personal.xcconfig');
