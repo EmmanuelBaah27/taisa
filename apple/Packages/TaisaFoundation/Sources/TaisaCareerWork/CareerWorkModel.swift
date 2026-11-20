@@ -95,7 +95,7 @@ public final class CareerWorkModel {
         await load()
     }
 
-    @discardableResult public func createGoal(title: String, detail: String) async -> Bool {
+    public func createGoal(title: String, detail: String) async {
         await mutate {
             let goal = try await client.createGoal(title, detail)
             route = .goal(id: goal.id)
@@ -107,9 +107,9 @@ public final class CareerWorkModel {
         await mutate { try await client.updateGoal(id, title, detail) }
     }
 
-    @discardableResult public func createMilestone(title: String, targetAtMS: Int64?) async -> Bool {
-        guard case let .goal(id) = route else { return false }
-        return await mutate { _ = try await client.createMilestone(id, title, targetAtMS) }
+    public func createMilestone(title: String, targetAtMS: Int64?) async {
+        guard case let .goal(id) = route else { return }
+        await mutate { _ = try await client.createMilestone(id, title, targetAtMS) }
     }
 
     public func createAction(title: String, detail: String, dueAtMS: Int64?) async {
@@ -217,9 +217,9 @@ public final class CareerWorkModel {
         }
     }
 
-    @discardableResult public func addEvidence(actionID: String?, title: String, detail: String, occurredAtMS: Int64) async -> Bool {
-        guard case let .goal(id) = route else { return false }
-        return await mutate { _ = try await client.addEvidence(id, actionID, title, detail, occurredAtMS) }
+    public func addEvidence(actionID: String?, title: String, detail: String, occurredAtMS: Int64) async {
+        guard case let .goal(id) = route else { return }
+        await mutate { _ = try await client.addEvidence(id, actionID, title, detail, occurredAtMS) }
     }
 
     public func transitionSelectedGoal(to status: GoalStatus) async {

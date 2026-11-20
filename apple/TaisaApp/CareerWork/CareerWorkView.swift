@@ -456,16 +456,15 @@ struct CareerWorkView: View {
         }
         .sheet(isPresented: $showsCreateGoal) {
             GoalEditorSheet { title, detail in
-                let result = await model.createGoal(title: title, detail: detail)
-                if result { selectedRoute = model.route }
-                return result
+                await model.createGoal(title: title, detail: detail)
+                selectedRoute = model.route
             }
         }
         .sheet(item: $editor) { editor in
             CareerWorkEditorSheet(editor: editor) { title, detail, date, actionID in
                 switch editor {
-                case .milestone: return await model.createMilestone(title: title, targetAtMS: date.milliseconds)
-                case .evidence: return await model.addEvidence(actionID: actionID, title: title, detail: detail, occurredAtMS: date.milliseconds)
+                case .milestone: await model.createMilestone(title: title, targetAtMS: date.milliseconds)
+                case .evidence: await model.addEvidence(actionID: actionID, title: title, detail: detail, occurredAtMS: date.milliseconds)
                 }
             }
         }
@@ -850,12 +849,11 @@ private extension Date {
 private struct CareerWorkEditorSheet: View {
     @Environment(\.dismiss) private var dismiss
     let editor: CareerWorkEditor
-    let save: (String, String, Date, String?) async -> Bool
+    let save: (String, String, Date, String?) async -> Void
     @State private var title = ""
     @State private var detail = ""
     @State private var date = Date()
     @State private var actionID: String?
-    @State private var isSaving = false
 
     private var name: String {
         switch editor { case .milestone: "milestone"; case .evidence: "evidence" }
@@ -872,25 +870,15 @@ private struct CareerWorkEditorSheet: View {
                         id.flatMap { selected in actions.first(where: { $0.id == selected })?.title } ?? "Goal overall"
                     }
                 }
-                TaisaButton(role: .primary, label: "Save", icon: .completed, isEnabled: canSave, isProcessing: isSaving) {
-                    Task {
-                        guard !isSaving else { return }
-                        isSaving = true
-                        let result = await save(title, detail, date, actionID)
-                        isSaving = false
-                        if result { dismiss() }
-                    }
+                TaisaButton(role: .primary, label: "Save", icon: .completed, isEnabled: !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) {
+                    Task { await save(title, detail, date, actionID); dismiss() }
                 }
                 .accessibilityLabel("Save career \(name)")
-                TaisaButton(role: .secondary, label: "Cancel", isEnabled: !isSaving) { dismiss() }
+                TaisaButton(role: .secondary, label: "Cancel") { dismiss() }
             }
             .taisaNavigationTitle("New \(name)")
         }
-        .interactiveDismissDisabled(TaisaEditorSheetPolicy(isDirty: isDirty, isBusy: isSaving).blocksInteractiveDismissal)
     }
-
-    private var canSave: Bool { !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isSaving }
-    private var isDirty: Bool { !title.isEmpty || !detail.isEmpty || actionID != nil }
 
     private var editorDateLabel: String {
         switch editor { case .milestone: "Target date"; case .evidence: "Occurred" }
@@ -1300,31 +1288,20 @@ private struct GoalEditorSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var title = ""
     @State private var detail = ""
-    @State private var isSaving = false
-    let save: (String, String) async -> Bool
+    let save: (String, String) async -> Void
 
     var body: some View {
         NavigationStack {
             Form {
                 TaisaField("Goal title", text: $title)
                 TaisaField("Optional details", text: $detail, kind: .multiline)
-                TaisaButton(role: .primary, label: "Save", icon: .completed, isEnabled: canSave, isProcessing: isSaving) {
-                    Task {
-                        guard !isSaving else { return }
-                        isSaving = true
-                        let result = await save(title, detail)
-                        isSaving = false
-                        if result { dismiss() }
-                    }
+                TaisaButton(role: .primary, label: "Save", icon: .completed, isEnabled: !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) {
+                    Task { await save(title, detail); dismiss() }
                 }
                 .accessibilityLabel("Save career goal")
-                TaisaButton(role: .secondary, label: "Cancel", isEnabled: !isSaving) { dismiss() }
+                TaisaButton(role: .secondary, label: "Cancel") { dismiss() }
             }
             .taisaNavigationTitle("New goal")
         }
-        .interactiveDismissDisabled(TaisaEditorSheetPolicy(isDirty: isDirty, isBusy: isSaving).blocksInteractiveDismissal)
     }
-
-    private var canSave: Bool { !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isSaving }
-    private var isDirty: Bool { !title.isEmpty || !detail.isEmpty }
 }

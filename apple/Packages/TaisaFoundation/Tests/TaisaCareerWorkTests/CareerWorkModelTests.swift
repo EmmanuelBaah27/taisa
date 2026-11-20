@@ -29,10 +29,9 @@ import TaisaStorage
         )
         let model = CareerWorkModel(client: client)
 
-        let didCreate = await model.createGoal(title: "Created", detail: "Detail")
+        await model.createGoal(title: "Created", detail: "Detail")
         await model.transitionSelectedGoal(to: .paused)
 
-        #expect(didCreate)
         #expect(await recorder.values == ["create:Created:Detail", "transition:\(created.id):paused"])
         #expect(model.route == .goal(id: created.id))
         #expect(model.state.snapshot?.selectedGoal?.goal.id == created.id)
@@ -45,8 +44,7 @@ import TaisaStorage
         #expect(conflict.state == .failure(.conflict))
 
         let invalid = CareerWorkModel(client: .init(loadOverview: { CareerWorkOverview(active: [goal], paused: [], completed: [], archived: []) }, createGoal: { _, _ in throw CareerWorkContractError.invalidTitle }))
-        let didCreateInvalidGoal = await invalid.createGoal(title: "", detail: "")
-        #expect(!didCreateInvalidGoal)
+        await invalid.createGoal(title: "", detail: "")
         #expect(invalid.state.issue == .invalidInput)
 
         let recovery = CareerWorkModel(client: .init(loadOverview: { throw StorageError.integrityFailed }))
