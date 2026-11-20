@@ -3,10 +3,12 @@ import test from 'node:test';
 
 import {
   hasEligibleSimulatorDestination,
+  selectEligibleSimulatorUDID,
   selectSimulatorName,
+  selectSimulatorUDID,
 } from '../select-simulator.mjs';
 
-test('selects an available simulator by device family instead of a model name', () => {
+test('selects an available iPhone simulator instead of a model name', () => {
   const devices = {
     devices: {
       runtime: [
@@ -17,17 +19,28 @@ test('selects an available simulator by device family instead of a model name', 
     },
   };
 
-  assert.equal(selectSimulatorName(devices, 'iPhone'), 'iPhone 17 Pro');
-  assert.equal(selectSimulatorName(devices, 'iPad'), 'iPad Air 13-inch (M3)');
+  assert.equal(selectSimulatorName(devices), 'iPhone 17 Pro');
+  assert.equal(selectSimulatorUDID(devices), 'PHONE-UDID');
+});
+
+test('fails clearly when the selected simulator has no UDID', () => {
+  assert.throws(
+    () => selectSimulatorUDID({
+      devices: { runtime: [{ name: 'iPhone 17 Pro', isAvailable: true }] },
+    }),
+    /Available iPhone simulator has no UDID/,
+  );
 });
 
 test('detects whether Xcode has an eligible simulator runtime', () => {
-  assert.equal(hasEligibleSimulatorDestination(`
+  const output = `
 Available destinations:
   { platform:iOS Simulator, id:PHONE, name:iPhone 17 Pro }
 Ineligible destinations:
   { platform:iOS, name:Any iOS Device }
-`), true);
+`;
+  assert.equal(hasEligibleSimulatorDestination(output), true);
+  assert.equal(selectEligibleSimulatorUDID(output), 'PHONE');
   assert.equal(hasEligibleSimulatorDestination(`
 Available destinations:
 Ineligible destinations:
@@ -35,9 +48,21 @@ Ineligible destinations:
 `), false);
 });
 
-test('fails clearly when the requested simulator family is unavailable', () => {
+test('rejects an ineligible or placeholder simulator destination', () => {
   assert.throws(
-    () => selectSimulatorName({ devices: {} }, 'iPad'),
-    /No available iPad simulator found/,
+    () => selectEligibleSimulatorUDID(`
+Available destinations:
+  { platform:iOS Simulator, id:dvtdevice-DVTiOSDeviceSimulatorPlaceholder, name:Any iOS Simulator Device }
+Ineligible destinations:
+  { platform:iOS Simulator, id:OLD-PHONE, name:iPhone 17 Pro }
+`),
+    /No eligible iPhone simulator destination found/,
+  );
+});
+
+test('fails clearly when an iPhone simulator is unavailable', () => {
+  assert.throws(
+    () => selectSimulatorName({ devices: {} }),
+    /No available iPhone simulator found/,
   );
 });

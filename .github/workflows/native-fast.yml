@@ -57,7 +57,7 @@ jobs:
       - name: Ensure pinned iOS platform
         if: github.event_name == 'pull_request' && steps.classify.outputs.xcode_test_targets != ''
         run: |
-          if xcrun simctl list devices available | grep -q 'iPhone'; then
+          if xcodebuild -project apple/Taisa.xcodeproj -scheme Taisa-Personal -showdestinations | node scripts/native-apple/select-simulator.mjs --eligible-udid; then
             exit 0
           fi
           for attempt in 1 2 3; do
@@ -67,7 +67,7 @@ jobs:
             test "${attempt}" -lt 3 || exit 1
             sleep 15
           done
-          xcrun simctl list devices available | grep -q 'iPhone'
+          xcodebuild -project apple/Taisa.xcodeproj -scheme Taisa-Personal -showdestinations | node scripts/native-apple/select-simulator.mjs --eligible-udid
       - name: Install pinned XcodeGen
         run: |
           brew install xcodegen

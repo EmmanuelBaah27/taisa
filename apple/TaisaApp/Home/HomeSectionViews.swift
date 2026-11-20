@@ -1,4 +1,6 @@
 import SwiftUI
+import TaisaDesignSystem
+import TaisaHome
 import TaisaStorage
 
 enum HomeIntent: Sendable, Equatable {
@@ -6,6 +8,8 @@ enum HomeIntent: Sendable, Equatable {
     case goal(String)
     case action(String)
     case milestone(goalID: String)
+    case actions
+    case goals
 }
 
 struct MilestoneRow: View {
@@ -13,19 +17,14 @@ struct MilestoneRow: View {
     let send: (HomeIntent) -> Void
 
     var body: some View {
-        Button { send(.milestone(goalID: milestone.goalID)) } label: {
-            HStack {
-                Image(systemName: "flag")
-                VStack(alignment: .leading) {
-                    Text(milestone.title)
-                    if let targetAtMS = milestone.targetAtMS {
-                        Text(Date(timeIntervalSince1970: Double(targetAtMS) / 1_000), format: .dateTime.day().month())
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-            }
-        }
+        TaisaRow(
+            title: milestone.title,
+            supporting: milestone.targetAtMS.map {
+                Date(timeIntervalSince1970: Double($0) / 1_000).formatted(.dateTime.day().month())
+            },
+            icon: .milestone,
+            action: { send(.milestone(goalID: milestone.goalID)) }
+        )
     }
 }
 
@@ -34,8 +33,8 @@ struct ConversationRow: View {
     let send: (HomeIntent) -> Void
 
     var body: some View {
-        Button { send(.conversation(conversation.id)) } label: {
-            Label(conversation.title, systemImage: "bubble.left.and.bubble.right")
+        TaisaRow(title: conversation.title, icon: .chatBubbles) {
+            send(.conversation(conversation.id))
         }
     }
 }
@@ -45,11 +44,8 @@ struct GoalRow: View {
     let send: (HomeIntent) -> Void
 
     var body: some View {
-        Button { send(.goal(goal.id)) } label: {
-            VStack(alignment: .leading) {
-                Text(goal.title)
-                if !goal.detail.isEmpty { Text(goal.detail).font(.subheadline).foregroundStyle(.secondary) }
-            }
+        TaisaRow(title: goal.title, supporting: goal.detail.isEmpty ? nil : goal.detail, icon: .goal) {
+            send(.goal(goal.id))
         }
     }
 }
@@ -59,18 +55,8 @@ struct ActionRow: View {
     let send: (HomeIntent) -> Void
 
     var body: some View {
-        Button { send(.action(action.id)) } label: {
-            HStack {
-                Image(systemName: "circle")
-                VStack(alignment: .leading) {
-                    Text(action.title)
-                    if let dueAtMS = action.dueAtMS {
-                        Text(Date(timeIntervalSince1970: Double(dueAtMS) / 1_000), format: .dateTime.day().month())
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-            }
+        TaisaRow(title: action.title, supporting: action.dueDay.map { "Due \($0.rawValue)" }, icon: .action) {
+            send(.action(action.id))
         }
     }
 }

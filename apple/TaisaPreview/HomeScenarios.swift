@@ -6,14 +6,16 @@ import TaisaStorage
 @MainActor
 enum HomeScenarios {
     static let scenarios: [PreviewScenario] = [
-        scenario("home.loading", "Home loading", .adaptive, mode: .loading),
-        scenario("home.empty", "Home empty", .adaptive, mode: .empty),
-        scenario("home.content", "Home content", .adaptive, mode: .content),
-        scenario("home.combined", "Home combined", .adaptive, mode: .combined),
-        scenario("home.insights", "Home insights", .adaptive, mode: .insights),
-        scenario("home.refreshing", "Home refreshing", .adaptive, mode: .refreshing),
-        scenario("home.failure", "Home failure", .adaptive, mode: .failure),
-        scenario("home.recovery", "Home recovery", .adaptive, mode: .recovery),
+        scenario("home.loading", "Home loading", .phone, mode: .loading),
+        scenario("home.empty", "Home empty", .phone, mode: .empty),
+        scenario("home.content", "Home content", .phone, mode: .content),
+        scenario("home.taskComposer", "Home task composer", .phone, mode: .taskComposer),
+        scenario("home.combined", "Home combined", .phone, mode: .combined),
+        scenario("home.insights", "Home insights", .phone, mode: .insights),
+        scenario("home.refreshing", "Home refreshing", .phone, mode: .refreshing),
+        scenario("home.failure", "Home failure", .phone, mode: .failure),
+        scenario("home.recovery", "Home recovery", .phone, mode: .recovery),
+        scenario("home.compactPhone", "Home compact iPhone", .phone, mode: .content),
         scenario(
             "home.accessibilityText",
             "Home accessibility text",
@@ -21,7 +23,6 @@ enum HomeScenarios {
             accessibility: .init(contentSize: .accessibilityExtraExtraExtraLarge),
             mode: .combined
         ),
-        scenario("home.narrowIPad", "Home narrow iPad", .tablet, mode: .content),
     ]
 
     private static func scenario(
@@ -47,6 +48,7 @@ enum HomeScenarioMode: Sendable, Equatable {
     case loading
     case empty
     case content
+    case taskComposer
     case combined
     case insights
     case refreshing
@@ -73,6 +75,11 @@ extension HomeSnapshot {
         conversations: previewContent.conversations,
         goals: previewContent.goals,
         actions: previewContent.actions,
+        actionPrompts: [
+            HomeActionPrompt(action: ActionRecord(id: "30000000-0000-0000-0000-000000000003", goalID: nil, title: "Send the overdue lighting brief", detail: "", status: ActionStatus.active.rawValue, dueAtMS: nil, createdAtMS: 1, updatedAtMS: 3, dueDay: ActionDueDay(rawValue: "2027-01-10")), reason: .overdue),
+            HomeActionPrompt(action: ActionRecord(id: "30000000-0000-0000-0000-000000000005", goalID: nil, title: "Confirm the electrician schedule", detail: "", status: ActionStatus.active.rawValue, dueAtMS: nil, createdAtMS: 1, updatedAtMS: 5, blockedAtMS: 5, blockerNote: "Waiting for the electrician"), reason: .blocked),
+            HomeActionPrompt(action: ActionRecord(id: "30000000-0000-0000-0000-000000000004", goalID: nil, title: "Revisit the supplier shortlist", detail: "", status: ActionStatus.active.rawValue, dueAtMS: nil, createdAtMS: 1, updatedAtMS: 4), reason: .recentlyReopened),
+        ],
         thisWeek: [
             WeeklyWorkItem(
                 action: ActionRecord(
@@ -96,6 +103,13 @@ extension HomeSnapshot {
             )
         ],
         unresolvedPriorWeekCount: 2,
+        overdueActions: [
+            ActionRecord(id: "30000000-0000-0000-0000-000000000003", goalID: nil, title: "Send the overdue lighting brief", detail: "", status: ActionStatus.active.rawValue, dueAtMS: nil, createdAtMS: 1, updatedAtMS: 3, dueDay: ActionDueDay(rawValue: "2027-01-10"))
+        ],
+        recentlyReopenedActions: [
+            ActionRecord(id: "30000000-0000-0000-0000-000000000004", goalID: nil, title: "Revisit the supplier shortlist", detail: "", status: ActionStatus.active.rawValue, dueAtMS: nil, createdAtMS: 1, updatedAtMS: 4)
+        ],
+        actionReviewFacts: .init(active: 4, completed: 2, dropped: 1, reopened: 1),
         leadInsight: .previewCurrent,
         hasConfirmedInsightHistory: true
     )

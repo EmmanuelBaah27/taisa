@@ -10,6 +10,7 @@ node_modules/
 .expo/
 dist/
 .cache/
+.tmp/
 .superpowers/
 .worktrees/
 apple/DerivedData/

@@ -154,7 +154,7 @@ struct FoundationRootView: View {
     FoundationRootView()
 }
 
-#Preview("iPad split width", traits: .fixedLayout(width: 507, height: 720)) {
+#Preview("Compact iPhone width", traits: .fixedLayout(width: 375, height: 667)) {
     FoundationRootView()
 }
 

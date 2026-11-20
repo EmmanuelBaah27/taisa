@@ -7,7 +7,7 @@ final class TaisaLaunchTests: XCTestCase {
         app.launch()
 
         XCTAssertTrue(element("home.root", in: app).waitForExistence(timeout: 5))
-        XCTAssertTrue(app.navigationBars["Home"].exists)
+        XCTAssertTrue(app.staticTexts["Home"].exists)
         XCTAssertTrue(element("app-shell.primary-navigation", in: app).exists)
         XCTAssertTrue(element("app-shell.conversation-dock", in: app).exists)
         XCTAssertFalse(element("preview.catalog", in: app).exists)
@@ -23,6 +23,7 @@ final class TaisaLaunchTests: XCTestCase {
         let chats = element("conversations.root", in: app)
         XCTAssertTrue(chats.waitForExistence(timeout: 5))
         XCTAssertTrue(waitForSelection("Chats", in: app))
+        XCTAssertEqual(element("taisa.page-title", in: app).label, "Chats")
 
         swipeRight(in: app)
         XCTAssertTrue(waitForSelection("Home", in: app))
@@ -58,8 +59,102 @@ final class TaisaLaunchTests: XCTestCase {
         XCTAssertLessThanOrEqual(app.buttons["Talk to Taisa, starts recording"].frame.maxX, window.maxX)
     }
 
+    func testTaskComposerStartsClosedAndStaysAbovePrimaryNavigation() {
+        let app = XCUIApplication()
+        app.launch()
+
+        let taskTitle = app.textFields["Task title"]
+        XCTAssertFalse(taskTitle.exists)
+
+        let addTask = app.buttons["Add task"]
+        XCTAssertTrue(addTask.waitForExistence(timeout: 5))
+        addTask.tap()
+
+        XCTAssertTrue(taskTitle.waitForExistence(timeout: 2))
+        let navigation = app.buttons["Home"]
+        XCTAssertTrue(navigation.exists)
+        XCTAssertLessThanOrEqual(taskTitle.frame.maxY, navigation.frame.minY)
+    }
+
+    func testViewAllTasksPushesTheTasksDestinationAndBackReturnsHome() {
+        let app = XCUIApplication()
+        app.launch()
+
+        createTaskFromHome("Navigation seed", in: app)
+        let viewAll = app.buttons.matching(NSPredicate(format: "label CONTAINS 'View all tasks'")).firstMatch
+        XCTAssertTrue(viewAll.waitForExistence(timeout: 5))
+        viewAll.tap()
+
+        XCTAssertTrue(element("tasks.root", in: app).waitForExistence(timeout: 2))
+        XCTAssertFalse(element("actions.root", in: app).exists)
+        let back = app.navigationBars["Tasks"].buttons["Back"]
+        XCTAssertTrue(back.exists)
+        back.tap()
+        XCTAssertTrue(element("home.root", in: app).waitForExistence(timeout: 2))
+    }
+
+    func testTasksCreationUsesTheSharedTaskFormAndShowsTheSavedTask() {
+        let app = XCUIApplication()
+        app.launch()
+
+        createTaskFromHome("Shared form seed", in: app)
+        let viewAll = app.buttons.matching(NSPredicate(format: "label CONTAINS 'View all tasks'")).firstMatch
+        XCTAssertTrue(viewAll.waitForExistence(timeout: 5))
+        viewAll.tap()
+
+        let create = app.buttons["Create task"]
+        XCTAssertTrue(create.waitForExistence(timeout: 2))
+        create.tap()
+
+        let title = app.textFields["Task title"]
+        XCTAssertTrue(title.waitForExistence(timeout: 2))
+        XCTAssertFalse(app.textFields["Details"].exists)
+        XCTAssertFalse(app.buttons["Parent"].exists)
+
+        let taskName = "Regression task 941"
+        title.typeText(taskName)
+        app.buttons["Save task"].tap()
+
+        XCTAssertTrue(app.staticTexts[taskName].waitForExistence(timeout: 3))
+        XCTAssertTrue(element("tasks.root", in: app).exists)
+        XCTAssertFalse(element("actions.root", in: app).exists)
+    }
+
+    func testTaskDueDateCancelReturnsToTheSameSharedForm() {
+        let app = XCUIApplication()
+        app.launch()
+
+        let addTask = app.buttons["Add task"]
+        XCTAssertTrue(addTask.waitForExistence(timeout: 5))
+        addTask.tap()
+
+        let due = app.buttons["Due"]
+        XCTAssertTrue(due.waitForExistence(timeout: 2))
+        due.tap()
+
+        let cancel = app.buttons["Cancel"]
+        XCTAssertTrue(cancel.waitForExistence(timeout: 2))
+        cancel.tap()
+
+        XCTAssertTrue(app.textFields["Task title"].waitForExistence(timeout: 2))
+        XCTAssertTrue(app.buttons["Due"].exists)
+        XCTAssertFalse(app.staticTexts["Due date"].exists)
+    }
+
     private func element(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
         app.descendants(matching: .any)[identifier]
+    }
+
+    private func createTaskFromHome(_ title: String, in app: XCUIApplication) {
+        let addTask = app.buttons["Add task"]
+        XCTAssertTrue(addTask.waitForExistence(timeout: 5))
+        addTask.tap()
+
+        let titleField = app.textFields["Task title"]
+        XCTAssertTrue(titleField.waitForExistence(timeout: 2))
+        titleField.typeText(title)
+        app.buttons["Save task"].tap()
+        XCTAssertTrue(app.staticTexts[title].waitForExistence(timeout: 3))
     }
 
     private func waitForSelection(_ label: String, in app: XCUIApplication) -> Bool {

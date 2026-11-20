@@ -8,6 +8,11 @@ default_artifact_parent="${repository_root}/apple/DerivedData"
 mkdir -p "${default_artifact_parent}"
 artifact_root="${TAISA_NATIVE_ARTIFACTS:-$(mktemp -d "${default_artifact_parent}/taisa-native-verification.XXXXXX")}"
 mkdir -p "${artifact_root}"
+temporary_parent="${TAISA_NATIVE_TEMPORARY_PARENT:-${repository_root}/.tmp}"
+mkdir -p "${temporary_parent}"
+temporary_root="$(mktemp -d "${temporary_parent}/taisa-native-temporary.XXXXXX")"
+trap 'rm -rf "${temporary_root}"' EXIT
+export TMPDIR="${temporary_root}"
 
 reset_simulator_app() {
   local simulator="$1"
@@ -35,9 +40,12 @@ npm run verify:native-contracts
 (cd apple/Packages/TaisaFoundation && swift test)
 npm run verify:native-design-system
 
+# Host-side checks use the APF-backed temporary directory above. Simulator
+# processes need macOS to provide their sandbox-local TMPDIR at launch.
+unset TMPDIR
+
 simulator_inventory="$(xcrun simctl list devices available --json)"
-iphone_name="${TAISA_IPHONE_SIMULATOR_NAME:-$(printf '%s' "${simulator_inventory}" | node scripts/native-apple/select-simulator.mjs iPhone)}"
-ipad_name="${TAISA_IPAD_SIMULATOR_NAME:-$(printf '%s' "${simulator_inventory}" | node scripts/native-apple/select-simulator.mjs iPad)}"
+iphone_name="${TAISA_IPHONE_SIMULATOR_NAME:-$(printf '%s' "${simulator_inventory}" | node scripts/native-apple/select-simulator.mjs)}"
 
 development_destinations="$(xcodebuild -project apple/Taisa.xcodeproj -scheme Taisa-Dev -showdestinations)"
 preview_destinations="$(xcodebuild -project apple/Taisa.xcodeproj -scheme Taisa-Preview -showdestinations)"
@@ -52,9 +60,9 @@ if [[ "${development_can_test}" == "yes" && "${preview_can_test}" == "yes" ]]; t
   reset_simulator_app "${iphone_name}" com.taisa.app.dev
   xcodebuild test -quiet -retry-tests-on-failure -test-iterations 2 -project apple/Taisa.xcodeproj -scheme Taisa-Dev -destination "platform=iOS Simulator,name=${iphone_name}" -derivedDataPath "${artifact_root}/DerivedData-Dev" -resultBundlePath "${artifact_root}/Taisa-Dev.xcresult"
   shutdown_simulator "${iphone_name}"
-  reset_simulator_app "${ipad_name}" com.taisa.app.preview
-  xcodebuild test -quiet -retry-tests-on-failure -test-iterations 2 -project apple/Taisa.xcodeproj -scheme Taisa-Preview -destination "platform=iOS Simulator,name=${ipad_name}" -derivedDataPath "${artifact_root}/DerivedData-Preview" -resultBundlePath "${artifact_root}/Taisa-Preview.xcresult"
-  shutdown_simulator "${ipad_name}"
+  reset_simulator_app "${iphone_name}" com.taisa.app.preview
+  xcodebuild test -quiet -retry-tests-on-failure -test-iterations 2 -project apple/Taisa.xcodeproj -scheme Taisa-Preview -destination "platform=iOS Simulator,name=${iphone_name}" -derivedDataPath "${artifact_root}/DerivedData-Preview" -resultBundlePath "${artifact_root}/Taisa-Preview.xcresult"
+  shutdown_simulator "${iphone_name}"
 else
   echo "No eligible iOS simulator runtime; compiling test bundles instead."
   xcodebuild build-for-testing -quiet -project apple/Taisa.xcodeproj -scheme Taisa-Dev -destination 'generic/platform=iOS Simulator' -derivedDataPath "${artifact_root}/DerivedData-Dev" CODE_SIGNING_ALLOWED=NO

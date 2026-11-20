@@ -1,0 +1,19 @@
+{
+  "name": "@taisa/simulator-review",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "esbuild src/agentation-entry.jsx --bundle --format=esm --platform=browser --outfile=dist/agentation.js",
+    "test": "node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "agentation": "3.1.2",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "serve-sim": "0.1.49"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.12"
+  }
+}

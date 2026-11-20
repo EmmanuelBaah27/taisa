@@ -17,7 +17,7 @@ configFiles:
 settings:
   base:
     SWIFT_VERSION: "6.0"
-    TARGETED_DEVICE_FAMILY: "1,2"
+    TARGETED_DEVICE_FAMILY: "1"
     SUPPORTS_MACCATALYST: NO
     GENERATE_INFOPLIST_FILE: YES
     CODE_SIGN_STYLE: Automatic
@@ -31,12 +31,14 @@ targets:
     info:
       path: Config/TaisaInfo.plist
       properties:
-        UIBackgroundModes: [remote-notification]
+        UIAppFonts: [ScoutieSans-VariableFont_wght.ttf, InterVariable.ttf]
         NSMicrophoneUsageDescription: "Taisa uses the microphone only when you choose to record a conversation."
     sources:
       - path: TaisaApp
       - path: Generated
       - path: Config/RecordingGlow/voice-recorder-shader.json
+        buildPhase: resources
+      - path: Config/Fonts
         buildPhase: resources
     settings:
       base:
@@ -44,7 +46,6 @@ targets:
         INFOPLIST_KEY_CFBundleDisplayName: Taisa
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
-        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
         INFOPLIST_KEY_TaisaEnvironment: "$(TAISA_ENVIRONMENT)"
       configs:
         Debug:
@@ -69,8 +70,6 @@ targets:
       - package: TaisaFoundation
         product: TaisaStorage
       - package: TaisaFoundation
-        product: TaisaCloudKit
-      - package: TaisaFoundation
         product: TaisaRecovery
       - package: TaisaFoundation
         product: TaisaSecurity
@@ -85,12 +84,17 @@ targets:
   TaisaPreview:
     type: application
     platform: iOS
+    info:
+      path: Config/TaisaPreviewInfo.plist
+      properties:
+        UIAppFonts: [ScoutieSans-VariableFont_wght.ttf, InterVariable.ttf]
     sources:
       - path: TaisaPreview
       - path: TaisaApp/Voice
       - path: TaisaApp/Home
       - path: TaisaApp/CareerWork
       - path: TaisaApp/You
+      - path: TaisaApp/AppShell/AppOverlayHost.swift
       - path: TaisaApp/AppShell/PrimaryDestination.swift
       - path: TaisaApp/Conversation/AssistantResponseActions.swift
       - path: TaisaApp/Conversation/ConversationTimeline.swift
@@ -102,6 +106,8 @@ targets:
       - path: Generated
       - path: Config/RecordingGlow/voice-recorder-shader.json
         buildPhase: resources
+      - path: Config/Fonts
+        buildPhase: resources
     settings:
       base:
         PRODUCT_NAME: TaisaPreview
@@ -112,7 +118,6 @@ targets:
         INFOPLIST_KEY_NSMicrophoneUsageDescription: "Taisa uses the microphone only when you choose to test live audio."
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
-        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
         INFOPLIST_KEY_TaisaEnvironment: "$(TAISA_ENVIRONMENT)"
         CODE_SIGN_ENTITLEMENTS: Config/TaisaPreview.entitlements
     dependencies:
@@ -145,6 +150,7 @@ targets:
       path: Config/TaisaPersonalInfo.plist
       properties:
         TaisaEnvironment: "$(TAISA_ENVIRONMENT)"
+        UIAppFonts: [ScoutieSans-VariableFont_wght.ttf, InterVariable.ttf]
         TaisaVoiceGatewayURL: "$(TAISA_VOICE_GATEWAY_URL)"
         NSFaceIDUsageDescription: "Authenticate to use your Taisa recovery key."
         NSMicrophoneUsageDescription: "Taisa uses the microphone only when you choose to record a conversation."
@@ -164,6 +170,8 @@ targets:
       - path: Generated
       - path: Config/RecordingGlow/voice-recorder-shader.json
         buildPhase: resources
+      - path: Config/Fonts
+        buildPhase: resources
     settings:
       base:
         PRODUCT_NAME: TaisaPersonal
@@ -173,7 +181,6 @@ targets:
         INFOPLIST_KEY_CFBundleDisplayName: Taisa Personal
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
-        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
         INFOPLIST_KEY_TaisaEnvironment: "$(TAISA_ENVIRONMENT)"
         CODE_SIGN_ENTITLEMENTS: Config/TaisaPersonal.entitlements
     dependencies:
@@ -226,6 +233,8 @@ targets:
       - path: TaisaUnitTests
     dependencies:
       - target: Taisa
+      - package: TaisaFoundation
+        product: TaisaDesignSystem
       - package: TaisaFoundation
         product: TaisaStorage
       - package: TaisaFoundation
@@ -288,7 +297,7 @@ schemes:
     test:
       config: Preview
       targets:
-        - TaisaUnitTests
+        # Unit tests use the development host in Taisa-Dev. Keep this graph Preview-only.
         - TaisaPreviewUITests
   Taisa-Personal:
     build:

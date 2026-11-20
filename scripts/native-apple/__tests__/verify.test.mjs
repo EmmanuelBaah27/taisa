@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { cp, mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { access, cp, mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import test from 'node:test';
 import { join, resolve } from 'node:path';
@@ -15,6 +15,14 @@ import {
 import { validatePullRequestContract } from '../validate-pr-contract.mjs';
 
 const repositoryRoot = resolve(import.meta.dirname, '../../..');
+
+async function copyAppleFixture(fixture) {
+  await cp(resolve(repositoryRoot, 'apple'), join(fixture, 'apple'), {
+    recursive: true,
+    filter: (source) => !source.includes('/Packages/') && !source.includes('/DerivedData'),
+  });
+  await assert.rejects(access(join(fixture, 'apple/DerivedData')), { code: 'ENOENT' });
+}
 
 // Security regression requested by Task 5 review: native selection bypasses
 // the explicit local-only/expiring clipboard boundary.
@@ -66,10 +74,7 @@ test('personal identity has no paid capabilities, live transport, background mod
 
 test('personal capability mutations are rejected without changing live entitlements', async () => {
   const fixture = await mkdtemp(join(tmpdir(), 'taisa-personal-project-'));
-  await cp(resolve(repositoryRoot, 'apple'), join(fixture, 'apple'), {
-    recursive: true,
-    filter: (source) => !source.includes('/Packages/') && !source.includes('/Taisa.xcodeproj/'),
-  });
+  await copyAppleFixture(fixture);
   const liveNames = ['TaisaDev', 'Taisa', 'TaisaPreview'];
   const before = await Promise.all(liveNames.map((name) => readFile(join(fixture, `apple/Config/${name}.entitlements`))));
   const rightsPath = join(fixture, 'apple/Config/TaisaPersonal.entitlements');
@@ -90,7 +95,7 @@ test('personal capability mutations are rejected without changing live entitleme
   for (const mutation of [
     project.replace('PRODUCT_NAME: TaisaPersonal', 'PRODUCT_NAME: TaisaPersonal\n        UIBackgroundModes: [remote-notification]'),
     project.replace('PRODUCT_BUNDLE_IDENTIFIER: com.taisa.app.personal', 'PRODUCT_BUNDLE_IDENTIFIER: com.taisa.app'),
-    project.replace('  TaisaPersonalTests:', '      - package: TaisaFoundation\n        product: TaisaCloudKit\n  TaisaPersonalTests:'),
+    project.replace('  TaisaPersonalTests:', '      - sdk: CloudKit.framework\n  TaisaPersonalTests:'),
     project.replace('  Taisa-Personal:\n', '  Taisa-Personal:\n    archive:\n      config: Personal\n'),
     project.replace('CODE_SIGN_ENTITLEMENTS: Config/TaisaPersonal.entitlements', 'CODE_SIGN_ENTITLEMENTS: Config/TaisaDev.entitlements'),
     project.replace('CODE_SIGN_ENTITLEMENTS: Config/TaisaPersonal.entitlements', 'CODE_SIGN_ENTITLEMENTS: Config/TaisaPersonal.entitlements\n      configs:\n        Personal:\n          CODE_SIGN_ENTITLEMENTS: Config/TaisaDev.entitlements'),
@@ -109,10 +114,7 @@ test('personal capability mutations are rejected without changing live entitleme
 
 test('personal builds cannot silently drop the approved voice gateway', async () => {
   const fixture = await mkdtemp(join(tmpdir(), 'taisa-personal-gateway-'));
-  await cp(resolve(repositoryRoot, 'apple'), join(fixture, 'apple'), {
-    recursive: true,
-    filter: (source) => !source.includes('/Packages/') && !source.includes('/Taisa.xcodeproj/'),
-  });
+  await copyAppleFixture(fixture);
   assert.deepEqual(await verifyNativeProject(fixture), []);
 
   const configPath = join(fixture, 'apple/Config/Personal.xcconfig');
@@ -165,7 +167,6 @@ test('preview support is linked only by the preview target', async () => {
     'TaisaCareerWork',
     'TaisaYou',
     'TaisaStorage',
-    'TaisaCloudKit',
     'TaisaRecovery',
     'TaisaSecurity',
     'TaisaVoice',
@@ -194,34 +195,44 @@ test('preview includes the shared conversation entry contract', async () => {
   assert.match(preview, /TaisaApp\/AppShell\/PrimaryDestination\.swift/);
 });
 
-test('CloudKit capability is isolated to development and production identities', async () => {
+test('shipping identities contain no CloudKit or push capability', async () => {
   const result = await inspectNativeProject(repositoryRoot);
   assert.deepEqual(result.cloudKitIsolation, {
-    developmentContainer: 'iCloud.com.taisa.app.dev',
-    productionContainer: 'iCloud.com.taisa.app',
-    developmentContainers: ['iCloud.com.taisa.app.dev'],
-    productionContainers: ['iCloud.com.taisa.app'],
-    developmentCloudEnvironment: 'Development',
-    productionCloudEnvironment: 'Production',
+    developmentContainer: null,
+    productionContainer: null,
+    developmentContainers: [],
+    productionContainers: [],
+    developmentCloudEnvironment: null,
+    productionCloudEnvironment: null,
     previewContainers: [],
     previewServices: [],
     previewPushEnvironment: null,
     previewLinksLiveTransport: false,
-    developmentPushEnvironment: 'development',
-    productionPushEnvironment: 'production',
-    developmentServices: ['CloudKit'],
-    productionServices: ['CloudKit'],
+    developmentPushEnvironment: null,
+    productionPushEnvironment: null,
+    developmentServices: [],
+    productionServices: [],
     associatedDomains: false,
     projectEntitlementBindings: { development: true, production: true, preview: true },
   });
 });
 
-test('background remote notifications are configured only for the live app target', async () => {
+test('shipping targets contain no remote-notification background mode', async () => {
   const result = await inspectNativeProject(repositoryRoot);
   assert.deepEqual(result.backgroundNotificationIsolation, {
-    liveModes: ['remote-notification'],
+    liveModes: [],
     liveInfoBound: true,
     previewConfiguresBackgroundMode: false,
+  });
+});
+
+test('generated project and source configuration enforce iPhone-only support', async () => {
+  const result = await inspectNativeProject(repositoryRoot);
+  assert.deepEqual(result.iphoneOnlySupport, {
+    projectDeviceFamily: true,
+    baseDeviceFamily: true,
+    generatedDeviceFamily: true,
+    hasIPadOrientation: false,
   });
 });
 
@@ -332,11 +343,17 @@ test('combined native verification and CI pin every required gate', async () => 
   }
   assert.match(combinedScript, /reset_simulator_app\(\)/);
   assert.match(combinedScript, /apple\/DerivedData/);
-  assert.doesNotMatch(combinedScript, /TMPDIR|\/private\/tmp/);
+  assert.match(combinedScript, /TAISA_NATIVE_TEMPORARY_PARENT/);
+  assert.match(combinedScript, /repository_root\}\/\.tmp/);
+  assert.match(combinedScript, /export TMPDIR="\$\{temporary_root\}"/);
+  assert.match(combinedScript, /trap 'rm -rf "\$\{temporary_root\}"' EXIT/);
+  assert.match(combinedScript, /verify:native-design-system[\s\S]*unset TMPDIR[\s\S]*xcodebuild/);
+  assert.doesNotMatch(combinedScript, /\/private\/tmp/);
   assert.equal(
-    [...combinedScript.matchAll(/reset_simulator_app "\$\{(?:iphone|ipad)_name\}" com\.taisa\.app\.(?:dev|preview|personal)/g)].length,
+    [...combinedScript.matchAll(/reset_simulator_app "\$\{iphone_name\}" com\.taisa\.app\.(?:dev|preview|personal)/g)].length,
     3,
   );
+  assert.doesNotMatch(combinedScript, /iPad|TAISA_IPAD|ipad_name/);
   const resetBody = combinedScript.match(/reset_simulator_app\(\) \{([\s\S]*?)\n\}/)?.[1] ?? '';
   assert.match(resetBody, /simctl boot /);
   assert.match(resetBody, /simctl bootstatus .* -b/);
@@ -549,14 +566,15 @@ test('tiered native CI uses focused pull-request checks and reserves full verifi
     fastWorkflow,
     /name: Ensure pinned iOS platform\n\s+if: github\.event_name == 'pull_request' && steps\.classify\.outputs\.xcode_test_targets != ''/,
   );
-  assert.match(fastWorkflow, /xcrun simctl list devices available/);
+  assert.match(fastWorkflow, /Taisa-Personal -showdestinations/);
+  assert.match(fastWorkflow, /select-simulator\.mjs --eligible-udid/);
   assert.match(fastWorkflow, /xcodebuild -downloadPlatform iOS/);
   assert.match(fastWorkflow, /for attempt in 1 2 3/);
   const runtimeSetup = fastWorkflow.slice(
     fastWorkflow.indexOf('name: Ensure pinned iOS platform'),
     fastWorkflow.indexOf('name: Install pinned XcodeGen'),
   );
-  assert.ok(runtimeSetup.indexOf("grep -q 'iPhone'") < runtimeSetup.indexOf('xcodebuild -downloadPlatform iOS'));
+  assert.ok(runtimeSetup.indexOf('--eligible-udid') < runtimeSetup.indexOf('xcodebuild -downloadPlatform iOS'));
   assert.ok(runtimeSetup.indexOf('exit 0') < runtimeSetup.indexOf('xcodebuild -downloadPlatform iOS'));
   assert.match(
     fastWorkflow,
@@ -591,6 +609,11 @@ test('tiered native CI uses focused pull-request checks and reserves full verifi
   assert.match(selectedXcodeTests, /-test-iterations 2/);
   assert.match(selectedXcodeTests, /-parallel-testing-enabled YES/);
   assert.match(selectedXcodeTests, /-parallel-testing-worker-count 2/);
+  assert.match(selectedXcodeTests, /TAISA_IPHONE_SIMULATOR_UDID/);
+  assert.match(selectedXcodeTests, /Taisa-Personal -showdestinations/);
+  assert.match(selectedXcodeTests, /select-simulator\.mjs --eligible-udid/);
+  assert.match(selectedXcodeTests, /platform=iOS Simulator,id=\$\{iphone_udid\}/);
+  assert.doesNotMatch(selectedXcodeTests, /platform=iOS Simulator,name=/);
 
   assert.match(trustedPolicy, /pull_request_target:/);
   assert.match(trustedPolicy, /types: \[opened, reopened, synchronize, edited\]/);

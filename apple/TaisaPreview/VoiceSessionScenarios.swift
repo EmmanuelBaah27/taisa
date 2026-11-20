@@ -34,7 +34,7 @@ enum VoiceSessionScenarios {
                 .replacingOccurrences(of: "voice.", with: "Voice ")
                 .replacingOccurrences(of: "-", with: " ")
                 .capitalized,
-            deviceFamily: .adaptive,
+            deviceFamily: .phone,
             accessibility: .default,
             readiness: .ready
         ) {
@@ -51,7 +51,7 @@ enum VoiceSessionScenarios {
         PreviewScenario(
             identifier: identifier,
             title: title,
-            deviceFamily: .adaptive,
+            deviceFamily: .phone,
             accessibility: accessibility,
             readiness: .ready
         ) {

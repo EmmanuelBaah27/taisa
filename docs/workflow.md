@@ -160,7 +160,7 @@ Before the first Baah QA request, all applicable requirements must pass:
 Failure of an applicable item returns to autonomous Build; it never produces partial QA.
 Automated/simulator evidence covers every supported configuration in the verification matrix.
 Physical QA is requested only for hardware or perceptual judgment that automation cannot
-establish. One final interaction may contain separated iPhone/iPad checks without becoming
+establish. One final interaction may contain separated iPhone checks without becoming
 multiple exploratory rounds.
 
 ### One-observation repair quarantine
@@ -240,7 +240,7 @@ only the previously recorded broken interaction before final verification and pu
 - Cover loading, empty, populated, stale, offline, failure, recovery, disabled, permission,
   and accessibility states where relevant.
 - Prefer native SwiftUI and Apple platform behavior for the native product; target iOS and
-  iPadOS 26 or later.
+  iOS 26 or later on iPhone.
 - Use real encrypted local data in production UI; never production mocks.
 - No AI/network request during ordinary local browsing unless approved behavior requires it.
 - Keep business logic outside presentation components.

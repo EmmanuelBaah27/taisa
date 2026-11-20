@@ -108,18 +108,18 @@ struct ConversationView: View {
             Group {
                 switch model.confirmation {
                 case .discardVoiceForKeyboard:
-                    Button("Switch to keyboard", role: .destructive, action: model.confirmKeyboardReplacement)
-                    Button("Cancel", role: .cancel, action: model.cancelConfirmation)
+                    TaisaSystemButton("Switch to keyboard", role: .destructive, action: { model.confirmKeyboardReplacement() })
+                    TaisaSystemButton("Cancel", role: .cancel, action: { model.cancelConfirmation() })
                 case .discardRecording:
-                    Button("Continue", role: .destructive) { Task { await model.confirmDiscardRecording() } }
-                    Button("Go back", role: .cancel, action: model.cancelConfirmation)
+                    TaisaSystemButton("Continue", role: .destructive) { Task { await model.confirmDiscardRecording() } }
+                    TaisaSystemButton("Go back", role: .cancel, action: { model.cancelConfirmation() })
                 case .discardShortOrKeepRecording:
-                    Button("Discard recording", role: .destructive) { Task { await model.confirmDiscardRecording() } }
-                    Button("Keep recording", role: .cancel, action: model.cancelConfirmation)
+                    TaisaSystemButton("Discard recording", role: .destructive) { Task { await model.confirmDiscardRecording() } }
+                    TaisaSystemButton("Keep recording", role: .cancel, action: { model.cancelConfirmation() })
                 case .saveDiscardOrCancel:
-                    Button("Save draft") { Task { await model.saveAndClose() } }.accessibilityIdentifier("conversation.save-draft")
-                    Button("Discard", role: .destructive) { Task { await model.discardAndClose() } }.accessibilityIdentifier("conversation.discard")
-                    Button("Cancel", role: .cancel, action: model.cancelConfirmation)
+                    TaisaSystemButton("Save draft") { Task { await model.saveAndClose() } }.accessibilityIdentifier("conversation.save-draft")
+                    TaisaSystemButton("Discard", role: .destructive) { Task { await model.discardAndClose() } }.accessibilityIdentifier("conversation.discard")
+                    TaisaSystemButton("Cancel", role: .cancel, action: { model.cancelConfirmation() })
                 case nil: EmptyView()
                 }
             }
@@ -300,10 +300,8 @@ struct ConversationView: View {
                     height: TaisaControlMetric.conversationEmptyVoiceIcon
                 )
                 .foregroundStyle(TaisaColor.mutedForeground.color)
-            Text("What’s on your mind?").font(TaisaTypography.navigationLabel.font)
-            Text("Talk it through with Taisa.")
-                .font(TaisaTypography.supporting.font)
-                .foregroundStyle(TaisaColor.mutedForeground.color)
+            TaisaText(role: .navigationLabel, content: "What’s on your mind?")
+            TaisaText(role: .supporting, color: .mutedForeground, content: "Talk it through with Taisa.")
         }
         .padding(TaisaSpacing.standard.rawValue)
         .accessibilityElement(children: .combine)
@@ -313,13 +311,12 @@ struct ConversationView: View {
         HStack {
             Spacer()
             TaisaSecondaryCapsuleButton(
-                height: TaisaControlMetric.recordingButtonHeight,
                 action: { Task { try? await model.beginVoice() } }
             ) {
                 HStack(spacing: TaisaSpacing.compact.rawValue) {
                     CentralIcon(.voiceMid)
                         .frame(width: TaisaControlMetric.standardIcon, height: TaisaControlMetric.standardIcon)
-                    Text("Reply").font(TaisaTypography.navigationLabel.font)
+                    TaisaText(role: .navigationLabel, content: "Reply")
                 }
                 .foregroundStyle(TaisaColor.foreground.color)
                 .padding(.horizontal, TaisaSpacing.page.rawValue)
