@@ -125,7 +125,7 @@ struct ActionComponentTests {
         )
 
         #expect(taskRow.contains("CentralIcon(.incomplete, color: .mutedForeground)"))
-        #expect(sheet.contains(".padding(TaisaSpacing.content.rawValue)"))
+        #expect(!sheet.contains(".padding(TaisaSpacing.content.rawValue)"))
     }
 
     @Test func profileSummaryKeepsTheApprovedSharedVisualContracts() throws {

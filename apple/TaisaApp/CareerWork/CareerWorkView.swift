@@ -247,7 +247,7 @@ private struct TaskDetailSheetView: View {
                 )
             }
         }
-        .padding(TaisaSpacing.standard.rawValue)
+        .padding(TaisaSpacing.content.rawValue)
         .accessibilityIdentifier("career-work.task-detail")
         .modifier(TaisaConfirmationDialog(
             title: "Archive this task?",
@@ -307,10 +307,14 @@ private struct TaskDetailSheetView: View {
                 Task { await model.completeSelectedAction(evidenceTitle: evidence) }
             }
         } else {
-            TaisaSecondaryCapsuleButton(elevation: .floating) {
+            TaisaButton(
+                role: .secondary,
+                label: "Mark as Done",
+                icon: .completed,
+                iconColor: .foreground,
+                layout: .intrinsic
+            ) {
                 isCompleting = true
-            } label: {
-                secondaryActionLabel("Mark as Done", icon: .completed, iconColor: .completed)
             }
         }
     }
