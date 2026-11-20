@@ -1,276 +1,21 @@
-# Taisa Build Workflow
+# Taisa Release Safety Workflow
 
 **Status:** Active
-**Last updated:** 2026-11-18
+**Last updated:** 2026-11-19
 
-How Taisa work moves from intake to shipped. Linear is the sole live authority.
-Linear project `Taisa`
-(`31b0d99c-6f74-4c9c-af2a-12e6e25aabe0`) is the sole live authority for roadmap
-milestones, actionable task intake, priority, ownership, stage, dependencies, blockers,
-Scope, Plan, acceptance, discussion, and gate evidence. The repository owns only operating
-constraints, architecture and public contracts, durable decisions, migrations, and
-verification evidence that must version atomically with code.
+This is the single detailed authority for candidate freeze, browser simulator review,
+canonical Preview, `REPAIR_QUARANTINE`, QA readiness, topology, Ship, and safe cleanup.
+`AGENTS.md` owns route selection, the Taisa skill owns startup and conditional loading, and
+[`docs/agents/issue-tracker.md`](agents/issue-tracker.md) owns Linear operations.
 
-Read [`docs/project-memory.md`](project-memory.md) during orientation and then load only the
-domain documents relevant to the active Linear issue.
+## Platform, Product, and Integration vocabulary
 
-## Workflow activation
+Platform, Product, and Integration are discussion lenses, never ticket owners or persistent
+tracks. Vertical tracers and native Linear blockers own delivery structure. `AGENTS.md` owns
+Matt route selection, and the applicable Matt skill owns discovery, specification, tickets,
+implementation, review, and retrospective mechanics.
 
-### Activation bias
-
-Default toward activation. A concrete change, investigation, design, scope, plan, fix,
-review, validation, delivery, or process improvement activates the workflow and the
-lightest fitting tier. Activation never authorizes Build or bypasses Scope, Plan, or Ship.
-
-**Explicit precedence:** requested action or advancement activates; explicit future-only
-direction is recorded in the relevant Linear milestone until someone owns actionable work;
-a purely read-only/status request receives orientation and an answer only; anything still
-ambiguous receives lightweight orientation.
-
-Every actionable task receives a non-duplicate Linear issue before investigation, design,
-planning, implementation, documentation, review, release work, chores, or work Baah will
-perform. Read-only questions and orientation commands within an existing issue are the only
-exceptions. Search exact and semantic matches, including archived work, before creation.
-
-## Cycle orientation
-
-At the start of one approved delivery cycle, before modifying product or workflow state:
-
-1. Read the Taisa Linear project, six milestones, active issues, dependencies, blockers,
-   priorities, recent updates, Scope/Plan evidence, and approval comments.
-2. Read `AGENTS.md`, this file, `.agents/skills/taisa-workflow/SKILL.md`, and
-   `docs/project-memory.md`.
-3. Inspect the current branch, worktree, all relevant worktrees, remote tracking, exact
-   commits, tests, PRs, canonical preview revision, and related active delivery chats.
-4. Reconcile contradictions before modifying product code or advancing a stage.
-5. State tier, Linear issue and milestone, stage, branch/worktree, blocker/dependency, next
-   action, next Baah gate, and whether Linear was unavailable or contradictory.
-
-Within a stable cycle, orientation is incremental. Re-read only state whose issue, approval,
-dependency, branch/worktree, PR, CI, preview, or remote revision changed since the last
-checkpoint. Do not reread all milestones, worktrees, or related chats when their relevant
-revision markers are unchanged.
-
-### Offline fallback
-
-If Linear is unavailable, continue only already-approved work whose current Scope and Plan
-are available in recent trusted context and supported by Git evidence. Do not create a new
-actionable task, infer a stage transition, change a blocker, or claim approval while Linear
-is unavailable. Record evidence locally only when it must version with code, then reconcile
-Linear before the next stage or gate.
-
-### Contradiction repair
-
-- Linear owns live stage, priority, owner, dependencies, blockers, Scope, Plan, acceptance,
-  discussion, and gate evidence.
-- Git owns code, branch/commit identity, versioned architecture/public contracts, durable
-  decisions, migrations, and code-coupled verification evidence.
-- `AGENTS.md` supplies repository operating and safety constraints. This workflow and the
-  Taisa orchestrator govern how Linear-authorized work executes. A Scope, Plan, or
-  implementation plan must not override, supersede, or relax those execution constraints;
-  it may only specialize them within the approved task.
-- A Linear status cannot override missing approval evidence or a Draft technical artifact.
-- When any authority or artifact contradicts another, stop before the next command,
-  verification spend, or mutation. Tell Baah the exact conflicting clauses and practical
-  consequence, identify the stale or lower-authority side, repair it within existing
-  authority, and re-read both. Never silently choose a convenient instruction or invent
-  missing approval.
-
-## Feature tiers
-
-| Tier | Signal | Process |
-|---|---|---|
-| **Quick** (< 1h) | One bounded change, no new DS component or Platform boundary | One compact kickoff bundle approves Scope and Plan when no high-risk predicate applies. |
-| **Standard** (half day) | New screen or significant component using existing contracts | Inline Work Map and Discussion Map; one kickoff bundle approves Scope and Plan when no high-risk predicate applies. |
-| **Full** (multi-day / multi-track) | New Platform work, DS components, migration, or complex Product | Separate Scope and Plan approvals, Linear documents/sub-issues where useful, all gates and tracking. |
-
-### Approval-path decision
-
-The path is deterministic:
-
-| Condition | Approval path |
-|---|---|
-| Quick or Standard with no high-risk predicate | One explicit kickoff bundle approves Scope and Plan |
-| Full | Separate Scope and Plan approvals |
-| Any tier with a high-risk predicate | Separate Scope and Plan approvals |
-| Baah requests separate review | Separate Scope and Plan approvals |
-
-High-risk predicates are data migration or loss risk; privacy, security, trust-boundary,
-regulatory, or consent changes; destructive or irreversible operations; public-contract or
-major architecture changes; paid services, credentials, or new external infrastructure;
-materially ambiguous product behavior; release-strategy changes; or verification changes
-that could weaken an existing safety gate.
-
-For Quick and Standard fast-path work, the kickoff bundle contains the recommended outcome,
-user-visible result, inclusions, exclusions, key risks, implementation direction, and
-verification approach. During Build, a material change completes the active Goal as
-`MATERIAL_REAPPROVAL_REQUIRED`. Present an amended kickoff bundle only when the work remains
-Quick/Standard and no high-risk predicate applies; otherwise obtain separate revised Scope
-and Plan approvals.
-
-## Platform, Product, and Integration ownership
-
-Platform, Product, and Integration use exclusive ownership: every planned task has exactly
-one of those owners. **Platform** owns AI, backend,
-infrastructure, persistence, privacy/security enforcement, and Product-facing contracts.
-**Product** owns journeys, screens, interaction, accessibility behavior, design-system
-foundation/consumption, and device experience. **Integration** owns contract wiring between
-completed Platform and Product slices, end-to-end states and failures, canonical preview,
-combined verification, and release readiness; it never duplicates capability or experience
-implementation owned by the other slices.
-Design System is a mandatory foundation layer inside Product work, not a separate track.
-Cross-cutting privacy, accessibility, performance, and verification requirements are
-acceptance constraints on the owning task, not additional slices. These slices stay inside
-one primary Linear issue and one conductor. A sub-issue or separate worktree requires an
-independently reviewable outcome, distinct owner, real dependency boundary, or independently
-shippable slice, and it cannot create another persistent Goal.
-
-```mermaid
-flowchart LR
-  O["Orient in Linear"] --> D["Discuss one slice"]
-  D --> S["Scope approval"]
-  S --> PP["Platform Plan"]
-  S --> DH["Product design handoff"]
-  DH --> PRP["Product Plan"]
-  PP --> PB["Platform Build"]
-  PRP --> PF["independent Product foundation"]
-  PB --> I["Integration"]
-  PF --> I
-  I --> R["Review + QA"]
-  R --> SH["Ship approval"]
-```
-
-## The six stages
-
-`ORIENT → DISCUSS → SCOPE → PLAN → BUILD → REVIEW + QA`
-
-## Bounded Goal runs
-
-A delivery cycle may use several **bounded Goal runs**, but exactly one Goal may own active
-execution. A Goal never stays active solely to wait for Baah, CI, a device, or an external
-service.
-
-- Intake and approval preparation happen in ordinary chat; no continuous Goal runs while
-  Baah decides.
-- A Build Goal starts after kickoff-bundle approval or separate Plan approval. It terminates
-  at `QA_READY`, `UNRESOLVED_ESCALATION`, `MATERIAL_REAPPROVAL_REQUIRED`,
-  `NON_DEVICE_SHIP_READY`, or `EXTERNAL_WAIT_RECORDED`.
-- A repair Goal stays on the same Linear issue and terminates at `QA_READY`,
-  `UNRESOLVED_ESCALATION`, `MATERIAL_REAPPROVAL_REQUIRED`, or
-  `EXTERNAL_WAIT_RECORDED`.
-- A Ship Goal starts only after clear Ship approval and terminates after verified merge,
-  safe cleanup, evidence update, and next-outcome recommendation.
-- A completed Goal never auto-restarts, infers approval, or selects successor work.
-
-Prefer event-capable waits that return on terminal change without repeated reasoning. When
-none exists, record `EXTERNAL_WAIT_RECORDED`, complete the Goal, and use one scheduled or
-user-triggered continuation near the normal completion window. Unchanged state produces no
-reasoning turn, Linear comment, or user notification.
-
-### Work Map
-
-Before detailed discussion for Standard and Full work, store or link a Work Map in Linear.
-It includes a table of contents, one Platform/Product/Integration owner per slice, outcome,
-dependency, approval point, size (`XS / S / M / L / XL`), pickup order, parallel work,
-critical path, progress counters, and a pace forecast only after repository inspection.
-
-### Discussion Map
-
-After selecting a slice, present its agenda before the first substantive question and keep
-`current / next / remaining decisions` visible.
-
-- **Platform discussion:** outcome, current system, ownership/persistence, core behavior,
-  Product contract, privacy/security, failure/recovery, dependencies, validation.
-- **Product discussion:** outcome, journey/information priorities, states, interaction,
-  accessibility, Platform capability, device-QA expectations. Exact layout belongs after
-  Scope, between Scope and Plan.
-- **Integration discussion:** contract compatibility, end-to-end flow, cross-track states
-  and failures, preview strategy, combined verification, release readiness.
-
-### Architecture diagrams
-
-Diagrams communicate **layman meaning plus technical truth**. Primary labels explain user
-meaning; secondary labels name real services, stores, components, routes, and boundaries.
-Arrows describe information/control; storage, trust, failure, ownership, and offline
-boundaries are visible. Mermaid is the default. A diagram is embedded content owned by its
-host artifact; update it when the host artifact changes.
-
-### Scope
-
-Scope lives in the Linear issue or attached Linear document and contains outcome, why now,
-observable acceptance criteria, dependencies, architecture, unresolved questions, and
-exclusions. Baah approves material Scope. Issue creation or a status change is not approval.
-
-### Product design between Scope and Plan
-
-After Product Scope approval, use `design-handoff` for Figma/screenshots, sketch, or a
-Visual Companion result. Record layout intent, key states, token/component mapping,
-interaction evidence, accessibility, and device-QA expectations in Linear. Material
-differences return to Scope.
-
-Every Product build is design-system-first. Before Product Scope or Plan approval, inventory
-every visible component, interaction style, token, and icon and map each one to an existing
-shared component, semantic style/token, and Central Icons asset. An unavailable item is a
-blocking design-system gap: stop before screen or Product code and present Baah with the
-affected surfaces, evidence that existing contracts do not satisfy them, and exactly one
-recommended reuse, extension, addition, or narrow system-owned exception. The build must not
-proceed until Baah approves that exact treatment and the approval is recorded in Linear.
-Silently creating a feature-local substitute, parallel API, raw style, invented icon mapping,
-SF Symbol substitution, design-system extension, or broad exception is prohibited.
-
-Using an existing DS component is mandatory whenever it covers the interaction. Raw platform
-interactive controls covered by a shared DS component may appear only inside explicitly
-designated primitive implementation files; Product files and composite DS files must compose
-those primitives. A missing component
-or variant is a blocking design-system gap, never permission to bypass the shared contract.
-There is no directory or module exemption or allowlist: primitive permission is granted by exact
-file classification with prior Linear approval. Existing classified legacy debt may only shrink
-under its owning migration issue; new, moved, or changed raw-control debt is blocking.
-
-Create a new primitive only when no existing component can represent the interaction through a
-coherent variant, the behavior and accessibility contract are reusable, and extending an
-existing component would make its API contradictory. Copy, callbacks, one-screen styling,
-width, or size alone never justify a primitive; prefer an existing-component extension when its
-semantic contract stays coherent.
-
-This gate is retroactive. Product work already built before the rule, or a design-system gap
-first found during code review, must receive a complete pre-merge audit of the changed Product
-surface. Before merge or Ship approval, replace every eligible feature-local component, style,
-token, and icon with the available DS component/style/token or Central icon. Present Baah with
-every remaining unavailable item, its affected surfaces, and exactly one recommended DS addition
-or narrow system-owned exception. Do not request or infer approval while an available adoption
-is undone or an unavailable item has not been shown to Baah and recorded in Linear.
-
-### Plan
-
-Plan lives in the Linear issue or attached Linear document. It names tasks, tests,
-dependencies, interfaces, integration, verification, and for Product work the existing/new
-DS components. Baah approves the plain-language Plan summary. A material change to build
-path, public contract, persistence, security/privacy, verification, or approval ownership
-returns to Plan.
-
-If a Product dependency is not in Build, Baah chooses Wait or an approved skeleton:
-independent Product foundation may proceed, while contract wiring remains blocked.
-
-### Build
-
-After Plan approval, set the issue In Progress and use `executing-plans` with TDD where
-practical. Use subagents only when Baah explicitly authorizes them and tasks are independent.
-
-Product DS order is strict:
-
-1. Record the approved component/style/token/icon inventory, Central Icons mapping, and any
-   narrowly approved system-owned exceptions in Linear.
-2. DS layer (`mobile/src/components/ui/` for React Native; native design-system package for
-   SwiftUI), typed, documented, tested, and free of business logic.
-3. Screen layer imports shared primitives and owns navigation/data/state logic.
-
-A Product Build Goal cannot start with an unresolved design-system gap or missing mapping
-evidence. A newly discovered gap completes the active Goal as `MATERIAL_REAPPROVAL_REQUIRED`;
-it never authorizes an in-place screen implementation.
-
-For cross-track work, Platform and independent Product foundation may run in parallel.
-Integration begins only when both named sides are ready.
+## Review and release safety
 
 ### Review + QA
 
@@ -286,8 +31,9 @@ or release gate. Other workflow surfaces reference this contract; they do not re
 2. Complete implementation and the smallest applicable focused checks.
 3. Run a fresh whole-candidate review before the complete matrix. Resolve every blocking
    finding with focused checks, then review the resulting candidate again.
-4. Freeze the clean candidate revision. Run the complete applicable matrix once on that exact
-   revision, concurrently where checks do not share mutable state.
+4. Freeze the clean candidate revision. For a release or final repair-release gate, run the
+   complete applicable matrix once on that exact revision. Other pull requests keep their fast,
+   focused, risk-selected exact-revision evidence instead.
 5. Preserve that exact-revision evidence through PR and Ship while code, dependencies,
    toolchain, signing, configuration, and covered inputs remain unchanged. Any change to one
    of those invalidators reopens only the affected proof, plus review when candidate content
@@ -305,15 +51,65 @@ with available DS contracts and Central Icons, and the complete list of remainin
 items or approved exceptions. Missing evidence or an available-but-unused DS contract blocks
 Ship approval.
 
+### Browser simulator review
+
+Every reviewable native Product tracer and final native Product candidate must pass agent-owned
+browser simulator review. Use the Build iOS Apps `ios-simulator-browser` skill with an explicit
+Simulator UDID. Start a `serve-sim` helper scoped to that UDID, open its printed URL in the Codex
+in-app browser, and prove that the page renders a live simulator frame. A loaded page, a running
+helper, or a connection status without a rendered frame is not evidence. Keep the helper alive
+while review continues. On exit, clean up only the helper for that explicit UDID.
+
+Review the affected interaction and relevant accessibility state in the live frame. Record the
+exact candidate revision, simulator model, OS version, affected interaction, accessibility
+checks, and a browser-visible screenshot. If a native change has no visible or interactive
+Product effect, record the browser review as inapplicable with the reason.
+
+Browser simulator review does not replace physical-device, hardware-specific, or perceptual
+judgment owned by Baah. It is the agent gate before Baah QA, not evidence that physical QA
+passed.
+
 ### Verification economy
+
+Every pull request links one Linear tracer, declares one reviewable outcome, and declares all
+applicable additive risks. Repository classification can raise risk but cannot lower approved
+Linear classification. Unknown or uncertain sensitive changes fail closed for review.
+
+Pull requests use fast and focused checks selected from logic, UI, network, device, data,
+security, and workflow risks. No pull-request event runs or requires the complete matrix.
+Device-sensitive changes require exact-revision physical QA evidence when the affected behavior
+cannot be proven in the simulator. Release candidates require the complete applicable matrix on
+the exact candidate revision through release-tag or manual execution. Exact-revision evidence
+remains reusable while code, dependencies, toolchain, signing, configuration, and covered inputs
+remain unchanged.
+
+The risk-to-proof contract is:
+
+| Risk | Required automated proof | Additional evidence |
+| --- | --- | --- |
+| Logic | Contract tests, package tests, and one Personal app compile | None |
+| UI | Logic proof plus design-system checks and one Preview compile | Browser simulator review when visible |
+| Network | Contract tests, affected backend tests, package tests, and one Personal app compile | Focused failure and retry review |
+| Device | Logic proof plus one generic device compile | Exact-revision physical QA |
+| Data | Storage, migration, recovery, affected backend tests, and package tests plus one Personal app compile | Recovery or migration evidence when affected |
+| Security | Security contracts, affected backend tests, and package tests plus one Personal app compile | Baah approval for material security changes |
+| Workflow | Workflow contracts and candidate-safe policy checks | Protected-base classification |
+| Release | Complete matrix and Release build | Final physical QA and Ship approval |
+
+During calibration, the protected-base policy reports contract mismatches. After five historical
+backtests and three live pull requests show no missed required risk, change the protected-base
+policy to strict metadata enforcement. Pull-request branch protection requires stable fast and
+focused checks only. A `high-risk` or `release` label records classification. It does not start or
+require the complete matrix. Until calibration ends, do not claim strict metadata enforcement is
+live.
 
 Use the smallest applicable verification that can falsify the current change first, then
 expand only after focused checks pass or the risk boundary requires it. Reuse fresh evidence
 when code, dependencies, toolchain, signing, configuration, and covered inputs are unchanged
 for the exact covered revision; do not rerun an
 identical expensive command merely to produce another transcript. Run independent checks concurrently
-when they do not share mutable state. The complete release matrix remains mandatory at its
-named merge, release, final repair-release, or high-risk gate. During repair quarantine, do
+when they do not share mutable state. The complete release matrix remains mandatory at a
+release or final repair-release gate. During repair quarantine, do
 not spend the complete matrix before the named broken interaction is proven fixed.
 
 Before an expensive gate, run a readiness preflight that can fail cheaply. For long-running
@@ -346,10 +142,12 @@ Before the first Baah QA request, all applicable requirements must pass:
 1. Acceptance criteria map to concrete evidence.
 2. Narrow and complete applicable verification layers pass on the candidate revision.
 3. Blocking review findings are resolved.
-4. Required Platform, Product, and Integration slices are complete.
+4. Required vertical tracers and their cross-cutting acceptance constraints are complete.
 5. Device-facing work is committed, integrated, and pushed to canonical preview.
 6. The served or installed build is confirmed as that exact revision.
-7. Agent-owned simulator, accessibility, preview, and smoke checks pass.
+7. Every visible or interactive native Product change has passed browser simulator review with
+   a live-frame screenshot and the required revision, simulator, interaction, and accessibility
+   evidence.
 8. Known limitations and inapplicable checks are explicit and do not contradict acceptance.
 9. Linear records the candidate revision, evidence, remaining risk, and exact requested
    observation.
@@ -405,6 +203,19 @@ Baah-controlled decision or action.
 
 ## Canonical preview and feedback authority
 
+Local worktree previews are non-canonical. Only a reviewed integration-branch checkpoint can
+publish to the cumulative canonical Preview. Publication is additive and must preserve every
+existing included candidate. A broken or obsolete candidate must be explicitly reverted or replaced.
+Record the exact Preview, spec, and tracer revisions for each publication.
+
+A clean integration checkpoint needs topology proof, a build, and an affected-interaction smoke
+check. Reuse the tracer's unchanged exact-revision evidence and do not repeat unaffected broad
+verification. Preview-only history cannot enter a feature branch, spec branch, or `main`.
+
+This extension exists because Baah needs one stable cumulative product while several branches move
+independently. When main can provide the same stable cumulative product without bypassing QA or
+Ship, the canonical Preview extension can be removed.
+
 Baah’s UI/mobile feedback is assumed to come from canonical `preview/taisa`. Before using it
 as evidence:
 
@@ -440,6 +251,28 @@ only the previously recorded broken interaction before final verification and pu
 - DS breaking changes always require Baah confirmation with affected usages; global behavior
   changes require confirmation; backward-compatible variants may proceed autonomously.
 
+Every Product build resolves each requirement through the registered design system before
+Product code. Use `design:design-system` for system audit or extension and
+`design-system-patterns` for contract architecture and migration. Classify the contract as a
+foundation, asset, behavior, style, component, or platform adapter. Assign exactly one treatment:
+reuse, extend, create, or approved exception. Record appearance, accessibility, device and input,
+locale, and content-length support.
+
+An existing design-system component is mandatory when it covers the interaction. Raw platform
+interactive controls may appear only in exact, explicitly designated primitive files. Product
+and composite design-system files must compose those primitives. A missing component variant is
+a blocking design-system gap. It does not permit bypassing the shared contract. No directory or
+module exemption is allowed. Existing classified legacy debt may only shrink under its owning
+migration issue; new, moved, or changed raw-control debt is blocking.
+
+Create a primitive only when no existing component supports a coherent variant, the behavior and
+accessibility contract are reusable, and extending an existing component would make its API
+contradictory. Copy, callbacks, one-screen styling, width, or size alone do not qualify. Classify
+contract changes as additive, intentional system-wide restyle, or breaking. Additive changes
+preserve defaults. System-wide changes review every consumer. Breaking changes require a
+replacement, migration, deprecation, and removal condition. Exceptions require a narrow reason,
+owner, expiry condition, and removal issue, with Baah approval recorded in Linear.
+
 ## AI and data quality
 
 - The phone remains authoritative for readable personal data unless Baah approves otherwise.
@@ -451,67 +284,6 @@ only the previously recorded broken interaction before final verification and pu
 - Logs and diagnostics contain no private content or credentials.
 - Test invalid responses, unavailable providers, timeouts, partial streams, retries,
   relaunch, conflicts, and recovery; expose uncertainty.
-
-## Linear operating rules
-
-Project: `31b0d99c-6f74-4c9c-af2a-12e6e25aabe0` (Taisa)
-Team: `e95356d8-17f7-4700-bdfe-222782bea546` (A Playing Field)
-
-- Milestones represent strategic outcomes, not authorization.
-- Issues represent independently valuable actionable work.
-- Sub-issues represent distinct review, owner, dependency, or approval boundaries.
-- Checklists/comments hold commands and small steps.
-- Relations express blockers/dependencies; project updates report program health.
-- Before creation, search exact and semantic matches; continue an equivalent outcome.
-- Purely prospective direction stays in a milestone description until someone owns action.
-- Update the issue only for material events: approval evidence; Build start; blocker change;
-  stable candidate and verification; canonical preview and QA request; QA failure and verified
-  replacement; Ship, merge, and Closeout. Do not narrate commands, polls, retries, or passing
-  narrow tests.
-
-Status IDs: Todo `8092f145-a7b5-4e09-812e-1d3212fc1c7d`; In Progress
-`ad545d06-1ef1-4c5d-86c7-44e1e3724409`; Done
-`b2c07c6b-bf80-40d1-8e08-9c941b04f137`; Canceled
-`e2a4cb1f-daf0-4269-8acc-9b0fed9224f5`.
-
-Linear failure: retry issue creation once, record the failed action, preserve local evidence,
-and continue only work already authorized by readable Scope and Plan.
-
-### Deferred-capability stewardship
-
-When Baah or an approved artifact explicitly defers a capability, search Linear for exact and
-semantic matches before mutation. Continue the matching issue when its intended outcome is
-equivalent; otherwise create one non-duplicate Backlog issue in the relevant milestone. A
-deferral is live Linear state, not a repository backlog and not authorization to scope or build.
-
-Each deferral records origin and reason, user value and reconsideration trigger,
-dependencies/unknowns, architectural guardrails, durable Git and Linear evidence, and dated
-lifecycle history. Lifecycle is **Captured → Watching → Candidate → Planned → Shipped or Dropped**:
-
-- Captured preserves the outcome without prioritizing it.
-- Watching means evidence or dependencies are being monitored.
-- Candidate is a recommendation only and does not authorize Scope.
-- Planned requires explicit Baah Scope and Plan approvals recorded in Linear.
-- Shipped requires canonical `main` merge evidence and applicable acceptance.
-- Dropped requires Baah's explicit decision or documented supersession evidence.
-
-Before Scope or Plan, consult related deferrals for dependency, guardrail, and duplicate
-conflicts. At Review and before Ship, reconcile any lifecycle change against actual code,
-canonical preview, verification, device evidence, and `main`; never promote a deferral merely
-because implementation resembles it. Linear owns live lifecycle; Git owns the durable
-technical constraints and evidence that must version with code.
-
-Deferring concurrent voice behavior must not hard-code permanent mutual exclusion between
-capture and playback into current audio/session contracts. Linear holds the mutable outcome
-inventory and lifecycle; Git retains only this durable architectural guardrail.
-
-### Monthly reconciliation heartbeat
-
-The monthly stewardship heartbeat runs on the first Monday at 09:00 Africa/Accra. It reads
-the current Taisa Linear issues/milestones and relevant durable Git contracts, reports access
-failure honestly, and surfaces only meaningful dependency, guardrail, evidence, or lifecycle
-contradictions. It remains quiet when there is no meaningful change. It may update safe routine
-evidence, but it never approves Scope, Plan, priority changes, lifecycle promotion into active work, or Ship.
 
 ## QA failure and parked work
 
@@ -559,6 +331,14 @@ history unless Baah explicitly approves deletion.
 ## Documentation freshness cadence
 
 ### Freshness and Closeout
+
+Delivery closeout and repeated delivery waste route through Matt's `retro` process. A small,
+reversible environment improvement is agent-owned. Mechanical failure produces a check or
+automation; repeated navigation cost produces a pointer or tool; a judgment failure produces a
+review standard; duplicated process is consolidated or removed. Retrospective evidence names the
+resulting check, pointer, review standard, tool, process removal, or explicit no-change conclusion.
+A retrospective change to authority, privacy, security, verification coverage, Preview, meaningful cost, or Ship
+stops for Baah's explicit decision before implementation.
 
 Run `scripts/verify-doc-freshness.sh` for affected repository artifacts that require Status
 and Last updated metadata. At Review, perform a **Closeout** in Linear: actual outcome,
@@ -619,10 +399,11 @@ After Ship approval:
 1. Confirm clean branch/worktree and correct PR base, then run the conflict-free Ship gate:
    `bash scripts/verify-branch-topology.sh ship --pr-base main --main-ref origin/main --preview-ref origin/preview/taisa`.
 2. Fetch and reconcile with `origin/main` safely.
-3. Confirm the complete verification matrix and final review for the exact revision. At Ship,
-   reuse fresh exact-revision evidence from the final repair-release or high-risk gate when
-   code, dependencies, toolchain, signing, configuration, and covered inputs are unchanged; otherwise run
-   the invalidated checks before merge.
+3. Confirm the final review and risk-required verification for the exact revision. Release and
+   final repair-release candidates require the complete applicable matrix. Other pull requests
+   require fast and focused checks selected by their additive risks. Reuse fresh exact-revision evidence while
+   code, dependencies, toolchain, signing, configuration, and covered inputs are unchanged;
+   otherwise run the invalidated checks before merge.
 4. Confirm required device QA and exact preview evidence.
 5. Push branch and create/update the PR.
 6. Squash-merge to `main`.

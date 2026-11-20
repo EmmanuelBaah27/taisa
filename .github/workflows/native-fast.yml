@@ -2,6 +2,7 @@ name: Native Fast Checks
 
 on:
   pull_request:
+    types: [opened, reopened, synchronize, edited]
   push:
     branches: [main]
 
@@ -9,13 +10,42 @@ concurrency:
   group: native-fast-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+  pull-requests: read
+
 jobs:
   native-fast:
     name: Native Fast Checks
     runs-on: macos-26
-    timeout-minutes: 20
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Classify additive risks
+        id: classify
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if test "${{ github.event_name }}" = "pull_request"; then
+            bash scripts/native-apple/classify-ci-risk.sh "${BASE_SHA}" "${HEAD_SHA}" >> "${GITHUB_OUTPUT}"
+          else
+            echo "native_required=true" >> "${GITHUB_OUTPUT}"
+            echo "high_risk_required=false" >> "${GITHUB_OUTPUT}"
+            echo "backend_required=false" >> "${GITHUB_OUTPUT}"
+            echo "app_compile_required=true" >> "${GITHUB_OUTPUT}"
+            echo "detected_risks=logic" >> "${GITHUB_OUTPUT}"
+          fi
+      - name: Validate pull request contract during calibration
+        if: github.event_name == 'pull_request'
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          DETECTED_RISKS: ${{ steps.classify.outputs.detected_risks }}
+          PR_CONTRACT_MODE: report
+        run: node scripts/native-apple/validate-pr-contract.mjs
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -24,6 +54,15 @@ jobs:
         run: |
           sudo xcode-select -s /Applications/Xcode_26.1.1.app
           xcodebuild -version | grep 'Build version 17B100'
+      - name: Install pinned iOS platform
+        run: |
+          for attempt in 1 2 3; do
+            if xcodebuild -downloadPlatform iOS; then
+              exit 0
+            fi
+            test "${attempt}" -lt 3 || exit 1
+            sleep 15
+          done
       - name: Install pinned XcodeGen
         run: |
           brew install xcodegen
@@ -36,5 +75,21 @@ jobs:
           key: native-fast-swift-${{ runner.os }}-${{ hashFiles('apple/Packages/TaisaFoundation/Package.resolved') }}
           restore-keys: native-fast-swift-${{ runner.os }}-
       - run: npm ci
+      - name: Verify affected backend
+        if: github.event_name == 'pull_request' && steps.classify.outputs.backend_required == 'true'
+        run: |
+          npm run build --workspace=backend
+          npm test --workspace=backend -- --runInBand
       - name: Verify native Apple contracts and packages
+        if: github.event_name != 'pull_request' || steps.classify.outputs.native_required == 'true'
         run: npm run verify:native-apple:fast
+      - name: Run affected Xcode tests
+        if: github.event_name == 'pull_request' && steps.classify.outputs.xcode_test_targets != ''
+        env:
+          TAISA_NATIVE_ARTIFACTS: ${{ runner.temp }}/native-selected-test-artifacts
+        run: bash scripts/native-apple/verify-xcode-selected.sh "${{ steps.classify.outputs.xcode_test_targets }}"
+      - name: Compile risk-selected app surfaces
+        if: github.event_name != 'pull_request' || steps.classify.outputs.app_compile_required == 'true'
+        env:
+          TAISA_NATIVE_ARTIFACTS: ${{ runner.temp }}/native-selected-artifacts
+        run: bash scripts/native-apple/verify-selected.sh "${{ steps.classify.outputs.detected_risks }}"

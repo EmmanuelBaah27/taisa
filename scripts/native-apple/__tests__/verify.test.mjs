@@ -12,6 +12,7 @@ import {
   unresolvedBuildIdentityPlaceholders,
   verifyNativeProject,
 } from '../verify.mjs';
+import { validatePullRequestContract } from '../validate-pr-contract.mjs';
 
 const repositoryRoot = resolve(import.meta.dirname, '../../..');
 
@@ -337,7 +338,155 @@ test('combined native verification and CI pin every required gate', async () => 
   assert.ok(resetBody.indexOf('simctl bootstatus') < resetBody.indexOf('simctl uninstall'));
 });
 
-test('tiered native CI keeps fast feedback separate from exact-head full verification', async () => {
+test('native CI risk classification fails closed for sensitive production paths', () => {
+  const classify = (paths) => execFileSync(
+    'bash',
+    [resolve(repositoryRoot, 'scripts/native-apple/classify-ci-risk.sh')],
+    { encoding: 'utf8', input: `${paths.join('\n')}\n` },
+  );
+
+  assert.match(classify(['apple/TaisaApp/Home/HomeView.swift']), /native_required=true/);
+  assert.match(classify(['apple/TaisaApp/Home/HomeView.swift']), /high_risk_required=false/);
+  assert.match(classify(['apple/TaisaApp/Home/HomeView.swift']), /detected_risks=ui/);
+  assert.match(classify(['apple/TaisaApp/Home/HomeView.swift']), /app_compile_required=true/);
+  assert.match(classify(['.github/workflows/native-fast.yml']), /app_compile_required=false/);
+  assert.match(
+    classify(['scripts/native-apple/__tests__/verify.test.mjs']),
+    /app_compile_required=false/,
+  );
+  assert.match(
+    classify([
+      'apple/Packages/TaisaFoundation/Sources/TaisaAudio/AudioCaptureService.swift',
+      'apple/Packages/TaisaFoundation/Sources/TaisaStorage/TaisaMigrator.swift',
+    ]),
+    /detected_risks=device,data/,
+  );
+  assert.match(
+    classify([
+      'apple/TaisaApp/Home/HomeView.swift',
+      'apple/Packages/TaisaFoundation/Sources/TaisaCore/AppClock.swift',
+    ]),
+    /detected_risks=logic,ui/,
+  );
+  for (const path of [
+    '.github/workflows/native-apple.yml',
+    '.github/workflows/native-apple.test.yml',
+    'railway.json',
+    'package.json',
+    'apple/Packages/TaisaFoundation/Package.swift',
+    'apple/Packages/TaisaFoundation/Package.resolved',
+    'apple/project.yml',
+    'scripts/native-apple/verify-selected.sh',
+    'scripts/native-apple/verify-xcode-selected.sh',
+    'apple/Config/Personal.xcconfig',
+    'apple/Config/TaisaPersonal.entitlements',
+    'apple/Packages/TaisaFoundation/Sources/TaisaStorage/TaisaMigrator.swift',
+    'apple/Packages/TaisaFoundation/Sources/TaisaSecurity/RecoveryKey.swift',
+    'apple/Packages/TaisaFoundation/Sources/TaisaVoice/VoiceGatewayCredentialStore.swift',
+    'apple/Packages/TaisaFoundation/Sources/TaisaRecovery/RestoreCoordinator.swift',
+    'apple/TaisaApp/Recovery/PersonalRecoveryBackend.swift',
+    'backend/src/db/schema.sql',
+    'backend/src/auth/deviceCredentials.ts',
+    'backend/src/config/production.ts',
+    'mobile/src/db/migrations.ts',
+    'scripts/verify-branch-topology.sh',
+  ]) {
+    assert.match(classify([path]), /native_required=true/, path);
+    assert.match(classify([path]), /high_risk_required=true/, path);
+  }
+  assert.match(
+    classify(['apple/Packages/TaisaFoundation/Tests/TaisaStorageTests/TaisaMigratorTests.swift']),
+    /high_risk_required=false/,
+  );
+  assert.match(
+    classify(['scripts/native-apple/__tests__/verify.test.mjs']),
+    /high_risk_required=false/,
+  );
+  assert.match(
+    classify(['apple/Packages/TaisaFoundation/Tests/TaisaStorageTests/TaisaMigratorTests.swift']),
+    /native_required=true/,
+  );
+  assert.match(classify(['backend/src/__tests__/coaching.streaming.test.ts']), /backend_required=true/);
+  assert.match(classify(['backend/src/routes/coaching.ts']), /backend_required=true/);
+  for (const path of [
+    'shared/fixtures/transcription/completed.valid.json',
+    'shared/fixtures/coaching-stream/completed.valid.json',
+    'scripts/native-contracts/verify-transcription-fixtures.mjs',
+  ]) {
+    assert.match(classify([path]), /native_required=true/, path);
+  }
+  for (const path of [
+    'docs/agents/issue-tracker.md',
+    '.agents/skills/taisa-workflow/templates/bounded-goal.md',
+    'docs/project-memory.md',
+    'CLAUDE.md',
+  ]) {
+    assert.match(classify([path]), /detected_risks=workflow/, path);
+  }
+  for (const [path, target] of [
+    ['apple/TaisaPersonalTests/PersonalIsolationTests.swift', 'TaisaPersonalTests'],
+    ['apple/TaisaPersonalUITests/PersonalRecoveryUITests.swift', 'TaisaPersonalUITests'],
+    ['apple/TaisaUnitTests/AppRuntimeTests.swift', 'TaisaUnitTests'],
+    ['apple/TaisaUITests/TaisaLaunchTests.swift', 'TaisaUITests'],
+    ['apple/TaisaPreviewUITests/TaisaPreviewCatalogTests.swift', 'TaisaPreviewUITests'],
+  ]) {
+    assert.match(classify([path]), new RegExp(`xcode_test_targets=${target}`), path);
+  }
+});
+
+test('pull request contract requires one tracer, one outcome, additive risks, and exact device evidence', () => {
+  const validBody = `## Linear tracer
+
+APF-96
+
+## Reviewable outcome
+
+Route one device-sensitive pull request through focused verification.
+
+## Declared risks
+
+- [x] device
+- [x] workflow
+
+## Device QA evidence
+
+Device: iPhone 17 Pro
+Operating system: iOS 26.1
+Behavior: audio capture interruption recovery
+Result: passed
+Exact commit: abc123
+
+## Override
+
+None.`;
+  assert.deepEqual(validatePullRequestContract({
+    body: validBody,
+    detectedRisks: ['device', 'workflow'],
+    headSha: 'abc123',
+  }), {
+    declaredRisks: ['device', 'workflow'],
+    errors: [],
+    tracer: 'APF-96',
+  });
+
+  const invalid = validatePullRequestContract({
+    body: '## Reviewable outcome\n\nDescribe the one result that this pull request delivers.\n\n- [x] ui',
+    detectedRisks: ['security'],
+    headSha: 'def456',
+  });
+  assert.match(invalid.errors.join('\n'), /Linear tracer/);
+  assert.match(invalid.errors.join('\n'), /reviewable outcome/);
+  assert.match(invalid.errors.join('\n'), /security/);
+
+  const multipleTracers = validatePullRequestContract({
+    body: validBody.replace('APF-96', 'APF-96 and APF-97'),
+    detectedRisks: ['device', 'workflow'],
+    headSha: 'abc123',
+  });
+  assert.match(multipleTracers.errors.join('\n'), /exactly one APF Linear tracer/);
+});
+
+test('tiered native CI uses focused pull-request checks and reserves full verification for release or manual runs', async () => {
   const packageJSON = JSON.parse(await readFile(resolve(repositoryRoot, 'package.json'), 'utf8'));
   const fastScript = await readFile(
     resolve(repositoryRoot, 'scripts/native-apple/verify-fast.sh'),
@@ -349,6 +498,18 @@ test('tiered native CI keeps fast feedback separate from exact-head full verific
   );
   const fullWorkflow = await readFile(
     resolve(repositoryRoot, '.github/workflows/native-apple.yml'),
+    'utf8',
+  );
+  const trustedPolicy = await readFile(
+    resolve(repositoryRoot, '.github/workflows/pr-policy.yml'),
+    'utf8',
+  );
+  const selectedScript = await readFile(
+    resolve(repositoryRoot, 'scripts/native-apple/verify-selected.sh'),
+    'utf8',
+  );
+  const selectedXcodeTests = await readFile(
+    resolve(repositoryRoot, 'scripts/native-apple/verify-xcode-selected.sh'),
     'utf8',
   );
 
@@ -364,48 +525,75 @@ test('tiered native CI keeps fast feedback separate from exact-head full verific
   assert.doesNotMatch(fastScript, /xcodebuild (test|build|build-for-testing)/);
 
   assert.match(fastWorkflow, /name: Native Fast Checks/);
+  assert.match(fastWorkflow, /timeout-minutes: 60/);
   assert.match(fastWorkflow, /pull_request:/);
+  assert.match(fastWorkflow, /types: \[opened, reopened, synchronize, edited\]/);
+  assert.doesNotMatch(fastWorkflow, /edited, labeled/);
   assert.match(fastWorkflow, /branches: \[main\]/);
   assert.match(fastWorkflow, /verify:native-apple:fast/);
+  assert.match(fastWorkflow, /validate-pr-contract\.mjs/);
+  assert.match(fastWorkflow, /PR_CONTRACT_MODE: report/);
+  assert.match(fastWorkflow, /detected_risks/);
+  assert.match(fastWorkflow, /verify-selected\.sh/);
+  assert.match(fastWorkflow, /backend_required/);
+  assert.match(fastWorkflow, /app_compile_required/);
+  assert.match(fastWorkflow, /xcode_test_targets/);
+  assert.match(fastWorkflow, /verify-xcode-selected\.sh/);
+  assert.match(fastWorkflow, /name: Install pinned iOS platform/);
+  assert.match(fastWorkflow, /xcodebuild -downloadPlatform iOS/);
+  assert.match(fastWorkflow, /for attempt in 1 2 3/);
+  assert.match(fastWorkflow, /npm run build --workspace=backend/);
+  assert.match(fastWorkflow, /npm test --workspace=backend -- --runInBand/);
+
+  assert.match(selectedScript, /scheme Taisa-Personal/);
+  assert.match(selectedScript, /test "\$1" = workflow/);
+  assert.match(selectedScript, /No Product app compile is required for a workflow-only change/);
+  assert.match(selectedScript, /generic\/platform=iOS Simulator/);
+  assert.match(selectedScript, /\*,ui,\*/);
+  assert.match(selectedScript, /scheme Taisa-Preview/);
+  assert.match(selectedScript, /\*,device,\*/);
+  assert.match(selectedScript, /generic\/platform=iOS'/);
+
+  for (const target of [
+    'TaisaPersonalTests',
+    'TaisaPersonalUITests',
+    'TaisaUnitTests',
+    'TaisaUITests',
+    'TaisaPreviewUITests',
+  ]) assert.match(selectedXcodeTests, new RegExp(target));
+  assert.match(selectedXcodeTests, /xcodebuild test/);
+  assert.match(selectedXcodeTests, /-only-testing:/);
+
+  assert.match(trustedPolicy, /pull_request_target:/);
+  assert.match(trustedPolicy, /types: \[opened, reopened, synchronize, edited\]/);
+  assert.match(trustedPolicy, /ref: \$\{\{ github\.event\.pull_request\.base\.sha \}\}/);
+  assert.doesNotMatch(trustedPolicy, /ref:.*head\.sha/);
+  assert.match(trustedPolicy, /Never check out or execute candidate code/);
+  assert.match(trustedPolicy, /PR_CONTRACT_MODE: report/);
+  assert.match(trustedPolicy, /validate-pr-contract\.mjs/);
   assert.match(fastWorkflow, /native-fast-\$\{\{/);
   assert.match(fastWorkflow, /cancel-in-progress: true/);
 
   assert.match(fullWorkflow, /name: Native Apple Full Verification/);
-  assert.match(fullWorkflow, /types: \[opened, reopened, synchronize, labeled, unlabeled\]/);
-  assert.doesNotMatch(fullWorkflow, /ready_for_review/);
-  assert.match(
-    fullWorkflow,
-    /if: github\.event_name != 'pull_request' \|\| \(needs\.classify-native-impact\.outputs\.native_required == 'true' && contains\(github\.event\.pull_request\.labels\.\*\.name, 'merge-ready'\) && \(github\.event\.action == 'synchronize' \|\| \(github\.event\.action == 'labeled' && github\.event\.label\.name == 'merge-ready'\)\)\)/,
-  );
-  assert.match(fullWorkflow, /schedule:/);
+  assert.doesNotMatch(fullWorkflow, /pull_request:/);
+  assert.doesNotMatch(fullWorkflow, /schedule:/);
   assert.match(fullWorkflow, /workflow_dispatch:/);
+  assert.doesNotMatch(fullWorkflow, /branches: \[main\]/);
   assert.match(fullWorkflow, /tags: \['v\*'\]/);
-  assert.match(fullWorkflow, /merge-ready/);
-  assert.match(fullWorkflow, /name: Native Merge Gate/);
-  assert.match(fullWorkflow, /name: Classify native impact/);
-  assert.match(fullWorkflow, /native_required/);
-  assert.match(fullWorkflow, /workflow-only pull request does not require the full native matrix/i);
-  assert.match(fullWorkflow, /github\.event\.pull_request\.base\.sha/);
-  assert.match(fullWorkflow, /github\.event\.pull_request\.head\.sha/);
-  assert.match(fullWorkflow, /apple\/|scripts\/native-apple\/|package\.json/);
-  assert.match(fullWorkflow, /scripts\/native-apple\/__tests__\/\*\).*;;/s);
-  assert.match(fullWorkflow, /needs\.verify-native-apple\.result/);
-  assert.match(fullWorkflow, /github\.event\.pull_request\.head\.sha/);
-  assert.match(fullWorkflow, /checks: read/);
-  assert.match(fullWorkflow, /actions\/github-script@v7/);
-  assert.match(fullWorkflow, /const checkName = 'Native Apple Full Verification'/);
-  assert.match(fullWorkflow, /check_name: checkName/);
-  assert.match(fullWorkflow, /filter: 'all'/);
-  assert.match(fullWorkflow, /check\.head_sha === headSha/);
-  assert.match(fullWorkflow, /check\.conclusion === 'success'/);
-  assert.match(fullWorkflow, /needs\.verify-native-apple\.result == 'skipped'/);
-  assert.match(fullWorkflow, /steps\.find-prior-full\.outputs\.exact_head_success/);
+  assert.doesNotMatch(fullWorkflow, /merge-ready/);
+  assert.doesNotMatch(fullWorkflow, /name: Native Merge Gate/);
+  assert.doesNotMatch(fullWorkflow, /name: Classify native impact and risk/);
+  assert.doesNotMatch(fullWorkflow, /native_required/);
+  assert.doesNotMatch(fullWorkflow, /high_risk_required/);
+  assert.doesNotMatch(fullWorkflow, /github\.event\.pull_request/);
+  assert.doesNotMatch(fullWorkflow, /scripts\/native-apple\/classify-ci-risk\.sh/);
+  assert.doesNotMatch(fullWorkflow, /actions\/github-script@v7/);
   assert.equal(
     fullWorkflow.match(/^concurrency:/gm)?.length,
     1,
     'full native workflow must declare exactly one top-level concurrency policy',
   );
-  assert.match(fullWorkflow, /cancel-in-progress: \$\{\{ github\.event_name == 'pull_request' \}\}/);
+  assert.match(fullWorkflow, /cancel-in-progress: true/);
   assert.match(fullWorkflow, /npm run verify:native-apple:all/);
 });
 
