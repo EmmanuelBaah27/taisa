@@ -628,7 +628,7 @@ enum TaisaSchema {
     private static let version8Statements: [String] = [
         "PRAGMA defer_foreign_keys = ON",
         version8ActionTable,
-        "INSERT INTO actions_v8 (id, goal_id, title, detail, status, due_day, due_at_ms, origin, created_at_ms, updated_at_ms) SELECT id, goal_id, title, detail, CASE status WHEN 'open' THEN 'active' WHEN 'archived' THEN 'dropped' ELSE status END, CASE WHEN due_at_ms IS NULL THEN NULL ELSE strftime('%Y-%m-%d', due_at_ms / 1000, 'unixepoch') END, due_at_ms, 'manual', created_at_ms, updated_at_ms FROM actions",
+        "INSERT INTO actions_v8 (id, goal_id, title, detail, status, due_day, due_at_ms, origin, created_at_ms, updated_at_ms) SELECT id, goal_id, title, detail, CASE status WHEN 'open' THEN 'active' WHEN 'archived' THEN 'dropped' ELSE status END, CASE WHEN due_at_ms IS NULL THEN NULL ELSE strftime('%Y-%m-%d', due_at_ms / 1000, 'unixepoch', 'localtime') END, due_at_ms, 'manual', created_at_ms, updated_at_ms FROM actions",
         "DROP TABLE actions",
         "ALTER TABLE actions_v8 RENAME TO actions",
         "CREATE INDEX actions_by_goal_status_v8 ON actions(goal_id, status)",

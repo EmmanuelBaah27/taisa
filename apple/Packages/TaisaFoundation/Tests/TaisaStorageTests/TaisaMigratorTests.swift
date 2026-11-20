@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 import GRDB
 import Testing
@@ -119,6 +120,17 @@ import Testing
     """
 
     @Test func versionEightMigratesLegacyActionsWithoutChangingIdentityOrRelationships() async throws {
+        let originalTimeZone = getenv("TZ").map { String(cString: $0) }
+        setenv("TZ", "Pacific/Kiritimati", 1)
+        tzset()
+        defer {
+            if let originalTimeZone {
+                setenv("TZ", originalTimeZone, 1)
+            } else {
+                unsetenv("TZ")
+            }
+            tzset()
+        }
         let fixture = try MigrationFixture()
         defer { fixture.remove() }
         let queue = try fixture.makeKeyedQueue()
@@ -147,7 +159,7 @@ import Testing
         let placementID = UUID().uuidString
         try await queue.write { db in
             try db.execute(sql: "INSERT INTO goals (id, title, status, created_at_ms, updated_at_ms) VALUES (?, 'Goal', 'active', 1, 1)", arguments: [goalID])
-            try db.execute(sql: "INSERT INTO actions (id, goal_id, title, status, due_at_ms, created_at_ms, updated_at_ms) VALUES (?, ?, 'Preserved action', 'open', 86_400_000, 1, 2)", arguments: [actionID, goalID])
+            try db.execute(sql: "INSERT INTO actions (id, goal_id, title, status, due_at_ms, created_at_ms, updated_at_ms) VALUES (?, ?, 'Preserved action', 'open', 1_767_261_600_000, 1, 2)", arguments: [actionID, goalID])
             try db.execute(sql: "INSERT INTO evidence (id, goal_id, action_id, title, occurred_at_ms, created_at_ms) VALUES (?, ?, ?, 'Existing evidence', 2, 2)", arguments: [evidenceID, goalID, actionID])
             try db.execute(sql: "INSERT INTO weekly_placements (id, action_id, week_start_ms, created_at_ms, updated_at_ms) VALUES (?, ?, 0, 2, 2)", arguments: [placementID, actionID])
         }
@@ -179,7 +191,7 @@ import Testing
         #expect(state.2 == goalID)
         #expect(state.3 == nil)
         #expect(state.4 == "active")
-        #expect(state.5 == "1970-01-02")
+        #expect(state.5 == "2026-01-02")
         #expect(state.6 == "manual")
         #expect(state.7 == 1)
         #expect(state.8 == 2)
