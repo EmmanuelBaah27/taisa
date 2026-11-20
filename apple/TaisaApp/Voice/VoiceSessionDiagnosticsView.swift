@@ -62,7 +62,7 @@ struct VoiceSessionDiagnosticsView: View {
             .frame(maxWidth: .infinity)
         }
         .background(TaisaColor.background.color)
-        .navigationTitle("Voice diagnostics")
+        .taisaNavigationTitle("Voice diagnostics")
         .accessibilityIdentifier("voice.diagnostics.root")
     }
 

@@ -50,29 +50,27 @@ struct AssistantResponseActions: View {
         .sheet(isPresented: $showsExplanation) {
             NavigationStack {
                 List {
-                    Section("Why this response") {
-                        LabeledContent("Mode", value: response.metadata.mode.rawValue.capitalized)
-                        LabeledContent("Approach", value: response.metadata.approach)
-                        LabeledContent("Confidence", value: response.metadata.confidence.capitalized)
-                        Text(response.metadata.inference)
+                    TaisaSection("Why this response") {
+                        TaisaLabeledContent("Mode", value: response.metadata.mode.rawValue.capitalized)
+                        TaisaLabeledContent("Approach", value: response.metadata.approach)
+                        TaisaLabeledContent("Confidence", value: response.metadata.confidence.capitalized)
+                        TaisaText(role: .body, content: response.metadata.inference)
                     }
                     if !response.sources.isEmpty {
-                        Section("Information used") {
+                        TaisaSection("Information used") {
                             ForEach(response.sources, id: \.id) { source in
                                 VStack(alignment: .leading, spacing: TaisaSpacing.tight.rawValue) {
-                                    Text(source.sourceType.capitalized)
-                                        .font(TaisaTypography.metadata.font)
-                                        .foregroundStyle(TaisaColor.mutedForeground.color)
-                                    Text(source.excerpt ?? "Source unavailable")
+                                    TaisaText(role: .metadata, color: .mutedForeground, content: source.sourceType.capitalized)
+                                    TaisaText(role: .body, content: source.excerpt ?? "Source unavailable")
                                 }
                             }
                         }
                     }
                 }
-                .navigationTitle("About this response")
+                .taisaNavigationTitle("About this response")
                 .toolbar {
                     ToolbarItem(placement: .confirmationAction) {
-                        Button("Done") { showsExplanation = false }
+                        TaisaSystemButton("Done") { showsExplanation = false }
                     }
                 }
             }
@@ -94,17 +92,17 @@ struct AssistantResponseActions: View {
                     }
                 }
                 .scrollDismissesKeyboard(.interactively)
-                .navigationTitle("Response feedback")
+                .taisaNavigationTitle("Response feedback")
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button("Close") {
+                        TaisaSystemButton("Close") {
                             feedbackEditor.discardDraft()
                             showsFeedback = false
                         }
                         .accessibilityIdentifier("conversation.feedback.close")
                     }
                     ToolbarItem(placement: .confirmationAction) {
-                        Button("Save feedback") {
+                        TaisaSystemButton("Save feedback") {
                             persist(feedbackEditor.commit())
                             showsFeedback = false
                         }
@@ -139,9 +137,7 @@ struct AssistantResponseActions: View {
 
     private func feedbackFactors(for direction: ResponseFeedbackDirection) -> some View {
         VStack(alignment: .leading, spacing: TaisaSpacing.compact.rawValue) {
-            Text(direction == .helpful ? "What worked well?" : "What could be better?")
-                .font(TaisaTypography.metadata.font)
-                .foregroundStyle(TaisaColor.mutedForeground.color)
+            TaisaText(role: .metadata, color: .mutedForeground, content: direction == .helpful ? "What worked well?" : "What could be better?")
             FlowLayout(spacing: TaisaSpacing.compact.rawValue) {
                 ForEach(ResponseFeedbackCopy.options(for: direction), id: \.factor) { option in
                     SelectableChip(
@@ -158,9 +154,7 @@ struct AssistantResponseActions: View {
 
     private var feedbackDetail: some View {
         VStack(alignment: .leading, spacing: TaisaSpacing.compact.rawValue) {
-            Text("Add more detail (optional)")
-                .font(TaisaTypography.metadata.font)
-                .foregroundStyle(TaisaColor.mutedForeground.color)
+            TaisaText(role: .metadata, color: .mutedForeground, content: "Add more detail (optional)")
             FeedbackTextEditor(text: Binding(
                 get: { feedbackEditor.draftDetail },
                 set: { feedbackEditor.draftDetail = String($0.prefix(ResponseFeedbackEditorState.detailLimit)) }
@@ -187,10 +181,8 @@ struct AssistantResponseActions: View {
     @ViewBuilder private func proposalReview(_ proposal: AssistantProposalRecord) -> some View {
         ActionPanel {
             VStack(alignment: .leading, spacing: TaisaSpacing.compact.rawValue) {
-                Text(proposal.state == .pending ? "Suggested action" : proposalStateLabel(proposal.state))
-                    .font(TaisaTypography.metadata.font)
-                    .foregroundStyle(TaisaColor.mutedForeground.color)
-                Text(proposalSummary(proposal)).font(TaisaTypography.body.font)
+                TaisaText(role: .metadata, color: .mutedForeground, content: proposal.state == .pending ? "Suggested action" : proposalStateLabel(proposal.state))
+                TaisaText(role: .body, content: proposalSummary(proposal))
                 if proposal.state == .pending {
                     HStack(spacing: TaisaSpacing.control.rawValue) {
                         TaisaButton(role: .primary, label: "Add") { acceptProposal(proposal.id) }

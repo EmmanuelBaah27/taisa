@@ -54,14 +54,11 @@ struct RecoveryView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .background(TaisaColor.background.color)
-        .navigationTitle("Backup and recovery")
-        .navigationBarTitleDisplayMode(.inline)
+        .taisaNavigationTitle("Backup and recovery")
         .toolbar {
             if let dismissRuntimeRecovery {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(action: dismissRuntimeRecovery) {
-                        Image(systemName: "xmark")
-                    }
+                    TaisaToolbarAction(label: "Close", icon: .cross, action: { dismissRuntimeRecovery() })
                     .accessibilityLabel("Close")
                     .disabled(model?.state == .restoring)
                     .accessibilityIdentifier("recovery.runtime.close")
@@ -205,7 +202,7 @@ struct RecoveryView: View {
     private var keyField: some View {
         // Native secure input is the narrowly scoped system-control exception;
         // semantic DS font, color and spacing retain the Taisa visual contract.
-        SecureField("Recovery key", text: $enteredKey)
+        TaisaSystemSecureField("Recovery key", text: $enteredKey)
             .font(TaisaTypography.body.font)
             .foregroundStyle(TaisaColor.foreground.color)
             .textFieldStyle(.roundedBorder)

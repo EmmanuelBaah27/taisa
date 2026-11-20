@@ -6,7 +6,7 @@ import {
   selectSimulatorName,
 } from '../select-simulator.mjs';
 
-test('selects an available simulator by device family instead of a model name', () => {
+test('selects an available iPhone simulator instead of a model name', () => {
   const devices = {
     devices: {
       runtime: [
@@ -17,8 +17,7 @@ test('selects an available simulator by device family instead of a model name', 
     },
   };
 
-  assert.equal(selectSimulatorName(devices, 'iPhone'), 'iPhone 17 Pro');
-  assert.equal(selectSimulatorName(devices, 'iPad'), 'iPad Air 13-inch (M3)');
+  assert.equal(selectSimulatorName(devices), 'iPhone 17 Pro');
 });
 
 test('detects whether Xcode has an eligible simulator runtime', () => {
@@ -35,9 +34,9 @@ Ineligible destinations:
 `), false);
 });
 
-test('fails clearly when the requested simulator family is unavailable', () => {
+test('fails clearly when an iPhone simulator is unavailable', () => {
   assert.throws(
-    () => selectSimulatorName({ devices: {} }, 'iPad'),
-    /No available iPad simulator found/,
+    () => selectSimulatorName({ devices: {} }),
+    /No available iPhone simulator found/,
   );
 });

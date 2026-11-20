@@ -20,7 +20,6 @@ let package = Package(
         .library(name: "TaisaSecurity", targets: ["TaisaSecurity"]),
         .library(name: "TaisaRecovery", targets: ["TaisaRecovery"]),
         .library(name: "TaisaSync", targets: ["TaisaSync"]),
-        .library(name: "TaisaCloudKit", targets: ["TaisaCloudKit"]),
         .library(name: "TaisaVoice", targets: ["TaisaVoice"]),
         .library(name: "TaisaConversations", targets: ["TaisaConversations"]),
         .library(name: "TaisaAudio", targets: ["TaisaAudio"]),
@@ -34,7 +33,7 @@ let package = Package(
         .target(name: "TaisaContracts"),
         .target(
             name: "TaisaDesignSystem",
-            resources: [.process("RecordingGlow.metal")]
+            resources: [.process("RecordingGlow.metal"), .process("Resources")]
         ),
         .target(name: "TaisaPreviewSupport", dependencies: ["TaisaCore"]),
         .target(name: "TaisaHome", dependencies: ["TaisaStorage"]),
@@ -50,7 +49,6 @@ let package = Package(
             "TaisaSecurity",
             .product(name: "GRDB", package: "GRDB.swift"),
         ]),
-        .target(name: "TaisaCloudKit", dependencies: ["TaisaSync", "TaisaStorage", "TaisaSecurity"]),
         .target(name: "TaisaVoice", dependencies: ["TaisaStorage", "TaisaContracts", "TaisaAudio", "TaisaNetworking"]),
         .target(name: "TaisaConversations", dependencies: ["TaisaStorage", "TaisaContracts", "TaisaVoice", "TaisaNetworking"]),
         .target(name: "TaisaAudio"),
@@ -76,7 +74,6 @@ let package = Package(
         .testTarget(name: "TaisaSyncTests", dependencies: [
             "TaisaSync", "TaisaStorage", "TaisaSecurity", "TaisaConversations",
         ]),
-        .testTarget(name: "TaisaCloudKitTests", dependencies: ["TaisaCloudKit", "TaisaSync", "TaisaSecurity", "TaisaStorage", .product(name: "GRDB", package: "GRDB.swift")]),
         .testTarget(name: "TaisaVoiceTests", dependencies: [
             "TaisaVoice", "TaisaConversations", "TaisaStorage", "TaisaAudio", "TaisaNetworking",
             .product(name: "GRDB", package: "GRDB.swift"),

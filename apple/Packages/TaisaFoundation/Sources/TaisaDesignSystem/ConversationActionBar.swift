@@ -61,21 +61,8 @@ public struct ConversationActionBar: View {
         }
     }
 
-    @ViewBuilder private var sendControl: some View {
-        if #available(iOS 26.0, macOS 26.0, *) {
-            sendButton
-                .buttonStyle(.plain)
-                .glassEffect(.clear.tint(TaisaColor.primaryAction.color).interactive(), in: Circle())
-                .contentShape(Circle())
-        } else {
-            sendButton
-                .buttonStyle(.plain)
-                .background(TaisaColor.primaryAction.color, in: Circle())
-        }
-    }
-
-    private var sendButton: some View {
-        Button(action: onSend) {
+    private var sendControl: some View {
+        TaisaButtonControl(style: TaisaButtonStyle(role: .primary, shape: .circle), action: onSend) {
             CentralIcon(.arrowUp)
                 .frame(width: 24, height: 24)
                 .frame(
@@ -87,8 +74,7 @@ public struct ConversationActionBar: View {
 
     @ViewBuilder private var centerControl: some View {
         if isActiveCapture || phase == .preparing {
-            Text(elapsed)
-                .font(TaisaTypography.metadata.font)
+            TaisaText(role: .metadata, content: elapsed)
                 .foregroundStyle(TaisaColor.foreground.color)
                 .monospacedDigit()
             .frame(minWidth: 56, minHeight: TaisaControlMetric.conversationRecordingControl)
@@ -100,11 +86,9 @@ public struct ConversationActionBar: View {
             TaisaSecondaryCapsuleButton(action: onPrimary) {
                 HStack(spacing: TaisaSpacing.compact.rawValue) {
                     CentralIcon(.play).frame(width: 20, height: 20)
-                    Text(availability.primaryLabel)
-                        .font(TaisaTypography.navigationLabel.font)
+                    TaisaText(role: .navigationLabel, content: availability.primaryLabel)
                     if !elapsed.isEmpty {
-                        Text(elapsed)
-                            .font(TaisaTypography.metadata.font)
+                        TaisaText(role: .metadata, color: .mutedForeground, content: elapsed)
                             .foregroundStyle(TaisaColor.mutedForeground.color)
                             .monospacedDigit()
                     }
@@ -140,6 +124,5 @@ public struct ConversationActionBar: View {
 
     private func iconButton(_ icon: CentralIconName, label: String, action: @escaping @MainActor () -> Void) -> some View {
         TaisaSecondaryIconButton(icon: icon, accessibilityLabel: label, action: action)
-            .frame(width: TaisaControlMetric.conversationRecordingControl, height: TaisaControlMetric.conversationRecordingControl)
     }
 }

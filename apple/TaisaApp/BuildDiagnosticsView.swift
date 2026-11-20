@@ -1,5 +1,6 @@
 import SwiftUI
 import TaisaCore
+import TaisaDesignSystem
 
 #if DEBUG || TAISA_PREVIEW
 struct BuildDiagnosticsView: View {
@@ -29,12 +30,12 @@ struct BuildDiagnosticsView: View {
             diagnosticRow("Environment", value: identity.environment.rawValue)
             diagnosticRow("Contracts", value: identity.contractRevision)
         }
-        .navigationTitle("Build diagnostics")
+        .taisaNavigationTitle("Build diagnostics")
         .accessibilityIdentifier("foundation.diagnostics")
     }
 
     private func diagnosticRow(_ label: String, value: String) -> some View {
-        LabeledContent(label, value: value)
+        TaisaLabeledContent(label, value: value)
             .textSelection(.enabled)
             .accessibilityElement(children: .combine)
             .accessibilityLabel("\(label): \(value)")

@@ -11,12 +11,16 @@ test('native Product baseline is iOS 26 and functionality-first', async () => {
   ]);
 
   assert.match(baseConfig, /IPHONEOS_DEPLOYMENT_TARGET = 26\.0/);
+  assert.match(baseConfig, /^TARGETED_DEVICE_FAMILY = 1$/m);
   assert.match(project, /iOS: "26\.0"/);
+  assert.match(project, /^    TARGETED_DEVICE_FAMILY: "1"$/m);
+  assert.doesNotMatch(project, /UISupportedInterfaceOrientations_iPad|TaisaCloudKit|remote-notification/);
   assert.match(packageManifest, /\/\/ swift-tools-version: 6\.0/);
   assert.match(packageManifest, /\.iOS\("26\.0"\)/);
   assert.match(scope, /native-first/i);
   assert.match(scope, /functionality-first/i);
-  assert.match(scope, /iOS\/iPadOS 26/);
+  assert.match(scope, /iOS 26/);
+  assert.doesNotMatch(scope, /iPadOS|iPhone\/iPad/);
   assert.doesNotMatch(scope, /visual parity review/i);
   assert.doesNotMatch(scope, /baseline freeze.*prerequisite/i);
 });
@@ -31,7 +35,7 @@ test('preview declares microphone usage before offering live recording controls'
   );
 });
 
-test('Home owns one stable sheet route for planning and prior-week review', async () => {
+test('Home owns one stable sheet route only for prior-week review', async () => {
   const home = await readFile('apple/TaisaApp/Home/HomeView.swift', 'utf8');
   const section = await readFile('apple/TaisaApp/Home/ThisWeekSection.swift', 'utf8');
 
@@ -39,8 +43,10 @@ test('Home owns one stable sheet route for planning and prior-week review', asyn
   assert.match(home, /\.sheet\(item: \$activeSheet\)/);
   assert.equal(home.match(/\.sheet\(/g)?.length, 1);
   assert.doesNotMatch(section, /@State|\.sheet\(/);
-  assert.match(section, /openPlanning: \(WeeklyWorkItem\) -> Void/);
-  assert.match(section, /openPriorWeekReview: \(Int\) -> Void/);
+  assert.match(section, /case priorWeekReview\(unresolvedCount: Int\)/);
+  assert.match(section, /struct HomeReviewSection: View/);
+  assert.match(section, /let open: \(Int\) -> Void/);
+  assert.doesNotMatch(section, /openPlanning|case planning/);
 });
 
 test('preview target compiles every shared conversation response source', async () => {
@@ -51,12 +57,8 @@ test('preview target compiles every shared conversation response source', async 
   assert.match(previewTarget, /- path: TaisaApp\/Conversation\/AssistantResponseActions\.swift/);
 });
 
-test('sync tests declare the conversation module used by integrated response fixtures', async () => {
+test('package manifest excludes CloudKit transport and retains local sync compatibility', async () => {
   const packageManifest = await readFile('apple/Packages/TaisaFoundation/Package.swift', 'utf8');
-  const syncTests = packageManifest.match(
-    /\.testTarget\(name: "TaisaSyncTests", dependencies: \[([^\]]*)\]\)/,
-  )?.[1];
-
-  assert.ok(syncTests, 'TaisaSyncTests target is missing');
-  assert.match(syncTests, /"TaisaConversations"/);
+  assert.match(packageManifest, /TaisaSync/);
+  assert.doesNotMatch(packageManifest, /TaisaCloudKit/);
 });

@@ -65,7 +65,7 @@ public struct TaisaStreamingText: View {
             .onChange(of: reduceMotion) { _, _ in reconcileRevealDates() }
             .onDisappear { completionTask?.cancel() }
         } else {
-            Text(text).accessibilityLabel(text)
+            TaisaText.native(text).accessibilityLabel(text)
         }
     }
 
@@ -93,9 +93,9 @@ public struct TaisaStreamingText: View {
     }
 
     private var renderedText: Text {
-        Self.chunks(in: text).enumerated().reduce(Text("")) { result, item in
-            let word = Text(item.element).customAttribute(WordAttribute(index: item.offset))
-            return Text("\(result)\(word)")
+        Self.chunks(in: text).enumerated().reduce(TaisaText.native("")) { result, item in
+            let word = TaisaText.native(item.element).customAttribute(WordAttribute(index: item.offset))
+            return TaisaText.joining(result, word)
         }
     }
 

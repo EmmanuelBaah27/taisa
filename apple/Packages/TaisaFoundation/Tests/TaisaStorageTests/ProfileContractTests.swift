@@ -3,6 +3,20 @@ import Testing
 @testable import TaisaStorage
 
 @Suite(.serialized) struct ProfileContractTests {
+    @Test func sharedValidationReturnsNormalizedFieldsForEveryConsumer() {
+        let fields = ProfileInputValidator.validatedFields(
+            displayName: "  Baah  ",
+            headline: "  Product designer  ",
+            biography: "  First line\nSecond line  "
+        )
+
+        #expect(fields == .init(
+            displayName: "Baah",
+            headline: "Product designer",
+            biography: "First line\nSecond line"
+        ))
+    }
+
     @Test func profileCommandsTrimApprovedFieldsAndRejectOversizedInputAtomically() async throws {
         let fixture = try await YouStorageFixture()
         defer { fixture.remove() }
@@ -36,6 +50,29 @@ import Testing
             let rendered = String(describing: error)
             #expect(privateCanaries.allSatisfy { !rendered.contains($0) })
         }
+    }
+
+    @Test func profileValidationAllowsBioLineBreaksAndIdentifiesTheInvalidField() async throws {
+        let fixture = try await YouStorageFixture()
+        defer { fixture.remove() }
+
+        let multiline = try await fixture.profile.save(
+            id: fixture.profileID,
+            displayName: "Baah",
+            headline: "",
+            biography: "First line\nSecond line",
+            context: fixture.context(10)
+        )
+        #expect(multiline.biography == "First line\nSecond line")
+
+        let validation = ProfileInputValidator.validate(
+            displayName: String(repeating: "x", count: 81),
+            headline: "",
+            biography: "First line\nSecond line"
+        )
+        #expect(validation.displayNameMessage == "Display name must be 80 characters or fewer.")
+        #expect(validation.biographyMessage == nil)
+        #expect(!validation.isValid)
     }
 }
 

@@ -23,7 +23,7 @@ public struct ConversationJumpToLatestButton: View {
     }
 
     public var body: some View {
-        TaisaSecondaryCapsuleButton(height: Contract.size, action: action) {
+        TaisaSecondaryCapsuleButton(action: action) {
             CentralIcon(Contract.icon)
                 .frame(width: Contract.iconSize, height: Contract.iconSize)
                 .foregroundStyle(TaisaColor.foreground.color)

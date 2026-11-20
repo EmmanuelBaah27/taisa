@@ -18,12 +18,11 @@ import TaisaCore
         #expect(Bundle.main.object(forInfoDictionaryKey: "UIBackgroundModes") == nil)
     }
 
-    @Test @MainActor func personalHostDisplaysLocalStorageWithoutCloudKit() throws {
+    @Test @MainActor func personalHostDisplaysLocalStorageOnly() throws {
         let value = try #require(Bundle.main.object(forInfoDictionaryKey: "TaisaEnvironment") as? String)
         let environment = try TaisaEnvironment(configurationValue: value)
         #expect(environment == .personal)
         #expect(SyncCapability.forEnvironment(environment) == .localOnly)
         #expect(FoundationRootView().storageStatus == "Stored securely on this device")
-        #expect(CloudKitRuntimeConfiguration.containerIdentifier(for: "com.taisa.app.personal") == nil)
     }
 }
