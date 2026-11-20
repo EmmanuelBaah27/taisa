@@ -95,6 +95,22 @@ final class TaisaPreviewCatalogTests: XCTestCase {
         XCTAssertFalse(element("home.tasks.composer", in: app).exists)
     }
 
+    func testTaskComposerDismissesWhenBackdropIsTapped() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-TAISAPreviewScenario", "home.taskComposer"]
+        app.launch()
+
+        XCTAssertTrue(element("preview.ready.home.taskComposer", in: app).waitForExistence(timeout: 5))
+        let composer = element("home.tasks.composer", in: app)
+        XCTAssertTrue(composer.waitForExistence(timeout: 5))
+
+        app.windows.firstMatch
+            .coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.25))
+            .tap()
+
+        XCTAssertTrue(composer.waitForNonExistence(timeout: 2))
+    }
+
     func testCareerActionScenarioShowsCanonicalDetailHierarchy() {
         let app = XCUIApplication()
         app.launchArguments = ["-TAISAPreviewScenario", "actions.action"]

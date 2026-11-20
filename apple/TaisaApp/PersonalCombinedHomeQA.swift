@@ -182,21 +182,23 @@ struct PersonalCombinedHomeQAView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            Text("Isolated QA fixtures — your Personal data is not changed")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .padding(.horizontal)
-                .padding(.top, 8)
-                .accessibilityIdentifier("personal-qa.combined-home.notice")
-            HomeView(model: home, openInsights: { showsInsights = true }, ownsNavigation: false)
+        AppOverlayHost {
+            VStack(spacing: 0) {
+                Text("Isolated QA fixtures — your Personal data is not changed")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal)
+                    .padding(.top, TaisaSpacing.compact.rawValue)
+                    .accessibilityIdentifier("personal-qa.combined-home.notice")
+                HomeView(model: home, openInsights: { showsInsights = true }, ownsNavigation: false)
+            }
+            .navigationTitle("Home and Insights QA")
+            .navigationBarTitleDisplayMode(.inline)
+            .sheet(isPresented: $showsInsights) {
+                NavigationStack { InsightsView(model: insights) }
+            }
+            .accessibilityIdentifier("personal-qa.combined-home")
         }
-        .navigationTitle("Home and Insights QA")
-        .navigationBarTitleDisplayMode(.inline)
-        .sheet(isPresented: $showsInsights) {
-            NavigationStack { InsightsView(model: insights) }
-        }
-        .accessibilityIdentifier("personal-qa.combined-home")
     }
 }
 #endif

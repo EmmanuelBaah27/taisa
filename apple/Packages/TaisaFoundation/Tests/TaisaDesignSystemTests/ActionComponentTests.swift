@@ -47,8 +47,18 @@ struct ActionComponentTests {
         #expect(TaisaFieldKind.multiline != .readOnly)
         #expect(TaisaFieldState.enabled != .disabled)
         #expect(TaisaFieldState.invalid(message: "Required") != .loading)
+        #expect(TaisaFieldLabelPresentation.visible != .placeholderOnly)
+        #expect(TaisaFieldContract.background == .subtleSurface)
         #expect(TaisaSystemActionRole.standard != .destructive)
         #expect(TaisaSystemActionRole.cancel != .confirmation)
+    }
+
+    @Test func secondaryButtonsOwnBorderAndOptionalFloatingElevation() {
+        #expect(TaisaSecondaryButtonElevation.inline != .floating)
+        #expect(TaisaSecondaryButtonContract.borderColor == .border)
+        #expect(!TaisaSecondaryButtonContract.inlineHasAuthoredDecoration)
+        #expect(TaisaSecondaryButtonContract.floatingShadowOpacity > 0)
+        #expect(TaisaSecondaryButtonContract.floatingShadowRadius > 0)
     }
 
     @Test func taskTitleFieldStopsInputAtTheSuppliedCharacterLimit() {
@@ -145,6 +155,23 @@ struct ActionComponentTests {
         #expect(source.contains("icon: .add"))
         #expect(source.contains("size: .small"))
         #expect(source.contains("layout: .intrinsic"))
+    }
+
+    @Test func dismissBackdropRequiresATapThatBeginsOnTheBackdrop() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let source = try String(
+            contentsOf: root.appendingPathComponent("Sources/TaisaDesignSystem/TaisaDismissBackdrop.swift"),
+            encoding: .utf8
+        )
+
+        #expect(source.contains("public struct TaisaDismissBackdrop"))
+        #expect(source.contains("SpatialTapGesture()"))
+        #expect(source.contains("TaisaEffect.taskComposerBackdropOpacity"))
+        #expect(!source.contains("Button("))
+        #expect(!source.contains("Task.sleep"))
     }
 
     @Test func sharedActionComponentsExposeOnePublicEntryPath() throws {

@@ -118,6 +118,8 @@ private struct TaskDetailSheetView: View {
     @State private var isCompleting = false
     @State private var showsArchive = false
     @State private var showsDelete = false
+    @State private var showsDueDatePicker = false
+    @State private var draftDueDate = Date()
 
     var body: some View {
         VStack(alignment: .leading, spacing: TaisaSpacing.standard.rawValue) {
@@ -126,14 +128,17 @@ private struct TaskDetailSheetView: View {
                     TaisaText(role: .sheetTitle, content: snapshot.action.title)
                         .accessibilityAddTraits(.isHeader)
 
-                    HStack(spacing: TaisaTaskSpacing.dueGap) {
-                        CentralIcon(.calendar)
-                            .frame(width: TaisaControlMetric.taskDueIcon, height: TaisaControlMetric.taskDueIcon)
-                        TaisaText(
-                            role: .body,
-                            color: dueText == "Due" ? .mutedForeground : .foreground,
-                            content: dueText
-                        )
+                    TaisaButton(
+                        role: .ghost,
+                        shape: .capsule,
+                        label: dueText,
+                        icon: .calendar,
+                        size: .small,
+                        layout: .intrinsic,
+                        accessibilityLabel: dueText == "Due" ? "Set due date" : "Change due date, \(dueText)"
+                    ) {
+                        draftDueDate = currentDueDate ?? Date()
+                        showsDueDatePicker = true
                     }
 
                     if !snapshot.checklist.isEmpty {
@@ -177,11 +182,19 @@ private struct TaskDetailSheetView: View {
                     }
 
                     if isAddingSubtask {
-                        TaisaField("Sub-task title", text: $checklistTitle, placeholder: "Add a sub-task")
+                        TaisaField(
+                            "Sub-task title",
+                            text: $checklistTitle,
+                            placeholder: "Add a sub-task",
+                            labelPresentation: .placeholderOnly
+                        )
                         HStack(spacing: TaisaSpacing.compact.rawValue) {
-                            TaisaButton(role: .ghost, label: "Cancel", size: .small, layout: .intrinsic) {
+                            TaisaSecondaryCapsuleButton {
                                 checklistTitle = ""
                                 isAddingSubtask = false
+                            } label: {
+                                TaisaText(role: .buttonLabel, content: "Cancel")
+                                    .padding(.horizontal, TaisaSpacing.standard.rawValue)
                             }
                             TaisaButton(
                                 role: .primary,
@@ -225,10 +238,13 @@ private struct TaskDetailSheetView: View {
             HStack(spacing: TaisaSpacing.standard.rawValue) {
                 completionButton
                 Spacer()
-                TaisaGroupedIconActions([
-                    .init(icon: .drop, accessibilityLabel: "Archive task") { showsArchive = true },
-                    .init(icon: .delete, role: .destructive, accessibilityLabel: "Delete task") { showsDelete = true },
-                ])
+                TaisaGroupedIconActions(
+                    [
+                        .init(icon: .drop, accessibilityLabel: "Archive task") { showsArchive = true },
+                        .init(icon: .delete, role: .destructive, accessibilityLabel: "Delete task") { showsDelete = true },
+                    ],
+                    elevation: .floating
+                )
             }
         }
         .padding(TaisaSpacing.standard.rawValue)
@@ -241,6 +257,20 @@ private struct TaskDetailSheetView: View {
         ) {
             Task { await model.dropSelectedAction() }
         })
+        .sheet(isPresented: $showsDueDatePicker) {
+            TaisaGraphicalDatePickerSheet(
+                selection: draftDueDate,
+                commit: { selected in
+                    let draft = actionDraft(dueDate: selected)
+                    Task {
+                        _ = await model.editSelectedAction(
+                            draft,
+                            expectedUpdatedAtMS: snapshot.action.updatedAtMS
+                        )
+                    }
+                }
+            )
+        }
         .modifier(TaisaConfirmationDialog(
             title: "Delete this task?",
             isPresented: $showsDelete,
@@ -256,7 +286,7 @@ private struct TaskDetailSheetView: View {
 
     @ViewBuilder private var completionButton: some View {
         if snapshot.action.status == ActionStatus.completed.rawValue {
-            TaisaSecondaryCapsuleButton {
+            TaisaSecondaryCapsuleButton(elevation: .floating) {
                 Task { await model.reopenSelectedAction() }
             } label: {
                 secondaryActionLabel("Reopen", icon: .undo)
@@ -277,7 +307,7 @@ private struct TaskDetailSheetView: View {
                 Task { await model.completeSelectedAction(evidenceTitle: evidence) }
             }
         } else {
-            TaisaSecondaryCapsuleButton {
+            TaisaSecondaryCapsuleButton(elevation: .floating) {
                 isCompleting = true
             } label: {
                 secondaryActionLabel("Mark as Done", icon: .completed, iconColor: .completed)
@@ -300,6 +330,34 @@ private struct TaskDetailSheetView: View {
 
     private var dueText: String {
         actionDueText(snapshot.action)?.replacingOccurrences(of: "Due ", with: "") ?? "Due"
+    }
+
+    private var currentDueDate: Date? {
+        if let dueDay = snapshot.action.dueDay {
+            let values = dueDay.rawValue.split(separator: "-").compactMap { Int($0) }
+            guard values.count == 3 else { return nil }
+            return Calendar.current.date(
+                from: DateComponents(year: values[0], month: values[1], day: values[2])
+            )
+        }
+        return snapshot.action.dueAtMS.map { Date(timeIntervalSince1970: Double($0) / 1_000) }
+    }
+
+    private func actionDraft(dueDate: Date) -> ActionDraft {
+        let parent: ActionParentContext
+        if let goalID = snapshot.action.goalID, let milestoneID = snapshot.action.milestoneID {
+            parent = .milestone(goalID: goalID, milestoneID: milestoneID)
+        } else if let goalID = snapshot.action.goalID {
+            parent = .goal(id: goalID)
+        } else {
+            parent = .standalone
+        }
+        return ActionDraft(
+            title: snapshot.action.title,
+            detail: snapshot.action.detail,
+            parent: parent,
+            dueDay: dueDate.actionDueDay
+        )
     }
 
     private var trimmedChecklistTitle: String {
@@ -453,7 +511,8 @@ struct CareerWorkView: View {
         case .empty:
             ContentUnavailableView {
                 VStack {
-                    CentralIcon(root == .actions ? .action : .goal).frame(width: 32, height: 32)
+                    CentralIcon(root == .actions ? .action : .goal)
+                        .frame(width: TaisaControlMetric.standardIcon, height: TaisaControlMetric.standardIcon)
                     TaisaText(role: .heading, content: root == .actions ? "Add your first task" : "Start with one meaningful goal")
                 }
             } description: {
@@ -586,7 +645,8 @@ struct CareerWorkView: View {
         } else {
             ContentUnavailableView {
                 VStack {
-                    CentralIcon(.goal).frame(width: 32, height: 32)
+                    CentralIcon(.goal)
+                        .frame(width: TaisaControlMetric.standardIcon, height: TaisaControlMetric.standardIcon)
                     TaisaText(role: .heading, content: "Select career work")
                 }
             } description: {
@@ -679,7 +739,8 @@ struct CareerWorkView: View {
     private func failure(_ issue: CareerWorkIssue) -> some View {
         ContentUnavailableView {
             VStack {
-                CentralIcon(.warning).frame(width: 32, height: 32)
+                CentralIcon(.warning)
+                    .frame(width: TaisaControlMetric.standardIcon, height: TaisaControlMetric.standardIcon)
                 TaisaText(role: .heading, content: issue == .recoveryRequired ? "Recovery required" : "Career Work unavailable")
             }
         } description: {
@@ -932,7 +993,8 @@ private struct CareerActionDetail: View {
                 Section {
                     ForEach(snapshot.events, id: \.id) { event in
                         HStack(alignment: .top) {
-                            CentralIcon(.history).frame(width: 24, height: 24)
+                            CentralIcon(.history)
+                                .frame(width: TaisaControlMetric.standardIcon, height: TaisaControlMetric.standardIcon)
                             TaisaRow(title: event.kind.rawValue.replacingOccurrences(of: "_", with: " ").capitalized, supporting: event.detail)
                         }
                     }

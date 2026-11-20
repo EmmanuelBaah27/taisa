@@ -4,18 +4,20 @@ import TaisaHome
 import TaisaStorage
 
 struct HomeView: View {
+    @Environment(\.appOverlayActions) private var appOverlay
     @State private var model: HomeModel
     @State private var activeSheet: ThisWeekSheet?
-    @State private var showsTaskComposer = false
     @State private var taskTitle = ""
     @State private var taskDueDate: Date?
     @State private var showsTaskAddedToast = false
+    @State private var didPresentInitialTaskComposer = false
     var send: (HomeIntent) -> Void = { _ in }
     var openRecovery: () -> Void = {}
     var openPersonalQA: (() -> Void)?
     var openInsights: () -> Void = {}
     private let ownsNavigation: Bool
     private let showsRecentConversations: Bool
+    private let initiallyShowsTaskComposer: Bool
 
     init(
         model: HomeModel,
@@ -28,13 +30,13 @@ struct HomeView: View {
         initiallyShowsTaskComposer: Bool = false
     ) {
         _model = State(initialValue: model)
-        _showsTaskComposer = State(initialValue: initiallyShowsTaskComposer)
         self.send = send
         self.openRecovery = openRecovery
         self.openPersonalQA = openPersonalQA
         self.openInsights = openInsights
         self.ownsNavigation = ownsNavigation
         self.showsRecentConversations = showsRecentConversations
+        self.initiallyShowsTaskComposer = initiallyShowsTaskComposer
     }
 
     var body: some View {
@@ -44,10 +46,7 @@ struct HomeView: View {
         }
         .accessibilityIdentifier("home.root")
         .task { if model.state == .idle { await model.load() } }
-        .fullScreenCover(isPresented: $showsTaskComposer) {
-            taskComposerPresentationLayer
-                .presentationBackground(.clear)
-        }
+        .onAppear { presentInitialTaskComposerIfNeeded() }
         .sheet(item: $activeSheet) { sheet in
             switch sheet {
             case let .priorWeekReview(unresolvedCount):
@@ -69,18 +68,9 @@ struct HomeView: View {
             }
     }
 
-    private var taskComposerPresentationLayer: some View {
-        ZStack(alignment: .bottom) {
-            TaisaColor.foreground.color
-                .opacity(TaisaEffect.taskComposerBackdropOpacity)
-                .ignoresSafeArea()
-                .contentShape(Rectangle())
-                .onTapGesture { dismissTaskComposer() }
-                .accessibilityHidden(true)
-
-            TaskComposerView(title: $taskTitle, dueDate: $taskDueDate, submit: submitTask)
-                .accessibilityIdentifier("home.tasks.composer")
-        }
+    private var taskComposerContent: some View {
+        TaskComposerView(title: $taskTitle, dueDate: $taskDueDate, submit: submitTask)
+            .accessibilityIdentifier("home.tasks.composer")
     }
 
     @ViewBuilder private var content: some View {
@@ -89,7 +79,7 @@ struct HomeView: View {
             ProgressView("Loading Home…")
         case .empty:
             ScrollView {
-                HomeActionsPreviewSection(actions: [], totalCount: 0, send: send, add: { showsTaskComposer = true })
+                HomeActionsPreviewSection(actions: [], totalCount: 0, send: send, add: presentTaskComposer)
                     .padding(.horizontal, TaisaSpacing.content.rawValue)
                     .padding(.top, TaisaSpacing.section.rawValue)
             }
@@ -99,7 +89,7 @@ struct HomeView: View {
             ScrollView {
                 VStack(spacing: TaisaSpacing.control.rawValue) {
                 if let issue { issueRow(issue) }
-                HomeActionsPreviewSection(actions: snapshot.actions, totalCount: snapshot.actions.count, send: send, add: { showsTaskComposer = true })
+                HomeActionsPreviewSection(actions: snapshot.actions, totalCount: snapshot.actions.count, send: send, add: presentTaskComposer)
                 if isRefreshing { ProgressView().frame(maxWidth: .infinity) }
                 }
                 .padding(.horizontal, TaisaSpacing.content.rawValue)
@@ -110,7 +100,8 @@ struct HomeView: View {
         case let .failure(issue):
             ContentUnavailableView {
                 VStack {
-                    CentralIcon(.warning).frame(width: 32, height: 32)
+                    CentralIcon(.warning)
+                        .frame(width: TaisaControlMetric.standardIcon, height: TaisaControlMetric.standardIcon)
                     TaisaText(role: .heading, content: issue == .recoveryRequired ? "Recovery required" : "Home unavailable")
                 }
             } description: {
@@ -135,14 +126,27 @@ struct HomeView: View {
             if await model.createTask(title: title, dueDay: dueDay) {
                 taskTitle = ""
                 taskDueDate = nil
-                showsTaskComposer = false
+                appOverlay.dismiss()
                 showsTaskAddedToast = true
             }
         }
     }
 
     private func dismissTaskComposer() {
-        showsTaskComposer = false
+        appOverlay.dismiss()
+    }
+
+    private func presentTaskComposer() {
+        appOverlay.present(
+            backdrop: AnyView(TaisaDismissBackdrop(action: dismissTaskComposer)),
+            content: AnyView(taskComposerContent)
+        )
+    }
+
+    private func presentInitialTaskComposerIfNeeded() {
+        guard initiallyShowsTaskComposer, !didPresentInitialTaskComposer else { return }
+        didPresentInitialTaskComposer = true
+        presentTaskComposer()
     }
 
     private func issueRow(_ issue: HomeIssue) -> some View {

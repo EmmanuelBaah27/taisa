@@ -34,10 +34,15 @@ public enum TaisaGroupedIconActionsContract {
 
 public struct TaisaGroupedIconActions: View {
     private let actions: [TaisaGroupedIconAction]
+    private let elevation: TaisaSecondaryButtonElevation
 
-    public init(_ actions: [TaisaGroupedIconAction]) {
+    public init(
+        _ actions: [TaisaGroupedIconAction],
+        elevation: TaisaSecondaryButtonElevation = .inline
+    ) {
         precondition(actions.count == TaisaGroupedIconActionsContract.actionCount)
         self.actions = actions
+        self.elevation = elevation
     }
 
     public var body: some View {
@@ -48,6 +53,7 @@ public struct TaisaGroupedIconActions: View {
                     accessibilityLabel: item.accessibilityLabel,
                     iconColor: iconColor(for: item.role),
                     size: TaisaGroupedIconActionsContract.controlHeight,
+                    elevation: elevation,
                     action: item.action
                 )
             }

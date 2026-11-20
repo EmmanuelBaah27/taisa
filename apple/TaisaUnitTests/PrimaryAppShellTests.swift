@@ -129,6 +129,26 @@ final class PrimaryAppShellTests: XCTestCase {
         XCTAssertTrue(source.contains("model.showWork(.tasks(route: nil))"))
     }
 
+    func testAppWideOverlayHostStaysGenericAndAboveShellChrome() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let shell = try String(contentsOf: root.appendingPathComponent("TaisaApp/AppShell/PrimaryAppShell.swift"), encoding: .utf8)
+        let host = try String(contentsOf: root.appendingPathComponent("TaisaApp/AppShell/AppOverlayHost.swift"), encoding: .utf8)
+
+        XCTAssertTrue(shell.contains("AppOverlayHost"))
+        XCTAssertTrue(host.contains("struct AppOverlayHost<Content: View>"))
+        XCTAssertTrue(host.contains(".environment("))
+        XCTAssertTrue(host.contains("\\.appOverlayActions,"))
+        XCTAssertTrue(host.contains("presentation.content"))
+        XCTAssertTrue(host.contains("@Environment(\\.accessibilityReduceMotion)"))
+        XCTAssertTrue(host.contains("TaisaMotion.overlayEaseOut"))
+        XCTAssertTrue(host.contains("presentation.backdrop"))
+        XCTAssertTrue(host.contains(".move(edge: .bottom)"))
+        XCTAssertTrue(host.contains(".transition(.opacity)"))
+        XCTAssertTrue(host.contains("reduceMotion ? .opacity"))
+        XCTAssertFalse(host.contains("TaskComposerView"))
+        XCTAssertFalse(host.contains("Task"))
+    }
+
     func testVoiceEntryIntentIsConsumedOnlyOnce() {
         let model = PrimaryAppShellModel()
         model.presentNewConversation(.voice)

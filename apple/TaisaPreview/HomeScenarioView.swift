@@ -65,22 +65,24 @@ struct HomeScenarioView: View {
     }
 
     var body: some View {
-        Group {
-            if mode == .insights {
-                NavigationStack { InsightsView(model: insightsModel) }
-            } else {
-                HomeView(
-                    model: model,
-                    openInsights: { showsInsights = true },
-                    ownsNavigation: false,
-                    initiallyShowsTaskComposer: mode == .taskComposer
-                )
-                .sheet(isPresented: $showsInsights) {
+        AppOverlayHost {
+            Group {
+                if mode == .insights {
                     NavigationStack { InsightsView(model: insightsModel) }
+                } else {
+                    HomeView(
+                        model: model,
+                        openInsights: { showsInsights = true },
+                        ownsNavigation: false,
+                        initiallyShowsTaskComposer: mode == .taskComposer
+                    )
+                    .sheet(isPresented: $showsInsights) {
+                        NavigationStack { InsightsView(model: insightsModel) }
+                    }
                 }
             }
+            .frame(minHeight: 700)
         }
-        .frame(minHeight: 700)
     }
 }
 

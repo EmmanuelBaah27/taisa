@@ -14,11 +14,21 @@ public enum TaisaFieldState: Sendable, Equatable {
     case loading
 }
 
+public enum TaisaFieldLabelPresentation: Sendable, Equatable {
+    case visible
+    case placeholderOnly
+}
+
+public enum TaisaFieldContract {
+    public static let background = TaisaColor.subtleSurface
+}
+
 public struct TaisaField: View {
     private let title: String
     private let placeholder: String
     private let kind: TaisaFieldKind
     private let state: TaisaFieldState
+    private let labelPresentation: TaisaFieldLabelPresentation
     @Binding private var text: String
 
     public init(
@@ -26,23 +36,27 @@ public struct TaisaField: View {
         text: Binding<String>,
         placeholder: String = "",
         kind: TaisaFieldKind = .text,
-        state: TaisaFieldState = .enabled
+        state: TaisaFieldState = .enabled,
+        labelPresentation: TaisaFieldLabelPresentation = .visible
     ) {
         self.title = title
         _text = text
         self.placeholder = placeholder
         self.kind = kind
         self.state = state
+        self.labelPresentation = labelPresentation
     }
 
     public var body: some View {
         VStack(alignment: .leading, spacing: TaisaSpacing.compact.rawValue) {
-            TaisaText(role: .label, content: title)
+            if labelPresentation == .visible {
+                TaisaText(role: .label, content: title)
+            }
             field
                 .font(TaisaTypography.body.font)
                 .accessibilityLabel(title)
                 .padding(TaisaSpacing.control.rawValue)
-                .background(TaisaColor.background.color)
+                .background(TaisaFieldContract.background.color)
                 .overlay {
                     RoundedRectangle(cornerRadius: TaisaRadius.control.rawValue)
                         .stroke(borderColor)

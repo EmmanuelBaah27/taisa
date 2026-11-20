@@ -13,6 +13,12 @@ public enum TaisaSpacing: CGFloat, CaseIterable, Sendable {
 public enum TaisaMotion {
     /// Repeated page and primary-navigation feedback should feel immediate.
     public static let fast: Double = 0.18
+    /// App-wide overlays enter and exit quickly enough to preserve direct manipulation.
+    public static let overlayEaseOutDuration: Double = fast
+    /// Strong ease-out for app-wide overlays entering from or returning to an edge.
+    public static var overlayEaseOut: Animation {
+        .timingCurve(0.23, 1, 0.32, 1, duration: overlayEaseOutDuration)
+    }
     /// Longer on-screen movement should remain legible instead of snapping across distance.
     public static let settle: Double = 0.50
     /// Cadence between provisional words resolving into a streamed response.
@@ -83,6 +89,9 @@ public enum TaisaEffect {
     public static let groupedActionShadowOpacity: Double = 0.08
     public static let groupedActionShadowRadius: CGFloat = 8
     public static let groupedActionShadowY: CGFloat = 2
+    public static let secondaryButtonShadowOpacity: Double = 0.08
+    public static let secondaryButtonShadowRadius: CGFloat = 8
+    public static let secondaryButtonShadowY: CGFloat = 2
 }
 
 public enum TaisaRadius: CGFloat, CaseIterable, Sendable {

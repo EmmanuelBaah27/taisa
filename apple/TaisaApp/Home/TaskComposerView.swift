@@ -1,12 +1,8 @@
 import SwiftUI
 import TaisaDesignSystem
-#if canImport(UIKit)
-import UIKit
-#endif
 
 struct TaskComposerView: View {
     @FocusState private var titleIsFocused: Bool
-    @State private var keyboardHeight: CGFloat = 0
     @State private var showsDueDatePicker = false
     @State private var draftDueDate = Date()
     @Binding private var title: String
@@ -65,17 +61,7 @@ struct TaskComposerView: View {
         )
         .padding(TaisaSpacing.control.rawValue)
         .frame(height: TaisaControlMetric.taskComposerHeight)
-        .background { PageEdgeFade(.navigation) }
-        .padding(.bottom, keyboardHeight)
         .task { titleIsFocused = true }
-#if canImport(UIKit)
-        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { notification in
-            keyboardHeight = keyboardEndFrame(from: notification).height
-        }
-        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
-            keyboardHeight = 0
-        }
-#endif
         .sheet(isPresented: $showsDueDatePicker) {
             TaisaGraphicalDatePickerSheet(
                 selection: draftDueDate,
@@ -96,11 +82,6 @@ struct TaskComposerView: View {
         }
     }
 
-#if canImport(UIKit)
-    private func keyboardEndFrame(from notification: Notification) -> CGRect {
-        (notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect) ?? .zero
-    }
-#endif
 }
 
 private extension Date {

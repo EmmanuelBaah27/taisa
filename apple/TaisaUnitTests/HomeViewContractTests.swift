@@ -122,21 +122,47 @@ final class HomeViewContractTests: XCTestCase {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let home = try String(contentsOf: root.appendingPathComponent("TaisaApp/Home/HomeView.swift"), encoding: .utf8)
         let shell = try String(contentsOf: root.appendingPathComponent("TaisaApp/AppShell/PrimaryAppShell.swift"), encoding: .utf8)
+        let composer = try String(contentsOf: root.appendingPathComponent("TaisaApp/Home/TaskComposerView.swift"), encoding: .utf8)
+        let overlayHost = try String(contentsOf: root.appendingPathComponent("TaisaApp/AppShell/AppOverlayHost.swift"), encoding: .utf8)
+        let backdrop = try String(
+            contentsOf: root.appendingPathComponent("Packages/TaisaFoundation/Sources/TaisaDesignSystem/TaisaDismissBackdrop.swift"),
+            encoding: .utf8
+        )
 
-        XCTAssertTrue(home.contains("@State private var showsTaskComposer = false"))
+        XCTAssertTrue(home.contains("@Environment(\\.appOverlayActions)"))
         XCTAssertFalse(home.contains(".padding(.bottom, TaisaBottomChromeContract.fadeHeight)"))
-        XCTAssertTrue(home.contains(".fullScreenCover(isPresented: $showsTaskComposer)"))
-        XCTAssertTrue(home.contains("taskComposerPresentationLayer"))
-        XCTAssertTrue(home.contains(".onTapGesture { dismissTaskComposer() }"))
-        XCTAssertTrue(home.contains(".opacity(TaisaEffect.taskComposerBackdropOpacity)"))
+        XCTAssertFalse(home.contains(".fullScreenCover(isPresented:"))
+        XCTAssertTrue(home.contains("appOverlay.present("))
+        XCTAssertTrue(home.contains("backdrop: AnyView(TaisaDismissBackdrop(action: dismissTaskComposer))"))
+        XCTAssertTrue(home.contains("content: AnyView(taskComposerContent)"))
+        XCTAssertTrue(home.contains("TaisaDismissBackdrop(action: dismissTaskComposer)"))
+        XCTAssertFalse(home.contains(".onTapGesture { dismissTaskComposer() }"))
+        XCTAssertFalse(home.contains("taskComposerBackdropIsArmed"))
+        XCTAssertTrue(backdrop.contains(".opacity(TaisaEffect.taskComposerBackdropOpacity)"))
         XCTAssertTrue(
-            home.contains(".ignoresSafeArea()"),
+            backdrop.contains(".ignoresSafeArea()"),
             "The composer backdrop must continue behind the composer through every safe area"
         )
-        XCTAssertTrue(home.contains(".presentationBackground(.clear)"))
-        XCTAssertFalse(shell.contains("@State private var showsTaskComposer = false"))
+        XCTAssertFalse(home.contains(".presentationBackground(.clear)"))
+        XCTAssertFalse(shell.contains("TaskComposerView"))
         XCTAssertFalse(shell.contains("taskComposerStatusBarBackdrop"))
         XCTAssertFalse(shell.contains("taskComposerBottomBackdrop"))
+        XCTAssertTrue(overlayHost.contains("alignment: .bottom"))
+        XCTAssertTrue(
+            overlayHost.contains(".ignoresSafeArea(presentation == nil ? [] : .keyboard, edges: .bottom)"),
+            "The keyboard must not lift the record button or primary navigation"
+        )
+        XCTAssertTrue(overlayHost.contains(".accessibilityHidden(presentation != nil)"))
+        XCTAssertTrue(overlayHost.contains(".accessibilityAddTraits(.isModal)"))
+        XCTAssertTrue(overlayHost.contains(".accessibilityAction(.escape, dismissPresentation)"))
+        XCTAssertTrue(overlayHost.contains(".accessibilityFocused($overlayAccessibilityFocused)"))
+        XCTAssertFalse(composer.contains("keyboardHeight"))
+        XCTAssertFalse(composer.contains("keyboardWillShowNotification"))
+        XCTAssertFalse(composer.contains("keyboardWillHideNotification"))
+        XCTAssertFalse(
+            composer.contains("PageEdgeFade"),
+            "The task composer must remain one continuous surface above the keyboard"
+        )
     }
 
     func testInsightsStayNestedByCurrentReviewAndHistoryWithGroundedDetail() throws {
@@ -184,6 +210,7 @@ final class HomeViewContractTests: XCTestCase {
         XCTAssertTrue(scenarios.contains("home.taskComposer"))
         XCTAssertTrue(scenarios.contains("case taskComposer"))
         XCTAssertTrue(scenarioView.contains("initiallyShowsTaskComposer: mode == .taskComposer"))
+        XCTAssertTrue(scenarioView.contains("AppOverlayHost"))
         XCTAssertTrue(scenarioView.contains("create:"), "Preview composer must exercise the same create closure as the app")
     }
 }

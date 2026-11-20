@@ -98,6 +98,7 @@ targets:
       - path: TaisaApp/Home
       - path: TaisaApp/CareerWork
       - path: TaisaApp/You
+      - path: TaisaApp/AppShell/AppOverlayHost.swift
       - path: TaisaApp/AppShell/PrimaryDestination.swift
       - path: TaisaApp/Conversation/AssistantResponseActions.swift
       - path: TaisaApp/Conversation/ConversationTimeline.swift
