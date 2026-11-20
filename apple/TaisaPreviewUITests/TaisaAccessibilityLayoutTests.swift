@@ -5,32 +5,30 @@ final class TaisaAccessibilityLayoutTests: XCTestCase {
     func testAccessibilityTextKeepsHomeRowsVisibleAndHittable() {
         assertHomeScenarioFitsVisibleWindow(
             identifier: "home.accessibilityText",
-            requiredText: "Your best planning sessions happen before midday.",
-            actionLabel: "home.lead-insight"
+            requiredText: "Measure the north wall"
         )
     }
 
     func testCompactIPhoneKeepsHomeRowsVisibleAndHittable() {
         assertHomeScenarioFitsVisibleWindow(
             identifier: "home.compactPhone",
-            requiredText: "Plan the garden studio"
+            requiredText: "Measure the north wall"
         )
     }
 
-    func testCombinedHomeKeepsWeeklyWorkAndInsightReachable() {
+    func testCombinedHomeKeepsTaskPreviewReachable() {
         let app = XCUIApplication()
         app.launchArguments = ["-TAISAPreviewScenario", "home.combined"]
         app.launch()
 
-        let weeklyWork = app.staticTexts["Draft the studio lighting plan"]
-        XCTAssertTrue(weeklyWork.waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Draft the studio lighting plan")).firstMatch.isHittable)
-        let insight = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS %@", "Your best planning sessions happen before midday.")
+        let task = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS %@", "Measure the north wall")
         ).firstMatch
-        scrollUntilHittable(insight, in: app)
-        XCTAssertTrue(insight.waitForExistence(timeout: 5))
-        XCTAssertTrue(insight.isHittable)
+        XCTAssertTrue(task.waitForExistence(timeout: 5))
+        XCTAssertTrue(task.isHittable)
+        let viewAll = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "View all tasks")).firstMatch
+        XCTAssertTrue(viewAll.waitForExistence(timeout: 5))
+        XCTAssertTrue(viewAll.isHittable)
     }
 
     func testFailureAndRecoveryActionsRemainReachable() {
@@ -54,7 +52,9 @@ final class TaisaAccessibilityLayoutTests: XCTestCase {
         openScenario(identifier, in: app)
 
         let title = app.staticTexts[requiredText]
-        let action = app.buttons[actionLabel ?? requiredText]
+        let action = actionLabel.map { app.buttons[$0] } ?? app.buttons.matching(
+            NSPredicate(format: "label CONTAINS %@", requiredText)
+        ).firstMatch
         scrollUntilHittable(action, in: app)
         XCTAssertTrue(title.waitForExistence(timeout: 5))
         XCTAssertTrue(title.exists)
