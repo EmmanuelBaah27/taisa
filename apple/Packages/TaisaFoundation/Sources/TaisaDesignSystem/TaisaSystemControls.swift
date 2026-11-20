@@ -23,21 +23,56 @@ public struct TaisaPicker<Option: Hashable>: View {
 public struct TaisaNavigationRow: View {
     private let label: String
     private let icon: CentralIconName?
+    private let trailingIcon: CentralIconName
+    private let action: (@MainActor () -> Void)?
 
-    public init(label: String, icon: CentralIconName? = nil) {
+    public init(
+        label: String,
+        icon: CentralIconName? = nil,
+        trailingIcon: CentralIconName = .chevronLeft,
+        action: (@MainActor () -> Void)? = nil
+    ) {
         self.label = label
         self.icon = icon
+        self.trailingIcon = trailingIcon
+        self.action = action
     }
 
+    @ViewBuilder
     public var body: some View {
+        if let action {
+            TaisaPressable(action: { action() }) { rowContent }
+        } else {
+            rowContent
+        }
+    }
+
+    private var rowContent: some View {
         HStack(spacing: TaisaSpacing.control.rawValue) {
-            if let icon { CentralIcon(icon).frame(width: 24, height: 24) }
+            if let icon {
+                CentralIcon(icon)
+                    .foregroundStyle(TaisaColor.inactiveForeground.color)
+                    .frame(width: 24, height: 24)
+            }
             TaisaText(role: .body, content: label)
             Spacer()
-            CentralIcon(.chevronLeft).rotationEffect(.degrees(180)).frame(width: 20, height: 20)
+            CentralIcon(trailingIcon)
+                .foregroundStyle(TaisaColor.inactiveForeground.color)
+                .rotationEffect(.degrees(Self.trailingIconRotationDegrees(trailingIcon)))
+                .frame(width: 20, height: 20)
         }
-        .frame(minHeight: 48)
+        .frame(maxWidth: .infinity, minHeight: TaisaButtonSize.standard.minimumHeight)
+        .padding(.horizontal, TaisaSpacing.standard.rawValue)
+        .background(TaisaColor.subtleSurface.color, in: rowShape)
         .contentShape(Rectangle())
+    }
+
+    private var rowShape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: TaisaRadius.listInterior.rawValue)
+    }
+
+    static func trailingIconRotationDegrees(_ icon: CentralIconName) -> Double {
+        icon == .chevronLeft ? 180 : 0
     }
 }
 

@@ -69,7 +69,7 @@ struct HomeView: View {
     @ViewBuilder private var content: some View {
         switch model.state {
         case .idle, .loading:
-            ProgressView("Loading Home…")
+            TaisaProgressView("Loading Home…")
         case .empty:
             List {
                 ThisWeekSection(items: [], send: send)
@@ -99,7 +99,7 @@ struct HomeView: View {
                     }
                 }
                 if showsRecentConversations && !snapshot.conversations.isEmpty {
-                    Section("Recent conversations") {
+                    TaisaSection("Recent conversations") {
                         ForEach(snapshot.conversations, id: \.id) { ConversationRow(conversation: $0, send: send) }
                     }
                     .accessibilityIdentifier("home.conversations")

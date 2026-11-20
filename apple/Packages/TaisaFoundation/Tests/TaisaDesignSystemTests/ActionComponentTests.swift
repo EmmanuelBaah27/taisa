@@ -79,8 +79,8 @@ struct ActionComponentTests {
             encoding: .utf8
         )
 
-        #expect(source.contains("ProfileAvatarFallback"))
-        #expect(source.contains("TaisaSecondaryIconButton("))
+        #expect(source.contains("TaisaProfileAvatar(name: name)"))
+        #expect(source.contains("TaisaProfileIconButton("))
         #expect(!source.contains("TaisaToolbarAction(label: \"Edit profile\""))
     }
 
@@ -93,6 +93,9 @@ struct ActionComponentTests {
 
         let field = try String(contentsOf: sourceRoot.appendingPathComponent("TaisaField.swift"), encoding: .utf8)
         let controls = try String(contentsOf: sourceRoot.appendingPathComponent("TaisaSystemControls.swift"), encoding: .utf8)
+        let menu = try String(contentsOf: sourceRoot.appendingPathComponent("TaisaMenu.swift"), encoding: .utf8)
+        let toolbar = try String(contentsOf: sourceRoot.appendingPathComponent("TaisaToolbarAction.swift"), encoding: .utf8)
+        let confirmation = try String(contentsOf: sourceRoot.appendingPathComponent("TaisaConfirmationDialog.swift"), encoding: .utf8)
         let row = try String(contentsOf: sourceRoot.appendingPathComponent("TaisaRow.swift"), encoding: .utf8)
         let status = try String(contentsOf: sourceRoot.appendingPathComponent("TaisaStatus.swift"), encoding: .utf8)
 
@@ -100,7 +103,7 @@ struct ActionComponentTests {
         #expect(field.contains("public struct TaisaDateField"))
         #expect(field.contains(".accessibilityLabel(title)"))
         #expect(controls.contains("public struct TaisaPicker"))
-        #expect(controls.contains("public struct TaisaMenu"))
+        #expect(menu.contains("public struct TaisaMenu"))
         #expect(controls.contains("public struct TaisaNavigationRow"))
         #expect(
             controls.contains(".background(TaisaColor.subtleSurface.color, in: rowShape)"),
@@ -108,8 +111,8 @@ struct ActionComponentTests {
         )
         #expect(controls.contains("RoundedRectangle(cornerRadius: TaisaRadius.listInterior.rawValue)"))
         #expect(controls.contains(".foregroundStyle(TaisaColor.inactiveForeground.color)"))
-        #expect(controls.contains("public struct TaisaToolbarAction"))
-        #expect(controls.contains("public struct TaisaConfirmationDialog"))
+        #expect(toolbar.contains("public struct TaisaToolbarAction"))
+        #expect(confirmation.contains("public struct TaisaConfirmationDialog"))
         #expect(row.contains("public struct TaisaRow"))
         #expect(status.contains("public struct TaisaStatusMark"))
         #expect(status.contains("public struct TaisaStatusSurface"))

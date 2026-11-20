@@ -66,18 +66,6 @@ public struct CentralIcon: View {
         }
     }
 
-    private var profileAsset: String? {
-        switch name {
-        case .profileShield: "ProfileShield"
-        case .profileCloud: "ProfileCloud"
-        case .profileDiagnostics: "ProfileDiagnostics"
-        case .profileChevron: "ProfileChevron"
-        case .profileEdit: "ProfileEdit"
-        case .profileClose: "ProfileClose"
-        default: nil
-        }
-    }
-
     public var body: some View {
         Group {
             if let profileAsset {
