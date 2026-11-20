@@ -9,6 +9,7 @@ enum HomeScenarios {
         scenario("home.loading", "Home loading", .phone, mode: .loading),
         scenario("home.empty", "Home empty", .phone, mode: .empty),
         scenario("home.content", "Home content", .phone, mode: .content),
+        scenario("home.taskComposer", "Home task composer", .phone, mode: .taskComposer),
         scenario("home.combined", "Home combined", .phone, mode: .combined),
         scenario("home.insights", "Home insights", .phone, mode: .insights),
         scenario("home.refreshing", "Home refreshing", .phone, mode: .refreshing),
@@ -47,6 +48,7 @@ enum HomeScenarioMode: Sendable, Equatable {
     case loading
     case empty
     case content
+    case taskComposer
     case combined
     case insights
     case refreshing

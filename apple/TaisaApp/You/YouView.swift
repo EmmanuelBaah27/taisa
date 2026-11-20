@@ -158,10 +158,10 @@ private struct CareerProfileEditor: View {
                     .accessibilityIdentifier("you.profile.close")
                 }
                 TaisaField("Display name", text: binding(\.displayName),
-                    state: fieldState(model.profileValidation.displayNameMessage), appearance: .filled)
+                    state: fieldState(model.profileValidation.displayNameMessage), appearance: .profile)
                     .accessibilityIdentifier("you.profile.name")
                 TaisaField("Bio", text: binding(\.biography), kind: .multiline,
-                    state: fieldState(model.profileValidation.biographyMessage), appearance: .filled)
+                    state: fieldState(model.profileValidation.biographyMessage), appearance: .profile)
                     .accessibilityIdentifier("you.profile.bio")
                 if model.profileSaveState == .failed {
                     TaisaText(role: .profileSupporting, color: .destructive,
