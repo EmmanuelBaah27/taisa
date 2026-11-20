@@ -122,21 +122,31 @@ final class HomeViewContractTests: XCTestCase {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let home = try String(contentsOf: root.appendingPathComponent("TaisaApp/Home/HomeView.swift"), encoding: .utf8)
         let shell = try String(contentsOf: root.appendingPathComponent("TaisaApp/AppShell/PrimaryAppShell.swift"), encoding: .utf8)
+        let composer = try String(contentsOf: root.appendingPathComponent("TaisaApp/Home/TaskComposerView.swift"), encoding: .utf8)
+        let overlayPath = root.appendingPathComponent("TaisaApp/AppShell/AppOverlayHost.swift")
+        let backdropPath = root.appendingPathComponent("Packages/TaisaFoundation/Sources/TaisaDesignSystem/TaisaDismissBackdrop.swift")
 
-        XCTAssertTrue(home.contains("@State private var showsTaskComposer = false"))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: overlayPath.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: backdropPath.path))
+        guard FileManager.default.fileExists(atPath: overlayPath.path),
+              FileManager.default.fileExists(atPath: backdropPath.path) else { return }
+        let overlayHost = try String(contentsOf: overlayPath, encoding: .utf8)
+        let backdrop = try String(contentsOf: backdropPath, encoding: .utf8)
+
+        XCTAssertTrue(home.contains("@Environment(\\.appOverlayActions)"))
         XCTAssertFalse(home.contains(".padding(.bottom, TaisaBottomChromeContract.fadeHeight)"))
-        XCTAssertTrue(home.contains(".fullScreenCover(isPresented: $showsTaskComposer)"))
-        XCTAssertTrue(home.contains("taskComposerPresentationLayer"))
-        XCTAssertTrue(home.contains(".onTapGesture { dismissTaskComposer() }"))
-        XCTAssertTrue(home.contains(".opacity(TaisaEffect.taskComposerBackdropOpacity)"))
-        XCTAssertTrue(
-            home.contains(".ignoresSafeArea()"),
-            "The composer backdrop must continue behind the composer through every safe area"
-        )
-        XCTAssertTrue(home.contains(".presentationBackground(.clear)"))
-        XCTAssertFalse(shell.contains("@State private var showsTaskComposer = false"))
-        XCTAssertFalse(shell.contains("taskComposerStatusBarBackdrop"))
-        XCTAssertFalse(shell.contains("taskComposerBottomBackdrop"))
+        XCTAssertFalse(home.contains(".fullScreenCover(isPresented:"))
+        XCTAssertTrue(home.contains("appOverlay.present("))
+        XCTAssertTrue(home.contains("TaisaDismissBackdrop(action: dismissTaskComposer)"))
+        XCTAssertTrue(backdrop.contains(".opacity(TaisaEffect.taskComposerBackdropOpacity)"))
+        XCTAssertTrue(backdrop.contains(".ignoresSafeArea()"))
+        XCTAssertTrue(shell.contains("AppOverlayHost"))
+        XCTAssertTrue(overlayHost.contains(".ignoresSafeArea(presentation == nil ? [] : .keyboard, edges: .bottom)"))
+        XCTAssertTrue(overlayHost.contains(".accessibilityHidden(presentation != nil)"))
+        XCTAssertFalse(composer.contains("keyboardHeight"))
+        XCTAssertFalse(composer.contains("keyboardWillShowNotification"))
+        XCTAssertFalse(composer.contains("keyboardWillHideNotification"))
+        XCTAssertFalse(composer.contains("PageEdgeFade"))
     }
 
     func testInsightsStayNestedByCurrentReviewAndHistoryWithGroundedDetail() throws {

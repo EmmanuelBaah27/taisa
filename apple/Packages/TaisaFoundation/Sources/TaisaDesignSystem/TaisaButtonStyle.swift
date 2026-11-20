@@ -41,7 +41,8 @@ public struct TaisaButtonStyle: PrimitiveButtonStyle {
                     .foregroundStyle(TaisaColor.foreground.color)
             } else {
                 button
-                    .buttonStyle(.glass)
+                    .buttonStyle(.plain)
+                    .glassEffect(.clear.interactive(), in: buttonShape)
                     .foregroundStyle(destructive ? TaisaColor.destructive.color : TaisaColor.foreground.color)
             }
         } else {

@@ -123,6 +123,7 @@
 		86128258E35A103E9F9B286B /* ThisWeekSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = B49A242D82122A359560DA43 /* ThisWeekSection.swift */; };
 		87B2001D614CFCC558E8F89F /* DraftRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26928FC4DC6D3CCE75A38559 /* DraftRow.swift */; };
 		88B91F8CD08CC70A74CD9D9A /* ConversationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 635CFCFFA33769B5C636954D /* ConversationsView.swift */; };
+		8B58A2A7EF71A63D7FEA6B04 /* AppOverlayHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C243E850674A85C87E3F5C7 /* AppOverlayHost.swift */; };
 		8B7779EF92E72CB3618430C2 /* ConversationFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF925814D928A405A494A659 /* ConversationFlowTests.swift */; };
 		8C49BDAAB3B5CC87998AFBB7 /* AppRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 358347F16F086497135A3080 /* AppRootView.swift */; };
 		8EA94BF84706F6197B9CB847 /* TaisaPreviewApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D1AF7F2E4A4A980D0791D4A /* TaisaPreviewApp.swift */; };
@@ -150,6 +151,7 @@
 		A363E50F8AEB0C1254691815 /* InsightsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09FF4AF48190A145ED9F8694 /* InsightsView.swift */; };
 		A6FF8788973A629BC856829E /* TaisaStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 542567F2D107C03E3EEEEBA7 /* TaisaStorage */; };
 		A7C1E88BA329C93D4549B99F /* RecordingGlowPreviewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF3D5974977BD91A358172C5 /* RecordingGlowPreviewTests.swift */; };
+		A9F6202AF18AC128F96851E5 /* AppOverlayHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C243E850674A85C87E3F5C7 /* AppOverlayHost.swift */; };
 		AB283F2CCAB03EB5B3CC8AA8 /* ConversationViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A762C6B05EBE3E1F2EEE8FD3 /* ConversationViewModel.swift */; };
 		AD2036C60D1429682A541314 /* LeadInsightSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E564CC9D239D9DCCC17F0AE /* LeadInsightSection.swift */; };
 		AED0E1346344582659B692BA /* ConversationTimeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8141344AEEFB536E987E8D85 /* ConversationTimeline.swift */; };
@@ -173,6 +175,7 @@
 		C3A1174716D7191BCB4A1680 /* TaisaAudio in Frameworks */ = {isa = PBXBuildFile; productRef = D15110CB5B17DF9E98476318 /* TaisaAudio */; };
 		C706F833D6F085BA07123280 /* BuildMetadata.generated.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5247C0A0A8695277E1212A3 /* BuildMetadata.generated.swift */; };
 		CB7F66E183729B992DD7B4CD /* DraftRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26928FC4DC6D3CCE75A38559 /* DraftRow.swift */; };
+		CDB2920EE8F874C7538B17A4 /* AppOverlayHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C243E850674A85C87E3F5C7 /* AppOverlayHost.swift */; };
 		D0A68EEFFB6A44CA52380838 /* TaisaYou in Frameworks */ = {isa = PBXBuildFile; productRef = 71106C03846C7887C8887677 /* TaisaYou */; };
 		D1445280AAB7B076CF960071 /* FoundationSmokeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C9D4835226A0691261B0E56 /* FoundationSmokeTests.swift */; };
 		D23CB4A7E400C56447E31548 /* RecoveryViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A01B83066FC36CB8726EE5C8 /* RecoveryViewModel.swift */; };
@@ -311,6 +314,7 @@
 		97B1116C9FFEDAF680AF43A5 /* InsightDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightDetailView.swift; sourceTree = "<group>"; };
 		985B59A5AA9B882A8A7CB454 /* PrimaryAppShell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrimaryAppShell.swift; sourceTree = "<group>"; };
 		9AB82F356059A4761E465BC9 /* VoiceSessionDiagnosticsViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceSessionDiagnosticsViewModelTests.swift; sourceTree = "<group>"; };
+		9C243E850674A85C87E3F5C7 /* AppOverlayHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppOverlayHost.swift; sourceTree = "<group>"; };
 		A01B83066FC36CB8726EE5C8 /* RecoveryViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecoveryViewModel.swift; sourceTree = "<group>"; };
 		A27ABA4FC2F66A76681F60EA /* TaisaBackupDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaisaBackupDocument.swift; sourceTree = "<group>"; };
 		A762C6B05EBE3E1F2EEE8FD3 /* ConversationViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationViewModel.swift; sourceTree = "<group>"; };
@@ -513,6 +517,7 @@
 		73A0DF13494B49DFAE6806BE /* AppShell */ = {
 			isa = PBXGroup;
 			children = (
+				9C243E850674A85C87E3F5C7 /* AppOverlayHost.swift */,
 				985B59A5AA9B882A8A7CB454 /* PrimaryAppShell.swift */,
 				15559F553404687F14A6B460 /* PrimaryDestination.swift */,
 			);
@@ -1012,6 +1017,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8B58A2A7EF71A63D7FEA6B04 /* AppOverlayHost.swift in Sources */,
 				B2B4794DFFCCE7610975EAE3 /* AssistantResponseActions.swift in Sources */,
 				2C4953C9F7A77AFE60369188 /* BuildMetadata.generated.swift in Sources */,
 				250AAE7D3E2D26899DBB5EB3 /* CareerWorkScenarios.swift in Sources */,
@@ -1056,6 +1062,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				CDB2920EE8F874C7538B17A4 /* AppOverlayHost.swift in Sources */,
 				EEC155B2BFD7C9E712BA3AA4 /* AppRootView.swift in Sources */,
 				2FC52F11C37E17D01ACB5616 /* AppRuntime.swift in Sources */,
 				40D8B28CF27DF963CBFD1AC7 /* AssistantResponseActions.swift in Sources */,
@@ -1164,6 +1171,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A9F6202AF18AC128F96851E5 /* AppOverlayHost.swift in Sources */,
 				8C49BDAAB3B5CC87998AFBB7 /* AppRootView.swift in Sources */,
 				5A5003E0A59E1826942CB88B /* AppRuntime.swift in Sources */,
 				9C28B437CDA169ECCDE28DFA /* AssistantResponseActions.swift in Sources */,

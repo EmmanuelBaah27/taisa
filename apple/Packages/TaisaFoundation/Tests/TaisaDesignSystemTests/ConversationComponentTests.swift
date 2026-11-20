@@ -32,6 +32,7 @@ struct ConversationComponentTests {
         #expect(TaisaMaterial.composer.reducedTransparencyFallback == .raisedSurface)
         #expect(TaisaSpacing.control.rawValue == 12)
         #expect(TaisaMotion.fast == 0.18)
+        #expect(TaisaMotion.overlayEaseOutDuration == TaisaMotion.fast)
         #expect(TaisaMotion.settle == 0.50)
         #expect(TaisaMotion.streamingWordGap == 0.06)
         #expect(TaisaMotion.streamingWordFade == 0.35)
@@ -258,12 +259,18 @@ struct ConversationComponentTests {
             contentsOf: root.appendingPathComponent("Sources/TaisaDesignSystem/SpacingToken.swift"),
             encoding: .utf8
         )
+        let buttonStyle = try String(
+            contentsOf: root.appendingPathComponent("Sources/TaisaDesignSystem/TaisaButtonStyle.swift"),
+            encoding: .utf8
+        )
 
         #expect(!secondaryControls.contains("public enum TaisaGlassStyle"))
         #expect(secondaryControls.contains("TaisaButtonStyle(shape: .circle)"))
         #expect(secondaryControls.contains("TaisaButtonStyle()"))
         #expect(!secondaryControls.contains(".glassEffect("))
         #expect(!secondaryControls.contains(".taisaSecondaryButtonSurface("))
+        #expect(buttonStyle.contains(".glassEffect(.clear.interactive(), in: buttonShape)"))
+        #expect(!buttonStyle.contains(".buttonStyle(.glass)"))
         #expect(secondaryControls.contains("elevation: TaisaSecondaryButtonElevation"))
         #expect(tokens.contains("public static let secondaryButtonShadowOpacity"))
         #expect(!actionBar.contains("glassStyle: .clear"))

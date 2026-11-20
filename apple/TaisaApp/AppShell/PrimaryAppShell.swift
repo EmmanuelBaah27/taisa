@@ -104,7 +104,8 @@ struct PrimaryAppShell: View {
     var openInsights: () -> Void = {}
 
     var body: some View {
-        NavigationStack {
+        AppOverlayHost {
+            NavigationStack {
             TabView(selection: Binding(
                 get: { model.selection },
                 set: { destination in model.select(destination) }
@@ -160,17 +161,18 @@ struct PrimaryAppShell: View {
                 dismiss: dismissConversationAndRefresh
             )
         }
-        .sheet(isPresented: taskDetailPresented, onDismiss: refreshHomeAfterTaskDetail) {
-            if let actionID = model.selectedTaskID {
-                TaisaExpandableSheet {
-                    TaskDetailSheetContent(
-                        model: careerWorkModel,
-                        actionID: actionID,
-                        openRecovery: openRecovery,
-                        open: openTaskDetailRoute,
-                        taskChanged: { Task { await homeModel.load() } },
-                        dismiss: { model.dismissTask() }
-                    )
+            .sheet(isPresented: taskDetailPresented, onDismiss: refreshHomeAfterTaskDetail) {
+                if let actionID = model.selectedTaskID {
+                    TaisaExpandableSheet {
+                        TaskDetailSheetContent(
+                            model: careerWorkModel,
+                            actionID: actionID,
+                            openRecovery: openRecovery,
+                            open: openTaskDetailRoute,
+                            taskChanged: { Task { await homeModel.load() } },
+                            dismiss: { model.dismissTask() }
+                        )
+                    }
                 }
             }
         }
