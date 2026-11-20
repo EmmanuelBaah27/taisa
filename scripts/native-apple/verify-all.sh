@@ -8,6 +8,11 @@ default_artifact_parent="${repository_root}/apple/DerivedData"
 mkdir -p "${default_artifact_parent}"
 artifact_root="${TAISA_NATIVE_ARTIFACTS:-$(mktemp -d "${default_artifact_parent}/taisa-native-verification.XXXXXX")}"
 mkdir -p "${artifact_root}"
+temporary_parent="${TAISA_NATIVE_TEMPORARY_PARENT:-${repository_root}/.tmp}"
+mkdir -p "${temporary_parent}"
+temporary_root="$(mktemp -d "${temporary_parent}/taisa-native-temporary.XXXXXX")"
+trap 'rm -rf "${temporary_root}"' EXIT
+export TMPDIR="${temporary_root}"
 
 reset_simulator_app() {
   local simulator="$1"

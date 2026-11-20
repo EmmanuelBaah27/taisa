@@ -341,7 +341,11 @@ test('combined native verification and CI pin every required gate', async () => 
   }
   assert.match(combinedScript, /reset_simulator_app\(\)/);
   assert.match(combinedScript, /apple\/DerivedData/);
-  assert.doesNotMatch(combinedScript, /TMPDIR|\/private\/tmp/);
+  assert.match(combinedScript, /TAISA_NATIVE_TEMPORARY_PARENT/);
+  assert.match(combinedScript, /repository_root\}\/\.tmp/);
+  assert.match(combinedScript, /export TMPDIR="\$\{temporary_root\}"/);
+  assert.match(combinedScript, /trap 'rm -rf "\$\{temporary_root\}"' EXIT/);
+  assert.doesNotMatch(combinedScript, /\/private\/tmp/);
   assert.equal(
     [...combinedScript.matchAll(/reset_simulator_app "\$\{iphone_name\}" com\.taisa\.app\.(?:dev|preview|personal)/g)].length,
     3,
