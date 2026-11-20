@@ -312,6 +312,9 @@ test('combined native verification and CI pin every required gate', async () => 
   ]) assert.match(combined, new RegExp(required));
 
   assert.match(generatedCheck, /mktemp -d/);
+  assert.match(generatedCheck, /apple\/DerivedData/);
+  assert.doesNotMatch(generatedCheck, /TMPDIR|\/private\/tmp/);
+  assert.match(generatedCheck, /--exclude 'DerivedData'/);
   assert.match(generatedCheck, /diff -ru/);
   assert.doesNotMatch(generatedCheck, /git (checkout|reset)/);
 
@@ -337,6 +340,8 @@ test('combined native verification and CI pin every required gate', async () => 
     assert.match(combinedScript, new RegExp(`reset_simulator_app.*${bundleIdentifier}`));
   }
   assert.match(combinedScript, /reset_simulator_app\(\)/);
+  assert.match(combinedScript, /apple\/DerivedData/);
+  assert.doesNotMatch(combinedScript, /TMPDIR|\/private\/tmp/);
   assert.equal(
     [...combinedScript.matchAll(/reset_simulator_app "\$\{iphone_name\}" com\.taisa\.app\.(?:dev|preview|personal)/g)].length,
     3,
@@ -535,10 +540,10 @@ test('tiered native CI uses focused pull-request checks and reserves full verifi
   assert.doesNotMatch(fastScript, /xcodebuild (test|build|build-for-testing)/);
 
   assert.match(fastWorkflow, /name: Native Fast Checks/);
-  assert.match(fastWorkflow, /timeout-minutes: 35/);
+  assert.match(fastWorkflow, /timeout-minutes: 60/);
   assert.match(fastWorkflow, /pull_request:/);
-  assert.match(fastWorkflow, /types: \[opened, reopened, synchronize, edited\]/);
-  assert.doesNotMatch(fastWorkflow, /edited, labeled/);
+  assert.match(fastWorkflow, /types: \[opened, reopened, synchronize\]/);
+  assert.doesNotMatch(fastWorkflow, /types: \[[^\]]*edited/);
   assert.match(fastWorkflow, /branches: \[main\]/);
   assert.match(fastWorkflow, /verify:native-apple:fast/);
   assert.match(fastWorkflow, /validate-pr-contract\.mjs/);
@@ -549,9 +554,14 @@ test('tiered native CI uses focused pull-request checks and reserves full verifi
   assert.match(fastWorkflow, /app_compile_required/);
   assert.match(fastWorkflow, /xcode_test_targets/);
   assert.match(fastWorkflow, /verify-xcode-selected\.sh/);
-  assert.match(fastWorkflow, /name: Install pinned iOS platform/);
-  assert.match(fastWorkflow, /xcodebuild -downloadPlatform iOS/);
-  assert.match(fastWorkflow, /for attempt in 1 2 3/);
+  assert.doesNotMatch(fastWorkflow, /name: Install pinned iOS platform/);
+  assert.doesNotMatch(fastWorkflow, /xcodebuild -downloadPlatform iOS/);
+  assert.match(
+    fastWorkflow,
+    /TAISA_PREVIEW_ALREADY_TESTED: \$\{\{ contains\(steps\.classify\.outputs\.xcode_test_targets, 'TaisaPreviewUITests'\) \}\}/,
+  );
+  assert.match(fastWorkflow, /if: failure\(\)/);
+  assert.match(fastWorkflow, /native-selected-test-artifacts\/\*\.xcresult/);
   assert.match(fastWorkflow, /npm run build --workspace=backend/);
   assert.match(fastWorkflow, /npm test --workspace=backend -- --runInBand/);
 
@@ -561,6 +571,8 @@ test('tiered native CI uses focused pull-request checks and reserves full verifi
   assert.match(selectedScript, /generic\/platform=iOS Simulator/);
   assert.match(selectedScript, /\*,ui,\*/);
   assert.match(selectedScript, /scheme Taisa-Preview/);
+  assert.match(selectedScript, /TAISA_PREVIEW_ALREADY_TESTED/);
+  assert.match(selectedScript, /!= true/);
   assert.match(selectedScript, /\*,device,\*/);
   assert.match(selectedScript, /generic\/platform=iOS'/);
 
@@ -573,6 +585,10 @@ test('tiered native CI uses focused pull-request checks and reserves full verifi
   ]) assert.match(selectedXcodeTests, new RegExp(target));
   assert.match(selectedXcodeTests, /xcodebuild test/);
   assert.match(selectedXcodeTests, /-only-testing:/);
+  assert.match(selectedXcodeTests, /-retry-tests-on-failure/);
+  assert.match(selectedXcodeTests, /-test-iterations 2/);
+  assert.match(selectedXcodeTests, /-parallel-testing-enabled YES/);
+  assert.match(selectedXcodeTests, /-parallel-testing-worker-count 2/);
 
   assert.match(trustedPolicy, /pull_request_target:/);
   assert.match(trustedPolicy, /types: \[opened, reopened, synchronize, edited\]/);

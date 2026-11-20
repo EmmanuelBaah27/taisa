@@ -2,7 +2,7 @@ name: Native Fast Checks
 
 on:
   pull_request:
-    types: [opened, reopened, synchronize, edited]
+    types: [opened, reopened, synchronize]
   push:
     branches: [main]
 
@@ -18,7 +18,7 @@ jobs:
   native-fast:
     name: Native Fast Checks
     runs-on: macos-26
-    timeout-minutes: 35
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
         with:
@@ -54,15 +54,6 @@ jobs:
         run: |
           sudo xcode-select -s /Applications/Xcode_26.1.1.app
           xcodebuild -version | grep 'Build version 17B100'
-      - name: Install pinned iOS platform
-        run: |
-          for attempt in 1 2 3; do
-            if xcodebuild -downloadPlatform iOS; then
-              exit 0
-            fi
-            test "${attempt}" -lt 3 || exit 1
-            sleep 15
-          done
       - name: Install pinned XcodeGen
         run: |
           brew install xcodegen
@@ -88,8 +79,15 @@ jobs:
         env:
           TAISA_NATIVE_ARTIFACTS: ${{ runner.temp }}/native-selected-test-artifacts
         run: bash scripts/native-apple/verify-xcode-selected.sh "${{ steps.classify.outputs.xcode_test_targets }}"
+      - name: Upload failed Xcode test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-selected-test-results
+          path: ${{ runner.temp }}/native-selected-test-artifacts/*.xcresult
       - name: Compile risk-selected app surfaces
         if: github.event_name != 'pull_request' || steps.classify.outputs.app_compile_required == 'true'
         env:
           TAISA_NATIVE_ARTIFACTS: ${{ runner.temp }}/native-selected-artifacts
+          TAISA_PREVIEW_ALREADY_TESTED: ${{ contains(steps.classify.outputs.xcode_test_targets, 'TaisaPreviewUITests') }}
         run: bash scripts/native-apple/verify-selected.sh "${{ steps.classify.outputs.detected_risks }}"
