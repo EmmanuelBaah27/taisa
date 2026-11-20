@@ -305,6 +305,7 @@ test('combined native verification and CI pin every required gate', async () => 
   assert.match(generatedCheck, /mktemp -d/);
   assert.match(generatedCheck, /apple\/DerivedData/);
   assert.doesNotMatch(generatedCheck, /TMPDIR|\/private\/tmp/);
+  assert.match(generatedCheck, /--exclude 'DerivedData'/);
   assert.match(generatedCheck, /diff -ru/);
   assert.doesNotMatch(generatedCheck, /git (checkout|reset)/);
 
