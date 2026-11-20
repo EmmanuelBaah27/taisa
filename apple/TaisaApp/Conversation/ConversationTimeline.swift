@@ -535,7 +535,7 @@ private struct ExpandableUserMessage: View {
 
             if isExpanded || isTruncated {
                 TaisaButtonControl(isExpanded ? "Show less" : "Show more", style: TaisaButtonStyle(presentation: .content), action: { toggleExpansion() })
-                    .font(TaisaTypography.metadata.font)
+                    .taisaTypography(.metadata)
                     .foregroundStyle(TaisaColor.mutedForeground.color)
                     .accessibilityIdentifier("conversation.message.\(message.id).expansion")
             }

@@ -11,7 +11,7 @@ struct LeadInsightSection: View {
             TaisaPressable(action: { openInsights() }) {
                 VStack(alignment: .leading, spacing: 8) {
                     TaisaIconLabel("Insight", icon: .insights)
-                        .font(TaisaTypography.label.font)
+                        .taisaTypography(.label)
                         .foregroundStyle(.secondary)
                     TaisaText(role: .childHeaderTitle, color: .foreground, content: insight.body)
                         .multilineTextAlignment(.leading)

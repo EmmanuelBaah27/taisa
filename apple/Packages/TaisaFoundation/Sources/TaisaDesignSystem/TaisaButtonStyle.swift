@@ -28,7 +28,7 @@ public struct TaisaButtonStyle: PrimitiveButtonStyle {
         styledButton(configuration)
             .buttonBorderShape(borderShape)
             .contentShape(buttonShape)
-            .font(TaisaTypography.buttonLabel.font)
+            .taisaTypography(.buttonLabel)
     }
 
     @ViewBuilder private func styledButton(_ configuration: Configuration) -> some View {

@@ -33,7 +33,7 @@ public struct TaisaButtonControl<Label: View>: View {
                         ? TaisaColor.destructive.color
                         : TaisaColor.foreground.color
                 )
-                .font(TaisaTypography.buttonLabel.font)
+                .taisaTypography(.buttonLabel)
                 .taisaButtonSurface(role: effectiveRole, size: style.size, shape: style.shape)
         }
     }

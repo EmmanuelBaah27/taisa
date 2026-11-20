@@ -28,7 +28,7 @@ final class NavigationTypographyContractTests: XCTestCase {
         let appleRoot = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         for relativePath in ["TaisaApp/TaisaApp.swift", "TaisaPreview/TaisaPreviewApp.swift"] {
             let source = try String(contentsOf: appleRoot.appendingPathComponent(relativePath), encoding: .utf8)
-            XCTAssertTrue(source.contains(".font(TaisaTypography.body.font)"), "Missing default DS font in \(relativePath)")
+            XCTAssertTrue(source.contains(".taisaTypography(.body)"), "Missing complete default DS typography in \(relativePath)")
         }
     }
 

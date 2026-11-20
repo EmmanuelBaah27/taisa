@@ -77,7 +77,7 @@ public struct FeedbackTextEditor: View {
 
     public var body: some View {
         TextEditor(text: $text)
-            .font(TaisaTypography.body.font)
+            .taisaTypography(.body)
             .frame(minHeight: Contract.minimumHeight)
             .padding(TaisaSpacing.compact.rawValue)
             .modifier(LiquidTextInputSurface(cornerRadius: TaisaRadius.control.rawValue))

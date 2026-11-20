@@ -54,8 +54,8 @@ public struct InlineRecoveryAlert: View {
             CentralIcon(.exclamationCircle)
                 .foregroundStyle(TaisaColor.destructive.color)
                 .frame(width: 24, height: 24)
-            Text(contract.title).font(TaisaTypography.navigationLabel.font)
-            Text(contract.message).font(TaisaTypography.supporting.font).foregroundStyle(TaisaColor.mutedForeground.color)
+            TaisaText(role: .navigationLabel, content: contract.title)
+            TaisaText(role: .supporting, color: .mutedForeground, content: contract.message)
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: Contract.actionSpacing) { actions }
                 VStack(spacing: Contract.actionSpacing) { actions }
@@ -75,8 +75,7 @@ public struct InlineRecoveryAlert: View {
 
     private func recoveryButton(_ label: String, action: @escaping @MainActor () -> Void) -> some View {
         TaisaSecondaryCapsuleButton(action: action) {
-            Text(label)
-                .font(TaisaTypography.navigationLabel.font)
+            TaisaText(role: .navigationLabel, content: label)
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
                 .frame(maxWidth: .infinity, minHeight: Contract.actionHeight)

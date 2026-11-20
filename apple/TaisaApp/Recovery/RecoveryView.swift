@@ -203,7 +203,7 @@ struct RecoveryView: View {
         // Native secure input is the narrowly scoped system-control exception;
         // semantic DS font, color and spacing retain the Taisa visual contract.
         TaisaSystemSecureField("Recovery key", text: $enteredKey)
-            .font(TaisaTypography.body.font)
+            .taisaTypography(.body)
             .foregroundStyle(TaisaColor.foreground.color)
             .textFieldStyle(.roundedBorder)
             .textInputAutocapitalization(.never)
