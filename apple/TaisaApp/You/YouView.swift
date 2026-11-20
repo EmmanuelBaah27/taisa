@@ -14,7 +14,7 @@ struct YouView: View {
         Group {
             switch model.state {
             case .idle, .loading:
-                ProgressView("Loading You")
+                TaisaProgressView("Loading You")
             case let .failure(issue):
                 VStack(spacing: TaisaSpacing.standard.rawValue) {
                     TaisaText(role: .profileBody, content: issue.guidance)
@@ -168,7 +168,7 @@ private struct CareerProfileEditor: View {
                     }
                     .accessibilityIdentifier("you.profile.retry")
                 } else if model.profileSaveState == .saving || closing {
-                    ProgressView("Saving changes")
+                    TaisaProgressView("Saving changes")
                         .accessibilityIdentifier("you.profile.saving")
                 }
             }

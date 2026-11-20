@@ -8,40 +8,17 @@ public enum TaisaRowEmphasis: Sendable, Equatable {
 public struct TaisaRow: View {
     private let title: String
     private let supporting: String?
-    private let metadata: String?
     private let icon: CentralIconName?
     private let emphasis: TaisaRowEmphasis
-    private let action: (@MainActor () -> Void)?
 
-    public init(
-        title: String,
-        supporting: String? = nil,
-        metadata: String? = nil,
-        icon: CentralIconName? = nil,
-        emphasis: TaisaRowEmphasis = .standard,
-        action: (@MainActor () -> Void)? = nil
-    ) {
+    public init(title: String, supporting: String? = nil, icon: CentralIconName? = nil, emphasis: TaisaRowEmphasis = .standard) {
         self.title = title
         self.supporting = supporting
-        self.metadata = metadata
         self.icon = icon
         self.emphasis = emphasis
-        self.action = action
     }
 
-    @ViewBuilder
     public var body: some View {
-        if let action {
-            TaisaPressable(action: { action() }) {
-                rowContent
-            }
-            .buttonStyle(.plain)
-        } else {
-            rowContent
-        }
-    }
-
-    private var rowContent: some View {
         HStack(alignment: .top, spacing: TaisaSpacing.control.rawValue) {
             if let icon {
                 CentralIcon(icon).frame(width: 24, height: 24)
@@ -49,7 +26,6 @@ public struct TaisaRow: View {
             VStack(alignment: .leading, spacing: TaisaSpacing.tight.rawValue) {
                 TaisaText(role: .body, content: title)
                 if let supporting { TaisaText(role: .supporting, color: .mutedForeground, content: supporting) }
-                if let metadata { TaisaText(role: .metadata, color: .mutedForeground, content: metadata) }
             }
             Spacer(minLength: 0)
         }

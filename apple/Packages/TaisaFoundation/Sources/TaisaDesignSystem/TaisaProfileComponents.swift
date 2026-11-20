@@ -1,21 +1,17 @@
 import SwiftUI
 
-/// The approved shared fallback while profile-photo editing remains deferred.
+/// A data-derived fallback while photo editing and persistence remain deferred.
 public struct TaisaProfileAvatar: View {
-    public enum Contract {
-        public static let fallbackAsset = "ProfileAvatarFallback"
-    }
-
+    private let name: String
     private let size: CGFloat
-    public init(size: CGFloat = TaisaProfileMetric.avatar) {
-        self.size = size
+    public init(name: String, size: CGFloat = TaisaProfileMetric.avatar) {
+        self.name = name; self.size = size
     }
     public var body: some View {
-        Image(Contract.fallbackAsset, bundle: .module)
-            .resizable()
-            .scaledToFill()
+        let initials = name.split(whereSeparator: \.isWhitespace).prefix(2).compactMap(\.first).map(String.init).joined().uppercased()
+        TaisaText(role: .profileBody, content: initials)
             .frame(width: size, height: size)
-            .clipShape(Circle())
+            .background(TaisaColor.subtleSurface.color, in: Circle())
             .accessibilityHidden(true)
     }
 }
@@ -30,13 +26,9 @@ public struct TaisaProfileSummary: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: TaisaProfileMetric.headerGap) {
             HStack(alignment: .top) {
-                TaisaProfileAvatar()
+                TaisaProfileAvatar(name: name)
                 Spacer()
-                TaisaSecondaryIconButton(
-                    icon: .profileEdit,
-                    accessibilityLabel: "Edit profile",
-                    action: edit
-                )
+                TaisaProfileIconButton(icon: .profileEdit, label: "Edit profile", action: edit)
                     .frame(height: TaisaProfileMetric.avatar)
                     .accessibilityIdentifier("you.profile.edit")
             }

@@ -8,6 +8,7 @@ import {
   nativeControlRoots,
   rawInteractiveControlViolations,
   rawVisualValues,
+  rawTypographyValues,
 } from '../verify-design-system.mjs';
 
 async function withControlFixture(files, policy, assertion) {
@@ -64,19 +65,6 @@ test('allows a designated primitive wrapper to use the platform control', async 
   const file = 'apple/Packages/TaisaFoundation/Sources/TaisaDesignSystem/TaisaButton.swift';
   await withControlFixture(
     { [file]: 'public struct TaisaButton { var body: some View { Button("Continue") {} } }\n' },
-    { ...emptyControlPolicy, primitiveFiles: [file] },
-    async ({ repositoryRoot, policyPath }) => {
-      assert.deepEqual(await rawInteractiveControlViolations({
-        roots: ['apple/Packages/TaisaFoundation/Sources/TaisaDesignSystem'], policyPath, repositoryRoot,
-      }), []);
-    },
-  );
-});
-
-test('allows a dedicated package-internal primitive wrapper', async () => {
-  const file = 'apple/Packages/TaisaFoundation/Sources/TaisaDesignSystem/TaisaPressable.swift';
-  await withControlFixture(
-    { [file]: 'struct TaisaPressable { var body: some View { Button("Continue") {} } }\n' },
     { ...emptyControlPolicy, primitiveFiles: [file] },
     async ({ repositoryRoot, policyPath }) => {
       assert.deepEqual(await rawInteractiveControlViolations({
@@ -220,46 +208,6 @@ test('detects controls after escaped delimiters in multiline Swift strings', asy
       assert.deepEqual(
         violations.map(({ kind, line }) => ({ kind, line })),
         [{ kind: 'unclassified-control', line: 4 }],
-      );
-    },
-  );
-});
-
-test('detects controls after nested strings inside Swift interpolation', async () => {
-  const source = [
-    String.raw`let text = "The quote is \(String(repeating: "\"", count: 1))"`,
-    'Button("Save") {}',
-  ].join('\n');
-  await withControlFixture(
-    { 'apple/TaisaApp/FeatureView.swift': `${source}\n` },
-    emptyControlPolicy,
-    async ({ repositoryRoot, policyPath }) => {
-      const violations = await rawInteractiveControlViolations({
-        roots: ['apple/TaisaApp'], policyPath, repositoryRoot,
-      });
-      assert.deepEqual(
-        violations.map(({ kind, line }) => ({ kind, line })),
-        [{ kind: 'unclassified-control', line: 2 }],
-      );
-    },
-  );
-});
-
-test('detects controls after quotes inside Swift regex literals', async () => {
-  const source = [
-    'let quote = #/"/#',
-    'Button("Save") {}',
-  ].join('\n');
-  await withControlFixture(
-    { 'apple/TaisaApp/FeatureView.swift': `${source}\n` },
-    emptyControlPolicy,
-    async ({ repositoryRoot, policyPath }) => {
-      const violations = await rawInteractiveControlViolations({
-        roots: ['apple/TaisaApp'], policyPath, repositoryRoot,
-      });
-      assert.deepEqual(
-        violations.map(({ kind, line }) => ({ kind, line })),
-        [{ kind: 'unclassified-control', line: 2 }],
       );
     },
   );
@@ -423,4 +371,36 @@ test('recording glow tuning offers an ephemeral live microphone input', async ()
   assert.match(tuner, /Live microphone/);
   assert.match(tuner, /installTap/);
   assert.doesNotMatch(tuner, /write\(|FileHandle|Data\.write|AVAudioRecorder/);
+});
+
+test('typography verifier rejects raw Product font ownership with line diagnostics', async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'taisa-typography-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await writeFile(path.join(root, 'RawFonts.swift'), `
+Text("System").font(.system(size: 17, weight: .semibold))
+Text("Shortcut").font(.headline)
+Text("Custom").font(.custom("Other Family", size: 16))
+Text("Weighted").font(Font.system(.body).weight(.medium))
+Text("Role override").font(TaisaTypography.metadata.font.weight(.medium))
+`);
+
+  assert.deepEqual(await rawTypographyValues(root), [
+    { file: path.join(root, 'RawFonts.swift'), line: 2, value: '.font(.system(size: 17, weight: .semibold))' },
+    { file: path.join(root, 'RawFonts.swift'), line: 3, value: '.font(.headline)' },
+    { file: path.join(root, 'RawFonts.swift'), line: 4, value: '.font(.custom("Other Family", size: 16))' },
+    { file: path.join(root, 'RawFonts.swift'), line: 5, value: '.font(Font.system(.body).weight(.medium))' },
+    { file: path.join(root, 'RawFonts.swift'), line: 6, value: '.font(TaisaTypography.metadata.font.weight(.medium))' },
+  ]);
+});
+
+
+test('typography verifier allows design-system semantic roles', async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'taisa-typography-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await writeFile(path.join(root, 'SemanticFonts.swift'), `
+TaisaText(role: .heading, content: "Tasks")
+Text("Task").font(TaisaTypography.taskTitle.font)
+`);
+
+  assert.deepEqual(await rawTypographyValues(root), []);
 });

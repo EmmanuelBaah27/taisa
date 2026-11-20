@@ -1,24 +1,25 @@
 import SwiftUI
 
-/// The single shared boundary for custom-content SwiftUI button interactions.
-struct TaisaPressable<Label: View>: View {
-    private let role: ButtonRole?
-    private let action: @MainActor @Sendable () -> Void
+/// Business-free activation primitive for reusable row and card labels.
+///
+/// Product owns the action and label meaning. The design system owns native
+/// activation, the minimum touch target, and the absence of feature-local
+/// button styling.
+public struct TaisaPressable<Label: View>: View {
+    private let action: @MainActor () -> Void
     private let label: Label
 
-    init(
-        role: ButtonRole? = nil,
-        action: @escaping @MainActor @Sendable () -> Void,
+    public init(
+        action: @escaping @MainActor () -> Void,
         @ViewBuilder label: () -> Label
     ) {
-        self.role = role
         self.action = action
         self.label = label()
     }
 
-    var body: some View {
-        Button(role: role, action: action) {
-            label
-        }
+    public var body: some View {
+        TaisaButtonControl(style: TaisaButtonStyle(presentation: .content), action: action) { label }
+            .frame(minHeight: TaisaControlMetric.headerActionHeight)
+            .contentShape(Rectangle())
     }
 }
