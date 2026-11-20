@@ -12,6 +12,7 @@ public enum TaisaColor: String, CaseIterable, Sendable {
     case subtleSurface = "#F5F5F5"
     case destructive = "#C60000"
     case warning = "#E46300"
+    case completed = "#04851A"
 
     public var hex: String { rawValue }
 

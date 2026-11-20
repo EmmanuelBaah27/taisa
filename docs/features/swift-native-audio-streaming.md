@@ -1,5 +1,6 @@
 # Swift Native Audio and Conversation Streaming
 
+**Last updated:** 2026-11-19
 **Tier:** Full
 **Track:** Platform
 **Status:** Review — automated matrix passed; exact signed iPhone QA pending
@@ -71,3 +72,16 @@ Automated verification on 2026-10-07 passed the backend suite (388 tests), backe
 Independent whole-branch review remediation is complete: capture file identity is checkpointed before recording begins; interrupted capture relaunch selects and safely cleans the retained file; capture discard completes durable cleanup and releases ownership; media-services reset produces an actionable terminal outcome instead of a false Resume action; terminal transcription/coaching failures delete retained audio and unlock the next turn; and cancelled capture no longer exposes an illegal Retry action. The earlier owner-bound encrypted transcription idempotency, completed replay, reconciliation, and explicit authorization for ambiguous paid work remain intact. Production requires a separate `TAISA_TRANSCRIPTION_RECEIPT_ENCRYPTION_KEY`.
 
 The final acceptance criterion remains open until the reviewed exact commit is integrated into `preview/taisa`, signed as `Taisa-Personal`, installed on both registered physical devices, exercised against every row in `docs/qa/swift-native-audio-streaming-device-matrix.md`, and accepted by `apple/scripts/verify-voice-evidence.mjs`.
+
+
+## Backup-exclusion verification on macOS hosts
+
+The production audio file store continues to set Foundation's `isExcludedFromBackup`
+resource value on the audio directory and each finalized file. The macOS host used for
+APF-90 reports false from fresh and cache-cleared URL resource getters even when the setter
+has persisted the valid binary-plist backupd exclusion attribute. Its package regression
+therefore inspects the explicit persisted macOS marker on both the directory and the file,
+with a negative assertion before file finalization. It does not accept inherited directory
+exclusion as evidence that finalization marked the file. iOS tests retain the public URL
+resource-value assertions. This is a platform-specific verification repair, not a change to
+recording, synchronization, backup policy or storage protection.

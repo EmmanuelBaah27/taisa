@@ -23,14 +23,20 @@ public struct VoiceComposerControls: View {
     public var body: some View {
         HStack {
             if phase == .preparing || phase == .recording || phase == .paused || phase == .saved {
-                Button("Keyboard", systemImage: "keyboard", action: onKeyboard)
+                TaisaButtonControl(action: onKeyboard) {
+                    HStack {
+                        CentralIcon(.keyboard)
+                            .frame(width: TaisaControlMetric.standardIcon, height: TaisaControlMetric.standardIcon)
+                        TaisaText(role: .label, content: "Keyboard")
+                    }
+                }
                     .accessibilityLabel("Switch to keyboard")
             }
             if phase != .saved {
-                Button(primaryLabel, action: onPrimary).accessibilityLabel(primaryLabel)
+                TaisaButtonControl(primaryLabel, action: onPrimary).accessibilityLabel(primaryLabel)
             }
             Spacer()
-            if phase != .waitingForReply { Button("Send", action: onSend) }
+            if phase != .waitingForReply { TaisaButtonControl("Send", style: TaisaButtonStyle(role: .primary), action: onSend) }
         }
         .frame(minHeight: 56).padding(.horizontal, TaisaSpacing.standard.rawValue)
         .background(TaisaColor.raisedSurface.color, in: RoundedRectangle(cornerRadius: TaisaRadius.composer.rawValue))

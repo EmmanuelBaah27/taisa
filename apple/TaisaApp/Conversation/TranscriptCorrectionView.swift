@@ -16,9 +16,7 @@ struct TranscriptCorrectionView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: TaisaSpacing.control.rawValue) {
                     liquidEditor
-                    Text("Updating this transcript will regenerate Taisa’s affected reply.")
-                        .font(TaisaTypography.metadata.font)
-                        .foregroundStyle(TaisaColor.mutedForeground.color)
+                    TaisaText(role: .metadata, color: .mutedForeground, content: "Updating this transcript will regenerate Taisa’s affected reply.")
                         .padding(.horizontal, TaisaSpacing.compact.rawValue)
                     TaisaButton(
                         role: .primary,
@@ -39,18 +37,17 @@ struct TranscriptCorrectionView: View {
         .toolbar(.hidden, for: .navigationBar)
         .interactiveDismissDisabled(isDirty || isSubmitting)
         .confirmationDialog("Discard changes?", isPresented: $confirmsDiscard) {
-            Button("Discard changes", role: .destructive, action: cancel)
-            Button("Keep editing", role: .cancel) {}
+            TaisaSystemButton("Discard changes", role: .destructive, action: { cancel() })
+            TaisaSystemButton("Keep editing", role: .cancel) {}
         }
     }
 
     private var editHeader: some View {
         ZStack {
-            Text("Edit message").font(TaisaTypography.navigationLabel.font)
+            TaisaText(role: .navigationLabel, content: "Edit message")
             HStack {
                 TaisaSecondaryCapsuleButton(action: requestCancel) {
-                    Text("Cancel")
-                        .font(TaisaTypography.navigationLabel.font)
+                    TaisaText(role: .navigationLabel, content: "Cancel")
                         .padding(.horizontal, TaisaSpacing.standard.rawValue)
                 }
                 .disabled(isSubmitting)

@@ -13,6 +13,13 @@ enum FoundationScenarios {
     }()
 
     private static let scenarios: [PreviewScenario] = [
+        PreviewScenario(
+            identifier: "foundation.buttons",
+            title: "Shared button foundation",
+            deviceFamily: .adaptive,
+            accessibility: .default,
+            readiness: .ready
+        ) { AnyView(ButtonFoundationScenario()) },
         scenario(
             identifier: "foundation.default",
             title: "Foundation default",
@@ -66,6 +73,47 @@ enum FoundationScenarios {
                     detail: detail
                 )
             )
+        }
+    }
+}
+
+private struct ButtonFoundationScenario: View {
+    @State private var recordCount = 0
+    @State private var actionCount = 0
+    @State private var floatingCount = 0
+    @State private var confirmedCount = 0
+    @State private var showsConfirmation = false
+
+    var body: some View {
+        VStack(spacing: TaisaSpacing.standard.rawValue) {
+            ConversationEntryDock(onVoice: { recordCount += 1 }, onKeyboard: {})
+                .accessibilityIdentifier("buttons.record")
+            TaisaButton(role: .primary, label: "Primary action") { actionCount += 1 }
+                .accessibilityIdentifier("buttons.primary")
+            TaisaButton(role: .secondary, label: "Secondary action") { actionCount += 1 }
+                .accessibilityIdentifier("buttons.secondary")
+            TaisaButton(role: .destructive, label: "Destructive action") { showsConfirmation = true }
+                .accessibilityIdentifier("buttons.destructive")
+            HStack {
+                TaisaSecondaryIconButton(icon: .chevronLeft, accessibilityLabel: "Header action") { actionCount += 1 }
+                    .accessibilityIdentifier("buttons.header")
+                ConversationJumpToLatestButton(isLoading: false) { floatingCount += 1 }
+                    .accessibilityIdentifier("buttons.floating")
+                TaisaSecondaryCapsuleButton(action: { actionCount += 1 }) {
+                    TaisaText(role: .label, content: "Capsule action")
+                        .padding(.horizontal, TaisaSpacing.standard.rawValue)
+                }
+            }
+            TaisaButton(role: .primary, label: "Processing", isProcessing: true) { actionCount += 1 }
+                .accessibilityIdentifier("buttons.processing")
+            TaisaText(role: .metadata, content: "Record \(recordCount), actions \(actionCount), floating \(floatingCount), confirmed \(confirmedCount)")
+                .accessibilityIdentifier("buttons.counts")
+        }
+        .padding(TaisaSpacing.standard.rawValue)
+        .background(TaisaColor.subtleSurface.color, in: RoundedRectangle(cornerRadius: TaisaRadius.panel.rawValue))
+        .confirmationDialog("Preview confirmation", isPresented: $showsConfirmation) {
+            TaisaSystemButton("Confirm preview action", role: .destructive) { confirmedCount += 1 }
+            TaisaSystemButton("Cancel", role: .cancel) {}
         }
     }
 }

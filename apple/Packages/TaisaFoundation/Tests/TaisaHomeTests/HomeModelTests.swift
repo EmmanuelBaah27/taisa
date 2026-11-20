@@ -127,6 +127,26 @@ import TaisaStorage
         #expect(model.state == .content(populatedSnapshot(title: "Moved"), isRefreshing: false, issue: nil))
     }
 
+    @Test func createTaskPersistsCanonicalActionWithOptionalDueDayThenReloads() async {
+        let recorder = MutationRecorder()
+        let dueDay = ActionDueDay(rawValue: "2026-12-18")
+        let created = makeAction(id: UUID().uuidString, status: .active)
+        let responses = ResponseQueue([.success(populatedSnapshot(title: "With task"))])
+        let model = HomeModel(client: HomeClient(
+            load: { try await responses.next() },
+            create: { title, due in
+                await recorder.record("create:\(title):\(due?.rawValue ?? "none")", id: created.id)
+                return created
+            }
+        ))
+
+        let succeeded = await model.createTask(title: " Research founder profiles ", dueDay: dueDay)
+
+        #expect(succeeded)
+        #expect(await recorder.values == ["create:Research founder profiles:2026-12-18:\(created.id)"])
+        #expect(model.state == .content(populatedSnapshot(title: "With task"), isRefreshing: false, issue: nil))
+    }
+
     @Test func staleMutationCompletionCannotOverwriteNewerLocalState() async {
         let gate = CompletionGate()
         let responses = ResponseQueue([.success(populatedSnapshot(title: "Newest"))])
@@ -158,6 +178,13 @@ import TaisaStorage
         let action = ActionRecord(id: UUID().uuidString, goalID: nil, title: "Local", detail: "", status: "open", dueAtMS: nil, createdAtMS: 1, updatedAtMS: 1)
         try await ActionRepository(store: store).create(action, context: .init(id: UUID().uuidString, deviceID: deviceID, timestamp: 1))
         let client = HomeClient.local(store: store, deviceID: deviceID, now: { date }, timeZone: { timeZone })
+
+        let dueDay = try ActionDueDay(validating: "2026-06-23")
+        let created = try await client.create("Created from Home", dueDay)
+        let createdDetail = try #require(try await CareerWorkQuery(store: store).actionDetail(id: created.id))
+        #expect(createdDetail.action.title == "Created from Home")
+        #expect(createdDetail.action.goalID == nil)
+        #expect(createdDetail.action.dueDay == dueDay)
 
         try await client.place(action.id, date, nil)
         #expect(try await client.load().thisWeek.map(\.action.id) == [action.id])

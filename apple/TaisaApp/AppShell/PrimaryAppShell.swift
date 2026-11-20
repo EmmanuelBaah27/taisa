@@ -12,6 +12,7 @@ import TaisaYou
 final class PrimaryAppShellModel {
     private(set) var selection: PrimaryDestination
     private(set) var workDestination: WorkDestination?
+    private(set) var selectedTaskID: String?
     private(set) var conversationRoute: ConversationRoute?
     private(set) var conversationReturnGeneration = 0
     @ObservationIgnored private var pendingEntryIntent: ConversationEntryIntent?
@@ -22,6 +23,7 @@ final class PrimaryAppShellModel {
         makeConversationID: @escaping () -> String = { UUID().uuidString }
     ) {
         self.selection = selection
+        selectedTaskID = nil
         self.makeConversationID = makeConversationID
     }
 
@@ -35,6 +37,26 @@ final class PrimaryAppShellModel {
     func showWork(_ destination: WorkDestination) {
         selection = .home
         workDestination = destination
+    }
+
+    func dismissWork() { workDestination = nil }
+
+    func presentTask(id: String) {
+        selectedTaskID = id
+    }
+
+    func dismissTask() {
+        selectedTaskID = nil
+    }
+
+    func selectAdjacent(offset: Int) {
+        let destinations = PrimaryDestination.allCases
+        guard let currentIndex = destinations.firstIndex(of: selection) else { return }
+        let nextIndex = min(
+            max(currentIndex + offset, destinations.startIndex),
+            destinations.index(before: destinations.endIndex)
+        )
+        select(destinations[nextIndex])
     }
 
     func presentNewConversation(_ intent: ConversationEntryIntent) {
@@ -71,6 +93,7 @@ final class PrimaryAppShellModel {
 
 struct PrimaryAppShell: View {
     @State var model: PrimaryAppShellModel
+    @State private var swipeStartSelection: PrimaryDestination?
     let homeModel: HomeModel
     var careerWorkModel: CareerWorkModel = CareerWorkModel(client: .init(loadOverview: { .init(active: [], paused: [], completed: [], archived: []) }))
     let conversationsModel: ConversationsModel
@@ -81,14 +104,23 @@ struct PrimaryAppShell: View {
     var openInsights: () -> Void = {}
 
     var body: some View {
-        ZStack {
-            ForEach(PrimaryDestination.allCases, id: \.self) { destination in
-                NavigationStack {
+        NavigationStack {
+            TabView(selection: Binding(
+                get: { model.selection },
+                set: { destination in model.select(destination) }
+            )) {
+                ForEach(PrimaryDestination.allCases, id: \.self) { destination in
                     destinationView(destination)
+                        .tag(destination)
                 }
-                .opacity(model.selection == destination ? 1 : 0)
-                .allowsHitTesting(model.selection == destination)
-                .accessibilityHidden(model.selection != destination)
+            }
+            .tabViewStyle(.page(indexDisplayMode: .never))
+            .simultaneousGesture(primaryPageCompletionGesture)
+            .navigationDestination(item: Binding(
+                get: { model.workDestination },
+                set: { if $0 == nil { model.dismissWork() } }
+            )) { destination in
+                workDestinationView(destination)
             }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
@@ -128,6 +160,61 @@ struct PrimaryAppShell: View {
                 dismiss: dismissConversationAndRefresh
             )
         }
+        .sheet(isPresented: taskDetailPresented, onDismiss: refreshHomeAfterTaskDetail) {
+            if let actionID = model.selectedTaskID {
+                TaisaExpandableSheet {
+                    TaskDetailSheetContent(
+                        model: careerWorkModel,
+                        actionID: actionID,
+                        openRecovery: openRecovery,
+                        open: openTaskDetailRoute,
+                        taskChanged: { Task { await homeModel.load() } },
+                        dismiss: { model.dismissTask() }
+                    )
+                }
+            }
+        }
+    }
+
+    private var primaryPageCompletionGesture: some Gesture {
+        DragGesture(minimumDistance: 24)
+            .onChanged { _ in
+                if swipeStartSelection == nil { swipeStartSelection = model.selection }
+            }
+            .onEnded { value in
+                let startSelection = swipeStartSelection
+                swipeStartSelection = nil
+                guard let startSelection,
+                      model.selection == startSelection,
+                      abs(value.translation.width) > abs(value.translation.height),
+                      abs(value.translation.width) >= 60
+                else { return }
+                model.selectAdjacent(offset: value.translation.width < 0 ? 1 : -1)
+            }
+    }
+
+    private var taskDetailPresented: Binding<Bool> {
+        Binding(
+            get: { model.selectedTaskID != nil },
+            set: { if !$0 { model.dismissTask() } }
+        )
+    }
+
+    private func refreshHomeAfterTaskDetail() {
+        careerWorkModel.returnToOverview()
+        Task { await homeModel.load() }
+    }
+
+    private func openTaskDetailRoute(_ route: CareerWorkRoute) {
+        switch route {
+        case let .action(id):
+            model.presentTask(id: id)
+        case .goal, .evidence:
+            model.dismissTask()
+            model.showWork(.goals(route: route))
+        case .overview:
+            model.dismissTask()
+        }
     }
 
     @MainActor
@@ -143,24 +230,15 @@ struct PrimaryAppShell: View {
     private func destinationView(_ destination: PrimaryDestination) -> some View {
         switch destination {
         case .home:
-            if let destination = model.workDestination {
-                switch destination {
-                case let .actions(route):
-                    ActionsView(model: careerWorkModel, initialRoute: route, openRecovery: openRecovery)
-                case let .goals(route):
-                    GoalsView(model: careerWorkModel, initialRoute: route, openRecovery: openRecovery)
-                }
-            } else {
-                HomeView(
-                    model: homeModel,
-                    send: openHomeIntent,
-                    openRecovery: openRecovery,
-                    openPersonalQA: openPersonalQA,
-                    openInsights: openInsights,
-                    ownsNavigation: false,
-                    showsRecentConversations: false
-                )
-            }
+            HomeView(
+                model: homeModel,
+                send: openHomeIntent,
+                openRecovery: openRecovery,
+                openPersonalQA: openPersonalQA,
+                openInsights: openInsights,
+                ownsNavigation: false,
+                showsRecentConversations: false
+            )
         case .conversations:
             ConversationsView(
                 model: conversationsModel,
@@ -171,7 +249,7 @@ struct PrimaryAppShell: View {
             )
         case .you:
             if let youModel {
-                YouView(model: youModel, openRecovery: openRecovery)
+                YouView(model: youModel, openRecovery: { openRecovery() })
             } else {
                 ContentUnavailableView {
                     VStack {
@@ -181,9 +259,19 @@ struct PrimaryAppShell: View {
                 } description: {
                     TaisaText(role: .body, color: .mutedForeground, content: "Your local profile could not be opened.")
                 }
-                    .navigationTitle("You")
+                    .taisaNavigationTitle("You")
                     .accessibilityIdentifier("you.unavailable")
             }
+        }
+    }
+
+    @ViewBuilder
+    private func workDestinationView(_ destination: WorkDestination) -> some View {
+        switch destination {
+        case let .tasks(route):
+            TasksView(model: careerWorkModel, initialRoute: route, openRecovery: openRecovery)
+        case let .goals(route):
+            GoalsView(model: careerWorkModel, initialRoute: route, openRecovery: openRecovery)
         }
     }
 
@@ -192,12 +280,11 @@ struct PrimaryAppShell: View {
         case let .conversation(id): model.openConversation(id: id, title: "Conversation")
         case let .goal(id):
             model.showWork(.goals(route: .goal(id: id)))
-        case let .action(id):
-            model.showWork(.actions(route: .action(id: id)))
+        case let .action(id): model.presentTask(id: id)
         case let .milestone(goalID):
             model.showWork(.goals(route: .goal(id: goalID)))
         case .actions:
-            model.showWork(.actions(route: nil))
+            model.showWork(.tasks(route: nil))
         case .goals:
             model.showWork(.goals(route: nil))
         }

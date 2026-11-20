@@ -26,21 +26,37 @@ enum PrimaryDestination: String, CaseIterable, Hashable, Sendable {
     }
 }
 
-enum WorkDestination: Hashable, Sendable {
-    case actions(route: CareerWorkRoute?)
+enum WorkDestination: Hashable, Sendable, Identifiable {
+    case tasks(route: CareerWorkRoute?)
     case goals(route: CareerWorkRoute?)
 
+    var id: String {
+        switch self {
+        case let .tasks(route): "tasks:\(route?.stableID ?? "root")"
+        case let .goals(route): "goals:\(route?.stableID ?? "root")"
+        }
+    }
+
     static func restoringLegacyCareerWork(routeStableID: String?) -> WorkDestination {
-        guard let route = CareerWorkRoute(stableID: routeStableID) else { return .actions(route: nil) }
+        guard let route = CareerWorkRoute(stableID: routeStableID) else { return .tasks(route: nil) }
         return switch route {
-        case .action: .actions(route: route)
+        case .action: .tasks(route: route)
         case .goal, .evidence: .goals(route: route)
-        case .overview: .actions(route: nil)
+        case .overview: .tasks(route: nil)
         }
     }
 }
 
 private extension CareerWorkRoute {
+    var stableID: String {
+        switch self {
+        case .overview: "overview"
+        case let .action(id): "action:\(id)"
+        case let .goal(id): "goal:\(id)"
+        case let .evidence(id): "evidence:\(id)"
+        }
+    }
+
     init?(stableID: String?) {
         guard let stableID else { return nil }
         if stableID == "overview" { self = .overview; return }

@@ -39,6 +39,11 @@ public enum TaisaProfileMetric {
 }
 
 public enum TaisaControlMetric {
+    public static let taskHeaderHeight: CGFloat = 82
+    public static let taskComposerHeight: CGFloat = 124
+    public static let taskComposerCardHeight: CGFloat = 100
+    public static let taskControl: CGFloat = 40
+    public static let taskDueIcon: CGFloat = 16
     public static let actionButtonHeight: CGFloat = 48
     public static let compactActionButtonHeight: CGFloat = 36
     public static let compactActionIcon: CGFloat = 20
@@ -63,9 +68,18 @@ public enum TaisaControlMetric {
     public static let conversationEmptyVoiceIcon: CGFloat = 24
     public static let messageEditorMinimumHeight: CGFloat = 120
     public static let disabledControlOpacity: CGFloat = 0.38
+    public static let groupedActionGap: CGFloat = 6
+    public static let groupedActionHorizontalInset: CGFloat = 4
 }
 
 public enum TaisaEffect {
+    public static let taskComposerShadowOpacity: Double = 0.08
+    public static let taskComposerBackdropOpacity: Double = 0.30
+    public static let taskComposerShadowRadius: CGFloat = 10
+    public static let taskToastShadowOpacity: Double = 0.16
+    public static let taskToastShadowRadius: CGFloat = 8
+    public static let taskToastShadowX: CGFloat = 3
+    public static let taskToastShadowY: CGFloat = 4
     public static let edgeFadeBlurOpacity: Double = 0.42
     /// Figma's 20px blur maps to Core Graphics' 10pt blur radius.
     public static let recordingGlowBlurRadius: CGFloat = 10
@@ -76,6 +90,12 @@ public enum TaisaEffect {
     public static let placeholderHighlightWidthFraction: CGFloat = 0.55
     public static let placeholderTravelStart: CGFloat = -1
     public static let placeholderTravelEnd: CGFloat = 1.5
+    public static let groupedActionShadowOpacity: Double = 0.08
+    public static let groupedActionShadowRadius: CGFloat = 8
+    public static let groupedActionShadowY: CGFloat = 2
+    public static let secondaryButtonShadowOpacity: Double = 0.08
+    public static let secondaryButtonShadowRadius: CGFloat = 8
+    public static let secondaryButtonShadowY: CGFloat = 2
 }
 
 public enum TaisaRadius: CGFloat, CaseIterable, Sendable {
@@ -85,6 +105,18 @@ public enum TaisaRadius: CGFloat, CaseIterable, Sendable {
     case historyGroup = 20
     case composer = 24
     case circular = 9_999
+}
+
+public extension TaisaRadius {
+    static let taskGroup: CGFloat = 20
+    static let taskComposer: CGFloat = 28
+    static let taskDue: CGFloat = 6
+    static let taskToast: CGFloat = 8
+}
+
+public enum TaisaTaskSpacing {
+    public static let headerGap: CGFloat = 2
+    public static let dueGap: CGFloat = 6
 }
 
 public enum TaisaMaterial: Sendable, Equatable {
