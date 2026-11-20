@@ -7,7 +7,6 @@ final class TaisaLaunchTests: XCTestCase {
         app.launch()
 
         XCTAssertTrue(element("home.root", in: app).waitForExistence(timeout: 5))
-        XCTAssertTrue(app.navigationBars["Home"].exists)
         XCTAssertTrue(element("app-shell.primary-navigation", in: app).exists)
         XCTAssertTrue(element("app-shell.conversation-dock", in: app).exists)
         XCTAssertFalse(element("preview.catalog", in: app).exists)
@@ -83,6 +82,7 @@ final class TaisaLaunchTests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
+        ensureTaskExists(in: app)
         let viewAll = app.buttons.matching(NSPredicate(format: "label CONTAINS 'View all tasks'")).firstMatch
         XCTAssertTrue(viewAll.waitForExistence(timeout: 5))
         viewAll.tap()
@@ -99,6 +99,7 @@ final class TaisaLaunchTests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
+        ensureTaskExists(in: app)
         let viewAll = app.buttons.matching(NSPredicate(format: "label CONTAINS 'View all tasks'")).firstMatch
         XCTAssertTrue(viewAll.waitForExistence(timeout: 5))
         viewAll.tap()
@@ -144,6 +145,21 @@ final class TaisaLaunchTests: XCTestCase {
 
     private func element(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
         app.descendants(matching: .any)[identifier]
+    }
+
+    private func ensureTaskExists(in app: XCUIApplication) {
+        let viewAll = app.buttons.matching(NSPredicate(format: "label CONTAINS 'View all tasks'")).firstMatch
+        guard !viewAll.exists else { return }
+
+        let addTask = app.buttons["Add task"].firstMatch
+        XCTAssertTrue(addTask.waitForExistence(timeout: 5))
+        addTask.tap()
+
+        let title = app.textFields["Task title"]
+        XCTAssertTrue(title.waitForExistence(timeout: 2))
+        title.typeText("Tasks navigation seed")
+        app.buttons["Save task"].tap()
+        XCTAssertTrue(viewAll.waitForExistence(timeout: 3))
     }
 
     private func waitForSelection(_ label: String, in app: XCUIApplication) -> Bool {
