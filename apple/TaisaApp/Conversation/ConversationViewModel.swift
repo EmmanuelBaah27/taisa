@@ -163,8 +163,10 @@ final class ConversationViewModel {
     @ObservationIgnored private let entryIntent: ConversationEntryIntent?
     @ObservationIgnored private let client: ConversationScreenClient
     @ObservationIgnored private let dismiss: @MainActor () -> Void
+    @ObservationIgnored private let waitForConfirmationDismissal: @MainActor @Sendable () async -> Void
     @ObservationIgnored private var started = false
     private(set) var actionInFlight = false
+    private(set) var recorderExitInFlight = false
     @ObservationIgnored private var voicePreparationExit: VoicePreparationExit?
     @ObservationIgnored private var recoveryObservation: Task<Void, Never>?
     @ObservationIgnored private var recordingGlowEnvelope = LoudnessEnvelope(
@@ -198,7 +200,10 @@ final class ConversationViewModel {
         composer: ComposerState = .waitingForReply,
         text: String = "",
         client: ConversationScreenClient,
-        dismiss: @escaping @MainActor () -> Void = {}
+        dismiss: @escaping @MainActor () -> Void = {},
+        waitForConfirmationDismissal: @escaping @MainActor @Sendable () async -> Void = {
+            try? await Task.sleep(for: .seconds(TaisaMotion.overlayEaseOutDuration))
+        }
     ) {
         self.conversationID = conversationID
         self.title = title
@@ -207,6 +212,7 @@ final class ConversationViewModel {
         self.text = text
         self.client = client
         self.dismiss = dismiss
+        self.waitForConfirmationDismissal = waitForConfirmationDismissal
     }
 
     static func preview(
@@ -685,6 +691,7 @@ final class ConversationViewModel {
     private func discardRecordingAndRemainOrDismiss() async {
         guard !actionInFlight else { return }
         actionInFlight = true
+        recorderExitInFlight = true
         confirmation = nil
         let closesEmptyConversation = messages.isEmpty
         if closesEmptyConversation { isClosing = true }
@@ -692,12 +699,16 @@ final class ConversationViewModel {
             try await client.discardDraft()
             if closesEmptyConversation {
                 try await client.discardEmptyConversation()
+                await waitForConfirmationDismissal()
                 closeConversation()
             } else {
+                await waitForConfirmationDismissal()
                 composer = .waitingForReply
+                recorderExitInFlight = false
             }
         } catch {
             isClosing = false
+            recorderExitInFlight = false
             composer = .failure(.unavailable)
             confirmation = nil
         }
@@ -717,6 +728,7 @@ final class ConversationViewModel {
             }()
             try await client.saveDraft(input)
             confirmation = nil
+            await waitForConfirmationDismissal()
             closeConversation()
         } catch {
             isClosing = false
@@ -734,6 +746,7 @@ final class ConversationViewModel {
             try await client.discardDraft()
             if messages.isEmpty { try await client.discardEmptyConversation() }
             confirmation = nil
+            await waitForConfirmationDismissal()
             closeConversation()
         }
         catch {

@@ -17,6 +17,10 @@ struct ConversationView: View {
                     .zIndex(4)
                 if showsRecordingGlow {
                     recordingGlowBackground
+                        .modifier(ConversationRecorderExitModifier(
+                            isExiting: model.recorderExitInFlight,
+                            reduceMotion: reduceMotion
+                        ))
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
                         .ignoresSafeArea(edges: [.horizontal, .bottom])
                 }
@@ -73,6 +77,10 @@ struct ConversationView: View {
             }
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 composer
+                    .modifier(ConversationRecorderExitModifier(
+                        isExiting: model.recorderExitInFlight,
+                        reduceMotion: reduceMotion
+                    ))
                     .zIndex(2)
             }
             .toolbar(.hidden, for: .navigationBar)
@@ -247,11 +255,6 @@ struct ConversationView: View {
             onSend: { Task { await model.sendVoice() } }
         )
         .disabled(model.actionInFlight && model.composer != .preparingVoice)
-        .opacity(
-            model.actionInFlight && model.composer != .preparingVoice
-                ? TaisaControlMetric.disabledControlOpacity
-                : 1
-        )
         .accessibilityIdentifier("conversation.voice-composer")
     }
 
@@ -352,6 +355,31 @@ struct ConversationView: View {
         case .request:
             model.cancelRecoveryAndClose()
         }
+    }
+}
+
+enum ConversationRecorderMotion {
+    static func animatesExit(reduceMotion: Bool) -> Bool { !reduceMotion }
+
+    static func exitScale(reduceMotion: Bool) -> CGFloat {
+        reduceMotion ? 1 : TaisaMotion.recordingControlExitScale
+    }
+}
+
+private struct ConversationRecorderExitModifier: ViewModifier {
+    let isExiting: Bool
+    let reduceMotion: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(isExiting ? 0 : 1)
+            .scaleEffect(isExiting ? ConversationRecorderMotion.exitScale(reduceMotion: reduceMotion) : 1)
+            .animation(
+                ConversationRecorderMotion.animatesExit(reduceMotion: reduceMotion)
+                    ? TaisaMotion.overlayEaseOut
+                    : nil,
+                value: isExiting
+            )
     }
 }
 

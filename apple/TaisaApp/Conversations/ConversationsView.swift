@@ -187,7 +187,7 @@ struct ConversationsView: View {
     }
 
     private var draftsButton: some View {
-        TaisaSecondaryCapsuleButton(size: .standard, action: { showsDrafts = true }) {
+        TaisaSecondaryCapsuleButton(size: .small, action: { showsDrafts = true }) {
             HStack(spacing: 6) {
                 TaisaText(role: .navigationLabel, content: "Drafts")
                 Circle()

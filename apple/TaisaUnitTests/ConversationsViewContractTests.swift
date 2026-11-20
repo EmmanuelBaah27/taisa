@@ -93,6 +93,12 @@ final class ConversationsViewContractTests: XCTestCase {
         XCTAssertFalse(source.contains("chats.search"))
     }
 
+    func testDraftsUsesTheSmallHeaderActionSize() throws {
+        let source = try conversationsSource()
+
+        XCTAssertTrue(source.contains("TaisaSecondaryCapsuleButton(size: .small, action: { showsDrafts = true })"))
+    }
+
     func testDraftFilterIsConditionalAndMonthHeaderHasNoHorizontalInset() throws {
         let source = try conversationsSource()
 
