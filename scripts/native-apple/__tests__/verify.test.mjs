@@ -554,8 +554,20 @@ test('tiered native CI uses focused pull-request checks and reserves full verifi
   assert.match(fastWorkflow, /app_compile_required/);
   assert.match(fastWorkflow, /xcode_test_targets/);
   assert.match(fastWorkflow, /verify-xcode-selected\.sh/);
-  assert.doesNotMatch(fastWorkflow, /name: Install pinned iOS platform/);
-  assert.doesNotMatch(fastWorkflow, /xcodebuild -downloadPlatform iOS/);
+  assert.match(fastWorkflow, /name: Ensure pinned iOS platform/);
+  assert.match(
+    fastWorkflow,
+    /name: Ensure pinned iOS platform\n\s+if: github\.event_name == 'pull_request' && steps\.classify\.outputs\.xcode_test_targets != ''/,
+  );
+  assert.match(fastWorkflow, /xcrun simctl list devices available/);
+  assert.match(fastWorkflow, /xcodebuild -downloadPlatform iOS/);
+  assert.match(fastWorkflow, /for attempt in 1 2 3/);
+  const runtimeSetup = fastWorkflow.slice(
+    fastWorkflow.indexOf('name: Ensure pinned iOS platform'),
+    fastWorkflow.indexOf('name: Install pinned XcodeGen'),
+  );
+  assert.ok(runtimeSetup.indexOf("grep -q 'iPhone'") < runtimeSetup.indexOf('xcodebuild -downloadPlatform iOS'));
+  assert.ok(runtimeSetup.indexOf('exit 0') < runtimeSetup.indexOf('xcodebuild -downloadPlatform iOS'));
   assert.match(
     fastWorkflow,
     /TAISA_PREVIEW_ALREADY_TESTED: \$\{\{ contains\(steps\.classify\.outputs\.xcode_test_targets, 'TaisaPreviewUITests'\) \}\}/,
