@@ -406,7 +406,7 @@ final class ConversationViewContractTests: XCTestCase {
         XCTAssertTrue(source.contains("FeedbackTextEditor"))
         XCTAssertTrue(source.contains("ActionPanel"))
         XCTAssertTrue(source.contains("TaisaText(role: .metadata"))
-        XCTAssertTrue(source.contains("FeedbackTextEditor"))
+        XCTAssertTrue(source.contains("TaisaText(role: .body"))
         XCTAssertFalse(source.contains("AssistantResponseActionsLayout"))
         XCTAssertFalse(source.contains(".font(.caption)"))
         XCTAssertFalse(source.contains(".font(.body)"))
