@@ -4,7 +4,7 @@
 **Design source:** Visual Companion `Persistent dock` direction plus Baah's approved interaction decisions from 2026-10-07
 **Precision:** Directional. Implementation latitude applies to exact SwiftUI spacing, materials, and motion. Device QA is the visual and interaction sign-off.
 **Status:** Approved by Baah — 2026-10-07
-**Last updated:** 2026-10-07
+**Last updated:** 2026-11-19
 
 ## Experience intent
 
@@ -142,7 +142,7 @@ Exact token values are a Plan-stage DS foundation task derived from the directio
 - Draft type, recovered status, and retry-needed status are communicated with text, not color alone.
 - Dynamic Type preserves message content and destructive-action comprehension without hiding Send or close actions.
 - Reduced Motion replaces spatial morphs with immediate presentation or restrained opacity while preserving state ordering.
-- iPad uses adaptable readable width and native presentation rather than a separate information architecture.
+- Compact iPhone widths use adaptable readable width and native presentation rather than a separate information architecture.
 
 ## Open questions
 

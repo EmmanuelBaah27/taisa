@@ -17,7 +17,7 @@ test('combined verification boots a simulator before clearing retained app state
     bash: '#!/bin/sh\nexit 0\n',
     npm: '#!/bin/sh\nexit 0\n',
     swift: '#!/bin/sh\nexit 0\n',
-    node: '#!/bin/sh\nif [ "$1" = "scripts/native-apple/select-simulator.mjs" ]; then if [ "$2" = "--eligible" ]; then printf "yes\\n"; elif [ "$2" = "iPad" ]; then printf "iPad Pro 13-inch (M5)\\n"; else printf "iPhone 17 Pro\\n"; fi; else exit 0; fi\n',
+    node: '#!/bin/sh\nif [ "$1" = "scripts/native-apple/select-simulator.mjs" ]; then if [ "$2" = "--eligible" ]; then printf "yes\\n"; elif [ "$2" = "iPad" ]; then printf "iPad simulator selection is forbidden\\n" >&2; exit 64; else printf "iPhone 17 Pro\\n"; fi; else exit 0; fi\n',
     xcodebuild: '#!/bin/sh\nif printf "%s\\n" "$@" | grep -q -- -showdestinations; then printf "iOS Simulator\\n"; exit 0; fi\nif [ "${TAISA_TEST_REQUIRE_XCODE_RETRY:-0}" = "1" ] && printf "%s\\n" "$@" | grep -q "^test$" && ! printf "%s\\n" "$@" | grep -q -- -retry-tests-on-failure; then exit 65; fi\nexit 0\n',
     xcrun: `#!/bin/sh
 if [ "$1" != "simctl" ]; then exit 0; fi
@@ -59,13 +59,15 @@ esac
   const boot = calls.findIndex((call) => call.startsWith('boot '));
   const bootstatus = calls.findIndex((call) => call.startsWith('bootstatus '));
   const uninstall = calls.findIndex((call) => call.includes('uninstall') && call.includes('com.taisa.app.dev'));
-  const iphoneShutdown = calls.findIndex((call) => call === 'shutdown iPhone 17 Pro');
-  const ipadBoot = calls.findIndex((call) => call === 'boot iPad Pro 13-inch (M5)');
+  const iphoneBoots = calls.filter((call) => call === 'boot iPhone 17 Pro');
+  const iphoneShutdowns = calls.filter((call) => call === 'shutdown iPhone 17 Pro');
+  const ipadCalls = calls.filter((call) => /iPad/i.test(call));
   assert.ok(boot >= 0, 'the verifier must boot the selected simulator');
   assert.ok(bootstatus > boot, 'the verifier must wait for the simulator to finish booting');
   assert.ok(uninstall > bootstatus, 'the verifier must clear app state only after the simulator is booted');
-  assert.ok(iphoneShutdown > uninstall, 'the verifier must release the iPhone after its test lane');
-  assert.ok(ipadBoot > iphoneShutdown, 'the verifier must release the previous simulator before booting the next lane');
+  assert.equal(iphoneBoots.length, 3, 'development, preview, and Personal lanes must use an iPhone');
+  assert.equal(iphoneShutdowns.length, 3, 'each iPhone lane must release the simulator');
+  assert.deepEqual(ipadCalls, [], 'the iPhone-only verifier must never operate on an iPad simulator');
 
   const startedAt = Date.now();
   assert.throws(() => execFileSync('/bin/bash', ['scripts/native-apple/verify-all.sh'], {

@@ -242,7 +242,7 @@ See `docs/api.md` for the request/response patterns. See `docs/agent-persona.md`
 
 ### Native functional Home
 
-The iOS/iPadOS 26+ product entry point is `AppRootView`. `AppRuntime` opens the protected store once through the same location and interrupted-recovery boundary used by Personal recovery. A safe open produces `HomeModel`; an unsafe open routes directly to recovery without replacing the store.
+The iOS 26+ iPhone product entry point is `AppRootView`. `AppRuntime` opens the protected store once through the same location and interrupted-recovery boundary used by Personal recovery. A safe open produces `HomeModel`; an unsafe open routes directly to recovery without replacing the store.
 
 Home reads one coherent encrypted snapshot through `HomeView → HomeModel → HomeClient → HomeQuery → TaisaStore`. `HomeQuery` owns bounded GRDB reads and tombstone/status filtering; GRDB does not cross into Product targets. `TaisaHome` owns platform-neutral loading, empty, content, refresh, retry, cancellation, stale-result, and recovery-required state. SwiftUI owns only presentation and typed user intents.
 | Backend SQLite | Legacy CRUD rollback store plus a content-free usage ledger during BUILD; not a destination for new coaching content. |

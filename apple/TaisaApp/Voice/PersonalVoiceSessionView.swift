@@ -1,5 +1,6 @@
 #if TAISA_PERSONAL
 import SwiftUI
+import TaisaDesignSystem
 
 struct PersonalVoiceSessionView: View {
     @StateObject private var model = PersonalVoiceSessionModel()
@@ -14,11 +15,11 @@ struct PersonalVoiceSessionView: View {
             } else if needsEnrollment {
                 enrollmentForm
             } else {
-                ContentUnavailableView(
-                    "Voice session unavailable",
-                    systemImage: "waveform.slash",
-                    description: Text(model.status)
-                )
+                ContentUnavailableView {
+                    TaisaIconLabel("Voice session unavailable", icon: .voiceMid, role: .heading)
+                } description: {
+                    TaisaText(role: .body, content: model.status)
+                }
                 .accessibilityIdentifier("voice.runtime.unavailable")
             }
         }
@@ -37,14 +38,14 @@ struct PersonalVoiceSessionView: View {
 
     private var enrollmentForm: some View {
         Form {
-            Section("Voice gateway") {
-                Text(model.status)
-                SecureField("Enrollment code", text: $enrollmentCode)
+            TaisaSection("Voice gateway") {
+                TaisaText(role: .body, content: model.status)
+                TaisaSystemSecureField("Enrollment code", text: $enrollmentCode)
                     .textContentType(.oneTimeCode)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .accessibilityIdentifier("voice.enrollment.code")
-                Button("Connect this device") {
+                TaisaButtonControl("Connect this device") {
                     let code = enrollmentCode
                     enrollmentCode = ""
                     Task { await model.connect(code: code) }
@@ -52,7 +53,7 @@ struct PersonalVoiceSessionView: View {
                 .disabled(enrollmentCode.isEmpty || model.gatewayState == .enrolling)
                 .accessibilityIdentifier("voice.enrollment.connect")
                 if model.gatewayState == .enrolling {
-                    ProgressView("Connecting…")
+                    TaisaProgressView("Connecting…")
                 }
             }
         }

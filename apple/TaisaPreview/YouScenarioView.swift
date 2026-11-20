@@ -14,15 +14,14 @@ struct YouScenarioView: View {
         case .failure:
             client = .init(load: { throw YouContractError.persistenceFailed })
         case .content, .permissionDenied, .gatewayUnavailable:
-            client = .init(load: { Self.snapshot(mode: mode) })
+            let store = YouPreviewProfileStore(snapshot: Self.snapshot(mode: mode))
+            client = .init(load: { await store.load() }, saveProfile: { try await store.save($0) })
         }
         _model = State(initialValue: YouModel(client: client))
     }
 
     var body: some View {
-        NavigationStack {
-            YouView(model: model, openRecovery: { showsRecovery = true })
-        }
+        YouView(model: model, openRecovery: { showsRecovery = true })
         .sheet(isPresented: $showsRecovery) {
             NavigationStack {
                 ContentUnavailableView("Backup and recovery", systemImage: "lock.shield", description: Text("This preview route composes the existing secure recovery flow."))
@@ -39,11 +38,29 @@ struct YouScenarioView: View {
             profile: .init(
                 id: "10000000-0000-4000-8000-000000000049",
                 displayName: "Baah",
-                headline: "Product builder",
-                biography: "Building a private, local-first working companion.",
+                headline: "",
+                biography: "Product designer at Oyster",
                 updatedAtMS: 1
             ),
             diagnostics: .init(store: .healthy, recovery: .ready, microphone: permission, gateway: gateway, appProtection: .enabled)
         )
+    }
+}
+
+private actor YouPreviewProfileStore {
+    private var snapshot: YouSnapshot
+    init(snapshot: YouSnapshot) { self.snapshot = snapshot }
+    func load() -> YouSnapshot { snapshot }
+    func save(_ draft: ProfileDraft) throws -> YouSnapshot {
+        guard let fields = ProfileInputValidator.validatedFields(
+            displayName: draft.displayName,
+            headline: draft.headline,
+            biography: draft.biography
+        ) else { throw YouContractError.invalidProfile }
+        snapshot = .init(profile: .init(
+            id: snapshot.profile?.id ?? "10000000-0000-4000-8000-000000000049",
+            displayName: fields.displayName, headline: fields.headline,
+            biography: fields.biography, updatedAtMS: 1), diagnostics: snapshot.diagnostics)
+        return snapshot
     }
 }

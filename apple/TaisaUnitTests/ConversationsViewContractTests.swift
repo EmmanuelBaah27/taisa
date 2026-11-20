@@ -6,11 +6,12 @@ final class ConversationsViewContractTests: XCTestCase {
         let source = try conversationsSource()
 
         for contract in [
-            "TaisaPageHeader(\"Chats\")", "chats.search", "chats.drafts",
+            "TaisaPageHeader(\"Chats\")", "chats.drafts",
             "List", "listRowBackground", "TaisaRadius.historyGroup"
         ] {
             XCTAssertTrue(source.contains(contract), "Missing Figma Chats contract: \(contract)")
         }
+        XCTAssertFalse(source.contains("chats.search"))
         XCTAssertFalse(source.contains(".navigationTitle(\"Conversations\")"))
     }
 
@@ -20,12 +21,14 @@ final class ConversationsViewContractTests: XCTestCase {
         XCTAssertTrue(source.contains(".background(TaisaColor.background.color.ignoresSafeArea())"))
     }
 
-    func testChatsVisualRepairUsesDefaultTypographyAndWhiteSeparators() throws {
+    func testChatsVisualRepairUsesSemanticTypographyAndWhiteSeparators() throws {
         let source = try conversationsSource()
 
         XCTAssertFalse(source.contains("design: .rounded"))
         XCTAssertTrue(source.contains("monthHeader(group.month)"))
-        XCTAssertTrue(source.contains(".system(size: 14, weight: .medium)"))
+        XCTAssertTrue(source.contains("TaisaText(role: .label"))
+        XCTAssertTrue(source.contains("TaisaText(role: .taskTitle"))
+        XCTAssertFalse(source.contains(".font(.system"))
         XCTAssertTrue(source.contains(".listRowSeparatorTint(TaisaColor.background.color)"))
         XCTAssertFalse(source.contains(".lineLimit(2)"))
         XCTAssertTrue(source.contains("preview: snapshot.lastMessagePreview"))
@@ -59,25 +62,35 @@ final class ConversationsViewContractTests: XCTestCase {
     func testChatsControlsUseCentralIconsLiquidGlassAndHeaderFade() throws {
         let source = try conversationsSource()
         let pageChrome = try designSystemSource(named: "TaisaPageChrome.swift")
+        let iconButton = try designSystemSource(named: "TaisaSecondaryIconButton.swift")
+        let capsuleButton = try designSystemSource(named: "TaisaSecondaryCapsuleButton.swift")
+        let buttonSurface = try designSystemSource(named: "TaisaSecondaryButtonSurface.swift")
 
-        XCTAssertTrue(source.contains("TaisaSecondaryIconButton("))
-        XCTAssertTrue(source.contains("icon: .magnifyingGlass"))
         XCTAssertTrue(source.contains("TaisaSecondaryCapsuleButton("))
-        XCTAssertTrue(pageChrome.contains("CentralIcon(icon)"))
-        XCTAssertTrue(pageChrome.contains("TaisaControlMetric.standardIcon"))
-        XCTAssertTrue(pageChrome.contains(".glassEffect(.clear.interactive()"))
-        XCTAssertFalse(pageChrome.contains(".glassEffect(.regular.interactive()"))
+        XCTAssertTrue(iconButton.contains("CentralIcon(icon)"))
+        XCTAssertTrue(iconButton.contains("TaisaControlMetric.standardIcon"))
+        XCTAssertTrue(iconButton.contains("TaisaButtonStyle(shape: .circle, size: size)"))
+        XCTAssertTrue(capsuleButton.contains("TaisaButtonStyle(size: size)"))
+        XCTAssertFalse(iconButton.contains(".glassEffect("))
+        XCTAssertFalse(capsuleButton.contains(".glassEffect("))
+        XCTAssertTrue(buttonSurface.contains(".glassEffect(.regular.interactive()"))
+        XCTAssertTrue(buttonSurface.contains(".frame(width: size.visualSize, height: size.visualSize)"))
+        XCTAssertTrue(buttonSurface.contains(".frame(height: size.visualSize)"))
         XCTAssertTrue(pageChrome.contains("PageEdgeFade(.header)"))
         XCTAssertTrue(pageChrome.contains(".ignoresSafeArea(edges: [.top, .horizontal])"))
         XCTAssertTrue(pageChrome.contains("TaisaControlMetric.appBarHeight"))
-        XCTAssertTrue(pageChrome.contains("TaisaControlMetric.headerActionHeight"))
+        XCTAssertTrue(buttonSurface.contains("width: size.visualSize"))
+        XCTAssertTrue(buttonSurface.contains("height: size.visualSize"))
+        XCTAssertFalse(source.contains(".padding(.horizontal, TaisaSpacing.content.rawValue)"))
         XCTAssertFalse(source.contains("Image(systemName: \"magnifyingglass\")"))
     }
 
-    func testUnavailableSearchControlIsDisabled() throws {
+    func testUnavailableSearchControlIsHidden() throws {
         let source = try conversationsSource()
 
-        XCTAssertTrue(source.contains(".disabled(true)"))
+        XCTAssertFalse(source.contains("searchButton"))
+        XCTAssertFalse(source.contains("icon: .magnifyingGlass"))
+        XCTAssertFalse(source.contains("chats.search"))
     }
 
     func testDraftFilterIsConditionalAndMonthHeaderHasNoHorizontalInset() throws {

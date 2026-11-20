@@ -71,8 +71,7 @@ struct PersonalDeviceQAView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .background(TaisaColor.background.color)
-        .navigationTitle("Personal device QA")
-        .navigationBarTitleDisplayMode(.inline)
+        .taisaNavigationTitle("Personal device QA")
         .task { await perform(create: false) }
     }
 

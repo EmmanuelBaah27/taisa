@@ -1,5 +1,7 @@
 # Design Handoff — SwiftUI Functional Home
 
+**Status:** Approved iPhone design reference
+**Last updated:** 2026-11-19
 **Scope doc:** `docs/features/swiftui-functional-home.md`
 **Design source:** Baah's approved native-first direction in conversation
 **Precision:** Directional. Functionality and native interaction fidelity are the sign-off target; final visual design is deferred.
@@ -73,12 +75,12 @@ None for this functional pass. System semantic styles, system spacing, and the e
 - Preserve Dynamic Type without truncating essential titles or hiding actions.
 - Provide VoiceOver headings, meaningful row labels, predictable traversal, and non-colour state communication.
 - Use native focus and keyboard behavior.
-- Constrain readable content width where appropriate while allowing the shell to expand in an iPad window.
-- Avoid phone-width constants or a bespoke iPad information architecture in this slice.
+- Constrain readable content width where appropriate across supported iPhone widths.
+- Avoid fixed-width constants or a bespoke alternate information architecture in this slice.
 
 ## Open questions
 
-None blocking. Exact native container choice (`List` versus another system section container) is implementation latitude and is verified on iPhone and iPad before Ship.
+None blocking. Exact native container choice (`List` versus another system section container) is implementation latitude and is verified on iPhone before Ship.
 
 ## Ready for specification
 

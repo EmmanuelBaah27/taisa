@@ -43,14 +43,13 @@ public struct PrimaryNavigation<Item: Hashable>: View {
     private var navigationItems: some View {
         HStack(spacing: TaisaSpacing.tight.rawValue) {
             ForEach(items, id: \.0) { item, label, icon in
-                Button { select(item) } label: {
+                TaisaButtonControl(style: TaisaButtonStyle(presentation: .content), action: { select(item) }) {
                     HStack(spacing: TaisaSpacing.compact.rawValue) {
-                        CentralIcon(icon)
+                        CentralIcon(icon, color: visualSelection == item ? .foreground : .inactiveForeground)
                             .frame(width: TaisaControlMetric.standardIcon, height: TaisaControlMetric.standardIcon)
 
                         if visualSelection == item {
-                            Text(label)
-                                .font(TaisaTypography.navigationLabel.font)
+                            TaisaText(role: .navigationLabel, content: label)
                                 .lineLimit(1)
                         }
                     }
@@ -68,7 +67,6 @@ public struct PrimaryNavigation<Item: Hashable>: View {
                         }
                     }
                 }
-                .buttonStyle(.plain)
                 .contentShape(Capsule())
                 .accessibilityLabel(label)
                 .accessibilityAddTraits(visualSelection == item ? .isSelected : [])

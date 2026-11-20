@@ -1,4 +1,5 @@
 import SwiftUI
+import TaisaDesignSystem
 import TaisaHome
 import TaisaStorage
 
@@ -11,7 +12,7 @@ struct InsightsView: View {
 
     var body: some View {
         content
-            .navigationTitle("Insights")
+            .taisaNavigationTitle("Insights")
             .accessibilityIdentifier("insights.root")
             .task { if model.state == .idle { await model.load() } }
             .refreshable { await model.load() }
@@ -20,13 +21,13 @@ struct InsightsView: View {
     @ViewBuilder private var content: some View {
         switch model.state {
         case .idle, .loading:
-            ProgressView("Loading insights…")
+            TaisaProgressView("Loading insights…")
         case .empty:
-            ContentUnavailableView(
-                "No insights yet",
-                systemImage: "lightbulb",
-                description: Text("Confirmed patterns grounded in your work will appear here.")
-            )
+            ContentUnavailableView {
+                    TaisaIconLabel("No insights yet", icon: .insights, role: .heading)
+                } description: {
+                    TaisaText(role: .body, content: "Confirmed patterns grounded in your work will appear here.")
+                }
         case let .content(snapshot):
             List {
                 insightSection("Current", identifier: "insights.current", records: snapshot.current)
@@ -35,11 +36,11 @@ struct InsightsView: View {
             }
         case .failure:
             ContentUnavailableView {
-                Label("Insights unavailable", systemImage: "exclamationmark.triangle")
+                TaisaIconLabel("Insights unavailable", icon: .warning)
             } description: {
-                Text("Taisa couldn’t read your encrypted insights.")
+                TaisaText(role: .body, content: "Taisa couldn’t read your encrypted insights.")
             } actions: {
-                Button("Try again") { Task { await model.load() } }
+                TaisaButtonControl("Try again") { Task { await model.load() } }
             }
         }
     }
@@ -49,22 +50,18 @@ struct InsightsView: View {
         identifier: String,
         records: [InsightRecord]
     ) -> some View {
-        Section(title) {
+        TaisaSection(title) {
             if records.isEmpty {
-                Text("None")
-                    .foregroundStyle(.tertiary)
+                TaisaText(role: .body, color: .mutedForeground, content: "None")
             } else {
                 ForEach(records, id: \.id) { insight in
                     NavigationLink {
                         InsightDetailView(model: model, insight: insight)
                     } label: {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(insight.body)
-                                .foregroundStyle(.primary)
+                            TaisaText(role: .body, color: .foreground, content: insight.body)
                                 .multilineTextAlignment(.leading)
-                            Text(insight.updatedAt, format: .dateTime.day().month().year())
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                            TaisaText(role: .metadata, color: .mutedForeground, content: insight.updatedAt.formatted(.dateTime.day().month().year()))
                         }
                     }
                 }

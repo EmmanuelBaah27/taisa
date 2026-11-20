@@ -5,7 +5,7 @@ Full token definitions and decision rules: `foundations.md` (root of repo).
 
 ## Native SwiftUI product boundary
 
-The native client targets iOS/iPadOS 26+ and defaults to standard SwiftUI controls, interactions, accessibility behavior, and Apple visual language. Product pages own composition so functionality can move quickly and remain adaptable while Baah redesigns each page in context.
+The native client targets iOS 26+ on iPhone and defaults to standard SwiftUI controls, interactions, accessibility behavior, and Apple visual language. Product pages own composition so functionality can move quickly and remain adaptable while Baah redesigns each page in context.
 
 Current shipped native Home presentation uses feature-local `ConversationRow`, `GoalRow`, and `ActionRow` views plus standard `NavigationStack`, `List`, `Section`, `ContentUnavailableView`, `Button`, `Label`, `ProgressView`, `.task`, and `.refreshable`. These rows are not design-system components yet. Extract a native shared component only after a redesigned pattern is proven reusable; update this document, its previews, and tests in the same change that implements it.
 
@@ -17,6 +17,7 @@ The approved native conversation experience adds business-free SwiftUI surfaces 
 - `TextComposer` uses native multiline input and switches from voice to Send only when non-whitespace text exists.
 - `ConversationProgressState` and `ConversationFailureActions` expose progress, retry, save, and destructive discard semantics without owning workflow state. `InlineRecoveryAlert` always fills its available width. It keeps two equal-width 48pt actions in one row when they fit, then stacks them as full-width 48pt rows under compact or accessibility constraints; both arrangements use the shared 12pt control gap.
 - `CentralIcon` is the typed native gateway for Central Icons used by the product. Selected 24×24 vector paths are stored once in `TaisaDesignSystem`; feature views choose an enum case and set only the rendered frame, never duplicate paths or substitute SF Symbols.
+- Home and career-work system actions use the exact Central Icons assets exposed as `refresh` (`IconArrowRotateClockwise`), `recovery` (`IconShieldKeyhole`), `insights` (`IconInsights`), and `testflight` (`IconTestflight`); feature views consume those typed cases through shared controls.
 - `PageEdgeFade` supplies the semantic header-bottom and navigation-top fades. The navigation placement extends through the bottom safe area so the page does not end abruptly above the Home indicator.
 - `TaisaChildPageHeader` owns child-page title and header-fade geometry. Compact pushed pages use `.back` with a required caller-owned navigation action and the 48pt Central `chevronLeft` control; regular split-view detail panes use `.detail`, which preserves the title and fade without presenting a false back action.
 - `ConversationComposerChrome` owns the open conversation's composer padding, minimum dock height, semantic backdrop, and bottom safe-area coverage for every voice, text, progress, reply, and recovery state. Its default backdrop is the navigation fade; recording states use a transparent composer backdrop while the shared recording field is bottom-anchored at the conversation root, allowing one continuous field to paint beneath the controls and through the Home-indicator safe area. Composer children do not add their own edge fade or safe-area reservation.
@@ -30,7 +31,7 @@ The approved native conversation experience adds business-free SwiftUI surfaces 
 
 Conversation details reuse `PageEdgeFade` at both edges. User messages are trailing bubbles with a six-line timeline preview; Taisa responses remain full-width and support Markdown. Native context menus expose Copy for messages and Edit only for user messages. Editing always opens the complete source text, disables unchanged or empty submission, and regenerates through the provenance-aware correction client instead of mutating durable message rows in place.
 
-Native semantic additions are `raisedSurface`, `selectedSurface`, `subtleSurface`, `destructive`, and `warning`; `TaisaRadius` supplies control, panel, history-group, composer, and circular roles. `TaisaSpacing.control` is the 12pt compact control/row inset and `TaisaSpacing.content` is the 20pt page-content inset. `TaisaTypography.supporting` owns 14/20 regular supporting copy. The conversation activity indicator owns its geometry through `TaisaActivityIndicatorMetric`, its warm/cool decorative accents through `TaisaColor.activityWarmAccent` and `activityCoolAccent`, and its cadence through `TaisaMotion.activityCycle`, `activityStagger`, and `activityAnimation`. `TaisaMotion.fast` remains the shared 180ms page/navigation response duration; the streaming word gap, fade, and reveal curve form one semantic provisional-to-durable text transition. Composer/dock material falls back to `raisedSurface` when Reduce Transparency is enabled. On iOS 26, primary navigation and prominent entry actions use native Liquid Glass with a semantic non-glass fallback. Frequent composer actions do not add decorative motion; Product presentation may use restrained native opacity/state transitions and must honor Reduce Motion.
+Native semantic additions are `raisedSurface`, `selectedSurface`, `subtleSurface`, `destructive`, and `warning`; `TaisaRadius` supplies list-interior, control, panel, history-group, composer, and circular roles. `listInterior` gives adjacent rows a 2pt seam radius while their group owns the larger outside corners. `TaisaSpacing.control` is the 12pt compact control/row inset and `TaisaSpacing.content` is the 20pt page-content inset. `TaisaTypography.supporting` owns 14/20 regular supporting copy. The conversation activity indicator owns its geometry through `TaisaActivityIndicatorMetric`, its warm/cool decorative accents through `TaisaColor.activityWarmAccent` and `activityCoolAccent`, and its cadence through `TaisaMotion.activityCycle`, `activityStagger`, and `activityAnimation`. `TaisaMotion.fast` remains the shared 180ms page/navigation response duration; the streaming word gap, fade, and reveal curve form one semantic provisional-to-durable text transition. Composer/dock material falls back to `raisedSurface` when Reduce Transparency is enabled. On iOS 26, primary navigation and prominent entry actions use native Liquid Glass with a semantic non-glass fallback. Frequent composer actions do not add decorative motion; Product presentation may use restrained native opacity/state transitions and must honor Reduce Motion.
 
 Conversation-specific control metrics are package-owned: context-menu icons are 16pt, the empty-chat voice mark is the shared 24pt icon size, the message editor has a 120pt semantic minimum height, and controls committing serialized work use the shared disabled-control opacity. Product screens consume these named roles rather than repeating their numeric values.
 
@@ -54,7 +55,7 @@ Every native page consumes these package-owned tokens and components rather than
 
 Primary pages use a native horizontal page-style `TabView`: direct swipes remain finger-driven, settle into the same route selection used by taps, and update the `PrimaryNavigation` selection capsule. The capsule uses the shared fast motion token when selection changes; Reduce Motion makes that response immediate.
 
-The native preview catalog registers deterministic, network-free conversation fixtures for list, draft, history, recording, paused, typing, transcription, coaching, Reply, permission, retry, correction, Accessibility XXXL, and iPad-width states. Preview composition uses injected local clients only; it never constructs `ConversationRuntimeFactory`, audio capture, or gateway transports. These fixtures are the inspectable visual baseline before an exact revision is integrated into `preview/taisa` for signed-device QA.
+The native preview catalog registers deterministic, network-free conversation fixtures for list, draft, history, recording, paused, typing, transcription, coaching, Reply, permission, retry, correction, Accessibility XXXL, and compact-iPhone states. Preview composition uses injected local clients only; it never constructs `ConversationRuntimeFactory`, audio capture, or gateway transports. These fixtures are the inspectable visual baseline before an exact revision is integrated into `preview/taisa` for signed-device QA.
 
 The React Native inventory below remains authoritative for the existing mobile client during the controlled migration. It is not a specification for recreating React Native visuals in SwiftUI.
 
@@ -287,10 +288,55 @@ masked input), `Toggle` (saved-copy confirmation), navigation, and system docume
 presentations. The input uses DS typography/color; toggle labels and surrounding
 spacing use DS components/tokens. These retain platform security and accessibility
 behavior without introducing business logic into the DS. Coverage includes a
-375-point iPad layout, largest Dynamic Type, and simulator accessibility audits.
+375-point compact-iPhone layout, largest Dynamic Type, and simulator accessibility audits.
 Recovery-key text disables native selection; its content-free accessibility label
 directs users to the explicit Copy Recovery Key action with a local-only, expiring
 clipboard item. The system document exporter uses the verified file URL through
 `UIDocumentPickerViewController` (iOS 14+, within the iOS 17 baseline), not an
 in-memory `FileDocument`. Its transfer lifetime stays owned until the platform
 reports completion or cancellation; scene changes shield the underlying content.
+
+## Native interaction boundary
+
+`TaisaPressable` is the package-internal native raw `Button` primitive for shared components that
+need custom label content. It owns only platform activation and an optional native button
+role. It does not define layout, color, typography, spacing, or shape. Standard text and
+icon actions continue to use `TaisaButton`. List-style interactions use `TaisaRow` with its
+optional action, and disclosure rows use `TaisaNavigationRow` with its optional action.
+Display-only initializers remain source-compatible. `TaisaButton`, `TaisaRow`,
+`TaisaToolbarAction`, `TaisaMenu`, and `TaisaConfirmationDialog` compose
+`TaisaPressable`; Product screens cannot call the primitive and never create a raw platform button or reproduce these
+components locally.
+
+## Native You profile presentation
+
+The approved Figma You overview and editor (146:1336 and 146:1721) use shared
+`TaisaProfileSummary`, `TaisaProfileAvatar`, `TaisaToolbarAction`,
+`TaisaNavigationRow`, `TaisaSettingsGroup`, and `TaisaProfileSection`.
+These contracts contain no persistence or navigation state. The avatar currently
+uses name-derived initials; photo editing and photo persistence are deferred.
+
+The existing `TaisaField` contract from the Actions foundation is reused with a
+backward-compatible `.filled` appearance: a muted label, subtle filled input,
+semantic control radius and insets. `.outlined` retains the existing default.
+Profile validation reuses the field's existing `.invalid(message:)` state. It
+does not add a feature-local field, visual variant, token, or error component.
+The generic `TaisaNavigationRow` owns disclosure layout, activation, and an
+optional Central Icons trailing asset. Its interactive form composes the
+package-internal `TaisaPressable` primitive around the same disclosure row content,
+so interactive and display-only icon direction and layout stay identical. Product
+screens do not wrap the row in a raw platform button. `TaisaToolbarAction` owns the profile edit and
+close icon-button behavior.
+
+Profile-only typography roles use Scoutie Sans semibold for the name and Inter
+for field labels, inputs and settings rows. Fonts register from package-owned
+resources; other screens retain their current typography. Both fonts carry
+their SIL Open Font License in the package. Scoutie Sans comes from the upstream
+Scoutie Sans project at `https://github.com/sursly/scoutie`.
+Profile metrics and exact Figma SVGs live once in TaisaDesignSystem; CentralIcon
+provides typed profile shield, cloud, diagnostics, chevron, edit and close assets.
+The provided portrait is not bundled as a default identity for every user.
+
+You's app-shell navigation and voice entry are reused, not recreated by the page.
+The editor owns only Display name and Bio. Auto-save and the compatibility move
+from headline into empty Bio remain in TaisaYou and existing encrypted storage.
