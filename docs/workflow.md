@@ -1,7 +1,7 @@
 # Taisa Release Safety Workflow
 
 **Status:** Active
-**Last updated:** 2026-11-19
+**Last updated:** 2026-11-20
 
 This is the single detailed authority for candidate freeze, browser simulator review,
 canonical Preview, `REPAIR_QUARANTINE`, QA readiness, topology, Ship, and safe cleanup.
@@ -134,6 +134,11 @@ Unchanged CI, device, or service waits produce no narration or repeated reasonin
 | Docs/workflow | Link/path consistency, workflow verifier, freshness where applicable, clean diff |
 
 Missing infrastructure is a reported gap, never a passing test.
+
+Store Native Apple DerivedData, result bundles, and generated-project scratch data under
+`apple/DerivedData` in the active APF checkout. Do not use `/tmp`, `/private/tmp`, or the
+Mac startup disk for Taisa build artifacts. `TAISA_NATIVE_ARTIFACTS` may override the default
+only when the selected path has enough space and belongs to the active build environment.
 
 ### Initial QA-readiness gate
 
