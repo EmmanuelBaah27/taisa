@@ -15,8 +15,8 @@ fi
 mkdir -p "${artifact_root}"
 cd "${repository_root}"
 
-simulator_inventory="$(xcrun simctl list devices available --json)"
-iphone_udid="${TAISA_IPHONE_SIMULATOR_UDID:-$(printf '%s' "${simulator_inventory}" | node scripts/native-apple/select-simulator.mjs --udid)}"
+eligible_destinations="$(xcodebuild -project apple/Taisa.xcodeproj -scheme Taisa-Personal -showdestinations)"
+iphone_udid="${TAISA_IPHONE_SIMULATOR_UDID:-$(printf '%s' "${eligible_destinations}" | node scripts/native-apple/select-simulator.mjs --eligible-udid)}"
 xcrun simctl boot "${iphone_udid}" >/dev/null 2>&1 || true
 xcrun simctl bootstatus "${iphone_udid}" -b >/dev/null
 trap 'xcrun simctl shutdown "${iphone_udid}" >/dev/null 2>&1 || true' EXIT

@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   hasEligibleSimulatorDestination,
+  selectEligibleSimulatorUDID,
   selectSimulatorName,
   selectSimulatorUDID,
 } from '../select-simulator.mjs';
@@ -32,17 +33,31 @@ test('fails clearly when the selected simulator has no UDID', () => {
 });
 
 test('detects whether Xcode has an eligible simulator runtime', () => {
-  assert.equal(hasEligibleSimulatorDestination(`
+  const output = `
 Available destinations:
   { platform:iOS Simulator, id:PHONE, name:iPhone 17 Pro }
 Ineligible destinations:
   { platform:iOS, name:Any iOS Device }
-`), true);
+`;
+  assert.equal(hasEligibleSimulatorDestination(output), true);
+  assert.equal(selectEligibleSimulatorUDID(output), 'PHONE');
   assert.equal(hasEligibleSimulatorDestination(`
 Available destinations:
 Ineligible destinations:
   { platform:iOS, name:Any iOS Device }
 `), false);
+});
+
+test('rejects an ineligible or placeholder simulator destination', () => {
+  assert.throws(
+    () => selectEligibleSimulatorUDID(`
+Available destinations:
+  { platform:iOS Simulator, id:dvtdevice-DVTiOSDeviceSimulatorPlaceholder, name:Any iOS Simulator Device }
+Ineligible destinations:
+  { platform:iOS Simulator, id:OLD-PHONE, name:iPhone 17 Pro }
+`),
+    /No eligible iPhone simulator destination found/,
+  );
 });
 
 test('fails clearly when an iPhone simulator is unavailable', () => {

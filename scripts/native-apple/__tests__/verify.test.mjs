@@ -566,14 +566,15 @@ test('tiered native CI uses focused pull-request checks and reserves full verifi
     fastWorkflow,
     /name: Ensure pinned iOS platform\n\s+if: github\.event_name == 'pull_request' && steps\.classify\.outputs\.xcode_test_targets != ''/,
   );
-  assert.match(fastWorkflow, /xcrun simctl list devices available/);
+  assert.match(fastWorkflow, /Taisa-Personal -showdestinations/);
+  assert.match(fastWorkflow, /select-simulator\.mjs --eligible-udid/);
   assert.match(fastWorkflow, /xcodebuild -downloadPlatform iOS/);
   assert.match(fastWorkflow, /for attempt in 1 2 3/);
   const runtimeSetup = fastWorkflow.slice(
     fastWorkflow.indexOf('name: Ensure pinned iOS platform'),
     fastWorkflow.indexOf('name: Install pinned XcodeGen'),
   );
-  assert.ok(runtimeSetup.indexOf("grep -q 'iPhone'") < runtimeSetup.indexOf('xcodebuild -downloadPlatform iOS'));
+  assert.ok(runtimeSetup.indexOf('--eligible-udid') < runtimeSetup.indexOf('xcodebuild -downloadPlatform iOS'));
   assert.ok(runtimeSetup.indexOf('exit 0') < runtimeSetup.indexOf('xcodebuild -downloadPlatform iOS'));
   assert.match(
     fastWorkflow,
@@ -609,7 +610,8 @@ test('tiered native CI uses focused pull-request checks and reserves full verifi
   assert.match(selectedXcodeTests, /-parallel-testing-enabled YES/);
   assert.match(selectedXcodeTests, /-parallel-testing-worker-count 2/);
   assert.match(selectedXcodeTests, /TAISA_IPHONE_SIMULATOR_UDID/);
-  assert.match(selectedXcodeTests, /select-simulator\.mjs --udid/);
+  assert.match(selectedXcodeTests, /Taisa-Personal -showdestinations/);
+  assert.match(selectedXcodeTests, /select-simulator\.mjs --eligible-udid/);
   assert.match(selectedXcodeTests, /platform=iOS Simulator,id=\$\{iphone_udid\}/);
   assert.doesNotMatch(selectedXcodeTests, /platform=iOS Simulator,name=/);
 
