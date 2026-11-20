@@ -146,6 +146,7 @@ import XCTest
         let app = XCUIApplication()
         app.launchArguments = ["--taisa-recovery-route-qa"]
         app.launch()
+        XCTAssertTrue(app.buttons["Back Up Now"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.staticTexts["Stored securely on this device"].exists)
         XCTAssertTrue(app.buttons["Back Up Now"].isHittable)
         XCTAssertTrue(app.buttons["Restore Backup"].isHittable)
@@ -168,6 +169,7 @@ import XCTest
             "UICTContentSizeCategoryAccessibilityXXXL",
         ]
         app.launch()
+        XCTAssertTrue(app.buttons["Restore Backup"].waitForExistence(timeout: 10))
         for _ in 0..<6 where !app.buttons["Restore Backup"].isHittable { app.swipeUp() }
         XCTAssertTrue(app.buttons["Restore Backup"].isHittable)
         let attachment = XCTAttachment(screenshot: app.screenshot())
@@ -183,7 +185,9 @@ import XCTest
         app.launchArguments = ["--taisa-personal-device-qa", "--taisa-voice-gateway-unenrolled"]
         app.launchEnvironment["TAISA_UI_TEST_VOICE_GATEWAY_URL"] = "https://voice.example.com"
         app.launch()
-        app.buttons["personal-qa.voice"].tap()
+        let voice = app.buttons["personal-qa.voice"]
+        XCTAssertTrue(voice.waitForExistence(timeout: 10))
+        voice.tap()
 
         XCTAssertTrue(app.secureTextFields["Enrollment code"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.buttons["Connect this device"].exists)
@@ -192,7 +196,9 @@ import XCTest
         app.terminate()
         app.launchArguments = ["--taisa-personal-device-qa", "--taisa-voice-gateway-ready"]
         app.launch()
-        app.buttons["personal-qa.voice"].tap()
+        let readyVoice = app.buttons["personal-qa.voice"]
+        XCTAssertTrue(readyVoice.waitForExistence(timeout: 10))
+        readyVoice.tap()
         XCTAssertTrue(app.buttons["Record"].waitForExistence(timeout: 10))
         XCTAssertFalse(app.secureTextFields["Enrollment code"].exists)
     }
