@@ -53,42 +53,53 @@ enum ThisWeekSheet: Identifiable {
 }
 
 struct HomeActionsPreviewSection: View {
-    let prompts: [HomeActionPrompt]
+    let actions: [ActionRecord]
+    let totalCount: Int
     let send: (HomeIntent) -> Void
+    let add: @MainActor @Sendable () -> Void
 
     var body: some View {
-        TaisaSection("Actions") {
-            if prompts.isEmpty {
-                TaisaRow(title: "No actions need attention", supporting: "Open Actions when you want to add or review work.", icon: .action)
-            } else {
-                ForEach(Array(prompts.enumerated()), id: \.element.action.id) { _, prompt in
-                    TaisaRow(title: prompt.action.title, supporting: label(prompt.reason), icon: icon(prompt.reason), emphasis: prompt.reason == .overdue || prompt.reason == .blocked ? .attention : .standard) {
-                        send(.action(prompt.action.id))
-                    }
+        VStack(spacing: TaisaSpacing.tight.rawValue) {
+            HStack(spacing: TaisaSpacing.compact.rawValue) {
+                TaisaText(role: .taskSupporting, color: .mutedForeground, content: "Tasks this week")
+                Spacer()
+                if !actions.isEmpty {
+                    TaisaSecondaryIconButton(
+                        icon: .add,
+                        accessibilityLabel: "Add task",
+                        size: TaisaControlMetric.taskControl,
+                        action: add
+                    )
                 }
             }
-            TaisaNavigationRow(label: "View all actions", icon: .action) { send(.actions) }
+            .padding(.vertical, TaisaSpacing.compact.rawValue)
+            if actions.isEmpty {
+                TaisaTaskEmptyStateCard(action: add)
+            } else {
+                VStack(spacing: TaisaSpacing.tight.rawValue) {
+                    ForEach(actions.prefix(3), id: \.id) { action in
+                        TaisaPressable(action: { send(.action(action.id)) }) {
+                            TaisaTaskRow(title: action.title, dueLabel: dueLabel(for: action))
+                        }
+                    }
+                }
+                .clipShape(RoundedRectangle(cornerRadius: TaisaRadius.taskGroup))
+                TaisaPressable(action: { send(.actions) }) {
+                    TaisaTaskSummaryRow(count: totalCount)
+                }
                 .accessibilityIdentifier("home.actions.view-all")
+            }
         }
         .accessibilityIdentifier("home.actions.preview")
     }
 
-    private func label(_ reason: HomeActionPromptReason) -> String {
-        switch reason {
-        case .overdue: "Overdue"
-        case .dueSoon: "Due soon"
-        case .blocked: "Blocked"
-        case .recentlyReopened: "Recently reopened"
-        case .thisWeek: "This week"
-        }
-    }
-
-    private func icon(_ reason: HomeActionPromptReason) -> CentralIconName {
-        switch reason {
-        case .overdue, .blocked: .warning
-        case .recentlyReopened: .undo
-        case .dueSoon, .thisWeek: .action
-        }
+    private func dueLabel(for action: ActionRecord) -> String? {
+        guard let raw = action.dueDay?.rawValue else { return nil }
+        let formatter = DateFormatter()
+        formatter.locale = .current
+        formatter.dateFormat = "yyyy-MM-dd"
+        guard let date = formatter.date(from: raw) else { return nil }
+        return date.formatted(.dateTime.weekday(.abbreviated))
     }
 }
 

@@ -58,21 +58,8 @@ struct HomeView: View {
 
     private var homeContent: some View {
         content
-            .navigationTitle("Home")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    TaisaToolbarAction(label: "Refresh", icon: .refresh) { Task { await model.load() } }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    TaisaToolbarAction(label: "Backup and recovery", icon: .recovery) { openRecovery() }
-                        .accessibilityIdentifier("foundation.recovery.action")
-                }
-                if let openPersonalQA {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        TaisaToolbarAction(label: "Personal device QA", icon: .testflight) { openPersonalQA() }
-                            .accessibilityIdentifier("foundation.personal-qa.action")
-                    }
-                }
+            .safeAreaInset(edge: .top, spacing: 0) {
+                TaisaDatedPageHeader(date: Date().taskHeaderLabel, title: "Up late, Beats?") { EmptyView() }
             }
             .overlay(alignment: .top) {
                 if showsTaskAddedToast {
@@ -101,46 +88,30 @@ struct HomeView: View {
         case .idle, .loading:
             TaisaProgressView("Loading Home…")
         case .empty:
-            List {
-                ThisWeekSection(items: [], send: send)
-                HomeActionsPreviewSection(prompts: [], send: send)
-                HomeGoalsSummarySection(goals: [], send: send)
+            ScrollView {
+                HomeActionsPreviewSection(actions: [], totalCount: 0, send: send, add: presentTaskComposer)
+                    .padding(.horizontal, TaisaSpacing.content.rawValue)
+                    .padding(.top, TaisaSpacing.section.rawValue)
             }
+            .background(TaisaColor.background.color)
             .accessibilityIdentifier("home.empty")
         case let .content(snapshot, isRefreshing, issue):
-            List {
+            ScrollView {
+                VStack(spacing: TaisaSpacing.control.rawValue) {
                 if let issue { issueRow(issue) }
-                ThisWeekSection(
-                    items: snapshot.thisWeek,
-                    send: send
-                )
-                HomeActionsPreviewSection(prompts: snapshot.actionPrompts, send: send)
-                HomeGoalsSummarySection(goals: snapshot.goals, send: send)
-                if let leadInsight = snapshot.leadInsight {
-                    LeadInsightSection(insight: leadInsight, openInsights: openInsights)
+                HomeActionsPreviewSection(actions: snapshot.actions, totalCount: snapshot.actions.count, send: send, add: presentTaskComposer)
+                if isRefreshing { TaisaProgressView("Refreshing Home…").frame(maxWidth: .infinity) }
                 }
-                if snapshot.leadInsight == nil && snapshot.hasConfirmedInsightHistory {
-                    TaisaButton(role: .secondary, label: "View insights", icon: .insights) { openInsights() }
-                        .accessibilityIdentifier("home.insights.link")
-                }
-                if snapshot.unresolvedPriorWeekCount > 0 {
-                    HomeReviewSection(unresolvedCount: snapshot.unresolvedPriorWeekCount) {
-                        activeSheet = .priorWeekReview(unresolvedCount: $0)
-                    }
-                }
-                if showsRecentConversations && !snapshot.conversations.isEmpty {
-                    TaisaSection("Recent conversations") {
-                        ForEach(snapshot.conversations, id: \.id) { ConversationRow(conversation: $0, send: send) }
-                    }
-                    .accessibilityIdentifier("home.conversations")
-                }
-                if isRefreshing { ProgressView().frame(maxWidth: .infinity) }
+                .padding(.horizontal, TaisaSpacing.content.rawValue)
+                .padding(.top, TaisaSpacing.section.rawValue)
             }
+            .background(TaisaColor.background.color)
             .refreshable { await model.load() }
         case let .failure(issue):
             ContentUnavailableView {
                 VStack {
-                    CentralIcon(.warning).frame(width: 32, height: 32)
+                    CentralIcon(.warning)
+                        .frame(width: TaisaControlMetric.standardIcon, height: TaisaControlMetric.standardIcon)
                     TaisaText(role: .heading, content: issue == .recoveryRequired ? "Recovery required" : "Home unavailable")
                 }
             } description: {
@@ -156,18 +127,6 @@ struct HomeView: View {
             }
             .accessibilityIdentifier(issue == .recoveryRequired ? "home.recovery" : "home.failure")
         }
-    }
-
-    private func issueRow(_ issue: HomeIssue) -> some View {
-        TaisaRow(
-            title: issue == .recoveryRequired ? "Open recovery" : "Try refresh again",
-            icon: .warning,
-            emphasis: .attention
-        ) {
-            if issue == .recoveryRequired { openRecovery() }
-            else { Task { await model.load() } }
-        }
-        .accessibilityIdentifier(issue == .recoveryRequired ? "home.recovery" : "home.retry")
     }
 
     private func submitTask() {
@@ -186,9 +145,34 @@ struct HomeView: View {
     private func dismissTaskComposer() {
         showsTaskComposer = false
     }
+
+    private func presentTaskComposer() {
+        showsTaskComposer = true
+    }
+
+    private func issueRow(_ issue: HomeIssue) -> some View {
+        TaisaPressable(action: {
+            if issue == .recoveryRequired { openRecovery() }
+            else { Task { await model.load() } }
+        }) {
+            TaisaRow(
+                title: issue == .recoveryRequired ? "Open recovery" : "Try refresh again",
+                icon: .warning,
+                emphasis: .attention
+            )
+        }
+        .accessibilityIdentifier(issue == .recoveryRequired ? "home.recovery" : "home.retry")
+    }
 }
 
 private extension Date {
+    var taskHeaderLabel: String {
+        let formatter = DateFormatter()
+        formatter.locale = .current
+        formatter.dateFormat = "EEE d MMM"
+        return formatter.string(from: self)
+    }
+
     var actionDueDay: ActionDueDay? {
         let values = Calendar.current.dateComponents([.year, .month, .day], from: self)
         guard let year = values.year, let month = values.month, let day = values.day else { return nil }
