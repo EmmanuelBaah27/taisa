@@ -97,7 +97,7 @@ struct ActionComponentTests {
         #expect(Set(concepts.map(String.init(describing:))).count == concepts.count)
     }
 
-    @Test func primaryNavigationKeepsInactiveIconsAtTheApprovedForegroundColor() throws {
+    @Test func primaryNavigationUsesTheApprovedInactiveIconColor() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .deletingLastPathComponent()
@@ -107,7 +107,25 @@ struct ActionComponentTests {
             encoding: .utf8
         )
 
-        #expect(source.contains("CentralIcon(icon, color: .foreground)"))
+        #expect(source.contains("visualSelection == item ? .foreground : .inactiveForeground"))
+    }
+
+    @Test func taskRowsAndSheetsUseApprovedSharedSpacingAndColors() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let taskRow = try String(
+            contentsOf: root.appendingPathComponent("Sources/TaisaDesignSystem/TaisaTaskRow.swift"),
+            encoding: .utf8
+        )
+        let sheet = try String(
+            contentsOf: root.appendingPathComponent("Sources/TaisaDesignSystem/TaisaExpandableSheet.swift"),
+            encoding: .utf8
+        )
+
+        #expect(taskRow.contains("CentralIcon(.incomplete, color: .mutedForeground)"))
+        #expect(sheet.contains(".padding(TaisaSpacing.content.rawValue)"))
     }
 
     @Test func profileSummaryKeepsTheApprovedSharedVisualContracts() throws {

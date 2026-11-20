@@ -45,7 +45,7 @@ public struct PrimaryNavigation<Item: Hashable>: View {
             ForEach(items, id: \.0) { item, label, icon in
                 TaisaButtonControl(style: TaisaButtonStyle(presentation: .content), action: { select(item) }) {
                     HStack(spacing: TaisaSpacing.compact.rawValue) {
-                        CentralIcon(icon, color: .foreground)
+                        CentralIcon(icon, color: visualSelection == item ? .foreground : .inactiveForeground)
                             .frame(width: TaisaControlMetric.standardIcon, height: TaisaControlMetric.standardIcon)
 
                         if visualSelection == item {

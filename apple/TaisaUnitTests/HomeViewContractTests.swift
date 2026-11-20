@@ -100,7 +100,7 @@ final class HomeViewContractTests: XCTestCase {
         XCTAssertTrue(composer.contains("TaisaButton("))
         XCTAssertNil(composer.range(of: #"(?<![A-Za-z])Button\s*(?:\(|\{)"#, options: .regularExpression))
         XCTAssertTrue(taskRows.contains("TaisaRadius.taskGroup"))
-        XCTAssertTrue(taskRows.contains("CentralIcon(.incomplete)"))
+        XCTAssertTrue(taskRows.contains("CentralIcon(.incomplete, color: .mutedForeground)"))
         XCTAssertTrue(sections.contains("dueLabel"))
     }
 
@@ -119,7 +119,7 @@ final class HomeViewContractTests: XCTestCase {
         XCTAssertTrue(sections.contains(".padding(.vertical, TaisaSpacing.compact.rawValue)"))
 
         let home = try String(contentsOf: root.appendingPathComponent("TaisaApp/Home/HomeView.swift"), encoding: .utf8)
-        XCTAssertTrue(home.contains(".padding(.top, TaisaSpacing.standard.rawValue)"))
+        XCTAssertTrue(home.contains(".padding(.top, TaisaSpacing.compact.rawValue)"))
         XCTAssertFalse(home.contains(".padding(.top, TaisaSpacing.section.rawValue)"))
         XCTAssertTrue(taskRows.contains("HStack(alignment: dueLabel == nil ? .center : .top"))
     }

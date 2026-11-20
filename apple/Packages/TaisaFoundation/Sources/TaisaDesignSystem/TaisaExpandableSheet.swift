@@ -21,6 +21,7 @@ public struct TaisaExpandableSheet<Content: View>: View {
 
     public var body: some View {
         content
+            .padding(TaisaSpacing.content.rawValue)
             .presentationDetents([.medium, .large], selection: $selectedDetent)
             .presentationDragIndicator(.visible)
             .presentationBackground(TaisaColor.background.color)

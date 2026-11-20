@@ -15,7 +15,7 @@ public struct TaisaTaskRow: View {
 
     public var body: some View {
         HStack(alignment: dueLabel == nil ? .center : .top, spacing: TaisaSpacing.control.rawValue) {
-            CentralIcon(.incomplete)
+            CentralIcon(.incomplete, color: .mutedForeground)
                 .frame(width: TaisaControlMetric.standardIcon, height: TaisaControlMetric.standardIcon)
             VStack(alignment: .leading, spacing: TaisaTaskSpacing.headerGap) {
                 TaisaText(role: .taskTitle, content: title)

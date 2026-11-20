@@ -154,6 +154,7 @@ final class CareerWorkViewContractTests: XCTestCase {
         XCTAssertTrue(source.contains("selectedTaskID = action.id"))
         XCTAssertFalse(source.contains("TaisaPressable(action: { selectedRoute = .action(id: action.id) })"))
         XCTAssertTrue(source.contains("TaisaExpandableSheet"))
+        XCTAssertTrue(source.contains("label: \"Complete task\", icon: .completeAction, layout: .intrinsic"))
         XCTAssertTrue(source.contains("TaskDetailSheetContent("))
         XCTAssertTrue(source.contains("onDismiss: refreshTasksAfterTaskDetail"))
         XCTAssertTrue(source.contains("model.returnToOverview()"))

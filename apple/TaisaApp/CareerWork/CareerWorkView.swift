@@ -1025,7 +1025,7 @@ private struct CareerActionDetail: View {
         switch ActionStatus(rawValue: snapshot.action.status) {
         case .active:
             TaisaField("Completion evidence", text: $completionEvidence, placeholder: "What shows this is complete?")
-            TaisaButton(role: .primary, label: "Complete task", icon: .completeAction, isEnabled: !completionEvidence.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) { showsComplete = true }
+            TaisaButton(role: .primary, label: "Complete task", icon: .completeAction, layout: .intrinsic, isEnabled: !completionEvidence.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) { showsComplete = true }
             TaisaButton(role: .secondary, label: "Drop task", icon: .drop) { showsDrop = true }
         case .completed, .dropped:
             TaisaButton(role: .secondary, label: "Reopen task", icon: .undo) { Task { await model.reopenSelectedAction() } }

@@ -81,7 +81,7 @@ struct HomeView: View {
             ScrollView {
                 HomeActionsPreviewSection(actions: [], totalCount: 0, send: send, add: presentTaskComposer)
                     .padding(.horizontal, TaisaSpacing.content.rawValue)
-                    .padding(.top, TaisaSpacing.standard.rawValue)
+                    .padding(.top, TaisaSpacing.compact.rawValue)
             }
             .background(TaisaColor.background.color)
             .accessibilityIdentifier("home.empty")
@@ -93,7 +93,7 @@ struct HomeView: View {
                 if isRefreshing { TaisaProgressView("Refreshing Home…").frame(maxWidth: .infinity) }
                 }
                 .padding(.horizontal, TaisaSpacing.content.rawValue)
-                .padding(.top, TaisaSpacing.standard.rawValue)
+                .padding(.top, TaisaSpacing.compact.rawValue)
             }
             .background(TaisaColor.background.color)
             .refreshable { await model.load() }
