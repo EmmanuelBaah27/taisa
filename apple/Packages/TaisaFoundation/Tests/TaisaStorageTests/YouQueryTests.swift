@@ -7,7 +7,7 @@ import Testing
         let fixture = try await YouQueryFixture()
         defer { fixture.remove() }
         _ = try await ProfileCommandRepository(store: fixture.store).save(
-            id: fixture.profileID, displayName: "Baah", headline: "Builder", biography: "Local",
+            id: fixture.profileID, displayName: "Baah", biography: "Local",
             context: fixture.context(10)
         )
         let snapshot = try await YouQuery(

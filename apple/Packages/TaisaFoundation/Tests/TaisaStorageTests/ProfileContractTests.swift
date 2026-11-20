@@ -10,19 +10,16 @@ import Testing
         let saved = try await fixture.profile.save(
             id: fixture.profileID,
             displayName: "  Baah  ",
-            headline: "  Product builder  ",
             biography: "  Building Taisa.  ",
             context: fixture.context(10)
         )
         #expect(saved.displayName == "Baah")
-        #expect(saved.headline == "Product builder")
         #expect(saved.biography == "Building Taisa.")
 
         await #expect(throws: YouContractError.invalidProfile) {
             try await fixture.profile.save(
                 id: fixture.profileID,
                 displayName: String(repeating: "x", count: 81),
-                headline: "Changed",
                 biography: "Changed",
                 context: fixture.context(20)
             )
@@ -36,6 +33,27 @@ import Testing
             let rendered = String(describing: error)
             #expect(privateCanaries.allSatisfy { !rendered.contains($0) })
         }
+    }
+
+    @Test func profileValidationAllowsBioLineBreaksAndIdentifiesTheInvalidField() async throws {
+        let fixture = try await YouStorageFixture()
+        defer { fixture.remove() }
+
+        let multiline = try await fixture.profile.save(
+            id: fixture.profileID,
+            displayName: "Baah",
+            biography: "First line\nSecond line",
+            context: fixture.context(10)
+        )
+        #expect(multiline.biography == "First line\nSecond line")
+
+        let validation = ProfileInputValidator.validate(
+            displayName: String(repeating: "x", count: 81),
+            biography: "First line\nSecond line"
+        )
+        #expect(validation.displayNameMessage == "Display name must be 80 characters or fewer.")
+        #expect(validation.biographyMessage == nil)
+        #expect(!validation.isValid)
     }
 }
 

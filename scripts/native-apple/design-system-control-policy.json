@@ -727,60 +727,6 @@
       "reason": "Existing raw Button (Button(\"Connect this device\") {); classify and migrate to the approved shared DS contract under APF-75"
     },
     {
-      "file": "apple/TaisaApp/You/YouView.swift",
-      "constructor": "Button",
-      "line": 24,
-      "column": 25,
-      "sourceHash": "30590091502010839391c6dcee0dca0cd42e51df571324f0871cedb2556f482a",
-      "owner": "APF-75",
-      "reason": "Existing raw Button (Button(\"Open backup and recovery\", action: openRecovery)); classify and migrate to the approved shared DS contract under APF-75"
-    },
-    {
-      "file": "apple/TaisaApp/You/YouView.swift",
-      "constructor": "Button",
-      "line": 26,
-      "column": 25,
-      "sourceHash": "30590091502010839391c6dcee0dca0cd42e51df571324f0871cedb2556f482a",
-      "owner": "APF-75",
-      "reason": "Existing raw Button (Button(\"Try again\") { Task { await model.retry() } }); classify and migrate to the approved shared DS contract under APF-75"
-    },
-    {
-      "file": "apple/TaisaApp/You/YouView.swift",
-      "constructor": "Button",
-      "line": 80,
-      "column": 24,
-      "sourceHash": "30590091502010839391c6dcee0dca0cd42e51df571324f0871cedb2556f482a",
-      "owner": "APF-75",
-      "reason": "Existing raw Button (List { Button(\"Open backup and recovery\", action: openRecovery) }); classify and migrate to the approved shared DS contract under APF-75"
-    },
-    {
-      "file": "apple/TaisaApp/You/YouView.swift",
-      "constructor": "Button",
-      "line": 127,
-      "column": 17,
-      "sourceHash": "30590091502010839391c6dcee0dca0cd42e51df571324f0871cedb2556f482a",
-      "owner": "APF-75",
-      "reason": "Existing raw Button (Button(\"Save\") { Task { await model.saveProfile(); editing = model.profileDraft != nil } }); classify and migrate to the approved shared DS contract under APF-75"
-    },
-    {
-      "file": "apple/TaisaApp/You/YouView.swift",
-      "constructor": "Button",
-      "line": 128,
-      "column": 17,
-      "sourceHash": "30590091502010839391c6dcee0dca0cd42e51df571324f0871cedb2556f482a",
-      "owner": "APF-75",
-      "reason": "Existing raw Button (Button(\"Cancel\", role: .cancel) { model.cancelProfileEdit(); editing = false }); classify and migrate to the approved shared DS contract under APF-75"
-    },
-    {
-      "file": "apple/TaisaApp/You/YouView.swift",
-      "constructor": "Button",
-      "line": 133,
-      "column": 17,
-      "sourceHash": "30590091502010839391c6dcee0dca0cd42e51df571324f0871cedb2556f482a",
-      "owner": "APF-75",
-      "reason": "Existing raw Button (Button(\"Edit career profile\") { model.beginProfileEdit(); editing = true }); classify and migrate to the approved shared DS contract under APF-75"
-    },
-    {
       "file": "apple/Packages/TaisaFoundation/Sources/TaisaDesignSystem/ConversationActionBar.swift",
       "constructor": "Button",
       "line": 78,

@@ -60,6 +60,71 @@ final class TaisaPreviewCatalogTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["History"].exists)
     }
 
+    func testRedesignedYouContentKeepsCatalogBackNavigation() {
+        let app = XCUIApplication()
+        app.launch()
+
+        let search = app.searchFields["Search scenarios"]
+        XCTAssertTrue(search.waitForExistence(timeout: 5))
+        search.tap()
+        search.typeText("you.content")
+
+        let row = app.buttons.matching(
+            NSPredicate(format: "label BEGINSWITH %@", "You content")
+        ).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 5))
+        row.tap()
+
+        XCTAssertTrue(app.staticTexts["Baah"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Product designer at Oyster"].exists)
+        XCTAssertTrue(element("you.profile.edit", in: app).exists)
+
+        let back = app.buttons["Taisa Preview"]
+        if back.waitForExistence(timeout: 2) {
+            back.tap()
+            XCTAssertTrue(search.waitForExistence(timeout: 5))
+        } else {
+            XCTAssertTrue(app.buttons["Hide Sidebar"].waitForExistence(timeout: 5))
+        }
+    }
+
+    func testYouScenarioReusesCatalogNavigationOwner() throws {
+        let testFile = URL(fileURLWithPath: #filePath)
+        let root = testFile
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let source = try String(
+            contentsOf: root.appendingPathComponent("TaisaPreview/YouScenarioView.swift"),
+            encoding: .utf8
+        )
+
+        XCTAssertFalse(
+            source.contains("NavigationStack {\n            YouView("),
+            "The You preview scenario must reuse PreviewCatalogView navigation."
+        )
+    }
+
+    func testYouEditorExplainsInvalidNameAndCanCloseWithoutLosingDraft() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-TAISAPreviewScenario", "you.content"]
+        app.launch()
+
+        let edit = element("you.profile.edit", in: app)
+        XCTAssertTrue(edit.waitForExistence(timeout: 5))
+        edit.tap()
+
+        let name = app.textFields["Display name"]
+        XCTAssertTrue(name.waitForExistence(timeout: 5))
+        name.tap()
+        name.typeText(String(repeating: "x", count: 81))
+        XCTAssertTrue(app.staticTexts["Display name must be 80 characters or fewer."].waitForExistence(timeout: 5))
+
+        element("you.profile.close", in: app).tap()
+        XCTAssertTrue(edit.waitForExistence(timeout: 5))
+        edit.tap()
+        XCTAssertEqual(app.textFields["Display name"].value as? String, "Baah" + String(repeating: "x", count: 81))
+    }
+
     private func element(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
         app.descendants(matching: .any)[identifier]
     }

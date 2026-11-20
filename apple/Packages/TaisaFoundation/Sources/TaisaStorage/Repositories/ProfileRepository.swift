@@ -4,5 +4,21 @@ public struct ProfileRepository: DomainRepository {
     public func get(id: String) async throws -> ProfileRecord? { try await core.get(id: id) }
     public func create(_ record: ProfileRecord, context: MutationContext) async throws { try await core.create(record, context: context) }
     public func update(_ record: ProfileRecord, context: MutationContext) async throws { try await core.update(record, context: context) }
+    public func saveActiveProfile(
+        id: String,
+        displayName: String,
+        biography: String,
+        context: MutationContext
+    ) async throws -> ProfileRecord {
+        try await core.upsert(id: id, context: context) { existing in
+            ProfileRecord(
+                id: id,
+                displayName: displayName,
+                headline: existing?.headline ?? "",
+                biography: biography,
+                updatedAtMS: context.timestamp
+            )
+        }
+    }
     public func delete(id: String, context: MutationContext) async throws { try await core.delete(id: id, context: context) }
 }

@@ -23,10 +23,24 @@ public struct YouOperationalFacts: Codable, Sendable, Equatable {
     public static let unknown = YouOperationalFacts(store: .unknown, recovery: .unknown, microphone: .notDetermined, gateway: .unknown, appProtection: .unknown)
 }
 
+public struct CareerProfile: Codable, Sendable, Equatable {
+    public let id: String
+    public let displayName: String
+    public let biography: String
+    public let updatedAtMS: Int64
+
+    public init(id: String, displayName: String, biography: String, updatedAtMS: Int64) {
+        self.id = id
+        self.displayName = displayName
+        self.biography = biography
+        self.updatedAtMS = updatedAtMS
+    }
+}
+
 public struct YouSnapshot: Codable, Sendable, Equatable {
-    public let profile: ProfileRecord?
+    public let profile: CareerProfile?
     public let diagnostics: YouOperationalFacts
-    public init(profile: ProfileRecord?, diagnostics: YouOperationalFacts) {
+    public init(profile: CareerProfile?, diagnostics: YouOperationalFacts) {
         self.profile = profile; self.diagnostics = diagnostics
     }
 }
@@ -50,12 +64,11 @@ public struct YouQuery: Sendable {
 
     public func load() async throws -> YouSnapshot {
         do {
-            let profile = try await store.read { db -> ProfileRecord? in
-                guard let row = try Row.fetchOne(db, sql: "SELECT id, display_name, headline, biography, updated_at_ms FROM profile ORDER BY updated_at_ms DESC LIMIT 1") else { return nil }
-                return ProfileRecord(
+            let profile = try await store.read { db -> CareerProfile? in
+                guard let row = try Row.fetchOne(db, sql: "SELECT id, display_name, biography, updated_at_ms FROM profile ORDER BY updated_at_ms DESC LIMIT 1") else { return nil }
+                return CareerProfile(
                     id: row["id"],
                     displayName: row["display_name"],
-                    headline: row["headline"],
                     biography: row["biography"],
                     updatedAtMS: row["updated_at_ms"]
                 )

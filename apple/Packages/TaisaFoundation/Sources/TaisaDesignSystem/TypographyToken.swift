@@ -2,6 +2,10 @@ import SwiftUI
 
 public enum TaisaTypography: String, CaseIterable, Sendable {
     case display
+    case profileName
+    case profileBody
+    case profileLabel
+    case profileSupporting
     case heading
     case body
     case label
@@ -29,22 +33,34 @@ public enum TaisaTypography: String, CaseIterable, Sendable {
 
     public var font: Font {
         switch self {
+        case .profileName:
+            TaisaProfileFonts.register()
+            return .custom("ScoutieSans-SemiBold", size: TaisaProfileMetric.nameSize, relativeTo: .title).weight(.semibold)
+        case .profileLabel:
+            TaisaProfileFonts.register()
+            return .custom("Inter-Regular_Medium", size: 16, relativeTo: .body)
+        case .profileBody:
+            TaisaProfileFonts.register()
+            return .custom("Inter-Regular", size: 16, relativeTo: .body)
+        case .profileSupporting:
+            TaisaProfileFonts.register()
+            return .custom("Inter-Regular", size: 14, relativeTo: .subheadline)
         case .display:
-            .system(.largeTitle, design: .rounded, weight: .semibold)
+            return .system(.largeTitle, design: .rounded, weight: .semibold)
         case .heading:
-            .system(.title2, design: .rounded, weight: .semibold)
+            return .system(.title2, design: .rounded, weight: .semibold)
         case .body:
-            .system(.body, design: .rounded, weight: .regular)
+            return .system(.body, design: .rounded, weight: .regular)
         case .label:
-            .system(.subheadline, design: .rounded, weight: .semibold)
+            return .system(.subheadline, design: .rounded, weight: .semibold)
         case .metadata:
-            .system(.caption, design: .rounded, weight: .regular)
+            return .system(.caption, design: .rounded, weight: .regular)
         case .navigationLabel:
-            .system(size: pointSize, weight: .medium, design: .default)
+            return .system(size: pointSize, weight: .medium, design: .default)
         case .supporting:
-            .system(size: pointSize, weight: .regular, design: .default)
+            return .system(size: pointSize, weight: .regular, design: .default)
         case .childHeaderTitle:
-            .system(.headline, weight: .semibold)
+            return .system(.headline, weight: .semibold)
         }
     }
 }

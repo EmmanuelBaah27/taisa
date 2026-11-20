@@ -3,10 +3,9 @@ import TaisaStorage
 
 public struct ProfileDraft: Sendable, Equatable {
     public var displayName: String
-    public var headline: String
     public var biography: String
-    public init(displayName: String = "", headline: String = "", biography: String = "") {
-        self.displayName = displayName; self.headline = headline; self.biography = biography
+    public init(displayName: String = "", biography: String = "") {
+        self.displayName = displayName; self.biography = biography
     }
 }
 
@@ -47,7 +46,6 @@ public extension YouClient {
                 _ = try await profiles.save(
                     id: profileID,
                     displayName: draft.displayName,
-                    headline: draft.headline,
                     biography: draft.biography,
                     context: context()
                 )

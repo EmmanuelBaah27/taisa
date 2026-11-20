@@ -1,6 +1,7 @@
 import SwiftUI
 
 public enum CentralIconName: Sendable, Equatable {
+    case profileShield, profileCloud, profileDiagnostics, profileChevron, profileEdit, profileClose
     case homeLine
     case chatBubbles
     case peopleCircle
@@ -20,6 +21,23 @@ public enum CentralIconName: Sendable, Equatable {
     case thumbsDown
     case copy
     case edit
+
+    public enum Rendering: Sendable, Equatable {
+        case asset(String)
+        case drawn
+    }
+
+    public var rendering: Rendering {
+        switch self {
+        case .profileShield: .asset("ProfileShield")
+        case .profileCloud: .asset("ProfileCloud")
+        case .profileDiagnostics: .asset("ProfileDiagnostics")
+        case .profileChevron: .asset("ProfileChevron")
+        case .profileEdit: .asset("ProfileEdit")
+        case .profileClose: .asset("ProfileClose")
+        default: .drawn
+        }
+    }
 }
 
 /// Native rendering of the Central Icons paths used by Taisa's primary navigation.
@@ -31,6 +49,20 @@ public struct CentralIcon: View {
     }
 
     public var body: some View {
+        Group {
+            switch name.rendering {
+            case let .asset(asset):
+                Image(asset, bundle: .module)
+                    .resizable()
+                    .scaledToFit()
+                    .accessibilityHidden(true)
+            case .drawn:
+                drawnIcon
+            }
+        }
+    }
+
+    private var drawnIcon: some View {
         Canvas { context, size in
             let scale = min(size.width, size.height) / 24
             let transform = CGAffineTransform(
@@ -51,25 +83,28 @@ public struct CentralIcon: View {
 
     private var path: Path {
         switch name {
-        case .homeLine: homeLine
-        case .chatBubbles: chatBubbles
-        case .peopleCircle: peopleCircle
-        case .magnifyingGlass: magnifyingGlass
-        case .voiceMid: voiceMid
-        case .cross: cross
-        case .keyboard: keyboard
-        case .arrowUp: arrowUp
-        case .arrowDown: arrowDown
-        case .pause: pause
-        case .play: play
-        case .chevronLeft: chevronLeft
-        case .chevronDown: chevronDown
-        case .exclamationCircle: exclamationCircle
-        case .circleInfo: circleInfo
-        case .thumbsUp: thumbsUp
-        case .thumbsDown: thumbsDown
-        case .copy: copy
-        case .edit: edit
+        case .profileShield, .profileCloud, .profileDiagnostics, .profileChevron, .profileEdit, .profileClose:
+            assertionFailure("Package asset icons do not have drawn paths")
+            return Path()
+        case .homeLine: return homeLine
+        case .chatBubbles: return chatBubbles
+        case .peopleCircle: return peopleCircle
+        case .magnifyingGlass: return magnifyingGlass
+        case .voiceMid: return voiceMid
+        case .cross: return cross
+        case .keyboard: return keyboard
+        case .arrowUp: return arrowUp
+        case .arrowDown: return arrowDown
+        case .pause: return pause
+        case .play: return play
+        case .chevronLeft: return chevronLeft
+        case .chevronDown: return chevronDown
+        case .exclamationCircle: return exclamationCircle
+        case .circleInfo: return circleInfo
+        case .thumbsUp: return thumbsUp
+        case .thumbsDown: return thumbsDown
+        case .copy: return copy
+        case .edit: return edit
         }
     }
 
