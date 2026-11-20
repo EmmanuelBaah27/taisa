@@ -58,7 +58,7 @@ pull requests, and delivery mechanics within those decisions.
 - Create a primitive only when no existing component supports a coherent variant, the behavior
   and accessibility contract are reusable, and extending an existing component would make its
   API contradictory. Copy, callbacks, one-screen styling, width, or size alone do not qualify.
-- Preserve SwiftUI and iOS/iPadOS 26+ as the shipping direction. React Native is a legacy
+- Preserve SwiftUI and iOS 26+ on iPhone as the shipping direction. React Native is a legacy
   migration source. Never run `npx expo run:ios` or `npx expo eject` without explicit approval.
 - The legacy backend remains Node/Express with SQLite and no migration framework; schema
   changes need an approved migration path. Install `mobile/` dependencies from `mobile/`;

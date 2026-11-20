@@ -179,7 +179,7 @@ import Testing
         #expect(state.2 == goalID)
         #expect(state.3 == nil)
         #expect(state.4 == "active")
-        #expect(state.5 == nil)
+        #expect(state.5 == "1970-01-02")
         #expect(state.6 == "manual")
         #expect(state.7 == 1)
         #expect(state.8 == 2)

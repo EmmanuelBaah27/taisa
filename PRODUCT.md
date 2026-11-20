@@ -24,7 +24,7 @@ Taisa connects private, device-authoritative work records with evidence-grounded
 - Senior Self helps interpret those reflections while distinguishing inference from known facts.
 - Career Work holds Goals, Milestones, canonical Actions, evidence, and their history.
 - Home surfaces selected current attention and review material rather than every stored record.
-- The shipping product is a native SwiftUI iPhone and iPad application. The React Native application remains a migration source until its required behavior and unique work are accounted for.
+- The shipping product is a native SwiftUI iPhone application. The React Native application remains a migration source until its required behavior and unique work are accounted for.
 
 ## Capabilities and Constraints
 
@@ -34,7 +34,7 @@ Taisa connects private, device-authoritative work records with evidence-grounded
 - Product behavior must never silently create, merge, complete, drop, reopen, delete, reprioritize, or reschedule an Action.
 - Claims about impact, quality, reception, or progress require evidence; completing an Action records only the factual completion.
 - Native Product work is design-system-first. Every authored component, interaction style, token, and icon must use an approved shared TaisaDesignSystem contract and Central Icons mapping.
-- Preserve SwiftUI and the iOS/iPadOS 26+ deployment target.
+- Preserve SwiftUI and the iOS 26+ iPhone deployment target.
 - Ordinary browsing and local mutation must not require AI, provider, or network access.
 
 ## Brand Commitments
@@ -58,4 +58,4 @@ The product is named Taisa. Its voice is thoughtful, grounded, direct, and colla
 
 ## Accessibility & Inclusion
 
-Shipping native surfaces must support Dynamic Type, VoiceOver, increased contrast, Reduce Motion and transparency, keyboard use, safe areas, and at least 44-point interactive targets across supported iPhone and iPad configurations. Meaning must not depend on color or iconography alone.
+Shipping native surfaces must support Dynamic Type, VoiceOver, increased contrast, Reduce Motion and transparency, keyboard use, safe areas, and at least 44-point interactive targets across supported iPhone configurations. Meaning must not depend on color or iconography alone.
