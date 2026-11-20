@@ -12,7 +12,7 @@ struct ProfileComponentTests {
     }
 
     @Test func profileFieldAdditionRetainsExistingDefaultContracts() {
-        #expect(TaisaProfileMetric.avatar == 32)
+        #expect(TaisaProfileMetric.avatar == TaisaControlMetric.headerActionHeight)
         #expect(TaisaProfileMetric.editorAvatar == 56)
         #expect(TaisaProfileMetric.chevron == 20)
         #expect(TaisaTypography.allCases.contains(.profileName))
