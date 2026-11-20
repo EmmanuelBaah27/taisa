@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { cp, mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { access, cp, mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import test from 'node:test';
 import { join, resolve } from 'node:path';
@@ -68,8 +68,9 @@ test('personal capability mutations are rejected without changing live entitleme
   const fixture = await mkdtemp(join(tmpdir(), 'taisa-personal-project-'));
   await cp(resolve(repositoryRoot, 'apple'), join(fixture, 'apple'), {
     recursive: true,
-    filter: (source) => !source.includes('/Packages/'),
+    filter: (source) => !source.includes('/Packages/') && !source.includes('/DerivedData'),
   });
+  await assert.rejects(access(join(fixture, 'apple/DerivedData')), { code: 'ENOENT' });
   const liveNames = ['TaisaDev', 'Taisa', 'TaisaPreview'];
   const before = await Promise.all(liveNames.map((name) => readFile(join(fixture, `apple/Config/${name}.entitlements`))));
   const rightsPath = join(fixture, 'apple/Config/TaisaPersonal.entitlements');
