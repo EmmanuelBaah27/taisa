@@ -16,10 +16,10 @@ mkdir -p "${artifact_root}"
 cd "${repository_root}"
 
 simulator_inventory="$(xcrun simctl list devices available --json)"
-iphone_name="${TAISA_IPHONE_SIMULATOR_NAME:-$(printf '%s' "${simulator_inventory}" | node scripts/native-apple/select-simulator.mjs iPhone)}"
-xcrun simctl boot "${iphone_name}" >/dev/null 2>&1 || true
-xcrun simctl bootstatus "${iphone_name}" -b >/dev/null
-trap 'xcrun simctl shutdown "${iphone_name}" >/dev/null 2>&1 || true' EXIT
+iphone_udid="${TAISA_IPHONE_SIMULATOR_UDID:-$(printf '%s' "${simulator_inventory}" | node scripts/native-apple/select-simulator.mjs --udid)}"
+xcrun simctl boot "${iphone_udid}" >/dev/null 2>&1 || true
+xcrun simctl bootstatus "${iphone_udid}" -b >/dev/null
+trap 'xcrun simctl shutdown "${iphone_udid}" >/dev/null 2>&1 || true' EXIT
 
 IFS=',' read -r -a targets <<< "$1"
 for target in "${targets[@]}"; do
@@ -48,12 +48,12 @@ for target in "${targets[@]}"; do
       ;;
   esac
 
-  xcrun simctl uninstall "${iphone_name}" "${bundle_identifier}" >/dev/null 2>&1 || true
+  xcrun simctl uninstall "${iphone_udid}" "${bundle_identifier}" >/dev/null 2>&1 || true
   xcodebuild test -quiet \
     -project apple/Taisa.xcodeproj \
     -scheme "${scheme}" \
     -configuration "${configuration}" \
-    -destination "platform=iOS Simulator,name=${iphone_name}" \
+    -destination "platform=iOS Simulator,id=${iphone_udid}" \
     -only-testing:"${target}" \
     -retry-tests-on-failure \
     -test-iterations 2 \

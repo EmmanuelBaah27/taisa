@@ -608,6 +608,10 @@ test('tiered native CI uses focused pull-request checks and reserves full verifi
   assert.match(selectedXcodeTests, /-test-iterations 2/);
   assert.match(selectedXcodeTests, /-parallel-testing-enabled YES/);
   assert.match(selectedXcodeTests, /-parallel-testing-worker-count 2/);
+  assert.match(selectedXcodeTests, /TAISA_IPHONE_SIMULATOR_UDID/);
+  assert.match(selectedXcodeTests, /select-simulator\.mjs --udid/);
+  assert.match(selectedXcodeTests, /platform=iOS Simulator,id=\$\{iphone_udid\}/);
+  assert.doesNotMatch(selectedXcodeTests, /platform=iOS Simulator,name=/);
 
   assert.match(trustedPolicy, /pull_request_target:/);
   assert.match(trustedPolicy, /types: \[opened, reopened, synchronize, edited\]/);

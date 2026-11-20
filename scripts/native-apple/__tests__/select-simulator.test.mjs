@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   hasEligibleSimulatorDestination,
   selectSimulatorName,
+  selectSimulatorUDID,
 } from '../select-simulator.mjs';
 
 test('selects an available iPhone simulator instead of a model name', () => {
@@ -18,6 +19,16 @@ test('selects an available iPhone simulator instead of a model name', () => {
   };
 
   assert.equal(selectSimulatorName(devices), 'iPhone 17 Pro');
+  assert.equal(selectSimulatorUDID(devices), 'PHONE-UDID');
+});
+
+test('fails clearly when the selected simulator has no UDID', () => {
+  assert.throws(
+    () => selectSimulatorUDID({
+      devices: { runtime: [{ name: 'iPhone 17 Pro', isAvailable: true }] },
+    }),
+    /Available iPhone simulator has no UDID/,
+  );
 });
 
 test('detects whether Xcode has an eligible simulator runtime', () => {
