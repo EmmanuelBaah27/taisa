@@ -66,6 +66,12 @@ struct ActionComponentTests {
         #expect(TaisaStatusRole.reopened != .warning)
     }
 
+    @MainActor @Test func expandableSheetExposesAProgrammaticLargeDetentAction() {
+        let actions = TaisaExpandableSheetActions(expand: {})
+        actions.expand()
+        #expect(TaisaExpandableSheetContract.positions.contains(.large))
+    }
+
     @Test @MainActor func sharedPressableSupportsCustomLabelsAndInteractiveRows() {
         _ = TaisaPressable(role: .destructive, action: {}) {
             TaisaText(role: .body, content: "Remove")
