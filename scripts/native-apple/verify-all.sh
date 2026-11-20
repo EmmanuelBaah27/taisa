@@ -4,7 +4,9 @@ set -euo pipefail
 
 script_directory="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repository_root="$(cd "${script_directory}/../.." && pwd)"
-artifact_root="${TAISA_NATIVE_ARTIFACTS:-$(mktemp -d "${TMPDIR:-/tmp}/taisa-native-verification.XXXXXX")}"
+default_artifact_parent="${repository_root}/apple/DerivedData"
+mkdir -p "${default_artifact_parent}"
+artifact_root="${TAISA_NATIVE_ARTIFACTS:-$(mktemp -d "${default_artifact_parent}/taisa-native-verification.XXXXXX")}"
 mkdir -p "${artifact_root}"
 
 reset_simulator_app() {

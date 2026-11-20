@@ -303,6 +303,9 @@ test('combined native verification and CI pin every required gate', async () => 
   ]) assert.match(combined, new RegExp(required));
 
   assert.match(generatedCheck, /mktemp -d/);
+  assert.match(generatedCheck, /apple\/DerivedData/);
+  assert.doesNotMatch(generatedCheck, /TMPDIR|\/private\/tmp/);
+  assert.match(generatedCheck, /--exclude 'DerivedData'/);
   assert.match(generatedCheck, /diff -ru/);
   assert.doesNotMatch(generatedCheck, /git (checkout|reset)/);
 
@@ -328,6 +331,8 @@ test('combined native verification and CI pin every required gate', async () => 
     assert.match(combinedScript, new RegExp(`reset_simulator_app.*${bundleIdentifier}`));
   }
   assert.match(combinedScript, /reset_simulator_app\(\)/);
+  assert.match(combinedScript, /apple\/DerivedData/);
+  assert.doesNotMatch(combinedScript, /TMPDIR|\/private\/tmp/);
   assert.equal(
     [...combinedScript.matchAll(/reset_simulator_app "\$\{(?:iphone|ipad)_name\}" com\.taisa\.app\.(?:dev|preview|personal)/g)].length,
     3,
