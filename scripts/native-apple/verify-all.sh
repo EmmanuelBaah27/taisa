@@ -40,6 +40,10 @@ npm run verify:native-contracts
 (cd apple/Packages/TaisaFoundation && swift test)
 npm run verify:native-design-system
 
+# Host-side checks use the APF-backed temporary directory above. Simulator
+# processes need macOS to provide their sandbox-local TMPDIR at launch.
+unset TMPDIR
+
 simulator_inventory="$(xcrun simctl list devices available --json)"
 iphone_name="${TAISA_IPHONE_SIMULATOR_NAME:-$(printf '%s' "${simulator_inventory}" | node scripts/native-apple/select-simulator.mjs)}"
 
