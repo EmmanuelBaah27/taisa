@@ -11,6 +11,7 @@ struct TranscriptCorrectionView: View {
     @State private var confirmsDiscard = false
 
     var body: some View {
+        let presentationPolicy = TaisaEditorSheetPolicy(isDirty: isDirty, isBusy: isSubmitting)
         VStack(spacing: 0) {
             editHeader
             ScrollView {
@@ -35,11 +36,16 @@ struct TranscriptCorrectionView: View {
         }
         .background(TaisaColor.background.color.ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
-        .interactiveDismissDisabled(isDirty || isSubmitting)
-        .confirmationDialog("Discard changes?", isPresented: $confirmsDiscard) {
-            TaisaSystemButton("Discard changes", role: .destructive, action: { cancel() })
-            TaisaSystemButton("Keep editing", role: .cancel) {}
-        }
+        .interactiveDismissDisabled(presentationPolicy.blocksInteractiveDismissal)
+        .modifier(TaisaNativeConfirmationDialog(
+            title: "Discard changes?",
+            isPresented: $confirmsDiscard,
+            actions: {
+                TaisaSystemButton("Discard changes", role: .destructive, action: { cancel() })
+                TaisaSystemButton("Keep editing", role: .cancel) {}
+            },
+            message: { EmptyView() }
+        ))
     }
 
     private var editHeader: some View {

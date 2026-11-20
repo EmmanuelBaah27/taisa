@@ -48,69 +48,71 @@ struct AssistantResponseActions: View {
             }
         }
         .sheet(isPresented: $showsExplanation) {
-            NavigationStack {
-                List {
-                    TaisaSection("Why this response") {
-                        TaisaLabeledContent("Mode", value: response.metadata.mode.rawValue.capitalized)
-                        TaisaLabeledContent("Approach", value: response.metadata.approach)
-                        TaisaLabeledContent("Confidence", value: response.metadata.confidence.capitalized)
-                        TaisaText(role: .body, content: response.metadata.inference)
-                    }
-                    if !response.sources.isEmpty {
-                        TaisaSection("Information used") {
-                            ForEach(response.sources, id: \.id) { source in
-                                VStack(alignment: .leading, spacing: TaisaSpacing.tight.rawValue) {
-                                    TaisaText(role: .metadata, color: .mutedForeground, content: source.sourceType.capitalized)
-                                    TaisaText(role: .body, content: source.excerpt ?? "Source unavailable")
+            TaisaExpandableSheet {
+                NavigationStack {
+                    List {
+                        TaisaSection("Why this response") {
+                            TaisaLabeledContent("Mode", value: response.metadata.mode.rawValue.capitalized)
+                            TaisaLabeledContent("Approach", value: response.metadata.approach)
+                            TaisaLabeledContent("Confidence", value: response.metadata.confidence.capitalized)
+                            TaisaText(role: .body, content: response.metadata.inference)
+                        }
+                        if !response.sources.isEmpty {
+                            TaisaSection("Information used") {
+                                ForEach(response.sources, id: \.id) { source in
+                                    VStack(alignment: .leading, spacing: TaisaSpacing.tight.rawValue) {
+                                        TaisaText(role: .metadata, color: .mutedForeground, content: source.sourceType.capitalized)
+                                        TaisaText(role: .body, content: source.excerpt ?? "Source unavailable")
+                                    }
                                 }
                             }
                         }
                     }
-                }
-                .taisaNavigationTitle("About this response")
-                .toolbar {
-                    ToolbarItem(placement: .confirmationAction) {
-                        TaisaSystemButton("Done") { showsExplanation = false }
+                    .taisaNavigationTitle("About this response")
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            TaisaSystemButton("Done") { showsExplanation = false }
+                        }
                     }
                 }
             }
-            .presentationDetents([.medium, .large])
         }
         .sheet(isPresented: $showsFeedback, onDismiss: { feedbackEditor.discardDraft() }) {
-            NavigationStack {
-                ScrollView {
-                    if let direction = feedbackEditor.direction {
-                        VStack(alignment: .leading, spacing: TaisaSpacing.section.rawValue) {
-                            feedbackFactors(for: direction)
-                            feedbackDetail
-                            TaisaButton(role: .destructive, label: "Remove rating") {
-                                removeRating()
+            TaisaExpandableSheet {
+                NavigationStack {
+                    ScrollView {
+                        if let direction = feedbackEditor.direction {
+                            VStack(alignment: .leading, spacing: TaisaSpacing.section.rawValue) {
+                                feedbackFactors(for: direction)
+                                feedbackDetail
+                                TaisaButton(role: .destructive, label: "Remove rating") {
+                                    removeRating()
+                                }
+                                .accessibilityIdentifier("conversation.feedback.remove")
                             }
-                            .accessibilityIdentifier("conversation.feedback.remove")
+                            .padding(TaisaSpacing.standard.rawValue)
                         }
-                        .padding(TaisaSpacing.standard.rawValue)
                     }
-                }
-                .scrollDismissesKeyboard(.interactively)
-                .taisaNavigationTitle("Response feedback")
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) {
-                        TaisaSystemButton("Close") {
-                            feedbackEditor.discardDraft()
-                            showsFeedback = false
+                    .scrollDismissesKeyboard(.interactively)
+                    .taisaNavigationTitle("Response feedback")
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            TaisaSystemButton("Close") {
+                                feedbackEditor.discardDraft()
+                                showsFeedback = false
+                            }
+                            .accessibilityIdentifier("conversation.feedback.close")
                         }
-                        .accessibilityIdentifier("conversation.feedback.close")
-                    }
-                    ToolbarItem(placement: .confirmationAction) {
-                        TaisaSystemButton("Save feedback") {
-                            persist(feedbackEditor.commit())
-                            showsFeedback = false
+                        ToolbarItem(placement: .confirmationAction) {
+                            TaisaSystemButton("Save feedback") {
+                                persist(feedbackEditor.commit())
+                                showsFeedback = false
+                            }
+                            .accessibilityIdentifier("conversation.feedback.save")
                         }
-                        .accessibilityIdentifier("conversation.feedback.save")
                     }
                 }
             }
-            .presentationDetents([.medium, .large])
         }
     }
 

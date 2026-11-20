@@ -127,6 +127,9 @@ final class ConversationViewContractTests: XCTestCase {
         }
         XCTAssertTrue(source.contains("interactiveDismissDisabled"))
         XCTAssertTrue(source.contains("confirmationDialog"))
+        XCTAssertTrue(source.contains("TaisaExpandableSheet"))
+        XCTAssertTrue(source.contains("TaisaEditorSheetPolicy"))
+        XCTAssertTrue(source.contains("TaisaNativeConfirmationDialog"))
         XCTAssertTrue(source.contains("model.presentationPhase.keepsContentVisible"))
         XCTAssertFalse(source.contains(".opacity(model.isClosing ? 0 : 1)"))
         XCTAssertTrue(source.contains(".task(id: messages.last?.id)"))
