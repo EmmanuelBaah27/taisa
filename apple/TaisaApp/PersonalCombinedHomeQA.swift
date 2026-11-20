@@ -1,6 +1,7 @@
 #if TAISA_PERSONAL
 import Foundation
 import SwiftUI
+import TaisaDesignSystem
 import TaisaHome
 import TaisaStorage
 
