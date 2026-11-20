@@ -159,7 +159,7 @@ final class ConversationsViewContractTests: XCTestCase {
         ] {
             XCTAssertTrue(source.contains(identifier), "Missing \(identifier)")
         }
-        for nativeControl in ["List", "Section", "contextMenu", "confirmationDialog"] {
+        for nativeControl in ["List", "Section", "contextMenu", "TaisaNativeConfirmationDialog", "TaisaTextEntryAlert"] {
             XCTAssertTrue(source.contains(nativeControl), "Missing \(nativeControl)")
         }
         XCTAssertFalse(source.contains("swipeActions"))
