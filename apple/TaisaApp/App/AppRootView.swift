@@ -184,7 +184,7 @@ struct AppRootView: View {
             id: "00000000-0000-4000-8000-000000000821",
             displayName: "Baah",
             headline: "",
-            biography: "Building a clearer record of meaningful work.",
+            biography: "Product designer at Oyster",
             updatedAtMS: 1_800_000_000_000
         ),
         diagnostics: .init(

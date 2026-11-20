@@ -69,6 +69,21 @@ struct ActionComponentTests {
         #expect(Set(concepts.map(String.init(describing:))).count == concepts.count)
     }
 
+    @Test func profileSummaryKeepsTheApprovedSharedVisualContracts() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let source = try String(
+            contentsOf: root.appendingPathComponent("Sources/TaisaDesignSystem/TaisaProfileComponents.swift"),
+            encoding: .utf8
+        )
+
+        #expect(source.contains("ProfileAvatarFallback"))
+        #expect(source.contains("TaisaSecondaryIconButton("))
+        #expect(!source.contains("TaisaToolbarAction(label: \"Edit profile\""))
+    }
+
     @Test func sharedActionComponentsExposeOnePublicEntryPath() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()

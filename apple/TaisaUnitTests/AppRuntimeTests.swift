@@ -511,6 +511,7 @@ final class AppRuntimeTests: XCTestCase {
         XCTAssertTrue(source.contains("--taisa-you-visual-qa"))
         XCTAssertTrue(source.contains("PrimaryAppShellModel(selection: .you)"))
         XCTAssertTrue(source.contains("youVisualQASnapshot"))
+        XCTAssertTrue(source.contains("Product designer at Oyster"))
     }
 
     func testOperationalFactsRemainHonestWithoutLiveHealthProof() {
