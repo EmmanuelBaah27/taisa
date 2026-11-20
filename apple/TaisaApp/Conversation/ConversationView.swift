@@ -311,7 +311,6 @@ struct ConversationView: View {
         HStack {
             Spacer()
             TaisaSecondaryCapsuleButton(
-                height: TaisaControlMetric.recordingButtonHeight,
                 action: { Task { try? await model.beginVoice() } }
             ) {
                 HStack(spacing: TaisaSpacing.compact.rawValue) {

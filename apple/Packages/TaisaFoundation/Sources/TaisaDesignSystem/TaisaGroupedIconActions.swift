@@ -52,7 +52,6 @@ public struct TaisaGroupedIconActions: View {
                     icon: item.icon,
                     accessibilityLabel: item.accessibilityLabel,
                     iconColor: iconColor(for: item.role),
-                    size: TaisaGroupedIconActionsContract.controlHeight,
                     elevation: elevation,
                     action: item.action
                 )

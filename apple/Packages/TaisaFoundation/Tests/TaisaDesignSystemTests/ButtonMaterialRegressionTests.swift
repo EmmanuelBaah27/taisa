@@ -12,6 +12,7 @@ struct ButtonMaterialRegressionTests {
         #expect(source.contains("shape: TaisaButtonShape = .capsule"))
         #expect(style.contains(".buttonStyle(.glassProminent)"))
         #expect(style.contains(".buttonStyle(.glass)"))
+        #expect(style.contains(".controlSize(.regular)"))
         #expect(!style.contains(".glassEffect(.clear.interactive(), in: buttonShape)"))
         #expect(!style.contains(".glassEffect("))
         #expect(style.contains(".tint(TaisaColor.primaryAction.color)"))

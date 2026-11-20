@@ -47,6 +47,7 @@ public struct TaisaButtonStyle: PrimitiveButtonStyle {
             }
         } else if #available(iOS 26.0, macOS 26.0, *), !reduceTransparency {
             button
+                .controlSize(.regular)
                 .buttonStyle(.glass)
                 .foregroundStyle(destructive ? TaisaColor.destructive.color : TaisaColor.foreground.color)
         } else if reduceTransparency {

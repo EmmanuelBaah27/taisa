@@ -124,6 +124,5 @@ public struct ConversationActionBar: View {
 
     private func iconButton(_ icon: CentralIconName, label: String, action: @escaping @MainActor () -> Void) -> some View {
         TaisaSecondaryIconButton(icon: icon, accessibilityLabel: label, action: action)
-            .frame(width: TaisaControlMetric.conversationRecordingControl, height: TaisaControlMetric.conversationRecordingControl)
     }
 }
