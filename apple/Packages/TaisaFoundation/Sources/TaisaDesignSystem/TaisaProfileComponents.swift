@@ -1,17 +1,17 @@
 import SwiftUI
 
-/// A data-derived fallback while photo editing and persistence remain deferred.
+/// The approved fallback while photo editing and persistence remain deferred.
 public struct TaisaProfileAvatar: View {
-    private let name: String
     private let size: CGFloat
-    public init(name: String, size: CGFloat = TaisaProfileMetric.avatar) {
-        self.name = name; self.size = size
+    public init(name _: String, size: CGFloat = TaisaProfileMetric.avatar) {
+        self.size = size
     }
     public var body: some View {
-        let initials = name.split(whereSeparator: \.isWhitespace).prefix(2).compactMap(\.first).map(String.init).joined().uppercased()
-        TaisaText(role: .profileBody, content: initials)
+        Image("ProfileAvatarFallback", bundle: .module)
+            .resizable()
+            .scaledToFill()
             .frame(width: size, height: size)
-            .background(TaisaColor.subtleSurface.color, in: Circle())
+            .clipShape(Circle())
             .accessibilityHidden(true)
     }
 }

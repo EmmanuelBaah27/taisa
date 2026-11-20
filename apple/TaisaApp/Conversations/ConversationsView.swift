@@ -100,7 +100,6 @@ struct ConversationsView: View {
 
     private var header: some View {
         TaisaPageHeader("Chats") {
-            searchButton
             if hasDrafts {
                 draftsButton
             }
@@ -177,18 +176,6 @@ struct ConversationsView: View {
                 }
             }
         }
-    }
-
-    private var searchButton: some View {
-        TaisaSecondaryIconButton(
-            icon: .magnifyingGlass,
-            accessibilityLabel: "Search chats",
-            accessibilityHint: "Search is not available yet",
-            size: .standard,
-            action: {}
-        )
-        .disabled(true)
-        .accessibilityIdentifier("chats.search")
     }
 
     private var draftsButton: some View {

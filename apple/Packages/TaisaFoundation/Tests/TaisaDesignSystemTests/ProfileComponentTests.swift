@@ -39,4 +39,19 @@ struct ProfileComponentTests {
         #expect(!source.contains("TaisaButtonControl("))
         #expect(!source.contains(".frame(minWidth:"))
     }
+
+    @Test func profileAvatarUsesTheApprovedFallbackAssetAtTheDefaultButtonSize() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let source = try String(
+            contentsOf: root.appendingPathComponent("Sources/TaisaDesignSystem/TaisaProfileComponents.swift"),
+            encoding: .utf8
+        )
+
+        #expect(source.contains("Image(\"ProfileAvatarFallback\", bundle: .module)"))
+        #expect(source.contains(".frame(width: size, height: size)"))
+        #expect(!source.contains("let initials ="))
+    }
 }

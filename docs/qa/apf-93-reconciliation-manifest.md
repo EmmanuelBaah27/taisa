@@ -2,6 +2,14 @@
 
 Source cutoff: 2026-11-19. This document records source selection, not QA or Ship approval. Live acceptance and blockers remain in Linear APF-93 and APF-94.
 
+## Post-cutoff review on 2026-11-20
+
+- Profile branch `codex/apf-49-profile-redesign-preview-repair` retained the approved `ProfileAvatarFallback` behavior. The candidate uses Baah's replacement `avatar.png` at the shared 48-point default button size. Its later CI-only commits stay on their CI branch.
+- Tasks branch `codex/apf-69-tasks-ui` retained the task composer overlay and Tasks-only Home behavior. The candidate keeps newer Profile and design-system contracts instead of the branch's older raw controls.
+- Button branches `feature/apf-75-native-ds-adoption` and `fix/glass-elevation-keyboard-surfaces` remain source records. The candidate owns the later 48-point default, 36-point small, shared glass surface, and keyboard overlay repair.
+- Navigation repair branches `fix/nav-haptic-microphone-recovery` and `integration/recent-experience-preview` are patch-equivalent to the candidate. The candidate keeps inactive navigation icons at the approved foreground color.
+- Search stays hidden until APF-52 implements native local search. The candidate keeps conditional Drafts access.
+
 ## Selected sources
 
 | Front | Exact source | Treatment |

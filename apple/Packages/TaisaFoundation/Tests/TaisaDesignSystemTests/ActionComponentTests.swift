@@ -97,6 +97,19 @@ struct ActionComponentTests {
         #expect(Set(concepts.map(String.init(describing:))).count == concepts.count)
     }
 
+    @Test func primaryNavigationKeepsInactiveIconsAtTheApprovedForegroundColor() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let source = try String(
+            contentsOf: root.appendingPathComponent("Sources/TaisaDesignSystem/PrimaryNavigation.swift"),
+            encoding: .utf8
+        )
+
+        #expect(source.contains("CentralIcon(icon, color: .foreground)"))
+    }
+
     @Test func profileSummaryKeepsTheApprovedSharedVisualContracts() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()

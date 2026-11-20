@@ -6,11 +6,12 @@ final class ConversationsViewContractTests: XCTestCase {
         let source = try conversationsSource()
 
         for contract in [
-            "TaisaPageHeader(\"Chats\")", "chats.search", "chats.drafts",
+            "TaisaPageHeader(\"Chats\")", "chats.drafts",
             "List", "listRowBackground", "TaisaRadius.historyGroup"
         ] {
             XCTAssertTrue(source.contains(contract), "Missing Figma Chats contract: \(contract)")
         }
+        XCTAssertFalse(source.contains("chats.search"))
         XCTAssertFalse(source.contains(".navigationTitle(\"Conversations\")"))
     }
 
@@ -65,9 +66,6 @@ final class ConversationsViewContractTests: XCTestCase {
         let capsuleButton = try designSystemSource(named: "TaisaSecondaryCapsuleButton.swift")
         let buttonSurface = try designSystemSource(named: "TaisaSecondaryButtonSurface.swift")
 
-        XCTAssertTrue(source.contains("TaisaSecondaryIconButton("))
-        XCTAssertTrue(source.contains("size: .standard"))
-        XCTAssertTrue(source.contains("icon: .magnifyingGlass"))
         XCTAssertTrue(source.contains("TaisaSecondaryCapsuleButton("))
         XCTAssertTrue(iconButton.contains("CentralIcon(icon)"))
         XCTAssertTrue(iconButton.contains("TaisaControlMetric.standardIcon"))
@@ -87,10 +85,12 @@ final class ConversationsViewContractTests: XCTestCase {
         XCTAssertFalse(source.contains("Image(systemName: \"magnifyingglass\")"))
     }
 
-    func testUnavailableSearchControlIsDisabled() throws {
+    func testUnavailableSearchControlIsHidden() throws {
         let source = try conversationsSource()
 
-        XCTAssertTrue(source.contains(".disabled(true)"))
+        XCTAssertFalse(source.contains("searchButton"))
+        XCTAssertFalse(source.contains("icon: .magnifyingGlass"))
+        XCTAssertFalse(source.contains("chats.search"))
     }
 
     func testDraftFilterIsConditionalAndMonthHeaderHasNoHorizontalInset() throws {

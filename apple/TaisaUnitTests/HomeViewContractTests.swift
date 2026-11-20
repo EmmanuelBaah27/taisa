@@ -107,6 +107,10 @@ final class HomeViewContractTests: XCTestCase {
     func testHomeEmptyTasksUsesTheSharedFigmaEmptyStateAndCanonicalComposer() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let sections = try String(contentsOf: root.appendingPathComponent("TaisaApp/Home/ThisWeekSection.swift"), encoding: .utf8)
+        let taskRows = try String(
+            contentsOf: root.appendingPathComponent("Packages/TaisaFoundation/Sources/TaisaDesignSystem/TaisaTaskRow.swift"),
+            encoding: .utf8
+        )
 
         XCTAssertTrue(sections.contains("TaisaTaskEmptyStateCard(action: add)"))
         XCTAssertFalse(sections.contains("TaisaTaskRow(title: \"No tasks this week\")"))
@@ -115,7 +119,9 @@ final class HomeViewContractTests: XCTestCase {
         XCTAssertTrue(sections.contains(".padding(.vertical, TaisaSpacing.compact.rawValue)"))
 
         let home = try String(contentsOf: root.appendingPathComponent("TaisaApp/Home/HomeView.swift"), encoding: .utf8)
-        XCTAssertTrue(home.contains(".padding(.top, TaisaSpacing.section.rawValue)"))
+        XCTAssertTrue(home.contains(".padding(.top, TaisaSpacing.standard.rawValue)"))
+        XCTAssertFalse(home.contains(".padding(.top, TaisaSpacing.section.rawValue)"))
+        XCTAssertTrue(taskRows.contains("HStack(alignment: dueLabel == nil ? .center : .top"))
     }
 
     func testTaskComposerCoversAppChromeAndAnchorsToTheKeyboard() throws {
