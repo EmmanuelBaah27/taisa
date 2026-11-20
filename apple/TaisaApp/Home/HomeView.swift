@@ -6,6 +6,10 @@ import TaisaStorage
 struct HomeView: View {
     @State private var model: HomeModel
     @State private var activeSheet: ThisWeekSheet?
+    @State private var showsTaskComposer = false
+    @State private var taskTitle = ""
+    @State private var taskDueDate: Date?
+    @State private var showsTaskAddedToast = false
     var send: (HomeIntent) -> Void = { _ in }
     var openRecovery: () -> Void = {}
     var openPersonalQA: (() -> Void)?
@@ -20,9 +24,11 @@ struct HomeView: View {
         openPersonalQA: (() -> Void)? = nil,
         openInsights: @escaping () -> Void = {},
         ownsNavigation: Bool = true,
-        showsRecentConversations: Bool = true
+        showsRecentConversations: Bool = true,
+        initiallyShowsTaskComposer: Bool = false
     ) {
         _model = State(initialValue: model)
+        _showsTaskComposer = State(initialValue: initiallyShowsTaskComposer)
         self.send = send
         self.openRecovery = openRecovery
         self.openPersonalQA = openPersonalQA
@@ -38,6 +44,10 @@ struct HomeView: View {
         }
         .accessibilityIdentifier("home.root")
         .task { if model.state == .idle { await model.load() } }
+        .fullScreenCover(isPresented: $showsTaskComposer) {
+            taskComposerPresentationLayer
+                .presentationBackground(.clear)
+        }
         .sheet(item: $activeSheet) { sheet in
             switch sheet {
             case let .priorWeekReview(unresolvedCount):
@@ -64,6 +74,26 @@ struct HomeView: View {
                     }
                 }
             }
+            .overlay(alignment: .top) {
+                if showsTaskAddedToast {
+                    TaisaToast(message: "Task added", style: .light) { showsTaskAddedToast = false }
+                        .padding(.top, TaisaSpacing.compact.rawValue)
+                }
+            }
+    }
+
+    private var taskComposerPresentationLayer: some View {
+        ZStack(alignment: .bottom) {
+            TaisaColor.foreground.color
+                .opacity(TaisaEffect.taskComposerBackdropOpacity)
+                .ignoresSafeArea()
+                .contentShape(Rectangle())
+                .onTapGesture { dismissTaskComposer() }
+                .accessibilityHidden(true)
+
+            TaskComposerView(title: $taskTitle, dueDate: $taskDueDate, submit: submitTask)
+                .accessibilityIdentifier("home.tasks.composer")
+        }
     }
 
     @ViewBuilder private var content: some View {
@@ -138,5 +168,30 @@ struct HomeView: View {
             else { Task { await model.load() } }
         }
         .accessibilityIdentifier(issue == .recoveryRequired ? "home.recovery" : "home.retry")
+    }
+
+    private func submitTask() {
+        let title = taskTitle
+        let dueDay = taskDueDate.flatMap(\.actionDueDay)
+        Task {
+            if await model.createTask(title: title, dueDay: dueDay) {
+                taskTitle = ""
+                taskDueDate = nil
+                showsTaskComposer = false
+                showsTaskAddedToast = true
+            }
+        }
+    }
+
+    private func dismissTaskComposer() {
+        showsTaskComposer = false
+    }
+}
+
+private extension Date {
+    var actionDueDay: ActionDueDay? {
+        let values = Calendar.current.dateComponents([.year, .month, .day], from: self)
+        guard let year = values.year, let month = values.month, let day = values.day else { return nil }
+        return ActionDueDay(rawValue: String(format: "%04d-%02d-%02d", year, month, day))
     }
 }
