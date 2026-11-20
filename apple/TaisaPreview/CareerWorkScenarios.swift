@@ -54,7 +54,7 @@ enum CareerWorkScenarios {
         PreviewScenario(identifier: identifier, title: title, deviceFamily: family, accessibility: accessibility, readiness: .ready) {
             let model = CareerWorkModel(client: .preview, initialState: state, route: route ?? .overview)
             switch root {
-            case .actions: return AnyView(ActionsView(model: model, initialRoute: route))
+            case .actions: return AnyView(TasksView(model: model, initialRoute: route))
             case .goals: return AnyView(GoalsView(model: model, initialRoute: route))
             }
         }

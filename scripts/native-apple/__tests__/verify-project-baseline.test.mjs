@@ -57,6 +57,13 @@ test('preview target compiles every shared conversation response source', async 
   assert.match(previewTarget, /- path: TaisaApp\/Conversation\/AssistantResponseActions\.swift/);
 });
 
+test('career-work preview scenarios use the current Tasks surface', async () => {
+  const scenarios = await readFile('apple/TaisaPreview/CareerWorkScenarios.swift', 'utf8');
+
+  assert.match(scenarios, /TasksView\(model: model, initialRoute: route\)/);
+  assert.doesNotMatch(scenarios, /ActionsView\(/);
+});
+
 test('package manifest excludes CloudKit transport and retains local sync compatibility', async () => {
   const packageManifest = await readFile('apple/Packages/TaisaFoundation/Package.swift', 'utf8');
   assert.match(packageManifest, /TaisaSync/);
