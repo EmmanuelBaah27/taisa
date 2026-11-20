@@ -54,6 +54,20 @@ jobs:
         run: |
           sudo xcode-select -s /Applications/Xcode_26.1.1.app
           xcodebuild -version | grep 'Build version 17B100'
+      - name: Ensure pinned iOS platform
+        if: github.event_name == 'pull_request' && steps.classify.outputs.xcode_test_targets != ''
+        run: |
+          if xcrun simctl list devices available | grep -q 'iPhone'; then
+            exit 0
+          fi
+          for attempt in 1 2 3; do
+            if xcodebuild -downloadPlatform iOS; then
+              break
+            fi
+            test "${attempt}" -lt 3 || exit 1
+            sleep 15
+          done
+          xcrun simctl list devices available | grep -q 'iPhone'
       - name: Install pinned XcodeGen
         run: |
           brew install xcodegen
