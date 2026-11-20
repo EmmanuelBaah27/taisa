@@ -13,6 +13,7 @@ dist/
 .superpowers/
 .worktrees/
 apple/DerivedData/
+.native-tmp/
 apple/**/*.xcuserstate
 apple/**/xcuserdata/
 apple/Packages/**/.build/

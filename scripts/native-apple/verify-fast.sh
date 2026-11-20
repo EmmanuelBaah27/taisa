@@ -3,6 +3,11 @@ set -euo pipefail
 
 script_directory="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repository_root="$(cd "${script_directory}/../.." && pwd)"
+default_artifact_parent="${repository_root}/apple/DerivedData"
+mkdir -p "${default_artifact_parent}"
+artifact_root="${TAISA_NATIVE_ARTIFACTS:-$(mktemp -d "${default_artifact_parent}/taisa-native-fast.XXXXXX")}"
+export TMPDIR="${repository_root}/.native-tmp"
+mkdir -p "${TMPDIR}"
 
 cd "${repository_root}"
 bash scripts/native-apple/verify-generated-project.sh

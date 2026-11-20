@@ -8,11 +8,15 @@ fi
 
 script_directory="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repository_root="$(cd "${script_directory}/../.." && pwd)"
+default_artifact_parent="${repository_root}/apple/DerivedData"
+mkdir -p "${default_artifact_parent}"
 artifact_root="${TAISA_NATIVE_ARTIFACTS:-}"
 if test -z "${artifact_root}"; then
-  artifact_root="$(mktemp -d "${TMPDIR:-/tmp}/taisa-native-xcode-tests.XXXXXX")"
+  artifact_root="$(mktemp -d "${default_artifact_parent}/taisa-native-xcode-tests.XXXXXX")"
 fi
 mkdir -p "${artifact_root}"
+export TMPDIR="${repository_root}/.native-tmp"
+mkdir -p "${TMPDIR}"
 cd "${repository_root}"
 
 simulator_inventory="$(xcrun simctl list devices available --json)"
