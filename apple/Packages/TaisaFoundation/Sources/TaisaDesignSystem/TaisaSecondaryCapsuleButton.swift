@@ -24,7 +24,7 @@ public struct TaisaSecondaryCapsuleButton<Label: View>: View {
     private var secondaryGlassButton: some View {
         TaisaButtonControl(
             style: TaisaButtonStyle(
-                role: .ghost,
+                role: elevation == .floating ? .secondary : .ghost,
                 size: size
             ),
             action: action
