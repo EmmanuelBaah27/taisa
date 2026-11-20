@@ -42,7 +42,10 @@ struct ActionComponentTests {
         #expect(button.contains("TaisaButtonStyle(role: effectiveRole, shape: shape, size: size)"))
         #expect(control.contains(".taisaButtonSurface(role: effectiveRole, size: style.size, shape: style.shape)"))
         #expect(surface.contains("case .primary:"))
-        #expect(surface.contains("case .secondary, .ghost, .destructive:"))
+        #expect(surface.contains("case .secondary:"))
+        #expect(surface.contains("case .ghost:"))
+        #expect(surface.contains("case .destructive:"))
+        #expect(surface.contains(".glassEffect(.clear.interactive(), in: surfaceShape)"))
         #expect(surface.contains(".tint(TaisaColor.primaryAction.color)"))
     }
 
