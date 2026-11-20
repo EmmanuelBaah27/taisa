@@ -404,6 +404,12 @@ fileprivate enum CareerWorkRoot {
     var title: String { self == .actions ? "Tasks" : "Goals" }
 }
 
+private enum CareerWorkAvailability {
+    // These editor surfaces remain implemented for later design work, but no
+    // shipping entry point may expose them before that review is complete.
+    static let editorsAreAvailable = false
+}
+
 struct CareerWorkView: View {
     @State private var model: CareerWorkModel
     @State private var selectedRoute: CareerWorkRoute?
@@ -525,10 +531,12 @@ struct CareerWorkView: View {
                     content: root == .actions ? "Capture one concrete commitment you want to move forward." : "Break it into milestones and tasks, then keep the evidence that shows your progress."
                 )
             } actions: {
-                if root == .actions {
-                    TaisaButton(role: .secondary, label: "Create task", icon: .add) { showsCreateAction = true }
-                } else {
-                    TaisaButton(role: .primary, label: "Create goal", icon: .goal) { showsCreateGoal = true }
+                if CareerWorkAvailability.editorsAreAvailable {
+                    if root == .actions {
+                        TaisaButton(role: .secondary, label: "Create task", icon: .add) { showsCreateAction = true }
+                    } else {
+                        TaisaButton(role: .primary, label: "Create goal", icon: .goal) { showsCreateGoal = true }
+                    }
                 }
             }
             .accessibilityIdentifier(root == .actions ? "tasks.empty" : "goals.empty")
@@ -564,22 +572,26 @@ struct CareerWorkView: View {
     }
 
     @ToolbarContentBuilder private var createToolbar: some ToolbarContent {
-        if root == .actions {
-            ToolbarItem(placement: .topBarTrailing) {
-                TaisaToolbarAction(label: "Create task", icon: .add) { showsCreateAction = true }
-                    .accessibilityIdentifier("tasks.create")
-            }
-        } else {
-            ToolbarItem(placement: .topBarTrailing) {
-                TaisaToolbarAction(label: "Create a goal", icon: .goal) { showsCreateGoal = true }
+        if CareerWorkAvailability.editorsAreAvailable {
+            if root == .actions {
+                ToolbarItem(placement: .topBarTrailing) {
+                    TaisaToolbarAction(label: "Create task", icon: .add) { showsCreateAction = true }
+                        .accessibilityIdentifier("tasks.create")
+                }
+            } else {
+                ToolbarItem(placement: .topBarTrailing) {
+                    TaisaToolbarAction(label: "Create a goal", icon: .goal) { showsCreateGoal = true }
+                }
             }
         }
     }
 
     private func taskCollection(_ actions: [ActionRecord]) -> some View {
         VStack(spacing: TaisaSpacing.compact.rawValue) {
-            TaisaButton(role: .secondary, label: "Filter tasks") { showsActionFilters = true }
-                .accessibilityIdentifier("tasks.filters")
+            if CareerWorkAvailability.editorsAreAvailable {
+                TaisaButton(role: .secondary, label: "Filter tasks") { showsActionFilters = true }
+                    .accessibilityIdentifier("tasks.filters")
+            }
             ScrollView(.horizontal) {
                 HStack {
                     ForEach(ActionLifecycleFilter.allCases, id: \.self) { lifecycle in
@@ -769,10 +781,12 @@ private struct CareerGoalDetail: View {
     var body: some View {
         List {
             TaisaSection("Progress") { TaisaRow(title: snapshot.progress.summary, icon: .goal) }
-            TaisaSection("Add work") {
-                TaisaButton(role: .secondary, label: "Add milestone", icon: .milestone) { add(.milestone) }
-                TaisaButton(role: .secondary, label: "Add task", icon: .action) { addAction() }
-                TaisaButton(role: .secondary, label: "Add evidence", icon: .evidence) { add(.evidence(actions: snapshot.actions)) }
+            if CareerWorkAvailability.editorsAreAvailable {
+                TaisaSection("Add work") {
+                    TaisaButton(role: .secondary, label: "Add milestone", icon: .milestone) { add(.milestone) }
+                    TaisaButton(role: .secondary, label: "Add task", icon: .action) { addAction() }
+                    TaisaButton(role: .secondary, label: "Add evidence", icon: .evidence) { add(.evidence(actions: snapshot.actions)) }
+                }
             }
             if !snapshot.milestones.isEmpty {
                 TaisaSection("Milestones") {
@@ -1025,7 +1039,9 @@ private struct CareerActionDetail: View {
     }
 
     @ViewBuilder private var lifecycleControls: some View {
-        TaisaButton(role: .secondary, label: "Edit task", icon: .edit) { showsEdit = true }
+        if CareerWorkAvailability.editorsAreAvailable {
+            TaisaButton(role: .secondary, label: "Edit task", icon: .edit) { showsEdit = true }
+        }
         switch ActionStatus(rawValue: snapshot.action.status) {
         case .active:
             TaisaField("Completion evidence", text: $completionEvidence, placeholder: "What shows this is complete?")

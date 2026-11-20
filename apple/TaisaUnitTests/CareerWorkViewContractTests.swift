@@ -95,6 +95,8 @@ final class CareerWorkViewContractTests: XCTestCase {
         XCTAssertTrue(source.contains("selectedRoute = nil"))
         XCTAssertTrue(source.contains("TaisaPicker("))
         XCTAssertTrue(source.contains("TaisaConfirmationDialog("))
+        XCTAssertTrue(source.contains("static let editorsAreAvailable = false"))
+        XCTAssertTrue(source.contains("if CareerWorkAvailability.editorsAreAvailable"))
         XCTAssertTrue(source.contains("TaisaStatusSurface("))
         XCTAssertTrue(source.contains("TaisaRow("))
         XCTAssertTrue(source.contains("CentralIcon(.history)"))
