@@ -184,10 +184,12 @@ struct PersonalCombinedHomeQAView: View {
     var body: some View {
         AppOverlayHost {
             VStack(spacing: 0) {
-                Text("Isolated QA fixtures — your Personal data is not changed")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal)
+                TaisaText(
+                    role: .metadata,
+                    color: .mutedForeground,
+                    content: "Isolated QA fixtures — your Personal data is not changed"
+                )
+                    .padding(.horizontal, TaisaSpacing.standard.rawValue)
                     .padding(.top, TaisaSpacing.compact.rawValue)
                     .accessibilityIdentifier("personal-qa.combined-home.notice")
                 HomeView(model: home, openInsights: { showsInsights = true }, ownsNavigation: false)

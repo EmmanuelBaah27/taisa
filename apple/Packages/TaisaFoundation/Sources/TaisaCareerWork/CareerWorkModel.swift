@@ -117,7 +117,7 @@ public final class CareerWorkModel {
         await mutate { _ = try await client.createAction(id, title, detail, dueAtMS) }
     }
 
-    public func createAction(_ draft: ActionDraft) async {
+    public func createAction(_ draft: ActionDraft) async -> Bool {
         do {
             let title = try CareerWorkTitle.validating(draft.title).value
             let validated = ActionDraft(title: title, detail: draft.detail, parent: draft.parent, dueDay: draft.dueDay)
@@ -125,11 +125,12 @@ public final class CareerWorkModel {
             if !review.candidates.isEmpty {
                 pendingActionDraft = validated
                 duplicateGate = review
-                return
+                return true
             }
-            await createValidatedAction(validated)
+            return await createValidatedAction(validated)
         } catch {
             publish(error)
+            return false
         }
     }
 
@@ -142,7 +143,7 @@ public final class CareerWorkModel {
             await load()
         case .createSeparate:
             pendingActionDraft = nil; duplicateGate = nil
-            await createValidatedAction(draft)
+            _ = await createValidatedAction(draft)
         }
     }
 
@@ -180,6 +181,16 @@ public final class CareerWorkModel {
 
     public func promoteChecklistItem(id: String) async {
         await mutate { _ = try await client.promoteChecklistItem(id) }
+    }
+
+    public func setSelectedActionBlocked(note: String?) async -> Bool {
+        guard case let .action(id) = route else { return false }
+        return await mutate { _ = try await client.setActionBlocked(id, note) }
+    }
+
+    public func clearSelectedActionBlocked() async -> Bool {
+        guard case let .action(id) = route else { return false }
+        return await mutate { _ = try await client.clearActionBlocked(id) }
     }
 
     public func completeSelectedAction(evidenceTitle: String) async {
@@ -249,7 +260,7 @@ public final class CareerWorkModel {
         }
     }
 
-    private func createValidatedAction(_ draft: ActionDraft) async {
+    private func createValidatedAction(_ draft: ActionDraft) async -> Bool {
         await mutate {
             let action = try await client.createCanonicalAction(draft)
             route = .action(id: action.id)

@@ -120,6 +120,15 @@ private struct TaskDetailSheetView: View {
     @State private var showsDelete = false
     @State private var showsDueDatePicker = false
     @State private var draftDueDate = Date()
+    @State private var blockerNote: String
+    @State private var isEditingBlocker = false
+
+    init(snapshot: ActionDetailSnapshot, model: CareerWorkModel, dismiss: @escaping () -> Void) {
+        self.snapshot = snapshot
+        self.model = model
+        self.dismiss = dismiss
+        _blockerNote = State(initialValue: snapshot.action.blockerNote ?? "")
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: TaisaSpacing.standard.rawValue) {
@@ -139,6 +148,10 @@ private struct TaskDetailSheetView: View {
                     ) {
                         draftDueDate = currentDueDate ?? Date()
                         showsDueDatePicker = true
+                    }
+
+                    if snapshot.action.status == ActionStatus.active.rawValue {
+                        blockerControls
                     }
 
                     if !snapshot.checklist.isEmpty {
@@ -315,6 +328,57 @@ private struct TaskDetailSheetView: View {
         }
     }
 
+    @ViewBuilder private var blockerControls: some View {
+        if isEditingBlocker {
+            TaisaField(
+                "Blocker note",
+                text: $blockerNote,
+                placeholder: "What is blocking this task?",
+                labelPresentation: .placeholderOnly
+            )
+            HStack(spacing: TaisaSpacing.compact.rawValue) {
+                TaisaButton(
+                    role: .primary,
+                    label: snapshot.action.blockedAtMS == nil ? "Mark as blocked" : "Save blocker",
+                    icon: .warning,
+                    size: .small,
+                    layout: .intrinsic
+                ) {
+                    Task {
+                        if await model.setSelectedActionBlocked(note: blockerNote) {
+                            isEditingBlocker = false
+                        }
+                    }
+                }
+                TaisaButton(role: .ghost, label: "Cancel", size: .small, layout: .intrinsic) {
+                    blockerNote = snapshot.action.blockerNote ?? ""
+                    isEditingBlocker = false
+                }
+            }
+        } else if snapshot.action.blockedAtMS != nil {
+            TaisaStatusSurface(.warning, label: "Blocked")
+            if let note = snapshot.action.blockerNote {
+                TaisaText(role: .supporting, color: .mutedForeground, content: note)
+            }
+            HStack(spacing: TaisaSpacing.compact.rawValue) {
+                TaisaButton(role: .secondary, label: "Edit blocker", icon: .edit, size: .small, layout: .intrinsic) {
+                    isEditingBlocker = true
+                }
+                TaisaButton(role: .ghost, label: "Clear blocker", icon: .undo, size: .small, layout: .intrinsic) {
+                    Task {
+                        if await model.clearSelectedActionBlocked() {
+                            blockerNote = ""
+                        }
+                    }
+                }
+            }
+        } else {
+            TaisaButton(role: .secondary, label: "Mark as blocked", icon: .warning, size: .small, layout: .intrinsic) {
+                isEditingBlocker = true
+            }
+        }
+    }
+
     private func secondaryActionLabel(
         _ label: String,
         icon: CentralIconName,
@@ -466,12 +530,15 @@ struct CareerWorkView: View {
         }
         .sheet(isPresented: $showsCreateAction) {
             ActionEditorSheet(goals: allGoals, milestones: allMilestones, initial: actionEditorInitial) { draft in
-                await model.createAction(draft)
-                showsCreateAction = false
-                if model.duplicateGate == nil {
+                let shouldDismiss = await model.createAction(draft)
+                if shouldDismiss {
+                    showsCreateAction = false
+                }
+                if shouldDismiss, model.duplicateGate == nil {
                     actionEditorInitial = nil
                     selectedRoute = nil
                 }
+                return shouldDismiss
             }
         }
         .sheet(isPresented: $showsActionFilters) {
@@ -1017,9 +1084,11 @@ private struct CareerActionDetail: View {
         })
         .sheet(isPresented: $showsEdit) {
             ActionEditorSheet(goals: goals, milestones: milestones, initial: currentDraft, editing: true) { draft in
-                if await model.editSelectedAction(draft, expectedUpdatedAtMS: snapshot.action.updatedAtMS) {
+                let saved = await model.editSelectedAction(draft, expectedUpdatedAtMS: snapshot.action.updatedAtMS)
+                if saved {
                     showsEdit = false
                 }
+                return saved
             }
         }
     }
@@ -1173,14 +1242,14 @@ private struct ActionEditorSheet: View {
     @Environment(\.dismiss) private var dismiss
     let goals: [GoalRecord]
     let milestones: [MilestoneRecord]
-    let save: (ActionDraft) async -> Void
+    let save: (ActionDraft) async -> Bool
     let isEditing: Bool
     @State private var title = ""
     @State private var detail = ""
     @State private var parent: ActionParentChoice = .standalone
     @State private var dueDate: Date?
 
-    init(goals: [GoalRecord], milestones: [MilestoneRecord], initial: ActionDraft? = nil, editing: Bool = false, save: @escaping (ActionDraft) async -> Void) {
+    init(goals: [GoalRecord], milestones: [MilestoneRecord], initial: ActionDraft? = nil, editing: Bool = false, save: @escaping (ActionDraft) async -> Bool) {
         self.goals = goals
         self.milestones = milestones
         self.save = save
@@ -1198,8 +1267,7 @@ private struct ActionEditorSheet: View {
                 .safeAreaInset(edge: .bottom, spacing: 0) {
                     TaskComposerView(title: $title, dueDate: $dueDate) {
                         Task {
-                            await save(draft)
-                            dismiss()
+                            if await save(draft) { dismiss() }
                         }
                     }
                 }

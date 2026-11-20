@@ -12,7 +12,8 @@ struct ThisWeekSection: View {
             if items.isEmpty {
                 ContentUnavailableView {
                     VStack {
-                        CentralIcon(.completed).frame(width: 32, height: 32)
+                        CentralIcon(.completed)
+                            .frame(width: TaisaControlMetric.standardIcon, height: TaisaControlMetric.standardIcon)
                         TaisaText(role: .heading, content: "Nothing needs focus right now")
                     }
                 } description: {
@@ -137,7 +138,8 @@ struct PriorWeekReviewSheet: View {
         NavigationStack {
             ContentUnavailableView {
                 VStack {
-                    CentralIcon(.history).frame(width: 32, height: 32)
+                    CentralIcon(.history)
+                        .frame(width: TaisaControlMetric.standardIcon, height: TaisaControlMetric.standardIcon)
                     TaisaText(role: .heading, content: "Unfinished work")
                 }
             } description: {

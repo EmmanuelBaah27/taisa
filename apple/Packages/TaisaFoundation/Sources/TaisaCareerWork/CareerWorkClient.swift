@@ -32,6 +32,8 @@ public struct CareerWorkClient: Sendable {
     public var removeChecklistItem: @Sendable (String) async throws -> Void
     public var reorderChecklist: @Sendable (String, [String]) async throws -> Void
     public var promoteChecklistItem: @Sendable (String) async throws -> ActionChecklistPromotionResult
+    public var setActionBlocked: @Sendable (String, String?) async throws -> ActionRecord
+    public var clearActionBlocked: @Sendable (String) async throws -> ActionRecord
     public var dropAction: @Sendable (String) async throws -> ActionRecord
     public var deleteAction: @Sendable (String) async throws -> Void
     public var restoreAction: @Sendable (String) async throws -> ActionRecord
@@ -66,6 +68,8 @@ public struct CareerWorkClient: Sendable {
         removeChecklistItem: @escaping @Sendable (String) async throws -> Void = { _ in throw CareerWorkClientError.mutationUnavailable },
         reorderChecklist: @escaping @Sendable (String, [String]) async throws -> Void = { _, _ in throw CareerWorkClientError.mutationUnavailable },
         promoteChecklistItem: @escaping @Sendable (String) async throws -> ActionChecklistPromotionResult = { _ in throw CareerWorkClientError.mutationUnavailable },
+        setActionBlocked: @escaping @Sendable (String, String?) async throws -> ActionRecord = { _, _ in throw CareerWorkClientError.mutationUnavailable },
+        clearActionBlocked: @escaping @Sendable (String) async throws -> ActionRecord = { _ in throw CareerWorkClientError.mutationUnavailable },
         dropAction: @escaping @Sendable (String) async throws -> ActionRecord = { _ in throw CareerWorkClientError.mutationUnavailable },
         deleteAction: @escaping @Sendable (String) async throws -> Void = { _ in throw CareerWorkClientError.mutationUnavailable },
         restoreAction: @escaping @Sendable (String) async throws -> ActionRecord = { _ in throw CareerWorkClientError.mutationUnavailable },
@@ -99,6 +103,8 @@ public struct CareerWorkClient: Sendable {
         self.removeChecklistItem = removeChecklistItem
         self.reorderChecklist = reorderChecklist
         self.promoteChecklistItem = promoteChecklistItem
+        self.setActionBlocked = setActionBlocked
+        self.clearActionBlocked = clearActionBlocked
         self.dropAction = dropAction
         self.deleteAction = deleteAction
         self.restoreAction = restoreAction
@@ -156,6 +162,8 @@ public extension CareerWorkClient {
             removeChecklistItem: { try await commands.removeChecklistItem(id: $0, context: context()) },
             reorderChecklist: { try await commands.reorderChecklist(actionID: $0, orderedIDs: $1, context: context()) },
             promoteChecklistItem: { try await commands.promoteChecklistItem(id: $0, context: context()) },
+            setActionBlocked: { try await commands.setActionBlocked(id: $0, note: $1, context: context()) },
+            clearActionBlocked: { try await commands.clearActionBlocked(id: $0, context: context()) },
             dropAction: { try await commands.dropAction(id: $0, context: context()) },
             deleteAction: { try await commands.deleteAction(id: $0, context: context()) },
             restoreAction: { try await commands.restoreAction(id: $0, context: context()) },
