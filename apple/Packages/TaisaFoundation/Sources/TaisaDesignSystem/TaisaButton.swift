@@ -22,19 +22,24 @@ public enum TaisaButtonLayout: Sendable, Equatable {
     case intrinsic
 }
 
-public enum TaisaButtonSize: Sendable, Equatable {
+public enum TaisaButtonSize: CaseIterable, Sendable, Equatable {
     case standard
     case small
 
+    public var visualSize: CGFloat {
+        self == .standard ? 48 : 36
+    }
     public var minimumHeight: CGFloat {
-        self == .standard ? TaisaControlMetric.actionButtonHeight : TaisaControlMetric.compactActionButtonHeight
+        visualSize
     }
     public var iconSize: CGFloat {
         self == .standard ? TaisaControlMetric.standardIcon : TaisaControlMetric.compactActionIcon
     }
     public var minimumHitHeight: CGFloat {
-        max(minimumHeight, TaisaControlMetric.headerActionHeight)
+        minimumHitSize
     }
+    public var minimumHitSize: CGFloat { max(44, visualSize) }
+    public var hitSlop: CGFloat { (minimumHitSize - visualSize) / 2 }
 }
 
 public struct TaisaButton: View {
@@ -96,7 +101,10 @@ public struct TaisaButton: View {
     }
 
     public var body: some View {
-        TaisaButtonControl(style: TaisaButtonStyle(role: isSelected && role != .destructive ? .primary : role, shape: shape), action: action) {
+        TaisaButtonControl(
+            style: TaisaButtonStyle(role: effectiveRole, shape: shape, size: size),
+            action: action
+        ) {
             ZStack {
                 HStack(spacing: TaisaSpacing.compact.rawValue) {
                     if let icon {
@@ -132,6 +140,10 @@ public struct TaisaButton: View {
 
     private var labelColor: TaisaColor {
         role == .destructive ? .destructive : .foreground
+    }
+
+    private var effectiveRole: TaisaButtonRole {
+        isSelected && role != .destructive ? .primary : role
     }
 
 

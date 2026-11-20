@@ -184,6 +184,7 @@ struct ConversationsView: View {
             icon: .magnifyingGlass,
             accessibilityLabel: "Search chats",
             accessibilityHint: "Search is not available yet",
+            size: .standard,
             action: {}
         )
         .disabled(true)
@@ -191,14 +192,13 @@ struct ConversationsView: View {
     }
 
     private var draftsButton: some View {
-        TaisaSecondaryCapsuleButton(action: { showsDrafts = true }) {
+        TaisaSecondaryCapsuleButton(size: .standard, action: { showsDrafts = true }) {
             HStack(spacing: 6) {
                 TaisaText(role: .navigationLabel, content: "Drafts")
                 Circle()
                     .fill(TaisaColor.destructive.color)
                     .frame(width: 8, height: 8)
             }
-            .padding(.horizontal, TaisaSpacing.content.rawValue)
         }
         .accessibilityIdentifier("chats.drafts")
     }

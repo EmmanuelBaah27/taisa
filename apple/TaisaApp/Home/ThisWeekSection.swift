@@ -67,6 +67,7 @@ struct HomeActionsPreviewSection: View {
                     TaisaSecondaryIconButton(
                         icon: .add,
                         accessibilityLabel: "Add task",
+                        size: .small,
                         action: add
                     )
                 }

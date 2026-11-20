@@ -7,18 +7,21 @@ public struct TaisaButtonStyle: PrimitiveButtonStyle {
     public enum Presentation: Sendable { case surface, content }
 
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-    private let role: TaisaButtonRole
-    private let shape: TaisaButtonShape
-    private let presentation: Presentation
+    let role: TaisaButtonRole
+    let shape: TaisaButtonShape
+    let presentation: Presentation
+    let size: TaisaButtonSize
 
     public init(
         role: TaisaButtonRole = .secondary,
         shape: TaisaButtonShape = .capsule,
-        presentation: Presentation = .surface
+        presentation: Presentation = .surface,
+        size: TaisaButtonSize = .standard
     ) {
         self.role = role
         self.shape = shape
         self.presentation = presentation
+        self.size = size
     }
 
     public func makeBody(configuration: Configuration) -> some View {
@@ -47,7 +50,7 @@ public struct TaisaButtonStyle: PrimitiveButtonStyle {
             }
         } else if #available(iOS 26.0, macOS 26.0, *), !reduceTransparency {
             button
-                .controlSize(.regular)
+                .controlSize(size.controlSize)
                 .buttonStyle(.glass)
                 .foregroundStyle(destructive ? TaisaColor.destructive.color : TaisaColor.foreground.color)
         } else if reduceTransparency {

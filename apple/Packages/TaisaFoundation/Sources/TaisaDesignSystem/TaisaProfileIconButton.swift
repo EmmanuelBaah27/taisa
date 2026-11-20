@@ -8,12 +8,12 @@ public struct TaisaProfileIconButton: View {
         self.icon = icon; self.label = label; self.action = action
     }
     public var body: some View {
-        TaisaButtonControl(style: TaisaButtonStyle(shape: .circle), action: action) {
-            CentralIcon(icon)
-                .frame(width: TaisaControlMetric.standardIcon, height: TaisaControlMetric.standardIcon)
-                .foregroundStyle(TaisaColor.mutedForeground.color)
-                .frame(minWidth: TaisaControlMetric.headerActionHeight, minHeight: TaisaControlMetric.headerActionHeight)
-        }
-        .accessibilityLabel(label)
+        TaisaSecondaryIconButton(
+            icon: icon,
+            accessibilityLabel: label,
+            iconColor: .foreground,
+            size: .standard,
+            action: action
+        )
     }
 }

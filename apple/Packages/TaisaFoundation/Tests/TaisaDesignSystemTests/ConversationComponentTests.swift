@@ -264,20 +264,31 @@ struct ConversationComponentTests {
             contentsOf: root.appendingPathComponent("Sources/TaisaDesignSystem/TaisaButtonStyle.swift"),
             encoding: .utf8
         )
+        let secondarySurface = try String(
+            contentsOf: root.appendingPathComponent("Sources/TaisaDesignSystem/TaisaSecondaryButtonSurface.swift"),
+            encoding: .utf8
+        )
 
         #expect(!secondaryControls.contains("public enum TaisaGlassStyle"))
-        #expect(secondaryControls.contains("TaisaButtonStyle(shape: .circle)"))
-        #expect(secondaryControls.contains("TaisaButtonStyle()"))
-        #expect(!secondaryControls.contains(".glassEffect("))
-        #expect(!secondaryControls.contains(".taisaSecondaryButtonSurface("))
+        #expect(secondaryControls.contains("TaisaButtonStyle(shape: .circle, size: size)"))
+        #expect(secondaryControls.contains("TaisaButtonStyle(size: size)"))
+        #expect(secondarySurface.contains(".glassEffect(.regular.interactive()"))
+        #expect(secondarySurface.contains(".frame(width: size.visualSize, height: size.visualSize)"))
+        #expect(secondarySurface.contains(".frame(height: size.visualSize)"))
         #expect(buttonStyle.contains(".buttonStyle(.glass)"))
-        #expect(buttonStyle.contains(".controlSize(.regular)"))
+        #expect(buttonStyle.contains(".controlSize(size.controlSize)"))
         #expect(!buttonStyle.contains(".glassEffect("))
         #expect(!secondaryControls.contains(".frame(width: size, height: size)"))
         #expect(!secondaryControls.contains("label.frame(height: height)"))
         #expect(!secondaryControls.contains("size: CGFloat ="))
         #expect(!secondaryControls.contains("height: CGFloat ="))
-        #expect(secondaryControls.contains("TaisaControlMetric.headerActionHeight"))
+        #expect(secondaryControls.contains("size: TaisaSecondaryButtonSize = .standard"))
+        #expect(secondarySurface.contains("width: size.visualSize"))
+        #expect(secondarySurface.contains("height: size.visualSize"))
+        #expect(!secondaryControls.contains(".frame(minWidth: size.minimumHitSize"))
+        #expect(!secondaryControls.contains(".frame(minHeight: size.minimumHitSize"))
+        #expect(secondaryControls.contains(".contentShape(.interaction, Circle().inset(by: -size.hitSlop))"))
+        #expect(secondaryControls.contains(".contentShape(.interaction, Capsule().inset(by: -size.hitSlop))"))
         #expect(secondaryControls.contains("elevation: TaisaSecondaryButtonElevation"))
         #expect(tokens.contains("public static let secondaryButtonShadowOpacity"))
         #expect(!actionBar.contains("glassStyle: .clear"))

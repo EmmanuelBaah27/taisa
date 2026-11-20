@@ -6,6 +6,9 @@ import Testing
 @Suite("Action design-system contracts")
 struct ActionComponentTests {
     @Test func buttonSizesOwnApprovedGeometry() {
+        #expect(TaisaButtonSize.allCases == [.standard, .small])
+        #expect(TaisaButtonSize.standard.visualSize == 48)
+        #expect(TaisaButtonSize.small.visualSize == 36)
         #expect(TaisaButtonSize.standard.minimumHeight == 48)
         #expect(TaisaButtonSize.standard.iconSize == 24)
         #expect(TaisaButtonSize.small.minimumHeight == 36)
@@ -16,6 +19,31 @@ struct ActionComponentTests {
         #expect(TaisaButton.Contract.supportsDisabledState)
         #expect(TaisaButton.Contract.supportsSelectedState)
         #expect(TaisaButton.Contract.supportsInPlaceProgress)
+    }
+
+    @Test func everyAuthoredButtonRoleUsesTheExactSharedSurface() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let button = try String(
+            contentsOf: root.appendingPathComponent("Sources/TaisaDesignSystem/TaisaButton.swift"),
+            encoding: .utf8
+        )
+        let surface = try String(
+            contentsOf: root.appendingPathComponent("Sources/TaisaDesignSystem/TaisaSecondaryButtonSurface.swift"),
+            encoding: .utf8
+        )
+        let control = try String(
+            contentsOf: root.appendingPathComponent("Sources/TaisaDesignSystem/TaisaButtonControl.swift"),
+            encoding: .utf8
+        )
+
+        #expect(button.contains("TaisaButtonStyle(role: effectiveRole, shape: shape, size: size)"))
+        #expect(control.contains(".taisaButtonSurface(role: effectiveRole, size: style.size, shape: style.shape)"))
+        #expect(surface.contains("case .primary:"))
+        #expect(surface.contains("case .secondary, .ghost, .destructive:"))
+        #expect(surface.contains(".tint(TaisaColor.primaryAction.color)"))
     }
 
     @Test func fieldsAndBorrowedControlsHaveTypedSharedContracts() {

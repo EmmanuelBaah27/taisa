@@ -35,7 +35,7 @@ public enum TaisaMotion {
 }
 
 public enum TaisaProfileMetric {
-    public static let avatar: CGFloat = TaisaControlMetric.headerActionHeight
+    public static let avatar: CGFloat = TaisaSecondaryButtonSize.standard.visualSize
     public static let editorAvatar: CGFloat = 56
     public static let chevron: CGFloat = 20
     public static let rowGap: CGFloat = 2

@@ -20,9 +20,22 @@ public struct TaisaButtonControl<Label: View>: View {
         self.label = label()
     }
 
-    public var body: some View {
-        Button(role: role, action: action) { label }
-            .buttonStyle(style)
+    @ViewBuilder public var body: some View {
+        if style.presentation == .content {
+            Button(role: role, action: action) { label }
+                .buttonStyle(style)
+        } else {
+            let effectiveRole: TaisaButtonRole = role == .destructive ? .destructive : style.role
+            Button(role: role, action: action) { label }
+                .buttonStyle(TaisaButtonStyle(presentation: .content))
+                .foregroundStyle(
+                    effectiveRole == .destructive
+                        ? TaisaColor.destructive.color
+                        : TaisaColor.foreground.color
+                )
+                .font(TaisaTypography.buttonLabel.font)
+                .taisaButtonSurface(role: effectiveRole, size: style.size, shape: style.shape)
+        }
     }
 }
 
