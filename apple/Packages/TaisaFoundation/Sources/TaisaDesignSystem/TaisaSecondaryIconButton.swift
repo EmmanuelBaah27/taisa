@@ -7,6 +7,7 @@ public struct TaisaSecondaryIconButton: View {
     private let accessibilityHint: String?
     private let iconColor: TaisaColor
     private let size: TaisaSecondaryButtonSize
+    private let elevation: TaisaSecondaryButtonElevation
     private let action: @MainActor () -> Void
 
     public init(
@@ -23,8 +24,7 @@ public struct TaisaSecondaryIconButton: View {
         self.accessibilityHint = accessibilityHint
         self.iconColor = iconColor
         self.size = size
-        // Elevation is system-owned by the shared native style.
-        _ = elevation
+        self.elevation = elevation
         self.action = action
     }
 
@@ -36,7 +36,11 @@ public struct TaisaSecondaryIconButton: View {
 
     private var secondaryGlassButton: some View {
         TaisaButtonControl(
-            style: TaisaButtonStyle(shape: .circle, size: size),
+            style: TaisaButtonStyle(
+                role: elevation == .floating ? .secondary : .ghost,
+                shape: .circle,
+                size: size
+            ),
             action: action
         ) {
             CentralIcon(icon)

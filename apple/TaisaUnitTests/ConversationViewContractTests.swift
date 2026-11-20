@@ -192,6 +192,19 @@ final class ConversationViewContractTests: XCTestCase {
         XCTAssertFalse(source.contains("import GRDB"))
     }
 
+    func testReplyUsesTheFloatingSecondaryTreatment() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let source = try String(
+            contentsOf: root.appendingPathComponent("TaisaApp/Conversation/ConversationView.swift"),
+            encoding: .utf8
+        )
+
+        let replyStart = try XCTUnwrap(source.range(of: "private var voiceReplyButton"))
+        let replySource = source[replyStart.lowerBound...]
+        XCTAssertTrue(replySource.contains("TaisaSecondaryCapsuleButton("))
+        XCTAssertTrue(replySource.contains("elevation: .floating"))
+    }
+
     func testJumpToLatestUsesActualContentInsteadOfTheResponseRunway() {
         XCTAssertFalse(ConversationTimelineLayout.shouldShowJumpToLatest(
             actualContentFrame: CGRect(x: 0, y: 100, width: 390, height: 600),

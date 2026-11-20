@@ -5,6 +5,7 @@ public struct TaisaSecondaryCapsuleButton<Label: View>: View {
     private let action: @MainActor () -> Void
     private let label: Label
     private let size: TaisaSecondaryButtonSize
+    private let elevation: TaisaSecondaryButtonElevation
 
     public init(
         size: TaisaSecondaryButtonSize = .standard,
@@ -12,8 +13,7 @@ public struct TaisaSecondaryCapsuleButton<Label: View>: View {
         action: @escaping @MainActor () -> Void,
         @ViewBuilder label: () -> Label
     ) {
-        // Elevation is system-owned by the shared native style.
-        _ = elevation
+        self.elevation = elevation
         self.size = size
         self.action = action
         self.label = label()
@@ -22,7 +22,13 @@ public struct TaisaSecondaryCapsuleButton<Label: View>: View {
     public var body: some View { secondaryGlassButton }
 
     private var secondaryGlassButton: some View {
-        TaisaButtonControl(style: TaisaButtonStyle(size: size), action: action) {
+        TaisaButtonControl(
+            style: TaisaButtonStyle(
+                role: elevation == .floating ? .secondary : .ghost,
+                size: size
+            ),
+            action: action
+        ) {
             label.padding(.horizontal, TaisaSpacing.standard.rawValue)
         }
         .contentShape(.interaction, Capsule().inset(by: -size.hitSlop))

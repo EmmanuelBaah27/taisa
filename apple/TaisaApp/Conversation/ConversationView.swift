@@ -354,6 +354,7 @@ struct ConversationView: View {
         HStack {
             Spacer()
             TaisaSecondaryCapsuleButton(
+                elevation: .floating,
                 action: { Task { try? await model.beginVoice() } }
             ) {
                 HStack(spacing: TaisaSpacing.compact.rawValue) {
