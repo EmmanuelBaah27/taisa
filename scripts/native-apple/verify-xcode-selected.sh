@@ -55,6 +55,10 @@ for target in "${targets[@]}"; do
     -configuration "${configuration}" \
     -destination "platform=iOS Simulator,name=${iphone_name}" \
     -only-testing:"${target}" \
+    -retry-tests-on-failure \
+    -test-iterations 2 \
+    -parallel-testing-enabled YES \
+    -parallel-testing-worker-count 2 \
     -derivedDataPath "${artifact_root}/DerivedData-${target}" \
     -resultBundlePath "${artifact_root}/${target}.xcresult" \
     "${signing[@]}"
