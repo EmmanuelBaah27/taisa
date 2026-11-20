@@ -21,6 +21,8 @@ public enum TaisaMotion {
     }
     /// Longer on-screen movement should remain legible instead of snapping across distance.
     public static let settle: Double = 0.50
+    /// Recorder controls recede slightly as one group when a discard is confirmed.
+    public static let recordingControlExitScale: CGFloat = 0.95
     /// Cadence between provisional words resolving into a streamed response.
     public static let streamingWordGap: Double = 0.06
     /// Duration of each provisional word's soft resolution.

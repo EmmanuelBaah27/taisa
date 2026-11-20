@@ -57,6 +57,21 @@ test('explicit DS text and token-owned custom fonts pass; comments and strings a
   assert.deepEqual(await audit(root), []);
 });
 
+test('complete shared typography modifier may own the semantic font application', async (t) => {
+  const modifier = `${ds}/TaisaTypographyModifier.swift`;
+  const root = await fixture(t, {
+    [product]: 'struct YouView: View { var body: some View { TaisaText(content: "Go") } }',
+    [`${ds}/TaisaText.swift`]: 'public struct TaisaText: View { var body: some View { Text("Go").taisaTypography(.body) } }',
+    [modifier]: 'public extension View { func taisaTypography(_ role: TaisaTypography) -> some View { self.font(role.font).lineSpacing(role.lineSpacing).tracking(role.tracking) } }',
+    [`${ds}/TypographyToken.swift`]: 'public enum TaisaTypography { case body; var font: Font { .custom("Inter", size: 16) }; var lineSpacing: CGFloat { 8 }; var tracking: CGFloat { -0.16 } }',
+  });
+  assert.deepEqual(await verifier.surfaceAdoptionViolations({
+    repositoryRoot: root,
+    productFiles: [product],
+    sharedSourceFiles: [modifier],
+  }), []);
+});
+
 test('reviewed You surface has no implicit text/control presentation or shared font fallback', async () => {
   const violations = await audit(process.cwd());
   assert.deepEqual(violations, []);

@@ -2,6 +2,7 @@ import Foundation
 import Observation
 import TaisaAudio
 import TaisaConversations
+import TaisaDesignSystem
 import TaisaStorage
 import TaisaVoice
 
@@ -161,6 +162,7 @@ final class ConversationViewModel {
     @ObservationIgnored private let dismiss: @MainActor () -> Void
     @ObservationIgnored private var started = false
     private(set) var actionInFlight = false
+    private(set) var recorderExitInFlight = false
     @ObservationIgnored private var voicePreparationExit: VoicePreparationExit?
     @ObservationIgnored private var recoveryObservation: Task<Void, Never>?
     @ObservationIgnored private var recordingGlowEnvelope = LoudnessEnvelope(
@@ -681,6 +683,7 @@ final class ConversationViewModel {
     private func discardRecordingAndRemainOrDismiss() async {
         guard !actionInFlight else { return }
         actionInFlight = true
+        recorderExitInFlight = true
         confirmation = nil
         let closesEmptyConversation = messages.isEmpty
         if closesEmptyConversation { isClosing = true }
@@ -690,10 +693,11 @@ final class ConversationViewModel {
                 try await client.discardEmptyConversation()
                 closeConversation()
             } else {
-                composer = .waitingForReply
+                recorderExitInFlight = true
             }
         } catch {
             isClosing = false
+            recorderExitInFlight = false
             composer = .failure(.unavailable)
             confirmation = nil
         }
@@ -742,6 +746,12 @@ final class ConversationViewModel {
     private func closeConversation() {
         isClosing = true
         dismiss()
+    }
+
+    func completeRecorderExit() {
+        guard recorderExitInFlight else { return }
+        composer = .waitingForReply
+        recorderExitInFlight = false
     }
 
     func requestCorrection(_ message: MessageRecord) {

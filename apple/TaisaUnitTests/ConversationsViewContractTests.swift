@@ -93,6 +93,12 @@ final class ConversationsViewContractTests: XCTestCase {
         XCTAssertFalse(source.contains("chats.search"))
     }
 
+    func testDraftsUsesTheSmallHeaderActionSize() throws {
+        let source = try conversationsSource()
+
+        XCTAssertTrue(source.contains("TaisaSecondaryCapsuleButton(size: .small, action: { showsDrafts = true })"))
+    }
+
     func testDraftFilterIsConditionalAndMonthHeaderHasNoHorizontalInset() throws {
         let source = try conversationsSource()
 
@@ -159,7 +165,7 @@ final class ConversationsViewContractTests: XCTestCase {
         ] {
             XCTAssertTrue(source.contains(identifier), "Missing \(identifier)")
         }
-        for nativeControl in ["List", "Section", "contextMenu", "confirmationDialog"] {
+        for nativeControl in ["List", "Section", "contextMenu", "TaisaNativeConfirmationDialog", "TaisaTextEntryAlert"] {
             XCTAssertTrue(source.contains(nativeControl), "Missing \(nativeControl)")
         }
         XCTAssertFalse(source.contains("swipeActions"))

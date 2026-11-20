@@ -222,9 +222,8 @@ struct PrimaryAppShell: View {
     @MainActor
     private func dismissConversationAndRefresh() {
         Task {
-            await model.dismissConversationAndRefresh {
-                await conversationsModel.load()
-            }
+            model.dismissConversation()
+            await conversationsModel.load()
         }
     }
 

@@ -8,7 +8,7 @@ struct TaisaApp: App {
     var body: some Scene {
         WindowGroup {
             AppRootView(runtime: runtime)
-                .font(TaisaTypography.body.font)
+                .taisaTypography(.body)
                 .buttonStyle(TaisaButtonStyle())
                 .preferredColorScheme(.light)
         }

@@ -46,6 +46,25 @@ final class TaskDetailPresentationTests: XCTestCase {
 }
 
 final class CareerWorkViewContractTests: XCTestCase {
+    func testTaskDueDateUsesTheSharedInlineContentAction() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let source = try String(
+            contentsOf: root.appendingPathComponent("TaisaApp/CareerWork/CareerWorkView.swift"),
+            encoding: .utf8
+        )
+        let detail = try XCTUnwrap(
+            source.components(separatedBy: "private struct TaskDetailSheetContent").last?
+                .components(separatedBy: "private struct ActionsView").first
+        )
+
+        XCTAssertTrue(detail.contains("TaisaInlineAction("))
+        XCTAssertTrue(detail.contains("label: dueText"))
+        XCTAssertTrue(detail.contains("icon: .calendar"))
+        XCTAssertTrue(detail.contains("style: .muted"))
+        XCTAssertTrue(detail.contains("isSelected: currentDueDate != nil"))
+        XCTAssertFalse(detail.contains("role: .ghost,\n                        shape: .capsule,\n                        label: dueText"))
+    }
+
     func testJourneyUsesAdaptiveNativeNavigationAndExplicitStates() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let source = try String(contentsOf: root.appendingPathComponent("TaisaApp/CareerWork/CareerWorkView.swift"), encoding: .utf8)
@@ -79,8 +98,8 @@ final class CareerWorkViewContractTests: XCTestCase {
         XCTAssertTrue(source.contains("open(.goal(id: goal.id))"))
         XCTAssertTrue(source.contains("open(.goal(id: milestone.goalID))"))
         XCTAssertTrue(source.contains("open(.evidence(id: evidence.id))"))
-        XCTAssertTrue(source.contains("tasks.filters"))
-        XCTAssertTrue(source.contains("career-work.action.filter-sheet"))
+        XCTAssertFalse(source.contains("tasks.filters"))
+        XCTAssertFalse(source.contains("career-work.action.filter-sheet"))
         XCTAssertTrue(source.contains("Correct mistaken completion"))
         XCTAssertTrue(source.contains("allMilestones"))
         XCTAssertTrue(source.contains("WeekCalendar(timeZone: .current)"))
@@ -95,6 +114,8 @@ final class CareerWorkViewContractTests: XCTestCase {
         XCTAssertTrue(source.contains("selectedRoute = nil"))
         XCTAssertTrue(source.contains("TaisaPicker("))
         XCTAssertTrue(source.contains("TaisaConfirmationDialog("))
+        XCTAssertTrue(source.contains("static let careerEditorsAreAvailable = false"))
+        XCTAssertTrue(source.contains("static let taskEditorsAreAvailable = true"))
         XCTAssertTrue(source.contains("TaisaStatusSurface("))
         XCTAssertTrue(source.contains("TaisaRow("))
         XCTAssertTrue(source.contains("CentralIcon(.history)"))
@@ -117,6 +138,10 @@ final class CareerWorkViewContractTests: XCTestCase {
         XCTAssertTrue(source.contains("await model.select(.action(id: actionID))"))
         XCTAssertTrue(source.contains("TaskDetailSheetView("))
         XCTAssertTrue(detail.contains("TaisaText(role: .sheetTitle"))
+        XCTAssertTrue(detail.contains("tasks.detail.edit-title"))
+        XCTAssertTrue(detail.contains("sheetActions.expand()"))
+        XCTAssertTrue(detail.contains("actionDraft(title: title)"))
+        XCTAssertTrue(detail.contains("if didSave { isEditingTitle = false }"))
         XCTAssertTrue(detail.contains(".padding(.top, TaisaSpacing.control.rawValue)"))
         XCTAssertTrue(detail.contains("TaisaText(role: .sectionLabel"))
         XCTAssertTrue(detail.contains("TaisaText(role: .body"))

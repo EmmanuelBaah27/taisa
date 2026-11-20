@@ -42,7 +42,11 @@ struct ActionComponentTests {
         #expect(button.contains("TaisaButtonStyle(role: effectiveRole, shape: shape, size: size)"))
         #expect(control.contains(".taisaButtonSurface(role: effectiveRole, size: style.size, shape: style.shape)"))
         #expect(surface.contains("case .primary:"))
-        #expect(surface.contains("case .secondary, .ghost, .destructive:"))
+        #expect(surface.contains("case .secondary:"))
+        #expect(surface.contains("case .ghost:"))
+        #expect(surface.contains("case .destructive:"))
+        #expect(control.contains("style.presentation == .nativeSurface"))
+        #expect(!surface.contains("TaisaFloatingButtonSurface"))
         #expect(surface.contains(".tint(TaisaColor.primaryAction.color)"))
     }
 
@@ -61,6 +65,12 @@ struct ActionComponentTests {
         #expect(TaisaStatusRole.active != .completed)
         #expect(TaisaStatusRole.dropped != .overdue)
         #expect(TaisaStatusRole.reopened != .warning)
+    }
+
+    @MainActor @Test func expandableSheetExposesAProgrammaticLargeDetentAction() {
+        let actions = TaisaExpandableSheetActions(expand: {})
+        actions.expand()
+        #expect(TaisaExpandableSheetContract.positions.contains(.large))
     }
 
     @Test @MainActor func sharedPressableSupportsCustomLabelsAndInteractiveRows() {

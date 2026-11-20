@@ -25,11 +25,11 @@ public struct ResponseActionIconButton: View {
     }
 
     public var body: some View {
-        TaisaButtonControl(style: TaisaButtonStyle(shape: .circle), action: action) {
+        TaisaButtonControl(style: TaisaButtonStyle(role: .ghost, shape: .circle), action: action) {
             CentralIcon(icon)
                 .frame(width: Contract.iconSize, height: Contract.iconSize)
                 .frame(width: Contract.visualWidth)
-                .frame(minHeight: Contract.minimumHitHeight)
+                .frame(minHeight: Contract.minimumHitHeight, alignment: .top)
         }
         .foregroundStyle(isSelected ? TaisaColor.foreground.color : TaisaColor.mutedForeground.color)
         .accessibilityLabel(accessibilityLabel)
@@ -77,7 +77,7 @@ public struct FeedbackTextEditor: View {
 
     public var body: some View {
         TextEditor(text: $text)
-            .font(TaisaTypography.body.font)
+            .taisaTypography(.body)
             .frame(minHeight: Contract.minimumHeight)
             .padding(TaisaSpacing.compact.rawValue)
             .modifier(LiquidTextInputSurface(cornerRadius: TaisaRadius.control.rawValue))

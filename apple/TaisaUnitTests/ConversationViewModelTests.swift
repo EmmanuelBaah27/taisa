@@ -1,6 +1,7 @@
 import XCTest
 import TaisaConversations
 import TaisaAudio
+import TaisaDesignSystem
 import TaisaStorage
 import TaisaVoice
 @testable import Taisa
@@ -191,6 +192,40 @@ final class ConversationViewModelTests: XCTestCase {
         model.requestClose()
 
         XCTAssertEqual(model.confirmation, .saveDiscardOrCancel)
+    }
+
+    func testSaveDismissesConversationAfterDurableSave() async {
+        var dismissed = 0
+        let client = ConversationScreenClient(
+            beginVoice: {}, pauseVoice: {}, resumeVoice: {}, sendVoice: { _ in },
+            sendText: { _, available in await available() }, retry: {},
+            saveDraft: { _ in }, discardDraft: {}
+        )
+        let model = ConversationViewModel(
+            conversationID: UUID().uuidString,
+            title: "New conversation",
+            entryIntent: nil,
+            composer: .typing("Keep this"),
+            text: "Keep this",
+            client: client,
+            dismiss: { dismissed += 1 }
+        )
+        model.requestClose()
+
+        let save = Task { await model.saveAndClose() }
+        for _ in 0..<100 where model.confirmation != nil { await Task.yield() }
+
+        XCTAssertNil(model.confirmation)
+        await save.value
+        XCTAssertEqual(dismissed, 1)
+    }
+
+    func testRecorderExitMotionRemovesSpatialScalingForReduceMotion() {
+        XCTAssertTrue(ConversationRecorderMotion.animatesExit(reduceMotion: false))
+        XCTAssertEqual(ConversationRecorderMotion.exitScale(reduceMotion: false), TaisaMotion.recordingControlExitScale)
+        XCTAssertEqual(ConversationRecorderMotion.replyEntranceScale, 0.98)
+        XCTAssertFalse(ConversationRecorderMotion.animatesExit(reduceMotion: true))
+        XCTAssertEqual(ConversationRecorderMotion.exitScale(reduceMotion: true), 1)
     }
 
     func testShortCaptureCloseOffersDiscardOrKeepRecordingWithoutSave() async {
@@ -1152,7 +1187,11 @@ final class ConversationViewModelTests: XCTestCase {
         XCTAssertEqual(model.composer, .recording)
         await finishCleanup.open()
         await discard.value
+        XCTAssertEqual(model.composer, .recording)
+        XCTAssertTrue(model.recorderExitInFlight)
+        model.completeRecorderExit()
         XCTAssertEqual(model.composer, .waitingForReply)
+        XCTAssertFalse(model.recorderExitInFlight)
     }
 
     func testTypedSendRetainsComposerBeforeDurableCommitCompletes() async {

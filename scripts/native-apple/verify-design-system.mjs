@@ -404,7 +404,9 @@ export async function surfaceAdoptionViolations({ repositoryRoot = process.cwd()
           }
           const argument = code.slice(start, end - 1).trim();
           const directRole = /^TaisaTypography\.\w+\.font$/.test(argument);
-          const textRole = file.endsWith('/TaisaText.swift') && argument === 'role.font';
+          const typographyOwner = file.endsWith('/TaisaText.swift')
+            || file.endsWith('/TaisaTypographyModifier.swift');
+          const textRole = typographyOwner && argument === 'role.font';
           const conditionalRoles = /^[\w.\s=!]+\?\s*TaisaTypography\.\w+\.font\s*:\s*TaisaTypography\.\w+\.font$/.test(argument);
           if (!directRole && !textRole && !conditionalRoles) {
             violations.push({ kind, file, value: argument });

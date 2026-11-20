@@ -7,6 +7,7 @@ import UIKit
 
 struct ConversationView: View {
     @State var model: ConversationViewModel
+    @State private var recorderExitProgress = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
@@ -17,6 +18,10 @@ struct ConversationView: View {
                     .zIndex(4)
                 if showsRecordingGlow {
                     recordingGlowBackground
+                        .modifier(ConversationRecorderExitModifier(
+                            isExiting: model.recorderExitInFlight,
+                            reduceMotion: reduceMotion
+                        ))
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
                         .ignoresSafeArea(edges: [.horizontal, .bottom])
                 }
@@ -77,11 +82,26 @@ struct ConversationView: View {
             }
             .toolbar(.hidden, for: .navigationBar)
         }
-        .opacity(model.isClosing ? 0 : 1)
         .background(TaisaColor.background.color.ignoresSafeArea())
         .accessibilityIdentifier("conversation.root")
         .interactiveDismissDisabled(true)
         .task { await model.start() }
+        .onChange(of: model.recorderExitInFlight) { _, isExiting in
+            guard isExiting else {
+                recorderExitProgress = false
+                return
+            }
+            guard !reduceMotion else {
+                model.completeRecorderExit()
+                return
+            }
+            withAnimation(TaisaMotion.overlayEaseOut, completionCriteria: .logicallyComplete) {
+                recorderExitProgress = true
+            } completion: {
+                model.completeRecorderExit()
+                recorderExitProgress = false
+            }
+        }
         .sheet(isPresented: Binding(
             get: { model.correctionMessageID != nil },
             set: { if !$0 { model.cancelCorrection() } }
@@ -140,7 +160,19 @@ struct ConversationView: View {
     }
 
     @ViewBuilder private var composerContent: some View {
-        switch model.composer {
+        if model.recorderExitInFlight, model.composer != .waitingForReply {
+            ZStack {
+                recordingBar(actionPhase)
+                    .modifier(ConversationRecorderExitModifier(
+                        isExiting: recorderExitProgress,
+                        reduceMotion: reduceMotion
+                    ))
+                voiceReplyButton
+                    .opacity(recorderExitProgress ? 1 : 0)
+                    .scaleEffect(recorderExitProgress ? 1 : ConversationRecorderMotion.replyEntranceScale)
+            }
+        } else {
+            switch model.composer {
             case .preparingVoice:
                 recordingBar(.preparing)
             case .recording:
@@ -198,6 +230,7 @@ struct ConversationView: View {
                     onRetry: performRecoveryPrimaryAction
                 )
                 .accessibilityIdentifier("conversation.retry")
+            }
         }
     }
 
@@ -247,11 +280,6 @@ struct ConversationView: View {
             onSend: { Task { await model.sendVoice() } }
         )
         .disabled(model.actionInFlight && model.composer != .preparingVoice)
-        .opacity(
-            model.actionInFlight && model.composer != .preparingVoice
-                ? TaisaControlMetric.disabledControlOpacity
-                : 1
-        )
         .accessibilityIdentifier("conversation.voice-composer")
     }
 
@@ -311,6 +339,7 @@ struct ConversationView: View {
         HStack {
             Spacer()
             TaisaSecondaryCapsuleButton(
+                elevation: .floating,
                 action: { Task { try? await model.beginVoice() } }
             ) {
                 HStack(spacing: TaisaSpacing.compact.rawValue) {
@@ -319,8 +348,6 @@ struct ConversationView: View {
                     TaisaText(role: .navigationLabel, content: "Reply")
                 }
                 .foregroundStyle(TaisaColor.foreground.color)
-                .padding(.horizontal, TaisaSpacing.page.rawValue)
-                .frame(height: TaisaControlMetric.recordingButtonHeight)
             }
             .accessibilityLabel("Reply by voice, starts recording")
             .accessibilityIdentifier("conversation.voice-reply")
@@ -352,6 +379,33 @@ struct ConversationView: View {
         case .request:
             model.cancelRecoveryAndClose()
         }
+    }
+}
+
+enum ConversationRecorderMotion {
+    static let replyEntranceScale: CGFloat = 0.98
+
+    static func animatesExit(reduceMotion: Bool) -> Bool { !reduceMotion }
+
+    static func exitScale(reduceMotion: Bool) -> CGFloat {
+        reduceMotion ? 1 : TaisaMotion.recordingControlExitScale
+    }
+}
+
+private struct ConversationRecorderExitModifier: ViewModifier {
+    let isExiting: Bool
+    let reduceMotion: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(isExiting ? 0 : 1)
+            .scaleEffect(isExiting ? ConversationRecorderMotion.exitScale(reduceMotion: reduceMotion) : 1)
+            .animation(
+                ConversationRecorderMotion.animatesExit(reduceMotion: reduceMotion)
+                    ? TaisaMotion.overlayEaseOut
+                    : nil,
+                value: isExiting
+            )
     }
 }
 

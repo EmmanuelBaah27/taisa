@@ -13,6 +13,7 @@ public struct TaisaProfileIconButton: View {
             accessibilityLabel: label,
             iconColor: .foreground,
             size: .standard,
+            elevation: .floating,
             action: action
         )
     }

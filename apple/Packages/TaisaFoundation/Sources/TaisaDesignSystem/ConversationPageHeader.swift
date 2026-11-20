@@ -15,13 +15,17 @@ public struct ConversationPageHeader: View {
 
     public var body: some View {
         ZStack {
-            Text(title)
-                .font(TaisaTypography.navigationLabel.font)
+            TaisaText(role: .navigationLabel, content: title)
                 .lineLimit(1)
                 .truncationMode(.tail)
                 .frame(width: TaisaControlMetric.conversationTitleWidth, alignment: .center)
             HStack {
-                TaisaSecondaryIconButton(icon: .chevronDown, accessibilityLabel: "Close conversation", action: onDismiss)
+                TaisaSecondaryIconButton(
+                    icon: .chevronDown,
+                    accessibilityLabel: "Close conversation",
+                    elevation: .floating,
+                    action: onDismiss
+                )
                 Spacer()
             }
         }

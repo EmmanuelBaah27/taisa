@@ -114,6 +114,7 @@ public struct TaisaChildPageHeader: View {
                     TaisaSecondaryIconButton(
                         icon: .chevronLeft,
                         accessibilityLabel: "Back",
+                        elevation: .floating,
                         action: back
                     )
                 }

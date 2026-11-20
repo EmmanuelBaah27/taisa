@@ -36,11 +36,17 @@ private struct TaisaButtonSurfaceModifier: ViewModifier {
                         .regular.tint(TaisaColor.primaryAction.color).interactive(),
                         in: surfaceShape
                     )
-            case .secondary, .ghost, .destructive:
+            case .secondary:
+                exactSurface.glassEffect(.clear.interactive(), in: surfaceShape)
+            case .ghost:
+                exactSurface
+            case .destructive:
                 exactSurface.glassEffect(.regular.interactive(), in: surfaceShape)
             }
         } else if role == .primary {
             exactSurface.background(TaisaColor.primaryAction.color, in: surfaceShape)
+        } else if role == .secondary || role == .ghost {
+            exactSurface
         } else if reduceTransparency {
             exactSurface.background(TaisaColor.raisedSurface.color, in: surfaceShape)
         } else {

@@ -4,7 +4,7 @@ import Testing
 @Suite("Design-system tokens")
 struct TokenTests {
     @Test func primaryActionUsesPortableContractValue() {
-        #expect(TaisaColor.primaryAction.hex == "#DEDE0F")
+        #expect(TaisaColor.primaryAction.hex == "#E7BB0D")
     }
 
     @Test func allButtonsExposeOnlyStandardAndSmallSizes() {

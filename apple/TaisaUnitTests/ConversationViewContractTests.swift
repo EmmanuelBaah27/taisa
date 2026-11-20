@@ -127,6 +127,13 @@ final class ConversationViewContractTests: XCTestCase {
         }
         XCTAssertTrue(source.contains("interactiveDismissDisabled"))
         XCTAssertTrue(source.contains("confirmationDialog"))
+        XCTAssertTrue(source.contains("TaisaExpandableSheet"))
+        XCTAssertTrue(source.contains("TaisaEditorSheetPolicy"))
+        XCTAssertTrue(source.contains("TaisaNativeConfirmationDialog"))
+        XCTAssertTrue(source.contains("withAnimation(TaisaMotion.overlayEaseOut, completionCriteria: .logicallyComplete)"))
+        XCTAssertFalse(source.contains("model.completePresentationExit()"))
+        XCTAssertFalse(source.contains("presentationVisible"))
+        XCTAssertFalse(source.contains(".opacity(model.isClosing ? 0 : 1)"))
         XCTAssertTrue(source.contains(".task(id: messages.last?.id)"))
         XCTAssertTrue(source.contains("conversation.timeline-bottom"))
         XCTAssertTrue(source.contains("hasPositionedInitialMessages"))
@@ -158,7 +165,7 @@ final class ConversationViewContractTests: XCTestCase {
         XCTAssertTrue(source.contains("height: TaisaControlMetric.recordingButtonHeight"))
         XCTAssertTrue(source.contains("HStack(spacing: TaisaSpacing.compact.rawValue)"))
         XCTAssertTrue(source.contains("CentralIcon(.voiceMid)"))
-        XCTAssertTrue(source.contains("Text(\"Reply\")"))
+        XCTAssertTrue(source.contains("TaisaText(role: .navigationLabel, content: \"Reply\")"))
         XCTAssertTrue(source.contains(".smooth(duration: TaisaMotion.settle)"))
         XCTAssertTrue(source.contains("Edit message"))
         XCTAssertTrue(source.contains("isProcessing: isSubmitting"))
@@ -176,7 +183,7 @@ final class ConversationViewContractTests: XCTestCase {
         XCTAssertTrue(source.contains("model.actionInFlight && model.composer != .preparingVoice"))
         XCTAssertTrue(source.contains("Microphone unavailable. Resume when the call ends."))
         XCTAssertTrue(source.contains("TaisaControlMetric.conversationEmptyVoiceIcon"))
-        XCTAssertTrue(source.contains("TaisaTypography.supporting.font"))
+        XCTAssertTrue(source.contains("TaisaText(role: .supporting"))
         XCTAssertTrue(source.contains("case .durableProcessing: .recording"))
         XCTAssertTrue(source.contains("TAISA_CAPTURE begin.failure type="))
         XCTAssertFalse(source.contains("Correct transcript"))
@@ -184,6 +191,34 @@ final class ConversationViewContractTests: XCTestCase {
         XCTAssertFalse(source.contains("Text(\"You\")"))
         XCTAssertFalse(source.contains("conversation.transcript-preview"))
         XCTAssertFalse(source.contains("import GRDB"))
+    }
+
+    func testReplyFloatsInLayoutWithTheNeutralSecondaryTreatment() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let source = try String(
+            contentsOf: root.appendingPathComponent("TaisaApp/Conversation/ConversationView.swift"),
+            encoding: .utf8
+        )
+
+        let replyStart = try XCTUnwrap(source.range(of: "private var voiceReplyButton"))
+        let replyRemainder = source[replyStart.lowerBound...]
+        let replyEnd = try XCTUnwrap(replyRemainder.range(of: "private func performRecoveryPrimaryAction"))
+        let replySource = replyRemainder[..<replyEnd.lowerBound]
+        XCTAssertTrue(replySource.contains("TaisaSecondaryCapsuleButton("))
+        XCTAssertTrue(replySource.contains("elevation: .floating"))
+    }
+
+    func testConversationMessagesUseSemanticBodyTypographyAndInlineControls() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let timeline = try String(
+            contentsOf: root.appendingPathComponent("TaisaApp/Conversation/ConversationTimeline.swift"),
+            encoding: .utf8
+        )
+
+        XCTAssertTrue(timeline.contains("TaisaText(role: .body, content: message.body)"))
+        XCTAssertTrue(timeline.contains("TaisaText.native(markdown, role: .body)"))
+        XCTAssertTrue(timeline.contains(".lineSpacing(TaisaTypography.body.lineSpacing)"))
+        XCTAssertTrue(timeline.contains("spacing: TaisaSpacing.tight.rawValue"))
     }
 
     func testJumpToLatestUsesActualContentInsteadOfTheResponseRunway() {
@@ -405,8 +440,8 @@ final class ConversationViewContractTests: XCTestCase {
         XCTAssertTrue(source.contains("SelectableChip"))
         XCTAssertTrue(source.contains("FeedbackTextEditor"))
         XCTAssertTrue(source.contains("ActionPanel"))
-        XCTAssertTrue(source.contains("TaisaTypography.metadata.font"))
-        XCTAssertTrue(source.contains("TaisaTypography.body.font"))
+        XCTAssertTrue(source.contains("TaisaText(role: .metadata"))
+        XCTAssertTrue(source.contains("TaisaText(role: .body"))
         XCTAssertFalse(source.contains("AssistantResponseActionsLayout"))
         XCTAssertFalse(source.contains(".font(.caption)"))
         XCTAssertFalse(source.contains(".font(.body)"))

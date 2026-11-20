@@ -17,11 +17,11 @@ public struct TaisaText: View {
 
     /// Text-valued primitive for platform text renderers and attributed messages.
     public static func native(_ content: String, role: TaisaTypography = .body) -> Text {
-        Text(content).font(role.font)
+        Text(content).font(role.font).tracking(role.tracking)
     }
 
     public static func native(_ content: AttributedString, role: TaisaTypography = .body) -> Text {
-        Text(content).font(role.font)
+        Text(content).font(role.font).tracking(role.tracking)
     }
 
     public static func joining(_ first: Text, _ second: Text) -> Text {
@@ -32,6 +32,7 @@ public struct TaisaText: View {
         Text(content)
             .font(role.font)
             .lineSpacing(role.lineSpacing)
+            .tracking(role.tracking)
             .foregroundStyle(color.color)
     }
 }

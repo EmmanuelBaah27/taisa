@@ -115,7 +115,7 @@ public struct TaisaDateField: View {
 
     public var body: some View {
         DatePicker(title, selection: $selection, displayedComponents: .date)
-            .font(TaisaTypography.body.font)
+            .taisaTypography(.body)
             .tint(TaisaColor.foreground.color)
     }
 }

@@ -14,11 +14,9 @@ public struct RecordedVoiceDraftBadge: View {
         HStack(spacing: TaisaSpacing.compact.rawValue) {
             CentralIcon(.voiceMid)
                 .frame(width: Contract.iconSize, height: Contract.iconSize)
-            Text(Contract.label)
-                .font(TaisaTypography.navigationLabel.font)
+            TaisaText(role: .navigationLabel, content: Contract.label)
             if !elapsed.isEmpty {
-                Text(elapsed)
-                    .font(TaisaTypography.metadata.font)
+                TaisaText(role: .metadata, content: elapsed)
                     .foregroundStyle(TaisaColor.mutedForeground.color)
                     .monospacedDigit()
             }

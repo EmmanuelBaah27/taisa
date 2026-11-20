@@ -65,13 +65,13 @@ struct ConversationsView: View {
                 discard: { confirmation = .discard($0) }
             )
         }
-        .confirmationDialog(
-                confirmationTitle,
-                isPresented: Binding(
-                    get: { confirmation != nil },
-                    set: { if !$0 { confirmation = nil } }
-                )
-            ) {
+        .modifier(TaisaNativeConfirmationDialog(
+            title: confirmationTitle,
+            isPresented: Binding(
+                get: { confirmation != nil },
+                set: { if !$0 { confirmation = nil } }
+            ),
+            actions: {
                 if let confirmation {
                     switch confirmation {
                 case .discard(let draft):
@@ -82,12 +82,18 @@ struct ConversationsView: View {
                     }
                 }
                 TaisaSystemButton("Cancel", role: .cancel) {}
-            }
-        .alert("Rename conversation", isPresented: Binding(
+            },
+            message: { EmptyView() }
+        ))
+        .modifier(TaisaTextEntryAlert(
+            title: "Rename conversation",
+            prompt: "Title",
+            text: $renameText,
+            isPresented: Binding(
                 get: { renameTarget != nil },
                 set: { if !$0 { renameTarget = nil } }
-            )) {
-                TaisaSystemTextField("Title", text: $renameText)
+            ),
+            actions: {
                 TaisaSystemButton("Rename") {
                     guard let target = renameTarget else { return }
                     Task { await model.renameConversation(id: target.id, title: renameText) }
@@ -95,7 +101,9 @@ struct ConversationsView: View {
                 }
                 .accessibilityIdentifier("conversation.rename")
                 TaisaSystemButton("Cancel", role: .cancel) { renameTarget = nil }
-            }
+            },
+            message: { EmptyView() }
+        ))
     }
 
     private var header: some View {
@@ -179,7 +187,7 @@ struct ConversationsView: View {
     }
 
     private var draftsButton: some View {
-        TaisaSecondaryCapsuleButton(size: .standard, action: { showsDrafts = true }) {
+        TaisaSecondaryCapsuleButton(size: .small, action: { showsDrafts = true }) {
             HStack(spacing: 6) {
                 TaisaText(role: .navigationLabel, content: "Drafts")
                 Circle()

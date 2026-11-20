@@ -108,12 +108,16 @@ struct TaskDetailSheetContent: View {
 }
 
 private struct TaskDetailSheetView: View {
+    @Environment(\.taisaExpandableSheetActions) private var sheetActions
     let snapshot: ActionDetailSnapshot
     let model: CareerWorkModel
     let dismiss: () -> Void
 
     @State private var checklistTitle = ""
+    @State private var titleDraft = ""
     @State private var completionEvidence = ""
+    @State private var isEditingTitle = false
+    @State private var isSavingTitle = false
     @State private var isAddingSubtask = false
     @State private var isCompleting = false
     @State private var showsArchive = false
@@ -125,16 +129,50 @@ private struct TaskDetailSheetView: View {
         VStack(alignment: .leading, spacing: TaisaSpacing.standard.rawValue) {
             ScrollView {
                 VStack(alignment: .leading, spacing: TaisaSpacing.standard.rawValue) {
-                    TaisaText(role: .sheetTitle, content: snapshot.action.title)
+                    if isEditingTitle {
+                        TaisaField(
+                            "Task title",
+                            text: $titleDraft,
+                            placeholder: "Task title",
+                            labelPresentation: .placeholderOnly
+                        )
+                        HStack(spacing: TaisaSpacing.compact.rawValue) {
+                            TaisaSecondaryCapsuleButton {
+                                titleDraft = snapshot.action.title
+                                isEditingTitle = false
+                            } label: {
+                                TaisaText(role: .buttonLabel, content: "Cancel")
+                                    .padding(.horizontal, TaisaSpacing.standard.rawValue)
+                            }
+                            .disabled(isSavingTitle)
+                            TaisaButton(
+                                role: .primary,
+                                label: "Save",
+                                icon: .completed,
+                                size: .small,
+                                layout: .intrinsic,
+                                isEnabled: canSaveTitle,
+                                isProcessing: isSavingTitle
+                            ) {
+                                saveTitle()
+                            }
+                        }
+                    } else {
+                        TaisaPressable(action: beginTitleEdit) {
+                            TaisaText(role: .sheetTitle, content: snapshot.action.title)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .contentShape(Rectangle())
+                        }
+                        .accessibilityLabel("Edit task title, \(snapshot.action.title)")
                         .accessibilityAddTraits(.isHeader)
+                        .accessibilityIdentifier("tasks.detail.edit-title")
+                    }
 
-                    TaisaButton(
-                        role: .ghost,
-                        shape: .capsule,
+                    TaisaInlineAction(
                         label: dueText,
                         icon: .calendar,
-                        size: .small,
-                        layout: .intrinsic,
+                        style: .muted,
+                        isSelected: currentDueDate != nil,
                         accessibilityLabel: dueText == "Due" ? "Set due date" : "Change due date, \(dueText)"
                     ) {
                         draftDueDate = currentDueDate ?? Date()
@@ -329,11 +367,38 @@ private struct TaskDetailSheetView: View {
                 .frame(width: TaisaControlMetric.compactActionIcon, height: TaisaControlMetric.compactActionIcon)
             TaisaText(role: .buttonLabel, content: label)
         }
-        .padding(.horizontal, TaisaSpacing.standard.rawValue)
     }
 
     private var dueText: String {
         actionDueText(snapshot.action)?.replacingOccurrences(of: "Due ", with: "") ?? "Due"
+    }
+
+    private var trimmedTitleDraft: String {
+        titleDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var canSaveTitle: Bool {
+        !trimmedTitleDraft.isEmpty && trimmedTitleDraft != snapshot.action.title && !isSavingTitle
+    }
+
+    private func beginTitleEdit() {
+        titleDraft = snapshot.action.title
+        isEditingTitle = true
+        sheetActions.expand()
+    }
+
+    private func saveTitle() {
+        guard canSaveTitle else { return }
+        let title = trimmedTitleDraft
+        isSavingTitle = true
+        Task {
+            let didSave = await model.editSelectedAction(
+                actionDraft(title: title),
+                expectedUpdatedAtMS: snapshot.action.updatedAtMS
+            )
+            isSavingTitle = false
+            if didSave { isEditingTitle = false }
+        }
     }
 
     private var currentDueDate: Date? {
@@ -361,6 +426,23 @@ private struct TaskDetailSheetView: View {
             detail: snapshot.action.detail,
             parent: parent,
             dueDay: dueDate.actionDueDay
+        )
+    }
+
+    private func actionDraft(title: String) -> ActionDraft {
+        let parent: ActionParentContext
+        if let goalID = snapshot.action.goalID, let milestoneID = snapshot.action.milestoneID {
+            parent = .milestone(goalID: goalID, milestoneID: milestoneID)
+        } else if let goalID = snapshot.action.goalID {
+            parent = .goal(id: goalID)
+        } else {
+            parent = .standalone
+        }
+        return ActionDraft(
+            title: title,
+            detail: snapshot.action.detail,
+            parent: parent,
+            dueDay: snapshot.action.dueDay ?? currentDueDate?.actionDueDay
         )
     }
 
@@ -404,6 +486,13 @@ fileprivate enum CareerWorkRoot {
     var title: String { self == .actions ? "Tasks" : "Goals" }
 }
 
+private enum CareerWorkAvailability {
+    // These editor surfaces remain implemented for later design work, but no
+    // shipping entry point may expose them before that review is complete.
+    static let careerEditorsAreAvailable = false
+    static let taskEditorsAreAvailable = true
+}
+
 struct CareerWorkView: View {
     @State private var model: CareerWorkModel
     @State private var selectedRoute: CareerWorkRoute?
@@ -411,7 +500,6 @@ struct CareerWorkView: View {
     @State private var showsCreateGoal = false
     @State private var showsCreateAction = false
     @State private var actionEditorInitial: ActionDraft?
-    @State private var showsActionFilters = false
     @State private var editor: CareerWorkEditor?
     @State private var selectedTaskID: String?
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -478,12 +566,6 @@ struct CareerWorkView: View {
                 }
             }
         }
-        .sheet(isPresented: $showsActionFilters) {
-            ActionFilterSheet(filter: model.actionFilter, goals: allGoals, milestones: allMilestones) { filter in
-                await model.setActionFilter(filter)
-                showsActionFilters = false
-            }
-        }
         .sheet(isPresented: duplicateReviewPresented) {
             ActionDuplicateReviewSheet(review: model.duplicateGate) { decision in
                 await model.resolveDuplicate(decision)
@@ -526,9 +608,13 @@ struct CareerWorkView: View {
                 )
             } actions: {
                 if root == .actions {
-                    TaisaButton(role: .secondary, label: "Create task", icon: .add) { showsCreateAction = true }
+                    if CareerWorkAvailability.taskEditorsAreAvailable {
+                        TaisaButton(role: .secondary, label: "Create task", icon: .add) { showsCreateAction = true }
+                    }
                 } else {
-                    TaisaButton(role: .primary, label: "Create goal", icon: .goal) { showsCreateGoal = true }
+                    if CareerWorkAvailability.careerEditorsAreAvailable {
+                        TaisaButton(role: .primary, label: "Create goal", icon: .goal) { showsCreateGoal = true }
+                    }
                 }
             }
             .accessibilityIdentifier(root == .actions ? "tasks.empty" : "goals.empty")
@@ -565,21 +651,23 @@ struct CareerWorkView: View {
 
     @ToolbarContentBuilder private var createToolbar: some ToolbarContent {
         if root == .actions {
-            ToolbarItem(placement: .topBarTrailing) {
-                TaisaToolbarAction(label: "Create task", icon: .add) { showsCreateAction = true }
-                    .accessibilityIdentifier("tasks.create")
+            if CareerWorkAvailability.taskEditorsAreAvailable {
+                ToolbarItem(placement: .topBarTrailing) {
+                    TaisaToolbarAction(label: "Create task", icon: .add) { showsCreateAction = true }
+                        .accessibilityIdentifier("tasks.create")
+                }
             }
         } else {
-            ToolbarItem(placement: .topBarTrailing) {
-                TaisaToolbarAction(label: "Create a goal", icon: .goal) { showsCreateGoal = true }
+            if CareerWorkAvailability.careerEditorsAreAvailable {
+                ToolbarItem(placement: .topBarTrailing) {
+                    TaisaToolbarAction(label: "Create a goal", icon: .goal) { showsCreateGoal = true }
+                }
             }
         }
     }
 
     private func taskCollection(_ actions: [ActionRecord]) -> some View {
         VStack(spacing: TaisaSpacing.compact.rawValue) {
-            TaisaButton(role: .secondary, label: "Filter tasks") { showsActionFilters = true }
-                .accessibilityIdentifier("tasks.filters")
             ScrollView(.horizontal) {
                 HStack {
                     ForEach(ActionLifecycleFilter.allCases, id: \.self) { lifecycle in
@@ -769,10 +857,18 @@ private struct CareerGoalDetail: View {
     var body: some View {
         List {
             TaisaSection("Progress") { TaisaRow(title: snapshot.progress.summary, icon: .goal) }
-            TaisaSection("Add work") {
-                TaisaButton(role: .secondary, label: "Add milestone", icon: .milestone) { add(.milestone) }
-                TaisaButton(role: .secondary, label: "Add task", icon: .action) { addAction() }
-                TaisaButton(role: .secondary, label: "Add evidence", icon: .evidence) { add(.evidence(actions: snapshot.actions)) }
+            if CareerWorkAvailability.careerEditorsAreAvailable || CareerWorkAvailability.taskEditorsAreAvailable {
+                TaisaSection("Add work") {
+                    if CareerWorkAvailability.careerEditorsAreAvailable {
+                        TaisaButton(role: .secondary, label: "Add milestone", icon: .milestone) { add(.milestone) }
+                    }
+                    if CareerWorkAvailability.taskEditorsAreAvailable {
+                        TaisaButton(role: .secondary, label: "Add task", icon: .action) { addAction() }
+                    }
+                    if CareerWorkAvailability.careerEditorsAreAvailable {
+                        TaisaButton(role: .secondary, label: "Add evidence", icon: .evidence) { add(.evidence(actions: snapshot.actions)) }
+                    }
+                }
             }
             if !snapshot.milestones.isEmpty {
                 TaisaSection("Milestones") {
@@ -923,7 +1019,6 @@ private struct CareerActionDetail: View {
     @State private var showsComplete = false
     @State private var showsDrop = false
     @State private var showsDelete = false
-    @State private var showsEdit = false
 
     var body: some View {
         List {
@@ -1015,17 +1110,9 @@ private struct CareerActionDetail: View {
                 if await model.deleteSelectedAction() { deleted() }
             }
         })
-        .sheet(isPresented: $showsEdit) {
-            ActionEditorSheet(goals: goals, milestones: milestones, initial: currentDraft, editing: true) { draft in
-                if await model.editSelectedAction(draft, expectedUpdatedAtMS: snapshot.action.updatedAtMS) {
-                    showsEdit = false
-                }
-            }
-        }
     }
 
     @ViewBuilder private var lifecycleControls: some View {
-        TaisaButton(role: .secondary, label: "Edit task", icon: .edit) { showsEdit = true }
         switch ActionStatus(rawValue: snapshot.action.status) {
         case .active:
             TaisaField("Completion evidence", text: $completionEvidence, placeholder: "What shows this is complete?")
@@ -1085,83 +1172,6 @@ private enum ActionParentChoice: Hashable {
     case milestone(String, String)
 }
 
-
-private enum ActionFilterParentChoice: Hashable {
-    case all, goal(String), milestone(String, String)
-}
-
-private enum ActionFilterWeekChoice: Hashable { case all, thisWeek }
-private enum ActionFilterOriginChoice: Hashable { case all, manual }
-
-private struct ActionFilterSheet: View {
-    @Environment(\.dismiss) private var dismiss
-    let goals: [GoalRecord]
-    let milestones: [MilestoneRecord]
-    let apply: (ActionCollectionFilter) async -> Void
-    @State private var lifecycle: ActionLifecycleFilter
-    @State private var parent: ActionFilterParentChoice
-    @State private var due: ActionDueFilter
-    @State private var week: ActionFilterWeekChoice
-    @State private var origin: ActionFilterOriginChoice
-
-    init(filter: ActionCollectionFilter, goals: [GoalRecord], milestones: [MilestoneRecord], apply: @escaping (ActionCollectionFilter) async -> Void) {
-        self.goals = goals
-        self.milestones = milestones
-        self.apply = apply
-        _lifecycle = State(initialValue: filter.lifecycle)
-        _parent = State(initialValue: Self.parentChoice(filter))
-        _due = State(initialValue: filter.due)
-        _week = State(initialValue: filter.weekStartMS == nil ? .all : .thisWeek)
-        _origin = State(initialValue: filter.origin == nil ? .all : .manual)
-    }
-
-    var body: some View {
-        NavigationStack {
-            Form {
-                TaisaPicker("Lifecycle", selection: $lifecycle, options: ActionLifecycleFilter.allCases) { $0.rawValue.capitalized }
-                TaisaPicker("Relationship", selection: $parent, options: parentOptions, label: parentLabel)
-                TaisaPicker("Due", selection: $due, options: ActionDueFilter.allCases) { dueLabel($0) }
-                TaisaPicker("Week", selection: $week, options: [.all, .thisWeek]) { $0 == .all ? "Any week" : "This week" }
-                TaisaPicker("Origin", selection: $origin, options: [.all, .manual]) { $0 == .all ? "Any origin" : "Manual" }
-                TaisaButton(role: .primary, label: "Apply filters") { Task { await apply(filter) } }
-                TaisaButton(role: .secondary, label: "Cancel") { dismiss() }
-            }
-            .taisaNavigationTitle("Filter tasks")
-            .accessibilityIdentifier("career-work.action.filter-sheet")
-        }
-    }
-
-    private var parentOptions: [ActionFilterParentChoice] {
-        [.all] + goals.map { .goal($0.id) } + milestones.map { .milestone($0.goalID, $0.id) }
-    }
-    private func parentLabel(_ choice: ActionFilterParentChoice) -> String {
-        switch choice {
-        case .all: "Any relationship"
-        case let .goal(id): goals.first(where: { $0.id == id })?.title ?? "Goal"
-        case let .milestone(_, id): milestones.first(where: { $0.id == id })?.title ?? "Milestone"
-        }
-    }
-    private func dueLabel(_ value: ActionDueFilter) -> String {
-        switch value { case .all: "Any due date"; case .overdue: "Overdue"; case .due: "Due today"; case .noDueDay: "No due date" }
-    }
-    private var filter: ActionCollectionFilter {
-        let relationship: (String?, String?) = switch parent {
-        case .all: (nil, nil)
-        case let .goal(id): (id, nil)
-        case let .milestone(goalID, milestoneID): (goalID, milestoneID)
-        }
-        return .init(lifecycle: lifecycle, goalID: relationship.0, milestoneID: relationship.1, due: due, weekStartMS: week == .thisWeek ? Self.currentWeekStartMS : nil, origin: origin == .manual ? .manual : nil)
-    }
-    private static func parentChoice(_ filter: ActionCollectionFilter) -> ActionFilterParentChoice {
-        if let milestoneID = filter.milestoneID { return .milestone(filter.goalID ?? "", milestoneID) }
-        if let goalID = filter.goalID { return .goal(goalID) }
-        return .all
-    }
-    private static var currentWeekStartMS: Int64 {
-        let start = (try? WeekCalendar(timeZone: .current).week(containing: Date()).start) ?? Date()
-        return Int64((start.timeIntervalSince1970 * 1_000).rounded())
-    }
-}
 
 private func actionDueText(_ action: ActionRecord) -> String? {
     if let dueDay = action.dueDay { return "Due \(dueDay.rawValue)" }

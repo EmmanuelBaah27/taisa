@@ -26,7 +26,7 @@ public struct TaisaTaskTitleField: View {
             ),
             axis: .vertical
         )
-            .font(TaisaTypography.taskTitle.font)
+            .taisaTypography(.taskTitle)
             .tint(TaisaColor.foreground.color)
             .lineLimit(1...3)
             .focused(focus)

@@ -4,7 +4,7 @@ import SwiftUI
 /// Content actions (rows, navigation items and inline links) keep their surrounding
 /// surface; standalone and floating actions use the same native glass treatment.
 public struct TaisaButtonStyle: PrimitiveButtonStyle {
-    public enum Presentation: Sendable { case surface, content }
+    public enum Presentation: Sendable { case surface, nativeSurface, content }
 
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     let role: TaisaButtonRole
@@ -28,7 +28,7 @@ public struct TaisaButtonStyle: PrimitiveButtonStyle {
         styledButton(configuration)
             .buttonBorderShape(borderShape)
             .contentShape(buttonShape)
-            .font(TaisaTypography.buttonLabel.font)
+            .taisaTypography(.buttonLabel)
     }
 
     @ViewBuilder private func styledButton(_ configuration: Configuration) -> some View {
