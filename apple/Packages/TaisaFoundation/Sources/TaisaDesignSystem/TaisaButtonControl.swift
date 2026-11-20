@@ -24,6 +24,9 @@ public struct TaisaButtonControl<Label: View>: View {
         if style.presentation == .content {
             Button(role: role, action: action) { label }
                 .buttonStyle(style)
+        } else if style.presentation == .nativeSurface {
+            Button(role: role, action: action) { label }
+                .buttonStyle(style)
         } else {
             let effectiveRole: TaisaButtonRole = role == .destructive ? .destructive : style.role
             Button(role: role, action: action) { label }

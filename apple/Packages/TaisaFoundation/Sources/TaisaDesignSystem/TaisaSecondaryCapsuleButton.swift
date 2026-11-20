@@ -25,11 +25,16 @@ public struct TaisaSecondaryCapsuleButton<Label: View>: View {
         TaisaButtonControl(
             style: TaisaButtonStyle(
                 role: elevation == .floating ? .secondary : .ghost,
+                presentation: elevation == .floating ? .nativeSurface : .surface,
                 size: size
             ),
             action: action
         ) {
-            label.padding(.horizontal, TaisaSpacing.standard.rawValue)
+            if elevation == .floating {
+                label
+            } else {
+                label.padding(.horizontal, TaisaSpacing.standard.rawValue)
+            }
         }
         .contentShape(.interaction, Capsule().inset(by: -size.hitSlop))
     }

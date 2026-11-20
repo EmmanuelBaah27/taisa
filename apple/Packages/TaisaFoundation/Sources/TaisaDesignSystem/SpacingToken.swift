@@ -104,8 +104,6 @@ public enum TaisaEffect {
     public static let secondaryButtonShadowOpacity: Double = 0.08
     public static let secondaryButtonShadowRadius: CGFloat = 8
     public static let secondaryButtonShadowY: CGFloat = 2
-    /// A quiet neutral tint keeps wide floating controls from reading as white highlights.
-    public static let floatingButtonNeutralTintOpacity: Double = 0.04
 }
 
 public enum TaisaRadius: CGFloat, CaseIterable, Sendable {

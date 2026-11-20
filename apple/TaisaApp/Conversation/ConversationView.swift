@@ -348,8 +348,6 @@ struct ConversationView: View {
                     TaisaText(role: .navigationLabel, content: "Reply")
                 }
                 .foregroundStyle(TaisaColor.foreground.color)
-                .padding(.horizontal, TaisaSpacing.page.rawValue)
-                .frame(height: TaisaControlMetric.recordingButtonHeight)
             }
             .accessibilityLabel("Reply by voice, starts recording")
             .accessibilityIdentifier("conversation.voice-reply")

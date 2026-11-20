@@ -367,7 +367,6 @@ private struct TaskDetailSheetView: View {
                 .frame(width: TaisaControlMetric.compactActionIcon, height: TaisaControlMetric.compactActionIcon)
             TaisaText(role: .buttonLabel, content: label)
         }
-        .padding(.horizontal, TaisaSpacing.standard.rawValue)
     }
 
     private var dueText: String {

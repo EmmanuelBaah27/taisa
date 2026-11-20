@@ -51,8 +51,8 @@ struct TypographyTokenTests {
 
         #expect(source.contains(".lineSpacing(role.lineSpacing)"))
         #expect(source.contains(".tracking(role.tracking)"))
-        #expect(abs(TaisaTypography.buttonLabel.lineSpacing - 4.640625) < 0.001)
-        #expect(abs(TaisaTypography.supporting.lineSpacing - 3.060546875) < 0.001)
+        #expect(abs(TaisaTypography.buttonLabel.lineSpacing - 2.640625) < 0.001)
+        #expect(abs(TaisaTypography.supporting.lineSpacing - 1.060546875) < 0.001)
         #expect(abs(TaisaTypography.metadata.lineSpacing - 3.48046875) < 0.001)
         #expect(abs(TaisaTypography.heading.lineSpacing) < 0.001)
     }
@@ -76,23 +76,23 @@ struct TypographyTokenTests {
         [
             .display: 36,
             .profileName: TaisaProfileMetric.nameLineHeight,
-            .profileBody: 24,
-            .profileLabel: 24,
-            .profileSupporting: 20,
+            .profileBody: 22,
+            .profileLabel: 22,
+            .profileSupporting: 18,
             .heading: 26,
-            .bodyLarge: 26,
-            .body: 24,
-            .label: 20,
-            .buttonLabel: 24,
+            .bodyLarge: 24,
+            .body: 22,
+            .label: 18,
+            .buttonLabel: 22,
             .metadata: 18,
-            .navigationLabel: 24,
-            .supporting: 20,
-            .childHeaderTitle: 24,
+            .navigationLabel: 22,
+            .supporting: 18,
+            .childHeaderTitle: 22,
             .datedPageTitle: 36,
-            .taskTitle: 24,
-            .taskSupporting: 20,
+            .taskTitle: 22,
+            .taskSupporting: 18,
             .sheetTitle: 26,
-            .sectionLabel: 20,
+            .sectionLabel: 18,
         ]
     }
 

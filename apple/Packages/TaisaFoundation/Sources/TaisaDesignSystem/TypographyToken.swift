@@ -54,12 +54,12 @@ public enum TaisaTypography: String, CaseIterable, Sendable {
         switch self {
         case .display: 36
         case .profileName: TaisaProfileMetric.nameLineHeight
-        case .profileBody, .profileLabel: 24
-        case .profileSupporting: 20
+        case .profileBody, .profileLabel: 22
+        case .profileSupporting: 18
         case .heading: 26
-        case .bodyLarge: 26
-        case .body, .buttonLabel, .navigationLabel, .childHeaderTitle, .taskTitle: 24
-        case .label, .supporting, .taskSupporting, .sectionLabel: 20
+        case .bodyLarge: 24
+        case .body, .buttonLabel, .navigationLabel, .childHeaderTitle, .taskTitle: 22
+        case .label, .supporting, .taskSupporting, .sectionLabel: 18
         case .metadata: 18
         case .datedPageTitle: 36
         case .sheetTitle: 26

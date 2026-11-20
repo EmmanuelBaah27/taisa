@@ -39,6 +39,7 @@ public struct TaisaSecondaryIconButton: View {
             style: TaisaButtonStyle(
                 role: elevation == .floating ? .secondary : .ghost,
                 shape: .circle,
+                presentation: elevation == .floating ? .nativeSurface : .surface,
                 size: size
             ),
             action: action
