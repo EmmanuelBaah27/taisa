@@ -7,6 +7,8 @@ import UIKit
 
 struct ConversationView: View {
     @State var model: ConversationViewModel
+    @State private var recorderExitProgress = false
+    @State private var presentationVisible = true
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
@@ -77,19 +79,44 @@ struct ConversationView: View {
             }
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 composer
-                    .modifier(ConversationRecorderExitModifier(
-                        isExiting: model.recorderExitInFlight,
-                        reduceMotion: reduceMotion
-                    ))
                     .zIndex(2)
             }
             .toolbar(.hidden, for: .navigationBar)
         }
-        .opacity(model.presentationPhase.keepsContentVisible ? 1 : 0)
         .background(TaisaColor.background.color.ignoresSafeArea())
+        .opacity(presentationVisible ? 1 : 0)
         .accessibilityIdentifier("conversation.root")
         .interactiveDismissDisabled(true)
         .task { await model.start() }
+        .onChange(of: model.recorderExitInFlight) { _, isExiting in
+            guard isExiting else {
+                recorderExitProgress = false
+                return
+            }
+            guard !reduceMotion else {
+                model.completeRecorderExit()
+                return
+            }
+            withAnimation(TaisaMotion.overlayEaseOut, completionCriteria: .logicallyComplete) {
+                recorderExitProgress = true
+            } completion: {
+                model.completeRecorderExit()
+                recorderExitProgress = false
+            }
+        }
+        .onChange(of: model.presentationPhase) { _, phase in
+            guard phase == .committing else { return }
+            guard !reduceMotion else {
+                presentationVisible = false
+                model.completePresentationExit()
+                return
+            }
+            withAnimation(TaisaMotion.overlayEaseOut, completionCriteria: .logicallyComplete) {
+                presentationVisible = false
+            } completion: {
+                model.completePresentationExit()
+            }
+        }
         .sheet(isPresented: Binding(
             get: { model.correctionMessageID != nil },
             set: { if !$0 { model.cancelCorrection() } }
@@ -148,7 +175,19 @@ struct ConversationView: View {
     }
 
     @ViewBuilder private var composerContent: some View {
-        switch model.composer {
+        if model.recorderExitInFlight, model.composer != .waitingForReply {
+            ZStack {
+                recordingBar(actionPhase)
+                    .modifier(ConversationRecorderExitModifier(
+                        isExiting: recorderExitProgress,
+                        reduceMotion: reduceMotion
+                    ))
+                voiceReplyButton
+                    .opacity(recorderExitProgress ? 1 : 0)
+                    .scaleEffect(recorderExitProgress ? 1 : ConversationRecorderMotion.replyEntranceScale)
+            }
+        } else {
+            switch model.composer {
             case .preparingVoice:
                 recordingBar(.preparing)
             case .recording:
@@ -206,6 +245,7 @@ struct ConversationView: View {
                     onRetry: performRecoveryPrimaryAction
                 )
                 .accessibilityIdentifier("conversation.retry")
+            }
         }
     }
 
@@ -359,6 +399,8 @@ struct ConversationView: View {
 }
 
 enum ConversationRecorderMotion {
+    static let replyEntranceScale: CGFloat = 0.98
+
     static func animatesExit(reduceMotion: Bool) -> Bool { !reduceMotion }
 
     static func exitScale(reduceMotion: Bool) -> CGFloat {

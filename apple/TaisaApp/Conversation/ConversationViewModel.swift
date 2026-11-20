@@ -109,9 +109,7 @@ final class ConversationViewModel {
     private(set) var title: String
     private(set) var composer: ComposerState
     private(set) var isClosing = false
-    var presentationPhase: TaisaImmersivePresentationPhase {
-        isClosing ? .committing : .active
-    }
+    private(set) var presentationPhase: TaisaImmersivePresentationPhase = .active
     private(set) var messages: [MessageRecord] = []
     private(set) var assistantResponses: [String: AssistantResponseRecord] = [:]
     private(set) var confirmation: Confirmation?
@@ -163,7 +161,6 @@ final class ConversationViewModel {
     @ObservationIgnored private let entryIntent: ConversationEntryIntent?
     @ObservationIgnored private let client: ConversationScreenClient
     @ObservationIgnored private let dismiss: @MainActor () -> Void
-    @ObservationIgnored private let waitForConfirmationDismissal: @MainActor @Sendable () async -> Void
     @ObservationIgnored private var started = false
     private(set) var actionInFlight = false
     private(set) var recorderExitInFlight = false
@@ -200,10 +197,7 @@ final class ConversationViewModel {
         composer: ComposerState = .waitingForReply,
         text: String = "",
         client: ConversationScreenClient,
-        dismiss: @escaping @MainActor () -> Void = {},
-        waitForConfirmationDismissal: @escaping @MainActor @Sendable () async -> Void = {
-            try? await Task.sleep(for: .seconds(TaisaMotion.overlayEaseOutDuration))
-        }
+        dismiss: @escaping @MainActor () -> Void = {}
     ) {
         self.conversationID = conversationID
         self.title = title
@@ -212,7 +206,6 @@ final class ConversationViewModel {
         self.text = text
         self.client = client
         self.dismiss = dismiss
-        self.waitForConfirmationDismissal = waitForConfirmationDismissal
     }
 
     static func preview(
@@ -699,12 +692,9 @@ final class ConversationViewModel {
             try await client.discardDraft()
             if closesEmptyConversation {
                 try await client.discardEmptyConversation()
-                await waitForConfirmationDismissal()
                 closeConversation()
             } else {
-                await waitForConfirmationDismissal()
-                composer = .waitingForReply
-                recorderExitInFlight = false
+                recorderExitInFlight = true
             }
         } catch {
             isClosing = false
@@ -728,7 +718,6 @@ final class ConversationViewModel {
             }()
             try await client.saveDraft(input)
             confirmation = nil
-            await waitForConfirmationDismissal()
             closeConversation()
         } catch {
             isClosing = false
@@ -746,7 +735,6 @@ final class ConversationViewModel {
             try await client.discardDraft()
             if messages.isEmpty { try await client.discardEmptyConversation() }
             confirmation = nil
-            await waitForConfirmationDismissal()
             closeConversation()
         }
         catch {
@@ -758,6 +746,19 @@ final class ConversationViewModel {
 
     private func closeConversation() {
         isClosing = true
+        guard presentationPhase == .active else { return }
+        presentationPhase = .committing
+    }
+
+    func completeRecorderExit() {
+        guard recorderExitInFlight else { return }
+        composer = .waitingForReply
+        recorderExitInFlight = false
+    }
+
+    func completePresentationExit() {
+        guard presentationPhase == .committing else { return }
+        presentationPhase = .dismissed
         dismiss()
     }
 

@@ -160,6 +160,7 @@ struct PrimaryAppShell: View {
                 factory: conversationFactory,
                 dismiss: dismissConversationAndRefresh
             )
+            .presentationBackground(.clear)
         }
             .sheet(isPresented: taskDetailPresented, onDismiss: refreshHomeAfterTaskDetail) {
                 if let actionID = model.selectedTaskID {
@@ -222,9 +223,12 @@ struct PrimaryAppShell: View {
     @MainActor
     private func dismissConversationAndRefresh() {
         Task {
-            await model.dismissConversationAndRefresh {
-                await conversationsModel.load()
+            var transaction = Transaction(animation: nil)
+            transaction.disablesAnimations = true
+            withTransaction(transaction) {
+                model.dismissConversation()
             }
+            await conversationsModel.load()
         }
     }
 
