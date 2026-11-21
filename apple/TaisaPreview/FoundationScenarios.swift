@@ -16,7 +16,7 @@ enum FoundationScenarios {
         scenario(
             identifier: "foundation.default",
             title: "Foundation default",
-            deviceFamily: .adaptive
+            deviceFamily: .phone
         ),
         scenario(
             identifier: "foundation.accessibilityText",
@@ -27,26 +27,21 @@ enum FoundationScenarios {
             )
         ),
         scenario(
-            identifier: "foundation.narrowIPad",
-            title: "Narrow iPad",
-            deviceFamily: .tablet
-        ),
-        scenario(
             identifier: "foundation.reducedMotion",
             title: "Reduced motion",
-            deviceFamily: .adaptive,
+            deviceFamily: .phone,
             accessibility: PreviewAccessibilitySettings(reducedMotion: true)
         ),
         scenario(
             identifier: "foundation.increasedContrast",
             title: "Increased contrast",
-            deviceFamily: .adaptive,
+            deviceFamily: .phone,
             accessibility: PreviewAccessibilitySettings(increasedContrast: true)
         ),
         scenario(
             identifier: "foundation.diagnostics",
             title: "Build diagnostics",
-            deviceFamily: .adaptive,
+            deviceFamily: .phone,
             detail: "Synthetic build details are available for exact-preview review."
         ),
     ] + HomeScenarios.scenarios + CareerWorkScenarios.scenarios + YouScenarios.scenarios + VoiceSessionScenarios.scenarios + ConversationScenarios.scenarios + RecordingGlowScenarios.scenarios

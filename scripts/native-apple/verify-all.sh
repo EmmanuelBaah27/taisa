@@ -36,8 +36,7 @@ npm run verify:native-contracts
 npm run verify:native-design-system
 
 simulator_inventory="$(xcrun simctl list devices available --json)"
-iphone_name="${TAISA_IPHONE_SIMULATOR_NAME:-$(printf '%s' "${simulator_inventory}" | node scripts/native-apple/select-simulator.mjs iPhone)}"
-ipad_name="${TAISA_IPAD_SIMULATOR_NAME:-$(printf '%s' "${simulator_inventory}" | node scripts/native-apple/select-simulator.mjs iPad)}"
+iphone_name="${TAISA_IPHONE_SIMULATOR_NAME:-$(printf '%s' "${simulator_inventory}" | node scripts/native-apple/select-simulator.mjs)}"
 
 development_destinations="$(xcodebuild -project apple/Taisa.xcodeproj -scheme Taisa-Dev -showdestinations)"
 preview_destinations="$(xcodebuild -project apple/Taisa.xcodeproj -scheme Taisa-Preview -showdestinations)"
@@ -52,9 +51,9 @@ if [[ "${development_can_test}" == "yes" && "${preview_can_test}" == "yes" ]]; t
   reset_simulator_app "${iphone_name}" com.taisa.app.dev
   xcodebuild test -quiet -retry-tests-on-failure -test-iterations 2 -project apple/Taisa.xcodeproj -scheme Taisa-Dev -destination "platform=iOS Simulator,name=${iphone_name}" -derivedDataPath "${artifact_root}/DerivedData-Dev" -resultBundlePath "${artifact_root}/Taisa-Dev.xcresult"
   shutdown_simulator "${iphone_name}"
-  reset_simulator_app "${ipad_name}" com.taisa.app.preview
-  xcodebuild test -quiet -retry-tests-on-failure -test-iterations 2 -project apple/Taisa.xcodeproj -scheme Taisa-Preview -destination "platform=iOS Simulator,name=${ipad_name}" -derivedDataPath "${artifact_root}/DerivedData-Preview" -resultBundlePath "${artifact_root}/Taisa-Preview.xcresult"
-  shutdown_simulator "${ipad_name}"
+  reset_simulator_app "${iphone_name}" com.taisa.app.preview
+  xcodebuild test -quiet -retry-tests-on-failure -test-iterations 2 -project apple/Taisa.xcodeproj -scheme Taisa-Preview -destination "platform=iOS Simulator,name=${iphone_name}" -derivedDataPath "${artifact_root}/DerivedData-Preview" -resultBundlePath "${artifact_root}/Taisa-Preview.xcresult"
+  shutdown_simulator "${iphone_name}"
 else
   echo "No eligible iOS simulator runtime; compiling test bundles instead."
   xcodebuild build-for-testing -quiet -project apple/Taisa.xcodeproj -scheme Taisa-Dev -destination 'generic/platform=iOS Simulator' -derivedDataPath "${artifact_root}/DerivedData-Dev" CODE_SIGNING_ALLOWED=NO
