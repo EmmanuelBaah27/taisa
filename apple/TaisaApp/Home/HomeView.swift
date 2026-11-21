@@ -1,4 +1,5 @@
 import SwiftUI
+import TaisaDesignSystem
 import TaisaHome
 import TaisaStorage
 
@@ -39,8 +40,6 @@ struct HomeView: View {
         .task { if model.state == .idle { await model.load() } }
         .sheet(item: $activeSheet) { sheet in
             switch sheet {
-            case let .planning(item):
-                WeeklyPlanningSheet(item: item, model: model)
             case let .priorWeekReview(unresolvedCount):
                 PriorWeekReviewSheet(unresolvedCount: unresolvedCount)
             }
@@ -52,15 +51,15 @@ struct HomeView: View {
             .navigationTitle("Home")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Refresh", systemImage: "arrow.clockwise") { Task { await model.load() } }
+                    TaisaToolbarAction(label: "Refresh", icon: .refresh) { Task { await model.load() } }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Backup and recovery", systemImage: "lock.shield", action: openRecovery)
+                    TaisaToolbarAction(label: "Backup and recovery", icon: .recovery, action: openRecovery)
                         .accessibilityIdentifier("foundation.recovery.action")
                 }
                 if let openPersonalQA {
                     ToolbarItem(placement: .topBarTrailing) {
-                        Button("Personal device QA", action: openPersonalQA)
+                        TaisaToolbarAction(label: "Personal device QA", icon: .testflight, action: openPersonalQA)
                             .accessibilityIdentifier("foundation.personal-qa.action")
                     }
                 }
@@ -72,29 +71,32 @@ struct HomeView: View {
         case .idle, .loading:
             ProgressView("Loading Home…")
         case .empty:
-            ContentUnavailableView(
-                "Nothing here yet",
-                systemImage: "house",
-                description: Text("Your recent conversations, active goals, and open actions will appear here.")
-            )
+            List {
+                ThisWeekSection(items: [], send: send)
+                HomeActionsPreviewSection(prompts: [], send: send)
+                HomeGoalsSummarySection(goals: [], send: send)
+            }
             .accessibilityIdentifier("home.empty")
         case let .content(snapshot, isRefreshing, issue):
             List {
                 if let issue { issueRow(issue) }
+                ThisWeekSection(
+                    items: snapshot.thisWeek,
+                    send: send
+                )
+                HomeActionsPreviewSection(prompts: snapshot.actionPrompts, send: send)
+                HomeGoalsSummarySection(goals: snapshot.goals, send: send)
                 if let leadInsight = snapshot.leadInsight {
                     LeadInsightSection(insight: leadInsight, openInsights: openInsights)
                 }
-                ThisWeekSection(
-                    items: snapshot.thisWeek,
-                    unresolvedPriorWeekCount: snapshot.unresolvedPriorWeekCount,
-                    model: model,
-                    openPlanning: { activeSheet = .planning($0) },
-                    openPriorWeekReview: { activeSheet = .priorWeekReview(unresolvedCount: $0) }
-                )
                 if snapshot.leadInsight == nil && snapshot.hasConfirmedInsightHistory {
-                    Button("View insights", systemImage: "lightbulb", action: openInsights)
-                        .font(.subheadline)
+                    TaisaButton(role: .secondary, label: "View insights", icon: .insights) { openInsights() }
                         .accessibilityIdentifier("home.insights.link")
+                }
+                if snapshot.unresolvedPriorWeekCount > 0 {
+                    HomeReviewSection(unresolvedCount: snapshot.unresolvedPriorWeekCount) {
+                        activeSheet = .priorWeekReview(unresolvedCount: $0)
+                    }
                 }
                 if showsRecentConversations && !snapshot.conversations.isEmpty {
                     Section("Recent conversations") {
@@ -102,40 +104,23 @@ struct HomeView: View {
                     }
                     .accessibilityIdentifier("home.conversations")
                 }
-                if !snapshot.goals.isEmpty {
-                    Section("Active goals") {
-                        ForEach(snapshot.goals, id: \.id) { GoalRow(goal: $0, send: send) }
-                    }
-                    .accessibilityIdentifier("home.goals")
-                }
-                if !snapshot.milestones.isEmpty {
-                    Section("Upcoming milestones") {
-                        ForEach(snapshot.milestones, id: \.id) { milestone in
-                            MilestoneRow(milestone: milestone, send: send)
-                        }
-                    }
-                    .accessibilityIdentifier("home.milestones")
-                }
-                if !snapshot.actions.isEmpty {
-                    Section("Open actions") {
-                        ForEach(snapshot.actions, id: \.id) { ActionRow(action: $0, send: send) }
-                    }
-                    .accessibilityIdentifier("home.actions")
-                }
                 if isRefreshing { ProgressView().frame(maxWidth: .infinity) }
             }
             .refreshable { await model.load() }
         case let .failure(issue):
             ContentUnavailableView {
-                Label(issue == .recoveryRequired ? "Recovery required" : "Home unavailable", systemImage: "exclamationmark.triangle")
+                VStack {
+                    CentralIcon(.warning).frame(width: 32, height: 32)
+                    TaisaText(role: .heading, content: issue == .recoveryRequired ? "Recovery required" : "Home unavailable")
+                }
             } description: {
-                Text(issue == .recoveryRequired ? "Open recovery to restore secure access." : "Taisa couldn’t read your Home securely.")
+                TaisaText(role: .body, color: .mutedForeground, content: issue == .recoveryRequired ? "Open recovery to restore secure access." : "Taisa couldn’t read your Home securely.")
             } actions: {
                 if issue == .recoveryRequired {
-                    Button("Open recovery", action: openRecovery)
+                    TaisaButton(role: .primary, label: "Open recovery", icon: .recovery) { openRecovery() }
                         .accessibilityIdentifier("home.recovery")
                 } else {
-                    Button("Try again") { Task { await model.load() } }
+                    TaisaButton(role: .primary, label: "Try again", icon: .refresh) { Task { await model.load() } }
                         .accessibilityIdentifier("home.retry")
                 }
             }
@@ -148,9 +133,13 @@ struct HomeView: View {
             if issue == .recoveryRequired { openRecovery() }
             else { Task { await model.load() } }
         } label: {
-            Label(issue == .recoveryRequired ? "Open recovery" : "Try refresh again", systemImage: "exclamationmark.triangle")
+            TaisaRow(
+                title: issue == .recoveryRequired ? "Open recovery" : "Try refresh again",
+                icon: .warning,
+                emphasis: .attention
+            )
         }
-        .foregroundStyle(.secondary)
+        .buttonStyle(.plain)
         .accessibilityIdentifier(issue == .recoveryRequired ? "home.recovery" : "home.retry")
     }
 }

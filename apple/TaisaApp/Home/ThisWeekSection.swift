@@ -1,128 +1,128 @@
 import SwiftUI
+import TaisaDesignSystem
 import TaisaHome
 import TaisaStorage
 
 struct ThisWeekSection: View {
     let items: [WeeklyWorkItem]
-    let unresolvedPriorWeekCount: Int
-    let model: HomeModel
-    let openPlanning: (WeeklyWorkItem) -> Void
-    let openPriorWeekReview: (Int) -> Void
+    let send: (HomeIntent) -> Void
 
     var body: some View {
         Section {
-            if unresolvedPriorWeekCount > 0 {
-                Button {
-                    openPriorWeekReview(unresolvedPriorWeekCount)
-                } label: {
-                    Label(
-                        "Review \(unresolvedPriorWeekCount) unfinished \(unresolvedPriorWeekCount == 1 ? "item" : "items")",
-                        systemImage: "clock.arrow.circlepath"
-                    )
-                }
-                .accessibilityIdentifier("home.prior-week.review")
-            }
-
             if items.isEmpty {
-                ContentUnavailableView(
-                    "A clear week",
-                    systemImage: "checkmark.circle",
-                    description: Text("Add work when you decide what matters next.")
-                )
+                ContentUnavailableView {
+                    VStack {
+                        CentralIcon(.completed).frame(width: 32, height: 32)
+                        TaisaText(role: .heading, content: "Nothing needs focus right now")
+                    }
+                } description: {
+                    TaisaText(role: .body, color: .mutedForeground, content: "Your chosen work for this week will appear here.")
+                }
             } else {
                 ForEach(items, id: \.action.id) { item in
                     weeklyRow(item)
                 }
             }
-
-            if model.canUndoCompletion {
-                Button("Undo completion", systemImage: "arrow.uturn.backward") {
-                    Task { await model.undoCompletion() }
-                }
-                .accessibilityIdentifier("home.this-week.undo")
-            }
         } header: {
-            Text("This Week")
+            TaisaText(role: .label, content: "Current focus")
         }
         .accessibilityIdentifier("home.this-week")
     }
 
     private func weeklyRow(_ item: WeeklyWorkItem) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 12) {
-            Button {
-                Task { await model.complete(actionID: item.action.id) }
-            } label: {
-                Image(systemName: "circle")
-                    .font(.title3)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Complete \(item.action.title)")
-            .accessibilityIdentifier("home.this-week.complete")
-
-            Button {
-                openPlanning(item)
-            } label: {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(item.action.title)
-                        .foregroundStyle(.primary)
-                    if !item.action.detail.isEmpty {
-                        Text(item.action.detail)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(2)
-                    }
-                    if let plannedDayMS = item.placement.plannedDayMS {
-                        Text(Date(timeIntervalSince1970: Double(plannedDayMS) / 1_000), format: .dateTime.weekday(.wide))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .buttonStyle(.plain)
-            .accessibilityHint("Change when this is planned")
+        Button { send(.action(item.action.id)) } label: {
+            TaisaRow(title: item.action.title, supporting: supportingText(for: item), icon: .action)
         }
+        .buttonStyle(.plain)
+        .accessibilityHint("Open this action")
+    }
+
+    private func supportingText(for item: WeeklyWorkItem) -> String? {
+        let day = item.placement.plannedDayMS.map { Date(timeIntervalSince1970: Double($0) / 1_000).formatted(.dateTime.weekday(.wide)) }
+        return [item.action.detail.isEmpty ? nil : item.action.detail, day].compactMap { $0 }.joined(separator: " · ").nilIfEmpty
     }
 }
 
 enum ThisWeekSheet: Identifiable {
-    case planning(WeeklyWorkItem)
     case priorWeekReview(unresolvedCount: Int)
 
     var id: String {
         switch self {
-        case let .planning(item): "planning-\(item.id)"
         case .priorWeekReview: "prior-week-review"
         }
     }
 }
 
-struct WeeklyPlanningSheet: View {
-    let item: WeeklyWorkItem
-    let model: HomeModel
-    @Environment(\.dismiss) private var dismiss
+struct HomeActionsPreviewSection: View {
+    let prompts: [HomeActionPrompt]
+    let send: (HomeIntent) -> Void
 
     var body: some View {
-        NavigationStack {
-            List {
-                Section {
-                    Button("Plan for today") { move(to: Date()) }
-                    Button("Keep flexible") { move(to: nil) }
-                } footer: {
-                    Text("Choose deliberately. You can change this again at any time.")
+        Section("Actions") {
+            if prompts.isEmpty {
+                TaisaRow(title: "No actions need attention", supporting: "Open Actions when you want to add or review work.", icon: .action)
+            } else {
+                ForEach(Array(prompts.enumerated()), id: \.element.action.id) { _, prompt in
+                    Button { send(.action(prompt.action.id)) } label: {
+                        TaisaRow(title: prompt.action.title, supporting: label(prompt.reason), icon: icon(prompt.reason), emphasis: prompt.reason == .overdue || prompt.reason == .blocked ? .attention : .standard)
+                    }
                 }
             }
-            .navigationTitle(item.action.title)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
-            }
+            Button { send(.actions) } label: { TaisaNavigationRow(label: "View all actions", icon: .action) }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("home.actions.view-all")
+        }
+        .accessibilityIdentifier("home.actions.preview")
+    }
+
+    private func label(_ reason: HomeActionPromptReason) -> String {
+        switch reason {
+        case .overdue: "Overdue"
+        case .dueSoon: "Due soon"
+        case .blocked: "Blocked"
+        case .recentlyReopened: "Recently reopened"
+        case .thisWeek: "This week"
         }
     }
 
-    private func move(to day: Date?) {
-        Task {
-            await model.move(actionID: item.action.id, weekContaining: Date(), plannedDay: day)
-            dismiss()
+    private func icon(_ reason: HomeActionPromptReason) -> CentralIconName {
+        switch reason {
+        case .overdue, .blocked: .warning
+        case .recentlyReopened: .undo
+        case .dueSoon, .thisWeek: .action
+        }
+    }
+}
+
+struct HomeGoalsSummarySection: View {
+    let goals: [GoalRecord]
+    let send: (HomeIntent) -> Void
+
+    var body: some View {
+        Section("Goals") {
+            if goals.isEmpty {
+                TaisaRow(title: "No active goals", supporting: "Create a goal when an outcome needs more than one action.", icon: .goal)
+            } else {
+                ForEach(goals.prefix(3), id: \.id) { GoalRow(goal: $0, send: send) }
+            }
+            Button { send(.goals) } label: { TaisaNavigationRow(label: "View all goals", icon: .goal) }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("home.goals.view-all")
+        }
+        .accessibilityIdentifier("home.goals.summary")
+    }
+}
+
+struct HomeReviewSection: View {
+    let unresolvedCount: Int
+    let open: (Int) -> Void
+
+    var body: some View {
+        Section("Review") {
+            Button { open(unresolvedCount) } label: {
+                TaisaRow(title: "Review \(unresolvedCount) unfinished \(unresolvedCount == 1 ? "item" : "items")", icon: .history, emphasis: .attention)
+            }
+            .accessibilityIdentifier("home.prior-week.review")
         }
     }
 }
@@ -134,18 +134,25 @@ struct PriorWeekReviewSheet: View {
     var body: some View {
         NavigationStack {
             ContentUnavailableView {
-                Label("Unfinished work", systemImage: "clock.arrow.circlepath")
+                VStack {
+                    CentralIcon(.history).frame(width: 32, height: 32)
+                    TaisaText(role: .heading, content: "Unfinished work")
+                }
             } description: {
-                Text("You have \(unresolvedCount) unfinished \(unresolvedCount == 1 ? "item" : "items") from an earlier week. Decide what still belongs before planning more work.")
+                TaisaText(role: .body, color: .mutedForeground, content: "You have \(unresolvedCount) unfinished \(unresolvedCount == 1 ? "item" : "items") from an earlier week. Decide what still belongs before planning more work.")
             }
             .navigationTitle("Review prior week")
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    TaisaToolbarAction(label: "Done", icon: .completed) { dismiss() }
+                }
             }
         }
         .presentationDetents([.medium])
     }
 }
+
+private extension String { var nilIfEmpty: String? { isEmpty ? nil : self } }
 
 extension WeeklyWorkItem: @retroactive Identifiable {
     public var id: String { action.id }

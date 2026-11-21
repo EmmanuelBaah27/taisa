@@ -11,14 +11,35 @@ public enum TaisaButtonShape: Sendable, Equatable {
     case capsule
 }
 
+public enum TaisaButtonSize: Sendable, Equatable {
+    case standard
+    case small
+
+    public var minimumHeight: CGFloat {
+        self == .standard ? TaisaControlMetric.actionButtonHeight : TaisaControlMetric.compactActionButtonHeight
+    }
+    public var iconSize: CGFloat {
+        self == .standard ? TaisaControlMetric.standardIcon : TaisaControlMetric.compactActionIcon
+    }
+}
+
 public struct TaisaButton: View {
     public enum Contract {
+        public static let supportsLabelContent = true
+        public static let supportsIconContent = true
+        public static let supportsIconAndLabelContent = true
+        public static let supportsDisabledState = true
+        public static let supportsSelectedState = true
         public static let supportsInPlaceProgress = true
     }
 
     private let role: TaisaButtonRole
     private let shape: TaisaButtonShape
     private let label: String
+    private let icon: CentralIconName?
+    private let size: TaisaButtonSize
+    private let isSelected: Bool
+    private let isEnabled: Bool
     private let isProcessing: Bool
     private let processingAccessibilityLabel: String
     private let action: @MainActor () -> Void
@@ -27,6 +48,10 @@ public struct TaisaButton: View {
         role: TaisaButtonRole,
         shape: TaisaButtonShape = .roundedRectangle,
         label: String,
+        icon: CentralIconName? = nil,
+        size: TaisaButtonSize = .standard,
+        isSelected: Bool = false,
+        isEnabled: Bool = true,
         isProcessing: Bool = false,
         processingAccessibilityLabel: String = "Working",
         action: @escaping @MainActor () -> Void
@@ -34,6 +59,10 @@ public struct TaisaButton: View {
         self.role = role
         self.shape = shape
         self.label = label
+        self.icon = icon
+        self.size = size
+        self.isSelected = isSelected
+        self.isEnabled = isEnabled
         self.isProcessing = isProcessing
         self.processingAccessibilityLabel = processingAccessibilityLabel
         self.action = action
@@ -42,14 +71,22 @@ public struct TaisaButton: View {
     public var body: some View {
         Button(action: action) {
             ZStack {
-                TaisaText(role: .label, color: labelColor, content: label)
+                HStack(spacing: TaisaSpacing.compact.rawValue) {
+                    if let icon {
+                        CentralIcon(icon)
+                            .frame(width: size.iconSize, height: size.iconSize)
+                    }
+                    if !label.isEmpty {
+                        TaisaText(role: .label, color: labelColor, content: label)
+                    }
+                }
                     .opacity(isProcessing ? 0 : 1)
                 if isProcessing {
                     ProgressView()
                         .tint(TaisaColor.foreground.color)
                 }
             }
-                .frame(maxWidth: .infinity, minHeight: TaisaControlMetric.headerActionHeight)
+                .frame(maxWidth: .infinity, minHeight: size.minimumHeight)
                 .padding(.horizontal, TaisaSpacing.standard.rawValue)
                 .background(background, in: buttonShape)
                 .overlay { buttonShape.stroke(borderColor) }
@@ -57,7 +94,9 @@ public struct TaisaButton: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .disabled(isProcessing)
+        .disabled(isProcessing || !isEnabled)
+        .opacity(isEnabled ? 1 : TaisaControlMetric.disabledControlOpacity)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
         .accessibilityLabel(isProcessing ? processingAccessibilityLabel : label)
     }
 
@@ -73,7 +112,7 @@ public struct TaisaButton: View {
         case .primary:
             TaisaColor.primaryAction.color
         case .secondary, .destructive:
-            TaisaColor.background.color
+            isSelected ? TaisaColor.selectedSurface.color : TaisaColor.background.color
         }
     }
 

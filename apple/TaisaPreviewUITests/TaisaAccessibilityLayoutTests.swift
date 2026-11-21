@@ -24,10 +24,11 @@ final class TaisaAccessibilityLayoutTests: XCTestCase {
 
         let weeklyWork = app.staticTexts["Draft the studio lighting plan"]
         XCTAssertTrue(weeklyWork.waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["Complete Draft the studio lighting plan"].isHittable)
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Draft the studio lighting plan")).firstMatch.isHittable)
         let insight = app.buttons.matching(
             NSPredicate(format: "label CONTAINS %@", "Your best planning sessions happen before midday.")
         ).firstMatch
+        scrollUntilHittable(insight, in: app)
         XCTAssertTrue(insight.waitForExistence(timeout: 5))
         XCTAssertTrue(insight.isHittable)
     }
@@ -54,6 +55,7 @@ final class TaisaAccessibilityLayoutTests: XCTestCase {
 
         let title = app.staticTexts[requiredText]
         let action = app.buttons[actionLabel ?? requiredText]
+        scrollUntilHittable(action, in: app)
         XCTAssertTrue(title.waitForExistence(timeout: 5))
         XCTAssertTrue(title.exists)
         XCTAssertTrue(action.isHittable)
@@ -67,6 +69,10 @@ final class TaisaAccessibilityLayoutTests: XCTestCase {
         attachment.name = identifier
         attachment.lifetime = .keepAlways
         add(attachment)
+    }
+
+    private func scrollUntilHittable(_ element: XCUIElement, in app: XCUIApplication) {
+        for _ in 0..<6 where !element.isHittable { app.swipeUp() }
     }
 
     private func openScenario(_ identifier: String, in app: XCUIApplication) {

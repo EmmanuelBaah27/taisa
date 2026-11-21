@@ -31,7 +31,7 @@ test('preview declares microphone usage before offering live recording controls'
   );
 });
 
-test('Home owns one stable sheet route for planning and prior-week review', async () => {
+test('Home owns one stable sheet route only for prior-week review', async () => {
   const home = await readFile('apple/TaisaApp/Home/HomeView.swift', 'utf8');
   const section = await readFile('apple/TaisaApp/Home/ThisWeekSection.swift', 'utf8');
 
@@ -39,8 +39,10 @@ test('Home owns one stable sheet route for planning and prior-week review', asyn
   assert.match(home, /\.sheet\(item: \$activeSheet\)/);
   assert.equal(home.match(/\.sheet\(/g)?.length, 1);
   assert.doesNotMatch(section, /@State|\.sheet\(/);
-  assert.match(section, /openPlanning: \(WeeklyWorkItem\) -> Void/);
-  assert.match(section, /openPriorWeekReview: \(Int\) -> Void/);
+  assert.match(section, /case priorWeekReview\(unresolvedCount: Int\)/);
+  assert.match(section, /struct HomeReviewSection: View/);
+  assert.match(section, /let open: \(Int\) -> Void/);
+  assert.doesNotMatch(section, /openPlanning|case planning/);
 });
 
 test('preview target compiles every shared conversation response source', async () => {
