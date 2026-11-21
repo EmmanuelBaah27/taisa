@@ -19,6 +19,9 @@ public struct HomeSnapshot: Sendable, Equatable {
     public let actions: [ActionRecord]
     public let thisWeek: [WeeklyWorkItem]
     public let unresolvedPriorWeekCount: Int
+    public let overdueActions: [ActionRecord]
+    public let recentlyReopenedActions: [ActionRecord]
+    public let actionReviewFacts: HomeActionReviewFacts
     public let leadInsight: InsightRecord?
     public let hasConfirmedInsightHistory: Bool
 
@@ -29,6 +32,9 @@ public struct HomeSnapshot: Sendable, Equatable {
         actions: [ActionRecord],
         thisWeek: [WeeklyWorkItem] = [],
         unresolvedPriorWeekCount: Int = 0,
+        overdueActions: [ActionRecord] = [],
+        recentlyReopenedActions: [ActionRecord] = [],
+        actionReviewFacts: HomeActionReviewFacts = .init(active: 0, completed: 0, dropped: 0, reopened: 0),
         leadInsight: InsightRecord? = nil,
         hasConfirmedInsightHistory: Bool = false
     ) {
@@ -38,13 +44,27 @@ public struct HomeSnapshot: Sendable, Equatable {
         self.actions = actions
         self.thisWeek = thisWeek
         self.unresolvedPriorWeekCount = unresolvedPriorWeekCount
+        self.overdueActions = overdueActions
+        self.recentlyReopenedActions = recentlyReopenedActions
+        self.actionReviewFacts = actionReviewFacts
         self.leadInsight = leadInsight
         self.hasConfirmedInsightHistory = hasConfirmedInsightHistory
     }
 
     public var isEmpty: Bool {
         conversations.isEmpty && goals.isEmpty && milestones.isEmpty && actions.isEmpty && thisWeek.isEmpty &&
+            overdueActions.isEmpty && recentlyReopenedActions.isEmpty && actionReviewFacts == .init(active: 0, completed: 0, dropped: 0, reopened: 0) &&
             unresolvedPriorWeekCount == 0 && leadInsight == nil && !hasConfirmedInsightHistory
+    }
+}
+
+public struct HomeActionReviewFacts: Sendable, Equatable {
+    public let active: Int
+    public let completed: Int
+    public let dropped: Int
+    public let reopened: Int
+    public init(active: Int, completed: Int, dropped: Int, reopened: Int) {
+        self.active = active; self.completed = completed; self.dropped = dropped; self.reopened = reopened
     }
 }
 

@@ -36,6 +36,7 @@ final class HomeViewContractTests: XCTestCase {
         let home = root.appendingPathComponent("TaisaApp/Home")
         let homeView = try String(contentsOf: home.appendingPathComponent("HomeView.swift"), encoding: .utf8)
         let thisWeek = try String(contentsOf: home.appendingPathComponent("ThisWeekSection.swift"), encoding: .utf8)
+        let sectionViews = try String(contentsOf: home.appendingPathComponent("HomeSectionViews.swift"), encoding: .utf8)
         let leadInsight = try String(contentsOf: home.appendingPathComponent("LeadInsightSection.swift"), encoding: .utf8)
 
         XCTAssertTrue(homeView.contains("if let leadInsight = snapshot.leadInsight"))
@@ -48,11 +49,16 @@ final class HomeViewContractTests: XCTestCase {
         XCTAssertTrue(homeView.contains("snapshot.hasConfirmedInsightHistory"))
         XCTAssertTrue(homeView.contains("home.insights.link"))
 
-        for identifier in ["home.this-week", "home.this-week.complete", "home.this-week.undo", "home.prior-week.review"] {
+        for identifier in ["home.this-week", "home.this-week.complete", "home.this-week.undo", "home.prior-week.review", "home.action-attention", "home.actions.overdue", "home.actions.reopened"] {
             XCTAssertTrue(thisWeek.contains(identifier), "Missing \(identifier)")
         }
-        XCTAssertTrue(thisWeek.contains("await model.complete(actionID:"))
+        XCTAssertTrue(homeView.contains("case let .completion(item)"))
+        XCTAssertTrue(sectionViews.contains("home.this-week.completion-evidence"))
+        XCTAssertTrue(sectionViews.contains("evidenceTitle:"))
         XCTAssertTrue(thisWeek.contains("await model.undoCompletion()"))
+        XCTAssertTrue(thisWeek.contains("TaisaRow("))
+        XCTAssertTrue(thisWeek.contains("CentralIcon(.completeAction)"))
+        XCTAssertFalse(thisWeek.contains("systemImage:"), "Touched Home Action UI must use Central Icons")
         XCTAssertTrue(leadInsight.contains("home.lead-insight"))
     }
 

@@ -30,21 +30,21 @@ public struct WeeklyWorkQuery: Sendable {
                        p.updated_at_ms AS placement_updated_at_ms
                 FROM weekly_placements p
                 JOIN actions a ON a.id = p.action_id
-                WHERE p.week_start_ms = ? AND a.status = 'open'
+                WHERE p.week_start_ms = ? AND a.status = 'active'
                   AND NOT EXISTS (SELECT 1 FROM tombstones t WHERE t.entity_type = 'weekly_placement' AND t.entity_id = p.id COLLATE NOCASE)
                   AND NOT EXISTS (SELECT 1 FROM tombstones t WHERE t.entity_type = 'action' AND t.entity_id = a.id COLLATE NOCASE)
                 ORDER BY p.planned_day_ms IS NULL, p.planned_day_ms, a.created_at_ms, a.id
                 """, arguments: [weekStartMS])
             let items = rows.map { row in
                 WeeklyWorkItem(
-                    action: ActionRecord(id: row["id"], goalID: row["goal_id"], title: row["title"], detail: row["detail"], status: row["status"], dueAtMS: row["due_at_ms"], createdAtMS: row["created_at_ms"], updatedAtMS: row["updated_at_ms"]),
+                    action: ActionRecord(id: row["id"], goalID: row["goal_id"], title: row["title"], detail: row["detail"], status: row["status"], dueAtMS: row["due_at_ms"], createdAtMS: row["created_at_ms"], updatedAtMS: row["updated_at_ms"], milestoneID: row["milestone_id"], dueDay: (row["due_day"] as String?).flatMap(ActionDueDay.init(rawValue:)), origin: ActionOrigin(rawValue: row["origin"] as String) ?? .manual),
                     placement: WeeklyPlacementRecord(id: row["placement_id"], actionID: row["placement_action_id"], weekStartMS: row["week_start_ms"], plannedDayMS: row["planned_day_ms"], createdAtMS: row["placement_created_at_ms"], updatedAtMS: row["placement_updated_at_ms"])
                 )
             }
             let unresolved = try Int.fetchOne(db, sql: """
                 SELECT COUNT(*) FROM weekly_placements p
                 JOIN actions a ON a.id = p.action_id
-                WHERE p.week_start_ms < ? AND a.status = 'open'
+                WHERE p.week_start_ms < ? AND a.status = 'active'
                   AND NOT EXISTS (SELECT 1 FROM tombstones t WHERE t.entity_type = 'weekly_placement' AND t.entity_id = p.id COLLATE NOCASE)
                   AND NOT EXISTS (SELECT 1 FROM tombstones t WHERE t.entity_type = 'action' AND t.entity_id = a.id COLLATE NOCASE)
                 """, arguments: [weekStartMS]) ?? 0

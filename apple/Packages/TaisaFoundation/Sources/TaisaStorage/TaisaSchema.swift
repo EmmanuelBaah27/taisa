@@ -8,7 +8,7 @@ enum TaisaSchema {
         let body: [String]
     }
 
-    static let currentVersion = 7
+    static let currentVersion = 8
 
     static func createVersion1(in db: Database) throws {
         for statement in version1Statements { try db.execute(sql: statement) }
@@ -38,6 +38,10 @@ enum TaisaSchema {
         for statement in version7Statements { try db.execute(sql: statement) }
     }
 
+    static func createVersion8(in db: Database) throws {
+        for statement in version8Statements { try db.execute(sql: statement) }
+    }
+
     static var migrationLedger: [MigrationLedgerEntry] {
         [
             .init(version: 1, identifier: "v1", predecessor: nil, body: version1Statements),
@@ -47,6 +51,7 @@ enum TaisaSchema {
             .init(version: 5, identifier: "v5", predecessor: "v4", body: version5Statements),
             .init(version: 6, identifier: "v6", predecessor: "v5", body: version6Statements),
             .init(version: 7, identifier: "v7", predecessor: "v6", body: version7Statements),
+            .init(version: 8, identifier: "v8", predecessor: "v7", body: version8Statements),
         ]
     }
 
@@ -599,7 +604,72 @@ enum TaisaSchema {
         "CREATE INDEX response_feedback_by_updated ON response_feedback(updated_at_ms)",
     ]
 
-    static func validateVersion1(in db: Database, allowingConversationExtensions: Bool = false, allowingGoalLifecycleExtension: Bool = false) throws {
+    private static let version8ActionTable = """
+    CREATE TABLE actions_v8 (
+        id TEXT PRIMARY KEY NOT NULL CHECK (length(id) = 36),
+        goal_id TEXT REFERENCES goals(id) ON DELETE SET NULL,
+        milestone_id TEXT REFERENCES milestones(id) ON DELETE SET NULL,
+        title TEXT NOT NULL,
+        detail TEXT NOT NULL DEFAULT '',
+        status TEXT NOT NULL CHECK (status IN ('active', 'completed', 'dropped')),
+        due_day TEXT CHECK (due_day IS NULL OR (length(due_day) = 10 AND due_day GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]' AND date(due_day) = due_day)),
+        due_at_ms INTEGER CHECK (due_at_ms >= 0),
+        origin TEXT NOT NULL DEFAULT 'manual' CHECK (origin IN ('manual')),
+        created_at_ms INTEGER NOT NULL CHECK (created_at_ms >= 0),
+        updated_at_ms INTEGER NOT NULL CHECK (updated_at_ms >= created_at_ms)
+    )
+    """
+
+    private static let version8Statements: [String] = [
+        "PRAGMA defer_foreign_keys = ON",
+        version8ActionTable,
+        "INSERT INTO actions_v8 (id, goal_id, title, detail, status, due_at_ms, origin, created_at_ms, updated_at_ms) SELECT id, goal_id, title, detail, CASE status WHEN 'open' THEN 'active' WHEN 'archived' THEN 'dropped' ELSE status END, due_at_ms, 'manual', created_at_ms, updated_at_ms FROM actions",
+        "DROP TABLE actions",
+        "ALTER TABLE actions_v8 RENAME TO actions",
+        "CREATE INDEX actions_by_goal_status_v8 ON actions(goal_id, status)",
+        "CREATE INDEX actions_by_milestone_status ON actions(milestone_id, status)",
+        "CREATE INDEX actions_by_due_day ON actions(status, due_day)",
+        """
+        CREATE TABLE action_checklist_items (
+            id TEXT PRIMARY KEY NOT NULL CHECK (length(id) = 36),
+            action_id TEXT NOT NULL REFERENCES actions(id) ON DELETE CASCADE,
+            title TEXT NOT NULL CHECK (length(trim(title)) > 0),
+            state TEXT NOT NULL CHECK (state IN ('pending', 'completed', 'promoted')),
+            position INTEGER NOT NULL CHECK (position >= 0),
+            promoted_action_id TEXT REFERENCES actions(id) ON DELETE SET NULL,
+            created_at_ms INTEGER NOT NULL CHECK (created_at_ms >= 0),
+            updated_at_ms INTEGER NOT NULL CHECK (updated_at_ms >= created_at_ms),
+            UNIQUE (action_id, position),
+            CHECK ((state = 'promoted' AND promoted_action_id IS NOT NULL) OR (state != 'promoted' AND promoted_action_id IS NULL))
+        )
+        """,
+        """
+        CREATE TABLE action_events (
+            id TEXT PRIMARY KEY NOT NULL CHECK (length(id) = 36),
+            action_id TEXT NOT NULL REFERENCES actions(id) ON DELETE CASCADE,
+            kind TEXT NOT NULL CHECK (kind IN ('created', 'edited', 'relationship_changed', 'checklist_changed', 'checklist_promoted', 'completed', 'dropped', 'reopened', 'completion_corrected', 'deleted', 'restored')),
+            from_status TEXT CHECK (from_status IS NULL OR from_status IN ('active', 'completed', 'dropped')),
+            to_status TEXT CHECK (to_status IS NULL OR to_status IN ('active', 'completed', 'dropped')),
+            detail TEXT,
+            source_type TEXT NOT NULL CHECK (source_type IN ('user', 'undo', 'migration')),
+            source_id TEXT CHECK (source_id IS NULL OR length(source_id) = 36),
+            occurred_at_ms INTEGER NOT NULL CHECK (occurred_at_ms >= 0)
+        )
+        """,
+        """
+        CREATE TABLE action_evidence_links (
+            evidence_id TEXT PRIMARY KEY NOT NULL REFERENCES evidence(id) ON DELETE CASCADE,
+            completion_event_id TEXT NOT NULL REFERENCES action_events(id) ON DELETE CASCADE,
+            superseded_by_event_id TEXT REFERENCES action_events(id) ON DELETE SET NULL,
+            CHECK (superseded_by_event_id IS NULL OR superseded_by_event_id != completion_event_id)
+        )
+        """,
+        "CREATE INDEX action_checklist_by_action ON action_checklist_items(action_id, position)",
+        "CREATE INDEX action_events_by_action ON action_events(action_id, occurred_at_ms, id)",
+        "CREATE INDEX action_evidence_by_completion ON action_evidence_links(completion_event_id)",
+    ]
+
+    static func validateVersion1(in db: Database, allowingConversationExtensions: Bool = false, allowingGoalLifecycleExtension: Bool = false, allowingCanonicalActionExtension: Bool = false) throws {
         let requiredColumns: [String: Set<String>] = [
             "profile": ["id", "display_name", "headline", "biography", "updated_at_ms"],
             "conversations": ["id", "title", "created_at_ms", "updated_at_ms"],
@@ -623,6 +693,7 @@ enum TaisaSchema {
         ]
         do {
             for (table, expected) in requiredColumns {
+                if allowingCanonicalActionExtension && table == "actions" { continue }
                 guard try db.tableExists(table) else { throw StorageError.schemaMismatch }
                 let actual = Set(try db.columns(in: table).map(\.name))
                 guard actual == expected || (allowingConversationExtensions && table == "conversations" && actual.isSuperset(of: expected)) else {
@@ -637,6 +708,7 @@ enum TaisaSchema {
                 let name = String(statement.split(separator: " ", maxSplits: 3)[2])
                 if allowingConversationExtensions && name == "conversations" { continue }
                 if allowingGoalLifecycleExtension && name == "goals" { continue }
+                if allowingCanonicalActionExtension && name == "actions" { continue }
                 let stored = try String.fetchOne(
                     db,
                     sql: "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?",
@@ -649,8 +721,8 @@ enum TaisaSchema {
         }
     }
 
-    static func validateVersion2(in db: Database, allowingConversationExtensions: Bool = false, allowingGoalLifecycleExtension: Bool = false) throws {
-        try validateVersion1(in: db, allowingConversationExtensions: allowingConversationExtensions, allowingGoalLifecycleExtension: allowingGoalLifecycleExtension)
+    static func validateVersion2(in db: Database, allowingConversationExtensions: Bool = false, allowingGoalLifecycleExtension: Bool = false, allowingCanonicalActionExtension: Bool = false) throws {
+        try validateVersion1(in: db, allowingConversationExtensions: allowingConversationExtensions, allowingGoalLifecycleExtension: allowingGoalLifecycleExtension, allowingCanonicalActionExtension: allowingCanonicalActionExtension)
         let requiredColumns: [String: Set<String>] = [
             "voice_turns": ["id", "conversation_id", "transcription_request_id", "transcription_idempotency_key", "coaching_request_id", "coaching_idempotency_key", "state", "stage", "audio_file_id", "audio_sha256", "audio_duration_ms", "accepted_transcript", "uncertain_transcript", "retry_count", "next_retry_at_ms", "failure_code", "transcription_receipt", "coaching_receipt", "user_message_id", "assistant_message_id", "cleanup_state", "created_at_ms", "updated_at_ms"],
             "audio_cleanup_queue": ["turn_id", "audio_file_id", "completed_at_ms"],
@@ -675,8 +747,8 @@ enum TaisaSchema {
         }
     }
 
-    static func validateVersion3(in db: Database, allowingGoalLifecycleExtension: Bool = false) throws {
-        try validateVersion2(in: db, allowingConversationExtensions: true, allowingGoalLifecycleExtension: allowingGoalLifecycleExtension)
+    static func validateVersion3(in db: Database, allowingGoalLifecycleExtension: Bool = false, allowingCanonicalActionExtension: Bool = false) throws {
+        try validateVersion2(in: db, allowingConversationExtensions: true, allowingGoalLifecycleExtension: allowingGoalLifecycleExtension, allowingCanonicalActionExtension: allowingCanonicalActionExtension)
         let requiredColumns: [String: Set<String>] = [
             "conversation_drafts": ["id", "conversation_id", "input_mode", "text", "voice_turn_id", "recovery_kind", "created_at_ms", "updated_at_ms"],
             "message_revisions": ["id", "message_id", "original_body", "replacement_message_id", "created_at_ms"],
@@ -708,8 +780,8 @@ enum TaisaSchema {
         }
     }
 
-    static func validateVersion4(in db: Database, allowingGoalLifecycleExtension: Bool = false) throws {
-        try validateVersion3(in: db, allowingGoalLifecycleExtension: allowingGoalLifecycleExtension)
+    static func validateVersion4(in db: Database, allowingGoalLifecycleExtension: Bool = false, allowingCanonicalActionExtension: Bool = false) throws {
+        try validateVersion3(in: db, allowingGoalLifecycleExtension: allowingGoalLifecycleExtension, allowingCanonicalActionExtension: allowingCanonicalActionExtension)
         let requiredColumns: [String: Set<String>] = [
             "career_work_events": ["id", "entity_type", "entity_id", "transition", "from_status", "to_status", "source_type", "source_id", "occurred_at_ms"],
             "career_work_archives": ["id", "entity_type", "entity_id", "archived_at_ms", "restored_at_ms"],
@@ -746,8 +818,8 @@ enum TaisaSchema {
             throw StorageError.schemaMismatch
         }
     }
-    static func validateVersion5(in db: Database, allowingGoalLifecycleExtension: Bool = false) throws {
-        try validateVersion4(in: db, allowingGoalLifecycleExtension: allowingGoalLifecycleExtension)
+    static func validateVersion5(in db: Database, allowingGoalLifecycleExtension: Bool = false, allowingCanonicalActionExtension: Bool = false) throws {
+        try validateVersion4(in: db, allowingGoalLifecycleExtension: allowingGoalLifecycleExtension, allowingCanonicalActionExtension: allowingCanonicalActionExtension)
         let requiredColumns: [String: Set<String>] = [
             "weekly_placements": ["id", "action_id", "week_start_ms", "planned_day_ms", "created_at_ms", "updated_at_ms"],
             "work_events": ["id", "action_id", "kind", "from_week_start_ms", "to_week_start_ms", "source_type", "source_id", "occurred_at_ms"],
@@ -776,8 +848,8 @@ enum TaisaSchema {
         }
     }
 
-    static func validateVersion6(in db: Database) throws {
-        try validateVersion5(in: db, allowingGoalLifecycleExtension: true)
+    static func validateVersion6(in db: Database, allowingCanonicalActionExtension: Bool = false) throws {
+        try validateVersion5(in: db, allowingGoalLifecycleExtension: true, allowingCanonicalActionExtension: allowingCanonicalActionExtension)
         do {
             let stored = try String.fetchOne(db, sql: "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'goals'")
             let expected = version6GoalTable.replacingOccurrences(of: "goals_v6", with: "\"goals\"")
@@ -787,8 +859,8 @@ enum TaisaSchema {
         }
     }
 
-    static func validateVersion7(in db: Database) throws {
-        try validateVersion6(in: db)
+    static func validateVersion7(in db: Database, allowingCanonicalActionExtension: Bool = false) throws {
+        try validateVersion6(in: db, allowingCanonicalActionExtension: allowingCanonicalActionExtension)
         let requiredColumns: [String: Set<String>] = [
             "assistant_response_metadata": ["response_message_id", "request_id", "idempotency_receipt", "mode", "relevance", "context_sufficiency", "stance", "inference", "confidence", "approach", "created_at_ms"],
             "assistant_response_sources": ["id", "response_message_id", "ordinal", "source_id", "source_type", "excerpt"],
@@ -803,6 +875,35 @@ enum TaisaSchema {
                 }
             }
             for statement in version7Statements where statement.hasPrefix("CREATE TABLE ") || statement.hasPrefix("CREATE INDEX ") {
+                let name = String(statement.split(separator: " ", maxSplits: 3)[2])
+                let objectType = statement.hasPrefix("CREATE TABLE ") ? "table" : "index"
+                guard try String.fetchOne(db, sql: "SELECT sql FROM sqlite_master WHERE type = ? AND name = ?", arguments: [objectType, name]) == statement else {
+                    throw StorageError.schemaMismatch
+                }
+            }
+        } catch {
+            throw StorageError.schemaMismatch
+        }
+    }
+
+    static func validateVersion8(in db: Database) throws {
+        try validateVersion7(in: db, allowingCanonicalActionExtension: true)
+        let requiredColumns: [String: Set<String>] = [
+            "actions": ["id", "goal_id", "milestone_id", "title", "detail", "status", "due_day", "due_at_ms", "origin", "created_at_ms", "updated_at_ms"],
+            "action_checklist_items": ["id", "action_id", "title", "state", "position", "promoted_action_id", "created_at_ms", "updated_at_ms"],
+            "action_events": ["id", "action_id", "kind", "from_status", "to_status", "detail", "source_type", "source_id", "occurred_at_ms"],
+            "action_evidence_links": ["evidence_id", "completion_event_id", "superseded_by_event_id"],
+        ]
+        do {
+            for (table, expected) in requiredColumns {
+                guard try db.tableExists(table), Set(try db.columns(in: table).map(\.name)) == expected else {
+                    throw StorageError.schemaMismatch
+                }
+            }
+            let storedAction = try String.fetchOne(db, sql: "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'actions'")
+            let expectedAction = version8ActionTable.replacingOccurrences(of: "actions_v8", with: "\"actions\"")
+            guard storedAction == expectedAction else { throw StorageError.schemaMismatch }
+            for statement in version8Statements where statement.hasPrefix("CREATE TABLE action_") || statement.hasPrefix("CREATE INDEX ") {
                 let name = String(statement.split(separator: " ", maxSplits: 3)[2])
                 let objectType = statement.hasPrefix("CREATE TABLE ") ? "table" : "index"
                 guard try String.fetchOne(db, sql: "SELECT sql FROM sqlite_master WHERE type = ? AND name = ?", arguments: [objectType, name]) == statement else {

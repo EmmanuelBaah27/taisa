@@ -41,6 +41,8 @@ struct HomeView: View {
             switch sheet {
             case let .planning(item):
                 WeeklyPlanningSheet(item: item, model: model)
+            case let .completion(item):
+                CompletionEvidenceSheet(item: item, model: model)
             case let .priorWeekReview(unresolvedCount):
                 PriorWeekReviewSheet(unresolvedCount: unresolvedCount)
             }
@@ -89,8 +91,10 @@ struct HomeView: View {
                     unresolvedPriorWeekCount: snapshot.unresolvedPriorWeekCount,
                     model: model,
                     openPlanning: { activeSheet = .planning($0) },
+                    openCompletion: { activeSheet = .completion($0) },
                     openPriorWeekReview: { activeSheet = .priorWeekReview(unresolvedCount: $0) }
                 )
+                HomeActionAttentionSection(overdue: snapshot.overdueActions, reopened: snapshot.recentlyReopenedActions, reviewFacts: snapshot.actionReviewFacts, send: send)
                 if snapshot.leadInsight == nil && snapshot.hasConfirmedInsightHistory {
                     Button("View insights", systemImage: "lightbulb", action: openInsights)
                         .font(.subheadline)

@@ -96,6 +96,13 @@ extension HomeSnapshot {
             )
         ],
         unresolvedPriorWeekCount: 2,
+        overdueActions: [
+            ActionRecord(id: "30000000-0000-0000-0000-000000000003", goalID: nil, title: "Send the overdue lighting brief", detail: "", status: ActionStatus.active.rawValue, dueAtMS: nil, createdAtMS: 1, updatedAtMS: 3, dueDay: ActionDueDay(rawValue: "2027-01-10"))
+        ],
+        recentlyReopenedActions: [
+            ActionRecord(id: "30000000-0000-0000-0000-000000000004", goalID: nil, title: "Revisit the supplier shortlist", detail: "", status: ActionStatus.active.rawValue, dueAtMS: nil, createdAtMS: 1, updatedAtMS: 4)
+        ],
+        actionReviewFacts: .init(active: 4, completed: 2, dropped: 1, reopened: 1),
         leadInsight: .previewCurrent,
         hasConfirmedInsightHistory: true
     )

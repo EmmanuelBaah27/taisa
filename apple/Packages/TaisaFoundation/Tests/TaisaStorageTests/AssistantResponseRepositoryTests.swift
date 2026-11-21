@@ -22,8 +22,8 @@ struct AssistantResponseRepositoryTests {
                 try Int.fetchOne(db, sql: "SELECT count(*) FROM pragma_foreign_key_check")
             )
         }
-        #expect(state.0 == 7)
-        #expect(state.1 == ["v1", "v2", "v3", "v4", "v5", "v6", "v7"])
+        #expect(state.0 == 8)
+        #expect(state.1 == ["v1", "v2", "v3", "v4", "v5", "v6", "v7", "v8"])
         #expect(state.2)
         #expect(state.3 == 0)
     }

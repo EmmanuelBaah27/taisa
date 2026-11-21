@@ -267,15 +267,89 @@ public struct MilestoneRecord: Codable, Sendable, Equatable {
 public struct ActionRecord: Codable, Sendable, Equatable {
     public let id: String
     public let goalID: String?
+    public let milestoneID: String?
     public let title: String
     public let detail: String
     public let status: String
+    public let dueDay: ActionDueDay?
+    /// Legacy pre-v8 instant retained only while older sync/proposal callers are migrated.
     public let dueAtMS: Int64?
+    public let origin: ActionOrigin
     public let createdAtMS: Int64
     public let updatedAtMS: Int64
-    public init(id: String, goalID: String?, title: String, detail: String, status: String, dueAtMS: Int64?, createdAtMS: Int64, updatedAtMS: Int64) {
-        self.id = UUIDIdentity.normalizedOrOriginal(id); self.goalID = goalID.map(UUIDIdentity.normalizedOrOriginal); self.title = title; self.detail = detail; self.status = status
-        self.dueAtMS = dueAtMS; self.createdAtMS = createdAtMS; self.updatedAtMS = updatedAtMS
+    public init(id: String, goalID: String?, title: String, detail: String, status: String, dueAtMS: Int64?, createdAtMS: Int64, updatedAtMS: Int64, milestoneID: String? = nil, dueDay: ActionDueDay? = nil, origin: ActionOrigin = .manual) {
+        self.id = UUIDIdentity.normalizedOrOriginal(id); self.goalID = goalID.map(UUIDIdentity.normalizedOrOriginal); self.title = title; self.detail = detail
+        self.status = status == "open" ? ActionStatus.active.rawValue : (status == "archived" ? ActionStatus.dropped.rawValue : status)
+        self.milestoneID = milestoneID.map(UUIDIdentity.normalizedOrOriginal); self.dueDay = dueDay; self.dueAtMS = dueAtMS; self.origin = origin
+        self.createdAtMS = createdAtMS; self.updatedAtMS = updatedAtMS
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, goalID, milestoneID, title, detail, status, dueDay, dueAtMS, origin, createdAtMS, updatedAtMS
+    }
+
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            id: try values.decode(String.self, forKey: .id),
+            goalID: try values.decodeIfPresent(String.self, forKey: .goalID),
+            title: try values.decode(String.self, forKey: .title),
+            detail: try values.decode(String.self, forKey: .detail),
+            status: try values.decode(String.self, forKey: .status),
+            dueAtMS: try values.decodeIfPresent(Int64.self, forKey: .dueAtMS),
+            createdAtMS: try values.decode(Int64.self, forKey: .createdAtMS),
+            updatedAtMS: try values.decode(Int64.self, forKey: .updatedAtMS),
+            milestoneID: try values.decodeIfPresent(String.self, forKey: .milestoneID),
+            dueDay: try values.decodeIfPresent(ActionDueDay.self, forKey: .dueDay),
+            origin: try values.decodeIfPresent(ActionOrigin.self, forKey: .origin) ?? .manual
+        )
+    }
+}
+
+public struct ActionChecklistItemRecord: Codable, Sendable, Equatable {
+    public let id: String
+    public let actionID: String
+    public let title: String
+    public let state: ActionChecklistState
+    public let position: Int
+    public let promotedActionID: String?
+    public let createdAtMS: Int64
+    public let updatedAtMS: Int64
+
+    public init(id: String, actionID: String, title: String, state: ActionChecklistState, position: Int, promotedActionID: String?, createdAtMS: Int64, updatedAtMS: Int64) {
+        self.id = UUIDIdentity.normalizedOrOriginal(id); self.actionID = UUIDIdentity.normalizedOrOriginal(actionID)
+        self.title = title; self.state = state; self.position = position
+        self.promotedActionID = promotedActionID.map(UUIDIdentity.normalizedOrOriginal)
+        self.createdAtMS = createdAtMS; self.updatedAtMS = updatedAtMS
+    }
+}
+
+public struct ActionEventRecord: Codable, Sendable, Equatable {
+    public let id: String
+    public let actionID: String
+    public let kind: ActionEventKind
+    public let fromStatus: ActionStatus?
+    public let toStatus: ActionStatus?
+    public let detail: String?
+    public let source: CareerWorkMutationSource
+    public let sourceID: String?
+    public let occurredAtMS: Int64
+
+    public init(id: String, actionID: String, kind: ActionEventKind, fromStatus: ActionStatus?, toStatus: ActionStatus?, detail: String?, source: CareerWorkMutationSource, sourceID: String?, occurredAtMS: Int64) {
+        self.id = UUIDIdentity.normalizedOrOriginal(id); self.actionID = UUIDIdentity.normalizedOrOriginal(actionID)
+        self.kind = kind; self.fromStatus = fromStatus; self.toStatus = toStatus; self.detail = detail; self.source = source
+        self.sourceID = sourceID.map(UUIDIdentity.normalizedOrOriginal); self.occurredAtMS = occurredAtMS
+    }
+}
+
+public struct ActionEvidenceLinkRecord: Codable, Sendable, Equatable {
+    public let evidenceID: String
+    public let completionEventID: String
+    public let supersededByEventID: String?
+    public init(evidenceID: String, completionEventID: String, supersededByEventID: String?) {
+        self.evidenceID = UUIDIdentity.normalizedOrOriginal(evidenceID)
+        self.completionEventID = UUIDIdentity.normalizedOrOriginal(completionEventID)
+        self.supersededByEventID = supersededByEventID.map(UUIDIdentity.normalizedOrOriginal)
     }
 }
 

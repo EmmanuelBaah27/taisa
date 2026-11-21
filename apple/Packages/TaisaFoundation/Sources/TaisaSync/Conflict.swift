@@ -94,7 +94,7 @@ public struct SyncConflict: Codable, Sendable, Equatable {
         "message": ["conversationID", "role", "body", "createdAtMS"],
         "goal": ["title", "detail", "status", "createdAtMS", "updatedAtMS"],
         "milestone": ["goalID", "title", "status", "targetAtMS", "updatedAtMS"],
-        "action": ["goalID", "title", "detail", "status", "dueAtMS", "createdAtMS", "updatedAtMS"],
+        "action": ["goalID", "milestoneID", "title", "detail", "status", "dueDay", "dueAtMS", "origin", "createdAtMS", "updatedAtMS"],
         "evidence": ["goalID", "actionID", "title", "detail", "occurredAtMS", "createdAtMS"],
         "memory": ["kind", "content", "status", "createdAtMS", "updatedAtMS"],
         "memory_source": ["memoryItemID", "sourceType", "sourceID", "createdAtMS"],
